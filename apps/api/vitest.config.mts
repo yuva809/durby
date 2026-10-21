@@ -1,11 +1,33 @@
 import swc from 'unplugin-swc';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
+
+const integrationTests = ['test/**/*.int.spec.ts', 'test/**/*.e2e.spec.ts'];
 
 export default defineConfig({
   // SWC instead of esbuild so Nest decorator metadata is emitted in tests.
   plugins: [swc.vite({ module: { type: 'es6' } })],
   test: {
-    include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
     testTimeout: 30_000,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
+          exclude: [...configDefaults.exclude, ...integrationTests],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'integration',
+          include: integrationTests,
+          // One fresh Postgres (roles + migrations) per run; see test/setup/postgres.global.ts.
+          globalSetup: ['test/setup/postgres.global.ts'],
+          setupFiles: ['test/setup/env.ts'],
+          hookTimeout: 120_000,
+        },
+      },
+    ],
   },
 });

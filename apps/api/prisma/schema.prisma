@@ -1,0 +1,12 @@
+// Durby database schema. Tables: snake_case plural via @@map; models: PascalCase singular.
+// Connection URL lives in prisma.config.ts (MIGRATION_DATABASE_URL, runs as durby_migrator).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/platform/database/generated"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}

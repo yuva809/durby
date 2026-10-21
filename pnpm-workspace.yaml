@@ -2,6 +2,12 @@ packages:
   - apps/*
   - packages/*
 allowBuilds:
+  '@prisma/engines': true
   '@swc/core': true
   esbuild: true
+  prisma: true
   unrs-resolver: true
+  # Optional native speedups pulled in by testcontainers (ssh2/docker-modem); not needed.
+  cpu-features: false
+  protobufjs: false
+  ssh2: false

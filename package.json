@@ -12,7 +12,9 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @durby/api db:generate",
+    "db:migrate": "pnpm --filter @durby/api db:migrate"
   },
   "devDependencies": {
     "@durby/config": "workspace:*",
