@@ -1,19 +1,26 @@
-import { Controller, Get, Inject } from '@nestjs/common';
-import type { HealthResponse } from '@durby/shared';
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
+import type { HealthResponse, LiveResponse } from '@durby/shared';
+import type { Response } from 'express';
 import { Public } from '../auth/public.decorator';
-import { APP_CONFIG, type AppConfig } from '../config';
+import { HealthService } from './health.service';
 
 @Controller('health')
 export class HealthController {
-  constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {}
+  constructor(private readonly health: HealthService) {}
 
+  /** Readiness: database and Redis. 503 when either is down. Used by deploy checks and monitoring. */
   @Public()
   @Get()
-  check(): HealthResponse {
-    return {
-      status: 'ok',
-      version: this.config.APP_VERSION,
-      time: new Date().toISOString(),
-    };
+  async check(@Res({ passthrough: true }) res: Response): Promise<HealthResponse> {
+    const report = await this.health.readiness();
+    if (report.status !== 'ok') res.status(HttpStatus.SERVICE_UNAVAILABLE);
+    return report;
+  }
+
+  /** Liveness: the process answers. No dependencies, so a DB blip never marks the container unhealthy. */
+  @Public()
+  @Get('live')
+  live(): LiveResponse {
+    return this.health.live();
   }
 }

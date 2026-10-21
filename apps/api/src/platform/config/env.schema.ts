@@ -11,6 +11,7 @@ export const appEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
   APP_VERSION: z.string().min(1).default('0.0.0-dev'),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   /** Connects as durby_app (no BYPASSRLS). */
   DATABASE_URL: postgresUrl,
   REDIS_URL: redisUrl,

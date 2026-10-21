@@ -14,6 +14,7 @@ describe('appEnvSchema', () => {
       NODE_ENV: 'development',
       PORT: 4000,
       APP_VERSION: '0.0.0-dev',
+      LOG_LEVEL: 'info',
     });
   });
 
