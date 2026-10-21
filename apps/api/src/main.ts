@@ -11,7 +11,8 @@ const envFile = join(__dirname, '..', '.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  // Buffer boot logs until the pino logger is attached in configureApp.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
   configureApp(app);
   await app.listen(app.get<AppConfig>(APP_CONFIG).PORT);
 }

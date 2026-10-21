@@ -22,8 +22,8 @@ export default defineConfig({
         test: {
           name: 'integration',
           include: integrationTests,
-          // One fresh Postgres (roles + migrations) per run; see test/setup/postgres.global.ts.
-          globalSetup: ['test/setup/postgres.global.ts'],
+          // One fresh Postgres (roles + migrations) and Redis per run; see test/setup/containers.global.ts.
+          globalSetup: ['test/setup/containers.global.ts'],
           setupFiles: ['test/setup/env.ts'],
           hookTimeout: 120_000,
         },

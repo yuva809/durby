@@ -3,5 +3,6 @@
   "platform.home.title": "Back office",
   "platform.health.label": "API health",
   "platform.health.status.ok": "OK",
+  "platform.health.status.degraded": "Degraded",
   "platform.health.status.unavailable": "Unavailable"
 }

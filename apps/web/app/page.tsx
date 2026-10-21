@@ -1,6 +1,11 @@
 import { getHealth } from '../lib/api';
 import { t } from '../lib/i18n';
 
+const STATUS_LABEL = {
+  ok: 'platform.health.status.ok',
+  degraded: 'platform.health.status.degraded',
+} as const;
+
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
@@ -12,7 +17,7 @@ export default async function HomePage() {
       <p>
         {t('platform.health.label')}:{' '}
         <strong data-testid="health-status">
-          {health ? t('platform.health.status.ok') : t('platform.health.status.unavailable')}
+          {t(health ? STATUS_LABEL[health.status] : 'platform.health.status.unavailable')}
         </strong>
       </p>
     </main>

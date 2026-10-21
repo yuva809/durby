@@ -1,12 +1,14 @@
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
 import type { TestProject } from 'vitest/node';
 
 declare module 'vitest' {
   export interface ProvidedContext {
     databaseUrl: string;
     migrationDatabaseUrl: string;
+    redisUrl: string;
   }
 }
 
@@ -15,8 +17,12 @@ const apiRoot = join(__dirname, '..', '..');
 const rolesScript = join(apiRoot, '..', '..', 'infra', 'postgres', 'init', '01-roles.sql');
 
 let container: StartedPostgreSqlContainer | undefined;
+let redis: StartedRedisContainer | undefined;
 
 export async function setup(project: TestProject): Promise<void> {
+  // Started in parallel with Postgres; same major version as docker-compose.
+  const redisStarting = new RedisContainer('redis:8-alpine').start();
+
   container = await new PostgreSqlContainer('postgres:18-alpine')
     .withDatabase('durby')
     .withUsername('postgres')
@@ -38,8 +44,11 @@ export async function setup(project: TestProject): Promise<void> {
 
   project.provide('databaseUrl', databaseUrl);
   project.provide('migrationDatabaseUrl', migrationDatabaseUrl);
+
+  redis = await redisStarting;
+  project.provide('redisUrl', redis.getConnectionUrl());
 }
 
 export async function teardown(): Promise<void> {
-  await container?.stop();
+  await Promise.all([container?.stop(), redis?.stop()]);
 }
