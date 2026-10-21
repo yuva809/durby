@@ -1,0 +1,311 @@
+# Staging deployment
+
+Staging runs on one Hetzner Cloud CPX22 (2 vCPU, 4 GB RAM, 80 GB NVMe, Ubuntu 24.04) with Docker Compose,
+at **https://staging.durby.tech**. Decisions and trade-offs: [ADR 0004](../adr/0004-staging-deployment.md).
+
+```
+GitHub: push to main ─► CI (lint, typecheck, test, build, images) ─► Deploy staging
+                                                                    ├─ build + push 3 images to GHCR (tag = commit SHA)
+                                                                    └─ SSH as deploy ─► /opt/durby/bin/deploy.sh <sha>
+
+Server /opt/durby (project "durby-staging"):
+  Internet ─► :80/:443 Caddy ─┬─ /api/*  ─► api:4000 ─┐      (network "edge")
+                              └─ else    ─► web:3000  │
+                                 (basic auth)         ├─► postgres:5432, redis:6379   (network "db", internal)
+                                       migrate (release step) ─┘
+```
+
+| Piece           | Where                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Images          | `ghcr.io/yuva809/durby-{api,api-migrate,web}:<sha>`                         |
+| Server config   | `infra/staging/` in the repo, copied on every deploy                        |
+| Secrets         | `/opt/durby/.env` on the server only (mode 600)                             |
+| Deploy workflow | `.github/workflows/deploy-staging.yml`                                      |
+| Backups         | `/opt/durby/backups` (7 days) + Hetzner Storage Box (7 days), age-encrypted |
+
+Server layout:
+
+```
+/opt/durby/
+  .env                         secrets (never committed; template: infra/staging/.env.example)
+  docker-compose.staging.yml   ┐
+  caddy/Caddyfile              │ copied from infra/staging on every deploy
+  postgres-init/01-roles.sh    │
+  bin/{dc,deploy.sh,backup.sh,restore.sh}
+  state/deployed.sha           release that is live
+  state/previous.sha           release before it
+  state/history                deployed releases, newest last (images of the last 5 are kept)
+  backups/                     encrypted dumps, 7 days
+```
+
+`bin/dc` is `docker compose` with the right file, `.env` and the deployed image tag. Use it for everything:
+`bin/dc ps`, `bin/dc logs -f api`, `bin/dc exec postgres psql -U postgres durby`.
+
+---
+
+## Server setup (once)
+
+You run these steps yourself. Nothing in CI has root on the server.
+
+### 1. Prepare keys on your laptop
+
+```bash
+# GitHub Actions deploy key (no passphrase; it lives only in GitHub secrets)
+ssh-keygen -t ed25519 -N '' -C github-actions-durby-staging -f ~/.ssh/durby-staging-deploy
+
+# Backup encryption key. Keep durby-backup.key OFF the server (password manager / offline).
+age-keygen -o durby-backup.key        # prints "Public key: age1..."
+```
+
+### 2. DNS
+
+Create an `A` record `staging.durby.tech` pointing to the server's IPv4 address (and `AAAA` for IPv6 if you want it).
+Caddy gets the certificate on the first deploy, so the record must resolve before then.
+
+### 3. Hetzner Cloud Firewall (console)
+
+Defense in depth on top of ufw. Docker publishes ports through its own iptables rules, which bypass ufw, so
+the cloud firewall is what still protects you if a container ever publishes a port by mistake. Inbound rules:
+
+| Protocol | Port | Source            |
+| -------- | ---- | ----------------- |
+| TCP      | 22   | any (or your IPs) |
+| TCP      | 80   | any               |
+| TCP      | 443  | any               |
+| UDP      | 443  | any (HTTP/3)      |
+
+Apply it to the server.
+
+### 4. Run the setup script
+
+`/opt/durby` already exists; the script keeps it and fixes ownership.
+
+```bash
+scp infra/staging/server-setup.sh root@<server-ip>:/root/
+ssh root@<server-ip>
+```
+
+On the server, as root (keep this session open until step 5):
+
+```bash
+ADMIN_USER=<your-username> \
+ADMIN_SSH_KEY="$(cat /root/.ssh/authorized_keys | head -n 1)" \
+DEPLOY_SSH_KEY="ssh-ed25519 AAAA... github-actions-durby-staging" \
+ACME_EMAIL=<you@example.com> \
+BACKUP_AGE_RECIPIENT=age1... \
+bash /root/server-setup.sh
+```
+
+`ADMIN_SSH_KEY` must be the key you log in with; the example reuses the one Hetzner put on root.
+The script:
+
+- updates the system and installs Docker Engine + compose plugin (official repo), rclone, age, ufw;
+- turns on **unattended security updates** (reboots at 04:30 if a kernel update needs it);
+- adds a **2 GB swapfile** (`vm.swappiness=10`);
+- creates your **sudo user** (asks for a sudo password; SSH stays key-only) and the **`deploy` user**
+  (docker group, no sudo, no password, key restricted: no forwarding, no pty);
+- **SSH**: no root login, no passwords, `AllowUsers <you> deploy`;
+- **ufw**: deny incoming except 22/tcp, 80/tcp, 443/tcp+udp;
+- writes `/opt/durby/.env` with generated secrets and **prints the staging basic-auth password once**
+  (save it in your password manager);
+- creates an SSH key for the Storage Box (`~deploy/.ssh/storagebox`) and enables the nightly backup timer.
+
+It is safe to re-run; an existing `.env` is never overwritten.
+
+### 5. Check your access, then close the root session
+
+```bash
+ssh <your-username>@<server-ip>
+sudo -v
+```
+
+`ssh root@<server-ip>` must now be refused.
+
+### 6. Storage Box for backups
+
+In the Hetzner console create a Storage Box (BX11 is plenty), enable **SSH support** and note
+`uXXXXXX` / `uXXXXXX.your-storagebox.de`. Then on the server:
+
+```bash
+# Install the deploy user's backup key on the Storage Box (asks for the Storage Box password once)
+sudo cat ~deploy/.ssh/storagebox.pub | ssh -p 23 uXXXXXX@uXXXXXX.your-storagebox.de install-ssh-key
+
+# Pin the Storage Box host key and configure rclone, as deploy
+sudo -u deploy -H bash -c '
+  ssh-keyscan -p 23 uXXXXXX.your-storagebox.de >>~/.ssh/known_hosts
+  rclone config create storagebox sftp \
+    host uXXXXXX.your-storagebox.de user uXXXXXX port 23 \
+    key_file ~/.ssh/storagebox known_hosts_file ~/.ssh/known_hosts \
+    shell_type unix md5sum_command none sha1sum_command none
+  rclone mkdir storagebox:durby-staging
+  rclone lsd storagebox:
+'
+```
+
+`BACKUP_RCLONE_REMOTE` in `.env` defaults to `storagebox:durby-staging`. Check that `BACKUP_AGE_RECIPIENT` is set
+(`sudo grep BACKUP_ /opt/durby/.env`).
+
+### 7. GitHub
+
+Repository → Settings → Environments → **New environment `staging`**. Optionally add yourself as a required
+reviewer to approve each deploy. Add these **environment secrets**:
+
+| Secret                    | Value                                                                                                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `STAGING_SSH_HOST`        | server IPv4 address                                                                                                                           |
+| `STAGING_SSH_KEY`         | contents of `~/.ssh/durby-staging-deploy` (private key)                                                                                       |
+| `STAGING_SSH_KNOWN_HOSTS` | output of `ssh-keyscan -t ed25519 <server-ip>`; compare its fingerprint with `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` on the server |
+
+No registry secret is needed: the workflow logs the server in to GHCR with the job's short-lived `GITHUB_TOKEN`
+and logs out afterwards.
+
+### 8. First deploy
+
+Merge to `main` (or push). After CI passes, **Deploy staging** builds the images and deploys. On the very first
+start Postgres initializes its volume and `postgres-init/01-roles.sh` creates `durby_migrator` and `durby_app` with
+the passwords from `.env`. Then:
+
+```bash
+curl -fsS https://staging.durby.tech/api/v1/health      # {"status":"ok",...,"checks":{"database":"up","redis":"up"}}
+open https://staging.durby.tech                          # basic auth: durby / <printed password>
+```
+
+Then run a backup by hand and a restore check (see [Backups](#backups)).
+
+---
+
+## Deploying
+
+Every push to `main` that passes CI deploys automatically. The workflow:
+
+1. **Resolve release:** only a successful CI run for a `push` to `main`. It uses that run's `head_sha` (the commit
+   CI tested), never "current main".
+2. **Build:** pushes `durby-api`, `durby-api-migrate` and `durby-web` tagged `<sha>` and `staging`.
+3. **Deploy:** copies `infra/staging` from the same commit to `/opt/durby`, logs in to GHCR, runs
+   `bin/deploy.sh <sha>`, logs out.
+4. **Check:** `GET https://staging.durby.tech/api/v1/health` must return `status: ok` with `version: <sha>`.
+
+`bin/deploy.sh <sha>` on the server:
+
+1. pulls the three images for `<sha>` (skipped if already on the host);
+2. starts Postgres and Redis and waits until healthy;
+3. **release step:** `prisma migrate deploy` in the `migrate` container as `durby_migrator`
+   (`MIGRATION_DATABASE_URL`). If it fails, the deploy stops and the old api keeps running;
+4. starts the new api and web and waits for their healthchecks (`/api/v1/health/live`, `/healthz`).
+   **If they do not become healthy, it starts the previous release again** and fails;
+5. starts/reloads Caddy (picks up Caddyfile changes);
+6. records the release in `state/` and deletes images older than the last 5 releases.
+
+Deploys are serialized: one at a time in GitHub (`concurrency`) and on the server (`flock`).
+
+Changing a secret or setting in `.env`: edit it on the server, then `bin/dc up -d` (recreates what changed).
+Changing role passwords also needs `ALTER ROLE ... PASSWORD` in Postgres (the init script only runs on an empty volume).
+
+Updating Postgres/Redis/Caddy images within their major version (e.g. after a security release):
+
+```bash
+cd /opt/durby && bin/dc pull postgres redis caddy && bin/dc up -d --wait
+```
+
+## Rollback
+
+Migrations are forward-only, so a rollback only swaps the app images. This is safe as long as **every migration is
+backward compatible with the previous release** (expand/contract: add columns/tables first, remove them in a later
+release once no deployed code uses them). That rule is in `CLAUDE.md`.
+
+**From GitHub:** Actions → **Deploy staging** → _Run workflow_ → `sha` = the release to go back to (see
+`state/history` or the previous successful deploy run), `skip_migrations` = on. It skips the build and redeploys
+the existing images.
+
+**On the server** (no registry access needed for the last 5 releases):
+
+```bash
+cd /opt/durby
+cat state/previous.sha
+bin/deploy.sh --skip-migrations "$(cat state/previous.sha)"
+```
+
+If a migration itself broke data, restore the last good backup (below) and then deploy the matching release.
+
+## Logs
+
+The api writes one JSON line per request with `req.id`. Caddy sets `X-Request-Id` on every request
+and logs the same value as `request_id`, so one id connects the edge and the api. Authorization headers, cookies,
+bodies and query strings are never logged.
+
+```bash
+cd /opt/durby
+bin/dc logs -f --since 10m api
+bin/dc logs api | grep '"<request-id>"'
+bin/dc logs caddy | grep '"request_id":"<request-id>"'
+bin/dc logs api | grep '"level":50'              # errors
+```
+
+Container logs rotate at 10 MB × 5 files per container.
+
+## Backups
+
+`durby-backup.timer` runs `bin/backup.sh` as `deploy` every night at 03:00 UTC (±10 min, and catches up after
+downtime):
+
+1. `pg_dump --format=custom` as the Postgres superuser, piped straight into `age` with `BACKUP_AGE_RECIPIENT`.
+   No plaintext dump touches the disk, and the server cannot decrypt its own backups;
+2. writes `backups/durby-<UTC timestamp>.dump.age`, copies it to the Storage Box with rclone;
+3. deletes local and remote copies older than 7 days;
+4. pings `BACKUP_HEARTBEAT_URL` if set. Set it to a healthchecks.io-style check to get alerted when a
+   night is missed.
+
+```bash
+sudo systemctl start durby-backup.service          # run now
+journalctl -u durby-backup.service -n 50            # output of the last runs
+systemctl list-timers durby-backup.timer            # next run
+sudo -u deploy rclone ls storagebox:durby-staging   # remote copies
+```
+
+## Restore a backup
+
+`bin/restore.sh` needs the age **private** key. Copy it to the server only for the restore and delete it afterwards.
+
+```bash
+scp durby-backup.key <you>@<server-ip>:/tmp/durby-backup.key
+ssh <you>@<server-ip>
+sudo install -o deploy -g deploy -m 600 /tmp/durby-backup.key /opt/durby/backup.key && rm /tmp/durby-backup.key
+cd /opt/durby
+```
+
+**Verify** (safe, do this monthly): restores into a scratch database `durby_restore_check`, prints the applied
+migrations and row counts, then drops it. Live data is not touched.
+
+```bash
+sudo -u deploy bin/restore.sh verify durby-20261021T030512Z.dump.age backup.key
+```
+
+**Live restore** (replaces the staging database): stops api and web, recreates `durby` with the same ownership and
+grants as the init script, restores, starts api and web. It asks you to type `restore staging`.
+
+```bash
+ls backups/; sudo -u deploy rclone ls storagebox:durby-staging     # pick a backup
+sudo -u deploy bin/restore.sh live durby-20261021T030512Z.dump.age backup.key
+curl -fsS https://staging.durby.tech/api/v1/health
+```
+
+A backup name that is not in `backups/` is fetched from the Storage Box. Finally:
+
+```bash
+sudo shred -u /opt/durby/backup.key
+```
+
+**Server lost entirely:** create a new server, run the setup above with the **same `.env`** (keep a copy in your
+password manager) so the role passwords match, deploy the last release, then do a live restore.
+
+## Security notes
+
+- Only Caddy publishes ports. Postgres and Redis are on the internal `db` network (no route in or out); check with
+  `bin/dc ps` (only Caddy shows ports) and `sudo ss -tlnp` (only 22, 80, 443).
+- The api connects as `durby_app` (no BYPASSRLS, no ownership, no CREATE). The migrator password reaches only the
+  `migrate` container, which runs during deploys only.
+- `deploy` is in the `docker` group, which is root-equivalent on this host. Its SSH key is restricted and stored
+  only in GitHub environment secrets. Rotate it by replacing the line in `~deploy/.ssh/authorized_keys` and the
+  `STAGING_SSH_KEY` secret.
+- `/api/*` is not behind basic auth (it would clash with Bearer tokens from step 1.2). The only public endpoints today
+  are the health checks.

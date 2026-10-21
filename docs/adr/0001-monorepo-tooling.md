@@ -37,6 +37,8 @@ We need one repo layout, one toolchain, and machine-enforced module boundaries b
 - **`exactOptionalPropertyTypes`** is not enabled in the base tsconfig. Revisit once real DTOs and Prisma types exist.
 - **`next.config.ts` rewrites read `API_URL` at build time**, so the API target is baked into the build output.
   Revisit in step 0.4 (staging deploy), e.g. runtime proxying or a per-environment build.
+  Resolved in [ADR 0004](0004-staging-deployment.md): in staging Caddy routes `/api/*` to the API, so the rewrite
+  only serves local development.
 - `@Public()` is metadata only until the global auth guard lands (step 1.2).
 
 ## Consequences
