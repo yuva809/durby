@@ -1,0 +1,1 @@
+{"dryRun":false,"aborted":false,"abortReason":null,"writesAllowed":3,"writes":["POST /api/pos/retail/shifts/{id}/cash-movements 201","POST /api/pos/retail/shifts/{id}/cash-movements 201","POST /api/pos/retail/shifts/{id}/cash-movements 201"],"blocked":[]}

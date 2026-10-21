@@ -1,0 +1,39 @@
+{
+  "scenario": "INV-T3 dry run 3: product page Adjust Stock dialog for CHOC-003 (no write)",
+  "sequence": [
+    {
+      "op": "go",
+      "path": "/inventory/9c5b6bc1-e593-4eda-9199-e1ba66e36b11"
+    },
+    {
+      "op": "click",
+      "text": "Adjust Stock",
+      "wait": 1200
+    },
+    {
+      "op": "click",
+      "text": "Reduce Stock",
+      "wait": 1500
+    },
+    {
+      "op": "select",
+      "match": "Reason",
+      "value": "__list_options__",
+      "scope": "dialog"
+    }
+  ],
+  "dryRunCleanup": [
+    {
+      "op": "escape"
+    },
+    {
+      "op": "go",
+      "path": "/"
+    }
+  ],
+  "allow": [],
+  "maxWrites": 0,
+  "getFilters": {},
+  "keepRegisterNames": [],
+  "settleMs": 3500
+}

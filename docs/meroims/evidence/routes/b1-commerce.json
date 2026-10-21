@@ -1,0 +1,1994 @@
+{
+  "target": "A73B2A0558BBC812AC8FB41053444E94",
+  "runAt": "2026-10-20T15:10:43.904Z",
+  "steps": [
+    {
+      "id": "sales-invoices",
+      "startedAt": "2026-10-20T15:09:22.639Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/sales/invoices",
+        "to": "/sales/invoices"
+      },
+      "ui": {
+        "path": "/sales/invoices",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Sales Invoice"
+        ],
+        "buttons": [
+          "Export period",
+          "Export Excel",
+          "Active",
+          "More actions",
+          "Close"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search number, party, notes \u2014 or \u201ccash\u201d",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Status filter",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Date filter",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "NUMBER",
+            "DATE",
+            "PARTY",
+            "TOTAL",
+            "RECEIVED",
+            "BALANCE",
+            "ACTIONS"
+          ],
+          [
+            "ITEM",
+            "QTY",
+            "RATE",
+            "DISCOUNT",
+            "AMOUNT"
+          ]
+        ],
+        "links": [
+          "/sales/invoices/create",
+          "/print/invoice/{id}",
+          "/sales/invoices/{id}"
+        ],
+        "dialogs": 1,
+        "emptyStates": [
+          "No payments recorded against this invoice."
+        ],
+        "errorText": [],
+        "dialog": {
+          "headings": [
+            "Sales Invoice"
+          ],
+          "buttons": [
+            "Close"
+          ],
+          "tabs": [],
+          "fields": [],
+          "tableHeaders": [
+            [
+              "ITEM",
+              "QTY",
+              "RATE",
+              "DISCOUNT",
+              "AMOUNT"
+            ]
+          ],
+          "links": [
+            "/print/invoice/{id}",
+            "/sales/invoices/{id}"
+          ],
+          "dialogs": 1,
+          "emptyStates": [
+            "No payments recorded against this invoice."
+          ],
+          "errorText": []
+        }
+      },
+      "endedAt": "2026-10-20T15:09:29.912Z"
+    },
+    {
+      "id": "sales-invoice-create",
+      "startedAt": "2026-10-20T15:09:29.912Z",
+      "ui": {
+        "path": "/sales/invoices/create",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Create Sales Invoice",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "RECEIVE ACCOUNT",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Cash Sale",
+          "Party Sale",
+          "Enter the sales invoice number manually",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "No account needed (on credit)",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Add image",
+          "Bold",
+          "Italic",
+          "Underline",
+          "Bullet list",
+          "Numbered list",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save as Draft",
+          "Save"
+        ],
+        "tabs": [
+          "Cash Sale",
+          "Party Sale"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search customers\u2026",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Date",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search product, code, or barcode",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Quantity",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Rate",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "%",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Rs.",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Amount",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "No account needed (on credit)",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Receive total amount",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Received amount",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select TDS Account",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "TDS Type",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "TDS Amount",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Notes",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Signature",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/sales/invoices"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No credit term \u2013 amount received."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:09:34.333Z"
+    },
+    {
+      "id": "quotations",
+      "startedAt": "2026-10-20T15:09:34.333Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/sales/quotations",
+        "to": "/sales/quotations"
+      },
+      "ui": {
+        "path": "/sales/quotations",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Quotations"
+        ],
+        "buttons": [
+          "Export period",
+          "Export Excel",
+          "Active"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search number, party, or notes",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Status filter",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Date filter",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "NUMBER",
+            "DATE",
+            "PARTY",
+            "TOTAL",
+            "STATUS",
+            "ACTIONS"
+          ]
+        ],
+        "links": [
+          "/sales/quotations/create"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No quotations yet."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:09:41.552Z"
+    },
+    {
+      "id": "quotation-create",
+      "startedAt": "2026-10-20T15:09:41.552Z",
+      "ui": {
+        "path": "/sales/quotations/create",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Create Quotation",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Enter the quotation number manually",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "Add image",
+          "Bold",
+          "Italic",
+          "Underline",
+          "Bullet list",
+          "Numbered list",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search customers\u2026",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Date",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search product, code, or barcode",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Quantity",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Rate",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "%",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Rs.",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Amount",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Notes",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Signature",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/sales/quotations"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:09:45.295Z"
+    },
+    {
+      "id": "sales-returns",
+      "startedAt": "2026-10-20T15:09:45.295Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/sales/returns",
+        "to": "/sales/returns"
+      },
+      "ui": {
+        "path": "/sales/returns",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Sales Return"
+        ],
+        "buttons": [
+          "Export period",
+          "Export Excel",
+          "Active"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search number, party, or notes",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Status filter",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Date filter",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "NUMBER",
+            "DATE",
+            "PARTY",
+            "TOTAL",
+            "STATUS",
+            "ACTIONS"
+          ]
+        ],
+        "links": [
+          "/sales/returns/create"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No sales returns yet."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:09:52.513Z"
+    },
+    {
+      "id": "sales-return-create",
+      "startedAt": "2026-10-20T15:09:52.513Z",
+      "ui": {
+        "path": "/sales/returns/create",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Create Sales Return",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "PAID FROM",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Cash Return",
+          "Party Return",
+          "Enter the sales return number manually",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "Select account\u2026",
+          "Add image",
+          "Bold",
+          "Italic",
+          "Underline",
+          "Bullet list",
+          "Numbered list",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save"
+        ],
+        "tabs": [
+          "Cash Return",
+          "Party Return"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search customers\u2026",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Date",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search product, code, or barcode",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Quantity",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Rate",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "%",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Rs.",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Amount",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select account\u2026",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Pay the full amount",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Amount paid",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Notes",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Signature",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/sales/returns"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:09:56.225Z"
+    },
+    {
+      "id": "payment-in",
+      "startedAt": "2026-10-20T15:09:56.225Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/sales/payment-in",
+        "to": "/sales/payment-in/{id}"
+      },
+      "ui": {
+        "path": "/sales/payment-in/{id}",
+        "queryKeys": [
+          "back"
+        ],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Payment In",
+          "ALLOCATIONS"
+        ],
+        "buttons": [
+          "Send Email",
+          "View Print Preview",
+          "Void",
+          "Print"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [
+          [
+            "TYPE",
+            "DATE",
+            "ENTRY NO",
+            "AMOUNT"
+          ],
+          [
+            "ACCOUNT",
+            "DESCRIPTION",
+            "DEBIT",
+            "CREDIT"
+          ]
+        ],
+        "links": [
+          "/sales/payment-in",
+          "/sales/payment-in/{id}"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:10:03.461Z"
+    },
+    {
+      "id": "payment-in-create",
+      "startedAt": "2026-10-20T15:10:03.461Z",
+      "ui": {
+        "path": "/sales/payment-in/create",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Add Payment In"
+        ],
+        "buttons": [
+          "Select bank account",
+          "Split Payment",
+          "Bank Charge is Disabled",
+          "Select Bank Charge Account",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Attach file",
+          "Save"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search or select party",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select bank account",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Payment Code",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Received Date *",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Amount *",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Payment Mode",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Payment Reference#",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select Bank Charge Account",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Bank Charge Amount",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select TDS Account",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "TDS Type",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "TDS Amount",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Notes",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/sales/payment-in/{id}",
+          "/sales/payment-in"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:10:07.175Z"
+    },
+    {
+      "id": "purchase-bill-create",
+      "startedAt": "2026-10-20T15:10:07.175Z",
+      "ui": {
+        "path": "/purchases/bills/create",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Create Purchase Bill",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "PAY ACCOUNT",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Cash Purchase",
+          "Party Purchase",
+          "Enter the purchase bill number manually",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "No account needed (on credit)",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Add image",
+          "Bold",
+          "Italic",
+          "Underline",
+          "Bullet list",
+          "Numbered list",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save"
+        ],
+        "tabs": [
+          "Cash Purchase",
+          "Party Purchase"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search suppliers\u2026",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Date",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search product, code, or barcode",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Quantity",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Rate",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "%",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Rs.",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Amount",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "No account needed (on credit)",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Pay total amount",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Paid amount",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select TDS Account",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "TDS Type",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "TDS Amount",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Notes",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Signature",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/sales/payment-in/create"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No credit term \u2013 amount received."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:10:10.891Z"
+    },
+    {
+      "id": "purchase-returns",
+      "startedAt": "2026-10-20T15:10:10.891Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/purchases/returns",
+        "to": "/purchases/returns"
+      },
+      "ui": {
+        "path": "/purchases/returns",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Purchase Return"
+        ],
+        "buttons": [
+          "Export period",
+          "Export Excel",
+          "Active"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search number, party, or notes",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Status filter",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Date filter",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "NUMBER",
+            "DATE",
+            "PARTY",
+            "TOTAL",
+            "STATUS",
+            "ACTIONS"
+          ]
+        ],
+        "links": [
+          "/purchases/returns/create"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No purchase returns yet."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:10:18.118Z"
+    },
+    {
+      "id": "purchase-return-create",
+      "startedAt": "2026-10-20T15:10:18.118Z",
+      "ui": {
+        "path": "/purchases/returns/create",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Create Purchase Return",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "RECEIVED INTO",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Cash Return",
+          "Party Return",
+          "Enter the purchase return number manually",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "Select account\u2026",
+          "Add image",
+          "Bold",
+          "Italic",
+          "Underline",
+          "Bullet list",
+          "Numbered list",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save"
+        ],
+        "tabs": [
+          "Cash Return",
+          "Party Return"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search suppliers\u2026",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Date",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search product, code, or barcode",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Quantity",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Rate",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "%",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Rs.",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Amount",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select account\u2026",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Receive the full amount",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Amount received",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Notes",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Signature",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/purchases/returns"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:10:21.829Z"
+    },
+    {
+      "id": "payment-out",
+      "startedAt": "2026-10-20T15:10:21.829Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/purchases/payment-out",
+        "to": "/purchases/payment-out"
+      },
+      "ui": {
+        "path": "/purchases/payment-out",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Payment Out"
+        ],
+        "buttons": [],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Status",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "DATE",
+            "PAYMENT NUMBER",
+            "PARTY",
+            "AMOUNT",
+            "METHOD",
+            "ALLOCATIONS",
+            "STATUS",
+            "ACTIONS"
+          ]
+        ],
+        "links": [
+          "/purchases/payment-out/create"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No payments recorded yet."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:10:29.051Z"
+    },
+    {
+      "id": "payment-out-create",
+      "startedAt": "2026-10-20T15:10:29.051Z",
+      "ui": {
+        "path": "/purchases/payment-out/create",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Add Payment Out"
+        ],
+        "buttons": [
+          "Select bank account",
+          "Split Payment",
+          "Bank Charge is Disabled",
+          "Select Bank Charge Account",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Attach file",
+          "Save"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search or select party",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select bank account",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Payment Number",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Payment Date *",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Amount *",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Payment Mode",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Payment Reference#",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select Bank Charge Account",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Bank Charge Amount",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select TDS Account",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "TDS Type",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "TDS Amount",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Notes",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/purchases/payment-out"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:10:32.761Z"
+    },
+    {
+      "id": "expenses",
+      "startedAt": "2026-10-20T15:10:32.761Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/expenses",
+        "to": "/expenses"
+      },
+      "ui": {
+        "path": "/expenses",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Expenses"
+        ],
+        "buttons": [],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search number, notes, or category",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Category filter",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Account filter",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Date filter",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "NUMBER",
+            "DATE",
+            "CATEGORY",
+            "ACCOUNT",
+            "NOTES",
+            "AMOUNT",
+            "ACTIONS"
+          ]
+        ],
+        "links": [
+          "/expenses/create"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No expenses yet."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:10:39.978Z"
+    },
+    {
+      "id": "expense-create",
+      "startedAt": "2026-10-20T15:10:39.978Z",
+      "ui": {
+        "path": "/expenses/create",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Add Expense"
+        ],
+        "buttons": [
+          "Select Account",
+          "Remove line",
+          "Add Line",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Cancel",
+          "Save"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Select Supplier / Party\u2026",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Party Invoice Reference No",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Date",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Due Date",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select Account",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Amount",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Tax",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Notes",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Select TDS Account",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "TDS Type",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "TDS Amount",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "ACCOUNT",
+            "AMOUNT",
+            "TAX"
+          ]
+        ],
+        "links": [
+          "/expenses"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:10:43.903Z"
+    }
+  ],
+  "api": [
+    {
+      "step": "sales-invoices",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/documents",
+      "params": [
+        "page",
+        "perPage",
+        "type"
+      ]
+    },
+    {
+      "step": "sales-invoices",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "sales-invoices",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/documents/{id}",
+      "params": []
+    },
+    {
+      "step": "sales-invoice-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/tax/tds-types",
+      "params": []
+    },
+    {
+      "step": "sales-invoice-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "sales-invoice-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/credit-terms",
+      "params": []
+    },
+    {
+      "step": "sales-invoice-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/signatures",
+      "params": []
+    },
+    {
+      "step": "sales-invoice-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "quotations",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/documents",
+      "params": [
+        "page",
+        "perPage",
+        "type"
+      ]
+    },
+    {
+      "step": "quotations",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "quotation-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "quotation-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/credit-terms",
+      "params": []
+    },
+    {
+      "step": "quotation-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/signatures",
+      "params": []
+    },
+    {
+      "step": "quotation-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "sales-returns",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/documents",
+      "params": [
+        "page",
+        "perPage",
+        "type"
+      ]
+    },
+    {
+      "step": "sales-returns",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "sales-return-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "sales-return-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/credit-terms",
+      "params": []
+    },
+    {
+      "step": "sales-return-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/signatures",
+      "params": []
+    },
+    {
+      "step": "sales-return-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "payment-in",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/payments",
+      "params": [
+        "direction",
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "payment-in",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/payments/{id}",
+      "params": []
+    },
+    {
+      "step": "payment-in",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/journals/by-source/{id}",
+      "params": []
+    },
+    {
+      "step": "payment-in",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/payments/{id}/allocations",
+      "params": []
+    },
+    {
+      "step": "payment-in-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/tax/tds-types",
+      "params": []
+    },
+    {
+      "step": "payment-in-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "payment-in-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/cheque-statuses",
+      "params": []
+    },
+    {
+      "step": "payment-in-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "purchase-bill-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/tax/tds-types",
+      "params": []
+    },
+    {
+      "step": "purchase-bill-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "purchase-bill-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/credit-terms",
+      "params": []
+    },
+    {
+      "step": "purchase-bill-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/signatures",
+      "params": []
+    },
+    {
+      "step": "purchase-bill-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "purchase-returns",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/documents",
+      "params": [
+        "page",
+        "perPage",
+        "type"
+      ]
+    },
+    {
+      "step": "purchase-returns",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "purchase-return-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "purchase-return-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/credit-terms",
+      "params": []
+    },
+    {
+      "step": "purchase-return-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/signatures",
+      "params": []
+    },
+    {
+      "step": "purchase-return-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "payment-out",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/payments",
+      "params": [
+        "direction",
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "payment-out-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/tax/tds-types",
+      "params": []
+    },
+    {
+      "step": "payment-out-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "payment-out-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/cheque-statuses",
+      "params": []
+    },
+    {
+      "step": "expenses",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/finance/records",
+      "params": [
+        "page",
+        "perPage",
+        "recordType"
+      ]
+    },
+    {
+      "step": "expenses",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/finance/categories",
+      "params": [
+        "recordType"
+      ]
+    },
+    {
+      "step": "expenses",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "expense-create",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/tax/tds-types",
+      "params": []
+    }
+  ],
+  "blocked": []
+}

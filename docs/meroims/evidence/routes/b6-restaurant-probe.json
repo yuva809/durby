@@ -1,0 +1,438 @@
+{
+  "target": "A73B2A0558BBC812AC8FB41053444E94",
+  "runAt": "2026-10-20T15:44:26.632Z",
+  "steps": [
+    {
+      "id": "r-till",
+      "startedAt": "2026-10-20T15:43:59.542Z",
+      "ui": {
+        "path": "/restaurant/till",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Till unavailable"
+        ],
+        "buttons": [
+          "Retry",
+          "Back office"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [
+          "/"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:44:05.273Z"
+    },
+    {
+      "id": "r-tables",
+      "startedAt": "2026-10-20T15:44:05.273Z",
+      "ui": {
+        "path": "/restaurant/tables",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Tables & QR"
+        ],
+        "buttons": [
+          "[record button]"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search tables or areas...",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:44:10.121Z"
+    },
+    {
+      "id": "r-kitchen",
+      "startedAt": "2026-10-20T15:44:10.121Z",
+      "ui": {
+        "path": "/restaurant/kitchen",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Display unavailable"
+        ],
+        "buttons": [
+          "Retry",
+          "Back office"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [
+          "/"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:44:14.535Z"
+    },
+    {
+      "id": "r-bar",
+      "startedAt": "2026-10-20T15:44:14.535Z",
+      "ui": {
+        "path": "/restaurant/bar",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Display unavailable"
+        ],
+        "buttons": [
+          "Retry",
+          "Back office"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [
+          "/"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:44:19.164Z"
+    },
+    {
+      "id": "r-waiter",
+      "startedAt": "2026-10-20T15:44:19.164Z",
+      "ui": {
+        "path": "/restaurant/waiter",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Floor unavailable"
+        ],
+        "buttons": [
+          "Retry",
+          "Back office"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [
+          "/"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:44:23.406Z"
+    },
+    {
+      "id": "back-to-till",
+      "startedAt": "2026-10-20T15:44:23.406Z",
+      "ui": {
+        "path": "/till",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "[tenant redacted]"
+        ],
+        "buttons": [
+          "X-report",
+          "Cash in/out",
+          "Close shift",
+          "Scroll categories left",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "Scroll categories right",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "Previous page",
+          "Next page",
+          "W Walk-in customer tap to attach a customer attach",
+          "[record button]",
+          "Walk-in",
+          "Browse"
+        ],
+        "tabs": [
+          "All 70",
+          "Beverages 7",
+          "Bakery & Bread 6",
+          "Breakfast & Cereals 6",
+          "Canned & Preserved Goods 6",
+          "Condiments & Sauces 6",
+          "Frozen Foods 6",
+          "Household & Cleaning 6",
+          "Personal Care & Hygiene 6",
+          "Snacks & Confectionery 6",
+          "Spices, Oils & Seasonings 6",
+          "Biscuits 3",
+          "Chocolate 3",
+          "Noodles 2",
+          "Snacks 1"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Scan barcode, or type a name / SKU\u2026",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:44:26.628Z"
+    }
+  ],
+  "api": [
+    {
+      "step": "r-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "r-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/account-config",
+      "params": []
+    },
+    {
+      "step": "r-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/events/stream",
+      "params": [
+        "access_token"
+      ]
+    },
+    {
+      "step": "r-tables",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "r-tables",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/account-config",
+      "params": []
+    },
+    {
+      "step": "r-tables",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/billing/status",
+      "params": []
+    },
+    {
+      "step": "r-tables",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/events/stream",
+      "params": [
+        "access_token"
+      ]
+    },
+    {
+      "step": "r-tables",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "r-tables",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "scope"
+      ]
+    },
+    {
+      "step": "r-tables",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/restaurant/stations",
+      "params": []
+    },
+    {
+      "step": "r-tables",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/restaurant/tables",
+      "params": [
+        "includeInactive"
+      ]
+    },
+    {
+      "step": "r-tables",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/restaurant/areas",
+      "params": []
+    },
+    {
+      "step": "r-tables",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/branches",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "r-tables",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "scope"
+      ]
+    },
+    {
+      "step": "r-kitchen",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "r-kitchen",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/account-config",
+      "params": []
+    },
+    {
+      "step": "r-bar",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "r-bar",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/account-config",
+      "params": []
+    },
+    {
+      "step": "r-waiter",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "r-waiter",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/account-config",
+      "params": []
+    },
+    {
+      "step": "r-waiter",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/events/stream",
+      "params": [
+        "access_token"
+      ]
+    },
+    {
+      "step": "back-to-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "back-to-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/account-config",
+      "params": []
+    },
+    {
+      "step": "back-to-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/retail/context",
+      "params": []
+    },
+    {
+      "step": "back-to-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/retail/holds",
+      "params": []
+    },
+    {
+      "step": "back-to-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/events/stream",
+      "params": [
+        "access_token"
+      ]
+    },
+    {
+      "step": "back-to-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/products",
+      "params": [
+        "registerId"
+      ]
+    }
+  ],
+  "blocked": [],
+  "redactedTerms": 0
+}

@@ -1,0 +1,21 @@
+{
+  "scenario": "INV-T1 dry run 2: fill both lines + note, stop before Save (no write)",
+  "sequence": [
+    {"op":"go","path":"/purchases/bills/create"},
+    {"op":"click","text":"Cash Purchase","optional":true,"wait":1200},
+    {"op":"fill","match":"Search product","value":"BEV-WAT-004","nth":0,"wait":2500},
+    {"op":"clickOption","prefix":"Mineral Water","wait":1500},
+    {"op":"fill","match":"Qty","value":"2","nth":0,"wait":500},
+    {"op":"fill","match":"Rate","value":"20","nth":0,"wait":500},
+    {"op":"click","text":"Add Row","wait":1200},
+    {"op":"fill","match":"Search product","value":"CHOC-003","nth":-1,"wait":2500},
+    {"op":"clickOption","prefix":"Munch Chocolate","wait":1500},
+    {"op":"fill","match":"Qty","value":"2","nth":-1,"wait":500},
+    {"op":"fill","match":"Rate","value":"17","nth":-1,"wait":500},
+    {"op":"fill","match":"Notes","value":"TEST-DURBY-INV-T1","wait":500},
+    {"op":"snapshot","label":"filled form","scope":"body"},
+    {"op":"act","text":"Save"}
+  ],
+  "dryRunCleanup": [ {"op":"escape"}, {"op":"go","path":"/"} ],
+  "allow": [], "maxWrites": 0, "getFilters": {}, "keepRegisterNames": [], "settleMs": 3500
+}

@@ -1,0 +1,414 @@
+{
+  "scenario": "S6 dry run: open Cash in/out, choose paid_in, fill 100 + reason, stop before Record",
+  "dryRun": true,
+  "runAt": "2026-10-20T16:26:50.422Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/till",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Cash in/out",
+      "result": "ok:Cash in/out"
+    },
+    {
+      "op": "snapshot",
+      "arg": "cash in/out dialog",
+      "result": {
+        "label": "cash in/out dialog",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Cash in / out"
+        ],
+        "buttons": [
+          "Close",
+          "Record"
+        ],
+        "inputs": [
+          {
+            "label": "Movement Paid in (add cash to drawer) Paid out (expense from drawer) Drop (move cash to safe)",
+            "type": "select-one",
+            "value": "paid_out"
+          },
+          {
+            "label": "Amount",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Reason",
+            "type": "text",
+            "value": ""
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "select",
+      "arg": "Movement",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Amount",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Reason",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "filled",
+      "result": {
+        "label": "filled",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Cash in / out"
+        ],
+        "buttons": [
+          "Close",
+          "Record"
+        ],
+        "inputs": [
+          {
+            "label": "Movement Paid in (add cash to drawer) Paid out (expense from drawer) Drop (move cash to safe)",
+            "type": "select-one",
+            "value": "paid_in"
+          },
+          {
+            "label": "Amount",
+            "type": "text",
+            "value": "100"
+          },
+          {
+            "label": "Reason",
+            "type": "text",
+            "value": "TEST-DURBY-S6 paid in"
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "Record",
+      "result": "ok:Record"
+    },
+    {
+      "op": "snapshot",
+      "result": {
+        "label": "dry-run stop before act",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Cash in / out"
+        ],
+        "buttons": [
+          "Close",
+          "Record"
+        ],
+        "inputs": [
+          {
+            "label": "Movement Paid in (add cash to drawer) Paid out (expense from drawer) Drop (move cash to safe)",
+            "type": "select-one",
+            "value": "paid_in"
+          },
+          {
+            "label": "Amount",
+            "type": "text",
+            "value": "100"
+          },
+          {
+            "label": "Reason",
+            "type": "text",
+            "value": "TEST-DURBY-S6 paid in"
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "cleanup:escape",
+      "result": "ok"
+    },
+    {
+      "op": "cleanup:go",
+      "result": "ok"
+    }
+  ],
+  "aborted": false,
+  "writesAllowed": 0,
+  "writes": [],
+  "blocked": [],
+  "gets": [],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 401,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 401,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 401,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 401,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 401,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 401,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 401,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "POST",
+      "path": "/api/auth/refresh",
+      "query": [],
+      "status": 201,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

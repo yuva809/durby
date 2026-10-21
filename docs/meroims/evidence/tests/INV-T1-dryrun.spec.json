@@ -1,0 +1,15 @@
+{
+  "scenario": "INV-T1 dry run: purchase bill form discovery (no write)",
+  "sequence": [
+    {"op":"go","path":"/purchases/bills/create"},
+    {"op":"click","text":"Cash Purchase","optional":true,"wait":1200},
+    {"op":"snapshot","label":"form initial","scope":"body"},
+    {"op":"fill","match":"Search product","value":"BEV-WAT-004","nth":0,"wait":2500},
+    {"op":"snapshot","label":"after typing sku","scope":"body"},
+    {"op":"act","text":"__discover__"}
+  ],
+  "dryRunCleanup": [ {"op":"escape"}, {"op":"go","path":"/"} ],
+  "allow": [], "maxWrites": 0,
+  "getFilters": {"^/api/core/sales/item-search$": {"pick":["hasMore"]}},
+  "keepRegisterNames": [], "settleMs": 3500
+}

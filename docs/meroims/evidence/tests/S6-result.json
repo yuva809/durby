@@ -1,0 +1,1529 @@
+{
+  "scenario": "S6 cash movements on 'sample 1' shift: paid_in 100.00, paid_out 10.00, drop 50.00 (user-approved)",
+  "dryRun": false,
+  "runAt": "2026-10-20T16:27:30.633Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounts",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/till",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Cash in/out",
+      "result": "ok:Cash in/out"
+    },
+    {
+      "op": "select",
+      "arg": "Movement",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Amount",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Reason",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "paid_in filled",
+      "result": {
+        "label": "paid_in filled",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Cash in / out"
+        ],
+        "buttons": [
+          "Close",
+          "Record"
+        ],
+        "inputs": [
+          {
+            "label": "Movement Paid in (add cash to drawer) Paid out (expense from drawer) Drop (move cash to safe)",
+            "type": "select-one",
+            "value": "paid_in"
+          },
+          {
+            "label": "Amount",
+            "type": "text",
+            "value": "100"
+          },
+          {
+            "label": "Reason",
+            "type": "text",
+            "value": "TEST-DURBY-S6 paid in"
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "Record",
+      "result": "ok:Record"
+    },
+    {
+      "op": "act",
+      "target": "Record",
+      "result": "ok:Record",
+      "writeCaptured": true
+    },
+    {
+      "op": "snapshot",
+      "arg": "after paid_in",
+      "result": {
+        "label": "after paid_in",
+        "path": "/till",
+        "dialogOpen": false,
+        "headings": [
+          "[tenant/user redacted]"
+        ],
+        "buttons": [
+          "X-report",
+          "Cash in/out",
+          "Close shift",
+          "Scroll categories left",
+          "All 70",
+          "Beverages 7",
+          "Bakery & Bread 6",
+          "Breakfast & Cereals 6",
+          "Canned & Preserved Goods 6",
+          "Condiments & Sauces 6",
+          "Frozen Foods 6",
+          "Household & Cleaning 6",
+          "Personal Care & Hygiene 6",
+          "Snacks & Confectionery 6",
+          "Spices, Oils & Seasonings 6",
+          "Biscuits 3",
+          "Chocolate 3",
+          "Noodles 2",
+          "Snacks 1",
+          "Scroll categories right",
+          "Anti-Dandruff Shampoo रु 340.00 980 left",
+          "BP Black Peppercorns रु 180.00 out",
+          "Black Tea Bags रु 220.00 712 left",
+          "Body Lotion रु 280.00 87 left",
+          "Bourbon Biscuits रु 40.00 85 left",
+          "Burger Buns रु 80.00 612 left",
+          "CB Canned Baked Beans रु 145.00 out",
+          "CC Canned Chickpeas रु 140.00 out",
+          "CD Canned Diced Tomatoes रु 150.00 out",
+          "CS Canned Sliced Mushrooms रु 160.00 out",
+          "CS Canned Sweet Corn रु 130.00 out",
+          "CT Canned Tuna रु 220.00 out",
+          "CC Choco Cereal Loops रु 310.00 out",
+          "Chocolate Muffin रु 85.00 321 left",
+          "Coca-Cola 1L रु 100.00 200 left",
+          "Cola Can रु 65.00 712 left",
+          "CF Corn Flakes रु 290.00 out",
+          "Croissants रु 160.00 871 left",
+          "CS Cumin Seeds रु 160.00 out",
+          "Dairy Milk Chocolate रु 50.00 397 left",
+          "Digestive Biscuits रु 80.00 89 left",
+          "Digestive Biscuits रु 95.00 79 left",
+          "Dishwashing Liquid रु 165.00 78 left",
+          "EV Extra Virgin Olive Oil रु 1,250.00 out",
+          "Fluoride Toothpaste रु 110.00 864 left",
+          "Previous page",
+          "Next page",
+          "W Walk-in customer tap to attach a customer attach",
+          "Hold F8",
+          "Resume (1) F9",
+          "Tender F10",
+          "Walk-in",
+          "Browse",
+          "Tender"
+        ],
+        "inputs": [
+          {
+            "label": "Scan barcode, or type a name / SKU…",
+            "type": "text",
+            "value": ""
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "click",
+      "arg": "X-report",
+      "result": "ok:X-report"
+    },
+    {
+      "op": "snapshot",
+      "arg": "x-report after paid_in",
+      "result": {
+        "label": "x-report after paid_in",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "X-report (mid-shift)"
+        ],
+        "buttons": [
+          "Close",
+          "Print (80mm)",
+          "Done"
+        ],
+        "inputs": [],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "escape",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Cash in/out",
+      "result": "ok:Cash in/out"
+    },
+    {
+      "op": "select",
+      "arg": "Movement",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Amount",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Reason",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "paid_out filled",
+      "result": {
+        "label": "paid_out filled",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Cash in / out"
+        ],
+        "buttons": [
+          "Close",
+          "Record"
+        ],
+        "inputs": [
+          {
+            "label": "Movement Paid in (add cash to drawer) Paid out (expense from drawer) Drop (move cash to safe)",
+            "type": "select-one",
+            "value": "paid_out"
+          },
+          {
+            "label": "Amount",
+            "type": "text",
+            "value": "10"
+          },
+          {
+            "label": "Reason",
+            "type": "text",
+            "value": "TEST-DURBY-S6 paid out"
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "Record",
+      "result": "ok:Record"
+    },
+    {
+      "op": "act",
+      "target": "Record",
+      "result": "ok:Record",
+      "writeCaptured": true
+    },
+    {
+      "op": "snapshot",
+      "arg": "after paid_out",
+      "result": {
+        "label": "after paid_out",
+        "path": "/till",
+        "dialogOpen": false,
+        "headings": [
+          "[tenant/user redacted]"
+        ],
+        "buttons": [
+          "X-report",
+          "Cash in/out",
+          "Close shift",
+          "Scroll categories left",
+          "All 70",
+          "Beverages 7",
+          "Bakery & Bread 6",
+          "Breakfast & Cereals 6",
+          "Canned & Preserved Goods 6",
+          "Condiments & Sauces 6",
+          "Frozen Foods 6",
+          "Household & Cleaning 6",
+          "Personal Care & Hygiene 6",
+          "Snacks & Confectionery 6",
+          "Spices, Oils & Seasonings 6",
+          "Biscuits 3",
+          "Chocolate 3",
+          "Noodles 2",
+          "Snacks 1",
+          "Scroll categories right",
+          "Anti-Dandruff Shampoo रु 340.00 980 left",
+          "BP Black Peppercorns रु 180.00 out",
+          "Black Tea Bags रु 220.00 712 left",
+          "Body Lotion रु 280.00 87 left",
+          "Bourbon Biscuits रु 40.00 85 left",
+          "Burger Buns रु 80.00 612 left",
+          "CB Canned Baked Beans रु 145.00 out",
+          "CC Canned Chickpeas रु 140.00 out",
+          "CD Canned Diced Tomatoes रु 150.00 out",
+          "CS Canned Sliced Mushrooms रु 160.00 out",
+          "CS Canned Sweet Corn रु 130.00 out",
+          "CT Canned Tuna रु 220.00 out",
+          "CC Choco Cereal Loops रु 310.00 out",
+          "Chocolate Muffin रु 85.00 321 left",
+          "Coca-Cola 1L रु 100.00 200 left",
+          "Cola Can रु 65.00 712 left",
+          "CF Corn Flakes रु 290.00 out",
+          "Croissants रु 160.00 871 left",
+          "CS Cumin Seeds रु 160.00 out",
+          "Dairy Milk Chocolate रु 50.00 397 left",
+          "Digestive Biscuits रु 80.00 89 left",
+          "Digestive Biscuits रु 95.00 79 left",
+          "Dishwashing Liquid रु 165.00 78 left",
+          "EV Extra Virgin Olive Oil रु 1,250.00 out",
+          "Fluoride Toothpaste रु 110.00 864 left",
+          "Previous page",
+          "Next page",
+          "W Walk-in customer tap to attach a customer attach",
+          "Hold F8",
+          "Resume (1) F9",
+          "Tender F10",
+          "Walk-in",
+          "Browse",
+          "Tender"
+        ],
+        "inputs": [
+          {
+            "label": "Scan barcode, or type a name / SKU…",
+            "type": "text",
+            "value": ""
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "click",
+      "arg": "X-report",
+      "result": "ok:X-report"
+    },
+    {
+      "op": "snapshot",
+      "arg": "x-report after paid_out",
+      "result": {
+        "label": "x-report after paid_out",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "X-report (mid-shift)"
+        ],
+        "buttons": [
+          "Close",
+          "Print (80mm)",
+          "Done"
+        ],
+        "inputs": [],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "escape",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Cash in/out",
+      "result": "ok:Cash in/out"
+    },
+    {
+      "op": "select",
+      "arg": "Movement",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Amount",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Reason",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "drop filled",
+      "result": {
+        "label": "drop filled",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Cash in / out"
+        ],
+        "buttons": [
+          "Close",
+          "Record"
+        ],
+        "inputs": [
+          {
+            "label": "Movement Paid in (add cash to drawer) Paid out (expense from drawer) Drop (move cash to safe)",
+            "type": "select-one",
+            "value": "drop"
+          },
+          {
+            "label": "Amount",
+            "type": "text",
+            "value": "50"
+          },
+          {
+            "label": "Reason",
+            "type": "text",
+            "value": "TEST-DURBY-S6 drop"
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "Record",
+      "result": "ok:Record"
+    },
+    {
+      "op": "act",
+      "target": "Record",
+      "result": "ok:Record",
+      "writeCaptured": true
+    },
+    {
+      "op": "snapshot",
+      "arg": "after drop",
+      "result": {
+        "label": "after drop",
+        "path": "/till",
+        "dialogOpen": false,
+        "headings": [
+          "[tenant/user redacted]"
+        ],
+        "buttons": [
+          "X-report",
+          "Cash in/out",
+          "Close shift",
+          "Scroll categories left",
+          "All 70",
+          "Beverages 7",
+          "Bakery & Bread 6",
+          "Breakfast & Cereals 6",
+          "Canned & Preserved Goods 6",
+          "Condiments & Sauces 6",
+          "Frozen Foods 6",
+          "Household & Cleaning 6",
+          "Personal Care & Hygiene 6",
+          "Snacks & Confectionery 6",
+          "Spices, Oils & Seasonings 6",
+          "Biscuits 3",
+          "Chocolate 3",
+          "Noodles 2",
+          "Snacks 1",
+          "Scroll categories right",
+          "Anti-Dandruff Shampoo रु 340.00 980 left",
+          "BP Black Peppercorns रु 180.00 out",
+          "Black Tea Bags रु 220.00 712 left",
+          "Body Lotion रु 280.00 87 left",
+          "Bourbon Biscuits रु 40.00 85 left",
+          "Burger Buns रु 80.00 612 left",
+          "CB Canned Baked Beans रु 145.00 out",
+          "CC Canned Chickpeas रु 140.00 out",
+          "CD Canned Diced Tomatoes रु 150.00 out",
+          "CS Canned Sliced Mushrooms रु 160.00 out",
+          "CS Canned Sweet Corn रु 130.00 out",
+          "CT Canned Tuna रु 220.00 out",
+          "CC Choco Cereal Loops रु 310.00 out",
+          "Chocolate Muffin रु 85.00 321 left",
+          "Coca-Cola 1L रु 100.00 200 left",
+          "Cola Can रु 65.00 712 left",
+          "CF Corn Flakes रु 290.00 out",
+          "Croissants रु 160.00 871 left",
+          "CS Cumin Seeds रु 160.00 out",
+          "Dairy Milk Chocolate रु 50.00 397 left",
+          "Digestive Biscuits रु 80.00 89 left",
+          "Digestive Biscuits रु 95.00 79 left",
+          "Dishwashing Liquid रु 165.00 78 left",
+          "EV Extra Virgin Olive Oil रु 1,250.00 out",
+          "Fluoride Toothpaste रु 110.00 864 left",
+          "Previous page",
+          "Next page",
+          "W Walk-in customer tap to attach a customer attach",
+          "Hold F8",
+          "Resume (1) F9",
+          "Tender F10",
+          "Walk-in",
+          "Browse",
+          "Tender"
+        ],
+        "inputs": [
+          {
+            "label": "Scan barcode, or type a name / SKU…",
+            "type": "text",
+            "value": ""
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "click",
+      "arg": "X-report",
+      "result": "ok:X-report"
+    },
+    {
+      "op": "snapshot",
+      "arg": "x-report after drop",
+      "result": {
+        "label": "x-report after drop",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "X-report (mid-shift)"
+        ],
+        "buttons": [
+          "Close",
+          "Print (80mm)",
+          "Done"
+        ],
+        "inputs": [],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "escape",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "clickNthRow",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "escape",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "clickNthRow",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "escape",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "clickNthRow",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounts",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/till",
+      "result": "ok"
+    }
+  ],
+  "aborted": false,
+  "writesAllowed": 3,
+  "writes": [
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/retail/shifts/{id}/cash-movements",
+      "status": 201,
+      "request": {
+        "type": "paid_in",
+        "amount": "100.00",
+        "reason": "TEST-DURBY-S6 paid in"
+      },
+      "response": {
+        "id": "7fb11afc-638e-4eee-b0d9-32c359260f23",
+        "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+        "shiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "movementType": "paid_in",
+        "amount": "100.00",
+        "reason": "TEST-DURBY-S6 paid in",
+        "createdById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+        "createdAt": "2026-10-20T16:27:48.466Z"
+      }
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/retail/shifts/{id}/cash-movements",
+      "status": 201,
+      "request": {
+        "type": "paid_out",
+        "amount": "10.00",
+        "reason": "TEST-DURBY-S6 paid out"
+      },
+      "response": {
+        "id": "7643966d-0f28-4b97-8228-c2f20e0b8726",
+        "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+        "shiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "movementType": "paid_out",
+        "amount": "10.00",
+        "reason": "TEST-DURBY-S6 paid out",
+        "createdById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+        "createdAt": "2026-10-20T16:27:57.800Z"
+      }
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/retail/shifts/{id}/cash-movements",
+      "status": 201,
+      "request": {
+        "type": "drop",
+        "amount": "50.00",
+        "reason": "TEST-DURBY-S6 drop"
+      },
+      "response": {
+        "id": "f7800384-45d1-41b6-8e3b-921589d10711",
+        "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+        "shiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "movementType": "drop",
+        "amount": "50.00",
+        "reason": "TEST-DURBY-S6 drop",
+        "createdById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+        "createdAt": "2026-10-20T16:28:07.065Z"
+      }
+    }
+  ],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "journalNumber": "JV-2026-000059",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000018",
+            "totalDebit": "48.00",
+            "narration": "Sales invoice INV-2026-000018",
+            "createdAt": "2026-10-20T16:23:08.926Z"
+          },
+          {
+            "id": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "journalNumber": "JV-2026-000058",
+            "status": "posted",
+            "sourceEventType": "core.sales_return.recorded",
+            "sourceDocumentNumber": "SRT-2026-000001",
+            "totalDebit": "37.60",
+            "narration": "Sales return SRT-2026-000001",
+            "createdAt": "2026-10-20T16:11:56.281Z"
+          },
+          {
+            "id": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "journalNumber": "JV-2026-000057",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000017",
+            "totalDebit": "37.60",
+            "narration": "Sales invoice INV-2026-000017",
+            "createdAt": "2026-10-20T16:04:51.818Z"
+          },
+          {
+            "id": "f342f4fa-6a3f-4249-b348-1ff8b09a8378",
+            "journalNumber": "JV-2026-000056",
+            "status": "posted",
+            "sourceEventType": "core.stock.adjusted",
+            "sourceDocumentNumber": null,
+            "totalDebit": "150100.00",
+            "narration": "Stock corrected from item form",
+            "createdAt": "2026-09-21T09:08:06.874Z"
+          },
+          {
+            "id": "e566d22e-9af3-4729-bc49-ac4df98ebef2",
+            "journalNumber": "JV-2026-000055",
+            "status": "posted",
+            "sourceEventType": "core.stock.adjusted",
+            "sourceDocumentNumber": null,
+            "totalDebit": "15200.00",
+            "narration": "Stock corrected from item form",
+            "createdAt": "2026-09-21T09:07:28.604Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 59,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+          "name": "Cash",
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "0.00"
+        },
+        {
+          "id": "ad1644e0-2531-4aab-a3e6-35f847a8c63e",
+          "name": "Nabil Bank",
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/pos/retail/shifts/{id}/x-report",
+      "query": [],
+      "status": 200,
+      "body": {
+        "shiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "status": "open",
+        "openedAt": "2026-10-20T15:58:04.150Z",
+        "ordersTotal": 2,
+        "ordersCompleted": 1,
+        "ordersRefunded": 1,
+        "grossSales": "52.60",
+        "capturedTotal": "52.60",
+        "tenderTotals": {
+          "cash": "22.60",
+          "card": "30.00"
+        },
+        "openingFloat": "0.00",
+        "paidIn": "100.00",
+        "paidOut": "0",
+        "drops": "0",
+        "expectedCash": "122.60"
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/pos/retail/shifts/{id}/x-report",
+      "query": [],
+      "status": 200,
+      "body": {
+        "shiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "status": "open",
+        "openedAt": "2026-10-20T15:58:04.150Z",
+        "ordersTotal": 2,
+        "ordersCompleted": 1,
+        "ordersRefunded": 1,
+        "grossSales": "52.60",
+        "capturedTotal": "52.60",
+        "tenderTotals": {
+          "cash": "22.60",
+          "card": "30.00"
+        },
+        "openingFloat": "0.00",
+        "paidIn": "100.00",
+        "paidOut": "10.00",
+        "drops": "0",
+        "expectedCash": "112.60"
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/pos/retail/shifts/{id}/x-report",
+      "query": [],
+      "status": 200,
+      "body": {
+        "shiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "status": "open",
+        "openedAt": "2026-10-20T15:58:04.150Z",
+        "ordersTotal": 2,
+        "ordersCompleted": 1,
+        "ordersRefunded": 1,
+        "grossSales": "52.60",
+        "capturedTotal": "52.60",
+        "tenderTotals": {
+          "cash": "22.60",
+          "card": "30.00"
+        },
+        "openingFloat": "0.00",
+        "paidIn": "100.00",
+        "paidOut": "10.00",
+        "drops": "50.00",
+        "expectedCash": "62.60"
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "journalNumber": "JV-2026-000059",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000018",
+            "totalDebit": "48.00",
+            "narration": "Sales invoice INV-2026-000018",
+            "createdAt": "2026-10-20T16:23:08.926Z"
+          },
+          {
+            "id": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "journalNumber": "JV-2026-000058",
+            "status": "posted",
+            "sourceEventType": "core.sales_return.recorded",
+            "sourceDocumentNumber": "SRT-2026-000001",
+            "totalDebit": "37.60",
+            "narration": "Sales return SRT-2026-000001",
+            "createdAt": "2026-10-20T16:11:56.281Z"
+          },
+          {
+            "id": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "journalNumber": "JV-2026-000057",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000017",
+            "totalDebit": "37.60",
+            "narration": "Sales invoice INV-2026-000017",
+            "createdAt": "2026-10-20T16:04:51.818Z"
+          },
+          {
+            "id": "f342f4fa-6a3f-4249-b348-1ff8b09a8378",
+            "journalNumber": "JV-2026-000056",
+            "status": "posted",
+            "sourceEventType": "core.stock.adjusted",
+            "sourceDocumentNumber": null,
+            "totalDebit": "150100.00",
+            "narration": "Stock corrected from item form",
+            "createdAt": "2026-09-21T09:08:06.874Z"
+          },
+          {
+            "id": "e566d22e-9af3-4729-bc49-ac4df98ebef2",
+            "journalNumber": "JV-2026-000055",
+            "status": "posted",
+            "sourceEventType": "core.stock.adjusted",
+            "sourceDocumentNumber": null,
+            "totalDebit": "15200.00",
+            "narration": "Stock corrected from item form",
+            "createdAt": "2026-09-21T09:07:28.604Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 59,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "journalNumber": "JV-2026-000059",
+        "status": "posted",
+        "sourceEventType": "core.invoice.issued",
+        "sourceDocumentNumber": "INV-2026-000018",
+        "totalDebit": "48.00",
+        "totalCredit": "48.00",
+        "lines": [
+          {
+            "id": "68106efb-0916-46f0-a054-ad0dd73e47f3",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "accountId": "03c5d6ff-6ad5-4a9b-afce-84ce6d2702b6",
+            "description": "Amount received at invoicing",
+            "debit": "30.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "cf340865-e310-4748-a700-130aa7d0907e",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 2,
+            "accountId": "a7a048bf-8c69-46e0-a14a-f361757e89cd",
+            "description": "Sales revenue (goods)",
+            "debit": "0.00",
+            "credit": "30.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "quantity": "1.0000",
+            "unitCost": null
+          },
+          {
+            "id": "e6df8d41-5816-434a-82bc-477e5d7c1ff2",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 3,
+            "accountId": "ddaa0903-7fb9-4eb9-94a5-42987418565b",
+            "description": "Cost of goods sold",
+            "debit": "18.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "32266298-58ba-475e-8087-1856b367e651",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 4,
+            "accountId": "816b8758-403c-4def-aecf-f3d541763e12",
+            "description": "Inventory relieved at cost",
+            "debit": "0.00",
+            "credit": "18.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "journalNumber": "JV-2026-000058",
+        "status": "posted",
+        "sourceEventType": "core.sales_return.recorded",
+        "sourceDocumentNumber": "SRT-2026-000001",
+        "totalDebit": "37.60",
+        "totalCredit": "37.60",
+        "lines": [
+          {
+            "id": "b1c1c267-d6a1-49bf-a1b7-a00726ce9d57",
+            "journalEntryId": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "accountId": "5e3a928a-c518-4226-ba06-ae4370267204",
+            "description": "Sales return",
+            "debit": "20.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "fa51426b-69f7-4eba-be65-fe27dc23e0f0",
+            "journalEntryId": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 2,
+            "accountId": "a359a1ed-89c9-4fcd-8fc7-2dca9a29b174",
+            "description": "Output VAT reversed",
+            "debit": "2.60",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "00e2fcfe-d289-4b81-8230-5a387c996aeb",
+            "journalEntryId": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 3,
+            "accountId": "03c5d6ff-6ad5-4a9b-afce-84ce6d2702b6",
+            "description": "Refund paid",
+            "debit": "0.00",
+            "credit": "22.60",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "774d3f06-51b3-4868-9610-cb6b83d61ac9",
+            "journalEntryId": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 4,
+            "accountId": "816b8758-403c-4def-aecf-f3d541763e12",
+            "description": "Inventory restocked at cost",
+            "debit": "15.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "8f359151-a10c-4dad-8945-4d5cce319718",
+            "journalEntryId": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 5,
+            "accountId": "ddaa0903-7fb9-4eb9-94a5-42987418565b",
+            "description": "COGS reversed",
+            "debit": "0.00",
+            "credit": "15.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "journalNumber": "JV-2026-000057",
+        "status": "posted",
+        "sourceEventType": "core.invoice.issued",
+        "sourceDocumentNumber": "INV-2026-000017",
+        "totalDebit": "37.60",
+        "totalCredit": "37.60",
+        "lines": [
+          {
+            "id": "5c1c5f92-aee9-4572-aef2-290920d2ce3f",
+            "journalEntryId": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "accountId": "03c5d6ff-6ad5-4a9b-afce-84ce6d2702b6",
+            "description": "Amount received at invoicing",
+            "debit": "22.60",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "a272ee86-55c6-49e0-8334-c0feb5ccdc1b",
+            "journalEntryId": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 2,
+            "accountId": "a7a048bf-8c69-46e0-a14a-f361757e89cd",
+            "description": "Sales revenue (goods)",
+            "debit": "0.00",
+            "credit": "20.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "quantity": "1.0000",
+            "unitCost": null
+          },
+          {
+            "id": "4b1e1047-de89-4588-bbf2-26dae433be5f",
+            "journalEntryId": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 3,
+            "accountId": "a359a1ed-89c9-4fcd-8fc7-2dca9a29b174",
+            "description": "Output VAT",
+            "debit": "0.00",
+            "credit": "2.60",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "5b209d0c-fdb2-4c66-b021-06872db05c58",
+            "journalEntryId": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 4,
+            "accountId": "ddaa0903-7fb9-4eb9-94a5-42987418565b",
+            "description": "Cost of goods sold",
+            "debit": "15.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "2ff86018-7569-4dde-8f75-289192970abb",
+            "journalEntryId": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 5,
+            "accountId": "816b8758-403c-4def-aecf-f3d541763e12",
+            "description": "Inventory relieved at cost",
+            "debit": "0.00",
+            "credit": "15.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+          "name": "Cash",
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "0.00"
+        },
+        {
+          "id": "ad1644e0-2531-4aab-a3e6-35f847a8c63e",
+          "name": "Nabil Bank",
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts/{id}/transactions",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/reports/account-ledger/{id}",
+      "query": [
+        "from",
+        "to",
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/retail/shifts/{id}/cash-movements",
+      "query": [],
+      "status": 201,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/retail/shifts/{id}/x-report",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/retail/shifts/{id}/cash-movements",
+      "query": [],
+      "status": 201,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/retail/shifts/{id}/x-report",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/retail/shifts/{id}/cash-movements",
+      "query": [],
+      "status": 201,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/retail/shifts/{id}/x-report",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/accounts/{id}/transactions",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/reports/account-ledger/{id}",
+      "query": [
+        "from",
+        "to",
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

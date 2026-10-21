@@ -1,0 +1,15 @@
+{
+  "scenario": "S6 dry run: open Cash in/out, choose paid_in, fill 100 + reason, stop before Record",
+  "sequence": [
+    {"op":"go","path":"/till"},
+    {"op":"click","text":"Cash in/out","wait":1500},
+    {"op":"snapshot","label":"cash in/out dialog"},
+    {"op":"select","match":"Movement","value":"paid_in","scope":"dialog"},
+    {"op":"fill","match":"Amount","value":"100","scope":"dialog","wait":500},
+    {"op":"fill","match":"Reason","value":"TEST-DURBY-S6 paid in","scope":"dialog","wait":500},
+    {"op":"snapshot","label":"filled"},
+    {"op":"act","text":"Record","scope":"dialog"}
+  ],
+  "dryRunCleanup": [ {"op":"escape"}, {"op":"go","path":"/"} ],
+  "allow": [], "maxWrites": 0, "getFilters": {}, "keepRegisterNames": ["sample 1"], "settleMs": 3000
+}

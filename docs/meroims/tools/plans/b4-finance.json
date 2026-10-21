@@ -1,0 +1,10 @@
+[{"id":"money-accounts","goto":"/accounts","openFirstRow":true,"tabs":true},
+ {"id":"chart-of-account","goto":"/accounts/chart-of-account","tabs":true},
+ {"id":"accounting-workbench","goto":"/accounting-workbench","openFirstRow":true,"tabs":true},
+ {"id":"accounting","goto":"/accounting","tabs":true},
+ {"id":"cheque-register","goto":"/cheque-register","tabs":true},
+ {"id":"cheque-new","goto":"/cheque-register/new"},
+ {"id":"quick-receipt","goto":"/quick-receipt"},
+ {"id":"quick-payment","goto":"/quick-payment"},
+ {"id":"bank-reconciliation","goto":"/bank-reconciliation","tabs":true},
+ {"id":"opening-balance","goto":"/opening-balance","tabs":true}]

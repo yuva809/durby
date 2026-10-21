@@ -1,0 +1,6 @@
+[{"id":"r-till","goto":"/restaurant/till","wait":5000,"tabs":true},
+ {"id":"r-tables","goto":"/restaurant/tables","wait":4000,"tabs":true},
+ {"id":"r-kitchen","goto":"/restaurant/kitchen","wait":4000,"tabs":true},
+ {"id":"r-bar","goto":"/restaurant/bar","wait":4000,"tabs":true},
+ {"id":"r-waiter","goto":"/restaurant/waiter","wait":4000,"tabs":true},
+ {"id":"back-to-till","goto":"/till","wait":3000}]

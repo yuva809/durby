@@ -1,0 +1,11 @@
+[{"id":"parties","goto":"/parties","openFirstRow":true,"tabs":true},
+ {"id":"branches","goto":"/branches","openFirstRow":true},
+ {"id":"warehouses","goto":"/warehouses","openFirstRow":true},
+ {"id":"stock-requests","goto":"/stock-requests","openFirstRow":true,"tabs":true},
+ {"id":"stock-request-new","goto":"/stock-requests/new"},
+ {"id":"picking","goto":"/picking","tabs":true},
+ {"id":"delivery-tracking","goto":"/delivery-tracking","tabs":true},
+ {"id":"pos-orders","goto":"/orders","openFirstRow":true,"tabs":true},
+ {"id":"retail-till","goto":"/till","wait":5000},
+ {"id":"pos-settings","goto":"/pos-settings","tabs":true},
+ {"id":"pms","goto":"/pms","tabs":true}]

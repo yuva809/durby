@@ -1,0 +1,40 @@
+{
+  "scenario": "INV-T2 cash sale invoice 1 x BEV-WAT-004 @30.00 no tax, note TEST-DURBY-INV-T2 (user-approved) - observe FIFO vs average COGS",
+  "sequence": [
+    {"op":"go","path":"/inventory/6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b"},
+    {"op":"go","path":"/accounts"},
+    {"op":"go","path":"/sales/invoices/create"},
+    {"op":"click","text":"Cash Sale","optional":true,"wait":1200},
+    {"op":"fill","match":"Search product","value":"BEV-WAT-004","nth":0,"wait":2500},
+    {"op":"clickOption","prefix":"Mineral Water","wait":1500},
+    {"op":"fill","match":"Notes","value":"TEST-DURBY-INV-T2","wait":500},
+    {"op":"snapshot","label":"filled","scope":"body"},
+    {"op":"act","text":"Save","wait":5000},
+    {"op":"snapshot","label":"after save","scope":"body"},
+    {"op":"wait","ms":3000},
+    {"op":"go","path":"/inventory/adjustment"},
+    {"op":"go","path":"/inventory/6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b"},
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"clickNthRow","n":0},
+    {"op":"escape"},
+    {"op":"go","path":"/sales/invoices"},
+    {"op":"clickNthRow","n":0},
+    {"op":"go","path":"/accounts"}
+  ],
+  "allow": [{
+    "method": "POST", "path": "^/api/core/sales/invoices$", "once": true,
+    "expect": "b && Array.isArray(b.lines) && b.lines.length === 1 && b.lines[0].productId === '6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b' && Number(b.lines[0].quantity) === 1 && b.lines[0].unitPrice === '30.00' && !b.lines[0].discountAmount && !b.lines[0].discountPercent && b.customFields && b.customFields.tax_option === 'no_vat' && b.customFields.cash_transaction === true && !b.partyId && !b.charges && !b.discountAmount && !b.discountPercent && (b.isDraft === false || b.isDraft === undefined) && typeof b.notes === 'string' && b.notes.includes('TEST-DURBY-INV-T2')"
+  }],
+  "maxWrites": 1,
+  "getFilters": {
+    "^/api/core/stock/levels$": {"list":"","where":{"productId":"6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b"},"fields":["productId","onHand","available","avgCost"]},
+    "^/api/core/stock/movements$": {"list":"data","top":4,"fields":["productId","movementType","sourceType","quantity","unitCost","createdAt"]},
+    "^/api/core/reports/business/inventory-ledger$": {"pick":["sections"]},
+    "^/api/accounting/journals$": {"list":"data","top":2,"fields":["journalNumber","sourceEventType","sourceDocumentNumber","totalDebit","createdAt"]},
+    "^/api/accounting/journals/[^/]+$": {"fieldsObj":["journalNumber","status","sourceEventType","sourceDocumentNumber","totalDebit","lines"]},
+    "^/api/core/documents$": {"list":"data","top":1,"fields":["documentNumber","documentType","status","grandTotal","taxTotal","settledAmount"]},
+    "^/api/core/documents/[^/]+$": {"fieldsObj":["documentNumber","documentType","status","grandTotal","taxTotal","settledAmount","settlementAccountId","lines","payments","notes"]},
+    "^/api/core/accounts$": {"list":"","fields":["accountKind","isDefault","balance"]}
+  },
+  "keepRegisterNames": [], "settleMs": 3500
+}

@@ -1,0 +1,1 @@
+{"dryRun":false,"aborted":false,"abortReason":null,"writesAllowed":1,"writes":["POST /api/pos/shifts/{id}/close 201"],"blocked":[]}

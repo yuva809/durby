@@ -1,0 +1,103 @@
+{
+  "scenario": "INV-T3 dry run 2: open 'Adjust this item' dialog for CHOC-003 and inspect fields (no write)",
+  "dryRun": true,
+  "runAt": "2026-10-20T18:15:05.677Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/inventory/adjustment",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "by name or SKU",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Adjust this item",
+      "result": "button matches: 0 [Switch Profile | Branches & Warehouses | Inventory | Sales | Purchase | POS | Web Store | Accounting | G [tenant/user redacted] [tenant/user redacted] | Quick Add | 1 | Adjust Stock]"
+    },
+    {
+      "op": "cleanup:escape",
+      "result": "ok"
+    },
+    {
+      "op": "cleanup:go",
+      "result": "ok"
+    }
+  ],
+  "abortReason": "click failed: button matches: 0 [Switch Profile | Branches & Warehouses | Inventory | Sales | Purchase | POS | Web Store | Accounting | G [tenant/user redacted] [tenant/user redacted] | Quick Add | 1 | Adjust Stock]",
+  "aborted": true,
+  "writesAllowed": 0,
+  "writes": [],
+  "blocked": [],
+  "gets": [],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+step0	GET /api/account-config -> 200
+step0	GET /api/core/accounts -> 200
+step0	GET /api/core/billing/status -> 200
+step0	GET /api/core/branches/mine -> 200
+step0	GET /api/core/documents ?{type,page,perPage} -> 200
+step0	GET /api/core/me -> 200
+step0	GET /api/core/notifications ?{limit} -> 200
+step0	GET /api/events/stream ?{access_token} -> 200
+step0	GET /api/overview ?{scope} -> 200
+step1	GET /api/overview ?{scope} -> 200
+step10	GET /api/account-config -> null
+step10	GET /api/core/billing/status -> null
+step10	GET /api/core/branches/mine -> null
+step10	GET /api/core/me -> null
+step10	GET /api/core/notifications ?{limit} -> null
+step10	GET /api/core/warehouses ?{includeBranchStores} -> null
+step10	GET /api/events/stream ?{access_token} -> null
+step10	GET /api/overview ?{scope} -> null
+step12	GET /api/account-config -> null
+step12	GET /api/core/accounts -> null
+step12	GET /api/core/billing/status -> null
+step12	GET /api/core/branches/mine -> null
+step12	GET /api/core/documents ?{type,page,perPage} -> null
+step12	GET /api/core/me -> null
+step12	GET /api/core/notifications ?{limit} -> null
+step12	GET /api/events/stream ?{access_token} -> null
+step12	GET /api/overview ?{scope} -> null
+step14	GET /api/account-config -> null
+step14	GET /api/core/accounts -> null
+step14	GET /api/core/billing/status -> null
+step14	GET /api/core/branches/mine -> null
+step14	GET /api/core/documents ?{type,page,perPage} -> null
+step14	GET /api/core/me -> null
+step14	GET /api/core/notifications ?{limit} -> null
+step14	GET /api/events/stream ?{access_token} -> null
+step14	GET /api/overview ?{scope} -> null
+step16	GET /api/account-config -> null
+step16	GET /api/core/billing/status -> null
+step16	GET /api/core/branches/mine -> null
+step16	GET /api/core/me -> null
+step16	GET /api/core/notifications ?{limit} -> null
+step16	GET /api/core/payments ?{direction,page,perPage} -> null
+step16	GET /api/events/stream ?{access_token} -> null
+step16	GET /api/overview ?{scope} -> null
+step18	GET /api/account-config -> null
+step18	GET /api/core/accounts -> null
+step18	GET /api/core/billing/status -> null
+step18	GET /api/core/branches/mine -> null
+step18	GET /api/core/finance/categories ?{recordType} -> null
+step18	GET /api/core/finance/records ?{recordType,page,perPage} -> null
+step18	GET /api/core/me -> null
+step18	GET /api/core/notifications ?{limit} -> null
+step18	GET /api/events/stream ?{access_token} -> null
+step18	GET /api/overview ?{scope} -> null
+step2	GET /api/account-config -> 200
+step2	GET /api/core/accounts -> 200
+step2	GET /api/core/billing/status -> 200
+step2	GET /api/core/branches/mine -> 200
+step2	GET /api/core/documents ?{type,page,perPage} -> 200
+step2	GET /api/core/me -> 200
+step2	GET /api/core/notifications ?{limit} -> 200
+step2	GET /api/events/stream ?{access_token} -> 200
+step2	GET /api/overview ?{scope} -> 200
+step3	GET /api/overview ?{scope} -> 200
+step4	GET /api/account-config -> 200
+step4	GET /api/core/accounts -> 200
+step4	GET /api/core/billing/status -> 200
+step4	GET /api/core/branches/mine -> 200
+step4	GET /api/core/documents ?{type,page,perPage} -> 200
+step4	GET /api/core/me -> 200
+step4	GET /api/core/notifications ?{limit} -> 200
+step4	GET /api/events/stream ?{access_token} -> 200
+step4	GET /api/overview ?{scope} -> 200
+step5	GET /api/overview ?{scope} -> 200
+step6	GET /api/account-config -> 200
+step6	GET /api/core/billing/status -> 200
+step6	GET /api/core/branches/mine -> 200
+step6	GET /api/core/me -> 200
+step6	GET /api/core/notifications ?{limit} -> 200
+step6	GET /api/core/payments ?{direction,page,perPage} -> 200
+step6	GET /api/events/stream ?{access_token} -> 200
+step6	GET /api/overview ?{scope} -> 200
+step7	GET /api/overview ?{scope} -> 200
+step8	GET /api/account-config -> 200
+step8	GET /api/accounting/party-balances ?{asOf} -> null
+step8	GET /api/core/accounts -> null
+step8	GET /api/core/billing/status -> 200
+step8	GET /api/core/documents ?{page,perPage} -> null
+step8	GET /api/core/lookups -> null
+step8	GET /api/core/me -> 200
+step8	GET /api/core/notifications ?{limit} -> 200
+step8	GET /api/core/parties ?{page,perPage} -> null
+step8	GET /api/core/payments ?{page,perPage} -> null
+step8	GET /api/events/stream ?{access_token} -> 200
+step8	GET /api/overview ?{scope} -> 200
+step9	GET /api/overview ?{scope} -> null

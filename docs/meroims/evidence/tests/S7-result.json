@@ -1,0 +1,884 @@
+{
+  "scenario": "S7 close shift on 'sample 1' with counted cash 40.00 (user-approved; system expects 62.60)",
+  "dryRun": false,
+  "runAt": "2026-10-20T16:30:47.899Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounts",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/till",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "X-report",
+      "result": "ok:X-report"
+    },
+    {
+      "op": "snapshot",
+      "arg": "x-report before close",
+      "result": {
+        "label": "x-report before close",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "X-report (mid-shift)"
+        ],
+        "buttons": [
+          "Close",
+          "Print (80mm)",
+          "Done"
+        ],
+        "inputs": [],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "escape",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Close shift",
+      "result": "ok:Close shift"
+    },
+    {
+      "op": "fill",
+      "arg": "Counted cash",
+      "result": "ok"
+    },
+    {
+      "op": "act-check",
+      "target": "Close shift",
+      "result": "ok:Close shift"
+    },
+    {
+      "op": "act",
+      "target": "Close shift",
+      "result": "ok:Close shift",
+      "writeCaptured": true
+    },
+    {
+      "op": "snapshot",
+      "arg": "Z-report after close",
+      "result": {
+        "label": "Z-report after close",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Z-report — shift closed"
+        ],
+        "buttons": [
+          "Close",
+          "Print (80mm)",
+          "Done"
+        ],
+        "inputs": [],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "escape",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "wait",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "till after close",
+      "result": {
+        "label": "till after close",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Z-report — shift closed"
+        ],
+        "buttons": [
+          "Close",
+          "Print (80mm)",
+          "Done"
+        ],
+        "inputs": [],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "clickNthRow",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounts",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/till",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "till re-entered",
+      "result": {
+        "label": "till re-entered",
+        "path": "/till",
+        "dialogOpen": false,
+        "headings": [
+          "Open the till"
+        ],
+        "buttons": [
+          "Register-A shift open — join it",
+          "Register-B shift open — join it",
+          "Register-C closed",
+          "sample 1 closed",
+          "रु 0.00",
+          "रु 500.00",
+          "रु 1,000.00",
+          "रु 2,000.00",
+          "रु 5,000.00",
+          "Open shift"
+        ],
+        "inputs": [
+          {
+            "label": "Opening float",
+            "type": "text",
+            "value": "0"
+          }
+        ],
+        "alerts": []
+      }
+    }
+  ],
+  "aborted": false,
+  "writesAllowed": 1,
+  "writes": [
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/shifts/{id}/close",
+      "status": 201,
+      "request": {
+        "countedCash": "40.00"
+      },
+      "response": {
+        "id": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+        "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+        "status": "closed",
+        "openingFloat": "0.00",
+        "openedAt": "2026-10-20T15:58:04.150Z",
+        "closedAt": "2026-10-20T16:31:08.013Z",
+        "closedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+        "countedCash": "40.00",
+        "closeSummary": {
+          "ordersTotal": 2,
+          "ordersCompleted": 1,
+          "ordersRefunded": 1,
+          "grossSales": "52.60",
+          "capturedTotal": "52.60",
+          "tenderTotals": {
+            "cash": "22.60",
+            "card": "30.00"
+          },
+          "openingFloat": "0.00",
+          "paidIn": "100.00",
+          "paidOut": "10.00",
+          "drops": "50.00",
+          "expectedCash": "62.60",
+          "countedCash": "40.00",
+          "cashVariance": "-22.60",
+          "balanced": false
+        }
+      }
+    }
+  ],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "journalNumber": "JV-2026-000059",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000018",
+            "totalDebit": "48.00",
+            "createdAt": "2026-10-20T16:23:08.926Z"
+          },
+          {
+            "id": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "journalNumber": "JV-2026-000058",
+            "status": "posted",
+            "sourceEventType": "core.sales_return.recorded",
+            "sourceDocumentNumber": "SRT-2026-000001",
+            "totalDebit": "37.60",
+            "createdAt": "2026-10-20T16:11:56.281Z"
+          },
+          {
+            "id": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "journalNumber": "JV-2026-000057",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000017",
+            "totalDebit": "37.60",
+            "createdAt": "2026-10-20T16:04:51.818Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 59,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "0.00"
+        },
+        {
+          "id": "ad1644e0-2531-4aab-a3e6-35f847a8c63e",
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "body": {
+        "registers": [
+          {
+            "id": "cb8c0cc6-e523-448a-93d6-53ea7119797c",
+            "name": "Register-A",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "9d62f3dc-27e3-48f7-adae-a5cce5416162",
+            "openShift": {
+              "id": "9d62f3dc-27e3-48f7-adae-a5cce5416162",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "cb8c0cc6-e523-448a-93d6-53ea7119797c",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "0.00",
+              "openedAt": "2026-09-21T06:24:30.281Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          },
+          {
+            "id": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+            "name": "Register-B",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "932b0cde-56c9-4cbc-b82d-d0e0fccca2eb",
+            "openShift": {
+              "id": "932b0cde-56c9-4cbc-b82d-d0e0fccca2eb",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "500.00",
+              "openedAt": "2026-09-17T11:48:43.650Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          },
+          {
+            "id": "d171841b-d4e9-4a43-8fc3-2ac6ec29afc3",
+            "name": "Register-C",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": null,
+            "openShift": null
+          },
+          {
+            "id": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+            "name": "sample 1",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+            "openShift": {
+              "id": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "0.00",
+              "openedAt": "2026-10-20T15:58:04.150Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/pos/retail/shifts/{id}/x-report",
+      "query": [],
+      "status": 200,
+      "body": {
+        "shiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "status": "open",
+        "openedAt": "2026-10-20T15:58:04.150Z",
+        "ordersTotal": 2,
+        "ordersCompleted": 1,
+        "ordersRefunded": 1,
+        "grossSales": "52.60",
+        "capturedTotal": "52.60",
+        "tenderTotals": {
+          "cash": "22.60",
+          "card": "30.00"
+        },
+        "openingFloat": "0.00",
+        "paidIn": "100.00",
+        "paidOut": "10.00",
+        "drops": "50.00",
+        "expectedCash": "62.60"
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "journalNumber": "JV-2026-000059",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000018",
+            "totalDebit": "48.00",
+            "createdAt": "2026-10-20T16:23:08.926Z"
+          },
+          {
+            "id": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "journalNumber": "JV-2026-000058",
+            "status": "posted",
+            "sourceEventType": "core.sales_return.recorded",
+            "sourceDocumentNumber": "SRT-2026-000001",
+            "totalDebit": "37.60",
+            "createdAt": "2026-10-20T16:11:56.281Z"
+          },
+          {
+            "id": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "journalNumber": "JV-2026-000057",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000017",
+            "totalDebit": "37.60",
+            "createdAt": "2026-10-20T16:04:51.818Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 59,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "journalNumber": "JV-2026-000059",
+        "status": "posted",
+        "sourceEventType": "core.invoice.issued",
+        "totalDebit": "48.00",
+        "totalCredit": "48.00",
+        "lines": [
+          {
+            "id": "68106efb-0916-46f0-a054-ad0dd73e47f3",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "accountId": "03c5d6ff-6ad5-4a9b-afce-84ce6d2702b6",
+            "description": "Amount received at invoicing",
+            "debit": "30.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "cf340865-e310-4748-a700-130aa7d0907e",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 2,
+            "accountId": "a7a048bf-8c69-46e0-a14a-f361757e89cd",
+            "description": "Sales revenue (goods)",
+            "debit": "0.00",
+            "credit": "30.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "quantity": "1.0000",
+            "unitCost": null
+          },
+          {
+            "id": "e6df8d41-5816-434a-82bc-477e5d7c1ff2",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 3,
+            "accountId": "ddaa0903-7fb9-4eb9-94a5-42987418565b",
+            "description": "Cost of goods sold",
+            "debit": "18.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "32266298-58ba-475e-8087-1856b367e651",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 4,
+            "accountId": "816b8758-403c-4def-aecf-f3d541763e12",
+            "description": "Inventory relieved at cost",
+            "debit": "0.00",
+            "credit": "18.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "0.00"
+        },
+        {
+          "id": "ad1644e0-2531-4aab-a3e6-35f847a8c63e",
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "body": {
+        "registers": [
+          {
+            "id": "cb8c0cc6-e523-448a-93d6-53ea7119797c",
+            "name": "Register-A",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "9d62f3dc-27e3-48f7-adae-a5cce5416162",
+            "openShift": {
+              "id": "9d62f3dc-27e3-48f7-adae-a5cce5416162",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "cb8c0cc6-e523-448a-93d6-53ea7119797c",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "0.00",
+              "openedAt": "2026-09-21T06:24:30.281Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          },
+          {
+            "id": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+            "name": "Register-B",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "932b0cde-56c9-4cbc-b82d-d0e0fccca2eb",
+            "openShift": {
+              "id": "932b0cde-56c9-4cbc-b82d-d0e0fccca2eb",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "500.00",
+              "openedAt": "2026-09-17T11:48:43.650Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          },
+          {
+            "id": "d171841b-d4e9-4a43-8fc3-2ac6ec29afc3",
+            "name": "Register-C",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": null,
+            "openShift": null
+          },
+          {
+            "id": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+            "name": "sample 1",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": null,
+            "openShift": null
+          }
+        ]
+      }
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts/{id}/transactions",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/reports/account-ledger/{id}",
+      "query": [
+        "from",
+        "to",
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/shifts/{id}/x-report",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/shifts/{id}/close",
+      "query": [],
+      "status": 201,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/accounts/{id}/transactions",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/reports/account-ledger/{id}",
+      "query": [
+        "from",
+        "to",
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

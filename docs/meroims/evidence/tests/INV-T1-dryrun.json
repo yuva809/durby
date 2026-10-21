@@ -1,0 +1,449 @@
+{
+  "scenario": "INV-T1 dry run: purchase bill form discovery (no write)",
+  "dryRun": true,
+  "runAt": "2026-10-20T18:05:25.294Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/purchases/bills/create",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Cash Purchase",
+      "result": "ok:Cash Purchase"
+    },
+    {
+      "op": "snapshot",
+      "arg": "form initial",
+      "result": {
+        "label": "form initial",
+        "path": "/purchases/bills/create",
+        "dialogOpen": false,
+        "headings": [
+          "MeroIMS",
+          "Create Purchase Bill",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "PAY ACCOUNT",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Close sidebar",
+          "Toggle sidebar",
+          "Switch Profile",
+          "Branches & Warehouses",
+          "Inventory",
+          "Sales",
+          "Purchase",
+          "POS",
+          "Web Store",
+          "Accounting",
+          "G [tenant/user redacted] [tenant/user redacted]",
+          "Open sidebar",
+          "Quick Add",
+          "1",
+          "Cash Purchase",
+          "Party Purchase",
+          "Manual",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Add image",
+          "B",
+          "I",
+          "U",
+          "Bullet list",
+          "1.",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save"
+        ],
+        "inputs": [
+          {
+            "label": "Search items, parties, bills, entries…",
+            "type": "search",
+            "value": ""
+          },
+          {
+            "label": "Date",
+            "type": "date",
+            "value": "2026-10-20"
+          },
+          {
+            "label": "Search product, code, or barcode",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Qty",
+            "type": "text",
+            "value": "1"
+          },
+          {
+            "label": "Rate",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "%",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Rs.",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "0.00",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Pay total amount — Rs. 0.00",
+            "type": "checkbox",
+            "value": "on",
+            "checked": true
+          },
+          {
+            "label": "TDS Type",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "TDS Amount",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Notes",
+            "type": "textarea",
+            "value": ""
+          },
+          {
+            "label": "",
+            "type": "file",
+            "value": ""
+          },
+          {
+            "label": "Signature",
+            "type": "select-one",
+            "value": ""
+          }
+        ],
+        "alerts": [],
+        "options": []
+      }
+    },
+    {
+      "op": "fill",
+      "arg": "Search product",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "after typing sku",
+      "result": {
+        "label": "after typing sku",
+        "path": "/purchases/bills/create",
+        "dialogOpen": false,
+        "headings": [
+          "MeroIMS",
+          "Create Purchase Bill",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "PAY ACCOUNT",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Close sidebar",
+          "Toggle sidebar",
+          "Switch Profile",
+          "Branches & Warehouses",
+          "Inventory",
+          "Sales",
+          "Purchase",
+          "POS",
+          "Web Store",
+          "Accounting",
+          "G [tenant/user redacted] [tenant/user redacted]",
+          "Open sidebar",
+          "Quick Add",
+          "1",
+          "Cash Purchase",
+          "Party Purchase",
+          "Manual",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Create “BEV-WAT-004”",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Add image",
+          "B",
+          "I",
+          "U",
+          "Bullet list",
+          "1.",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save"
+        ],
+        "inputs": [
+          {
+            "label": "Search items, parties, bills, entries…",
+            "type": "search",
+            "value": ""
+          },
+          {
+            "label": "Date",
+            "type": "date",
+            "value": "2026-10-20"
+          },
+          {
+            "label": "Search product, code, or barcode",
+            "type": "text",
+            "value": "BEV-WAT-004"
+          },
+          {
+            "label": "Qty",
+            "type": "text",
+            "value": "1"
+          },
+          {
+            "label": "Rate",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "%",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Rs.",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "0.00",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Pay total amount — Rs. 0.00",
+            "type": "checkbox",
+            "value": "on",
+            "checked": true
+          },
+          {
+            "label": "TDS Type",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "TDS Amount",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Notes",
+            "type": "textarea",
+            "value": ""
+          },
+          {
+            "label": "",
+            "type": "file",
+            "value": ""
+          },
+          {
+            "label": "Signature",
+            "type": "select-one",
+            "value": ""
+          }
+        ],
+        "alerts": [],
+        "options": [
+          "Mineral Water Stock 171 · BEV-WAT-004 Rs. 30.00"
+        ]
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "__discover__",
+      "result": "button matches: 0 [Switch Profile | Branches & Warehouses | Inventory | Sales | Purchase | POS | Web Store | Accounting | G [tenant/user redacted] [tenant/user redacted] | Quick Add | 1 | Cash Purchase | Party Purchase | Manual | Add Row | Create “BEV-WAT-004” | Add Discount | Add Tax | Add Charges | Select TDS Account | Add image | B | I | U | 1.]"
+    },
+    {
+      "op": "cleanup:escape",
+      "result": "ok"
+    },
+    {
+      "op": "cleanup:go",
+      "result": "ok"
+    }
+  ],
+  "abortReason": "act target not uniquely found/enabled",
+  "aborted": true,
+  "writesAllowed": 0,
+  "writes": [],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "hasMore": true
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "search",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "hasMore": false
+      }
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/tax/tds-types",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/signatures",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/credit-terms",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/branches/mine",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "search",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

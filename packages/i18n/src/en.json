@@ -1,0 +1,7 @@
+{
+  "platform.app.name": "Durby",
+  "platform.home.title": "Back office",
+  "platform.health.label": "API health",
+  "platform.health.status.ok": "OK",
+  "platform.health.status.unavailable": "Unavailable"
+}

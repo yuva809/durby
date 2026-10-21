@@ -1,0 +1,513 @@
+{
+  "scenario": "INV-T2 dry run: cash sale invoice form, 1 x BEV-WAT-004, stop before Save (no write)",
+  "dryRun": true,
+  "runAt": "2026-10-20T18:11:48.928Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/sales/invoices/create",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Cash Sale",
+      "result": "ok:Cash Sale"
+    },
+    {
+      "op": "snapshot",
+      "arg": "form initial",
+      "result": {
+        "label": "form initial",
+        "path": "/sales/invoices/create",
+        "dialogOpen": false,
+        "headings": [
+          "MeroIMS",
+          "Create Sales Invoice",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "RECEIVE ACCOUNT",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Close sidebar",
+          "Toggle sidebar",
+          "Switch Profile",
+          "Branches & Warehouses",
+          "Inventory",
+          "Sales",
+          "Purchase",
+          "POS",
+          "Web Store",
+          "Accounting",
+          "G [tenant/user redacted] [tenant/user redacted]",
+          "Open sidebar",
+          "Quick Add",
+          "1",
+          "Cash Sale",
+          "Party Sale",
+          "Manual",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Add image",
+          "B",
+          "I",
+          "U",
+          "Bullet list",
+          "1.",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save as Draft",
+          "Save"
+        ],
+        "inputs": [
+          {
+            "label": "Search items, parties, bills, entries…",
+            "type": "search",
+            "value": ""
+          },
+          {
+            "label": "Date",
+            "type": "date",
+            "value": "2026-10-20"
+          },
+          {
+            "label": "Search product, code, or barcode",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Qty",
+            "type": "text",
+            "value": "1"
+          },
+          {
+            "label": "Rate",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "%",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Rs.",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "0.00",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Receive total amount — Rs. 0.00",
+            "type": "checkbox",
+            "value": "on",
+            "checked": true
+          },
+          {
+            "label": "TDS Type",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "TDS Amount",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Notes",
+            "type": "textarea",
+            "value": ""
+          },
+          {
+            "label": "",
+            "type": "file",
+            "value": ""
+          },
+          {
+            "label": "Signature",
+            "type": "select-one",
+            "value": ""
+          }
+        ],
+        "alerts": [],
+        "options": []
+      }
+    },
+    {
+      "op": "fill",
+      "arg": "Search product",
+      "result": "ok"
+    },
+    {
+      "op": "clickOption",
+      "arg": "Mineral Water",
+      "result": "ok:Mineral Water Stock 173 · BEV-WAT-004 Rs. 30.00"
+    },
+    {
+      "op": "fill",
+      "arg": "Notes",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "filled",
+      "result": {
+        "label": "filled",
+        "path": "/sales/invoices/create",
+        "dialogOpen": false,
+        "headings": [
+          "MeroIMS",
+          "Create Sales Invoice",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "RECEIVE ACCOUNT",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Close sidebar",
+          "Toggle sidebar",
+          "Switch Profile",
+          "Branches & Warehouses",
+          "Inventory",
+          "Sales",
+          "Purchase",
+          "POS",
+          "Web Store",
+          "Accounting",
+          "G [tenant/user redacted] [tenant/user redacted]",
+          "Open sidebar",
+          "Quick Add",
+          "1",
+          "Cash Sale",
+          "Party Sale",
+          "Manual",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Clear selection",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Add image",
+          "B",
+          "I",
+          "U",
+          "Bullet list",
+          "1.",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save as Draft",
+          "Save"
+        ],
+        "inputs": [
+          {
+            "label": "Search items, parties, bills, entries…",
+            "type": "search",
+            "value": ""
+          },
+          {
+            "label": "Date",
+            "type": "date",
+            "value": "2026-10-20"
+          },
+          {
+            "label": "Search product, code, or barcode",
+            "type": "text",
+            "value": "Mineral Water"
+          },
+          {
+            "label": "Qty",
+            "type": "text",
+            "value": "1"
+          },
+          {
+            "label": "Rate",
+            "type": "text",
+            "value": "30"
+          },
+          {
+            "label": "%",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Rs.",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "0.00",
+            "type": "text",
+            "value": "30"
+          },
+          {
+            "label": "Receive total amount — Rs. 30.00",
+            "type": "checkbox",
+            "value": "on",
+            "checked": true
+          },
+          {
+            "label": "TDS Type",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "TDS Amount",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Notes",
+            "type": "textarea",
+            "value": "TEST-DURBY-INV-T2"
+          },
+          {
+            "label": "",
+            "type": "file",
+            "value": ""
+          },
+          {
+            "label": "Signature",
+            "type": "select-one",
+            "value": ""
+          }
+        ],
+        "alerts": [],
+        "options": []
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "Save",
+      "result": "ok:Save"
+    },
+    {
+      "op": "snapshot",
+      "result": {
+        "label": "dry-run stop before act",
+        "path": "/sales/invoices/create",
+        "dialogOpen": false,
+        "headings": [
+          "Create Sales Invoice",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "RECEIVE ACCOUNT",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Cash Sale",
+          "Party Sale",
+          "Manual",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Clear selection",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Add image",
+          "B",
+          "I",
+          "U",
+          "Bullet list",
+          "1.",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save as Draft",
+          "Save"
+        ],
+        "inputs": [
+          {
+            "label": "Date",
+            "type": "date",
+            "value": "2026-10-20"
+          },
+          {
+            "label": "Search product, code, or barcode",
+            "type": "text",
+            "value": "Mineral Water"
+          },
+          {
+            "label": "Qty",
+            "type": "text",
+            "value": "1"
+          },
+          {
+            "label": "Rate",
+            "type": "text",
+            "value": "30"
+          },
+          {
+            "label": "%",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Rs.",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "0.00",
+            "type": "text",
+            "value": "30"
+          },
+          {
+            "label": "Receive total amount — Rs. 30.00",
+            "type": "checkbox",
+            "value": "on",
+            "checked": true
+          },
+          {
+            "label": "TDS Type",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "TDS Amount",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Notes",
+            "type": "textarea",
+            "value": "TEST-DURBY-INV-T2"
+          },
+          {
+            "label": "",
+            "type": "file",
+            "value": ""
+          },
+          {
+            "label": "Signature",
+            "type": "select-one",
+            "value": ""
+          }
+        ],
+        "alerts": [],
+        "options": []
+      }
+    },
+    {
+      "op": "cleanup:escape",
+      "result": "ok"
+    },
+    {
+      "op": "cleanup:go",
+      "result": "ok"
+    }
+  ],
+  "aborted": false,
+  "writesAllowed": 0,
+  "writes": [],
+  "blocked": [],
+  "gets": [],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/tax/tds-types",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/signatures",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/credit-terms",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "search",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

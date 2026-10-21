@@ -1,0 +1,13 @@
+{
+  "scenario": "S7 dry run: open Close shift (Z-report) dialog, fill counted cash 40, stop before confirm",
+  "sequence": [
+    {"op":"go","path":"/till"},
+    {"op":"click","text":"Close shift","wait":1500},
+    {"op":"snapshot","label":"close dialog"},
+    {"op":"fill","match":"Counted cash","value":"40","scope":"dialog","wait":500},
+    {"op":"snapshot","label":"filled"},
+    {"op":"act","text":"Close shift","scope":"dialog"}
+  ],
+  "dryRunCleanup": [ {"op":"escape"}, {"op":"go","path":"/"} ],
+  "allow": [], "maxWrites": 0, "getFilters": {}, "keepRegisterNames": ["sample 1"], "settleMs": 3000
+}

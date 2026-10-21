@@ -1,0 +1,768 @@
+{
+  "scenario": "S3 follow-up: resolve journal account ids (read-only)",
+  "dryRun": true,
+  "runAt": "2026-10-20T16:06:57.179Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/accounts/chart-of-account",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Mappings",
+      "result": "ok:Mappings"
+    }
+  ],
+  "aborted": false,
+  "writesAllowed": 0,
+  "writes": [],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "body": {
+        "accounts": [
+          {
+            "id": "d2decb39-55ac-47d3-887c-28ce07b08e01",
+            "code": "ADJ0001",
+            "name": "Stock Adjustment Loss",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "9f481e5a-8e3d-40ca-81fb-724770c41960"
+          },
+          {
+            "id": "fafc93ad-28a4-4180-a833-059ea9c83e40",
+            "code": "ADJ0002",
+            "name": "Stock Adjustment Gain",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "a9b9f660-e0ec-427b-a61d-b74e1f5d9e64"
+          },
+          {
+            "id": "729b7bb3-cf8e-404c-aa9a-2bb84463790e",
+            "code": "AP0001",
+            "name": "Accounts Payable (Trade)",
+            "rootType": "liability",
+            "isSystem": true,
+            "groupId": "1c5dc808-e705-4c0f-8a86-a38d3e51be63"
+          },
+          {
+            "id": "82d87e0e-2197-4ee8-8fc8-5fa77654a471",
+            "code": "AR0001",
+            "name": "Accounts Receivable (Trade)",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "53859ae7-843b-4625-94e2-54d055e1e6a4"
+          },
+          {
+            "id": "f5ccc07e-c21e-472d-8b0e-8f0df18464dd",
+            "code": "BANK0001",
+            "name": "Bank",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "777b4392-91e5-4422-905b-8c3877b2d14b"
+          },
+          {
+            "id": "80caa39e-5e9e-4a4c-a262-3aab41c6a15b",
+            "code": "BANK0002",
+            "name": "Nabil Bank",
+            "rootType": "asset",
+            "isSystem": false,
+            "groupId": "777b4392-91e5-4422-905b-8c3877b2d14b"
+          },
+          {
+            "id": "03c5d6ff-6ad5-4a9b-afce-84ce6d2702b6",
+            "code": "BC0001",
+            "name": "Cash In Hand",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "777b4392-91e5-4422-905b-8c3877b2d14b"
+          },
+          {
+            "id": "67502756-cb68-4daf-aa90-47999c04e34b",
+            "code": "BNKC0001",
+            "name": "Bank Charges",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "9f481e5a-8e3d-40ca-81fb-724770c41960"
+          },
+          {
+            "id": "e98f18a9-8b8f-47a7-94aa-d79091c9638c",
+            "code": "C0001",
+            "name": "Share Capital",
+            "rootType": "equity",
+            "isSystem": true,
+            "groupId": "89266f5c-f660-48a1-923e-438e0f86e678"
+          },
+          {
+            "id": "4c3d4299-aa9b-41ac-8546-bf7ec770d6e9",
+            "code": "CHQ0001",
+            "name": "Cheques In Transit",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "777b4392-91e5-4422-905b-8c3877b2d14b"
+          },
+          {
+            "id": "a359a1ed-89c9-4fcd-8fc7-2dca9a29b174",
+            "code": "CL0001",
+            "name": "Value Added Tax",
+            "rootType": "liability",
+            "isSystem": true,
+            "groupId": "401b2045-bd1d-4d65-ae36-17376898e7ef"
+          },
+          {
+            "id": "ddaa0903-7fb9-4eb9-94a5-42987418565b",
+            "code": "COGS0001",
+            "name": "Cost of Goods Sold",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "22a3a971-d273-427e-872d-1bcbef7e991e"
+          },
+          {
+            "id": "2da503db-7e1f-4178-b5d8-e8ae6772cdbb",
+            "code": "DA0001",
+            "name": "Discount Allowed",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "9f481e5a-8e3d-40ca-81fb-724770c41960"
+          },
+          {
+            "id": "50f8afc6-6aab-428a-8146-decce06d73d2",
+            "code": "DE0001",
+            "name": "Purchase Goods",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "013c94bd-ef26-498d-9fb1-c77abbe1c611"
+          },
+          {
+            "id": "7fc1019b-6448-487b-8b87-461cb63c0d94",
+            "code": "DE0002",
+            "name": "Purchase Service",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "013c94bd-ef26-498d-9fb1-c77abbe1c611"
+          },
+          {
+            "id": "a7a048bf-8c69-46e0-a14a-f361757e89cd",
+            "code": "DI0001",
+            "name": "Sales Goods",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "3c83f647-3314-408d-b4c8-02c48f612148"
+          },
+          {
+            "id": "e29c0bc8-10b9-4679-9480-251160091700",
+            "code": "DI0002",
+            "name": "Sales Service",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "3c83f647-3314-408d-b4c8-02c48f612148"
+          },
+          {
+            "id": "6b819b8b-d4ca-4ec7-a890-cc57b1b19036",
+            "code": "DR0001",
+            "name": "Discount Received",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "a9b9f660-e0ec-427b-a61d-b74e1f5d9e64"
+          },
+          {
+            "id": "99c79893-bc0d-4c8c-a611-fb2d30c506d9",
+            "code": "EXP0001",
+            "name": "General Expenses",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "9f481e5a-8e3d-40ca-81fb-724770c41960"
+          },
+          {
+            "id": "816b8758-403c-4def-aecf-f3d541763e12",
+            "code": "INV0001",
+            "name": "Inventory Asset",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "5bbae4b1-488f-48d6-80e4-4302191cb1e0"
+          },
+          {
+            "id": "af5d2c4d-71e9-4626-992d-68bd5e0639a2",
+            "code": "OBE0001",
+            "name": "Opening Balance Equity",
+            "rootType": "equity",
+            "isSystem": true,
+            "groupId": "89266f5c-f660-48a1-923e-438e0f86e678"
+          },
+          {
+            "id": "7dfb3be0-6f8d-4144-816e-e9229fca786e",
+            "code": "OI0001",
+            "name": "Other Income",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "a9b9f660-e0ec-427b-a61d-b74e1f5d9e64"
+          },
+          {
+            "id": "db9733c9-e2e6-4f72-b07a-23d1aaedbe9a",
+            "code": "PR0001",
+            "name": "Purchase Returns",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "013c94bd-ef26-498d-9fb1-c77abbe1c611"
+          },
+          {
+            "id": "1d4aebd8-a5f2-40f9-bdd7-64108e8a1f50",
+            "code": "RS0001",
+            "name": "Retained Earning",
+            "rootType": "equity",
+            "isSystem": true,
+            "groupId": "aae3cc28-dab1-4e3c-85c4-e7ebce3120f2"
+          },
+          {
+            "id": "5e3a928a-c518-4226-ba06-ae4370267204",
+            "code": "SR0001",
+            "name": "Sales Returns",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "3c83f647-3314-408d-b4c8-02c48f612148"
+          },
+          {
+            "id": "b02802a5-2066-4b3d-be57-17cdb5044d52",
+            "code": "TDSP0001",
+            "name": "TDS Payable",
+            "rootType": "liability",
+            "isSystem": true,
+            "groupId": "401b2045-bd1d-4d65-ae36-17376898e7ef"
+          },
+          {
+            "id": "8b79e906-9a4d-4caa-a399-ac7bba76719a",
+            "code": "TDSR0001",
+            "name": "TDS Receivable",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "2cc80506-5e17-46c3-a375-9fe15097f6a6"
+          },
+          {
+            "id": "6d0b7ea3-796e-4330-b434-5602bf9f210d",
+            "code": "VATIN0001",
+            "name": "Input VAT",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "2cc80506-5e17-46c3-a375-9fe15097f6a6"
+          },
+          {
+            "id": "46650fa5-b07b-4e72-9117-894ae0d319ec",
+            "code": "VATSET0001",
+            "name": "VAT Payable (Settlement)",
+            "rootType": "liability",
+            "isSystem": true,
+            "groupId": "b73a71c0-90cc-4b89-a7f6-fe7e454ce604"
+          }
+        ]
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/accounting/mappings",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "eventKey": "global",
+          "role": "accounts_payable",
+          "accountId": "729b7bb3-cf8e-404c-aa9a-2bb84463790e"
+        },
+        {
+          "eventKey": "global",
+          "role": "accounts_receivable",
+          "accountId": "82d87e0e-2197-4ee8-8fc8-5fa77654a471"
+        },
+        {
+          "eventKey": "global",
+          "role": "cash_bank",
+          "accountId": "03c5d6ff-6ad5-4a9b-afce-84ce6d2702b6"
+        },
+        {
+          "eventKey": "global",
+          "role": "cheque_clearing",
+          "accountId": "4c3d4299-aa9b-41ac-8546-bf7ec770d6e9"
+        },
+        {
+          "eventKey": "global",
+          "role": "cost_of_goods_sold",
+          "accountId": "ddaa0903-7fb9-4eb9-94a5-42987418565b"
+        },
+        {
+          "eventKey": "global",
+          "role": "discount_allowed",
+          "accountId": "2da503db-7e1f-4178-b5d8-e8ae6772cdbb"
+        },
+        {
+          "eventKey": "global",
+          "role": "discount_received",
+          "accountId": "6b819b8b-d4ca-4ec7-a890-cc57b1b19036"
+        },
+        {
+          "eventKey": "global",
+          "role": "general_expense",
+          "accountId": "99c79893-bc0d-4c8c-a611-fb2d30c506d9"
+        },
+        {
+          "eventKey": "global",
+          "role": "input_vat",
+          "accountId": "6d0b7ea3-796e-4330-b434-5602bf9f210d"
+        },
+        {
+          "eventKey": "global",
+          "role": "inventory",
+          "accountId": "816b8758-403c-4def-aecf-f3d541763e12"
+        },
+        {
+          "eventKey": "global",
+          "role": "opening_balance_equity",
+          "accountId": "af5d2c4d-71e9-4626-992d-68bd5e0639a2"
+        },
+        {
+          "eventKey": "global",
+          "role": "other_income",
+          "accountId": "7dfb3be0-6f8d-4144-816e-e9229fca786e"
+        },
+        {
+          "eventKey": "global",
+          "role": "output_vat",
+          "accountId": "a359a1ed-89c9-4fcd-8fc7-2dca9a29b174"
+        },
+        {
+          "eventKey": "global",
+          "role": "purchase_return",
+          "accountId": "db9733c9-e2e6-4f72-b07a-23d1aaedbe9a"
+        },
+        {
+          "eventKey": "global",
+          "role": "purchase_service",
+          "accountId": "7fc1019b-6448-487b-8b87-461cb63c0d94"
+        },
+        {
+          "eventKey": "global",
+          "role": "retained_earnings",
+          "accountId": "1d4aebd8-a5f2-40f9-bdd7-64108e8a1f50"
+        },
+        {
+          "eventKey": "global",
+          "role": "sales_return",
+          "accountId": "5e3a928a-c518-4226-ba06-ae4370267204"
+        },
+        {
+          "eventKey": "global",
+          "role": "sales_revenue",
+          "accountId": "a7a048bf-8c69-46e0-a14a-f361757e89cd"
+        },
+        {
+          "eventKey": "global",
+          "role": "service_revenue",
+          "accountId": "e29c0bc8-10b9-4679-9480-251160091700"
+        },
+        {
+          "eventKey": "global",
+          "role": "stock_adjustment",
+          "accountId": "d2decb39-55ac-47d3-887c-28ce07b08e01"
+        },
+        {
+          "eventKey": "global",
+          "role": "stock_adjustment_gain",
+          "accountId": "fafc93ad-28a4-4180-a833-059ea9c83e40"
+        },
+        {
+          "eventKey": "global",
+          "role": "vat_settlement",
+          "accountId": "46650fa5-b07b-4e72-9117-894ae0d319ec"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/accounting/cash-bank-mappings",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "accountId": "80caa39e-5e9e-4a4c-a262-3aab41c6a15b",
+          "operationalAccountId": "ad1644e0-2531-4aab-a3e6-35f847a8c63e"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "body": {
+        "accounts": [
+          {
+            "id": "d2decb39-55ac-47d3-887c-28ce07b08e01",
+            "code": "ADJ0001",
+            "name": "Stock Adjustment Loss",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "9f481e5a-8e3d-40ca-81fb-724770c41960"
+          },
+          {
+            "id": "fafc93ad-28a4-4180-a833-059ea9c83e40",
+            "code": "ADJ0002",
+            "name": "Stock Adjustment Gain",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "a9b9f660-e0ec-427b-a61d-b74e1f5d9e64"
+          },
+          {
+            "id": "729b7bb3-cf8e-404c-aa9a-2bb84463790e",
+            "code": "AP0001",
+            "name": "Accounts Payable (Trade)",
+            "rootType": "liability",
+            "isSystem": true,
+            "groupId": "1c5dc808-e705-4c0f-8a86-a38d3e51be63"
+          },
+          {
+            "id": "82d87e0e-2197-4ee8-8fc8-5fa77654a471",
+            "code": "AR0001",
+            "name": "Accounts Receivable (Trade)",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "53859ae7-843b-4625-94e2-54d055e1e6a4"
+          },
+          {
+            "id": "f5ccc07e-c21e-472d-8b0e-8f0df18464dd",
+            "code": "BANK0001",
+            "name": "Bank",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "777b4392-91e5-4422-905b-8c3877b2d14b"
+          },
+          {
+            "id": "80caa39e-5e9e-4a4c-a262-3aab41c6a15b",
+            "code": "BANK0002",
+            "name": "Nabil Bank",
+            "rootType": "asset",
+            "isSystem": false,
+            "groupId": "777b4392-91e5-4422-905b-8c3877b2d14b"
+          },
+          {
+            "id": "03c5d6ff-6ad5-4a9b-afce-84ce6d2702b6",
+            "code": "BC0001",
+            "name": "Cash In Hand",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "777b4392-91e5-4422-905b-8c3877b2d14b"
+          },
+          {
+            "id": "67502756-cb68-4daf-aa90-47999c04e34b",
+            "code": "BNKC0001",
+            "name": "Bank Charges",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "9f481e5a-8e3d-40ca-81fb-724770c41960"
+          },
+          {
+            "id": "e98f18a9-8b8f-47a7-94aa-d79091c9638c",
+            "code": "C0001",
+            "name": "Share Capital",
+            "rootType": "equity",
+            "isSystem": true,
+            "groupId": "89266f5c-f660-48a1-923e-438e0f86e678"
+          },
+          {
+            "id": "4c3d4299-aa9b-41ac-8546-bf7ec770d6e9",
+            "code": "CHQ0001",
+            "name": "Cheques In Transit",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "777b4392-91e5-4422-905b-8c3877b2d14b"
+          },
+          {
+            "id": "a359a1ed-89c9-4fcd-8fc7-2dca9a29b174",
+            "code": "CL0001",
+            "name": "Value Added Tax",
+            "rootType": "liability",
+            "isSystem": true,
+            "groupId": "401b2045-bd1d-4d65-ae36-17376898e7ef"
+          },
+          {
+            "id": "ddaa0903-7fb9-4eb9-94a5-42987418565b",
+            "code": "COGS0001",
+            "name": "Cost of Goods Sold",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "22a3a971-d273-427e-872d-1bcbef7e991e"
+          },
+          {
+            "id": "2da503db-7e1f-4178-b5d8-e8ae6772cdbb",
+            "code": "DA0001",
+            "name": "Discount Allowed",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "9f481e5a-8e3d-40ca-81fb-724770c41960"
+          },
+          {
+            "id": "50f8afc6-6aab-428a-8146-decce06d73d2",
+            "code": "DE0001",
+            "name": "Purchase Goods",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "013c94bd-ef26-498d-9fb1-c77abbe1c611"
+          },
+          {
+            "id": "7fc1019b-6448-487b-8b87-461cb63c0d94",
+            "code": "DE0002",
+            "name": "Purchase Service",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "013c94bd-ef26-498d-9fb1-c77abbe1c611"
+          },
+          {
+            "id": "a7a048bf-8c69-46e0-a14a-f361757e89cd",
+            "code": "DI0001",
+            "name": "Sales Goods",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "3c83f647-3314-408d-b4c8-02c48f612148"
+          },
+          {
+            "id": "e29c0bc8-10b9-4679-9480-251160091700",
+            "code": "DI0002",
+            "name": "Sales Service",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "3c83f647-3314-408d-b4c8-02c48f612148"
+          },
+          {
+            "id": "6b819b8b-d4ca-4ec7-a890-cc57b1b19036",
+            "code": "DR0001",
+            "name": "Discount Received",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "a9b9f660-e0ec-427b-a61d-b74e1f5d9e64"
+          },
+          {
+            "id": "99c79893-bc0d-4c8c-a611-fb2d30c506d9",
+            "code": "EXP0001",
+            "name": "General Expenses",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "9f481e5a-8e3d-40ca-81fb-724770c41960"
+          },
+          {
+            "id": "816b8758-403c-4def-aecf-f3d541763e12",
+            "code": "INV0001",
+            "name": "Inventory Asset",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "5bbae4b1-488f-48d6-80e4-4302191cb1e0"
+          },
+          {
+            "id": "af5d2c4d-71e9-4626-992d-68bd5e0639a2",
+            "code": "OBE0001",
+            "name": "Opening Balance Equity",
+            "rootType": "equity",
+            "isSystem": true,
+            "groupId": "89266f5c-f660-48a1-923e-438e0f86e678"
+          },
+          {
+            "id": "7dfb3be0-6f8d-4144-816e-e9229fca786e",
+            "code": "OI0001",
+            "name": "Other Income",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "a9b9f660-e0ec-427b-a61d-b74e1f5d9e64"
+          },
+          {
+            "id": "db9733c9-e2e6-4f72-b07a-23d1aaedbe9a",
+            "code": "PR0001",
+            "name": "Purchase Returns",
+            "rootType": "expense",
+            "isSystem": true,
+            "groupId": "013c94bd-ef26-498d-9fb1-c77abbe1c611"
+          },
+          {
+            "id": "1d4aebd8-a5f2-40f9-bdd7-64108e8a1f50",
+            "code": "RS0001",
+            "name": "Retained Earning",
+            "rootType": "equity",
+            "isSystem": true,
+            "groupId": "aae3cc28-dab1-4e3c-85c4-e7ebce3120f2"
+          },
+          {
+            "id": "5e3a928a-c518-4226-ba06-ae4370267204",
+            "code": "SR0001",
+            "name": "Sales Returns",
+            "rootType": "income",
+            "isSystem": true,
+            "groupId": "3c83f647-3314-408d-b4c8-02c48f612148"
+          },
+          {
+            "id": "b02802a5-2066-4b3d-be57-17cdb5044d52",
+            "code": "TDSP0001",
+            "name": "TDS Payable",
+            "rootType": "liability",
+            "isSystem": true,
+            "groupId": "401b2045-bd1d-4d65-ae36-17376898e7ef"
+          },
+          {
+            "id": "8b79e906-9a4d-4caa-a399-ac7bba76719a",
+            "code": "TDSR0001",
+            "name": "TDS Receivable",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "2cc80506-5e17-46c3-a375-9fe15097f6a6"
+          },
+          {
+            "id": "6d0b7ea3-796e-4330-b434-5602bf9f210d",
+            "code": "VATIN0001",
+            "name": "Input VAT",
+            "rootType": "asset",
+            "isSystem": true,
+            "groupId": "2cc80506-5e17-46c3-a375-9fe15097f6a6"
+          },
+          {
+            "id": "46650fa5-b07b-4e72-9117-894ae0d319ec",
+            "code": "VATSET0001",
+            "name": "VAT Payable (Settlement)",
+            "rootType": "liability",
+            "isSystem": true,
+            "groupId": "b73a71c0-90cc-4b89-a7f6-fe7e454ce604"
+          }
+        ]
+      }
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/chart-accounts/tree",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/mappings",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/cash-bank-mappings",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

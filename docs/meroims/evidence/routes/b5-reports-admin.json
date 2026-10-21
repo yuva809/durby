@@ -1,0 +1,2974 @@
+{
+  "target": "A73B2A0558BBC812AC8FB41053444E94",
+  "runAt": "2026-10-20T15:24:08.038Z",
+  "steps": [
+    {
+      "id": "dashboard",
+      "startedAt": "2026-10-20T15:22:12.621Z",
+      "ui": {
+        "path": "/",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Dashboard",
+          "Income against costs",
+          "Rs.[n]",
+          "Sales against purchases",
+          "What sold most",
+          "Who bought most",
+          "The queue today"
+        ],
+        "buttons": [
+          "[record button]",
+          "This month",
+          "[record button]",
+          "Chart",
+          "Table"
+        ],
+        "tabs": [
+          "Last 7 days",
+          "Last 30 days",
+          "This month",
+          "Last 90 days",
+          "Last 12 months",
+          "Chart",
+          "Table"
+        ],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [
+          "/sales/invoices/create",
+          "/sales/payment-in",
+          "/purchases/bills/create",
+          "/inventory",
+          "/accounts",
+          "/accounting",
+          "/reports/sales-register",
+          "/reports/income-statement",
+          "/reports/inventory-position",
+          "/reports/purchase-register",
+          "/reports/sales-by-item",
+          "/parties",
+          "/reports/invoice-age",
+          "/reports/sales-by-customer",
+          "/inventory/{id}",
+          "/stock-requests",
+          "/orders",
+          "/pms"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No sales in this period.",
+          "Nothing is owed to suppliers.",
+          "No expenses posted in this period.",
+          "No dated stock near its date."
+        ],
+        "errorText": []
+      },
+      "tabViews": [
+        {
+          "tab": "Last 7 days",
+          "clicked": true,
+          "ui": {
+            "path": "/",
+            "queryKeys": [
+              "range"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Dashboard",
+              "Income against costs",
+              "Rs.[n]",
+              "Sales against purchases",
+              "What sold most",
+              "Who bought most",
+              "The queue today"
+            ],
+            "buttons": [
+              "[record button]",
+              "This month",
+              "[record button]",
+              "Chart",
+              "Table"
+            ],
+            "tabs": [
+              "Last 7 days",
+              "Last 30 days",
+              "This month",
+              "Last 90 days",
+              "Last 12 months",
+              "Chart",
+              "Table"
+            ],
+            "fields": [],
+            "tableHeaders": [],
+            "links": [
+              "/sales/invoices/create",
+              "/sales/payment-in",
+              "/purchases/bills/create",
+              "/inventory",
+              "/accounts",
+              "/accounting",
+              "/reports/sales-register",
+              "/reports/income-statement",
+              "/reports/inventory-position",
+              "/reports/purchase-register",
+              "/reports/sales-by-item",
+              "/parties",
+              "/reports/invoice-age",
+              "/reports/sales-by-customer",
+              "/inventory/{id}",
+              "/stock-requests",
+              "/orders",
+              "/pms"
+            ],
+            "dialogs": 0,
+            "emptyStates": [
+              "No sales in this period.",
+              "Nothing is owed to suppliers.",
+              "No expenses posted in this period.",
+              "No dated stock near its date."
+            ],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Last 30 days",
+          "clicked": true,
+          "ui": {
+            "path": "/",
+            "queryKeys": [],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Dashboard",
+              "Income against costs",
+              "Rs.[n]",
+              "Sales against purchases",
+              "What sold most",
+              "Who bought most",
+              "The queue today"
+            ],
+            "buttons": [
+              "[record button]",
+              "This month",
+              "[record button]",
+              "Chart",
+              "Table"
+            ],
+            "tabs": [
+              "Last 7 days",
+              "Last 30 days",
+              "This month",
+              "Last 90 days",
+              "Last 12 months",
+              "Chart",
+              "Table"
+            ],
+            "fields": [],
+            "tableHeaders": [],
+            "links": [
+              "/sales/invoices/create",
+              "/sales/payment-in",
+              "/purchases/bills/create",
+              "/inventory",
+              "/accounts",
+              "/accounting",
+              "/reports/sales-register",
+              "/reports/income-statement",
+              "/reports/inventory-position",
+              "/reports/purchase-register",
+              "/reports/sales-by-item",
+              "/parties",
+              "/reports/invoice-age",
+              "/reports/sales-by-customer",
+              "/inventory/{id}",
+              "/stock-requests",
+              "/orders",
+              "/pms"
+            ],
+            "dialogs": 0,
+            "emptyStates": [
+              "No sales in this period.",
+              "Nothing is owed to suppliers.",
+              "No expenses posted in this period.",
+              "No dated stock near its date."
+            ],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "This month",
+          "clicked": true,
+          "ui": {
+            "path": "/",
+            "queryKeys": [
+              "range"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Dashboard",
+              "Income against costs",
+              "Rs.[n]",
+              "Sales against purchases",
+              "What sold most",
+              "Who bought most",
+              "The queue today"
+            ],
+            "buttons": [
+              "[record button]",
+              "This month",
+              "[record button]",
+              "Chart",
+              "Table"
+            ],
+            "tabs": [
+              "Last 7 days",
+              "Last 30 days",
+              "This month",
+              "Last 90 days",
+              "Last 12 months",
+              "Chart",
+              "Table"
+            ],
+            "fields": [],
+            "tableHeaders": [],
+            "links": [
+              "/sales/invoices/create",
+              "/sales/payment-in",
+              "/purchases/bills/create",
+              "/inventory",
+              "/accounts",
+              "/accounting",
+              "/reports/sales-register",
+              "/reports/income-statement",
+              "/reports/inventory-position",
+              "/reports/purchase-register",
+              "/reports/sales-by-item",
+              "/parties",
+              "/reports/invoice-age",
+              "/reports/sales-by-customer",
+              "/inventory/{id}",
+              "/stock-requests",
+              "/orders",
+              "/pms"
+            ],
+            "dialogs": 0,
+            "emptyStates": [
+              "No sales in this period.",
+              "Nothing is owed to suppliers.",
+              "No expenses posted in this period.",
+              "No dated stock near its date."
+            ],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Last 90 days",
+          "clicked": true,
+          "ui": {
+            "path": "/",
+            "queryKeys": [
+              "range"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Dashboard",
+              "Income against costs",
+              "Rs.[n]",
+              "Sales against purchases",
+              "What sold most",
+              "Who bought most",
+              "The queue today"
+            ],
+            "buttons": [
+              "[record button]",
+              "This month",
+              "[record button]",
+              "Chart",
+              "Table"
+            ],
+            "tabs": [
+              "Last 7 days",
+              "Last 30 days",
+              "This month",
+              "Last 90 days",
+              "Last 12 months",
+              "Chart",
+              "Table"
+            ],
+            "fields": [],
+            "tableHeaders": [],
+            "links": [
+              "/sales/invoices/create",
+              "/sales/payment-in",
+              "/purchases/bills/create",
+              "/inventory",
+              "/accounts",
+              "/accounting",
+              "/reports/sales-register",
+              "/reports/income-statement",
+              "/reports/inventory-position",
+              "/reports/purchase-register",
+              "/reports/sales-by-item",
+              "/parties",
+              "/reports/invoice-age",
+              "/inventory/{id}",
+              "/reports/sales-by-customer",
+              "/stock-requests",
+              "/orders",
+              "/pms"
+            ],
+            "dialogs": 0,
+            "emptyStates": [
+              "Nothing is owed to suppliers.",
+              "No dated stock near its date."
+            ],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Last 12 months",
+          "clicked": true,
+          "ui": {
+            "path": "/",
+            "queryKeys": [
+              "range"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Dashboard",
+              "Income against costs",
+              "Rs.[n]",
+              "Sales against purchases",
+              "What sold most",
+              "Who bought most",
+              "The queue today"
+            ],
+            "buttons": [
+              "[record button]",
+              "This month",
+              "[record button]",
+              "Chart",
+              "Table"
+            ],
+            "tabs": [
+              "Last 7 days",
+              "Last 30 days",
+              "This month",
+              "Last 90 days",
+              "Last 12 months",
+              "Chart",
+              "Table"
+            ],
+            "fields": [],
+            "tableHeaders": [],
+            "links": [
+              "/sales/invoices/create",
+              "/sales/payment-in",
+              "/purchases/bills/create",
+              "/inventory",
+              "/accounts",
+              "/accounting",
+              "/reports/sales-register",
+              "/reports/income-statement",
+              "/reports/inventory-position",
+              "/reports/purchase-register",
+              "/reports/sales-by-item",
+              "/parties",
+              "/reports/invoice-age",
+              "/inventory/{id}",
+              "/reports/sales-by-customer",
+              "/stock-requests",
+              "/orders",
+              "/pms"
+            ],
+            "dialogs": 0,
+            "emptyStates": [
+              "Nothing is owed to suppliers.",
+              "No dated stock near its date."
+            ],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Chart",
+          "clicked": true,
+          "ui": {
+            "path": "/",
+            "queryKeys": [
+              "range"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Dashboard",
+              "Income against costs",
+              "Rs.[n]",
+              "Sales against purchases",
+              "What sold most",
+              "Who bought most",
+              "The queue today"
+            ],
+            "buttons": [
+              "[record button]",
+              "This month",
+              "[record button]",
+              "Chart",
+              "Table"
+            ],
+            "tabs": [
+              "Last 7 days",
+              "Last 30 days",
+              "This month",
+              "Last 90 days",
+              "Last 12 months",
+              "Chart",
+              "Table"
+            ],
+            "fields": [],
+            "tableHeaders": [],
+            "links": [
+              "/sales/invoices/create",
+              "/sales/payment-in",
+              "/purchases/bills/create",
+              "/inventory",
+              "/accounts",
+              "/accounting",
+              "/reports/sales-register",
+              "/reports/income-statement",
+              "/reports/inventory-position",
+              "/reports/purchase-register",
+              "/reports/sales-by-item",
+              "/parties",
+              "/reports/invoice-age",
+              "/inventory/{id}",
+              "/reports/sales-by-customer",
+              "/stock-requests",
+              "/orders",
+              "/pms"
+            ],
+            "dialogs": 0,
+            "emptyStates": [
+              "Nothing is owed to suppliers.",
+              "No dated stock near its date."
+            ],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Table",
+          "clicked": true,
+          "ui": {
+            "path": "/",
+            "queryKeys": [
+              "range"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Dashboard",
+              "Income against costs",
+              "Rs.[n]",
+              "Sales against purchases",
+              "What sold most",
+              "Who bought most",
+              "The queue today"
+            ],
+            "buttons": [
+              "[record button]",
+              "This month",
+              "[record button]",
+              "Chart",
+              "Table"
+            ],
+            "tabs": [
+              "Last 7 days",
+              "Last 30 days",
+              "This month",
+              "Last 90 days",
+              "Last 12 months",
+              "Chart",
+              "Table"
+            ],
+            "fields": [],
+            "tableHeaders": [
+              [
+                "PERIOD",
+                "INCOME",
+                "COSTS",
+                "NET"
+              ]
+            ],
+            "links": [
+              "/sales/invoices/create",
+              "/sales/payment-in",
+              "/purchases/bills/create",
+              "/inventory",
+              "/accounts",
+              "/accounting",
+              "/reports/sales-register",
+              "/reports/income-statement",
+              "/reports/inventory-position",
+              "/reports/purchase-register",
+              "/reports/sales-by-item",
+              "/parties",
+              "/reports/invoice-age",
+              "/inventory/{id}",
+              "/reports/sales-by-customer",
+              "/stock-requests",
+              "/orders",
+              "/pms"
+            ],
+            "dialogs": 0,
+            "emptyStates": [
+              "Nothing is owed to suppliers.",
+              "No dated stock near its date."
+            ],
+            "errorText": []
+          }
+        }
+      ],
+      "skippedTabs": [],
+      "endedAt": "2026-10-20T15:22:30.781Z"
+    },
+    {
+      "id": "reports",
+      "startedAt": "2026-10-20T15:22:30.783Z",
+      "ui": {
+        "path": "/reports",
+        "queryKeys": [],
+        "title": "Reports",
+        "headings": [
+          "Reports"
+        ],
+        "buttons": [
+          "[record button]",
+          "Collapse all",
+          "[record button]"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search reports",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/reports/transaction-list",
+          "/accounting-workbench",
+          "/accounting",
+          "/reports/gl-summary",
+          "/reports/detail-general-ledger",
+          "/reports/gl-master",
+          "/reports/income-statement",
+          "/reports/balance-sheet",
+          "/reports/customer-receivable-summary",
+          "/reports/invoice-age",
+          "/reports/customer-statement",
+          "/reports/supplier-payable-summary",
+          "/reports/purchase-bill-age",
+          "/reports/supplier-statement",
+          "/reports/sales-by-customer",
+          "/reports/sales-by-item",
+          "/reports/sales-by-customer-monthly",
+          "/reports/sales-by-item-monthly",
+          "/reports/sales-master-report",
+          "/reports/sales-summary-report",
+          "/reports/purchase-by-supplier",
+          "/reports/purchase-by-item",
+          "/reports/purchase-by-supplier-monthly",
+          "/reports/purchase-by-item-monthly",
+          "/reports/purchase-master-report",
+          "/reports/sales-register",
+          "/reports/sales-return-register",
+          "/reports/purchase-register",
+          "/reports/purchase-return-register",
+          "/reports/vat-summary-report",
+          "/reports/tds-report",
+          "/reports/annex-13-report",
+          "/reports/annex-5-materialised-view-report",
+          "/reports/inventory-position",
+          "/reports/inventory-ageing",
+          "/reports/inventory-movement",
+          "/reports/inventory-ledger",
+          "/reports/product-profitability-report",
+          "/reports/inventory-master-report",
+          "/reports/production-summary-report",
+          "/reports/production-variance-report",
+          "/reports/production-planning-report",
+          "/reports/activity-log",
+          "/reports/user-log",
+          "/reports/net-trading-assets",
+          "/reports/exceptional-report",
+          "/reports/ratio-analysis-report"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:22:34.754Z"
+    },
+    {
+      "id": "rpt-balance-sheet",
+      "startedAt": "2026-10-20T15:22:34.754Z",
+      "ui": {
+        "path": "/reports/balance-sheet",
+        "queryKeys": [
+          "asOf"
+        ],
+        "title": "Reports",
+        "headings": [
+          "Balance Sheet"
+        ],
+        "buttons": [
+          "CSV",
+          "Excel",
+          "Print",
+          "[record button]",
+          "Generate",
+          "Collapse all",
+          "Collapse Assets",
+          "Collapse Current Assets",
+          "Collapse Account Receivable",
+          "Collapse Closing Inventory",
+          "Collapse Non Current Assets",
+          "Collapse Liability",
+          "Collapse Current Liability",
+          "Collapse Non Current Liability",
+          "Collapse Equity",
+          "Collapse Capital"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "As of",
+            "required": true
+          }
+        ],
+        "tableHeaders": [
+          [
+            "ACCOUNT",
+            "AMOUNT (RS.)"
+          ]
+        ],
+        "links": [
+          "/reports",
+          "/parties/{id}",
+          "/accounting"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:22:38.483Z"
+    },
+    {
+      "id": "rpt-income-statement",
+      "startedAt": "2026-10-20T15:22:38.483Z",
+      "ui": {
+        "path": "/reports/income-statement",
+        "queryKeys": [
+          "from",
+          "to"
+        ],
+        "title": "[title]  [tenant/user redacted]",
+        "headings": [
+          "Income Statement"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate",
+          "Collapse all",
+          "Collapse Direct Income",
+          "Collapse Cost Of Sales"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          }
+        ],
+        "tableHeaders": [
+          [
+            "ACCOUNT",
+            "AMOUNT (RS.)"
+          ]
+        ],
+        "links": [
+          "/reports/balance-sheet"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:22:42.000Z"
+    },
+    {
+      "id": "rpt-gl-master",
+      "startedAt": "2026-10-20T15:22:42.000Z",
+      "ui": {
+        "path": "/reports/gl-master",
+        "queryKeys": [
+          "from",
+          "to"
+        ],
+        "title": "Reports",
+        "headings": [
+          "GL Master Report"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate",
+          "Billing location",
+          "Transaction types"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Billing Location",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Txn Type",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select all rows",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "DATE",
+            "TXN TYPE",
+            "TXN NO",
+            "REFERENCE NO",
+            "ACCOUNT",
+            "SUBACCOUNT (PARENT)",
+            "GROUP TYPE",
+            "ACCOUNT CLASS",
+            "DEBIT",
+            "CREDIT"
+          ]
+        ],
+        "links": [
+          "/reports/income-statement"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:22:46.525Z"
+    },
+    {
+      "id": "rpt-gl-summary",
+      "startedAt": "2026-10-20T15:22:46.526Z",
+      "ui": {
+        "path": "/reports/gl-summary",
+        "queryKeys": [
+          "from",
+          "to"
+        ],
+        "title": "Reports",
+        "headings": [
+          "General Ledger Summary"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate",
+          "Account groups",
+          "Accounts"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Group",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Account",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select all rows",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select Accounts Receivable (Trade)",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select Nabil Bank",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select Cash In Hand",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select Value Added Tax",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select Cost of Goods Sold",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select Sales Goods",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select Inventory Asset",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select Opening Balance Equity",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "CODE / ACCOUNT",
+            "PARENT",
+            "GROUP TYPE",
+            "ACCOUNT CLASS",
+            "OPENING BALANCE",
+            "TRANSACTION DEBIT",
+            "TRANSACTION CREDIT",
+            "CLOSING BALANCE"
+          ]
+        ],
+        "links": [
+          "/reports/gl-master"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:22:50.254Z"
+    },
+    {
+      "id": "rpt-detail-gl",
+      "startedAt": "2026-10-20T15:22:50.254Z",
+      "ui": {
+        "path": "/reports/detail-general-ledger",
+        "queryKeys": [
+          "from",
+          "to"
+        ],
+        "title": "Reports",
+        "headings": [
+          "Detail General Ledger"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate",
+          "Accounts"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Account",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          []
+        ],
+        "links": [
+          "/reports/gl-summary"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:22:53.973Z"
+    },
+    {
+      "id": "rpt-transaction-list",
+      "startedAt": "2026-10-20T15:22:53.973Z",
+      "ui": {
+        "path": "/reports/transaction-list",
+        "queryKeys": [
+          "from",
+          "to"
+        ],
+        "title": "Reports",
+        "headings": [
+          "Transaction List"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate",
+          "Transaction types",
+          "Statuses"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Txn Type",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Status",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select all rows",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "TRANSACTION DATE",
+            "TXN TYPE",
+            "TRANSACTION NO",
+            "REFERENCE NO",
+            "STATUS",
+            "AMOUNT",
+            "CREATED BY",
+            "APPROVED BY",
+            "APPROVED AT",
+            "CREATED AT",
+            "DESCRIPTION",
+            "ACTIONS"
+          ]
+        ],
+        "links": [
+          "/reports/detail-general-ledger"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:22:57.686Z"
+    },
+    {
+      "id": "rpt-customer-statement",
+      "startedAt": "2026-10-20T15:22:57.686Z",
+      "ui": {
+        "path": "/reports/customer-statement",
+        "queryKeys": [
+          "partyType",
+          "from",
+          "to",
+          "groupBy"
+        ],
+        "title": "Reports",
+        "headings": [
+          "Customer Statement"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate",
+          "Customer",
+          "Group by"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Customer",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Group By",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "TXN DATE",
+            "TXN TYPE",
+            "TXN NO.",
+            "REFERENCE NO",
+            "DESCRIPTION",
+            "DEBIT",
+            "CREDIT",
+            "BALANCE"
+          ]
+        ],
+        "links": [
+          "/reports/transaction-list"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:01.398Z"
+    },
+    {
+      "id": "rpt-supplier-statement",
+      "startedAt": "2026-10-20T15:23:01.398Z",
+      "ui": {
+        "path": "/reports/supplier-statement",
+        "queryKeys": [
+          "partyType",
+          "from",
+          "to",
+          "groupBy"
+        ],
+        "title": "Reports",
+        "headings": [
+          "Supplier Statement"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate",
+          "Supplier",
+          "Group by"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Supplier",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Group By",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "TXN DATE",
+            "TXN TYPE",
+            "TXN NO.",
+            "REFERENCE NO",
+            "DESCRIPTION",
+            "DEBIT",
+            "CREDIT",
+            "BALANCE"
+          ]
+        ],
+        "links": [
+          "/reports/customer-statement"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:05.110Z"
+    },
+    {
+      "id": "rpt-inventory-position",
+      "startedAt": "2026-10-20T15:23:05.110Z",
+      "ui": {
+        "path": "/reports/inventory-position",
+        "queryKeys": [],
+        "title": "[title]  [tenant/user redacted]",
+        "headings": [
+          "Inventory Position"
+        ],
+        "buttons": [
+          "CSV",
+          "Excel",
+          "Print",
+          "[record button]",
+          "Generate",
+          "Category",
+          "Warehouse"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Category",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Warehouse",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select all rows",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select row",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "CODE/GOODS",
+            "CATEGORY",
+            "QTY",
+            "UOM",
+            "RATE",
+            "AMOUNT"
+          ]
+        ],
+        "links": [
+          "/reports/supplier-statement"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:08.860Z"
+    },
+    {
+      "id": "rpt-sales-register",
+      "startedAt": "2026-10-20T15:23:08.860Z",
+      "ui": {
+        "path": "/reports/sales-register",
+        "queryKeys": [
+          "from",
+          "to"
+        ],
+        "title": "[title]  [tenant/user redacted]",
+        "headings": [
+          "Sales Register"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          }
+        ],
+        "tableHeaders": [
+          [
+            "\u092e\u093f\u0924\u093f",
+            "\u092c\u0940\u091c\u0915 \u0928\u092e\u094d\u092c\u0930",
+            "\u0916\u0930\u093f\u0926\u0915\u0930\u094d\u0924\u093e\u0915\u094b \u0928\u093e\u092e",
+            "\u0916\u0930\u093f\u0926\u0915\u0930\u094d\u0924\u093e\u0915\u094b \u0938\u094d\u0925\u093e\u092f\u0940 \u0932\u0947\u0916\u093e \u0928\u092e\u094d\u092c\u0930",
+            "\u092e\u0942\u0932\u094d\u092f",
+            "\u0915\u0930",
+            "\u0915\u0930\u092f\u094b\u0917\u094d\u092f \u092c\u093f\u0915\u094d\u0930\u0940 \u2014 \u092e\u0942\u0932\u094d\u092f",
+            "\u0915\u0930\u092f\u094b\u0917\u094d\u092f \u092c\u093f\u0915\u094d\u0930\u0940 \u2014 \u0915\u0930",
+            "\u0928\u093f\u0915\u093e\u0938\u0940 \u2014 \u0935\u0938\u094d\u0924\u0941",
+            "\u0928\u093f\u0915\u093e\u0938\u0940 \u2014 \u0926\u0947\u0936",
+            "\u0928\u093f\u0915\u093e\u0938\u0940 \u2014 \u092a\u094d\u0930\u091c\u094d\u091e\u093e\u092a\u0928\u092a\u0924\u094d\u0930 \u0928\u092e\u094d\u092c\u0930",
+            "\u0928\u093f\u0915\u093e\u0938\u0940 \u2014 \u092e\u093f\u0924\u093f",
+            "\u091c\u092e\u094d\u092e\u093e \u092c\u093f\u0915\u094d\u0930\u0940/\u0928\u093f\u0915\u093e\u0938\u0940"
+          ]
+        ],
+        "links": [
+          "/reports/inventory-position"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:12.633Z"
+    },
+    {
+      "id": "rpt-purchase-register",
+      "startedAt": "2026-10-20T15:23:12.634Z",
+      "ui": {
+        "path": "/reports/purchase-register",
+        "queryKeys": [
+          "from",
+          "to"
+        ],
+        "title": "[title]  [tenant/user redacted]",
+        "headings": [
+          "Purchase Register"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          }
+        ],
+        "tableHeaders": [
+          [
+            "\u092e\u093f\u0924\u093f",
+            "\u092c\u0940\u091c\u0915 \u0928\u0902.",
+            "\u092a\u094d\u0930\u091c\u094d\u091e\u093e\u092a\u0928\u092a\u0924\u094d\u0930 \u0928\u0902.",
+            "\u0906\u092a\u0942\u0930\u094d\u0924\u093f\u0915\u0930\u094d\u0924\u093e\u0915\u094b \u0928\u093e\u092e",
+            "\u0906\u092a\u0942\u0930\u094d\u0924\u093f\u0915\u0930\u094d\u0924\u093e\u0915\u094b \u0938\u094d\u0925\u093e\u092f\u0940 \u0932\u0947\u0916\u093e \u0928\u092e\u094d\u092c\u0930",
+            "\u0915\u0930\u092f\u094b\u0917\u094d\u092f \u0916\u0930\u093f\u0926 (\u092a\u0942\u0902\u091c\u0940\u0917\u0924 \u092c\u093e\u0939\u0947\u0915) \u2014 \u092e\u0942\u0932\u094d\u092f",
+            "\u0915\u0930\u092f\u094b\u0917\u094d\u092f \u0916\u0930\u093f\u0926 (\u092a\u0942\u0902\u091c\u0940\u0917\u0924 \u092c\u093e\u0939\u0947\u0915) \u2014 \u0915\u0930",
+            "\u0915\u0930\u092f\u094b\u0917\u094d\u092f \u092a\u0948\u0920\u093e\u0930\u0940 (\u092a\u0942\u0902\u091c\u0940\u0917\u0924 \u092c\u093e\u0939\u0947\u0915) \u2014 \u092e\u0942\u0932\u094d\u092f",
+            "\u0915\u0930\u092f\u094b\u0917\u094d\u092f \u092a\u0948\u0920\u093e\u0930\u0940 (\u092a\u0942\u0902\u091c\u0940\u0917\u0924 \u092c\u093e\u0939\u0947\u0915) \u2014 \u0915\u0930",
+            "\u092a\u0942\u0902\u091c\u0940\u0917\u0924 \u0915\u0930\u092f\u094b\u0917\u094d\u092f \u0916\u0930\u093f\u0926/\u092a\u0948\u0920\u093e\u0930\u0940 \u2014 \u092e\u0942\u0932\u094d\u092f",
+            "\u092a\u0942\u0902\u091c\u0940\u0917\u0924 \u0915\u0930\u092f\u094b\u0917\u094d\u092f \u0916\u0930\u093f\u0926/\u092a\u0948\u0920\u093e\u0930\u0940 \u2014 \u0915\u0930",
+            "\u091c\u092e\u094d\u092e\u093e \u0916\u0930\u093f\u0926 \u092e\u0942\u0932\u094d\u092f",
+            "\u0915\u0930 \u091b\u0941\u091f \u0939\u0941\u0928\u0947 \u0935\u0938\u094d\u0924\u0941/\u0938\u0947\u0935\u093e \u0916\u0930\u093f\u0926 \u092e\u0942\u0932\u094d\u092f"
+          ]
+        ],
+        "links": [
+          "/reports/sales-register"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:16.346Z"
+    },
+    {
+      "id": "rpt-sales-by-item",
+      "startedAt": "2026-10-20T15:23:16.346Z",
+      "ui": {
+        "path": "/reports/sales-by-item",
+        "queryKeys": [
+          "from",
+          "to"
+        ],
+        "title": "Sales By Item",
+        "headings": [
+          "Sales By Item"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate",
+          "Category"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Product / Item",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Category",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "PRODUCT (CODE)",
+            "QUANTITY",
+            "AMOUNT",
+            "DISCOUNT",
+            "NET SALES",
+            "VAT AMOUNT",
+            "TOTAL AMOUNT"
+          ]
+        ],
+        "links": [
+          "/reports/purchase-register"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:20.062Z"
+    },
+    {
+      "id": "rpt-sales-by-customer",
+      "startedAt": "2026-10-20T15:23:20.062Z",
+      "ui": {
+        "path": "/reports/sales-by-customer",
+        "queryKeys": [
+          "from",
+          "to"
+        ],
+        "title": "Sales By Customer",
+        "headings": [
+          "Sales By Customer"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate",
+          "Customer",
+          "Contact Group"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Customer",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Contact Group",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "CONTACT",
+            "CONTACT GROUP",
+            "AMOUNT",
+            "DISCOUNT",
+            "NET SALES",
+            "VAT AMOUNT",
+            "TOTAL AMOUNT"
+          ]
+        ],
+        "links": [
+          "/reports/sales-by-item"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:23.777Z"
+    },
+    {
+      "id": "rpt-invoice-age",
+      "startedAt": "2026-10-20T15:23:23.777Z",
+      "ui": {
+        "path": "/reports/invoice-age",
+        "queryKeys": [
+          "from",
+          "to"
+        ],
+        "title": "Invoice Age",
+        "headings": [
+          "Invoice Age"
+        ],
+        "buttons": [
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print",
+          "Generate",
+          "Customer",
+          "Contact Group"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": true
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Customer",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Contact Group",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "INVOICE DATE",
+            "DUE DATE",
+            "#NO",
+            "REFERENCE NO",
+            "CUSTOMER",
+            "CONTACT GROUP",
+            "INVOICE AMOUNT",
+            "PAID",
+            "BALANCE",
+            "STATUS",
+            "AGE DAYS"
+          ]
+        ],
+        "links": [
+          "/reports/sales-by-customer"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:27.504Z"
+    },
+    {
+      "id": "management",
+      "startedAt": "2026-10-20T15:23:27.504Z",
+      "ui": {
+        "path": "/management",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Management",
+          "SECTIONS",
+          "PARTY CATEGORIES"
+        ],
+        "buttons": [
+          "[record button]",
+          "Active",
+          "Rename Wholesaler",
+          "Archive Wholesaler",
+          "Rename Retailer",
+          "Archive Retailer",
+          "Rename Wholesale",
+          "Archive Wholesale",
+          "Rename Retail",
+          "Archive Retail",
+          "Rename Supplier",
+          "Archive Supplier",
+          "Rename Distributor",
+          "Archive Distributor"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "New category name",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:31.239Z"
+    },
+    {
+      "id": "audit-log",
+      "startedAt": "2026-10-20T15:23:31.239Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/audit-log",
+        "to": "/audit-log"
+      },
+      "ui": {
+        "path": "/audit-log",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Audit Log"
+        ],
+        "buttons": [],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search the audit log",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Kind of record",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From date",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To date",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "WHEN",
+            "WHAT",
+            "RECORD",
+            "BY",
+            "WHERE"
+          ]
+        ],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:38.464Z"
+    },
+    {
+      "id": "staff",
+      "startedAt": "2026-10-20T15:23:38.464Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/staff",
+        "to": "/staff"
+      },
+      "ui": {
+        "path": "/staff",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Manage Staffs"
+        ],
+        "buttons": [
+          "Active",
+          "Roles",
+          "[record button]"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search name, email, or phone",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Role filter",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Status filter",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "STAFF",
+            "CONTACT",
+            "ROLE",
+            "WORKS IN",
+            "PERMISSIONS",
+            "STATUS",
+            "LAST ACTIVE",
+            "ACTIONS"
+          ]
+        ],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [
+          "No staff yet."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:45.891Z"
+    },
+    {
+      "id": "settings",
+      "startedAt": "2026-10-20T15:23:45.893Z",
+      "ui": {
+        "path": "/settings",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "How your organisation works",
+          "Number Prefixes",
+          "More settings"
+        ],
+        "buttons": [
+          "Create New Prefix"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [
+          "/business-tools",
+          "/management",
+          "/branches",
+          "/staff",
+          "/pos-settings",
+          "/storefront-design"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No prefixes yet. Numbers typed by hand are saved exactly as entered until you add one."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:49.632Z"
+    },
+    {
+      "id": "import-data",
+      "startedAt": "2026-10-20T15:23:49.632Z",
+      "ui": {
+        "path": "/import-data",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Bring your existing data in",
+          "Parties",
+          "Inventory",
+          "Vendor Invoice"
+        ],
+        "buttons": [],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [
+          "/import-data/parties",
+          "/import-data/inventory",
+          "/import-data/vendor-invoice"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:53.349Z"
+    },
+    {
+      "id": "import-parties",
+      "startedAt": "2026-10-20T15:23:53.349Z",
+      "ui": {
+        "path": "/import-data/parties",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Import Parties",
+          "AI-Assisted Import",
+          "Use Our Template"
+        ],
+        "buttons": [
+          "[record button]"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/import-data"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:23:56.875Z"
+    },
+    {
+      "id": "business-tools",
+      "startedAt": "2026-10-20T15:23:56.875Z",
+      "ui": {
+        "path": "/business-tools",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Printing Templates",
+          "Sales",
+          "A4 Full",
+          "A5 Compact",
+          "A4 Wide",
+          "Purchase",
+          "Number Prefixes"
+        ],
+        "buttons": [
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "Create New Prefix"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [
+          "No prefixes yet. Numbers typed by hand are saved exactly as entered until you add one."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:24:00.595Z"
+    },
+    {
+      "id": "storefront-design",
+      "startedAt": "2026-10-20T15:24:00.595Z",
+      "ui": {
+        "path": "/storefront-design",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Storefront Design",
+          "Edit your site where it stands",
+          "Shop address"
+        ],
+        "buttons": [
+          "Save"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "/shop/",
+            "required": true
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/shop/{id}"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:24:04.311Z"
+    },
+    {
+      "id": "storefront-blog",
+      "startedAt": "2026-10-20T15:24:04.311Z",
+      "ui": {
+        "path": "/storefront-blog",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Journal",
+          "Write a post",
+          "Posts"
+        ],
+        "buttons": [
+          "View journal \u2197",
+          "Show Journal in the shop",
+          "Choose picture",
+          "[record button]",
+          "Publish post"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Title",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Excerpt (optional)",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Post",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Published \u2014 visible on the shop",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/shop/{id}/blog"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "Nothing written yet"
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:24:08.030Z"
+    }
+  ],
+  "api": [
+    {
+      "step": "dashboard",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "dashboard#Last 7 days",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "dashboard#Last 30 days",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "dashboard#Last 30 days",
+      "method": "POST",
+      "host": "api-dev.meroims.com",
+      "path": "/api/auth/refresh",
+      "params": []
+    },
+    {
+      "step": "dashboard#Last 30 days",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "dashboard#Last 30 days",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/account-config",
+      "params": []
+    },
+    {
+      "step": "dashboard#Last 30 days",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/billing/status",
+      "params": []
+    },
+    {
+      "step": "dashboard#Last 30 days",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "dashboard#Last 30 days",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "scope"
+      ]
+    },
+    {
+      "step": "dashboard#This month",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "dashboard#Last 90 days",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "dashboard#Last 12 months",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "reports",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "rpt-balance-sheet",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/reports/balance-sheet-tree",
+      "params": [
+        "asOf"
+      ]
+    },
+    {
+      "step": "rpt-income-statement",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-income-statement",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/reports/income-statement-tree",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "rpt-gl-master",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-gl-master",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/reports/gl-master",
+      "params": [
+        "from",
+        "location",
+        "to"
+      ]
+    },
+    {
+      "step": "rpt-gl-summary",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-gl-summary",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/chart-accounts",
+      "params": []
+    },
+    {
+      "step": "rpt-gl-summary",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/reports/gl-summary",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "rpt-detail-gl",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-detail-gl",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/reports/detail-ledger",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "rpt-transaction-list",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-transaction-list",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/reports/transactions",
+      "params": [
+        "from",
+        "page",
+        "perPage",
+        "to"
+      ]
+    },
+    {
+      "step": "rpt-customer-statement",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-supplier-statement",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-inventory-position",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "rpt-inventory-position",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/warehouses",
+      "params": []
+    },
+    {
+      "step": "rpt-inventory-position",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/reports/business/inventory-position",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "rpt-sales-register",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-sales-register",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/reports/business/sales-register",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "rpt-purchase-register",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-purchase-register",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/reports/business/purchase-register",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "rpt-sales-by-item",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-sales-by-item",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "rpt-sales-by-item",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/reports/business/sales-by-item",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "rpt-sales-by-customer",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-sales-by-customer",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "rpt-sales-by-customer",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/reports/business/sales-by-customer",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "rpt-invoice-age",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "rpt-invoice-age",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "rpt-invoice-age",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/reports/business/invoice-age",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "management",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "management",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/credit-terms",
+      "params": []
+    },
+    {
+      "step": "management",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/cheque-statuses",
+      "params": []
+    },
+    {
+      "step": "management",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/tax/tds-types",
+      "params": []
+    },
+    {
+      "step": "management",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/signatures",
+      "params": []
+    },
+    {
+      "step": "management",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/finance/categories",
+      "params": [
+        "recordType"
+      ]
+    },
+    {
+      "step": "management",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/finance/categories",
+      "params": [
+        "recordType"
+      ]
+    },
+    {
+      "step": "audit-log",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/branches/mine",
+      "params": []
+    },
+    {
+      "step": "audit-log",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/audit-logs",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "audit-log",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "staff",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/staff-roles",
+      "params": []
+    },
+    {
+      "step": "staff",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "staff",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/branches/mine",
+      "params": []
+    },
+    {
+      "step": "staff",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/staffs",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "staff",
+      "method": "POST",
+      "host": "api-dev.meroims.com",
+      "path": "/api/auth/refresh",
+      "params": []
+    },
+    {
+      "step": "staff",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "staff",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/account-config",
+      "params": []
+    },
+    {
+      "step": "staff",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/billing/status",
+      "params": []
+    },
+    {
+      "step": "staff",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "staff",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "scope"
+      ]
+    },
+    {
+      "step": "staff",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/staff-roles",
+      "params": []
+    },
+    {
+      "step": "import-data",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/imports/legacy/capabilities",
+      "params": []
+    },
+    {
+      "step": "import-parties",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/parties/import/capabilities",
+      "params": []
+    },
+    {
+      "step": "storefront-design",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/admin/entitlements",
+      "params": []
+    },
+    {
+      "step": "storefront-design",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/admin/storefront/v2",
+      "params": []
+    },
+    {
+      "step": "storefront-blog",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/admin/blog",
+      "params": []
+    },
+    {
+      "step": "storefront-blog",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/admin/entitlements",
+      "params": []
+    },
+    {
+      "step": "storefront-blog",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/admin/webstore",
+      "params": []
+    }
+  ],
+  "blocked": [],
+  "redactedTerms": 2
+}

@@ -1,0 +1,11 @@
+node_modules
+dist
+.next
+.turbo
+coverage
+pnpm-lock.yaml
+# Human-authored docs keep their own formatting
+CLAUDE.md
+docs/architecture
+docs/plan
+docs/meroims

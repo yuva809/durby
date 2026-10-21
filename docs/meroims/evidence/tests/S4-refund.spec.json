@@ -1,0 +1,53 @@
+{
+  "scenario": "S4 full refund of ORD-2026-000003 (1 x CHOC-003, 22.60 cash), restock ON, reason 'TEST-DURBY-S4 refund of S3' (user-approved)",
+  "sequence": [
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"go","path":"/sales/returns"},
+    {"op":"go","path":"/sales/invoices"},
+    {"op":"go","path":"/till"},
+    {"op":"go","path":"/orders"},
+    {"op":"clickInRow","row":"ORD-2026-000003","text":"Manage"},
+    {"op":"assert","text":"ORD-2026-000003"},
+    {"op":"click","text":"Refund…","wait":2000},
+    {"op":"fill","match":"Reason","value":"TEST-DURBY-S4 refund of S3","wait":600},
+    {"op":"snapshot","label":"refund dialog before submit"},
+    {"op":"act","text":"Refund order","scope":"dialog","wait":4500},
+    {"op":"snapshot","label":"after refund"},
+    {"op":"escape"},
+    {"op":"go","path":"/"},
+    {"op":"go","path":"/orders"},
+    {"op":"clickInRow","row":"ORD-2026-000003","text":"Manage"},
+    {"op":"snapshot","label":"order detail after refund"},
+    {"op":"escape"},
+    {"op":"go","path":"/till"},
+    {"op":"click","text":"X-report","wait":3000,"optional":true},
+    {"op":"snapshot","label":"x-report after refund"},
+    {"op":"escape"},
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"clickFirstRow"},
+    {"op":"go","path":"/sales/returns"},
+    {"op":"clickFirstRow"},
+    {"op":"go","path":"/sales/invoices"},
+    {"op":"clickFirstRow"},
+    {"op":"go","path":"/till"}
+  ],
+  "allow": [{
+    "method": "POST", "path": "^/api/pos/orders/64523aba-fc35-45bf-8982-43ca9257323a/refund$",
+    "expect": "b && Array.isArray(b.lines) && b.lines.length === 1 && b.lines[0].productId === '9c5b6bc1-e593-4eda-9199-e1ba66e36b11' && Number(b.lines[0].quantity) === 1 && b.restock === true && typeof b.reason === 'string' && b.reason.includes('TEST-DURBY')"
+  }],
+  "maxWrites": 1,
+  "getFilters": {
+    "^/api/pos/orders/[^/]+$": {"fieldsObj":["id","orderNumber","status","paymentStatus","channel","subTotal","taxTotal","grandTotal","receiptNumber","shiftId","lines","tenders","events","refunds","refundedTotal","refundedAt"]},
+    "^/api/pos/orders$": {"list":"data","top":4,"fields":["id","orderNumber","status","paymentStatus","grandTotal","receiptNumber","channel"]},
+    "^/api/pos/products$": {"list":"","where":{"sku":"CHOC-003"},"fields":["productId","sku","available"]},
+    "^/api/pos/retail/shifts/[^/]+/x-report$": {},
+    "^/api/pos/retail/context$": {"pick":["registers"]},
+    "^/api/accounting/journals$": {"list":"data","top":4,"fields":["id","journalNumber","status","systemGenerated","sourceEventType","sourceDocumentId","sourceDocumentNumber","totalDebit","totalCredit","createdAt"]},
+    "^/api/accounting/journals/[^/]+$": {"fieldsObj":["journalNumber","status","systemGenerated","sourceEventType","sourceDocumentNumber","totalDebit","totalCredit","entryDate","postedAt","reversalOfId","lines","audits"]},
+    "^/api/core/documents$": {"list":"data","top":3,"fields":["id","documentNumber","documentType","status","posOrderId","sourceDocumentId","subTotal","taxTotal","grandTotal","balanceDue","settledAmount","voidedAt","voidReason","createdAt"]},
+    "^/api/core/documents/[^/]+$": {"fieldsObj":["documentNumber","documentType","status","isDraft","posOrderId","sourceDocumentId","subTotal","taxTotal","grandTotal","balanceDue","settledAmount","settlementStatus","voidedAt","voidReason","lines","payments"]},
+    "^/api/pos/retail/orders/[^/]+/receipt$": {}
+  },
+  "keepRegisterNames": ["sample 1"],
+  "settleMs": 3500
+}

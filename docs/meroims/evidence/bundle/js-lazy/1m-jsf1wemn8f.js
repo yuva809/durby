@@ -1,0 +1,1 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,4515,t=>{"use strict";var e=t.i(51523),o=t.i(21977);t.s(["default",0,function(){return(0,e.jsx)(o.ItemForm,{page:"/inventory/new"})}])}]);

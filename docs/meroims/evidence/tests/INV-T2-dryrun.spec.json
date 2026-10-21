@@ -1,0 +1,15 @@
+{
+  "scenario": "INV-T2 dry run: cash sale invoice form, 1 x BEV-WAT-004, stop before Save (no write)",
+  "sequence": [
+    {"op":"go","path":"/sales/invoices/create"},
+    {"op":"click","text":"Cash Sale","optional":true,"wait":1200},
+    {"op":"snapshot","label":"form initial","scope":"body"},
+    {"op":"fill","match":"Search product","value":"BEV-WAT-004","nth":0,"wait":2500},
+    {"op":"clickOption","prefix":"Mineral Water","wait":1500},
+    {"op":"fill","match":"Notes","value":"TEST-DURBY-INV-T2","wait":500},
+    {"op":"snapshot","label":"filled","scope":"body"},
+    {"op":"act","text":"Save"}
+  ],
+  "dryRunCleanup": [ {"op":"escape"}, {"op":"go","path":"/"} ],
+  "allow": [], "maxWrites": 0, "getFilters": {}, "keepRegisterNames": [], "settleMs": 3500
+}

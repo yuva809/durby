@@ -1,0 +1,357 @@
+{
+  "scenario": "S2 open shift on register 'sample 1' with opening float 0 (user-approved)",
+  "dryRun": true,
+  "runAt": "2026-10-20T15:57:14.259Z",
+  "localStorage": {
+    "key": "ims.till.register",
+    "previous": null,
+    "set": "7f206976-30f1-4b4b-99ab-6f7c6f569986"
+  },
+  "uiBefore": {
+    "path": "/till",
+    "dialogOpen": false,
+    "headings": [
+      "Open the till"
+    ],
+    "buttons": [
+      "Register-A shift open — join it",
+      "Register-B shift open — join it",
+      "Register-C closed",
+      "Open shift"
+    ],
+    "alerts": []
+  },
+  "located": {
+    "ok": true,
+    "inputLabel": "Opening float",
+    "inputValueBefore": "0",
+    "buttonText": "Open shift",
+    "buttonDisabled": false
+  },
+  "writesAllowed": 0,
+  "writes": [],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 56,
+          "totalPages": 6
+        },
+        "data": [
+          {
+            "journalNumber": "JV-2026-000056",
+            "entryDate": "2026-09-21",
+            "status": "posted",
+            "systemGenerated": true,
+            "sourceEventType": "core.stock.adjusted",
+            "totalDebit": "150100.00",
+            "totalCredit": "150100.00",
+            "createdAt": "2026-09-21T09:08:06.874Z"
+          },
+          {
+            "journalNumber": "JV-2026-000055",
+            "entryDate": "2026-09-21",
+            "status": "posted",
+            "systemGenerated": true,
+            "sourceEventType": "core.stock.adjusted",
+            "totalDebit": "15200.00",
+            "totalCredit": "15200.00",
+            "createdAt": "2026-09-21T09:07:28.604Z"
+          },
+          {
+            "journalNumber": "JV-2026-000054",
+            "entryDate": "2026-09-21",
+            "status": "posted",
+            "systemGenerated": true,
+            "sourceEventType": "core.stock.adjusted",
+            "totalDebit": "7000.00",
+            "totalCredit": "7000.00",
+            "createdAt": "2026-09-21T09:06:58.260Z"
+          },
+          {
+            "journalNumber": "JV-2026-000053",
+            "entryDate": "2026-09-21",
+            "status": "posted",
+            "systemGenerated": true,
+            "sourceEventType": "core.stock.adjusted",
+            "totalDebit": "18000.00",
+            "totalCredit": "18000.00",
+            "createdAt": "2026-09-21T09:06:14.072Z"
+          },
+          {
+            "journalNumber": "JV-2026-000052",
+            "entryDate": "2026-09-21",
+            "status": "posted",
+            "systemGenerated": true,
+            "sourceEventType": "core.stock.adjusted",
+            "totalDebit": "28000.00",
+            "totalCredit": "28000.00",
+            "createdAt": "2026-09-21T09:05:19.763Z"
+          }
+        ]
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "0.00",
+          "netChange": "0.00"
+        },
+        {
+          "id": "ad1644e0-2531-4aab-a3e6-35f847a8c63e",
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00",
+          "netChange": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "body": {
+        "registers": [
+          {
+            "id": "cb8c0cc6-e523-448a-93d6-53ea7119797c",
+            "name": "Register-A",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "9d62f3dc-27e3-48f7-adae-a5cce5416162",
+            "openShift": {
+              "id": "9d62f3dc-27e3-48f7-adae-a5cce5416162",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "cb8c0cc6-e523-448a-93d6-53ea7119797c",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "0.00",
+              "openedAt": "2026-09-21T06:24:30.281Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          },
+          {
+            "id": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+            "name": "Register-B",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "932b0cde-56c9-4cbc-b82d-d0e0fccca2eb",
+            "openShift": {
+              "id": "932b0cde-56c9-4cbc-b82d-d0e0fccca2eb",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "500.00",
+              "openedAt": "2026-09-17T11:48:43.650Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          },
+          {
+            "id": "d171841b-d4e9-4a43-8fc3-2ac6ec29afc3",
+            "name": "Register-C",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": null,
+            "openShift": null
+          },
+          {
+            "id": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+            "name": "sample 1",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": null,
+            "openShift": null
+          }
+        ],
+        "currency": "NPR",
+        "vatPercent": "13.0000"
+      }
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts/{id}/transactions",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/reports/account-ledger/{id}",
+      "query": [
+        "from",
+        "to",
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "scenario": "S3 dry run: locate cart/tender UI (no write)",
+  "sequence": [
+    {
+      "op": "go",
+      "path": "/till"
+    },
+    {
+      "op": "snapshot",
+      "label": "till before"
+    },
+    {
+      "op": "fill",
+      "match": "Scan barcode",
+      "value": "CHOC-003",
+      "enter": true,
+      "wait": 2500
+    },
+    {
+      "op": "click",
+      "prefix": "Munch Chocolate CHOC-003",
+      "wait": 2000
+    },
+    {
+      "op": "snapshot",
+      "label": "after adding CHOC-003"
+    },
+    {
+      "op": "click",
+      "text": "Tender"
+    },
+    {
+      "op": "snapshot",
+      "label": "tender dialog"
+    },
+    {
+      "op": "act",
+      "prefix": "__discover__",
+      "scope": "dialog"
+    }
+  ],
+  "dryRunCleanup": [
+    {
+      "op": "escape"
+    },
+    {
+      "op": "go",
+      "path": "/"
+    },
+    {
+      "op": "go",
+      "path": "/till"
+    },
+    {
+      "op": "snapshot",
+      "label": "till after leaving and returning (cart persisted?)"
+    }
+  ],
+  "allow": [],
+  "maxWrites": 0,
+  "getFilters": {
+    "^/api/pos/retail/products/lookup$": {}
+  },
+  "settleMs": 3500
+}

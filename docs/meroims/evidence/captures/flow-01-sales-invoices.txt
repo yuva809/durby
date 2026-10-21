@@ -1,0 +1,13 @@
+GET /api/account-config -> 200
+GET /api/accounting/tax/tds-types -> 200
+GET /api/core/accounts -> 200
+GET /api/core/billing/status -> 200
+GET /api/core/branches/mine -> 200
+GET /api/core/credit-terms -> 200
+GET /api/core/documents ?{type,page,perPage} -> 200
+GET /api/core/lookups -> 200
+GET /api/core/me -> 200
+GET /api/core/notifications ?{limit} -> 200
+GET /api/core/signatures -> 200
+GET /api/events/stream ?{access_token} -> 200
+GET /api/overview ?{scope} -> 200

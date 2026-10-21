@@ -1,0 +1,311 @@
+{
+  "scenario": "S7 dry run: open Close shift (Z-report) dialog, fill counted cash 40, stop before confirm",
+  "dryRun": true,
+  "runAt": "2026-10-20T16:30:17.301Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/till",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Close shift",
+      "result": "ok:Close shift"
+    },
+    {
+      "op": "snapshot",
+      "arg": "close dialog",
+      "result": {
+        "label": "close dialog",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Close shift (Z-report)"
+        ],
+        "buttons": [
+          "Close",
+          "Close shift"
+        ],
+        "inputs": [
+          {
+            "label": "Counted cash",
+            "type": "text",
+            "value": ""
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "fill",
+      "arg": "Counted cash",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "filled",
+      "result": {
+        "label": "filled",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Close shift (Z-report)"
+        ],
+        "buttons": [
+          "Close",
+          "Close shift"
+        ],
+        "inputs": [
+          {
+            "label": "Counted cash",
+            "type": "text",
+            "value": "40"
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "Close shift",
+      "result": "ok:Close shift"
+    },
+    {
+      "op": "snapshot",
+      "result": {
+        "label": "dry-run stop before act",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Close shift (Z-report)"
+        ],
+        "buttons": [
+          "Close",
+          "Close shift"
+        ],
+        "inputs": [
+          {
+            "label": "Counted cash",
+            "type": "text",
+            "value": "40"
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "cleanup:escape",
+      "result": "ok"
+    },
+    {
+      "op": "cleanup:go",
+      "result": "ok"
+    }
+  ],
+  "aborted": false,
+  "writesAllowed": 0,
+  "writes": [],
+  "blocked": [],
+  "gets": [],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

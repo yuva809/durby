@@ -1,0 +1,35 @@
+{
+  "scenario": "S7 close shift on 'sample 1' with counted cash 40.00 (user-approved; system expects 62.60)",
+  "sequence": [
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"go","path":"/accounts"},
+    {"op":"go","path":"/till"},
+    {"op":"click","text":"X-report","wait":2500},
+    {"op":"snapshot","label":"x-report before close"},
+    {"op":"escape"},
+    {"op":"click","text":"Close shift","wait":1500},
+    {"op":"fill","match":"Counted cash","value":"40","scope":"dialog","wait":500},
+    {"op":"act","text":"Close shift","scope":"dialog","wait":4000},
+    {"op":"snapshot","label":"Z-report after close","scope":"body"},
+    {"op":"escape"},
+    {"op":"wait","ms":2000},
+    {"op":"snapshot","label":"till after close","scope":"body"},
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"clickNthRow","n":0},
+    {"op":"go","path":"/accounts"},
+    {"op":"go","path":"/till"},
+    {"op":"snapshot","label":"till re-entered","scope":"body"}
+  ],
+  "allow": [{ "method": "POST", "path": "^/api/pos/shifts/264e8f96-b353-40ba-b45a-ad2c719e5ed4/close$", "once": true,
+              "expect": "b && b.countedCash === '40.00' && Object.keys(b).length === 1" }],
+  "maxWrites": 1,
+  "getFilters": {
+    "^/api/pos/retail/shifts/[^/]+/x-report$": {},
+    "^/api/pos/retail/context$": {"pick":["registers"]},
+    "^/api/accounting/journals$": {"list":"data","top":3,"fields":["id","journalNumber","status","sourceEventType","sourceDocumentNumber","totalDebit","createdAt"]},
+    "^/api/accounting/journals/[^/]+$": {"fieldsObj":["journalNumber","status","sourceEventType","totalDebit","totalCredit","lines"]},
+    "^/api/core/accounts$": {"list":"","fields":["id","accountKind","isDefault","balance"]}
+  },
+  "keepRegisterNames": ["sample 1"],
+  "settleMs": 3500
+}

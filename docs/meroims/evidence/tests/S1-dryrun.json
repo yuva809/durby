@@ -1,0 +1,28 @@
+{
+  "scenario": "S1 create POS register 'sample 1' (user-approved name; deviates from TEST-DURBY- prefix at user's instruction)",
+  "dryRun": true,
+  "located": {
+    "ok": true,
+    "section": null,
+    "inputPlaceholder": "Register name (e.g. Till 1)",
+    "buttonText": "Add",
+    "buttonDisabledBefore": false
+  },
+  "runAt": "2026-10-20T15:50:15.236Z",
+  "writes": [],
+  "gets": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/admin/registers",
+      "query": [],
+      "postData": null,
+      "t": "2026-10-20T15:50:11.201Z",
+      "status": 200,
+      "mime": "application/json",
+      "responseBody": "[{\"id\":\"cb8c0cc6-e523-448a-93d6-53ea7119797c\",\"tenantId\":\"f876da5e-f380-4952-af49-1b6747049d0e\",\"name\":\"Register-A\",\"branchId\":null,\"isActive\":true,\"branchName\":null},{\"id\":\"d88ed982-7952-4835-9c9b-2a6caa80ea0d\",\"tenantId\":\"f876da5e-f380-4952-af49-1b6747049d0e\",\"name\":\"Register-B\",\"branchId\":null,\"isActive\":true,\"branchName\":null},{\"id\":\"d171841b-d4e9-4a43-8fc3-2ac6ec29afc3\",\"tenantId\":\"f876da5e-f380-4952-af49-1b6747049d0e\",\"name\":\"Register-C\",\"branchId\":null,\"isActive\":true,\"branchName\":null}]"
+    }
+  ],
+  "blocked": [],
+  "writesAllowed": 0
+}

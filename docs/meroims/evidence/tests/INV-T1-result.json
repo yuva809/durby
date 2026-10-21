@@ -1,0 +1,4893 @@
+{
+  "scenario": "INV-T1 cash purchase bill (no tax): 2 x BEV-WAT-004 @20.00 (FIFO), 2 x CHOC-003 @17.00 (weighted avg), note TEST-DURBY-INV-T1 (user-approved)",
+  "dryRun": false,
+  "runAt": "2026-10-20T18:06:55.386Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/inventory/adjustment",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/inventory/6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/inventory/9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounts",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/reports/inventory-position",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/purchases/bills/create",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Cash Purchase",
+      "result": "ok:Cash Purchase"
+    },
+    {
+      "op": "fill",
+      "arg": "Search product",
+      "result": "ok"
+    },
+    {
+      "op": "clickOption",
+      "arg": "Mineral Water",
+      "result": "ok:Mineral Water Stock 171 · BEV-WAT-004 Rs. 30.00"
+    },
+    {
+      "op": "fill",
+      "arg": "Qty",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Rate",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Add Row",
+      "result": "ok:Add Row"
+    },
+    {
+      "op": "fill",
+      "arg": "Search product",
+      "result": "ok"
+    },
+    {
+      "op": "clickOption",
+      "arg": "Munch Chocolate",
+      "result": "ok:Munch Chocolate Stock 403 · CHOC-003 Rs. 20.00"
+    },
+    {
+      "op": "fill",
+      "arg": "Qty",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Rate",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Notes",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "filled form",
+      "result": {
+        "label": "filled form",
+        "path": "/purchases/bills/create",
+        "dialogOpen": false,
+        "headings": [
+          "MeroIMS",
+          "Create Purchase Bill",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "PAY ACCOUNT",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Close sidebar",
+          "Toggle sidebar",
+          "Switch Profile",
+          "Branches & Warehouses",
+          "Inventory",
+          "Sales",
+          "Purchase",
+          "POS",
+          "Web Store",
+          "Accounting",
+          "G [tenant/user redacted] [tenant/user redacted]",
+          "Open sidebar",
+          "Quick Add",
+          "1",
+          "Cash Purchase",
+          "Party Purchase",
+          "Manual",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Clear selection",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Add image",
+          "B",
+          "I",
+          "U",
+          "Bullet list",
+          "1.",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save"
+        ],
+        "inputs": [
+          {
+            "label": "Search items, parties, bills, entries…",
+            "type": "search",
+            "value": ""
+          },
+          {
+            "label": "Date",
+            "type": "date",
+            "value": "2026-10-20"
+          },
+          {
+            "label": "Search product, code, or barcode",
+            "type": "text",
+            "value": "Mineral Water"
+          },
+          {
+            "label": "Qty",
+            "type": "text",
+            "value": "2"
+          },
+          {
+            "label": "Rate",
+            "type": "text",
+            "value": "20"
+          },
+          {
+            "label": "%",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Rs.",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "0.00",
+            "type": "text",
+            "value": "40"
+          },
+          {
+            "label": "Search product, code, or barcode",
+            "type": "text",
+            "value": "Munch Chocolate"
+          },
+          {
+            "label": "Qty",
+            "type": "text",
+            "value": "2"
+          },
+          {
+            "label": "Rate",
+            "type": "text",
+            "value": "17"
+          },
+          {
+            "label": "%",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Rs.",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "0.00",
+            "type": "text",
+            "value": "34"
+          },
+          {
+            "label": "Pay total amount — Rs. 74.00",
+            "type": "checkbox",
+            "value": "on",
+            "checked": true
+          },
+          {
+            "label": "TDS Type",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "TDS Amount",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Notes",
+            "type": "textarea",
+            "value": "TEST-DURBY-INV-T1"
+          },
+          {
+            "label": "",
+            "type": "file",
+            "value": ""
+          },
+          {
+            "label": "Signature",
+            "type": "select-one",
+            "value": ""
+          }
+        ],
+        "alerts": [],
+        "options": []
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "Save",
+      "result": "ok:Save"
+    },
+    {
+      "op": "act",
+      "target": "Save",
+      "result": "ok:Save",
+      "writeCaptured": true
+    },
+    {
+      "op": "snapshot",
+      "arg": "after save",
+      "result": {
+        "label": "after save",
+        "path": "/purchases/bills/dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+        "dialogOpen": false,
+        "headings": [
+          "MeroIMS",
+          "Purchase Bill"
+        ],
+        "buttons": [
+          "Close sidebar",
+          "Toggle sidebar",
+          "Switch Profile",
+          "Branches & Warehouses",
+          "Inventory",
+          "Sales",
+          "Purchase",
+          "POS",
+          "Web Store",
+          "Accounting",
+          "G [tenant/user redacted] [tenant/user redacted]",
+          "Open sidebar",
+          "Quick Add",
+          "1"
+        ],
+        "inputs": [
+          {
+            "label": "Search items, parties, bills, entries…",
+            "type": "search",
+            "value": ""
+          }
+        ],
+        "alerts": [],
+        "options": []
+      }
+    },
+    {
+      "op": "wait",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/inventory/adjustment",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/inventory/6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/inventory/9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "clickNthRow",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "escape",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/purchases/bills",
+      "result": "ok"
+    },
+    {
+      "op": "clickNthRow",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounts",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/reports/inventory-position",
+      "result": "ok"
+    }
+  ],
+  "aborted": false,
+  "writesAllowed": 1,
+  "writes": [
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/core/purchases/bills",
+      "status": 201,
+      "request": {
+        "date": "2026-10-20",
+        "lines": [
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "description": "Mineral Water",
+            "kind": "product",
+            "quantity": "2",
+            "unitPrice": "20.00",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "entered_quantity": "2",
+              "entered_rate": "20",
+              "unit_label": "Bottle",
+              "discount_source": "auto"
+            }
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "description": "Munch Chocolate",
+            "kind": "product",
+            "quantity": "2",
+            "unitPrice": "17.00",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "entered_quantity": "2",
+              "entered_rate": "17",
+              "unit_label": "Piece",
+              "discount_source": "auto"
+            }
+          }
+        ],
+        "customFields": {
+          "tax_option": "no_vat",
+          "cash_transaction": true,
+          "cash_label": "Cash Purchase"
+        },
+        "notes": "TEST-DURBY-INV-T1",
+        "attachments": [],
+        "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+        "requestId": "46865a55-d24a-48eb-9d25-f629f37fcd98"
+      },
+      "response": {
+        "id": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+        "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+        "documentType": "purchase_bill",
+        "documentNumber": "BILL-2026-000001",
+        "date": "2026-10-20",
+        "currency": "NPR",
+        "partyId": null,
+        "subTotal": "74.00",
+        "discountTotal": "0.00",
+        "taxTotal": "0.00",
+        "otherCharges": "0.00",
+        "charges": [],
+        "customFields": {
+          "cash_label": "Cash Purchase",
+          "tax_option": "no_vat",
+          "cash_transaction": true
+        },
+        "discountPercentage": null,
+        "taxPercentage": null,
+        "grandTotal": "74.00",
+        "settledAmount": "74.00",
+        "settledAtEntry": "74.00",
+        "balanceDue": "0.00",
+        "status": "settled",
+        "settlementAccountId": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+        "creditTermId": null,
+        "posOrderId": null,
+        "stockRequestId": null,
+        "stockTransferId": null,
+        "sourceDocumentId": null,
+        "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+        "branchId": null,
+        "notes": "TEST-DURBY-INV-T1",
+        "termsConditions": null,
+        "tdsAccountId": null,
+        "tdsTypeId": null,
+        "tdsAmount": "0.00",
+        "settlementStatusId": "45831578-86b2-4c18-baba-f753c4c1eeb0",
+        "quotationStatus": null,
+        "isDraft": false,
+        "signatureId": null,
+        "createdById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+        "approvedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+        "approvedAt": "2026-10-20T18:07:38.383Z",
+        "voidedById": null,
+        "voidedAt": null,
+        "voidReason": null,
+        "archivedAt": null,
+        "lines": [
+          {
+            "id": "2f1156fd-4c8f-400e-85d1-13e775ef3217",
+            "documentId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "description": "Mineral Water",
+            "kind": "product",
+            "quantity": "2",
+            "unitPrice": "20.00",
+            "discountAmount": "0.00",
+            "discountPercentage": null,
+            "taxAmount": "0.00",
+            "lineTotal": "40.00",
+            "unitCost": "20.0000",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "entered_quantity": "2",
+              "entered_rate": "20",
+              "unit_label": "Bottle",
+              "discount_source": "auto"
+            },
+            "batchNo": null,
+            "expiryDate": null
+          },
+          {
+            "id": "a7d33bb8-a18b-4f29-a8a9-1e82f307433d",
+            "documentId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 2,
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "description": "Munch Chocolate",
+            "kind": "product",
+            "quantity": "2",
+            "unitPrice": "17.00",
+            "discountAmount": "0.00",
+            "discountPercentage": null,
+            "taxAmount": "0.00",
+            "lineTotal": "34.00",
+            "unitCost": "17.0000",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "entered_quantity": "2",
+              "entered_rate": "17",
+              "unit_label": "Piece",
+              "discount_source": "auto"
+            },
+            "batchNo": null,
+            "expiryDate": null
+          }
+        ],
+        "createdAt": "2026-10-20T18:07:38.089Z",
+        "updatedAt": "2026-10-20T18:07:38.089Z"
+      }
+    }
+  ],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "2e9b1698-cb8d-4608-bdfd-4e0034ad3c80",
+            "quantity": "-1.0000",
+            "unitCost": "18.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:23:07.964Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sales_return",
+            "sourceType": "sales_return",
+            "sourceId": "4b07797e-c3e4-4d48-acc8-e94d6fb163db",
+            "quantity": "1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:11:55.290Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "acc40b81-7717-4c4a-9cc7-2853646fb075",
+            "quantity": "-1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:04:51.144Z"
+          },
+          {
+            "productId": "ed708403-682f-4c16-ae6e-98e522f8e59f",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "68516ee2-7bc4-4420-b578-d5760d2c0f63",
+            "quantity": "790.0000",
+            "unitCost": "190.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-21T09:08:06.203Z"
+          },
+          {
+            "productId": "5e1c0a6c-af3a-4b02-8f85-bda9a519ff36",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "3f961f5a-0334-4c6a-ab9e-277b493ed97d",
+            "quantity": "160.0000",
+            "unitCost": "95.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-21T09:07:27.562Z"
+          },
+          {
+            "productId": "beb4ba08-689a-4393-851c-03bd83d2f87f",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "9d8a3237-7b97-4562-892c-5228ca904ba8",
+            "quantity": "56.0000",
+            "unitCost": "125.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-21T09:06:57.897Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 53,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "2e9b1698-cb8d-4608-bdfd-4e0034ad3c80",
+            "quantity": "-1.0000",
+            "unitCost": "18.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:23:07.964Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sales_return",
+            "sourceType": "sales_return",
+            "sourceId": "4b07797e-c3e4-4d48-acc8-e94d6fb163db",
+            "quantity": "1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:11:55.290Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "acc40b81-7717-4c4a-9cc7-2853646fb075",
+            "quantity": "-1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:04:51.144Z"
+          },
+          {
+            "productId": "ed708403-682f-4c16-ae6e-98e522f8e59f",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "68516ee2-7bc4-4420-b578-d5760d2c0f63",
+            "quantity": "790.0000",
+            "unitCost": "190.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-21T09:08:06.203Z"
+          },
+          {
+            "productId": "5e1c0a6c-af3a-4b02-8f85-bda9a519ff36",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "3f961f5a-0334-4c6a-ab9e-277b493ed97d",
+            "quantity": "160.0000",
+            "unitCost": "95.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-21T09:07:27.562Z"
+          },
+          {
+            "productId": "beb4ba08-689a-4393-851c-03bd83d2f87f",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "9d8a3237-7b97-4562-892c-5228ca904ba8",
+            "quantity": "56.0000",
+            "unitCost": "125.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-21T09:06:57.897Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 53,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "2c4129bf-b787-4e46-9478-4871d980faac",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "120.0000",
+          "reserved": "0.0000",
+          "available": "120.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "a0572d1c-6ed0-4fbe-a72c-f86e2a0ae773",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "68.0000",
+          "reserved": "0.0000",
+          "available": "68.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "ba4c54cf-bd02-4f49-9f60-b90e32dafde3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "156.0000",
+          "reserved": "0.0000",
+          "available": "156.0000",
+          "avgCost": "80.0000"
+        },
+        {
+          "productId": "35c45af2-eec5-495a-ad5d-54a135dd5cb5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "240.0000"
+        },
+        {
+          "productId": "57db6847-7531-4b76-80ea-b250c7c2c3a7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "176.0000",
+          "reserved": "0.0000",
+          "available": "176.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "9f69c91b-6451-4c03-8085-812b6f6a3ddf",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "127.0000",
+          "reserved": "0.0000",
+          "available": "127.0000",
+          "avgCost": "340.0000"
+        },
+        {
+          "productId": "10819402-f78b-482a-9bbd-c9708b20b7b6",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "69.0000",
+          "reserved": "0.0000",
+          "available": "69.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "b1c4725c-2cf3-47a9-bd33-21a33a9d6192",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "123.0000",
+          "reserved": "0.0000",
+          "available": "123.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "d59fd2af-119e-477b-9ea1-2c3985943321",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "231.0000",
+          "reserved": "0.0000",
+          "available": "231.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "761e8424-295d-4680-afb1-0ff3d43b392f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "80.0000",
+          "reserved": "0.0000",
+          "available": "80.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "9f6be6ba-5b07-414c-b670-bb8fb8eacac7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "d82b39a1-38c1-4f0f-96e0-48632176bbe3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "70.0000"
+        },
+        {
+          "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "403.0000",
+          "reserved": "0.0000",
+          "available": "403.0000",
+          "avgCost": "15.0000"
+        },
+        {
+          "productId": "3b68107c-69bf-4dbc-acc4-6ae26d7fe372",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "897a4b22-3195-4aaf-9fdf-2a2a0a3e58da",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "60.0000",
+          "reserved": "0.0000",
+          "available": "60.0000",
+          "avgCost": "28.0000"
+        },
+        {
+          "productId": "a23cd309-87a4-4572-8d99-3108ee7aaacb",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "320.0000",
+          "reserved": "0.0000",
+          "available": "320.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "2488b371-50ef-4ccf-9163-bb3dccb3a763",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "150.0000",
+          "reserved": "0.0000",
+          "available": "150.0000",
+          "avgCost": "48.0000"
+        },
+        {
+          "productId": "374cdafc-b637-4f47-bf1c-ac61f1bd3e3f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "89.0000",
+          "reserved": "0.0000",
+          "available": "89.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "171.0000",
+          "reserved": "0.0000",
+          "available": "171.0000",
+          "avgCost": "18.0000"
+        },
+        {
+          "productId": "7bc9a866-1f79-4a20-ad80-89a68410f370",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "397.0000",
+          "reserved": "0.0000",
+          "available": "397.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "05f74d2a-ea38-4ee7-b7e4-3b4e63595f03",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "172.0000",
+          "reserved": "0.0000",
+          "available": "172.0000",
+          "avgCost": "140.0000"
+        },
+        {
+          "productId": "674a5ae2-5e8c-417e-afb4-776b16d21c02",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "200.0000",
+          "reserved": "0.0000",
+          "available": "200.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "30c4aa80-350e-4690-a697-0497398d6261",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "420.0000"
+        },
+        {
+          "productId": "a4d7b108-aa35-4c01-bb98-8b314de81e5a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "85.0000",
+          "reserved": "0.0000",
+          "available": "85.0000",
+          "avgCost": "32.0000"
+        },
+        {
+          "productId": "28ddb014-5988-4d18-ab6a-cb2baf0393a8",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "92ffc5e8-d859-4d6b-b8ef-d59d31876776",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "60.0000"
+        },
+        {
+          "productId": "931e4d7d-cf17-43aa-9094-35ab56eed59a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "510.0000",
+          "reserved": "0.0000",
+          "available": "510.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "e1690315-b463-4260-899e-4825a6ddd3b5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "871.0000",
+          "reserved": "0.0000",
+          "available": "871.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "c21a2be6-c2b2-4f6a-820e-adff8e09971d",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "612.0000",
+          "reserved": "0.0000",
+          "available": "612.0000",
+          "avgCost": "58.0000"
+        },
+        {
+          "productId": "e4565792-6ed0-478a-b226-8e4bef15e617",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "68.0000"
+        },
+        {
+          "productId": "fcd8bfae-895b-4258-a731-1863ba937737",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "832.0000",
+          "reserved": "0.0000",
+          "available": "832.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "c700613c-faec-4ca0-b11f-d49b2ba57c55",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "293.0000",
+          "reserved": "0.0000",
+          "available": "293.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "725f8a20-7ce0-461f-bac4-e79a793f7aaa",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "82.0000",
+          "reserved": "0.0000",
+          "available": "82.0000",
+          "avgCost": "38.0000"
+        },
+        {
+          "productId": "4809eb8f-f56a-488d-b935-b5f4736f2643",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "864.0000",
+          "reserved": "0.0000",
+          "available": "864.0000",
+          "avgCost": "75.0000"
+        },
+        {
+          "productId": "07480f2b-3a63-4493-93a1-1ad5da67c061",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "980.0000",
+          "reserved": "0.0000",
+          "available": "980.0000",
+          "avgCost": "250.0000"
+        },
+        {
+          "productId": "246c03b9-f5ed-4242-ac77-13c22eb5c95a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "50.0000"
+        },
+        {
+          "productId": "3d3ff783-812f-447d-801a-88cbbea37d62",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "70a7d634-bc1b-4427-84d9-8bb9fbcda0d3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "78.0000",
+          "reserved": "0.0000",
+          "available": "78.0000",
+          "avgCost": "120.0000"
+        },
+        {
+          "productId": "ed708403-682f-4c16-ae6e-98e522f8e59f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "790.0000",
+          "reserved": "0.0000",
+          "available": "790.0000",
+          "avgCost": "190.0000"
+        },
+        {
+          "productId": "5e1c0a6c-af3a-4b02-8f85-bda9a519ff36",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "95.0000"
+        },
+        {
+          "productId": "9fb3c856-9599-41cf-843f-cfe5dabb6c1c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "707d6cf0-ac0f-4a2a-8aab-0b408e1fdef1",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "239.0000",
+          "reserved": "0.0000",
+          "available": "239.0000",
+          "avgCost": "130.0000"
+        },
+        {
+          "productId": "beb4ba08-689a-4393-851c-03bd83d2f87f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "56.0000",
+          "reserved": "0.0000",
+          "available": "56.0000",
+          "avgCost": "125.0000"
+        },
+        {
+          "productId": "d8f42dd1-3ce2-4c6d-9e0b-cebc2bca8901",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "175.0000"
+        },
+        {
+          "productId": "41ef97f3-00f5-4a0b-863f-144a0365d93c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "50.0000",
+          "reserved": "0.0000",
+          "available": "50.0000",
+          "avgCost": "110.0000"
+        },
+        {
+          "productId": "b01c4e8a-c1da-413f-9377-12cdcef5ee32",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "180.0000",
+          "reserved": "0.0000",
+          "available": "180.0000",
+          "avgCost": "100.0000"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "2c4129bf-b787-4e46-9478-4871d980faac",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "120.0000",
+          "reserved": "0.0000",
+          "available": "120.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "a0572d1c-6ed0-4fbe-a72c-f86e2a0ae773",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "68.0000",
+          "reserved": "0.0000",
+          "available": "68.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "ba4c54cf-bd02-4f49-9f60-b90e32dafde3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "156.0000",
+          "reserved": "0.0000",
+          "available": "156.0000",
+          "avgCost": "80.0000"
+        },
+        {
+          "productId": "35c45af2-eec5-495a-ad5d-54a135dd5cb5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "240.0000"
+        },
+        {
+          "productId": "57db6847-7531-4b76-80ea-b250c7c2c3a7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "176.0000",
+          "reserved": "0.0000",
+          "available": "176.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "9f69c91b-6451-4c03-8085-812b6f6a3ddf",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "127.0000",
+          "reserved": "0.0000",
+          "available": "127.0000",
+          "avgCost": "340.0000"
+        },
+        {
+          "productId": "10819402-f78b-482a-9bbd-c9708b20b7b6",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "69.0000",
+          "reserved": "0.0000",
+          "available": "69.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "b1c4725c-2cf3-47a9-bd33-21a33a9d6192",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "123.0000",
+          "reserved": "0.0000",
+          "available": "123.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "d59fd2af-119e-477b-9ea1-2c3985943321",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "231.0000",
+          "reserved": "0.0000",
+          "available": "231.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "761e8424-295d-4680-afb1-0ff3d43b392f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "80.0000",
+          "reserved": "0.0000",
+          "available": "80.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "9f6be6ba-5b07-414c-b670-bb8fb8eacac7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "d82b39a1-38c1-4f0f-96e0-48632176bbe3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "70.0000"
+        },
+        {
+          "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "403.0000",
+          "reserved": "0.0000",
+          "available": "403.0000",
+          "avgCost": "15.0000"
+        },
+        {
+          "productId": "3b68107c-69bf-4dbc-acc4-6ae26d7fe372",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "897a4b22-3195-4aaf-9fdf-2a2a0a3e58da",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "60.0000",
+          "reserved": "0.0000",
+          "available": "60.0000",
+          "avgCost": "28.0000"
+        },
+        {
+          "productId": "a23cd309-87a4-4572-8d99-3108ee7aaacb",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "320.0000",
+          "reserved": "0.0000",
+          "available": "320.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "2488b371-50ef-4ccf-9163-bb3dccb3a763",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "150.0000",
+          "reserved": "0.0000",
+          "available": "150.0000",
+          "avgCost": "48.0000"
+        },
+        {
+          "productId": "374cdafc-b637-4f47-bf1c-ac61f1bd3e3f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "89.0000",
+          "reserved": "0.0000",
+          "available": "89.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "171.0000",
+          "reserved": "0.0000",
+          "available": "171.0000",
+          "avgCost": "18.0000"
+        },
+        {
+          "productId": "7bc9a866-1f79-4a20-ad80-89a68410f370",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "397.0000",
+          "reserved": "0.0000",
+          "available": "397.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "05f74d2a-ea38-4ee7-b7e4-3b4e63595f03",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "172.0000",
+          "reserved": "0.0000",
+          "available": "172.0000",
+          "avgCost": "140.0000"
+        },
+        {
+          "productId": "674a5ae2-5e8c-417e-afb4-776b16d21c02",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "200.0000",
+          "reserved": "0.0000",
+          "available": "200.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "30c4aa80-350e-4690-a697-0497398d6261",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "420.0000"
+        },
+        {
+          "productId": "a4d7b108-aa35-4c01-bb98-8b314de81e5a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "85.0000",
+          "reserved": "0.0000",
+          "available": "85.0000",
+          "avgCost": "32.0000"
+        },
+        {
+          "productId": "28ddb014-5988-4d18-ab6a-cb2baf0393a8",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "92ffc5e8-d859-4d6b-b8ef-d59d31876776",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "60.0000"
+        },
+        {
+          "productId": "931e4d7d-cf17-43aa-9094-35ab56eed59a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "510.0000",
+          "reserved": "0.0000",
+          "available": "510.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "e1690315-b463-4260-899e-4825a6ddd3b5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "871.0000",
+          "reserved": "0.0000",
+          "available": "871.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "c21a2be6-c2b2-4f6a-820e-adff8e09971d",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "612.0000",
+          "reserved": "0.0000",
+          "available": "612.0000",
+          "avgCost": "58.0000"
+        },
+        {
+          "productId": "e4565792-6ed0-478a-b226-8e4bef15e617",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "68.0000"
+        },
+        {
+          "productId": "fcd8bfae-895b-4258-a731-1863ba937737",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "832.0000",
+          "reserved": "0.0000",
+          "available": "832.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "c700613c-faec-4ca0-b11f-d49b2ba57c55",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "293.0000",
+          "reserved": "0.0000",
+          "available": "293.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "725f8a20-7ce0-461f-bac4-e79a793f7aaa",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "82.0000",
+          "reserved": "0.0000",
+          "available": "82.0000",
+          "avgCost": "38.0000"
+        },
+        {
+          "productId": "4809eb8f-f56a-488d-b935-b5f4736f2643",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "864.0000",
+          "reserved": "0.0000",
+          "available": "864.0000",
+          "avgCost": "75.0000"
+        },
+        {
+          "productId": "07480f2b-3a63-4493-93a1-1ad5da67c061",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "980.0000",
+          "reserved": "0.0000",
+          "available": "980.0000",
+          "avgCost": "250.0000"
+        },
+        {
+          "productId": "246c03b9-f5ed-4242-ac77-13c22eb5c95a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "50.0000"
+        },
+        {
+          "productId": "3d3ff783-812f-447d-801a-88cbbea37d62",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "70a7d634-bc1b-4427-84d9-8bb9fbcda0d3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "78.0000",
+          "reserved": "0.0000",
+          "available": "78.0000",
+          "avgCost": "120.0000"
+        },
+        {
+          "productId": "ed708403-682f-4c16-ae6e-98e522f8e59f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "790.0000",
+          "reserved": "0.0000",
+          "available": "790.0000",
+          "avgCost": "190.0000"
+        },
+        {
+          "productId": "5e1c0a6c-af3a-4b02-8f85-bda9a519ff36",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "95.0000"
+        },
+        {
+          "productId": "9fb3c856-9599-41cf-843f-cfe5dabb6c1c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "707d6cf0-ac0f-4a2a-8aab-0b408e1fdef1",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "239.0000",
+          "reserved": "0.0000",
+          "available": "239.0000",
+          "avgCost": "130.0000"
+        },
+        {
+          "productId": "beb4ba08-689a-4393-851c-03bd83d2f87f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "56.0000",
+          "reserved": "0.0000",
+          "available": "56.0000",
+          "avgCost": "125.0000"
+        },
+        {
+          "productId": "d8f42dd1-3ce2-4c6d-9e0b-cebc2bca8901",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "175.0000"
+        },
+        {
+          "productId": "41ef97f3-00f5-4a0b-863f-144a0365d93c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "50.0000",
+          "reserved": "0.0000",
+          "available": "50.0000",
+          "avgCost": "110.0000"
+        },
+        {
+          "productId": "b01c4e8a-c1da-413f-9377-12cdcef5ee32",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "180.0000",
+          "reserved": "0.0000",
+          "available": "180.0000",
+          "avgCost": "100.0000"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "2e9b1698-cb8d-4608-bdfd-4e0034ad3c80",
+            "quantity": "-1.0000",
+            "unitCost": "18.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:23:07.964Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "38878091-bc81-4db1-ba0c-bb342f70ad5b",
+            "quantity": "172.0000",
+            "unitCost": "18.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-21T06:43:20.263Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 100,
+          "total": 2,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "sections": [
+          {
+            "title": "Mineral Water (BEV-WAT-004)",
+            "rows": [
+              {
+                "date": "1944-01-01",
+                "type": "Opening Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 0,
+                "balanceRate": "0.00",
+                "balanceAmount": "0.00"
+              },
+              {
+                "date": "2026-09-21",
+                "type": "Inventory Adjustment",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "—",
+                "inQty": 172,
+                "inRate": "18.00",
+                "inAmount": "3096.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 172,
+                "balanceRate": "18.00",
+                "balanceAmount": "3096.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Invoice",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "INV-2026-000018",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": 1,
+                "outRate": "18.00",
+                "outAmount": "18.00",
+                "balanceQty": 171,
+                "balanceRate": "18.00",
+                "balanceAmount": "3078.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Closing Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 171,
+                "balanceRate": "18.00",
+                "balanceAmount": "3078.00"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "2c4129bf-b787-4e46-9478-4871d980faac",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "120.0000",
+          "reserved": "0.0000",
+          "available": "120.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "a0572d1c-6ed0-4fbe-a72c-f86e2a0ae773",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "68.0000",
+          "reserved": "0.0000",
+          "available": "68.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "ba4c54cf-bd02-4f49-9f60-b90e32dafde3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "156.0000",
+          "reserved": "0.0000",
+          "available": "156.0000",
+          "avgCost": "80.0000"
+        },
+        {
+          "productId": "35c45af2-eec5-495a-ad5d-54a135dd5cb5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "240.0000"
+        },
+        {
+          "productId": "57db6847-7531-4b76-80ea-b250c7c2c3a7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "176.0000",
+          "reserved": "0.0000",
+          "available": "176.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "9f69c91b-6451-4c03-8085-812b6f6a3ddf",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "127.0000",
+          "reserved": "0.0000",
+          "available": "127.0000",
+          "avgCost": "340.0000"
+        },
+        {
+          "productId": "10819402-f78b-482a-9bbd-c9708b20b7b6",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "69.0000",
+          "reserved": "0.0000",
+          "available": "69.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "b1c4725c-2cf3-47a9-bd33-21a33a9d6192",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "123.0000",
+          "reserved": "0.0000",
+          "available": "123.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "d59fd2af-119e-477b-9ea1-2c3985943321",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "231.0000",
+          "reserved": "0.0000",
+          "available": "231.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "761e8424-295d-4680-afb1-0ff3d43b392f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "80.0000",
+          "reserved": "0.0000",
+          "available": "80.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "9f6be6ba-5b07-414c-b670-bb8fb8eacac7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "d82b39a1-38c1-4f0f-96e0-48632176bbe3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "70.0000"
+        },
+        {
+          "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "403.0000",
+          "reserved": "0.0000",
+          "available": "403.0000",
+          "avgCost": "15.0000"
+        },
+        {
+          "productId": "3b68107c-69bf-4dbc-acc4-6ae26d7fe372",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "897a4b22-3195-4aaf-9fdf-2a2a0a3e58da",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "60.0000",
+          "reserved": "0.0000",
+          "available": "60.0000",
+          "avgCost": "28.0000"
+        },
+        {
+          "productId": "a23cd309-87a4-4572-8d99-3108ee7aaacb",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "320.0000",
+          "reserved": "0.0000",
+          "available": "320.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "2488b371-50ef-4ccf-9163-bb3dccb3a763",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "150.0000",
+          "reserved": "0.0000",
+          "available": "150.0000",
+          "avgCost": "48.0000"
+        },
+        {
+          "productId": "374cdafc-b637-4f47-bf1c-ac61f1bd3e3f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "89.0000",
+          "reserved": "0.0000",
+          "available": "89.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "171.0000",
+          "reserved": "0.0000",
+          "available": "171.0000",
+          "avgCost": "18.0000"
+        },
+        {
+          "productId": "7bc9a866-1f79-4a20-ad80-89a68410f370",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "397.0000",
+          "reserved": "0.0000",
+          "available": "397.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "05f74d2a-ea38-4ee7-b7e4-3b4e63595f03",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "172.0000",
+          "reserved": "0.0000",
+          "available": "172.0000",
+          "avgCost": "140.0000"
+        },
+        {
+          "productId": "674a5ae2-5e8c-417e-afb4-776b16d21c02",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "200.0000",
+          "reserved": "0.0000",
+          "available": "200.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "30c4aa80-350e-4690-a697-0497398d6261",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "420.0000"
+        },
+        {
+          "productId": "a4d7b108-aa35-4c01-bb98-8b314de81e5a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "85.0000",
+          "reserved": "0.0000",
+          "available": "85.0000",
+          "avgCost": "32.0000"
+        },
+        {
+          "productId": "28ddb014-5988-4d18-ab6a-cb2baf0393a8",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "92ffc5e8-d859-4d6b-b8ef-d59d31876776",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "60.0000"
+        },
+        {
+          "productId": "931e4d7d-cf17-43aa-9094-35ab56eed59a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "510.0000",
+          "reserved": "0.0000",
+          "available": "510.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "e1690315-b463-4260-899e-4825a6ddd3b5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "871.0000",
+          "reserved": "0.0000",
+          "available": "871.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "c21a2be6-c2b2-4f6a-820e-adff8e09971d",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "612.0000",
+          "reserved": "0.0000",
+          "available": "612.0000",
+          "avgCost": "58.0000"
+        },
+        {
+          "productId": "e4565792-6ed0-478a-b226-8e4bef15e617",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "68.0000"
+        },
+        {
+          "productId": "fcd8bfae-895b-4258-a731-1863ba937737",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "832.0000",
+          "reserved": "0.0000",
+          "available": "832.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "c700613c-faec-4ca0-b11f-d49b2ba57c55",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "293.0000",
+          "reserved": "0.0000",
+          "available": "293.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "725f8a20-7ce0-461f-bac4-e79a793f7aaa",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "82.0000",
+          "reserved": "0.0000",
+          "available": "82.0000",
+          "avgCost": "38.0000"
+        },
+        {
+          "productId": "4809eb8f-f56a-488d-b935-b5f4736f2643",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "864.0000",
+          "reserved": "0.0000",
+          "available": "864.0000",
+          "avgCost": "75.0000"
+        },
+        {
+          "productId": "07480f2b-3a63-4493-93a1-1ad5da67c061",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "980.0000",
+          "reserved": "0.0000",
+          "available": "980.0000",
+          "avgCost": "250.0000"
+        },
+        {
+          "productId": "246c03b9-f5ed-4242-ac77-13c22eb5c95a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "50.0000"
+        },
+        {
+          "productId": "3d3ff783-812f-447d-801a-88cbbea37d62",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "70a7d634-bc1b-4427-84d9-8bb9fbcda0d3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "78.0000",
+          "reserved": "0.0000",
+          "available": "78.0000",
+          "avgCost": "120.0000"
+        },
+        {
+          "productId": "ed708403-682f-4c16-ae6e-98e522f8e59f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "790.0000",
+          "reserved": "0.0000",
+          "available": "790.0000",
+          "avgCost": "190.0000"
+        },
+        {
+          "productId": "5e1c0a6c-af3a-4b02-8f85-bda9a519ff36",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "95.0000"
+        },
+        {
+          "productId": "9fb3c856-9599-41cf-843f-cfe5dabb6c1c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "707d6cf0-ac0f-4a2a-8aab-0b408e1fdef1",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "239.0000",
+          "reserved": "0.0000",
+          "available": "239.0000",
+          "avgCost": "130.0000"
+        },
+        {
+          "productId": "beb4ba08-689a-4393-851c-03bd83d2f87f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "56.0000",
+          "reserved": "0.0000",
+          "available": "56.0000",
+          "avgCost": "125.0000"
+        },
+        {
+          "productId": "d8f42dd1-3ce2-4c6d-9e0b-cebc2bca8901",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "175.0000"
+        },
+        {
+          "productId": "41ef97f3-00f5-4a0b-863f-144a0365d93c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "50.0000",
+          "reserved": "0.0000",
+          "available": "50.0000",
+          "avgCost": "110.0000"
+        },
+        {
+          "productId": "b01c4e8a-c1da-413f-9377-12cdcef5ee32",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "180.0000",
+          "reserved": "0.0000",
+          "available": "180.0000",
+          "avgCost": "100.0000"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sales_return",
+            "sourceType": "sales_return",
+            "sourceId": "4b07797e-c3e4-4d48-acc8-e94d6fb163db",
+            "quantity": "1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:11:55.290Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "acc40b81-7717-4c4a-9cc7-2853646fb075",
+            "quantity": "-1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:04:51.144Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "343c5282-8b5e-448b-9363-2beb95cbc86c",
+            "quantity": "403.0000",
+            "unitCost": "15.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-17T11:37:29.851Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 100,
+          "total": 3,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "sections": [
+          {
+            "title": "Munch Chocolate (CHOC-003)",
+            "rows": [
+              {
+                "date": "1944-01-01",
+                "type": "Opening Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 0,
+                "balanceRate": "0.00",
+                "balanceAmount": "0.00"
+              },
+              {
+                "date": "2026-09-17",
+                "type": "Inventory Adjustment",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "—",
+                "inQty": 403,
+                "inRate": "15.00",
+                "inAmount": "6045.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 403,
+                "balanceRate": "15.00",
+                "balanceAmount": "6045.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Invoice",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "INV-2026-000017",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": 1,
+                "outRate": "15.00",
+                "outAmount": "15.00",
+                "balanceQty": 402,
+                "balanceRate": "15.00",
+                "balanceAmount": "6030.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Return",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "SRT-2026-000001",
+                "inQty": 1,
+                "inRate": "15.00",
+                "inAmount": "15.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 403,
+                "balanceRate": "15.00",
+                "balanceAmount": "6045.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Closing Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 403,
+                "balanceRate": "15.00",
+                "balanceAmount": "6045.00"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "journalNumber": "JV-2026-000059",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000018",
+            "totalDebit": "48.00",
+            "createdAt": "2026-10-20T16:23:08.926Z"
+          },
+          {
+            "id": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "journalNumber": "JV-2026-000058",
+            "status": "posted",
+            "sourceEventType": "core.sales_return.recorded",
+            "sourceDocumentNumber": "SRT-2026-000001",
+            "totalDebit": "37.60",
+            "createdAt": "2026-10-20T16:11:56.281Z"
+          },
+          {
+            "id": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "journalNumber": "JV-2026-000057",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000017",
+            "totalDebit": "37.60",
+            "createdAt": "2026-10-20T16:04:51.818Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 59,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "0.00"
+        },
+        {
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/reports/business/inventory-position",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "body": {
+        "rowCount": 46,
+        "totals": {
+          "item": "Total",
+          "qty": 13524,
+          "amount": "1521846.00"
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "0.00"
+        },
+        {
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "act",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "-74.00"
+        },
+        {
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "act",
+      "path": "/api/core/documents/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "documentNumber": "BILL-2026-000001",
+        "documentType": "purchase_bill",
+        "status": "settled",
+        "isDraft": false,
+        "subTotal": "74.00",
+        "taxTotal": "0.00",
+        "grandTotal": "74.00",
+        "balanceDue": "0.00",
+        "settledAmount": "74.00",
+        "settlementStatus": {
+          "id": "45831578-86b2-4c18-baba-f753c4c1eeb0",
+          "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+          "name": "settled",
+          "isSystem": true,
+          "createdAt": "2026-09-17T11:47:26.573Z"
+        },
+        "settlementAccountId": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+        "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+        "lines": [
+          {
+            "id": "2f1156fd-4c8f-400e-85d1-13e775ef3217",
+            "documentId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "description": "Mineral Water",
+            "kind": "product",
+            "quantity": "2.0000",
+            "unitPrice": "20.00",
+            "discountAmount": "0.00",
+            "discountPercentage": null,
+            "taxAmount": "0.00",
+            "lineTotal": "40.00",
+            "unitCost": "20.0000",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "unit_label": "Bottle",
+              "entered_rate": "20",
+              "discount_source": "auto",
+              "entered_quantity": "2"
+            },
+            "batchNo": null,
+            "expiryDate": null
+          },
+          {
+            "id": "a7d33bb8-a18b-4f29-a8a9-1e82f307433d",
+            "documentId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 2,
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "description": "Munch Chocolate",
+            "kind": "product",
+            "quantity": "2.0000",
+            "unitPrice": "17.00",
+            "discountAmount": "0.00",
+            "discountPercentage": null,
+            "taxAmount": "0.00",
+            "lineTotal": "34.00",
+            "unitCost": "17.0000",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "unit_label": "Piece",
+              "entered_rate": "17",
+              "discount_source": "auto",
+              "entered_quantity": "2"
+            },
+            "batchNo": null,
+            "expiryDate": null
+          }
+        ],
+        "payments": [],
+        "customFields": {
+          "cash_label": "Cash Purchase",
+          "tax_option": "no_vat",
+          "cash_transaction": true
+        },
+        "notes": "TEST-DURBY-INV-T1"
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "sourceId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "quantity": "2.0000",
+            "unitCost": "17.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "sourceId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "quantity": "2.0000",
+            "unitCost": "20.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "2e9b1698-cb8d-4608-bdfd-4e0034ad3c80",
+            "quantity": "-1.0000",
+            "unitCost": "18.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:23:07.964Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sales_return",
+            "sourceType": "sales_return",
+            "sourceId": "4b07797e-c3e4-4d48-acc8-e94d6fb163db",
+            "quantity": "1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:11:55.290Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "acc40b81-7717-4c4a-9cc7-2853646fb075",
+            "quantity": "-1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:04:51.144Z"
+          },
+          {
+            "productId": "ed708403-682f-4c16-ae6e-98e522f8e59f",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "68516ee2-7bc4-4420-b578-d5760d2c0f63",
+            "quantity": "790.0000",
+            "unitCost": "190.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-21T09:08:06.203Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 55,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "sourceId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "quantity": "2.0000",
+            "unitCost": "17.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "sourceId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "quantity": "2.0000",
+            "unitCost": "20.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "2e9b1698-cb8d-4608-bdfd-4e0034ad3c80",
+            "quantity": "-1.0000",
+            "unitCost": "18.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:23:07.964Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sales_return",
+            "sourceType": "sales_return",
+            "sourceId": "4b07797e-c3e4-4d48-acc8-e94d6fb163db",
+            "quantity": "1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:11:55.290Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "acc40b81-7717-4c4a-9cc7-2853646fb075",
+            "quantity": "-1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:04:51.144Z"
+          },
+          {
+            "productId": "ed708403-682f-4c16-ae6e-98e522f8e59f",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "68516ee2-7bc4-4420-b578-d5760d2c0f63",
+            "quantity": "790.0000",
+            "unitCost": "190.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-21T09:08:06.203Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 55,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "2c4129bf-b787-4e46-9478-4871d980faac",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "120.0000",
+          "reserved": "0.0000",
+          "available": "120.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "a0572d1c-6ed0-4fbe-a72c-f86e2a0ae773",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "68.0000",
+          "reserved": "0.0000",
+          "available": "68.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "ba4c54cf-bd02-4f49-9f60-b90e32dafde3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "156.0000",
+          "reserved": "0.0000",
+          "available": "156.0000",
+          "avgCost": "80.0000"
+        },
+        {
+          "productId": "35c45af2-eec5-495a-ad5d-54a135dd5cb5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "240.0000"
+        },
+        {
+          "productId": "57db6847-7531-4b76-80ea-b250c7c2c3a7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "176.0000",
+          "reserved": "0.0000",
+          "available": "176.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "9f69c91b-6451-4c03-8085-812b6f6a3ddf",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "127.0000",
+          "reserved": "0.0000",
+          "available": "127.0000",
+          "avgCost": "340.0000"
+        },
+        {
+          "productId": "10819402-f78b-482a-9bbd-c9708b20b7b6",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "69.0000",
+          "reserved": "0.0000",
+          "available": "69.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "b1c4725c-2cf3-47a9-bd33-21a33a9d6192",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "123.0000",
+          "reserved": "0.0000",
+          "available": "123.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "d59fd2af-119e-477b-9ea1-2c3985943321",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "231.0000",
+          "reserved": "0.0000",
+          "available": "231.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "761e8424-295d-4680-afb1-0ff3d43b392f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "80.0000",
+          "reserved": "0.0000",
+          "available": "80.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "9f6be6ba-5b07-414c-b670-bb8fb8eacac7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "d82b39a1-38c1-4f0f-96e0-48632176bbe3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "70.0000"
+        },
+        {
+          "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "405.0000",
+          "reserved": "0.0000",
+          "available": "405.0000",
+          "avgCost": "15.0099"
+        },
+        {
+          "productId": "3b68107c-69bf-4dbc-acc4-6ae26d7fe372",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "897a4b22-3195-4aaf-9fdf-2a2a0a3e58da",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "60.0000",
+          "reserved": "0.0000",
+          "available": "60.0000",
+          "avgCost": "28.0000"
+        },
+        {
+          "productId": "a23cd309-87a4-4572-8d99-3108ee7aaacb",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "320.0000",
+          "reserved": "0.0000",
+          "available": "320.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "2488b371-50ef-4ccf-9163-bb3dccb3a763",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "150.0000",
+          "reserved": "0.0000",
+          "available": "150.0000",
+          "avgCost": "48.0000"
+        },
+        {
+          "productId": "374cdafc-b637-4f47-bf1c-ac61f1bd3e3f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "89.0000",
+          "reserved": "0.0000",
+          "available": "89.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "173.0000",
+          "reserved": "0.0000",
+          "available": "173.0000",
+          "avgCost": "18.0231"
+        },
+        {
+          "productId": "7bc9a866-1f79-4a20-ad80-89a68410f370",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "397.0000",
+          "reserved": "0.0000",
+          "available": "397.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "05f74d2a-ea38-4ee7-b7e4-3b4e63595f03",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "172.0000",
+          "reserved": "0.0000",
+          "available": "172.0000",
+          "avgCost": "140.0000"
+        },
+        {
+          "productId": "674a5ae2-5e8c-417e-afb4-776b16d21c02",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "200.0000",
+          "reserved": "0.0000",
+          "available": "200.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "30c4aa80-350e-4690-a697-0497398d6261",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "420.0000"
+        },
+        {
+          "productId": "a4d7b108-aa35-4c01-bb98-8b314de81e5a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "85.0000",
+          "reserved": "0.0000",
+          "available": "85.0000",
+          "avgCost": "32.0000"
+        },
+        {
+          "productId": "28ddb014-5988-4d18-ab6a-cb2baf0393a8",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "92ffc5e8-d859-4d6b-b8ef-d59d31876776",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "60.0000"
+        },
+        {
+          "productId": "931e4d7d-cf17-43aa-9094-35ab56eed59a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "510.0000",
+          "reserved": "0.0000",
+          "available": "510.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "e1690315-b463-4260-899e-4825a6ddd3b5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "871.0000",
+          "reserved": "0.0000",
+          "available": "871.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "c21a2be6-c2b2-4f6a-820e-adff8e09971d",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "612.0000",
+          "reserved": "0.0000",
+          "available": "612.0000",
+          "avgCost": "58.0000"
+        },
+        {
+          "productId": "e4565792-6ed0-478a-b226-8e4bef15e617",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "68.0000"
+        },
+        {
+          "productId": "fcd8bfae-895b-4258-a731-1863ba937737",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "832.0000",
+          "reserved": "0.0000",
+          "available": "832.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "c700613c-faec-4ca0-b11f-d49b2ba57c55",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "293.0000",
+          "reserved": "0.0000",
+          "available": "293.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "725f8a20-7ce0-461f-bac4-e79a793f7aaa",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "82.0000",
+          "reserved": "0.0000",
+          "available": "82.0000",
+          "avgCost": "38.0000"
+        },
+        {
+          "productId": "4809eb8f-f56a-488d-b935-b5f4736f2643",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "864.0000",
+          "reserved": "0.0000",
+          "available": "864.0000",
+          "avgCost": "75.0000"
+        },
+        {
+          "productId": "07480f2b-3a63-4493-93a1-1ad5da67c061",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "980.0000",
+          "reserved": "0.0000",
+          "available": "980.0000",
+          "avgCost": "250.0000"
+        },
+        {
+          "productId": "246c03b9-f5ed-4242-ac77-13c22eb5c95a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "50.0000"
+        },
+        {
+          "productId": "3d3ff783-812f-447d-801a-88cbbea37d62",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "70a7d634-bc1b-4427-84d9-8bb9fbcda0d3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "78.0000",
+          "reserved": "0.0000",
+          "available": "78.0000",
+          "avgCost": "120.0000"
+        },
+        {
+          "productId": "ed708403-682f-4c16-ae6e-98e522f8e59f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "790.0000",
+          "reserved": "0.0000",
+          "available": "790.0000",
+          "avgCost": "190.0000"
+        },
+        {
+          "productId": "5e1c0a6c-af3a-4b02-8f85-bda9a519ff36",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "95.0000"
+        },
+        {
+          "productId": "9fb3c856-9599-41cf-843f-cfe5dabb6c1c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "707d6cf0-ac0f-4a2a-8aab-0b408e1fdef1",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "239.0000",
+          "reserved": "0.0000",
+          "available": "239.0000",
+          "avgCost": "130.0000"
+        },
+        {
+          "productId": "beb4ba08-689a-4393-851c-03bd83d2f87f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "56.0000",
+          "reserved": "0.0000",
+          "available": "56.0000",
+          "avgCost": "125.0000"
+        },
+        {
+          "productId": "d8f42dd1-3ce2-4c6d-9e0b-cebc2bca8901",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "175.0000"
+        },
+        {
+          "productId": "41ef97f3-00f5-4a0b-863f-144a0365d93c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "50.0000",
+          "reserved": "0.0000",
+          "available": "50.0000",
+          "avgCost": "110.0000"
+        },
+        {
+          "productId": "b01c4e8a-c1da-413f-9377-12cdcef5ee32",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "180.0000",
+          "reserved": "0.0000",
+          "available": "180.0000",
+          "avgCost": "100.0000"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "2c4129bf-b787-4e46-9478-4871d980faac",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "120.0000",
+          "reserved": "0.0000",
+          "available": "120.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "a0572d1c-6ed0-4fbe-a72c-f86e2a0ae773",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "68.0000",
+          "reserved": "0.0000",
+          "available": "68.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "ba4c54cf-bd02-4f49-9f60-b90e32dafde3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "156.0000",
+          "reserved": "0.0000",
+          "available": "156.0000",
+          "avgCost": "80.0000"
+        },
+        {
+          "productId": "35c45af2-eec5-495a-ad5d-54a135dd5cb5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "240.0000"
+        },
+        {
+          "productId": "57db6847-7531-4b76-80ea-b250c7c2c3a7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "176.0000",
+          "reserved": "0.0000",
+          "available": "176.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "9f69c91b-6451-4c03-8085-812b6f6a3ddf",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "127.0000",
+          "reserved": "0.0000",
+          "available": "127.0000",
+          "avgCost": "340.0000"
+        },
+        {
+          "productId": "10819402-f78b-482a-9bbd-c9708b20b7b6",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "69.0000",
+          "reserved": "0.0000",
+          "available": "69.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "b1c4725c-2cf3-47a9-bd33-21a33a9d6192",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "123.0000",
+          "reserved": "0.0000",
+          "available": "123.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "d59fd2af-119e-477b-9ea1-2c3985943321",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "231.0000",
+          "reserved": "0.0000",
+          "available": "231.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "761e8424-295d-4680-afb1-0ff3d43b392f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "80.0000",
+          "reserved": "0.0000",
+          "available": "80.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "9f6be6ba-5b07-414c-b670-bb8fb8eacac7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "d82b39a1-38c1-4f0f-96e0-48632176bbe3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "70.0000"
+        },
+        {
+          "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "405.0000",
+          "reserved": "0.0000",
+          "available": "405.0000",
+          "avgCost": "15.0099"
+        },
+        {
+          "productId": "3b68107c-69bf-4dbc-acc4-6ae26d7fe372",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "897a4b22-3195-4aaf-9fdf-2a2a0a3e58da",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "60.0000",
+          "reserved": "0.0000",
+          "available": "60.0000",
+          "avgCost": "28.0000"
+        },
+        {
+          "productId": "a23cd309-87a4-4572-8d99-3108ee7aaacb",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "320.0000",
+          "reserved": "0.0000",
+          "available": "320.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "2488b371-50ef-4ccf-9163-bb3dccb3a763",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "150.0000",
+          "reserved": "0.0000",
+          "available": "150.0000",
+          "avgCost": "48.0000"
+        },
+        {
+          "productId": "374cdafc-b637-4f47-bf1c-ac61f1bd3e3f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "89.0000",
+          "reserved": "0.0000",
+          "available": "89.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "173.0000",
+          "reserved": "0.0000",
+          "available": "173.0000",
+          "avgCost": "18.0231"
+        },
+        {
+          "productId": "7bc9a866-1f79-4a20-ad80-89a68410f370",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "397.0000",
+          "reserved": "0.0000",
+          "available": "397.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "05f74d2a-ea38-4ee7-b7e4-3b4e63595f03",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "172.0000",
+          "reserved": "0.0000",
+          "available": "172.0000",
+          "avgCost": "140.0000"
+        },
+        {
+          "productId": "674a5ae2-5e8c-417e-afb4-776b16d21c02",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "200.0000",
+          "reserved": "0.0000",
+          "available": "200.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "30c4aa80-350e-4690-a697-0497398d6261",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "420.0000"
+        },
+        {
+          "productId": "a4d7b108-aa35-4c01-bb98-8b314de81e5a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "85.0000",
+          "reserved": "0.0000",
+          "available": "85.0000",
+          "avgCost": "32.0000"
+        },
+        {
+          "productId": "28ddb014-5988-4d18-ab6a-cb2baf0393a8",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "92ffc5e8-d859-4d6b-b8ef-d59d31876776",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "60.0000"
+        },
+        {
+          "productId": "931e4d7d-cf17-43aa-9094-35ab56eed59a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "510.0000",
+          "reserved": "0.0000",
+          "available": "510.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "e1690315-b463-4260-899e-4825a6ddd3b5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "871.0000",
+          "reserved": "0.0000",
+          "available": "871.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "c21a2be6-c2b2-4f6a-820e-adff8e09971d",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "612.0000",
+          "reserved": "0.0000",
+          "available": "612.0000",
+          "avgCost": "58.0000"
+        },
+        {
+          "productId": "e4565792-6ed0-478a-b226-8e4bef15e617",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "68.0000"
+        },
+        {
+          "productId": "fcd8bfae-895b-4258-a731-1863ba937737",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "832.0000",
+          "reserved": "0.0000",
+          "available": "832.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "c700613c-faec-4ca0-b11f-d49b2ba57c55",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "293.0000",
+          "reserved": "0.0000",
+          "available": "293.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "725f8a20-7ce0-461f-bac4-e79a793f7aaa",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "82.0000",
+          "reserved": "0.0000",
+          "available": "82.0000",
+          "avgCost": "38.0000"
+        },
+        {
+          "productId": "4809eb8f-f56a-488d-b935-b5f4736f2643",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "864.0000",
+          "reserved": "0.0000",
+          "available": "864.0000",
+          "avgCost": "75.0000"
+        },
+        {
+          "productId": "07480f2b-3a63-4493-93a1-1ad5da67c061",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "980.0000",
+          "reserved": "0.0000",
+          "available": "980.0000",
+          "avgCost": "250.0000"
+        },
+        {
+          "productId": "246c03b9-f5ed-4242-ac77-13c22eb5c95a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "50.0000"
+        },
+        {
+          "productId": "3d3ff783-812f-447d-801a-88cbbea37d62",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "70a7d634-bc1b-4427-84d9-8bb9fbcda0d3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "78.0000",
+          "reserved": "0.0000",
+          "available": "78.0000",
+          "avgCost": "120.0000"
+        },
+        {
+          "productId": "ed708403-682f-4c16-ae6e-98e522f8e59f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "790.0000",
+          "reserved": "0.0000",
+          "available": "790.0000",
+          "avgCost": "190.0000"
+        },
+        {
+          "productId": "5e1c0a6c-af3a-4b02-8f85-bda9a519ff36",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "95.0000"
+        },
+        {
+          "productId": "9fb3c856-9599-41cf-843f-cfe5dabb6c1c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "707d6cf0-ac0f-4a2a-8aab-0b408e1fdef1",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "239.0000",
+          "reserved": "0.0000",
+          "available": "239.0000",
+          "avgCost": "130.0000"
+        },
+        {
+          "productId": "beb4ba08-689a-4393-851c-03bd83d2f87f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "56.0000",
+          "reserved": "0.0000",
+          "available": "56.0000",
+          "avgCost": "125.0000"
+        },
+        {
+          "productId": "d8f42dd1-3ce2-4c6d-9e0b-cebc2bca8901",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "175.0000"
+        },
+        {
+          "productId": "41ef97f3-00f5-4a0b-863f-144a0365d93c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "50.0000",
+          "reserved": "0.0000",
+          "available": "50.0000",
+          "avgCost": "110.0000"
+        },
+        {
+          "productId": "b01c4e8a-c1da-413f-9377-12cdcef5ee32",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "180.0000",
+          "reserved": "0.0000",
+          "available": "180.0000",
+          "avgCost": "100.0000"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "sourceId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "quantity": "2.0000",
+            "unitCost": "20.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "2e9b1698-cb8d-4608-bdfd-4e0034ad3c80",
+            "quantity": "-1.0000",
+            "unitCost": "18.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:23:07.964Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "38878091-bc81-4db1-ba0c-bb342f70ad5b",
+            "quantity": "172.0000",
+            "unitCost": "18.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-21T06:43:20.263Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 100,
+          "total": 3,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "sections": [
+          {
+            "title": "Mineral Water (BEV-WAT-004)",
+            "rows": [
+              {
+                "date": "1944-01-01",
+                "type": "Opening Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 0,
+                "balanceRate": "0.00",
+                "balanceAmount": "0.00"
+              },
+              {
+                "date": "2026-09-21",
+                "type": "Inventory Adjustment",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "—",
+                "inQty": 172,
+                "inRate": "18.00",
+                "inAmount": "3096.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 172,
+                "balanceRate": "18.00",
+                "balanceAmount": "3096.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Invoice",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "INV-2026-000018",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": 1,
+                "outRate": "18.00",
+                "outAmount": "18.00",
+                "balanceQty": 171,
+                "balanceRate": "18.00",
+                "balanceAmount": "3078.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Purchase Bill",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "BILL-2026-000001",
+                "inQty": 2,
+                "inRate": "20.00",
+                "inAmount": "40.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 173,
+                "balanceRate": "18.02",
+                "balanceAmount": "3118.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Closing Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 173,
+                "balanceRate": "18.02",
+                "balanceAmount": "3118.00"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "2c4129bf-b787-4e46-9478-4871d980faac",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "120.0000",
+          "reserved": "0.0000",
+          "available": "120.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "a0572d1c-6ed0-4fbe-a72c-f86e2a0ae773",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "68.0000",
+          "reserved": "0.0000",
+          "available": "68.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "ba4c54cf-bd02-4f49-9f60-b90e32dafde3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "156.0000",
+          "reserved": "0.0000",
+          "available": "156.0000",
+          "avgCost": "80.0000"
+        },
+        {
+          "productId": "35c45af2-eec5-495a-ad5d-54a135dd5cb5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "240.0000"
+        },
+        {
+          "productId": "57db6847-7531-4b76-80ea-b250c7c2c3a7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "176.0000",
+          "reserved": "0.0000",
+          "available": "176.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "9f69c91b-6451-4c03-8085-812b6f6a3ddf",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "127.0000",
+          "reserved": "0.0000",
+          "available": "127.0000",
+          "avgCost": "340.0000"
+        },
+        {
+          "productId": "10819402-f78b-482a-9bbd-c9708b20b7b6",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "69.0000",
+          "reserved": "0.0000",
+          "available": "69.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "b1c4725c-2cf3-47a9-bd33-21a33a9d6192",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "123.0000",
+          "reserved": "0.0000",
+          "available": "123.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "d59fd2af-119e-477b-9ea1-2c3985943321",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "231.0000",
+          "reserved": "0.0000",
+          "available": "231.0000",
+          "avgCost": "20.0000"
+        },
+        {
+          "productId": "761e8424-295d-4680-afb1-0ff3d43b392f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "80.0000",
+          "reserved": "0.0000",
+          "available": "80.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "9f6be6ba-5b07-414c-b670-bb8fb8eacac7",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "230.0000",
+          "reserved": "0.0000",
+          "available": "230.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "d82b39a1-38c1-4f0f-96e0-48632176bbe3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "70.0000"
+        },
+        {
+          "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "405.0000",
+          "reserved": "0.0000",
+          "available": "405.0000",
+          "avgCost": "15.0099"
+        },
+        {
+          "productId": "3b68107c-69bf-4dbc-acc4-6ae26d7fe372",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "45.0000"
+        },
+        {
+          "productId": "897a4b22-3195-4aaf-9fdf-2a2a0a3e58da",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "60.0000",
+          "reserved": "0.0000",
+          "available": "60.0000",
+          "avgCost": "28.0000"
+        },
+        {
+          "productId": "a23cd309-87a4-4572-8d99-3108ee7aaacb",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "320.0000",
+          "reserved": "0.0000",
+          "available": "320.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "2488b371-50ef-4ccf-9163-bb3dccb3a763",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "150.0000",
+          "reserved": "0.0000",
+          "available": "150.0000",
+          "avgCost": "48.0000"
+        },
+        {
+          "productId": "374cdafc-b637-4f47-bf1c-ac61f1bd3e3f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "89.0000",
+          "reserved": "0.0000",
+          "available": "89.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "173.0000",
+          "reserved": "0.0000",
+          "available": "173.0000",
+          "avgCost": "18.0231"
+        },
+        {
+          "productId": "7bc9a866-1f79-4a20-ad80-89a68410f370",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "397.0000",
+          "reserved": "0.0000",
+          "available": "397.0000",
+          "avgCost": "40.0000"
+        },
+        {
+          "productId": "05f74d2a-ea38-4ee7-b7e4-3b4e63595f03",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "172.0000",
+          "reserved": "0.0000",
+          "available": "172.0000",
+          "avgCost": "140.0000"
+        },
+        {
+          "productId": "674a5ae2-5e8c-417e-afb4-776b16d21c02",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "200.0000",
+          "reserved": "0.0000",
+          "available": "200.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "30c4aa80-350e-4690-a697-0497398d6261",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "420.0000"
+        },
+        {
+          "productId": "a4d7b108-aa35-4c01-bb98-8b314de81e5a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "85.0000",
+          "reserved": "0.0000",
+          "available": "85.0000",
+          "avgCost": "32.0000"
+        },
+        {
+          "productId": "28ddb014-5988-4d18-ab6a-cb2baf0393a8",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "160.0000"
+        },
+        {
+          "productId": "92ffc5e8-d859-4d6b-b8ef-d59d31876776",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "321.0000",
+          "reserved": "0.0000",
+          "available": "321.0000",
+          "avgCost": "60.0000"
+        },
+        {
+          "productId": "931e4d7d-cf17-43aa-9094-35ab56eed59a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "510.0000",
+          "reserved": "0.0000",
+          "available": "510.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "e1690315-b463-4260-899e-4825a6ddd3b5",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "871.0000",
+          "reserved": "0.0000",
+          "available": "871.0000",
+          "avgCost": "115.0000"
+        },
+        {
+          "productId": "c21a2be6-c2b2-4f6a-820e-adff8e09971d",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "612.0000",
+          "reserved": "0.0000",
+          "available": "612.0000",
+          "avgCost": "58.0000"
+        },
+        {
+          "productId": "e4565792-6ed0-478a-b226-8e4bef15e617",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "712.0000",
+          "reserved": "0.0000",
+          "available": "712.0000",
+          "avgCost": "68.0000"
+        },
+        {
+          "productId": "fcd8bfae-895b-4258-a731-1863ba937737",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "832.0000",
+          "reserved": "0.0000",
+          "available": "832.0000",
+          "avgCost": "55.0000"
+        },
+        {
+          "productId": "c700613c-faec-4ca0-b11f-d49b2ba57c55",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "293.0000",
+          "reserved": "0.0000",
+          "available": "293.0000",
+          "avgCost": "65.0000"
+        },
+        {
+          "productId": "725f8a20-7ce0-461f-bac4-e79a793f7aaa",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "82.0000",
+          "reserved": "0.0000",
+          "available": "82.0000",
+          "avgCost": "38.0000"
+        },
+        {
+          "productId": "4809eb8f-f56a-488d-b935-b5f4736f2643",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "864.0000",
+          "reserved": "0.0000",
+          "available": "864.0000",
+          "avgCost": "75.0000"
+        },
+        {
+          "productId": "07480f2b-3a63-4493-93a1-1ad5da67c061",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "980.0000",
+          "reserved": "0.0000",
+          "available": "980.0000",
+          "avgCost": "250.0000"
+        },
+        {
+          "productId": "246c03b9-f5ed-4242-ac77-13c22eb5c95a",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "50.0000"
+        },
+        {
+          "productId": "3d3ff783-812f-447d-801a-88cbbea37d62",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "87.0000",
+          "reserved": "0.0000",
+          "available": "87.0000",
+          "avgCost": "200.0000"
+        },
+        {
+          "productId": "70a7d634-bc1b-4427-84d9-8bb9fbcda0d3",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "78.0000",
+          "reserved": "0.0000",
+          "available": "78.0000",
+          "avgCost": "120.0000"
+        },
+        {
+          "productId": "ed708403-682f-4c16-ae6e-98e522f8e59f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "790.0000",
+          "reserved": "0.0000",
+          "available": "790.0000",
+          "avgCost": "190.0000"
+        },
+        {
+          "productId": "5e1c0a6c-af3a-4b02-8f85-bda9a519ff36",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "95.0000"
+        },
+        {
+          "productId": "9fb3c856-9599-41cf-843f-cfe5dabb6c1c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "79.0000",
+          "reserved": "0.0000",
+          "available": "79.0000",
+          "avgCost": "85.0000"
+        },
+        {
+          "productId": "707d6cf0-ac0f-4a2a-8aab-0b408e1fdef1",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "239.0000",
+          "reserved": "0.0000",
+          "available": "239.0000",
+          "avgCost": "130.0000"
+        },
+        {
+          "productId": "beb4ba08-689a-4393-851c-03bd83d2f87f",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "56.0000",
+          "reserved": "0.0000",
+          "available": "56.0000",
+          "avgCost": "125.0000"
+        },
+        {
+          "productId": "d8f42dd1-3ce2-4c6d-9e0b-cebc2bca8901",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "160.0000",
+          "reserved": "0.0000",
+          "available": "160.0000",
+          "avgCost": "175.0000"
+        },
+        {
+          "productId": "41ef97f3-00f5-4a0b-863f-144a0365d93c",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "50.0000",
+          "reserved": "0.0000",
+          "available": "50.0000",
+          "avgCost": "110.0000"
+        },
+        {
+          "productId": "b01c4e8a-c1da-413f-9377-12cdcef5ee32",
+          "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+          "onHand": "180.0000",
+          "reserved": "0.0000",
+          "available": "180.0000",
+          "avgCost": "100.0000"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "sourceId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "quantity": "2.0000",
+            "unitCost": "17.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sales_return",
+            "sourceType": "sales_return",
+            "sourceId": "4b07797e-c3e4-4d48-acc8-e94d6fb163db",
+            "quantity": "1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:11:55.290Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "sourceId": "acc40b81-7717-4c4a-9cc7-2853646fb075",
+            "quantity": "-1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "batches": [],
+            "createdAt": "2026-10-20T16:04:51.144Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "sourceId": "343c5282-8b5e-448b-9363-2beb95cbc86c",
+            "quantity": "403.0000",
+            "unitCost": "15.0000",
+            "reason": "Stock corrected from item form",
+            "batches": [],
+            "createdAt": "2026-09-17T11:37:29.851Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 100,
+          "total": 4,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "sections": [
+          {
+            "title": "Munch Chocolate (CHOC-003)",
+            "rows": [
+              {
+                "date": "1944-01-01",
+                "type": "Opening Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 0,
+                "balanceRate": "0.00",
+                "balanceAmount": "0.00"
+              },
+              {
+                "date": "2026-09-17",
+                "type": "Inventory Adjustment",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "—",
+                "inQty": 403,
+                "inRate": "15.00",
+                "inAmount": "6045.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 403,
+                "balanceRate": "15.00",
+                "balanceAmount": "6045.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Invoice",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "INV-2026-000017",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": 1,
+                "outRate": "15.00",
+                "outAmount": "15.00",
+                "balanceQty": 402,
+                "balanceRate": "15.00",
+                "balanceAmount": "6030.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Return",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "SRT-2026-000001",
+                "inQty": 1,
+                "inRate": "15.00",
+                "inAmount": "15.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 403,
+                "balanceRate": "15.00",
+                "balanceAmount": "6045.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Purchase Bill",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "BILL-2026-000001",
+                "inQty": 2,
+                "inRate": "17.00",
+                "inAmount": "34.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 405,
+                "balanceRate": "15.01",
+                "balanceAmount": "6079.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Closing Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 405,
+                "balanceRate": "15.01",
+                "balanceAmount": "6079.00"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "658c065a-6ef1-4017-aa03-9b159e6d7cd0",
+            "journalNumber": "JV-2026-000060",
+            "status": "posted",
+            "sourceEventType": "core.purchase.recorded",
+            "sourceDocumentNumber": "BILL-2026-000001",
+            "totalDebit": "74.00",
+            "createdAt": "2026-10-20T18:07:39.191Z"
+          },
+          {
+            "id": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "journalNumber": "JV-2026-000059",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000018",
+            "totalDebit": "48.00",
+            "createdAt": "2026-10-20T16:23:08.926Z"
+          },
+          {
+            "id": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "journalNumber": "JV-2026-000058",
+            "status": "posted",
+            "sourceEventType": "core.sales_return.recorded",
+            "sourceDocumentNumber": "SRT-2026-000001",
+            "totalDebit": "37.60",
+            "createdAt": "2026-10-20T16:11:56.281Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 60,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "journalNumber": "JV-2026-000060",
+        "status": "posted",
+        "sourceEventType": "core.purchase.recorded",
+        "sourceDocumentNumber": "BILL-2026-000001",
+        "totalDebit": "74.00",
+        "totalCredit": "74.00",
+        "lines": [
+          {
+            "id": "af6d47b9-a78c-4860-9ead-60b19a8fa093",
+            "journalEntryId": "658c065a-6ef1-4017-aa03-9b159e6d7cd0",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "accountId": "816b8758-403c-4def-aecf-f3d541763e12",
+            "description": "Inventory purchased",
+            "debit": "40.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "quantity": "2.0000",
+            "unitCost": null
+          },
+          {
+            "id": "15761ab2-f3ee-4912-95b2-766d47d29ab0",
+            "journalEntryId": "658c065a-6ef1-4017-aa03-9b159e6d7cd0",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 2,
+            "accountId": "816b8758-403c-4def-aecf-f3d541763e12",
+            "description": "Inventory purchased",
+            "debit": "34.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "quantity": "2.0000",
+            "unitCost": null
+          },
+          {
+            "id": "a2a84f3d-c12a-4cdd-8897-97d461ca0207",
+            "journalEntryId": "658c065a-6ef1-4017-aa03-9b159e6d7cd0",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 3,
+            "accountId": "03c5d6ff-6ad5-4a9b-afce-84ce6d2702b6",
+            "description": "Paid at billing",
+            "debit": "0.00",
+            "credit": "74.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/documents",
+      "query": [
+        "type",
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "documentNumber": "BILL-2026-000001",
+            "documentType": "purchase_bill",
+            "status": "settled",
+            "isDraft": false,
+            "subTotal": "74.00",
+            "taxTotal": "0.00",
+            "grandTotal": "74.00",
+            "balanceDue": "0.00",
+            "settledAmount": "74.00",
+            "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 1,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "-74.00"
+        },
+        {
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/documents/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "documentNumber": "BILL-2026-000001",
+        "documentType": "purchase_bill",
+        "status": "settled",
+        "isDraft": false,
+        "subTotal": "74.00",
+        "taxTotal": "0.00",
+        "grandTotal": "74.00",
+        "balanceDue": "0.00",
+        "settledAmount": "74.00",
+        "settlementStatus": {
+          "id": "45831578-86b2-4c18-baba-f753c4c1eeb0",
+          "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+          "name": "settled",
+          "isSystem": true,
+          "createdAt": "2026-09-17T11:47:26.573Z"
+        },
+        "settlementAccountId": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+        "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+        "lines": [
+          {
+            "id": "2f1156fd-4c8f-400e-85d1-13e775ef3217",
+            "documentId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "description": "Mineral Water",
+            "kind": "product",
+            "quantity": "2.0000",
+            "unitPrice": "20.00",
+            "discountAmount": "0.00",
+            "discountPercentage": null,
+            "taxAmount": "0.00",
+            "lineTotal": "40.00",
+            "unitCost": "20.0000",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "unit_label": "Bottle",
+              "entered_rate": "20",
+              "discount_source": "auto",
+              "entered_quantity": "2"
+            },
+            "batchNo": null,
+            "expiryDate": null
+          },
+          {
+            "id": "a7d33bb8-a18b-4f29-a8a9-1e82f307433d",
+            "documentId": "dcea67c0-145d-4aeb-a705-adcc5be47b6c",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 2,
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "description": "Munch Chocolate",
+            "kind": "product",
+            "quantity": "2.0000",
+            "unitPrice": "17.00",
+            "discountAmount": "0.00",
+            "discountPercentage": null,
+            "taxAmount": "0.00",
+            "lineTotal": "34.00",
+            "unitCost": "17.0000",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "unit_label": "Piece",
+              "entered_rate": "17",
+              "discount_source": "auto",
+              "entered_quantity": "2"
+            },
+            "batchNo": null,
+            "expiryDate": null
+          }
+        ],
+        "payments": [],
+        "customFields": {
+          "cash_label": "Cash Purchase",
+          "tax_option": "no_vat",
+          "cash_transaction": true
+        },
+        "notes": "TEST-DURBY-INV-T1"
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "-74.00"
+        },
+        {
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/reports/business/inventory-position",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "body": {
+        "rowCount": 46,
+        "totals": {
+          "item": "Total",
+          "qty": 13528,
+          "amount": "1521920.01"
+        }
+      }
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts/{id}/transactions",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/reports/account-ledger/{id}",
+      "query": [
+        "from",
+        "to",
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/reports/business/inventory-position",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/credit-terms",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/tax/tds-types",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/signatures",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "search",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "search",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/core/purchases/bills",
+      "query": [],
+      "status": 201,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "GET",
+      "path": "/api/core/documents/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/documents",
+      "query": [
+        "type",
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/documents/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/accounts/{id}/transactions",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/reports/account-ledger/{id}",
+      "query": [
+        "from",
+        "to",
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/reports/business/inventory-position",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

@@ -1,0 +1,269 @@
+{
+  "scenario": "S6 cash movements on 'sample 1' shift: paid_in 100.00, paid_out 10.00, drop 50.00 (user-approved)",
+  "sequence": [
+    {
+      "op": "go",
+      "path": "/accounting-workbench"
+    },
+    {
+      "op": "go",
+      "path": "/accounts"
+    },
+    {
+      "op": "go",
+      "path": "/till"
+    },
+    {
+      "op": "click",
+      "text": "Cash in/out",
+      "wait": 1500
+    },
+    {
+      "op": "select",
+      "match": "Movement",
+      "value": "paid_in",
+      "scope": "dialog"
+    },
+    {
+      "op": "fill",
+      "match": "Amount",
+      "value": "100",
+      "scope": "dialog",
+      "wait": 400
+    },
+    {
+      "op": "fill",
+      "match": "Reason",
+      "value": "TEST-DURBY-S6 paid in",
+      "scope": "dialog",
+      "wait": 400
+    },
+    {
+      "op": "snapshot",
+      "label": "paid_in filled"
+    },
+    {
+      "op": "act",
+      "text": "Record",
+      "scope": "dialog",
+      "wait": 3000
+    },
+    {
+      "op": "snapshot",
+      "label": "after paid_in",
+      "scope": "body"
+    },
+    {
+      "op": "click",
+      "text": "X-report",
+      "wait": 2500,
+      "optional": true
+    },
+    {
+      "op": "snapshot",
+      "label": "x-report after paid_in"
+    },
+    {
+      "op": "escape"
+    },
+    {
+      "op": "click",
+      "text": "Cash in/out",
+      "wait": 1500
+    },
+    {
+      "op": "select",
+      "match": "Movement",
+      "value": "paid_out",
+      "scope": "dialog"
+    },
+    {
+      "op": "fill",
+      "match": "Amount",
+      "value": "10",
+      "scope": "dialog",
+      "wait": 400
+    },
+    {
+      "op": "fill",
+      "match": "Reason",
+      "value": "TEST-DURBY-S6 paid out",
+      "scope": "dialog",
+      "wait": 400
+    },
+    {
+      "op": "snapshot",
+      "label": "paid_out filled"
+    },
+    {
+      "op": "act",
+      "text": "Record",
+      "scope": "dialog",
+      "wait": 3000
+    },
+    {
+      "op": "snapshot",
+      "label": "after paid_out",
+      "scope": "body"
+    },
+    {
+      "op": "click",
+      "text": "X-report",
+      "wait": 2500,
+      "optional": true
+    },
+    {
+      "op": "snapshot",
+      "label": "x-report after paid_out"
+    },
+    {
+      "op": "escape"
+    },
+    {
+      "op": "click",
+      "text": "Cash in/out",
+      "wait": 1500
+    },
+    {
+      "op": "select",
+      "match": "Movement",
+      "value": "drop",
+      "scope": "dialog"
+    },
+    {
+      "op": "fill",
+      "match": "Amount",
+      "value": "50",
+      "scope": "dialog",
+      "wait": 400
+    },
+    {
+      "op": "fill",
+      "match": "Reason",
+      "value": "TEST-DURBY-S6 drop",
+      "scope": "dialog",
+      "wait": 400
+    },
+    {
+      "op": "snapshot",
+      "label": "drop filled"
+    },
+    {
+      "op": "act",
+      "text": "Record",
+      "scope": "dialog",
+      "wait": 3000
+    },
+    {
+      "op": "snapshot",
+      "label": "after drop",
+      "scope": "body"
+    },
+    {
+      "op": "click",
+      "text": "X-report",
+      "wait": 2500,
+      "optional": true
+    },
+    {
+      "op": "snapshot",
+      "label": "x-report after drop"
+    },
+    {
+      "op": "escape"
+    },
+    {
+      "op": "go",
+      "path": "/accounting-workbench"
+    },
+    {
+      "op": "clickNthRow",
+      "n": 0
+    },
+    {
+      "op": "escape"
+    },
+    {
+      "op": "clickNthRow",
+      "n": 1
+    },
+    {
+      "op": "escape"
+    },
+    {
+      "op": "clickNthRow",
+      "n": 2
+    },
+    {
+      "op": "go",
+      "path": "/accounts"
+    },
+    {
+      "op": "go",
+      "path": "/till"
+    }
+  ],
+  "allow": [
+    {
+      "method": "POST",
+      "path": "^/api/pos/retail/shifts/264e8f96-b353-40ba-b45a-ad2c719e5ed4/cash-movements$",
+      "once": true,
+      "expect": "b && b.type === 'paid_in' && b.amount === '100.00' && b.reason === 'TEST-DURBY-S6 paid in'"
+    },
+    {
+      "method": "POST",
+      "path": "^/api/pos/retail/shifts/264e8f96-b353-40ba-b45a-ad2c719e5ed4/cash-movements$",
+      "once": true,
+      "expect": "b && b.type === 'paid_out' && b.amount === '10.00' && b.reason === 'TEST-DURBY-S6 paid out'"
+    },
+    {
+      "method": "POST",
+      "path": "^/api/pos/retail/shifts/264e8f96-b353-40ba-b45a-ad2c719e5ed4/cash-movements$",
+      "once": true,
+      "expect": "b && b.type === 'drop' && b.amount === '50.00' && b.reason === 'TEST-DURBY-S6 drop'"
+    }
+  ],
+  "maxWrites": 3,
+  "getFilters": {
+    "^/api/pos/retail/shifts/[^/]+/x-report$": {},
+    "^/api/accounting/journals$": {
+      "list": "data",
+      "top": 5,
+      "fields": [
+        "id",
+        "journalNumber",
+        "status",
+        "sourceEventType",
+        "sourceDocumentNumber",
+        "totalDebit",
+        "narration",
+        "createdAt"
+      ]
+    },
+    "^/api/accounting/journals/[^/]+$": {
+      "fieldsObj": [
+        "journalNumber",
+        "status",
+        "sourceEventType",
+        "sourceDocumentNumber",
+        "totalDebit",
+        "totalCredit",
+        "lines"
+      ]
+    },
+    "^/api/core/accounts$": {
+      "list": "",
+      "fields": [
+        "id",
+        "name",
+        "accountKind",
+        "isDefault",
+        "balance"
+      ]
+    }
+  },
+  "keepRegisterNames": [
+    "sample 1"
+  ],
+  "settleMs": 3500
+}

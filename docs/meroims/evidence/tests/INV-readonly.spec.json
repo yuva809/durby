@@ -1,0 +1,29 @@
+{
+  "scenario": "Inventory read-only evidence pull (no writes): journals incl. a stock-adjustment journal, stock movements, levels, product valuation ledger, inventory position, expiry",
+  "sequence": [
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"clickNthRow","n":3},
+    {"op":"escape"},
+    {"op":"clickNthRow","n":7},
+    {"op":"escape"},
+    {"op":"go","path":"/inventory/adjustment"},
+    {"op":"go","path":"/inventory/9c5b6bc1-e593-4eda-9199-e1ba66e36b11"},
+    {"op":"go","path":"/inventory/6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b"},
+    {"op":"go","path":"/reports/inventory-position"},
+    {"op":"go","path":"/inventory/expiry"},
+    {"op":"go","path":"/inventory"}
+  ],
+  "allow": [], "maxWrites": 0,
+  "getFilters": {
+    "^/api/accounting/journals$": {"list":"data","fields":["journalNumber","status","sourceEventType","systemGenerated","totalDebit","createdAt"]},
+    "^/api/accounting/journals/[^/]+$": {"fieldsObj":["journalNumber","sourceEventType","sourceDocumentNumber","totalDebit","lines"]},
+    "^/api/core/stock/movements$": {"list":"data","fields":["movementType","sourceType","productId","warehouseId","quantity","unitCost","reason","batches","createdAt"]},
+    "^/api/core/stock/levels$": {"list":"","fields":["productId","warehouseId","onHand","reserved","expired","available","avgCost"]},
+    "^/api/core/reports/business/inventory-ledger$": {"pick":["slug","from","to","sections"]},
+    "^/api/core/reports/business/inventory-position$": {},
+    "^/api/core/stock/expiry$": {},
+    "^/api/core/products$": {"list":"data","fields":["id","sku","itemType","valuationMethod","trackExpiry","lowStockThreshold","purchasePrice","salesPrice","taxOption","parentProductId","unitId","secondaryUnitId"]},
+    "^/api/core/warehouses$": {"list":"","fields":["id","kind","isDefault","isActive","branchId","stockLocationId"]}
+  },
+  "keepRegisterNames": [], "settleMs": 3500
+}

@@ -1,0 +1,46 @@
+{
+  "scenario": "S3 cash sale: 1 x CHOC-003 (Rs 20 + 13% VAT = 22.60), cash received 50.00, register 'sample 1', walk-in (user-approved)",
+  "sequence": [
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"go","path":"/accounts"},
+    {"op":"go","path":"/sales/invoices"},
+    {"op":"go","path":"/till"},
+    {"op":"fill","match":"Scan barcode","value":"CHOC-003","wait":1500},
+    {"op":"click","prefix":"Munch Chocolate CHOC-003","wait":1500},
+    {"op":"click","text":"Tender","wait":1500},
+    {"op":"fill","match":"Cash received","value":"50","scope":"dialog","wait":800},
+    {"op":"snapshot","label":"tender dialog before confirm"},
+    {"op":"act","prefix":"Complete sale","scope":"dialog","wait":4000},
+    {"op":"snapshot","label":"after sale"},
+    {"op":"escape"},
+    {"op":"snapshot","label":"after escape"},
+    {"op":"click","text":"X-report","wait":3000,"optional":true},
+    {"op":"snapshot","label":"x-report"},
+    {"op":"escape"},
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"clickFirstRow"},
+    {"op":"go","path":"/sales/invoices"},
+    {"op":"clickFirstRow"},
+    {"op":"go","path":"/accounts"},
+    {"op":"go","path":"/till"}
+  ],
+  "allow": [{
+    "method": "POST", "path": "^/api/pos/retail/sales$",
+    "expect": "b && b.registerId === '7f206976-30f1-4b4b-99ab-6f7c6f569986' && Array.isArray(b.lines) && b.lines.length === 1 && b.lines[0].quantity === '1' && b.lines[0].unitPrice === undefined && b.lines[0].discountAmount === undefined && Array.isArray(b.tenders) && b.tenders.length === 1 && b.tenders[0].type === 'cash' && b.tenders[0].amount === '50.00'"
+  }],
+  "maxWrites": 1,
+  "getFilters": {
+    "^/api/accounting/journals$": {"list":"data","top":5,"fields":["id","journalNumber","status","systemGenerated","sourceEventType","sourceDocumentId","totalDebit","totalCredit","entryDate","createdAt"]},
+    "^/api/accounting/journals/[^/]+$": {"fieldsObj":["journalNumber","status","systemGenerated","sourceEventType","sourceEventId","sourceDocumentId","sourceDocumentNumber","totalDebit","totalCredit","entryDate","postedAt","lines","audits"]},
+    "^/api/accounting/journals/by-source/[^/]+$": {},
+    "^/api/core/accounts$": {"list":"","fields":["id","name","accountKind","isDefault","balance"]},
+    "^/api/core/documents$": {"list":"data","top":3,"fields":["id","documentNumber","documentType","status","isDraft","posOrderId","subTotal","discountTotal","taxTotal","grandTotal","balanceDue","settledAmount","settlementStatusId","warehouseId","date","createdAt"]},
+    "^/api/core/documents/[^/]+$": {"fieldsObj":["documentNumber","documentType","status","isDraft","posOrderId","subTotal","discountTotal","taxTotal","grandTotal","balanceDue","settledAmount","settlementStatus","warehouseId","lines","payments","date"]},
+    "^/api/pos/products$": {"list":"","where":{"sku":"CHOC-003"},"fields":["productId","sku","available","salesPrice","taxOption"]},
+    "^/api/pos/retail/context$": {"pick":["registers"]},
+    "^/api/pos/retail/shifts/[^/]+/x-report$": {},
+    "^/api/pos/retail/orders/[^/]+/receipt$": {},
+    "^/api/pos/retail/holds$": {"list":"","top":3,"fields":["id","orderNumber","status"]}
+  },
+  "settleMs": 3500
+}

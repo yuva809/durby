@@ -1,0 +1,1563 @@
+{
+  "scenario": "INV-T2 cash sale invoice 1 x BEV-WAT-004 @30.00 no tax, note TEST-DURBY-INV-T2 (user-approved) - observe FIFO vs average COGS",
+  "dryRun": false,
+  "runAt": "2026-10-20T18:12:32.694Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/inventory/6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounts",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/sales/invoices/create",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Cash Sale",
+      "result": "ok:Cash Sale"
+    },
+    {
+      "op": "fill",
+      "arg": "Search product",
+      "result": "ok"
+    },
+    {
+      "op": "clickOption",
+      "arg": "Mineral Water",
+      "result": "ok:Mineral Water Stock 173 · BEV-WAT-004 Rs. 30.00"
+    },
+    {
+      "op": "fill",
+      "arg": "Notes",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "filled",
+      "result": {
+        "label": "filled",
+        "path": "/sales/invoices/create",
+        "dialogOpen": false,
+        "headings": [
+          "MeroIMS",
+          "Create Sales Invoice",
+          "ITEMS",
+          "ADJUSTMENTS",
+          "RECEIVE ACCOUNT",
+          "NOTES & IMAGES",
+          "TERMS & SIGNATURE"
+        ],
+        "buttons": [
+          "Close sidebar",
+          "Toggle sidebar",
+          "Switch Profile",
+          "Branches & Warehouses",
+          "Inventory",
+          "Sales",
+          "Purchase",
+          "POS",
+          "Web Store",
+          "Accounting",
+          "G [tenant/user redacted] [tenant/user redacted]",
+          "Open sidebar",
+          "Quick Add",
+          "1",
+          "Cash Sale",
+          "Party Sale",
+          "Manual",
+          "Add Row",
+          "Duplicate row",
+          "Remove row",
+          "Clear selection",
+          "Add Discount",
+          "Add Tax",
+          "Add Charges",
+          "TDS is Disabled",
+          "Select TDS Account",
+          "Add image",
+          "B",
+          "I",
+          "U",
+          "Bullet list",
+          "1.",
+          "Add Signature",
+          "Cancel",
+          "Save & Add New",
+          "Save as Draft",
+          "Save"
+        ],
+        "inputs": [
+          {
+            "label": "Search items, parties, bills, entries…",
+            "type": "search",
+            "value": ""
+          },
+          {
+            "label": "Date",
+            "type": "date",
+            "value": "2026-10-20"
+          },
+          {
+            "label": "Search product, code, or barcode",
+            "type": "text",
+            "value": "Mineral Water"
+          },
+          {
+            "label": "Qty",
+            "type": "text",
+            "value": "1"
+          },
+          {
+            "label": "Rate",
+            "type": "text",
+            "value": "30"
+          },
+          {
+            "label": "%",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Rs.",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "0.00",
+            "type": "text",
+            "value": "30"
+          },
+          {
+            "label": "Receive total amount — Rs. 30.00",
+            "type": "checkbox",
+            "value": "on",
+            "checked": true
+          },
+          {
+            "label": "TDS Type",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "TDS Amount",
+            "type": "text",
+            "value": ""
+          },
+          {
+            "label": "Notes",
+            "type": "textarea",
+            "value": "TEST-DURBY-INV-T2"
+          },
+          {
+            "label": "",
+            "type": "file",
+            "value": ""
+          },
+          {
+            "label": "Signature",
+            "type": "select-one",
+            "value": ""
+          }
+        ],
+        "alerts": [],
+        "options": []
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "Save",
+      "result": "ok:Save"
+    },
+    {
+      "op": "act",
+      "target": "Save",
+      "result": "ok:Save",
+      "writeCaptured": true
+    },
+    {
+      "op": "snapshot",
+      "arg": "after save",
+      "result": {
+        "label": "after save",
+        "path": "/sales/invoices/50f2caaa-448f-4b81-bf10-5d65a0000d6c",
+        "dialogOpen": false,
+        "headings": [
+          "MeroIMS",
+          "Sales Invoice"
+        ],
+        "buttons": [
+          "Close sidebar",
+          "Toggle sidebar",
+          "Switch Profile",
+          "Branches & Warehouses",
+          "Inventory",
+          "Sales",
+          "Purchase",
+          "POS",
+          "Web Store",
+          "Accounting",
+          "G [tenant/user redacted] [tenant/user redacted]",
+          "Open sidebar",
+          "Quick Add",
+          "1"
+        ],
+        "inputs": [
+          {
+            "label": "Search items, parties, bills, entries…",
+            "type": "search",
+            "value": ""
+          }
+        ],
+        "alerts": [],
+        "options": []
+      }
+    },
+    {
+      "op": "wait",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/inventory/adjustment",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/inventory/6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "clickNthRow",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "escape",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/sales/invoices",
+      "result": "ok"
+    },
+    {
+      "op": "clickNthRow",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounts",
+      "result": "ok"
+    }
+  ],
+  "aborted": false,
+  "writesAllowed": 1,
+  "writes": [
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/core/sales/invoices",
+      "status": 201,
+      "request": {
+        "date": "2026-10-20",
+        "lines": [
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "description": "Mineral Water",
+            "kind": "product",
+            "quantity": "1",
+            "unitPrice": "30.00",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "entered_quantity": "1",
+              "entered_rate": "30",
+              "unit_label": "Bottle",
+              "discount_source": "auto"
+            }
+          }
+        ],
+        "customFields": {
+          "tax_option": "no_vat",
+          "cash_transaction": true,
+          "cash_label": "Cash Sale"
+        },
+        "notes": "TEST-DURBY-INV-T2",
+        "attachments": [],
+        "requestId": "c3c9f81d-9834-4673-b8cb-e17977b05439",
+        "isDraft": false
+      },
+      "response": {
+        "id": "50f2caaa-448f-4b81-bf10-5d65a0000d6c",
+        "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+        "documentType": "sales_invoice",
+        "documentNumber": "INV-2026-000019",
+        "date": "2026-10-20",
+        "currency": "NPR",
+        "partyId": null,
+        "subTotal": "30.00",
+        "discountTotal": "0.00",
+        "taxTotal": "0.00",
+        "otherCharges": "0.00",
+        "charges": [],
+        "customFields": {
+          "cash_label": "Cash Sale",
+          "tax_option": "no_vat",
+          "cash_transaction": true
+        },
+        "discountPercentage": null,
+        "taxPercentage": null,
+        "grandTotal": "30.00",
+        "settledAmount": "30.00",
+        "settledAtEntry": "30.00",
+        "balanceDue": "0.00",
+        "status": "settled",
+        "settlementAccountId": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+        "creditTermId": null,
+        "posOrderId": null,
+        "stockRequestId": null,
+        "stockTransferId": null,
+        "sourceDocumentId": null,
+        "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17",
+        "branchId": null,
+        "notes": "TEST-DURBY-INV-T2",
+        "termsConditions": null,
+        "tdsAccountId": null,
+        "tdsTypeId": null,
+        "tdsAmount": "0.00",
+        "settlementStatusId": "45831578-86b2-4c18-baba-f753c4c1eeb0",
+        "quotationStatus": null,
+        "isDraft": false,
+        "signatureId": null,
+        "createdById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+        "approvedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+        "approvedAt": "2026-10-20T18:12:53.556Z",
+        "voidedById": null,
+        "voidedAt": null,
+        "voidReason": null,
+        "archivedAt": null,
+        "lines": [
+          {
+            "id": "bb4a31c9-012f-41d9-ae19-0a6926a0c0d2",
+            "documentId": "50f2caaa-448f-4b81-bf10-5d65a0000d6c",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "description": "Mineral Water",
+            "kind": "product",
+            "quantity": "1",
+            "unitPrice": "30.00",
+            "discountAmount": "0.00",
+            "discountPercentage": null,
+            "taxAmount": "0.00",
+            "lineTotal": "30.00",
+            "unitCost": "18.0231",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "entered_quantity": "1",
+              "entered_rate": "30",
+              "unit_label": "Bottle",
+              "discount_source": "auto"
+            },
+            "batchNo": null,
+            "expiryDate": null
+          }
+        ],
+        "createdAt": "2026-10-20T18:12:53.362Z",
+        "updatedAt": "2026-10-20T18:12:53.362Z"
+      }
+    }
+  ],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "quantity": "2.0000",
+            "unitCost": "20.0000",
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "quantity": "-1.0000",
+            "unitCost": "18.0000",
+            "createdAt": "2026-10-20T16:23:07.964Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "quantity": "172.0000",
+            "unitCost": "18.0000",
+            "createdAt": "2026-09-21T06:43:20.263Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 100,
+          "total": 3,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+          "onHand": "173.0000",
+          "available": "173.0000",
+          "avgCost": "18.0231"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "sections": [
+          {
+            "title": "Mineral Water (BEV-WAT-004)",
+            "rows": [
+              {
+                "date": "1944-01-01",
+                "type": "Opening Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 0,
+                "balanceRate": "0.00",
+                "balanceAmount": "0.00"
+              },
+              {
+                "date": "2026-09-21",
+                "type": "Inventory Adjustment",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "—",
+                "inQty": 172,
+                "inRate": "18.00",
+                "inAmount": "3096.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 172,
+                "balanceRate": "18.00",
+                "balanceAmount": "3096.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Invoice",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "INV-2026-000018",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": 1,
+                "outRate": "18.00",
+                "outAmount": "18.00",
+                "balanceQty": 171,
+                "balanceRate": "18.00",
+                "balanceAmount": "3078.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Purchase Bill",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "BILL-2026-000001",
+                "inQty": 2,
+                "inRate": "20.00",
+                "inAmount": "40.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 173,
+                "balanceRate": "18.02",
+                "balanceAmount": "3118.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Closing Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 173,
+                "balanceRate": "18.02",
+                "balanceAmount": "3118.00"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "-74.00"
+        },
+        {
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "-74.00"
+        },
+        {
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "act",
+      "path": "/api/core/documents/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "documentNumber": "INV-2026-000019",
+        "documentType": "sales_invoice",
+        "status": "settled",
+        "grandTotal": "30.00",
+        "taxTotal": "0.00",
+        "settledAmount": "30.00",
+        "settlementAccountId": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+        "lines": [
+          {
+            "id": "bb4a31c9-012f-41d9-ae19-0a6926a0c0d2",
+            "documentId": "50f2caaa-448f-4b81-bf10-5d65a0000d6c",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "description": "Mineral Water",
+            "kind": "product",
+            "quantity": "1.0000",
+            "unitPrice": "30.00",
+            "discountAmount": "0.00",
+            "discountPercentage": null,
+            "taxAmount": "0.00",
+            "lineTotal": "30.00",
+            "unitCost": "18.0231",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "unit_label": "Bottle",
+              "entered_rate": "30",
+              "discount_source": "auto",
+              "entered_quantity": "1"
+            },
+            "batchNo": null,
+            "expiryDate": null
+          }
+        ],
+        "payments": [],
+        "notes": "TEST-DURBY-INV-T2"
+      }
+    },
+    {
+      "phase": "act",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "-44.00"
+        },
+        {
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "quantity": "-1.0000",
+            "unitCost": "18.0231",
+            "createdAt": "2026-10-20T18:12:53.362Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "quantity": "2.0000",
+            "unitCost": "17.0000",
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "quantity": "2.0000",
+            "unitCost": "20.0000",
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "quantity": "-1.0000",
+            "unitCost": "18.0000",
+            "createdAt": "2026-10-20T16:23:07.964Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 56,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "quantity": "-1.0000",
+            "unitCost": "18.0231",
+            "createdAt": "2026-10-20T18:12:53.362Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "quantity": "2.0000",
+            "unitCost": "17.0000",
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "quantity": "2.0000",
+            "unitCost": "20.0000",
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "quantity": "-1.0000",
+            "unitCost": "18.0000",
+            "createdAt": "2026-10-20T16:23:07.964Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 56,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+          "onHand": "172.0000",
+          "available": "172.0000",
+          "avgCost": "18.0231"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+          "onHand": "172.0000",
+          "available": "172.0000",
+          "avgCost": "18.0231"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "quantity": "-1.0000",
+            "unitCost": "18.0231",
+            "createdAt": "2026-10-20T18:12:53.362Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "quantity": "2.0000",
+            "unitCost": "20.0000",
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "quantity": "-1.0000",
+            "unitCost": "18.0000",
+            "createdAt": "2026-10-20T16:23:07.964Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "quantity": "172.0000",
+            "unitCost": "18.0000",
+            "createdAt": "2026-09-21T06:43:20.263Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 100,
+          "total": 4,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "sections": [
+          {
+            "title": "Mineral Water (BEV-WAT-004)",
+            "rows": [
+              {
+                "date": "1944-01-01",
+                "type": "Opening Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 0,
+                "balanceRate": "0.00",
+                "balanceAmount": "0.00"
+              },
+              {
+                "date": "2026-09-21",
+                "type": "Inventory Adjustment",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "—",
+                "inQty": 172,
+                "inRate": "18.00",
+                "inAmount": "3096.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 172,
+                "balanceRate": "18.00",
+                "balanceAmount": "3096.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Invoice",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "INV-2026-000018",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": 1,
+                "outRate": "18.00",
+                "outAmount": "18.00",
+                "balanceQty": 171,
+                "balanceRate": "18.00",
+                "balanceAmount": "3078.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Purchase Bill",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "BILL-2026-000001",
+                "inQty": 2,
+                "inRate": "20.00",
+                "inAmount": "40.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 173,
+                "balanceRate": "18.02",
+                "balanceAmount": "3118.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Invoice",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "INV-2026-000019",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": 1,
+                "outRate": "18.02",
+                "outAmount": "18.02",
+                "balanceQty": 172,
+                "balanceRate": "18.02",
+                "balanceAmount": "3099.98"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Closing Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 172,
+                "balanceRate": "18.02",
+                "balanceAmount": "3099.98"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "journalNumber": "JV-2026-000061",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000019",
+            "totalDebit": "48.02",
+            "createdAt": "2026-10-20T18:12:54.471Z"
+          },
+          {
+            "journalNumber": "JV-2026-000060",
+            "sourceEventType": "core.purchase.recorded",
+            "sourceDocumentNumber": "BILL-2026-000001",
+            "totalDebit": "74.00",
+            "createdAt": "2026-10-20T18:07:39.191Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 61,
+          "totalPages": 7
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "journalNumber": "JV-2026-000061",
+        "status": "posted",
+        "sourceEventType": "core.invoice.issued",
+        "sourceDocumentNumber": "INV-2026-000019",
+        "totalDebit": "48.02",
+        "lines": [
+          {
+            "id": "4af8f33e-d137-458d-9bc1-2ad1940931c5",
+            "journalEntryId": "9c2eb256-82ae-4e1c-ba25-85a1c4955437",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "accountId": "03c5d6ff-6ad5-4a9b-afce-84ce6d2702b6",
+            "description": "Amount received at invoicing",
+            "debit": "30.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "77a7f328-fe2e-4090-a064-58701ee8366f",
+            "journalEntryId": "9c2eb256-82ae-4e1c-ba25-85a1c4955437",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 2,
+            "accountId": "a7a048bf-8c69-46e0-a14a-f361757e89cd",
+            "description": "Sales revenue (goods)",
+            "debit": "0.00",
+            "credit": "30.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "quantity": "1.0000",
+            "unitCost": null
+          },
+          {
+            "id": "05c99a04-61c8-411d-be2a-120f619e12c1",
+            "journalEntryId": "9c2eb256-82ae-4e1c-ba25-85a1c4955437",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 3,
+            "accountId": "ddaa0903-7fb9-4eb9-94a5-42987418565b",
+            "description": "Cost of goods sold",
+            "debit": "18.02",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "db6da84c-417c-47ad-9e8d-0591383f82f8",
+            "journalEntryId": "9c2eb256-82ae-4e1c-ba25-85a1c4955437",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 4,
+            "accountId": "816b8758-403c-4def-aecf-f3d541763e12",
+            "description": "Inventory relieved at cost",
+            "debit": "0.00",
+            "credit": "18.02",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "-44.00"
+        },
+        {
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/documents",
+      "query": [
+        "type",
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "documentNumber": "INV-2026-000019",
+            "documentType": "sales_invoice",
+            "status": "settled",
+            "grandTotal": "30.00",
+            "taxTotal": "0.00",
+            "settledAmount": "30.00"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 5,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/documents/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "documentNumber": "INV-2026-000019",
+        "documentType": "sales_invoice",
+        "status": "settled",
+        "grandTotal": "30.00",
+        "taxTotal": "0.00",
+        "settledAmount": "30.00",
+        "settlementAccountId": "3fc6783f-074c-4460-8250-8e94ea5bef68",
+        "lines": [
+          {
+            "id": "bb4a31c9-012f-41d9-ae19-0a6926a0c0d2",
+            "documentId": "50f2caaa-448f-4b81-bf10-5d65a0000d6c",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "description": "Mineral Water",
+            "kind": "product",
+            "quantity": "1.0000",
+            "unitPrice": "30.00",
+            "discountAmount": "0.00",
+            "discountPercentage": null,
+            "taxAmount": "0.00",
+            "lineTotal": "30.00",
+            "unitCost": "18.0231",
+            "unitMeta": {
+              "unit_mode": "primary",
+              "unit_label": "Bottle",
+              "entered_rate": "30",
+              "discount_source": "auto",
+              "entered_quantity": "1"
+            },
+            "batchNo": null,
+            "expiryDate": null
+          }
+        ],
+        "payments": [],
+        "notes": "TEST-DURBY-INV-T2"
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "accountKind": "cash",
+          "isDefault": true,
+          "balance": "-44.00"
+        },
+        {
+          "accountKind": "bank",
+          "isDefault": false,
+          "balance": "10000.00"
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts/{id}/transactions",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/reports/account-ledger/{id}",
+      "query": [
+        "from",
+        "to",
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/signatures",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/tax/tds-types",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/credit-terms",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/sales/item-search",
+      "query": [
+        "limit",
+        "offset",
+        "search",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/core/sales/invoices",
+      "query": [],
+      "status": 201,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "GET",
+      "path": "/api/core/documents/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/documents",
+      "query": [
+        "type",
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/documents/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/accounts/{id}/transactions",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/reports/account-ledger/{id}",
+      "query": [
+        "from",
+        "to",
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

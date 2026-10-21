@@ -1,0 +1,48 @@
+{
+  "scenario": "S5 hold 1 x BEV-WAT-004 (Rs 30, no VAT) on 'sample 1', then finalize that hold with card 30.00 (user-approved)",
+  "sequence": [
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"go","path":"/sales/invoices"},
+    {"op":"go","path":"/till"},
+    {"op":"fill","match":"Scan barcode","value":"BEV-WAT-004","wait":1500},
+    {"op":"click","prefix":"Mineral Water BEV-WAT-004","wait":1500},
+    {"op":"act","prefix":"Hold F8","wait":3500},
+    {"op":"snapshot","label":"after hold","scope":"body"},
+    {"op":"click","prefix":"Resume (","wait":2500},
+    {"op":"snapshot","label":"held sales list","scope":"body"},
+    {"op":"clickInDialogRow","row":"${w0..orderNumber}","text":"Take payment","wait":2500},
+    {"op":"snapshot","label":"tender dialog for hold"},
+    {"op":"click","text":"Card","scope":"dialog","wait":1200},
+    {"op":"snapshot","label":"card mode"},
+    {"op":"act","prefix":"Complete sale","scope":"dialog","wait":4500},
+    {"op":"snapshot","label":"after finalize"},
+    {"op":"escape"},
+    {"op":"click","text":"X-report","wait":3000,"optional":true},
+    {"op":"snapshot","label":"x-report"},
+    {"op":"escape"},
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"clickFirstRow"},
+    {"op":"go","path":"/sales/invoices"},
+    {"op":"clickFirstRow"},
+    {"op":"go","path":"/till"}
+  ],
+  "allow": [
+    { "method": "POST", "path": "^/api/pos/retail/holds$",
+      "expect": "b && b.registerId === '7f206976-30f1-4b4b-99ab-6f7c6f569986' && Array.isArray(b.lines) && b.lines.length === 1 && b.lines[0].productId === '6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b' && b.lines[0].quantity === '1' && b.lines[0].unitPrice === undefined && b.lines[0].discountAmount === undefined && b.tenders === undefined" },
+    { "method": "POST", "path": "^/api/pos/retail/holds/${w0..id}/finalize$",
+      "expect": "b && b.registerId === '7f206976-30f1-4b4b-99ab-6f7c6f569986' && Array.isArray(b.tenders) && b.tenders.length === 1 && b.tenders[0].type === 'card' && b.tenders[0].amount === '30.00'" }
+  ],
+  "maxWrites": 2,
+  "getFilters": {
+    "^/api/pos/retail/holds$": {"list":"","top":5,"fields":["id","orderNumber","status","paymentStatus","grandTotal","taxTotal","registerId","shiftId"]},
+    "^/api/pos/products$": {"list":"","where":{"sku":"BEV-WAT-004"},"fields":["productId","sku","available"]},
+    "^/api/pos/retail/shifts/[^/]+/x-report$": {},
+    "^/api/pos/retail/context$": {"pick":["registers"]},
+    "^/api/accounting/journals$": {"list":"data","top":3,"fields":["id","journalNumber","status","sourceEventType","sourceDocumentNumber","totalDebit","totalCredit","createdAt"]},
+    "^/api/accounting/journals/[^/]+$": {"fieldsObj":["journalNumber","status","sourceEventType","sourceDocumentNumber","totalDebit","totalCredit","lines","audits"]},
+    "^/api/core/documents$": {"list":"data","top":2,"fields":["id","documentNumber","documentType","status","posOrderId","subTotal","taxTotal","grandTotal","balanceDue","settledAmount","createdAt"]},
+    "^/api/core/documents/[^/]+$": {"fieldsObj":["documentNumber","documentType","status","posOrderId","subTotal","taxTotal","grandTotal","settledAmount","settlementStatus","settlementAccountId","lines","payments"]}
+  },
+  "keepRegisterNames": ["sample 1"],
+  "settleMs": 3500
+}

@@ -1,0 +1,13 @@
+{
+  "scenario": "S5 dry run 2: open Resume list (read-only), then stop",
+  "sequence": [
+    {"op":"go","path":"/till"},
+    {"op":"click","prefix":"Resume (","wait":2500},
+    {"op":"snapshot","label":"resume list","scope":"body"},
+    {"op":"act","prefix":"__discover__"}
+  ],
+  "dryRunCleanup": [ {"op":"escape"}, {"op":"go","path":"/"} ],
+  "allow": [], "maxWrites": 0,
+  "getFilters": { "^/api/pos/retail/holds$": {"list":"","top":5,"fields":["id","orderNumber","status","grandTotal","registerId","placedByName","notes"]} },
+  "keepRegisterNames": ["sample 1"], "settleMs": 3000
+}

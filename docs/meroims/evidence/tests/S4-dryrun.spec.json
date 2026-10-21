@@ -1,0 +1,77 @@
+{
+  "scenario": "S4 dry run: open ORD-2026-000003, open Refund dialog, fill reason (no write)",
+  "sequence": [
+    {
+      "op": "go",
+      "path": "/orders"
+    },
+    {
+      "op": "clickInRow",
+      "row": "ORD-2026-000003",
+      "text": "Manage"
+    },
+    {
+      "op": "assert",
+      "text": "ORD-2026-000003"
+    },
+    {
+      "op": "snapshot",
+      "label": "order detail"
+    },
+    {
+      "op": "click",
+      "text": "Refund\u2026",
+      "wait": 2000
+    },
+    {
+      "op": "snapshot",
+      "label": "refund dialog"
+    },
+    {
+      "op": "fill",
+      "match": "Reason",
+      "value": "TEST-DURBY-S4 refund of S3",
+      "wait": 600
+    },
+    {
+      "op": "snapshot",
+      "label": "refund dialog filled"
+    },
+    {
+      "op": "act",
+      "prefix": "__discover__"
+    }
+  ],
+  "dryRunCleanup": [
+    {
+      "op": "escape"
+    },
+    {
+      "op": "go",
+      "path": "/"
+    }
+  ],
+  "allow": [],
+  "maxWrites": 0,
+  "getFilters": {
+    "^/api/pos/orders/[^/]+$": {
+      "fieldsObj": [
+        "id",
+        "orderNumber",
+        "status",
+        "paymentStatus",
+        "channel",
+        "grandTotal",
+        "receiptNumber",
+        "shiftId",
+        "lines",
+        "tenders",
+        "events"
+      ]
+    }
+  },
+  "keepRegisterNames": [
+    "sample 1"
+  ],
+  "settleMs": 3500
+}

@@ -1,0 +1,12 @@
+{
+  "scenario": "INV-T3 dry run 2: open 'Adjust this item' dialog for CHOC-003 and inspect fields (no write)",
+  "sequence": [
+    {"op":"go","path":"/inventory/adjustment"},
+    {"op":"fill","match":"by name or SKU","value":"CHOC-003","wait":2000},
+    {"op":"click","text":"Adjust this item","wait":1500},
+    {"op":"snapshot","label":"adjust dialog"},
+    {"op":"act","text":"__discover__","scope":"dialog"}
+  ],
+  "dryRunCleanup": [ {"op":"escape"}, {"op":"go","path":"/"} ],
+  "allow": [], "maxWrites": 0, "getFilters": {}, "keepRegisterNames": [], "settleMs": 3500
+}

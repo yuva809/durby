@@ -1,0 +1,3 @@
+{ "scenario": "S1 follow-up: audit log check (read-only)", "navigate": "/audit-log",
+  "input": {"match": "__none__", "value": ""}, "button": {"text": "__none__"},
+  "allow": [], "maxWrites": 0, "captureGetBodies": ["^/api/core/audit-logs$"], "settleMs": 4000 }

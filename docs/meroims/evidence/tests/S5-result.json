@@ -1,0 +1,1619 @@
+{
+  "scenario": "S5 hold 1 x BEV-WAT-004 (Rs 30, no VAT) on 'sample 1', then finalize that hold with card 30.00 (user-approved)",
+  "dryRun": false,
+  "runAt": "2026-10-20T16:22:39.283Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/sales/invoices",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/till",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Scan barcode",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Mineral Water BEV-WAT-004",
+      "result": "ok:Mineral Water BEV-WAT-004 रु 30.00 stock 172"
+    },
+    {
+      "op": "act-check",
+      "target": "Hold F8",
+      "result": "ok:Hold F8"
+    },
+    {
+      "op": "act",
+      "target": "Hold F8",
+      "result": "ok:Hold F8",
+      "writeCaptured": true
+    },
+    {
+      "op": "snapshot",
+      "arg": "after hold",
+      "result": {
+        "label": "after hold",
+        "path": "/till",
+        "dialogOpen": false,
+        "headings": [
+          "[tenant/user redacted]"
+        ],
+        "buttons": [
+          "X-report",
+          "Cash in/out",
+          "Close shift",
+          "Scroll categories left",
+          "All 70",
+          "Beverages 7",
+          "Bakery & Bread 6",
+          "Breakfast & Cereals 6",
+          "Canned & Preserved Goods 6",
+          "Condiments & Sauces 6",
+          "Frozen Foods 6",
+          "Household & Cleaning 6",
+          "Personal Care & Hygiene 6",
+          "Snacks & Confectionery 6",
+          "Spices, Oils & Seasonings 6",
+          "Biscuits 3",
+          "Chocolate 3",
+          "Noodles 2",
+          "Snacks 1",
+          "Scroll categories right",
+          "Anti-Dandruff Shampoo रु 340.00 980 left",
+          "BP Black Peppercorns रु 180.00 out",
+          "Black Tea Bags रु 220.00 712 left",
+          "Body Lotion रु 280.00 87 left",
+          "Bourbon Biscuits रु 40.00 85 left",
+          "Burger Buns रु 80.00 612 left",
+          "CB Canned Baked Beans रु 145.00 out",
+          "CC Canned Chickpeas रु 140.00 out",
+          "CD Canned Diced Tomatoes रु 150.00 out",
+          "CS Canned Sliced Mushrooms रु 160.00 out",
+          "CS Canned Sweet Corn रु 130.00 out",
+          "CT Canned Tuna रु 220.00 out",
+          "CC Choco Cereal Loops रु 310.00 out",
+          "Chocolate Muffin रु 85.00 321 left",
+          "Coca-Cola 1L रु 100.00 200 left",
+          "Cola Can रु 65.00 712 left",
+          "CF Corn Flakes रु 290.00 out",
+          "Croissants रु 160.00 871 left",
+          "CS Cumin Seeds रु 160.00 out",
+          "Dairy Milk Chocolate रु 50.00 397 left",
+          "Digestive Biscuits रु 80.00 89 left",
+          "Digestive Biscuits रु 95.00 79 left",
+          "Dishwashing Liquid रु 165.00 78 left",
+          "EV Extra Virgin Olive Oil रु 1,250.00 out",
+          "Fluoride Toothpaste रु 110.00 864 left",
+          "Previous page",
+          "Next page",
+          "W Walk-in customer tap to attach a customer attach",
+          "Hold F8",
+          "Resume (2) F9",
+          "Tender F10",
+          "Walk-in",
+          "Browse",
+          "Tender"
+        ],
+        "inputs": [
+          {
+            "label": "Scan barcode, or type a name / SKU…",
+            "type": "text",
+            "value": ""
+          }
+        ],
+        "alerts": [
+          "Live",
+          "Sale held — resume it with F9"
+        ]
+      }
+    },
+    {
+      "op": "click",
+      "arg": "Resume (",
+      "result": "ok:Resume (2) F9"
+    },
+    {
+      "op": "snapshot",
+      "arg": "held sales list",
+      "result": {
+        "label": "held sales list",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Held sales"
+        ],
+        "buttons": [
+          "Close",
+          "Take payment"
+        ],
+        "inputs": [],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "clickInDialogRow",
+      "arg": "Take payment",
+      "result": "ok:row ORD-2026-000004"
+    },
+    {
+      "op": "snapshot",
+      "arg": "tender dialog for hold",
+      "result": {
+        "label": "tender dialog for hold",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Take payment — रु 30.00"
+        ],
+        "buttons": [
+          "Close",
+          "Cash",
+          "Card",
+          "QR",
+          "Credit",
+          "Split",
+          "रु 30.00",
+          "रु 100.00",
+          "रु 500.00",
+          "रु 1,000.00",
+          "7",
+          "8",
+          "9",
+          "4",
+          "5",
+          "6",
+          "1",
+          "2",
+          "3",
+          ".",
+          "0",
+          "⌫",
+          "Clear",
+          "Complete sale रु 30.00 ⏎"
+        ],
+        "inputs": [
+          {
+            "label": "Cash received",
+            "type": "text",
+            "value": "30.00"
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "click",
+      "arg": "Card",
+      "result": "ok:Card"
+    },
+    {
+      "op": "snapshot",
+      "arg": "card mode",
+      "result": {
+        "label": "card mode",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Take payment — रु 30.00"
+        ],
+        "buttons": [
+          "Close",
+          "Cash",
+          "Card",
+          "QR",
+          "Credit",
+          "Split",
+          "Complete sale रु 30.00 ⏎"
+        ],
+        "inputs": [],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "Complete sale",
+      "result": "ok:Complete sale रु 30.00 ⏎"
+    },
+    {
+      "op": "act",
+      "target": "Complete sale",
+      "result": "ok:Complete sale रु 30.00 ⏎",
+      "writeCaptured": true
+    },
+    {
+      "op": "snapshot",
+      "arg": "after finalize",
+      "result": {
+        "label": "after finalize",
+        "path": "/till",
+        "dialogOpen": false,
+        "headings": [
+          "[tenant/user redacted]"
+        ],
+        "buttons": [
+          "X-report",
+          "Cash in/out",
+          "Close shift",
+          "Scroll categories left",
+          "All 70",
+          "Beverages 7",
+          "Bakery & Bread 6",
+          "Breakfast & Cereals 6",
+          "Canned & Preserved Goods 6",
+          "Condiments & Sauces 6",
+          "Frozen Foods 6",
+          "Household & Cleaning 6",
+          "Personal Care & Hygiene 6",
+          "Snacks & Confectionery 6",
+          "Spices, Oils & Seasonings 6",
+          "Biscuits 3",
+          "Chocolate 3",
+          "Noodles 2",
+          "Snacks 1",
+          "Scroll categories right",
+          "Anti-Dandruff Shampoo रु 340.00 980 left",
+          "BP Black Peppercorns रु 180.00 out",
+          "Black Tea Bags रु 220.00 712 left",
+          "Body Lotion रु 280.00 87 left",
+          "Bourbon Biscuits रु 40.00 85 left",
+          "Burger Buns रु 80.00 612 left",
+          "CB Canned Baked Beans रु 145.00 out",
+          "CC Canned Chickpeas रु 140.00 out",
+          "CD Canned Diced Tomatoes रु 150.00 out",
+          "CS Canned Sliced Mushrooms रु 160.00 out",
+          "CS Canned Sweet Corn रु 130.00 out",
+          "CT Canned Tuna रु 220.00 out",
+          "CC Choco Cereal Loops रु 310.00 out",
+          "Chocolate Muffin रु 85.00 321 left",
+          "Coca-Cola 1L रु 100.00 200 left",
+          "Cola Can रु 65.00 712 left",
+          "CF Corn Flakes रु 290.00 out",
+          "Croissants रु 160.00 871 left",
+          "CS Cumin Seeds रु 160.00 out",
+          "Dairy Milk Chocolate रु 50.00 397 left"
+        ],
+        "inputs": [
+          {
+            "label": "Scan barcode, or type a name / SKU…",
+            "type": "text",
+            "value": ""
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "escape",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "X-report",
+      "result": "ok:X-report"
+    },
+    {
+      "op": "snapshot",
+      "arg": "x-report",
+      "result": {
+        "label": "x-report",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "X-report (mid-shift)"
+        ],
+        "buttons": [
+          "Close",
+          "Print (80mm)",
+          "Done"
+        ],
+        "inputs": [],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "escape",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "clickFirstRow",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/sales/invoices",
+      "result": "ok"
+    },
+    {
+      "op": "clickFirstRow",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/till",
+      "result": "ok"
+    }
+  ],
+  "aborted": false,
+  "writesAllowed": 2,
+  "writes": [
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/retail/holds",
+      "status": 201,
+      "request": {
+        "clientOrderId": "65e966d5-52b1-45ea-ab6a-f848a1e24653",
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "lines": [
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "quantity": "1"
+          }
+        ],
+        "cashierName": "[tenant/user redacted]"
+      },
+      "response": {
+        "id": "c43b33bd-9527-4519-8bdc-d1c687f38d0e",
+        "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+        "clientOrderId": "65e966d5-52b1-45ea-ab6a-f848a1e24653",
+        "orderNumber": "ORD-2026-000004",
+        "channel": "retail_pos",
+        "status": "held",
+        "paymentStatus": "pending",
+        "partyId": null,
+        "placedByUserId": "3dd0027d-24c3-48a4-8184-10de831ac120",
+        "placedByName": "[tenant/user redacted]",
+        "customerName": "Walk-in",
+        "currency": "NPR",
+        "subTotal": "30.00",
+        "discountTotal": "0.00",
+        "taxTotal": "0.00",
+        "deliveryCharge": "0.00",
+        "grandTotal": "30.00",
+        "tenders": [],
+        "discountCode": null,
+        "reservationId": null,
+        "reservationStatus": "none",
+        "driverId": null,
+        "assignedById": null,
+        "driverAssignedAt": null,
+        "driverAcceptedAt": null,
+        "shiftId": null,
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "branchId": null,
+        "receiptNumber": null,
+        "cashReceived": null,
+        "changeDue": "0.00",
+        "notes": null,
+        "tableOrderId": null,
+        "diningTableName": null,
+        "placedAt": null,
+        "completedAt": null,
+        "lines": [
+          {
+            "id": "9d842904-cbc0-406c-9ee2-121d87fd53ce",
+            "orderId": "c43b33bd-9527-4519-8bdc-d1c687f38d0e",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "name": "Mineral Water",
+            "sku": "BEV-WAT-004",
+            "quantity": "1",
+            "unitPrice": "30.00",
+            "discountAmount": "0.00",
+            "taxAmount": "0.00",
+            "lineTotal": "30.00"
+          }
+        ],
+        "createdAt": "2026-10-20T16:22:57.498Z",
+        "updatedAt": "2026-10-20T16:22:57.498Z"
+      }
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/retail/holds/{id}/finalize",
+      "status": 201,
+      "request": {
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "tenders": [
+          {
+            "type": "card",
+            "amount": "30.00"
+          }
+        ],
+        "cashierName": "[tenant/user redacted]"
+      },
+      "response": {
+        "order": {
+          "id": "c43b33bd-9527-4519-8bdc-d1c687f38d0e",
+          "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+          "clientOrderId": "65e966d5-52b1-45ea-ab6a-f848a1e24653",
+          "orderNumber": "ORD-2026-000004",
+          "channel": "retail_pos",
+          "status": "completed",
+          "paymentStatus": "paid",
+          "partyId": null,
+          "placedByUserId": "3dd0027d-24c3-48a4-8184-10de831ac120",
+          "placedByName": "[tenant/user redacted]",
+          "customerName": "Walk-in",
+          "currency": "NPR",
+          "subTotal": "30.00",
+          "discountTotal": "0.00",
+          "taxTotal": "0.00",
+          "deliveryCharge": "0.00",
+          "grandTotal": "30.00",
+          "tenders": [
+            {
+              "type": "card",
+              "amount": "30.00",
+              "capturedAt": "2026-10-20T16:23:07.382Z"
+            }
+          ],
+          "discountCode": null,
+          "reservationId": null,
+          "reservationStatus": "none",
+          "driverId": null,
+          "assignedById": null,
+          "driverAssignedAt": null,
+          "driverAcceptedAt": null,
+          "shiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+          "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+          "branchId": null,
+          "receiptNumber": "RCPT-000002",
+          "cashReceived": null,
+          "changeDue": "0.00",
+          "notes": null,
+          "tableOrderId": null,
+          "diningTableName": null,
+          "placedAt": "2026-10-20T16:23:07.384Z",
+          "completedAt": "2026-10-20T16:23:07.395Z",
+          "lines": [
+            {
+              "id": "9d842904-cbc0-406c-9ee2-121d87fd53ce",
+              "orderId": "c43b33bd-9527-4519-8bdc-d1c687f38d0e",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "lineNo": 1,
+              "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+              "name": "Mineral Water",
+              "sku": "BEV-WAT-004",
+              "quantity": "1.0000",
+              "unitPrice": "30.00",
+              "discountAmount": "0.00",
+              "taxAmount": "0.00",
+              "lineTotal": "30.00"
+            }
+          ],
+          "createdAt": "2026-10-20T16:22:57.498Z",
+          "updatedAt": "2026-10-20T16:23:07.369Z"
+        },
+        "cashReceived": null,
+        "changeDue": "0.00",
+        "receipt": {
+          "store": {
+            "name": "[tenant/user redacted]",
+            "currency": "NPR",
+            "vatPercent": "13.0000"
+          },
+          "register": {
+            "id": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+            "name": "sample 1"
+          },
+          "table": null,
+          "tableOrderId": null,
+          "shiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+          "receiptNumber": "RCPT-000002",
+          "orderNumber": "ORD-2026-000004",
+          "orderId": "c43b33bd-9527-4519-8bdc-d1c687f38d0e",
+          "channel": "retail_pos",
+          "status": "completed",
+          "soldAt": "2026-10-20T16:23:07.395Z",
+          "operator": {
+            "id": "3dd0027d-24c3-48a4-8184-10de831ac120",
+            "name": "[tenant/user redacted]"
+          },
+          "customer": {
+            "partyId": null,
+            "name": "Walk-in"
+          },
+          "lines": [
+            {
+              "lineNo": 1,
+              "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+              "name": "Mineral Water",
+              "sku": "BEV-WAT-004",
+              "quantity": "1.0000",
+              "unitPrice": "30.00",
+              "discountAmount": "0.00",
+              "taxAmount": "0.00",
+              "lineTotal": "30.00"
+            }
+          ],
+          "totals": {
+            "currency": "NPR",
+            "subTotal": "30.00",
+            "discountTotal": "0.00",
+            "taxTotal": "0.00",
+            "deliveryCharge": "0.00",
+            "grandTotal": "30.00"
+          },
+          "tenders": [
+            {
+              "type": "card",
+              "amount": "30.00",
+              "capturedAt": "2026-10-20T16:23:07.382Z"
+            }
+          ],
+          "cashReceived": null,
+          "changeDue": "0.00"
+        }
+      }
+    }
+  ],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "journalNumber": "JV-2026-000058",
+            "status": "posted",
+            "sourceEventType": "core.sales_return.recorded",
+            "sourceDocumentNumber": "SRT-2026-000001",
+            "totalDebit": "37.60",
+            "totalCredit": "37.60",
+            "createdAt": "2026-10-20T16:11:56.281Z"
+          },
+          {
+            "id": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "journalNumber": "JV-2026-000057",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000017",
+            "totalDebit": "37.60",
+            "totalCredit": "37.60",
+            "createdAt": "2026-10-20T16:04:51.818Z"
+          },
+          {
+            "id": "f342f4fa-6a3f-4249-b348-1ff8b09a8378",
+            "journalNumber": "JV-2026-000056",
+            "status": "posted",
+            "sourceEventType": "core.stock.adjusted",
+            "sourceDocumentNumber": null,
+            "totalDebit": "150100.00",
+            "totalCredit": "150100.00",
+            "createdAt": "2026-09-21T09:08:06.874Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 58,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/documents",
+      "query": [
+        "type",
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "acc40b81-7717-4c4a-9cc7-2853646fb075",
+            "documentNumber": "INV-2026-000017",
+            "documentType": "sales_invoice",
+            "status": "settled",
+            "posOrderId": "64523aba-fc35-45bf-8982-43ca9257323a",
+            "subTotal": "20.00",
+            "taxTotal": "2.60",
+            "grandTotal": "22.60",
+            "balanceDue": "0.00",
+            "settledAmount": "22.60",
+            "createdAt": "2026-10-20T16:04:51.144Z"
+          },
+          {
+            "id": "578aa311-4e7b-499b-b12c-fffc896d5dd3",
+            "documentNumber": "INV-2026-000016",
+            "documentType": "sales_invoice",
+            "status": "settled",
+            "posOrderId": "9e0ffa1e-713e-4265-b835-a63eb1386cac",
+            "subTotal": "270.00",
+            "taxTotal": "35.10",
+            "grandTotal": "305.10",
+            "balanceDue": "0.00",
+            "settledAmount": "305.10",
+            "createdAt": "2026-09-17T11:48:55.536Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 3,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "body": {
+        "registers": [
+          {
+            "id": "cb8c0cc6-e523-448a-93d6-53ea7119797c",
+            "name": "Register-A",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "9d62f3dc-27e3-48f7-adae-a5cce5416162",
+            "openShift": {
+              "id": "9d62f3dc-27e3-48f7-adae-a5cce5416162",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "cb8c0cc6-e523-448a-93d6-53ea7119797c",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "0.00",
+              "openedAt": "2026-09-21T06:24:30.281Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          },
+          {
+            "id": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+            "name": "Register-B",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "932b0cde-56c9-4cbc-b82d-d0e0fccca2eb",
+            "openShift": {
+              "id": "932b0cde-56c9-4cbc-b82d-d0e0fccca2eb",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "500.00",
+              "openedAt": "2026-09-17T11:48:43.650Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          },
+          {
+            "id": "d171841b-d4e9-4a43-8fc3-2ac6ec29afc3",
+            "name": "Register-C",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": null,
+            "openShift": null
+          },
+          {
+            "id": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+            "name": "sample 1",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+            "openShift": {
+              "id": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "0.00",
+              "openedAt": "2026-10-20T15:58:04.150Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "148780ab-0694-4416-853e-14892cfc7f64",
+          "orderNumber": "ORD-2026-000002",
+          "status": "held",
+          "paymentStatus": "pending",
+          "grandTotal": "226.00",
+          "taxTotal": "26.00",
+          "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+          "shiftId": null
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+          "sku": "BEV-WAT-004",
+          "available": "172.0000"
+        }
+      ]
+    },
+    {
+      "phase": "act",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "c43b33bd-9527-4519-8bdc-d1c687f38d0e",
+          "orderNumber": "ORD-2026-000004",
+          "status": "held",
+          "paymentStatus": "pending",
+          "grandTotal": "30.00",
+          "taxTotal": "0.00",
+          "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+          "shiftId": null
+        },
+        {
+          "id": "148780ab-0694-4416-853e-14892cfc7f64",
+          "orderNumber": "ORD-2026-000002",
+          "status": "held",
+          "paymentStatus": "pending",
+          "grandTotal": "226.00",
+          "taxTotal": "26.00",
+          "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+          "shiftId": null
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "c43b33bd-9527-4519-8bdc-d1c687f38d0e",
+          "orderNumber": "ORD-2026-000004",
+          "status": "held",
+          "paymentStatus": "pending",
+          "grandTotal": "30.00",
+          "taxTotal": "0.00",
+          "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+          "shiftId": null
+        },
+        {
+          "id": "148780ab-0694-4416-853e-14892cfc7f64",
+          "orderNumber": "ORD-2026-000002",
+          "status": "held",
+          "paymentStatus": "pending",
+          "grandTotal": "226.00",
+          "taxTotal": "26.00",
+          "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+          "shiftId": null
+        }
+      ]
+    },
+    {
+      "phase": "act",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "148780ab-0694-4416-853e-14892cfc7f64",
+          "orderNumber": "ORD-2026-000002",
+          "status": "held",
+          "paymentStatus": "pending",
+          "grandTotal": "226.00",
+          "taxTotal": "26.00",
+          "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+          "shiftId": null
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/pos/retail/shifts/{id}/x-report",
+      "query": [],
+      "status": 200,
+      "body": {
+        "shiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+        "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+        "status": "open",
+        "openedAt": "2026-10-20T15:58:04.150Z",
+        "ordersTotal": 2,
+        "ordersCompleted": 1,
+        "ordersRefunded": 1,
+        "grossSales": "52.60",
+        "capturedTotal": "52.60",
+        "tenderTotals": {
+          "cash": "22.60",
+          "card": "30.00"
+        },
+        "openingFloat": "0.00",
+        "paidIn": "0",
+        "paidOut": "0",
+        "drops": "0",
+        "expectedCash": "22.60"
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "journalNumber": "JV-2026-000059",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000018",
+            "totalDebit": "48.00",
+            "totalCredit": "48.00",
+            "createdAt": "2026-10-20T16:23:08.926Z"
+          },
+          {
+            "id": "cb8d58d4-e5d6-43c4-8815-d46c075761b8",
+            "journalNumber": "JV-2026-000058",
+            "status": "posted",
+            "sourceEventType": "core.sales_return.recorded",
+            "sourceDocumentNumber": "SRT-2026-000001",
+            "totalDebit": "37.60",
+            "totalCredit": "37.60",
+            "createdAt": "2026-10-20T16:11:56.281Z"
+          },
+          {
+            "id": "e3f3ed54-a0ff-4b5e-9455-eb319b1cd5c0",
+            "journalNumber": "JV-2026-000057",
+            "status": "posted",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000017",
+            "totalDebit": "37.60",
+            "totalCredit": "37.60",
+            "createdAt": "2026-10-20T16:04:51.818Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 59,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "journalNumber": "JV-2026-000059",
+        "status": "posted",
+        "sourceEventType": "core.invoice.issued",
+        "sourceDocumentNumber": "INV-2026-000018",
+        "totalDebit": "48.00",
+        "totalCredit": "48.00",
+        "lines": [
+          {
+            "id": "68106efb-0916-46f0-a054-ad0dd73e47f3",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "accountId": "03c5d6ff-6ad5-4a9b-afce-84ce6d2702b6",
+            "description": "Amount received at invoicing",
+            "debit": "30.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "cf340865-e310-4748-a700-130aa7d0907e",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 2,
+            "accountId": "a7a048bf-8c69-46e0-a14a-f361757e89cd",
+            "description": "Sales revenue (goods)",
+            "debit": "0.00",
+            "credit": "30.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "quantity": "1.0000",
+            "unitCost": null
+          },
+          {
+            "id": "e6df8d41-5816-434a-82bc-477e5d7c1ff2",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 3,
+            "accountId": "ddaa0903-7fb9-4eb9-94a5-42987418565b",
+            "description": "Cost of goods sold",
+            "debit": "18.00",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          },
+          {
+            "id": "32266298-58ba-475e-8087-1856b367e651",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 4,
+            "accountId": "816b8758-403c-4def-aecf-f3d541763e12",
+            "description": "Inventory relieved at cost",
+            "debit": "0.00",
+            "credit": "18.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": null,
+            "quantity": null,
+            "unitCost": null
+          }
+        ],
+        "audits": [
+          {
+            "id": "70232d76-6595-4db4-b381-62777e5c748a",
+            "journalEntryId": "54256cf1-0a6e-489a-9e57-dc33add4a1f3",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "actorId": null,
+            "action": "created",
+            "fromStatus": null,
+            "toStatus": "posted",
+            "reason": null,
+            "snapshot": {
+              "totalDebit": "48.00",
+              "totalCredit": "48.00",
+              "journalNumber": "JV-2026-000059"
+            },
+            "createdAt": "2026-10-20T16:23:08.926Z"
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/documents",
+      "query": [
+        "type",
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "2e9b1698-cb8d-4608-bdfd-4e0034ad3c80",
+            "documentNumber": "INV-2026-000018",
+            "documentType": "sales_invoice",
+            "status": "settled",
+            "posOrderId": "c43b33bd-9527-4519-8bdc-d1c687f38d0e",
+            "subTotal": "30.00",
+            "taxTotal": "0.00",
+            "grandTotal": "30.00",
+            "balanceDue": "0.00",
+            "settledAmount": "30.00",
+            "createdAt": "2026-10-20T16:23:07.964Z"
+          },
+          {
+            "id": "acc40b81-7717-4c4a-9cc7-2853646fb075",
+            "documentNumber": "INV-2026-000017",
+            "documentType": "sales_invoice",
+            "status": "settled",
+            "posOrderId": "64523aba-fc35-45bf-8982-43ca9257323a",
+            "subTotal": "20.00",
+            "taxTotal": "2.60",
+            "grandTotal": "22.60",
+            "balanceDue": "0.00",
+            "settledAmount": "22.60",
+            "createdAt": "2026-10-20T16:04:51.144Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 4,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/documents/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "documentNumber": "INV-2026-000018",
+        "documentType": "sales_invoice",
+        "status": "settled",
+        "posOrderId": "c43b33bd-9527-4519-8bdc-d1c687f38d0e",
+        "subTotal": "30.00",
+        "taxTotal": "0.00",
+        "grandTotal": "30.00",
+        "settledAmount": "30.00",
+        "settlementStatus": {
+          "id": "45831578-86b2-4c18-baba-f753c4c1eeb0",
+          "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+          "name": "settled",
+          "isSystem": true,
+          "createdAt": "2026-09-17T11:47:26.573Z"
+        },
+        "settlementAccountId": null,
+        "lines": [
+          {
+            "id": "e0262e5c-7e1e-40da-bf91-8addb007594d",
+            "documentId": "2e9b1698-cb8d-4608-bdfd-4e0034ad3c80",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "description": "Mineral Water",
+            "kind": "product",
+            "quantity": "1.0000",
+            "unitPrice": "30.00",
+            "discountAmount": "0.00",
+            "discountPercentage": null,
+            "taxAmount": "0.00",
+            "lineTotal": "30.00",
+            "unitCost": "18.0000",
+            "unitMeta": null,
+            "batchNo": null,
+            "expiryDate": null
+          }
+        ],
+        "payments": []
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "148780ab-0694-4416-853e-14892cfc7f64",
+          "orderNumber": "ORD-2026-000002",
+          "status": "held",
+          "paymentStatus": "pending",
+          "grandTotal": "226.00",
+          "taxTotal": "26.00",
+          "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+          "shiftId": null
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "body": {
+        "registers": [
+          {
+            "id": "cb8c0cc6-e523-448a-93d6-53ea7119797c",
+            "name": "Register-A",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "9d62f3dc-27e3-48f7-adae-a5cce5416162",
+            "openShift": {
+              "id": "9d62f3dc-27e3-48f7-adae-a5cce5416162",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "cb8c0cc6-e523-448a-93d6-53ea7119797c",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "0.00",
+              "openedAt": "2026-09-21T06:24:30.281Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          },
+          {
+            "id": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+            "name": "Register-B",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "932b0cde-56c9-4cbc-b82d-d0e0fccca2eb",
+            "openShift": {
+              "id": "932b0cde-56c9-4cbc-b82d-d0e0fccca2eb",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "500.00",
+              "openedAt": "2026-09-17T11:48:43.650Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          },
+          {
+            "id": "d171841b-d4e9-4a43-8fc3-2ac6ec29afc3",
+            "name": "Register-C",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": null,
+            "openShift": null
+          },
+          {
+            "id": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+            "name": "sample 1",
+            "branchId": null,
+            "branchName": null,
+            "storeWarehouseId": null,
+            "openShiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+            "openShift": {
+              "id": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+              "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+              "registerId": "7f206976-30f1-4b4b-99ab-6f7c6f569986",
+              "openedById": "3dd0027d-24c3-48a4-8184-10de831ac120",
+              "status": "open",
+              "openingFloat": "0.00",
+              "openedAt": "2026-10-20T15:58:04.150Z",
+              "closedAt": null,
+              "closedById": null,
+              "countedCash": null,
+              "closeSummary": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+          "sku": "BEV-WAT-004",
+          "available": "171.0000"
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/documents",
+      "query": [
+        "type",
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 201,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/pos/retail/holds/{id}/finalize",
+      "query": [],
+      "status": 201,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/retail/shifts/{id}/x-report",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/documents",
+      "query": [
+        "type",
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/documents/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

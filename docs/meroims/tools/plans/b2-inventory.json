@@ -1,0 +1,13 @@
+[{"id":"products","goto":"/inventory","openFirstRow":true,"tabs":true},
+ {"id":"product-new","goto":"/inventory/new","tabs":true},
+ {"id":"variant-products","goto":"/inventory/variant-products","openFirstRow":true},
+ {"id":"variant-product-new","goto":"/inventory/variant-products/new"},
+ {"id":"variant-attributes","goto":"/inventory/variant-attributes"},
+ {"id":"product-category","goto":"/inventory/product-category"},
+ {"id":"units","goto":"/inventory/units"},
+ {"id":"adjustment","goto":"/inventory/adjustment","openFirstRow":true,"tabs":true},
+ {"id":"oc-dc-documents","goto":"/inventory/documents","openFirstRow":true,"tabs":true},
+ {"id":"bom","goto":"/inventory/bom","openFirstRow":true},
+ {"id":"production-order","goto":"/inventory/production-order","openFirstRow":true,"tabs":true},
+ {"id":"expiry","goto":"/inventory/expiry","tabs":true},
+ {"id":"warehouse-transfer","goto":"/inventory/warehouse-transfer","tabs":true}]

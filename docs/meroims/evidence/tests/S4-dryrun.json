@@ -1,0 +1,245 @@
+{
+  "scenario": "S4 dry run: open ORD-2026-000003, open Refund dialog, fill reason (no write)",
+  "dryRun": true,
+  "runAt": "2026-10-20T16:10:36.538Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/orders",
+      "result": "ok"
+    },
+    {
+      "op": "clickInRow",
+      "arg": "Manage",
+      "result": "ok"
+    },
+    {
+      "op": "assert",
+      "arg": "ORD-2026-000003",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "order detail",
+      "result": {
+        "label": "order detail",
+        "path": "/orders",
+        "dialogOpen": true,
+        "headings": [
+          "ORD-2026-000003 · Walk-in"
+        ],
+        "buttons": [
+          "Reprint receipt (80mm)",
+          "Refund…"
+        ],
+        "inputs": [],
+        "alerts": []
+      }
+    },
+    {
+      "op": "click",
+      "arg": "Refund…",
+      "result": "ok:Refund…"
+    },
+    {
+      "op": "snapshot",
+      "arg": "refund dialog",
+      "result": {
+        "label": "refund dialog",
+        "path": "/orders",
+        "dialogOpen": true,
+        "headings": [
+          "ORD-2026-000003 · Walk-in"
+        ],
+        "buttons": [
+          "Back",
+          "Refund order"
+        ],
+        "inputs": [
+          {
+            "label": "",
+            "type": "text",
+            "value": "1.0000"
+          },
+          {
+            "label": "Return items to stock",
+            "type": "checkbox",
+            "value": "on",
+            "checked": true
+          },
+          {
+            "label": "Reason",
+            "type": "text",
+            "value": ""
+          }
+        ],
+        "alerts": []
+      }
+    },
+    {
+      "op": "fill",
+      "arg": "Reason",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "refund dialog filled",
+      "result": {
+        "label": "refund dialog filled",
+        "path": "/orders",
+        "dialogOpen": true,
+        "headings": [
+          "ORD-2026-000003 · Walk-in"
+        ],
+        "buttons": [
+          "Back",
+          "Refund order"
+        ],
+        "inputs": [
+          {
+            "label": "",
+            "type": "text",
+            "value": "1.0000"
+          },
+          {
+            "label": "Return items to stock",
+            "type": "checkbox",
+            "value": "on",
+            "checked": true
+          },
+          {
+            "label": "Reason",
+            "type": "text",
+            "value": "TEST-DURBY-S4 refund of S3"
+          }
+        ],
+        "alerts": []
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "__discover__",
+      "result": "button matches: 0 [Switch Profile | Branches & Warehouses | Inventory | Sales | Purchase | POS | Web Store | Accounting | G [tenant/user redacted] [tenant/user redacted] | Quick Add | 1 | Manage | Manage | Manage | Back | Refund order]"
+    },
+    {
+      "op": "cleanup:escape",
+      "result": "ok"
+    },
+    {
+      "op": "cleanup:go",
+      "result": "ok"
+    }
+  ],
+  "abortReason": "act target not uniquely found/enabled",
+  "aborted": true,
+  "writesAllowed": 0,
+  "writes": [],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/pos/orders/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "id": "64523aba-fc35-45bf-8982-43ca9257323a",
+        "orderNumber": "ORD-2026-000003",
+        "status": "completed",
+        "paymentStatus": "paid",
+        "channel": "retail_pos",
+        "grandTotal": "22.60",
+        "receiptNumber": "RCPT-000001",
+        "shiftId": "264e8f96-b353-40ba-b45a-ad2c719e5ed4",
+        "lines": [
+          {
+            "id": "20add1d5-f62f-4be0-8e92-d67cc93960bf",
+            "orderId": "64523aba-fc35-45bf-8982-43ca9257323a",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "name": "Munch Chocolate",
+            "sku": "CHOC-003",
+            "quantity": "1.0000",
+            "unitPrice": "20.00",
+            "discountAmount": "0.00",
+            "taxAmount": "2.60",
+            "lineTotal": "20.00"
+          }
+        ],
+        "tenders": [
+          {
+            "type": "cash",
+            "amount": "22.60",
+            "capturedAt": "2026-10-20T16:04:49.991Z"
+          }
+        ],
+        "events": [
+          {
+            "id": "3da971a8-25d0-444d-98e7-0ebe10554f07",
+            "orderId": "64523aba-fc35-45bf-8982-43ca9257323a",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "event": "created",
+            "fromStatus": null,
+            "toStatus": "pending",
+            "actorType": "owner",
+            "actorId": "3dd0027d-24c3-48a4-8184-10de831ac120",
+            "note": null,
+            "createdAt": "2026-10-20T16:04:49.906Z"
+          },
+          {
+            "id": "0ec896f5-617d-4879-b512-965bc24d6b77",
+            "orderId": "64523aba-fc35-45bf-8982-43ca9257323a",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "event": "completed",
+            "fromStatus": "pending",
+            "toStatus": "completed",
+            "actorType": "owner",
+            "actorId": "3dd0027d-24c3-48a4-8184-10de831ac120",
+            "note": null,
+            "createdAt": "2026-10-20T16:04:49.906Z"
+          }
+        ]
+      }
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/admin/users",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/orders",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/orders/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

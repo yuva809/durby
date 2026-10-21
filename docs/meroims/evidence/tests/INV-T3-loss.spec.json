@@ -1,0 +1,33 @@
+{
+  "scenario": "INV-T3 loss adjustment: reduce CHOC-003 by 1, type loss, remarks TEST-DURBY-INV-T3 waste (user-approved)",
+  "sequence": [
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"go","path":"/inventory/9c5b6bc1-e593-4eda-9199-e1ba66e36b11"},
+    {"op":"click","text":"Adjust Stock","wait":1200},
+    {"op":"click","text":"Reduce Stock","wait":1500},
+    {"op":"fill","match":"Quantity","value":"1","scope":"dialog","wait":400},
+    {"op":"select","match":"Reason","value":"loss","scope":"dialog"},
+    {"op":"fill","match":"Remarks","value":"TEST-DURBY-INV-T3 waste","scope":"dialog","wait":400},
+    {"op":"snapshot","label":"filled"},
+    {"op":"act","text":"Reduce Stock","scope":"dialog","wait":4000},
+    {"op":"snapshot","label":"after","scope":"body"},
+    {"op":"wait","ms":3000},
+    {"op":"go","path":"/inventory/adjustment"},
+    {"op":"go","path":"/inventory/9c5b6bc1-e593-4eda-9199-e1ba66e36b11"},
+    {"op":"go","path":"/accounting-workbench"},
+    {"op":"clickNthRow","n":0}
+  ],
+  "allow": [{
+    "method": "POST", "path": "^/api/core/stock/adjustments$", "once": true,
+    "expect": "b && b.productId === '9c5b6bc1-e593-4eda-9199-e1ba66e36b11' && b.direction === 'reduce' && Number(b.quantity) === 1 && b.adjustmentType === 'loss' && typeof b.reason === 'string' && b.reason.includes('TEST-DURBY-INV-T3') && !b.unitCost && !b.batches"
+  }],
+  "maxWrites": 1,
+  "getFilters": {
+    "^/api/core/stock/levels$": {"list":"","where":{"productId":"9c5b6bc1-e593-4eda-9199-e1ba66e36b11"},"fields":["productId","onHand","available","avgCost"]},
+    "^/api/core/stock/movements$": {"list":"data","top":3,"fields":["productId","movementType","sourceType","quantity","unitCost","reason","createdAt"]},
+    "^/api/core/reports/business/inventory-ledger$": {"pick":["sections"]},
+    "^/api/accounting/journals$": {"list":"data","top":2,"fields":["journalNumber","sourceEventType","sourceDocumentNumber","totalDebit","createdAt"]},
+    "^/api/accounting/journals/[^/]+$": {"fieldsObj":["journalNumber","status","sourceEventType","sourceDocumentNumber","totalDebit","lines"]}
+  },
+  "keepRegisterNames": [], "settleMs": 3500
+}

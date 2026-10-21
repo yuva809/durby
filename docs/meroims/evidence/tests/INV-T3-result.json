@@ -1,0 +1,1120 @@
+{
+  "scenario": "INV-T3 loss adjustment: reduce CHOC-003 by 1, type loss, remarks TEST-DURBY-INV-T3 waste (user-approved)",
+  "dryRun": false,
+  "runAt": "2026-10-20T18:17:34.023Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/inventory/9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Adjust Stock",
+      "result": "ok:Adjust Stock"
+    },
+    {
+      "op": "click",
+      "arg": "Reduce Stock",
+      "result": "ok:Reduce Stock"
+    },
+    {
+      "op": "fill",
+      "arg": "Quantity",
+      "result": "ok"
+    },
+    {
+      "op": "select",
+      "arg": "Reason",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Remarks",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "filled",
+      "result": {
+        "label": "filled",
+        "path": "/inventory/9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+        "dialogOpen": true,
+        "headings": [
+          "Reduce Stock"
+        ],
+        "buttons": [
+          "Cancel",
+          "Reduce Stock"
+        ],
+        "inputs": [
+          {
+            "label": "Quantity",
+            "type": "text",
+            "value": "1"
+          },
+          {
+            "label": "Reason",
+            "type": "select-one",
+            "value": "loss"
+          },
+          {
+            "label": "Remarks",
+            "type": "textarea",
+            "value": "TEST-DURBY-INV-T3 waste"
+          }
+        ],
+        "alerts": [],
+        "options": []
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "Reduce Stock",
+      "result": "ok:Reduce Stock"
+    },
+    {
+      "op": "act",
+      "target": "Reduce Stock",
+      "result": "ok:Reduce Stock",
+      "writeCaptured": true
+    },
+    {
+      "op": "snapshot",
+      "arg": "after",
+      "result": {
+        "label": "after",
+        "path": "/inventory/9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+        "dialogOpen": false,
+        "headings": [
+          "MeroIMS",
+          "Munch Chocolate",
+          "Inventory Ledger",
+          "Item Activity"
+        ],
+        "buttons": [
+          "Close sidebar",
+          "Toggle sidebar",
+          "Switch Profile",
+          "Branches & Warehouses",
+          "Inventory",
+          "Sales",
+          "Purchase",
+          "POS",
+          "Web Store",
+          "Accounting",
+          "G [tenant/user redacted] [tenant/user redacted]",
+          "Open sidebar",
+          "Quick Add",
+          "1",
+          "View photo",
+          "Adjust Stock",
+          "Archive Item"
+        ],
+        "inputs": [
+          {
+            "label": "Search items, parties, bills, entries…",
+            "type": "search",
+            "value": ""
+          }
+        ],
+        "alerts": [],
+        "options": []
+      }
+    },
+    {
+      "op": "wait",
+      "arg": null,
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/inventory/adjustment",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/inventory/9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+      "result": "ok"
+    },
+    {
+      "op": "go",
+      "arg": "/accounting-workbench",
+      "result": "ok"
+    },
+    {
+      "op": "clickNthRow",
+      "arg": null,
+      "result": "ok"
+    }
+  ],
+  "aborted": false,
+  "writesAllowed": 1,
+  "writes": [
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/core/stock/adjustments",
+      "status": 201,
+      "request": {
+        "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+        "direction": "reduce",
+        "quantity": "1",
+        "reason": "TEST-DURBY-INV-T3 waste",
+        "adjustmentType": "loss",
+        "warehouseId": "ec10c0a4-6939-41ec-bcef-e0824fd8cd17"
+      },
+      "response": {
+        "adjustmentId": "39696d4a-7bf7-42c3-83f4-af87b3ac36ca"
+      }
+    }
+  ],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "journalNumber": "JV-2026-000061",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000019",
+            "totalDebit": "48.02",
+            "createdAt": "2026-10-20T18:12:54.471Z"
+          },
+          {
+            "journalNumber": "JV-2026-000060",
+            "sourceEventType": "core.purchase.recorded",
+            "sourceDocumentNumber": "BILL-2026-000001",
+            "totalDebit": "74.00",
+            "createdAt": "2026-10-20T18:07:39.191Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 61,
+          "totalPages": 7
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "quantity": "2.0000",
+            "unitCost": "17.0000",
+            "reason": null,
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sales_return",
+            "sourceType": "sales_return",
+            "quantity": "1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "createdAt": "2026-10-20T16:11:55.290Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "quantity": "-1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "createdAt": "2026-10-20T16:04:51.144Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 100,
+          "total": 4,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+          "onHand": "405.0000",
+          "available": "405.0000",
+          "avgCost": "15.0099"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "sections": [
+          {
+            "title": "Munch Chocolate (CHOC-003)",
+            "rows": [
+              {
+                "date": "1944-01-01",
+                "type": "Opening Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 0,
+                "balanceRate": "0.00",
+                "balanceAmount": "0.00"
+              },
+              {
+                "date": "2026-09-17",
+                "type": "Inventory Adjustment",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "—",
+                "inQty": 403,
+                "inRate": "15.00",
+                "inAmount": "6045.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 403,
+                "balanceRate": "15.00",
+                "balanceAmount": "6045.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Invoice",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "INV-2026-000017",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": 1,
+                "outRate": "15.00",
+                "outAmount": "15.00",
+                "balanceQty": 402,
+                "balanceRate": "15.00",
+                "balanceAmount": "6030.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Return",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "SRT-2026-000001",
+                "inQty": 1,
+                "inRate": "15.00",
+                "inAmount": "15.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 403,
+                "balanceRate": "15.00",
+                "balanceAmount": "6045.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Purchase Bill",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "BILL-2026-000001",
+                "inQty": 2,
+                "inRate": "17.00",
+                "inAmount": "34.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 405,
+                "balanceRate": "15.01",
+                "balanceAmount": "6079.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Closing Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 405,
+                "balanceRate": "15.01",
+                "balanceAmount": "6079.00"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "phase": "act",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "quantity": "-1.0000",
+            "unitCost": "15.0099",
+            "reason": "TEST-DURBY-INV-T3 waste",
+            "createdAt": "2026-10-20T18:17:49.393Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "quantity": "2.0000",
+            "unitCost": "17.0000",
+            "reason": null,
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sales_return",
+            "sourceType": "sales_return",
+            "quantity": "1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "createdAt": "2026-10-20T16:11:55.290Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 100,
+          "total": 5,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "act",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+          "onHand": "404.0000",
+          "available": "404.0000",
+          "avgCost": "15.0099"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "quantity": "-1.0000",
+            "unitCost": "15.0099",
+            "reason": "TEST-DURBY-INV-T3 waste",
+            "createdAt": "2026-10-20T18:17:49.393Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "quantity": "-1.0000",
+            "unitCost": "18.0231",
+            "reason": null,
+            "createdAt": "2026-10-20T18:12:53.362Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "quantity": "2.0000",
+            "unitCost": "17.0000",
+            "reason": null,
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 57,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "quantity": "-1.0000",
+            "unitCost": "15.0099",
+            "reason": "TEST-DURBY-INV-T3 waste",
+            "createdAt": "2026-10-20T18:17:49.393Z"
+          },
+          {
+            "productId": "6c8d320e-ffdd-43c3-92e4-0c963d3c9b6b",
+            "movementType": "sale",
+            "sourceType": "sales_invoice",
+            "quantity": "-1.0000",
+            "unitCost": "18.0231",
+            "reason": null,
+            "createdAt": "2026-10-20T18:12:53.362Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "quantity": "2.0000",
+            "unitCost": "17.0000",
+            "reason": null,
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 57,
+          "totalPages": 6
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+          "onHand": "404.0000",
+          "available": "404.0000",
+          "avgCost": "15.0099"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": [
+        {
+          "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+          "onHand": "404.0000",
+          "available": "404.0000",
+          "avgCost": "15.0099"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "adjustment",
+            "sourceType": "adjustment",
+            "quantity": "-1.0000",
+            "unitCost": "15.0099",
+            "reason": "TEST-DURBY-INV-T3 waste",
+            "createdAt": "2026-10-20T18:17:49.393Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "purchase",
+            "sourceType": "purchase_bill",
+            "quantity": "2.0000",
+            "unitCost": "17.0000",
+            "reason": null,
+            "createdAt": "2026-10-20T18:07:38.089Z"
+          },
+          {
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "movementType": "sales_return",
+            "sourceType": "sales_return",
+            "quantity": "1.0000",
+            "unitCost": "15.0000",
+            "reason": null,
+            "createdAt": "2026-10-20T16:11:55.290Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 100,
+          "total": 5,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "body": {
+        "sections": [
+          {
+            "title": "Munch Chocolate (CHOC-003)",
+            "rows": [
+              {
+                "date": "1944-01-01",
+                "type": "Opening Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 0,
+                "balanceRate": "0.00",
+                "balanceAmount": "0.00"
+              },
+              {
+                "date": "2026-09-17",
+                "type": "Inventory Adjustment",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "—",
+                "inQty": 403,
+                "inRate": "15.00",
+                "inAmount": "6045.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 403,
+                "balanceRate": "15.00",
+                "balanceAmount": "6045.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Invoice",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "INV-2026-000017",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": 1,
+                "outRate": "15.00",
+                "outAmount": "15.00",
+                "balanceQty": 402,
+                "balanceRate": "15.00",
+                "balanceAmount": "6030.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Sales Return",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "SRT-2026-000001",
+                "inQty": 1,
+                "inRate": "15.00",
+                "inAmount": "15.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 403,
+                "balanceRate": "15.00",
+                "balanceAmount": "6045.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Purchase Bill",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "BILL-2026-000001",
+                "inQty": 2,
+                "inRate": "17.00",
+                "inAmount": "34.00",
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 405,
+                "balanceRate": "15.01",
+                "balanceAmount": "6079.00"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Inventory Adjustment",
+                "contact": "—",
+                "warehouse": "Main Warehouse",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": 1,
+                "outRate": "15.01",
+                "outAmount": "15.01",
+                "balanceQty": 404,
+                "balanceRate": "15.01",
+                "balanceAmount": "6063.99"
+              },
+              {
+                "date": "2026-10-20",
+                "type": "Closing Balance",
+                "contact": "—",
+                "warehouse": "—",
+                "number": "—",
+                "inQty": null,
+                "inRate": null,
+                "inAmount": null,
+                "outQty": null,
+                "outRate": null,
+                "outAmount": null,
+                "balanceQty": 404,
+                "balanceRate": "15.01",
+                "balanceAmount": "6063.99"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "journalNumber": "JV-2026-000062",
+            "sourceEventType": "core.stock.adjusted",
+            "sourceDocumentNumber": null,
+            "totalDebit": "15.01",
+            "createdAt": "2026-10-20T18:17:50.257Z"
+          },
+          {
+            "journalNumber": "JV-2026-000061",
+            "sourceEventType": "core.invoice.issued",
+            "sourceDocumentNumber": "INV-2026-000019",
+            "totalDebit": "48.02",
+            "createdAt": "2026-10-20T18:12:54.471Z"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "perPage": 10,
+          "total": 62,
+          "totalPages": 7
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "body": {
+        "journalNumber": "JV-2026-000062",
+        "status": "posted",
+        "sourceEventType": "core.stock.adjusted",
+        "sourceDocumentNumber": null,
+        "totalDebit": "15.01",
+        "lines": [
+          {
+            "id": "a590f59a-1f67-4133-b79b-7a06159004b6",
+            "journalEntryId": "2ec93632-ae74-45bc-8c43-7b9c5decf1b4",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 1,
+            "accountId": "d2decb39-55ac-47d3-887c-28ce07b08e01",
+            "description": null,
+            "debit": "15.01",
+            "credit": "0.00",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "quantity": "1.0000",
+            "unitCost": "15.0099"
+          },
+          {
+            "id": "896dab8d-aad4-46f6-a3f2-ae86f5cd7375",
+            "journalEntryId": "2ec93632-ae74-45bc-8c43-7b9c5decf1b4",
+            "tenantId": "f876da5e-f380-4952-af49-1b6747049d0e",
+            "lineNo": 2,
+            "accountId": "816b8758-403c-4def-aecf-f3d541763e12",
+            "description": null,
+            "debit": "0.00",
+            "credit": "15.01",
+            "subledgerType": null,
+            "subledgerId": null,
+            "operationalAccountId": null,
+            "productId": "9c5b6bc1-e593-4eda-9199-e1ba66e36b11",
+            "quantity": null,
+            "unitCost": null
+          }
+        ]
+      }
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "POST",
+      "path": "/api/core/stock/adjustments",
+      "query": [],
+      "status": 201,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "act",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/lookups",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "query": [
+        "from",
+        "to",
+        "itemIds",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/journals/{id}",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "after",
+      "method": "GET",
+      "path": "/api/accounting/chart-accounts",
+      "query": [],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

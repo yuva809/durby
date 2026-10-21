@@ -1,0 +1,155 @@
+{
+  "scenario": "INV-T3 dry run: adjustment page, find CHOC-003 adjust action and dialog (no write)",
+  "dryRun": true,
+  "runAt": "2026-10-20T18:14:41.739Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/inventory/adjustment",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "by name or SKU",
+      "result": "ok"
+    },
+    {
+      "op": "snapshot",
+      "arg": "filtered list",
+      "result": {
+        "label": "filtered list",
+        "path": "/inventory/adjustment",
+        "dialogOpen": false,
+        "headings": [
+          "MeroIMS",
+          "Inventory Adjustment",
+          "Recent Movements"
+        ],
+        "buttons": [
+          "Close sidebar",
+          "Toggle sidebar",
+          "Switch Profile",
+          "Branches & Warehouses",
+          "Inventory",
+          "Sales",
+          "Purchase",
+          "POS",
+          "Web Store",
+          "Accounting",
+          "G [tenant/user redacted] [tenant/user redacted]",
+          "Open sidebar",
+          "Quick Add",
+          "1",
+          "Adjust Stock",
+          "Adjust this item"
+        ],
+        "inputs": [
+          {
+            "label": "Search items, parties, bills, entries…",
+            "type": "search",
+            "value": ""
+          },
+          {
+            "label": "Search items by name or SKU...",
+            "type": "text",
+            "value": "CHOC-003"
+          }
+        ],
+        "alerts": [],
+        "options": []
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "__discover__",
+      "result": "button matches: 0 [Switch Profile | Branches & Warehouses | Inventory | Sales | Purchase | POS | Web Store | Accounting | G [tenant/user redacted] [tenant/user redacted] | Quick Add | 1 | Adjust Stock]"
+    },
+    {
+      "op": "cleanup:go",
+      "result": "ok"
+    }
+  ],
+  "abortReason": "act target not uniquely found/enabled",
+  "aborted": true,
+  "writesAllowed": 0,
+  "writes": [],
+  "blocked": [],
+  "gets": [],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/warehouses",
+      "query": [
+        "includeBranchStores"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/products",
+      "query": [
+        "page",
+        "perPage"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/levels",
+      "query": [
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/stock/movements",
+      "query": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

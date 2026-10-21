@@ -1,0 +1,477 @@
+{
+  "scenario": "S5 dry run: add BEV-WAT-004 to cart, discover hold/park UI and held-orders UI (no write)",
+  "dryRun": true,
+  "runAt": "2026-10-20T16:17:34.544Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/till",
+      "result": "ok"
+    },
+    {
+      "op": "fill",
+      "arg": "Scan barcode",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Mineral Water BEV-WAT-004",
+      "result": "ok:Mineral Water BEV-WAT-004 रु 30.00 stock 172"
+    },
+    {
+      "op": "snapshot",
+      "arg": "cart with item (look for hold/park + note)",
+      "result": {
+        "label": "cart with item (look for hold/park + note)",
+        "path": "/till",
+        "dialogOpen": false,
+        "headings": [
+          "[tenant/user redacted]"
+        ],
+        "buttons": [
+          "X-report",
+          "Cash in/out",
+          "Close shift",
+          "Scroll categories left",
+          "All 70",
+          "Beverages 7",
+          "Bakery & Bread 6",
+          "Breakfast & Cereals 6",
+          "Canned & Preserved Goods 6",
+          "Condiments & Sauces 6",
+          "Frozen Foods 6",
+          "Household & Cleaning 6",
+          "Personal Care & Hygiene 6",
+          "Snacks & Confectionery 6",
+          "Spices, Oils & Seasonings 6",
+          "Biscuits 3",
+          "Chocolate 3",
+          "Noodles 2",
+          "Snacks 1",
+          "Scroll categories right",
+          "Anti-Dandruff Shampoo रु 340.00 980 left",
+          "BP Black Peppercorns रु 180.00 out",
+          "Black Tea Bags रु 220.00 712 left",
+          "Body Lotion रु 280.00 87 left",
+          "Bourbon Biscuits रु 40.00 85 left",
+          "Burger Buns रु 80.00 612 left",
+          "CB Canned Baked Beans रु 145.00 out",
+          "CC Canned Chickpeas रु 140.00 out",
+          "CD Canned Diced Tomatoes रु 150.00 out",
+          "CS Canned Sliced Mushrooms रु 160.00 out",
+          "CS Canned Sweet Corn रु 130.00 out",
+          "CT Canned Tuna रु 220.00 out",
+          "CC Choco Cereal Loops रु 310.00 out",
+          "Chocolate Muffin रु 85.00 321 left",
+          "Coca-Cola 1L रु 100.00 200 left",
+          "Cola Can रु 65.00 712 left",
+          "CF Corn Flakes रु 290.00 out",
+          "Croissants रु 160.00 871 left",
+          "CS Cumin Seeds रु 160.00 out",
+          "Dairy Milk Chocolate रु 50.00 397 left",
+          "Digestive Biscuits रु 80.00 89 left",
+          "Digestive Biscuits रु 95.00 79 left",
+          "Dishwashing Liquid रु 165.00 78 left",
+          "EV Extra Virgin Olive Oil रु 1,250.00 out",
+          "Fluoride Toothpaste रु 110.00 864 left",
+          "Previous page",
+          "Next page",
+          "−",
+          "+",
+          "Edit",
+          "Void",
+          "W Walk-in customer tap to attach a customer attach",
+          "Hold F8",
+          "Resume (1) F9",
+          "Tender रु 30.00 F10",
+          "Walk-in",
+          "Browse",
+          "Tender"
+        ],
+        "inputs": [
+          {
+            "label": "Scan barcode, or type a name / SKU…",
+            "type": "text",
+            "value": ""
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "__discover__",
+      "result": "button matches: 0 [X-report | Cash in/out | Close shift | All 70 | Beverages 7 | Bakery & Bread 6 | Breakfast & Cereals 6 | Canned & Preserved Goods 6 | Condiments & Sauces 6 | Frozen Foods 6 | Household & Cleaning 6 | Personal Care & Hygiene 6 | Snacks & Confectionery 6 | Spices, Oils & Seasonings 6 | Biscuits 3 | Chocolate 3 | Noodles 2 | Snacks 1 | Anti-Dandruff Shampoo रु 340.00 980 left | BP Black Peppercorns रु 180.00 out | Black Tea Bags रु 220.00 712 left | Body Lotion रु 280.00 87 left | Bourbon Biscuits रु 40.00 85 left | Burger Buns रु 80.00 612 left | CB Canned Baked Beans रु 145.00 out]"
+    },
+    {
+      "op": "cleanup:go",
+      "result": "ok"
+    },
+    {
+      "op": "cleanup:go",
+      "result": "ok"
+    },
+    {
+      "op": "cleanup:snapshot",
+      "result": {
+        "label": "cart cleared?",
+        "path": "/till",
+        "dialogOpen": false,
+        "headings": [
+          "[tenant/user redacted]"
+        ],
+        "buttons": [
+          "X-report",
+          "Cash in/out",
+          "Close shift",
+          "Scroll categories left",
+          "All 70",
+          "Beverages 7",
+          "Bakery & Bread 6",
+          "Breakfast & Cereals 6",
+          "Canned & Preserved Goods 6",
+          "Condiments & Sauces 6",
+          "Frozen Foods 6",
+          "Household & Cleaning 6",
+          "Personal Care & Hygiene 6",
+          "Snacks & Confectionery 6",
+          "Spices, Oils & Seasonings 6",
+          "Biscuits 3",
+          "Chocolate 3",
+          "Noodles 2",
+          "Snacks 1",
+          "Scroll categories right",
+          "Anti-Dandruff Shampoo रु 340.00 980 left",
+          "BP Black Peppercorns रु 180.00 out",
+          "Black Tea Bags रु 220.00 712 left",
+          "Body Lotion रु 280.00 87 left",
+          "Bourbon Biscuits रु 40.00 85 left",
+          "Burger Buns रु 80.00 612 left",
+          "CB Canned Baked Beans रु 145.00 out",
+          "CC Canned Chickpeas रु 140.00 out",
+          "CD Canned Diced Tomatoes रु 150.00 out",
+          "CS Canned Sliced Mushrooms रु 160.00 out",
+          "CS Canned Sweet Corn रु 130.00 out",
+          "CT Canned Tuna रु 220.00 out",
+          "CC Choco Cereal Loops रु 310.00 out",
+          "Chocolate Muffin रु 85.00 321 left",
+          "Coca-Cola 1L रु 100.00 200 left",
+          "Cola Can रु 65.00 712 left",
+          "CF Corn Flakes रु 290.00 out",
+          "Croissants रु 160.00 871 left",
+          "CS Cumin Seeds रु 160.00 out",
+          "Dairy Milk Chocolate रु 50.00 397 left",
+          "Digestive Biscuits रु 80.00 89 left",
+          "Digestive Biscuits रु 95.00 79 left",
+          "Dishwashing Liquid रु 165.00 78 left",
+          "EV Extra Virgin Olive Oil रु 1,250.00 out",
+          "Fluoride Toothpaste रु 110.00 864 left",
+          "Previous page",
+          "Next page",
+          "W Walk-in customer tap to attach a customer attach",
+          "Hold F8",
+          "Resume (1) F9",
+          "Tender F10",
+          "Walk-in",
+          "Browse",
+          "Tender"
+        ],
+        "inputs": [
+          {
+            "label": "Scan barcode, or type a name / SKU…",
+            "type": "text",
+            "value": ""
+          }
+        ],
+        "alerts": [
+          "Live"
+        ]
+      }
+    }
+  ],
+  "abortReason": "act target not uniquely found/enabled",
+  "aborted": true,
+  "writesAllowed": 0,
+  "writes": [],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "148780ab-0694-4416-853e-14892cfc7f64",
+          "orderNumber": "ORD-2026-000002",
+          "status": "held",
+          "grandTotal": "226.00",
+          "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "148780ab-0694-4416-853e-14892cfc7f64",
+          "orderNumber": "ORD-2026-000002",
+          "status": "held",
+          "grandTotal": "226.00",
+          "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d"
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

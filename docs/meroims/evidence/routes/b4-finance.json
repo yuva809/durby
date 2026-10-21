@@ -1,0 +1,2031 @@
+{
+  "target": "A73B2A0558BBC812AC8FB41053444E94",
+  "runAt": "2026-10-20T15:19:53.430Z",
+  "steps": [
+    {
+      "id": "money-accounts",
+      "startedAt": "2026-10-20T15:18:46.638Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/accounts",
+        "to": "/accounts"
+      },
+      "ui": {
+        "path": "/accounts",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Manage Accounts",
+          "ACCOUNTS",
+          "Cash",
+          "DETAIL GENERAL LEDGER",
+          "TRANSACTIONS"
+        ],
+        "buttons": [
+          "[record button]",
+          "Name",
+          "Type",
+          "Active",
+          "[record button]",
+          "Archive Nabil Bank",
+          "Manage Amount"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search accounts\u2026",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "TXN DATE",
+            "TXN TYPE",
+            "TXN NO.",
+            "REFERENCE NO",
+            "DESCRIPTION",
+            "DEBIT",
+            "CREDIT",
+            "BALANCE"
+          ]
+        ],
+        "links": [
+          "/reports/detail-general-ledger",
+          "/sales/invoices/{id}"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No transactions on this account yet."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:18:54.132Z"
+    },
+    {
+      "id": "chart-of-account",
+      "startedAt": "2026-10-20T15:18:54.132Z",
+      "ui": {
+        "path": "/accounts/chart-of-account",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Chart of Account"
+        ],
+        "buttons": [
+          "[record button]",
+          "Accounts",
+          "Groups",
+          "Tree",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "More actions"
+        ],
+        "tabs": [
+          "Accounts",
+          "Groups",
+          "Tree"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search by name, code or group\u2026",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Hide system accounts",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Show archived",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "ACCOUNT CODE",
+            "NAME",
+            "ACCOUNT TYPE",
+            "PARENT GROUP",
+            "BALANCE"
+          ]
+        ],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "tabViews": [
+        {
+          "tab": "Accounts",
+          "clicked": true,
+          "ui": {
+            "path": "/accounts/chart-of-account",
+            "queryKeys": [],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Chart of Account"
+            ],
+            "buttons": [
+              "[record button]",
+              "Accounts",
+              "Groups",
+              "Tree",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "More actions"
+            ],
+            "tabs": [
+              "Accounts",
+              "Groups",
+              "Tree"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "search",
+                "name": "",
+                "label": "Search by name, code or group\u2026",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Hide system accounts",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Show archived",
+                "required": false
+              }
+            ],
+            "tableHeaders": [
+              [
+                "ACCOUNT CODE",
+                "NAME",
+                "ACCOUNT TYPE",
+                "PARENT GROUP",
+                "BALANCE"
+              ]
+            ],
+            "links": [],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Groups",
+          "clicked": true,
+          "ui": {
+            "path": "/accounts/chart-of-account",
+            "queryKeys": [],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Chart of Account"
+            ],
+            "buttons": [
+              "[record button]",
+              "Accounts",
+              "Groups",
+              "Tree"
+            ],
+            "tabs": [
+              "Accounts",
+              "Groups",
+              "Tree"
+            ],
+            "fields": [],
+            "tableHeaders": [
+              [
+                "GROUP NAME",
+                "GROUP TYPE",
+                "GROUP PARENT",
+                "DESCRIPTION"
+              ]
+            ],
+            "links": [],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Tree",
+          "clicked": true,
+          "ui": {
+            "path": "/accounts/chart-of-account",
+            "queryKeys": [],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Chart of Account"
+            ],
+            "buttons": [
+              "[record button]",
+              "Accounts",
+              "Groups",
+              "Tree",
+              "Collapse all",
+              "Collapse Assets",
+              "Collapse Current Assets",
+              "Collapse Account Receivable",
+              "Collapse Closing Inventory",
+              "Collapse Non Current Assets",
+              "Collapse Liability",
+              "Collapse Current Liability",
+              "Collapse Account Payable",
+              "Collapse Non Current Liability",
+              "Collapse Equity",
+              "Collapse Capital",
+              "Collapse Income",
+              "Collapse Direct Income",
+              "Collapse Sale",
+              "Collapse Expenses",
+              "Collapse Direct Expenses",
+              "Collapse Purchase"
+            ],
+            "tabs": [
+              "Accounts",
+              "Groups",
+              "Tree"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "search",
+                "name": "",
+                "label": "Search the chart tree",
+                "required": false
+              }
+            ],
+            "tableHeaders": [
+              [
+                "ACCOUNT",
+                "AMOUNT (RS.)"
+              ]
+            ],
+            "links": [
+              "/parties/{id}",
+              "/accounting"
+            ],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        }
+      ],
+      "skippedTabs": [],
+      "endedAt": "2026-10-20T15:19:03.913Z"
+    },
+    {
+      "id": "accounting-workbench",
+      "startedAt": "2026-10-20T15:19:03.913Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/accounting-workbench",
+        "to": "/accounting-workbench"
+      },
+      "ui": {
+        "path": "/accounting-workbench",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Accounting Workbench",
+          "JV-2026-000056",
+          "LINES",
+          "AUDIT TRAIL"
+        ],
+        "buttons": [
+          "Journals",
+          "Manual Entry",
+          "Locks & Close",
+          "Tax Filing",
+          "[record button]",
+          "Mappings",
+          "Journal status",
+          "CSV",
+          "Excel",
+          "Print",
+          "More actions",
+          "Previous page",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "Next page",
+          "Close"
+        ],
+        "tabs": [
+          "Journals",
+          "Manual Entry",
+          "Locks & Close",
+          "Tax Filing",
+          "Subledgers",
+          "Mappings"
+        ],
+        "fields": [
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Status",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select all rows",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select JV-2026-000056",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select JV-2026-000055",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select JV-2026-000054",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select JV-2026-000053",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select JV-2026-000052",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select JV-2026-000051",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select JV-2026-000050",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select JV-2026-000049",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select JV-2026-000048",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select JV-2026-000047",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "JOURNAL",
+            "DATE",
+            "NARRATION",
+            "SOURCE",
+            "AMOUNT",
+            "STATUS"
+          ],
+          [
+            "ACCOUNT",
+            "DESCRIPTION",
+            "DEBIT",
+            "CREDIT"
+          ]
+        ],
+        "links": [],
+        "dialogs": 1,
+        "emptyStates": [],
+        "errorText": [],
+        "dialog": {
+          "headings": [
+            "[panel title redacted]",
+            "LINES",
+            "AUDIT TRAIL"
+          ],
+          "buttons": [
+            "Close"
+          ],
+          "tabs": [],
+          "fields": [],
+          "tableHeaders": [
+            [
+              "ACCOUNT",
+              "DESCRIPTION",
+              "DEBIT",
+              "CREDIT"
+            ]
+          ],
+          "links": [],
+          "dialogs": 1,
+          "emptyStates": [],
+          "errorText": []
+        }
+      },
+      "tabViews": [
+        {
+          "tab": "Journals",
+          "clicked": true,
+          "ui": {
+            "path": "/accounting-workbench",
+            "queryKeys": [
+              "tab"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Accounting Workbench",
+              "JV-2026-000056",
+              "LINES",
+              "AUDIT TRAIL"
+            ],
+            "buttons": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "[record button]",
+              "Mappings",
+              "Journal status",
+              "CSV",
+              "Excel",
+              "Print",
+              "More actions",
+              "Previous page",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "Next page",
+              "Close"
+            ],
+            "tabs": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "Subledgers",
+              "Mappings"
+            ],
+            "fields": [
+              {
+                "tag": "button",
+                "type": "button",
+                "name": "",
+                "label": "Status",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "date",
+                "name": "",
+                "label": "From",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "date",
+                "name": "",
+                "label": "To",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Select all rows",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Select JV-2026-000056",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Select JV-2026-000055",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Select JV-2026-000054",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Select JV-2026-000053",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Select JV-2026-000052",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Select JV-2026-000051",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Select JV-2026-000050",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Select JV-2026-000049",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Select JV-2026-000048",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "checkbox",
+                "name": "",
+                "label": "Select JV-2026-000047",
+                "required": false
+              }
+            ],
+            "tableHeaders": [
+              [
+                "JOURNAL",
+                "DATE",
+                "NARRATION",
+                "SOURCE",
+                "AMOUNT",
+                "STATUS"
+              ],
+              [
+                "ACCOUNT",
+                "DESCRIPTION",
+                "DEBIT",
+                "CREDIT"
+              ]
+            ],
+            "links": [],
+            "dialogs": 1,
+            "emptyStates": [],
+            "errorText": [],
+            "dialog": {
+              "headings": [
+                "[panel title redacted]",
+                "LINES",
+                "AUDIT TRAIL"
+              ],
+              "buttons": [
+                "Close"
+              ],
+              "tabs": [],
+              "fields": [],
+              "tableHeaders": [
+                [
+                  "ACCOUNT",
+                  "DESCRIPTION",
+                  "DEBIT",
+                  "CREDIT"
+                ]
+              ],
+              "links": [],
+              "dialogs": 1,
+              "emptyStates": [],
+              "errorText": []
+            }
+          }
+        },
+        {
+          "tab": "Manual Entry",
+          "clicked": true,
+          "ui": {
+            "path": "/accounting-workbench",
+            "queryKeys": [
+              "tab"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Accounting Workbench"
+            ],
+            "buttons": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "[record button]",
+              "Mappings",
+              "Select account\u2026",
+              "Remove line",
+              "Save Draft",
+              "Save & Submit",
+              "Save & Post"
+            ],
+            "tabs": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "Subledgers",
+              "Mappings"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "date",
+                "name": "",
+                "label": "Entry Date",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Narration",
+                "required": false
+              },
+              {
+                "tag": "button",
+                "type": "button",
+                "name": "",
+                "label": "Select account\u2026",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Line description",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Debit",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Credit",
+                "required": false
+              },
+              {
+                "tag": "button",
+                "type": "button",
+                "name": "",
+                "label": "Select account\u2026",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Line description",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Debit",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Credit",
+                "required": false
+              }
+            ],
+            "tableHeaders": [
+              [
+                "ACCOUNT",
+                "DESCRIPTION",
+                "DEBIT",
+                "CREDIT"
+              ]
+            ],
+            "links": [],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Locks & Close",
+          "clicked": true,
+          "ui": {
+            "path": "/accounting-workbench",
+            "queryKeys": [
+              "tab"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Accounting Workbench",
+              "FISCAL YEARS",
+              "PERIOD LOCKS"
+            ],
+            "buttons": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "[record button]",
+              "Mappings",
+              "Create"
+            ],
+            "tabs": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "Subledgers",
+              "Mappings"
+            ],
+            "fields": [
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Calendar",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "BS Year",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Label (optional)",
+                "required": false
+              },
+              {
+                "tag": "input",
+                "type": "date",
+                "name": "",
+                "label": "From",
+                "required": true
+              },
+              {
+                "tag": "input",
+                "type": "date",
+                "name": "",
+                "label": "To",
+                "required": true
+              },
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Reason",
+                "required": false
+              }
+            ],
+            "tableHeaders": [],
+            "links": [],
+            "dialogs": 0,
+            "emptyStates": [
+              "No fiscal years defined yet.",
+              "No period locks yet."
+            ],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Tax Filing",
+          "clicked": true,
+          "ui": {
+            "path": "/accounting-workbench",
+            "queryKeys": [
+              "tab"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Accounting Workbench"
+            ],
+            "buttons": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "[record button]",
+              "Mappings",
+              "Generate VAT Filing"
+            ],
+            "tabs": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "Subledgers",
+              "Mappings"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "date",
+                "name": "",
+                "label": "Period Start",
+                "required": true
+              },
+              {
+                "tag": "input",
+                "type": "date",
+                "name": "",
+                "label": "Period End",
+                "required": true
+              }
+            ],
+            "tableHeaders": [
+              [
+                "PERIOD",
+                "OUTPUT VAT",
+                "INPUT VAT",
+                "NET PAYABLE",
+                "STATUS"
+              ]
+            ],
+            "links": [],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Subledgers",
+          "clicked": true,
+          "ui": {
+            "path": "/accounting-workbench",
+            "queryKeys": [
+              "tab"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Accounting Workbench",
+              "CUSTOMERS (RECEIVABLES)",
+              "SUPPLIERS (PAYABLES)"
+            ],
+            "buttons": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "[record button]",
+              "Mappings",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]"
+            ],
+            "tabs": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "Subledgers",
+              "Mappings"
+            ],
+            "fields": [],
+            "tableHeaders": [],
+            "links": [],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Mappings",
+          "clicked": true,
+          "ui": {
+            "path": "/accounting-workbench",
+            "queryKeys": [
+              "tab"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Accounting Workbench",
+              "POSTING ROLES",
+              "CASH / BANK ACCOUNTS"
+            ],
+            "buttons": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "[record button]",
+              "Mappings"
+            ],
+            "tabs": [
+              "Journals",
+              "Manual Entry",
+              "Locks & Close",
+              "Tax Filing",
+              "Subledgers",
+              "Mappings"
+            ],
+            "fields": [
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Accounts Receivable",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Accounts Payable",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Cash / Bank",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Cheque Clearing",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Inventory",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Sales Revenue (Goods)",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Sales Revenue (Services)",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Other Income",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Sales Returns",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Purchases (Services)",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Purchase Returns",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Cost of Goods Sold",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Discount Allowed",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Discount Received",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Output VAT",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Input VAT",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for VAT Settlement",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for General Expenses",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Stock Adjustment",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Opening Balance Equity",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Account for Retained Earnings",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "GL account for Cash",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "GL account for Nabil Bank",
+                "required": false
+              }
+            ],
+            "tableHeaders": [],
+            "links": [],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        }
+      ],
+      "skippedTabs": [],
+      "endedAt": "2026-10-20T15:19:23.309Z"
+    },
+    {
+      "id": "accounting",
+      "startedAt": "2026-10-20T15:19:23.309Z",
+      "ui": {
+        "path": "/accounting",
+        "queryKeys": [],
+        "title": "[title]  [tenant/user redacted]",
+        "headings": [
+          "Accounting Reports",
+          "TRIAL BALANCE"
+        ],
+        "buttons": [
+          "Trial Balance",
+          "Profit & Loss",
+          "Balance Sheet",
+          "[record button]",
+          "Cash Flow",
+          "Day Book",
+          "CSV",
+          "Excel",
+          "Print"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Show BS (Nepali) dates",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "CODE",
+            "ACCOUNT",
+            "TYPE",
+            "DEBIT",
+            "CREDIT"
+          ]
+        ],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:19:27.022Z"
+    },
+    {
+      "id": "cheque-register",
+      "startedAt": "2026-10-20T15:19:27.022Z",
+      "ui": {
+        "path": "/cheque-register",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Cheque Register"
+        ],
+        "buttons": [
+          "Direction",
+          "Status",
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Direction",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Status",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select all rows",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "CHEQUE #",
+            "DIRECTION",
+            "BANK NAME",
+            "PAYEE",
+            "CHEQUE DATE",
+            "AMOUNT",
+            "STATUS"
+          ]
+        ],
+        "links": [
+          "/cheque-register/new"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:19:30.737Z"
+    },
+    {
+      "id": "cheque-new",
+      "startedAt": "2026-10-20T15:19:30.737Z",
+      "ui": {
+        "path": "/cheque-register/new",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Record Cheque"
+        ],
+        "buttons": [
+          "Direction",
+          "[record button]",
+          "Save"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Direction",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Amount *",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Cheque Number",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "Cheque Date",
+            "required": false
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Received from (party or account)",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Bank Name",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Payee",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Notes",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/cheque-register"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:19:34.478Z"
+    },
+    {
+      "id": "quick-receipt",
+      "startedAt": "2026-10-20T15:19:34.478Z",
+      "ui": {
+        "path": "/quick-receipt",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Quick Receipt"
+        ],
+        "buttons": [
+          "Quick Receipt status",
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Status",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select all rows",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "DATE",
+            "REFERENCE",
+            "ROWS",
+            "TOTAL",
+            "STATUS",
+            "NOTE"
+          ]
+        ],
+        "links": [
+          "/quick-receipt/new"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:19:38.211Z"
+    },
+    {
+      "id": "quick-payment",
+      "startedAt": "2026-10-20T15:19:38.211Z",
+      "ui": {
+        "path": "/quick-payment",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Quick Payment"
+        ],
+        "buttons": [
+          "Quick Payment status",
+          "[record button]",
+          "CSV",
+          "Excel",
+          "Print"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "label": "Status",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Select all rows",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "DATE",
+            "REFERENCE",
+            "ROWS",
+            "TOTAL",
+            "STATUS",
+            "NOTE"
+          ]
+        ],
+        "links": [
+          "/quick-payment/new"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:19:41.929Z"
+    },
+    {
+      "id": "bank-reconciliation",
+      "startedAt": "2026-10-20T15:19:41.929Z",
+      "ui": {
+        "path": "/bank-reconciliation",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Bank Reconciliation",
+          "STATEMENTS"
+        ],
+        "buttons": [
+          "Import Statement"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [
+          "No statements yet \u2014 import your first one."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:19:45.644Z"
+    },
+    {
+      "id": "opening-balance",
+      "startedAt": "2026-10-20T15:19:45.644Z",
+      "ui": {
+        "path": "/opening-balance",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Opening Balance"
+        ],
+        "buttons": [
+          "Account",
+          "[record button]",
+          "All",
+          "GL accounts",
+          "Cash & Bank",
+          "Customers",
+          "Suppliers"
+        ],
+        "tabs": [
+          "Account",
+          "Product"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "As of",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search opening balances",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "NAME (CODE)",
+            "ACCOUNT TYPE",
+            "PARENT GROUP",
+            "OPENING"
+          ]
+        ],
+        "links": [
+          "/accounts",
+          "/parties/{id}"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "tabViews": [
+        {
+          "tab": "Account",
+          "clicked": true,
+          "ui": {
+            "path": "/opening-balance",
+            "queryKeys": [
+              "tab"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Opening Balance"
+            ],
+            "buttons": [
+              "Account",
+              "[record button]",
+              "All",
+              "GL accounts",
+              "Cash & Bank",
+              "Customers",
+              "Suppliers"
+            ],
+            "tabs": [
+              "Account",
+              "Product"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "date",
+                "name": "",
+                "label": "As of",
+                "required": true
+              },
+              {
+                "tag": "input",
+                "type": "search",
+                "name": "",
+                "label": "Search opening balances",
+                "required": false
+              }
+            ],
+            "tableHeaders": [
+              [
+                "NAME (CODE)",
+                "ACCOUNT TYPE",
+                "PARENT GROUP",
+                "OPENING"
+              ]
+            ],
+            "links": [
+              "/accounts",
+              "/parties/{id}"
+            ],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Product",
+          "clicked": true,
+          "ui": {
+            "path": "/opening-balance",
+            "queryKeys": [
+              "tab"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Opening Balance"
+            ],
+            "buttons": [
+              "Account",
+              "[record button]",
+              "[record button]"
+            ],
+            "tabs": [
+              "Account",
+              "Product"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "date",
+                "name": "",
+                "label": "As of",
+                "required": true
+              },
+              {
+                "tag": "input",
+                "type": "search",
+                "name": "",
+                "label": "Search products",
+                "required": false
+              }
+            ],
+            "tableHeaders": [
+              [
+                "LOCATION",
+                "WAREHOUSE",
+                "QUANTITY",
+                "RATE",
+                "AMOUNT"
+              ],
+              [
+                "LOCATION",
+                "WAREHOUSE",
+                "QUANTITY",
+                "RATE",
+                "AMOUNT"
+              ],
+              [
+                "LOCATION",
+                "WAREHOUSE",
+                "QUANTITY",
+                "RATE",
+                "AMOUNT"
+              ],
+              [
+                "LOCATION",
+                "WAREHOUSE",
+                "QUANTITY",
+                "RATE",
+                "AMOUNT"
+              ],
+              [
+                "LOCATION",
+                "WAREHOUSE",
+                "QUANTITY",
+                "RATE",
+                "AMOUNT"
+              ],
+              [
+                "LOCATION",
+                "WAREHOUSE",
+                "QUANTITY",
+                "RATE",
+                "AMOUNT"
+              ]
+            ],
+            "links": [],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        }
+      ],
+      "skippedTabs": [],
+      "endedAt": "2026-10-20T15:19:53.427Z"
+    }
+  ],
+  "api": [
+    {
+      "step": "money-accounts",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "money-accounts",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/reports/account-ledger/{id}",
+      "params": [
+        "from",
+        "limit",
+        "to"
+      ]
+    },
+    {
+      "step": "money-accounts",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts/{id}/transactions",
+      "params": []
+    },
+    {
+      "step": "chart-of-account",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/chart-accounts",
+      "params": []
+    },
+    {
+      "step": "chart-of-account",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/chart-accounts/tree",
+      "params": []
+    },
+    {
+      "step": "accounting-workbench",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/journals",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "accounting-workbench",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/journals/{id}",
+      "params": []
+    },
+    {
+      "step": "accounting-workbench",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/chart-accounts",
+      "params": []
+    },
+    {
+      "step": "accounting-workbench#Locks & Close",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "accounting-workbench#Locks & Close",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/period-locks",
+      "params": []
+    },
+    {
+      "step": "accounting-workbench#Tax Filing",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/tax/filings",
+      "params": []
+    },
+    {
+      "step": "accounting-workbench#Subledgers",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/reports/subledger-balances",
+      "params": []
+    },
+    {
+      "step": "accounting-workbench#Mappings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/chart-accounts",
+      "params": []
+    },
+    {
+      "step": "accounting-workbench#Mappings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/mappings",
+      "params": []
+    },
+    {
+      "step": "accounting-workbench#Mappings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/cash-bank-mappings",
+      "params": []
+    },
+    {
+      "step": "accounting-workbench#Mappings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "accounting",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/reports/trial-balance",
+      "params": [
+        "from",
+        "to"
+      ]
+    },
+    {
+      "step": "accounting",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "cheque-register",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/cheques",
+      "params": []
+    },
+    {
+      "step": "cheque-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "cheque-new",
+      "method": "POST",
+      "host": "api-dev.meroims.com",
+      "path": "/api/auth/refresh",
+      "params": []
+    },
+    {
+      "step": "cheque-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "cheque-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/account-config",
+      "params": []
+    },
+    {
+      "step": "cheque-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/billing/status",
+      "params": []
+    },
+    {
+      "step": "cheque-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "scope"
+      ]
+    },
+    {
+      "step": "cheque-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "quick-receipt",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/quick-receipts",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "quick-payment",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/quick-payments",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "bank-reconciliation",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/reconciliation/statements",
+      "params": []
+    },
+    {
+      "step": "bank-reconciliation",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "opening-balance",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/fiscal-years",
+      "params": []
+    },
+    {
+      "step": "opening-balance",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/opening-balances",
+      "params": [
+        "asOf"
+      ]
+    },
+    {
+      "step": "opening-balance",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "opening-balance",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/parties",
+      "params": [
+        "page",
+        "partyType",
+        "perPage"
+      ]
+    },
+    {
+      "step": "opening-balance",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/parties",
+      "params": [
+        "page",
+        "partyType",
+        "perPage"
+      ]
+    },
+    {
+      "step": "opening-balance#Product",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/opening",
+      "params": []
+    }
+  ],
+  "blocked": [],
+  "redactedTerms": 2
+}

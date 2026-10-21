@@ -1,0 +1,1147 @@
+{
+  "target": "A73B2A0558BBC812AC8FB41053444E94",
+  "runAt": "2026-10-20T15:13:19.932Z",
+  "steps": [
+    {
+      "id": "products",
+      "startedAt": "2026-10-20T15:11:57.797Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/inventory",
+        "to": "/inventory/{id}"
+      },
+      "ui": {
+        "path": "/inventory/{id}",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "[record title redacted]",
+          "Inventory Ledger",
+          "Item Activity"
+        ],
+        "buttons": [
+          "View photo",
+          "Adjust Stock"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [
+          [
+            "DATE",
+            "TYPE",
+            "WAREHOUSE",
+            "#NO",
+            "IN",
+            "OUT",
+            "BALANCE"
+          ],
+          [
+            "DATE",
+            "TYPE",
+            "CHANGE",
+            "QUANTITY",
+            "PURCHASE PRICE",
+            "REMARKS"
+          ]
+        ],
+        "links": [
+          "/inventory",
+          "/inventory/{id}/edit",
+          "/reports/inventory-ledger"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:12:05.064Z"
+    },
+    {
+      "id": "product-new",
+      "startedAt": "2026-10-20T15:12:05.064Z",
+      "ui": {
+        "path": "/inventory/new",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Add New Item",
+          "ITEM DETAILS",
+          "PRICING & STOCK",
+          "ADDITIONAL INFORMATION"
+        ],
+        "buttons": [
+          "IMAGE",
+          "Goods",
+          "Services",
+          "Add category",
+          "Select units Configure",
+          "ADDITIONAL INFORMATION",
+          "Cancel",
+          "Add Item"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Item Name",
+            "required": true
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Category",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Tax",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Item Code",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Barcode",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "HS Code",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Sales Price (Rs.)",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Purchase Price (Rs.)",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Opening Stock",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "checkbox",
+            "name": "",
+            "label": "Perishable \u2014 track batches and expiry dates",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Reorder Level",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Description (Optional)",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/inventory/{id}"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:12:08.984Z"
+    },
+    {
+      "id": "variant-products",
+      "startedAt": "2026-10-20T15:12:08.984Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/inventory/variant-products",
+        "to": "/inventory/variant-products"
+      },
+      "ui": {
+        "path": "/inventory/variant-products",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Variant Products"
+        ],
+        "buttons": [
+          "Add New"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [
+          [
+            "CODE/SKU",
+            "NAME",
+            "CATEGORY",
+            "TAX",
+            "VARIANTS"
+          ]
+        ],
+        "links": [
+          "/inventory/new"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:12:16.203Z"
+    },
+    {
+      "id": "variant-product-new",
+      "startedAt": "2026-10-20T15:12:16.203Z",
+      "ui": {
+        "path": "/inventory/variant-products/new",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "New Product Variant",
+          "PRODUCT INFORMATION"
+        ],
+        "buttons": [
+          "Save",
+          "Goods",
+          "Services",
+          "Add unit",
+          "Add More Variants",
+          "Generate Variants"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Name",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Code",
+            "required": true
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Category",
+            "required": true
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Tax",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Primary Unit",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Selling Price",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Purchase Price",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "HS Code",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/inventory/variant-products"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:12:19.911Z"
+    },
+    {
+      "id": "variant-attributes",
+      "startedAt": "2026-10-20T15:12:19.911Z",
+      "ui": {
+        "path": "/inventory/variant-attributes",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Variant Attributes"
+        ],
+        "buttons": [
+          "Active",
+          "Add Attribute"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [
+          [
+            "NAME",
+            "OPTIONS"
+          ]
+        ],
+        "links": [
+          "/inventory/variant-products/new"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:12:23.622Z"
+    },
+    {
+      "id": "product-category",
+      "startedAt": "2026-10-20T15:12:23.622Z",
+      "ui": {
+        "path": "/inventory/product-category",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Product Category"
+        ],
+        "buttons": [
+          "Active",
+          "Add Category"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search categories...",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/inventory/variant-attributes"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:12:27.337Z"
+    },
+    {
+      "id": "units",
+      "startedAt": "2026-10-20T15:12:27.337Z",
+      "ui": {
+        "path": "/inventory/units",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Units Of Measurement"
+        ],
+        "buttons": [
+          "Active",
+          "Add Unit"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search units...",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/inventory/product-category"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:12:31.054Z"
+    },
+    {
+      "id": "adjustment",
+      "startedAt": "2026-10-20T15:12:31.054Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/inventory/adjustment",
+        "to": "/inventory/adjustment"
+      },
+      "ui": {
+        "path": "/inventory/adjustment",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Inventory Adjustment",
+          "Recent Movements"
+        ],
+        "buttons": [
+          "Adjust Stock"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search items by name or SKU...",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "ITEM",
+            "ON HAND",
+            "RESERVED",
+            "AVAILABLE",
+            "AVG COST",
+            "STOCK VALUE",
+            "ACTIONS"
+          ],
+          [
+            "WHEN",
+            "ITEM",
+            "TYPE",
+            "QUANTITY",
+            "UNIT COST",
+            "REASON"
+          ]
+        ],
+        "links": [
+          "/inventory/units",
+          "/inventory/{id}"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:12:38.277Z"
+    },
+    {
+      "id": "oc-dc-documents",
+      "startedAt": "2026-10-20T15:12:38.277Z",
+      "opened": {
+        "result": "no-rows",
+        "from": "/inventory/documents",
+        "to": "/inventory/documents"
+      },
+      "ui": {
+        "path": "/inventory/documents",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "OC / DC Documents",
+          "No documents yet"
+        ],
+        "buttons": [
+          "All",
+          "Order confirmations (OC)",
+          "Delivery challans (DC)"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search documents",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Filter by branch",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Filter by warehouse",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "From date",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "name": "",
+            "label": "To date",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:12:45.495Z"
+    },
+    {
+      "id": "bom",
+      "startedAt": "2026-10-20T15:12:45.495Z",
+      "opened": {
+        "result": "no-rows",
+        "from": "/inventory/bom",
+        "to": "/inventory/bom"
+      },
+      "ui": {
+        "path": "/inventory/bom",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Bills Of Materials",
+          "Coming soon"
+        ],
+        "buttons": [],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [
+          "/inventory/documents"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:12:52.718Z"
+    },
+    {
+      "id": "production-order",
+      "startedAt": "2026-10-20T15:12:52.718Z",
+      "opened": {
+        "result": "no-rows",
+        "from": "/inventory/production-order",
+        "to": "/inventory/production-order"
+      },
+      "ui": {
+        "path": "/inventory/production-order",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Production Order",
+          "Coming soon"
+        ],
+        "buttons": [],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [
+          "/inventory/bom"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:12:59.935Z"
+    },
+    {
+      "id": "expiry",
+      "startedAt": "2026-10-20T15:12:59.935Z",
+      "ui": {
+        "path": "/inventory/expiry",
+        "queryKeys": [],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Expiry batches",
+          "Nothing to act on"
+        ],
+        "buttons": [],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Filter by status",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Warning window",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Filter by location",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/inventory/production-order"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No dated stock matches. Mark an item perishable to record batch and expiry dates at stock-"
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:13:04.263Z"
+    },
+    {
+      "id": "warehouse-transfer",
+      "startedAt": "2026-10-20T15:13:04.263Z",
+      "ui": {
+        "path": "/stock-requests",
+        "queryKeys": [
+          "view"
+        ],
+        "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+        "headings": [
+          "Stock Request",
+          "No moves between warehouses yet"
+        ],
+        "buttons": [
+          "Branch requests",
+          "Between warehouses",
+          "All",
+          "Draft",
+          "Awaiting approval",
+          "Approved",
+          "Packed",
+          "Driver assigned",
+          "Verified",
+          "In transit",
+          "Delivered",
+          "Received",
+          "Rejected",
+          "Cancelled"
+        ],
+        "tabs": [
+          "Branch requests",
+          "Between warehouses"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search by transfer number...",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "TRANSFER",
+            "FROM",
+            "TO",
+            "ITEMS",
+            "STATUS",
+            "CREATED"
+          ]
+        ],
+        "links": [
+          "/stock-requests/new"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "tabViews": [
+        {
+          "tab": "Branch requests",
+          "clicked": true,
+          "ui": {
+            "path": "/stock-requests",
+            "queryKeys": [],
+            "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+            "headings": [
+              "Stock Request"
+            ],
+            "buttons": [
+              "Branch requests",
+              "Between warehouses",
+              "Active",
+              "Archived"
+            ],
+            "tabs": [
+              "Branch requests",
+              "Between warehouses",
+              "Active",
+              "Archived"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Search by request or transfer number...",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Filter by status",
+                "required": false
+              }
+            ],
+            "tableHeaders": [
+              [
+                "REQUEST",
+                "BRANCH",
+                "INTO",
+                "ITEMS",
+                "REQUESTED BY",
+                "DATE",
+                "STATUS",
+                "OC / DC",
+                "TRANSFER",
+                "ACTIONS"
+              ]
+            ],
+            "links": [
+              "/stock-requests/new"
+            ],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Between warehouses",
+          "clicked": true,
+          "ui": {
+            "path": "/stock-requests",
+            "queryKeys": [
+              "view"
+            ],
+            "title": "MeroIMS \u2014 Commerce, inventory and books in one place",
+            "headings": [
+              "Stock Request",
+              "No moves between warehouses yet"
+            ],
+            "buttons": [
+              "Branch requests",
+              "Between warehouses",
+              "All",
+              "Draft",
+              "Awaiting approval",
+              "Approved",
+              "Packed",
+              "Driver assigned",
+              "Verified",
+              "In transit",
+              "Delivered",
+              "Received",
+              "Rejected",
+              "Cancelled"
+            ],
+            "tabs": [
+              "Branch requests",
+              "Between warehouses"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "search",
+                "name": "",
+                "label": "Search by transfer number...",
+                "required": false
+              }
+            ],
+            "tableHeaders": [
+              [
+                "TRANSFER",
+                "FROM",
+                "TO",
+                "ITEMS",
+                "STATUS",
+                "CREATED"
+              ]
+            ],
+            "links": [
+              "/stock-requests/new"
+            ],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        }
+      ],
+      "skippedTabs": [],
+      "endedAt": "2026-10-20T15:13:19.930Z"
+    }
+  ],
+  "api": [
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/warehouses",
+      "params": [
+        "includeBranchStores"
+      ]
+    },
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/products",
+      "params": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ]
+    },
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/levels",
+      "params": [
+        "warehouseId"
+      ]
+    },
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/expiry",
+      "params": [
+        "status",
+        "warehouseId",
+        "withinDays"
+      ]
+    },
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/warehouses",
+      "params": [
+        "includeBranchStores"
+      ]
+    },
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/products",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/levels",
+      "params": [
+        "warehouseId"
+      ]
+    },
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/movements",
+      "params": [
+        "perPage",
+        "productId",
+        "warehouseId"
+      ]
+    },
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/reports/business/inventory-ledger",
+      "params": [
+        "from",
+        "itemIds",
+        "to",
+        "warehouseId"
+      ]
+    },
+    {
+      "step": "products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "product-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "product-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/chart-accounts",
+      "params": []
+    },
+    {
+      "step": "product-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/warehouses",
+      "params": []
+    },
+    {
+      "step": "product-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/branches/mine",
+      "params": []
+    },
+    {
+      "step": "variant-products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/products",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "variant-products",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "variant-product-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "variant-product-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/variant-attributes",
+      "params": []
+    },
+    {
+      "step": "variant-attributes",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/variant-attributes",
+      "params": []
+    },
+    {
+      "step": "product-category",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "units",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "adjustment",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/warehouses",
+      "params": [
+        "includeBranchStores"
+      ]
+    },
+    {
+      "step": "adjustment",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/products",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "adjustment",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/movements",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "adjustment",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/levels",
+      "params": [
+        "warehouseId"
+      ]
+    },
+    {
+      "step": "adjustment",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/movements",
+      "params": [
+        "page",
+        "perPage",
+        "warehouseId"
+      ]
+    },
+    {
+      "step": "oc-dc-documents",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/requests/confirmations",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "expiry",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/expiry",
+      "params": [
+        "status",
+        "withinDays"
+      ]
+    },
+    {
+      "step": "expiry",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "warehouse-transfer",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/transfers",
+      "params": [
+        "origin",
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "warehouse-transfer",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/requests",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "warehouse-transfer#Between warehouses",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/transfers",
+      "params": [
+        "origin",
+        "page",
+        "perPage"
+      ]
+    }
+  ],
+  "blocked": []
+}

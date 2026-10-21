@@ -1,0 +1,63 @@
+{
+  "scenario": "S5 dry run: add BEV-WAT-004 to cart, discover hold/park UI and held-orders UI (no write)",
+  "sequence": [
+    {
+      "op": "go",
+      "path": "/till"
+    },
+    {
+      "op": "fill",
+      "match": "Scan barcode",
+      "value": "BEV-WAT-004",
+      "wait": 1500
+    },
+    {
+      "op": "click",
+      "prefix": "Mineral Water BEV-WAT-004",
+      "wait": 1500
+    },
+    {
+      "op": "snapshot",
+      "label": "cart with item (look for hold/park + note)",
+      "scope": "body"
+    },
+    {
+      "op": "act",
+      "prefix": "__discover__"
+    }
+  ],
+  "dryRunCleanup": [
+    {
+      "op": "go",
+      "path": "/"
+    },
+    {
+      "op": "go",
+      "path": "/till"
+    },
+    {
+      "op": "snapshot",
+      "label": "cart cleared?",
+      "scope": "body"
+    }
+  ],
+  "allow": [],
+  "maxWrites": 0,
+  "getFilters": {
+    "^/api/pos/retail/holds$": {
+      "list": "",
+      "top": 5,
+      "fields": [
+        "id",
+        "orderNumber",
+        "status",
+        "grandTotal",
+        "registerId"
+      ]
+    }
+  },
+  "keepRegisterNames": [
+    "sample 1"
+  ],
+  "settleMs": 3500
+}

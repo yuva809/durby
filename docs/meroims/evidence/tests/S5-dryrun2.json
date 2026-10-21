@@ -1,0 +1,293 @@
+{
+  "scenario": "S5 dry run 2: open Resume list (read-only), then stop",
+  "dryRun": true,
+  "runAt": "2026-10-20T16:18:09.155Z",
+  "steps": [
+    {
+      "op": "go",
+      "arg": "/till",
+      "result": "ok"
+    },
+    {
+      "op": "click",
+      "arg": "Resume (",
+      "result": "ok:Resume (1) F9"
+    },
+    {
+      "op": "snapshot",
+      "arg": "resume list",
+      "result": {
+        "label": "resume list",
+        "path": "/till",
+        "dialogOpen": true,
+        "headings": [
+          "Held sales"
+        ],
+        "buttons": [
+          "Close",
+          "Take payment"
+        ],
+        "inputs": [],
+        "alerts": [
+          "Live"
+        ]
+      }
+    },
+    {
+      "op": "act-check",
+      "target": "__discover__",
+      "result": "button matches: 0 [X-report | Cash in/out | Close shift | All 70 | Beverages 7 | Bakery & Bread 6 | Breakfast & Cereals 6 | Canned & Preserved Goods 6 | Condiments & Sauces 6 | Frozen Foods 6 | Household & Cleaning 6 | Personal Care & Hygiene 6 | Snacks & Confectionery 6 | Spices, Oils & Seasonings 6 | Biscuits 3 | Chocolate 3 | Noodles 2 | Snacks 1 | Anti-Dandruff Shampoo रु 340.00 980 left | BP Black Peppercorns रु 180.00 out | Black Tea Bags रु 220.00 712 left | Body Lotion रु 280.00 87 left | Bourbon Biscuits रु 40.00 85 left | Burger Buns रु 80.00 612 left | CB Canned Baked Beans रु 145.00 out]"
+    },
+    {
+      "op": "cleanup:escape",
+      "result": "ok"
+    },
+    {
+      "op": "cleanup:go",
+      "result": "ok"
+    }
+  ],
+  "abortReason": "act target not uniquely found/enabled",
+  "aborted": true,
+  "writesAllowed": 0,
+  "writes": [],
+  "blocked": [],
+  "gets": [
+    {
+      "phase": "before",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "148780ab-0694-4416-853e-14892cfc7f64",
+          "orderNumber": "ORD-2026-000002",
+          "status": "held",
+          "grandTotal": "226.00",
+          "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+          "placedByName": "[tenant/user redacted]",
+          "notes": null
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "body": [
+        {
+          "id": "148780ab-0694-4416-853e-14892cfc7f64",
+          "orderNumber": "ORD-2026-000002",
+          "status": "held",
+          "grandTotal": "226.00",
+          "registerId": "d88ed982-7952-4835-9c9b-2a6caa80ea0d",
+          "placedByName": "[tenant/user redacted]",
+          "notes": null
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/context",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/products",
+      "query": [
+        "registerId"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/pos/retail/holds",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/events/stream",
+      "query": [
+        "access_token"
+      ],
+      "status": 200,
+      "failed": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/me",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/account-config",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/notifications",
+      "query": [
+        "limit"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/core/billing/status",
+      "query": [],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "from",
+        "to"
+      ],
+      "status": 200,
+      "failed": null
+    },
+    {
+      "phase": "before",
+      "method": "GET",
+      "path": "/api/overview",
+      "query": [
+        "scope"
+      ],
+      "status": 200,
+      "failed": null
+    }
+  ]
+}

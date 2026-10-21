@@ -1,0 +1,18 @@
+{
+  "keys": [
+    "data",
+    "meta"
+  ],
+  "top": [
+    {
+      "action": "vendor_invoice_import.rejected",
+      "entityType": "vendor_invoice_import",
+      "createdAt": "2026-10-01T12:00:39.051Z"
+    },
+    {
+      "action": "vendor_invoice_import.rejected",
+      "entityType": "vendor_invoice_import",
+      "createdAt": "2026-10-01T11:59:26.574Z"
+    }
+  ]
+}

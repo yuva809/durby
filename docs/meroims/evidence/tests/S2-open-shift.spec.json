@@ -1,0 +1,19 @@
+{
+  "scenario": "S2 open shift on register 'sample 1' with opening float 0 (user-approved)",
+  "localStorage": { "key": "ims.till.register", "value": "7f206976-30f1-4b4b-99ab-6f7c6f569986" },
+  "before": ["/accounting-workbench", "/accounts"],
+  "navigate": "/till",
+  "input": { "match": "Opening float", "value": "0" },
+  "button": { "text": "Open shift" },
+  "readClicks": ["X-report"],
+  "after": ["/accounting-workbench", "/accounts", "/till"],
+  "allow": [{ "method": "POST", "path": "^/api/pos/shifts$" }],
+  "maxWrites": 1,
+  "getFilters": {
+    "^/api/pos/retail/context$": { "pick": ["registers", "currency", "vatPercent"] },
+    "^/api/accounting/journals$": { "list": "data", "top": 5, "fields": ["journalNumber", "entryDate", "status", "systemGenerated", "sourceEventType", "totalDebit", "totalCredit", "createdAt"] },
+    "^/api/core/accounts$": { "list": "", "fields": ["id", "accountKind", "isDefault", "balance", "netChange"] },
+    "^/api/pos/retail/shifts/[^/]+/x-report$": {}
+  },
+  "settleMs": 4000
+}

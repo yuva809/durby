@@ -1,0 +1,1 @@
+{"dryRun":false,"located":{"ok":true,"inputLabel":"Opening float","inputValueBefore":"0","buttonText":"Open shift","buttonDisabled":false},"writesAllowed":1,"writes":["POST /api/pos/shifts 201"],"blocked":0}

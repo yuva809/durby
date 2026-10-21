@@ -1,0 +1,1487 @@
+{
+  "target": "A73B2A0558BBC812AC8FB41053444E94",
+  "runAt": "2026-10-20T15:16:38.557Z",
+  "steps": [
+    {
+      "id": "parties",
+      "startedAt": "2026-10-20T15:15:17.129Z",
+      "opened": {
+        "result": "no-rows",
+        "from": "/parties",
+        "to": "/parties"
+      },
+      "ui": {
+        "path": "/parties",
+        "queryKeys": [],
+        "title": "Parties",
+        "headings": [
+          "Parties",
+          "PARTY DIRECTORY",
+          "Select a party"
+        ],
+        "buttons": [
+          "Add Party",
+          "Parties",
+          "Categories",
+          "All",
+          "Customer",
+          "Supplier",
+          "NAME",
+          "BALANCE",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "Previous page",
+          "[record button]",
+          "[record button]",
+          "Next page"
+        ],
+        "tabs": [
+          "All",
+          "Customer",
+          "Supplier"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search parties...",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/import-data/parties"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "tabViews": [
+        {
+          "tab": "All",
+          "clicked": true,
+          "ui": {
+            "path": "/parties",
+            "queryKeys": [],
+            "title": "Parties",
+            "headings": [
+              "Parties",
+              "PARTY DIRECTORY",
+              "Select a party"
+            ],
+            "buttons": [
+              "Add Party",
+              "Parties",
+              "Categories",
+              "All",
+              "Customer",
+              "Supplier",
+              "NAME",
+              "BALANCE",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "Previous page",
+              "[record button]",
+              "[record button]",
+              "Next page"
+            ],
+            "tabs": [
+              "All",
+              "Customer",
+              "Supplier"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Search parties...",
+                "required": false
+              }
+            ],
+            "tableHeaders": [],
+            "links": [
+              "/import-data/parties"
+            ],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Customer",
+          "clicked": true,
+          "ui": {
+            "path": "/parties",
+            "queryKeys": [],
+            "title": "Parties",
+            "headings": [
+              "Parties",
+              "PARTY DIRECTORY",
+              "Select a party"
+            ],
+            "buttons": [
+              "Add Party",
+              "Parties",
+              "Categories",
+              "All",
+              "Customer",
+              "Supplier",
+              "NAME",
+              "BALANCE",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]"
+            ],
+            "tabs": [
+              "All",
+              "Customer",
+              "Supplier"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Search parties...",
+                "required": false
+              }
+            ],
+            "tableHeaders": [],
+            "links": [
+              "/import-data/parties"
+            ],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Supplier",
+          "clicked": true,
+          "ui": {
+            "path": "/parties",
+            "queryKeys": [],
+            "title": "Parties",
+            "headings": [
+              "Parties",
+              "PARTY DIRECTORY",
+              "Select a party"
+            ],
+            "buttons": [
+              "Add Party",
+              "Parties",
+              "Categories",
+              "All",
+              "Customer",
+              "Supplier",
+              "NAME",
+              "BALANCE",
+              "[record button]",
+              "[record button]",
+              "[record button]",
+              "[record button]"
+            ],
+            "tabs": [
+              "All",
+              "Customer",
+              "Supplier"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Search parties...",
+                "required": false
+              }
+            ],
+            "tableHeaders": [],
+            "links": [
+              "/import-data/parties"
+            ],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        }
+      ],
+      "skippedTabs": [],
+      "endedAt": "2026-10-20T15:15:30.604Z"
+    },
+    {
+      "id": "branches",
+      "startedAt": "2026-10-20T15:15:30.604Z",
+      "opened": {
+        "result": "no-rows",
+        "from": "/branches",
+        "to": "/branches"
+      },
+      "ui": {
+        "path": "/branches",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Branches",
+          "No branches yet"
+        ],
+        "buttons": [
+          "Add Branch",
+          "Show archived"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search branches...",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:15:38.024Z"
+    },
+    {
+      "id": "warehouses",
+      "startedAt": "2026-10-20T15:15:38.024Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/warehouses",
+        "to": "/warehouses"
+      },
+      "ui": {
+        "path": "/warehouses",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Warehouses"
+        ],
+        "buttons": [
+          "Add Warehouse",
+          "Show archived"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search warehouses or branches...",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "WAREHOUSE",
+            "BRANCHES",
+            "ADDRESS",
+            "CONTACT",
+            "STAFF",
+            "STATUS"
+          ]
+        ],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:15:45.244Z"
+    },
+    {
+      "id": "stock-requests",
+      "startedAt": "2026-10-20T15:15:45.244Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/stock-requests",
+        "to": "/stock-requests"
+      },
+      "ui": {
+        "path": "/stock-requests",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Stock Request"
+        ],
+        "buttons": [
+          "Branch requests",
+          "Between warehouses",
+          "Active",
+          "Archived"
+        ],
+        "tabs": [
+          "Branch requests",
+          "Between warehouses",
+          "Active",
+          "Archived"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Search by request or transfer number...",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Filter by status",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "REQUEST",
+            "BRANCH",
+            "INTO",
+            "ITEMS",
+            "REQUESTED BY",
+            "DATE",
+            "STATUS",
+            "OC / DC",
+            "TRANSFER",
+            "ACTIONS"
+          ]
+        ],
+        "links": [
+          "/stock-requests/new"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "tabViews": [
+        {
+          "tab": "Branch requests",
+          "clicked": true,
+          "ui": {
+            "path": "/stock-requests",
+            "queryKeys": [],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Stock Request"
+            ],
+            "buttons": [
+              "Branch requests",
+              "Between warehouses",
+              "Active",
+              "Archived"
+            ],
+            "tabs": [
+              "Branch requests",
+              "Between warehouses",
+              "Active",
+              "Archived"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "text",
+                "name": "",
+                "label": "Search by request or transfer number...",
+                "required": false
+              },
+              {
+                "tag": "select",
+                "type": "select-one",
+                "name": "",
+                "label": "Filter by status",
+                "required": false
+              }
+            ],
+            "tableHeaders": [
+              [
+                "REQUEST",
+                "BRANCH",
+                "INTO",
+                "ITEMS",
+                "REQUESTED BY",
+                "DATE",
+                "STATUS",
+                "OC / DC",
+                "TRANSFER",
+                "ACTIONS"
+              ]
+            ],
+            "links": [
+              "/stock-requests/new"
+            ],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Between warehouses",
+          "clicked": true,
+          "ui": {
+            "path": "/stock-requests",
+            "queryKeys": [
+              "view"
+            ],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Stock Request",
+              "No moves between warehouses yet"
+            ],
+            "buttons": [
+              "Branch requests",
+              "Between warehouses",
+              "All",
+              "Draft",
+              "Awaiting approval",
+              "Approved",
+              "Packed",
+              "Driver assigned",
+              "Verified",
+              "In transit",
+              "Delivered",
+              "Received",
+              "Rejected",
+              "Cancelled"
+            ],
+            "tabs": [
+              "Branch requests",
+              "Between warehouses"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "search",
+                "name": "",
+                "label": "Search by transfer number...",
+                "required": false
+              }
+            ],
+            "tableHeaders": [
+              [
+                "TRANSFER",
+                "FROM",
+                "TO",
+                "ITEMS",
+                "STATUS",
+                "CREATED"
+              ]
+            ],
+            "links": [
+              "/stock-requests/new"
+            ],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Active",
+          "clicked": false,
+          "ui": null
+        },
+        {
+          "tab": "Archived",
+          "clicked": false,
+          "ui": null
+        }
+      ],
+      "skippedTabs": [],
+      "endedAt": "2026-10-20T15:16:00.495Z"
+    },
+    {
+      "id": "stock-request-new",
+      "startedAt": "2026-10-20T15:16:00.495Z",
+      "ui": {
+        "path": "/stock-requests/new",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "New Stock Request"
+        ],
+        "buttons": [
+          "For a branch",
+          "Between warehouses",
+          "Create Move"
+        ],
+        "tabs": [
+          "For a branch",
+          "Between warehouses"
+        ],
+        "fields": [
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "From warehouse",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "To warehouse",
+            "required": false
+          },
+          {
+            "tag": "textarea",
+            "type": "textarea",
+            "name": "",
+            "label": "Note (optional)",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/stock-requests"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "Nothing added yet. Choose a category and press Add on an item."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:16:04.418Z"
+    },
+    {
+      "id": "picking",
+      "startedAt": "2026-10-20T15:16:04.418Z",
+      "ui": {
+        "path": "/picking",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Picking",
+          "Nothing to pick right now"
+        ],
+        "buttons": [
+          "To pick",
+          "Packed",
+          "Received"
+        ],
+        "tabs": [
+          "To pick",
+          "Packed",
+          "Received"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search transfers",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "tabViews": [
+        {
+          "tab": "To pick",
+          "clicked": true,
+          "ui": {
+            "path": "/picking",
+            "queryKeys": [],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Picking",
+              "Nothing to pick right now"
+            ],
+            "buttons": [
+              "To pick",
+              "Packed",
+              "Received"
+            ],
+            "tabs": [
+              "To pick",
+              "Packed",
+              "Received"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "search",
+                "name": "",
+                "label": "Search transfers",
+                "required": false
+              }
+            ],
+            "tableHeaders": [],
+            "links": [],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Packed",
+          "clicked": true,
+          "ui": {
+            "path": "/picking",
+            "queryKeys": [],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Picking",
+              "Nothing packed yet"
+            ],
+            "buttons": [
+              "To pick",
+              "Packed",
+              "Received"
+            ],
+            "tabs": [
+              "To pick",
+              "Packed",
+              "Received"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "search",
+                "name": "",
+                "label": "Search transfers",
+                "required": false
+              }
+            ],
+            "tableHeaders": [],
+            "links": [],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        },
+        {
+          "tab": "Received",
+          "clicked": true,
+          "ui": {
+            "path": "/picking",
+            "queryKeys": [],
+            "title": "[title]  Commerce, inventory and books in one place",
+            "headings": [
+              "Picking",
+              "Nothing packed yet"
+            ],
+            "buttons": [
+              "To pick",
+              "Packed",
+              "Received"
+            ],
+            "tabs": [
+              "To pick",
+              "Packed",
+              "Received"
+            ],
+            "fields": [
+              {
+                "tag": "input",
+                "type": "search",
+                "name": "",
+                "label": "Search transfers",
+                "required": false
+              }
+            ],
+            "tableHeaders": [],
+            "links": [],
+            "dialogs": 0,
+            "emptyStates": [],
+            "errorText": []
+          }
+        }
+      ],
+      "skippedTabs": [],
+      "endedAt": "2026-10-20T15:16:14.165Z"
+    },
+    {
+      "id": "delivery-tracking",
+      "startedAt": "2026-10-20T15:16:14.165Z",
+      "ui": {
+        "path": "/delivery-tracking",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Delivery Tracking",
+          "No deliveries on the road"
+        ],
+        "buttons": [
+          "Refresh",
+          "Zoom in",
+          "Zoom out"
+        ],
+        "tabs": [],
+        "fields": [],
+        "tableHeaders": [],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:16:18.083Z"
+    },
+    {
+      "id": "pos-orders",
+      "startedAt": "2026-10-20T15:16:18.083Z",
+      "opened": {
+        "result": "clicked",
+        "from": "/orders",
+        "to": "/orders"
+      },
+      "ui": {
+        "path": "/orders",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "Orders"
+        ],
+        "buttons": [
+          "Manage"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "ORDER",
+            "CUSTOMER",
+            "TYPE",
+            "TOTAL",
+            "PAYMENT",
+            "STATUS"
+          ]
+        ],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:16:25.302Z"
+    },
+    {
+      "id": "retail-till",
+      "startedAt": "2026-10-20T15:16:25.302Z",
+      "ui": {
+        "path": "/till",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "[tenant redacted]"
+        ],
+        "buttons": [
+          "X-report",
+          "Cash in/out",
+          "Close shift",
+          "Scroll categories left",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "Scroll categories right",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "Previous page",
+          "Next page",
+          "W Walk-in customer tap to attach a customer attach",
+          "[record button]",
+          "[record button]",
+          "[record button]",
+          "Walk-in",
+          "Browse",
+          "Tender"
+        ],
+        "tabs": [
+          "All 70",
+          "Beverages 7",
+          "Bakery & Bread 6",
+          "Breakfast & Cereals 6",
+          "Canned & Preserved Goods 6",
+          "Condiments & Sauces 6",
+          "Frozen Foods 6",
+          "Household & Cleaning 6",
+          "Personal Care & Hygiene 6",
+          "Snacks & Confectionery 6",
+          "Spices, Oils & Seasonings 6",
+          "Biscuits 3",
+          "Chocolate 3",
+          "Noodles 2",
+          "Snacks 1"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Scan barcode, or type a name / SKU\u2026",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/"
+        ],
+        "dialogs": 0,
+        "emptyStates": [],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:16:31.129Z"
+    },
+    {
+      "id": "pos-settings",
+      "startedAt": "2026-10-20T15:16:31.129Z",
+      "ui": {
+        "path": "/pos-settings",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "POS Settings",
+          "Selling channels",
+          "Receipt details",
+          "Till background logo",
+          "Registers",
+          "Bank QR payments",
+          "Discount codes"
+        ],
+        "buttons": [
+          "Open retail till \u2197",
+          "Save receipt details",
+          "[record button]",
+          "Add",
+          "Add account",
+          "Turn off",
+          "Remove",
+          "Add code"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Store name",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Address",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Phone",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "PAN/VAT number",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "file",
+            "name": "",
+            "label": "",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Register name (e.g. Till 1)",
+            "required": true
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Branch",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Branch for [staff redacted]",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Branch for [staff redacted]",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Branch for [staff redacted]",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Bank Choose a bank\u2026 Agricultural Development Bank Citizens Bank International Everest Bank",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Account number",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Account name",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Code",
+            "required": true
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Type Percentage off Fixed amount off",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Percent (max 100)",
+            "required": true
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Minimum order total",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "text",
+            "name": "",
+            "label": "Total uses (blank = unlimited)",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "datetime-local",
+            "name": "",
+            "label": "Starts (optional)",
+            "required": false
+          },
+          {
+            "tag": "input",
+            "type": "datetime-local",
+            "name": "",
+            "label": "Ends (optional)",
+            "required": false
+          }
+        ],
+        "tableHeaders": [],
+        "links": [
+          "/till",
+          "/storefront-design"
+        ],
+        "dialogs": 0,
+        "emptyStates": [
+          "No discount codes yet"
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:16:34.843Z"
+    },
+    {
+      "id": "pms",
+      "startedAt": "2026-10-20T15:16:34.843Z",
+      "ui": {
+        "path": "/pms",
+        "queryKeys": [],
+        "title": "[title]  Commerce, inventory and books in one place",
+        "headings": [
+          "PMS"
+        ],
+        "buttons": [
+          "Configure"
+        ],
+        "tabs": [],
+        "fields": [
+          {
+            "tag": "input",
+            "type": "search",
+            "name": "",
+            "label": "Search name or phone",
+            "required": false
+          },
+          {
+            "tag": "select",
+            "type": "select-one",
+            "name": "",
+            "label": "Schedule filter",
+            "required": false
+          }
+        ],
+        "tableHeaders": [
+          [
+            "PARTY",
+            "CONTACT",
+            "INITIAL SERVICE DATE",
+            "INTERVAL",
+            "NEXT DUE",
+            "LAST NOTIFIED"
+          ]
+        ],
+        "links": [],
+        "dialogs": 0,
+        "emptyStates": [
+          "No parties yet."
+        ],
+        "errorText": []
+      },
+      "endedAt": "2026-10-20T15:16:38.555Z"
+    }
+  ],
+  "api": [
+    {
+      "step": "parties",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/parties",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "parties",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/documents",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "parties",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/payments",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "parties",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/accounts",
+      "params": []
+    },
+    {
+      "step": "parties",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/lookups",
+      "params": []
+    },
+    {
+      "step": "parties",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/accounting/party-balances",
+      "params": [
+        "asOf"
+      ]
+    },
+    {
+      "step": "branches",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/staffs",
+      "params": [
+        "page",
+        "perPage",
+        "status"
+      ]
+    },
+    {
+      "step": "branches",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/branches",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "branches",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "warehouses",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/staffs",
+      "params": [
+        "page",
+        "perPage",
+        "status"
+      ]
+    },
+    {
+      "step": "warehouses",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/warehouses",
+      "params": []
+    },
+    {
+      "step": "warehouses",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/branches",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "stock-requests",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/requests",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "stock-requests#Between warehouses",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/transfers",
+      "params": [
+        "origin",
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "stock-request-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/warehouses",
+      "params": [
+        "includeBranchStores"
+      ]
+    },
+    {
+      "step": "stock-request-new",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "picking",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/transfers",
+      "params": [
+        "page",
+        "perPage",
+        "status"
+      ]
+    },
+    {
+      "step": "picking#Packed",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/transfers",
+      "params": [
+        "packed",
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "picking#Received",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/transfers",
+      "params": [
+        "page",
+        "perPage",
+        "status"
+      ]
+    },
+    {
+      "step": "delivery-tracking",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/stock/transfers",
+      "params": [
+        "page",
+        "perPage",
+        "status"
+      ]
+    },
+    {
+      "step": "delivery-tracking",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/branches/mine",
+      "params": []
+    },
+    {
+      "step": "pos-orders",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/orders",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    },
+    {
+      "step": "pos-orders",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/admin/users",
+      "params": []
+    },
+    {
+      "step": "retail-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "retail-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/account-config",
+      "params": []
+    },
+    {
+      "step": "retail-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/retail/context",
+      "params": []
+    },
+    {
+      "step": "retail-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/retail/holds",
+      "params": []
+    },
+    {
+      "step": "retail-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/events/stream",
+      "params": [
+        "access_token"
+      ]
+    },
+    {
+      "step": "retail-till",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/products",
+      "params": [
+        "registerId"
+      ]
+    },
+    {
+      "step": "pos-settings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/me",
+      "params": []
+    },
+    {
+      "step": "pos-settings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/account-config",
+      "params": []
+    },
+    {
+      "step": "pos-settings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/billing/status",
+      "params": []
+    },
+    {
+      "step": "pos-settings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/events/stream",
+      "params": [
+        "access_token"
+      ]
+    },
+    {
+      "step": "pos-settings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/core/notifications",
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "step": "pos-settings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "scope"
+      ]
+    },
+    {
+      "step": "pos-settings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/admin/bank-accounts",
+      "params": []
+    },
+    {
+      "step": "pos-settings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/admin/discount-codes",
+      "params": []
+    },
+    {
+      "step": "pos-settings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/admin/settings",
+      "params": []
+    },
+    {
+      "step": "pos-settings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pos/admin/registers",
+      "params": []
+    },
+    {
+      "step": "pos-settings",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/overview",
+      "params": [
+        "scope"
+      ]
+    },
+    {
+      "step": "pms",
+      "method": "GET",
+      "host": "api-dev.meroims.com",
+      "path": "/api/pms/parties",
+      "params": [
+        "page",
+        "perPage"
+      ]
+    }
+  ],
+  "blocked": []
+}

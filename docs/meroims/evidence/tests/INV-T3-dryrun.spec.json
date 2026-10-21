@@ -1,0 +1,35 @@
+{
+  "scenario": "INV-T3 dry run: adjustment page, find CHOC-003 adjust action and dialog (no write)",
+  "sequence": [
+    {
+      "op": "go",
+      "path": "/inventory/adjustment"
+    },
+    {
+      "op": "fill",
+      "match": "by name or SKU",
+      "value": "CHOC-003",
+      "wait": 2000
+    },
+    {
+      "op": "snapshot",
+      "label": "filtered list",
+      "scope": "body"
+    },
+    {
+      "op": "act",
+      "text": "__discover__"
+    }
+  ],
+  "dryRunCleanup": [
+    {
+      "op": "go",
+      "path": "/"
+    }
+  ],
+  "allow": [],
+  "maxWrites": 0,
+  "getFilters": {},
+  "keepRegisterNames": [],
+  "settleMs": 3500
+}

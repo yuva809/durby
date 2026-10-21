@@ -1,0 +1,10 @@
+{
+  "scenario": "S1 create POS register 'sample 1' (user-approved name; deviates from TEST-DURBY- prefix at user's instruction)",
+  "navigate": "/pos-settings",
+  "input": { "match": "Register name", "value": "sample 1" },
+  "button": { "text": "Add" },
+  "allow": [{ "method": "POST", "path": "^/api/pos/admin/registers$" }, { "method": "PUT", "path": "^/api/pos/admin/registers$" }],
+  "maxWrites": 1,
+  "captureGetBodies": ["^/api/pos/admin/registers$"],
+  "settleMs": 4000
+}
