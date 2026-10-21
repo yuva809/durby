@@ -42,5 +42,6 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 - Small steps. One feature per session. Commit after each green step.
 - Before saying "done": `pnpm lint && pnpm typecheck && pnpm test` must pass. Report what you ran.
 - Prisma migrations: generate, show me the SQL, never run against anything but local/test DBs.
+- DB roles (ADR 0002): the app connects only as `durby_app`; migrations run only as `durby_migrator`. Never grant the app role BYPASSRLS, ownership or CREATE.
 - If a rule above blocks you, stop and ask. Do not work around it.
 - When we make a new decision, add it to `docs/adr/` and update this file if it's a rule.
