@@ -29,4 +29,5 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 If 5432/6379 are already taken, set `DURBY_POSTGRES_PORT` / `DURBY_REDIS_PORT` in a root `.env`
 and use the same ports in `apps/api/.env`.
 
-Decisions are recorded in `docs/adr/`.
+Decisions are recorded in `docs/adr/`. Staging (https://staging.durby.tech): setup, deploy, rollback and
+backups are in `docs/ops/deploy.md`.

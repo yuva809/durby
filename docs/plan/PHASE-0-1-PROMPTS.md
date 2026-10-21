@@ -64,6 +64,10 @@ and never log tokens or secrets. Document the deploy in docs/ops/deploy.md.
 
 **Done when:** staging URL serves the web app and `/api/v1/health` reports DB + Redis ok.
 
+**Decided (ADR 0004):** a self-managed Hetzner server with Docker Compose instead of a managed platform.
+Postgres and Redis run as containers, Caddy terminates TLS, GitHub Actions pushes images to GHCR and deploys over SSH.
+Runbook: `docs/ops/deploy.md`.
+
 ---
 
 ## PHASE 1: Platform Foundation (≈ 4 weeks)

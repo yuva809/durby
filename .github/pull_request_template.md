@@ -25,6 +25,7 @@ Tick each box, or write "n/a" next to it with a reason.
 - [ ] Business logic has tests; tenant-scoped features have a cross-tenant isolation test.
 - [ ] New feature, permission, label and event keys are registered in `packages/shared` / `packages/i18n`.
 - [ ] Migrations: generated SQL is included below and was only run against local/test DBs.
+- [ ] Migrations are backward compatible with the previous release (expand/contract; ADR 0004).
 - [ ] DB roles unchanged: `durby_app` has no BYPASSRLS, ownership or CREATE (ADR 0002).
 - [ ] Ran `pnpm lint && pnpm typecheck && pnpm test` locally.
 

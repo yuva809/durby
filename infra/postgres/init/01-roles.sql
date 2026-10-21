@@ -2,7 +2,7 @@
 -- of the local Postgres container (docker compose) and the Testcontainers instance.
 --
 -- PASSWORDS HERE ARE FOR LOCAL DEVELOPMENT AND TESTS ONLY.
--- Staging/production roles are provisioned separately (see docs/adr/0002).
+-- Staging uses infra/staging/postgres-init/01-roles.sh (same roles; keep the two in sync).
 --
 -- durby_migrator: owns the database and schema, runs migrations.
 --   CREATEDB is local-only: Prisma `migrate dev` needs it for the shadow database.

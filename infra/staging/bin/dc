@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# docker compose for the staging stack, with .env and the deployed IMAGE_TAG filled in.
+# Usage (on the server, as deploy): /opt/durby/bin/dc ps | logs -f api | exec postgres psql -U postgres durby
+set -euo pipefail
+
+DEPLOY_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+# deploy.sh exports IMAGE_TAG for the release it is rolling out; otherwise use the deployed one.
+if [[ -z "${IMAGE_TAG:-}" && -f "$DEPLOY_DIR/state/deployed.sha" ]]; then
+  IMAGE_TAG="$(cat "$DEPLOY_DIR/state/deployed.sha")"
+fi
+export IMAGE_TAG="${IMAGE_TAG:-none}"
+
+exec docker compose \
+  --project-directory "$DEPLOY_DIR" \
+  -f "$DEPLOY_DIR/docker-compose.staging.yml" \
+  --env-file "$DEPLOY_DIR/.env" \
+  "$@"
