@@ -1,0 +1,45 @@
+# Durby staging edge: TLS (Let's Encrypt), routing, request ids, access logs.
+# Values come from the server's .env via docker-compose.staging.yml.
+{
+	email {$ACME_EMAIL}
+}
+
+{$STAGING_DOMAIN} {
+	encode zstd gzip
+
+	# One id per request, shared with the api logs. Client-supplied ids are overwritten.
+	request_header X-Request-Id {http.request.uuid}
+	log_append request_id {http.request.uuid}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Caddy already redacts Authorization/Cookie headers; drop query strings too (may hold tokens).
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp "\?.*$" "?[REDACTED]"
+			}
+		}
+	}
+
+	# API: no basic auth. It would clash with the Bearer token from step 1.2 (ADR 0004).
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+
+	# Web: behind basic auth until real sign-in exists.
+	handle {
+		basic_auth {
+			{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+		}
+		reverse_proxy web:3000
+	}
+}
