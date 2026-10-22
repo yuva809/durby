@@ -4,9 +4,6 @@ import { hash, verify } from '@node-rs/argon2';
 /** argon2id (the library default) with OWASP parameters: 19 MiB, 2 iterations, 1 lane. */
 export const ARGON2_OPTIONS = { memoryCost: 19_456, timeCost: 2, parallelism: 1 } as const;
 
-export const PASSWORD_MIN_LENGTH = 12;
-export const PASSWORD_MAX_LENGTH = 128;
-
 @Injectable()
 export class PasswordHasher {
   /** Hash of a random password, verified against for unknown users so timing matches real ones. */

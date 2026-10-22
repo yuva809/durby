@@ -126,27 +126,28 @@ All under `/api/v1/auth`. Bodies validated with Zod (`packages/shared/src/api/au
 
 Session body: `{ accessToken, expiresIn, user: { id, email, locale }, activeOrganizationId, organizations: [{ id, name }] }`.
 
-Active organization on login: `last_organization_id` if the user is still a member, else the first membership, else
-`null`. On refresh the membership is re-checked; if it is gone, the new token has `org: null`.
+Active organization on login: `last_organization_id` if the user is still a member, else the first organization by
+name, else `null`. On refresh the membership is re-checked; if it is gone, the new token has `org: null`.
 
 ### Error codes
 
-| Code                       | Status | When                                                                          |
-| -------------------------- | ------ | ----------------------------------------------------------------------------- |
-| `auth.unauthenticated`     | 401    | missing, invalid, expired or revoked access token                             |
-| `auth.invalid_credentials` | 401    | unknown email **or** wrong password **or** no password set (identical)        |
-| `auth.email_not_verified`  | 403    | correct password, email not verified                                          |
-| `auth.too_many_attempts`   | 429    | account locked (`Retry-After`)                                                |
-| `auth.rate_limited`        | 429    | rate limit hit (`Retry-After`)                                                |
-| `auth.refresh_invalid`     | 401    | missing, unknown, expired or revoked refresh token                            |
-| `auth.refresh_reused`      | 401    | refresh token reuse; family revoked                                           |
-| `auth.not_a_member`        | 403    | switch to an organization the user is not a member of (or that doesn't exist) |
-| `auth.origin_rejected`     | 403    | missing or foreign `Origin` on a cookie endpoint                              |
-| `auth.token_invalid`       | 400    | reset/verification token unknown, expired or used (one code for all)          |
-| `auth.unavailable`         | 503    | Redis down (rate limits, lockout and revocation fail closed)                  |
-| `tenancy.context_missing`  | 403    | tenant data requested without an active organization                          |
+| Code                       | Status | When                                                                                       |
+| -------------------------- | ------ | ------------------------------------------------------------------------------------------ |
+| `auth.unauthenticated`     | 401    | missing, invalid, expired or revoked access token                                          |
+| `auth.invalid_credentials` | 401    | unknown email **or** wrong password **or** no password set (identical)                     |
+| `auth.email_not_verified`  | 403    | correct password, email not verified                                                       |
+| `auth.too_many_attempts`   | 429    | account locked (`Retry-After`)                                                             |
+| `auth.rate_limited`        | 429    | rate limit hit (`Retry-After`)                                                             |
+| `auth.refresh_invalid`     | 401    | missing, unknown, expired or revoked refresh token                                         |
+| `auth.refresh_reused`      | 401    | refresh token reuse; family revoked (its newest token then answers `auth.refresh_invalid`) |
+| `auth.not_a_member`        | 403    | switch to an organization the user is not a member of (or that doesn't exist)              |
+| `auth.origin_rejected`     | 403    | missing or foreign `Origin` on a cookie endpoint                                           |
+| `auth.token_invalid`       | 400    | reset/verification token unknown, expired or used (one code for all)                       |
+| `auth.unavailable`         | 503    | Redis down (rate limits, lockout and revocation fail closed)                               |
+| `tenancy.context_missing`  | 403    | tenant data requested without an active organization                                       |
 
-The web app shows `t('auth.errors.<code>')`; the API's `message` is a developer-facing fallback.
+The web app shows the label for the code (`auth.invalid_credentials` → `auth.errors.invalidCredentials`; label keys
+use camelCase segments); the API's `message` is a developer-facing fallback.
 
 ## Abuse protection
 

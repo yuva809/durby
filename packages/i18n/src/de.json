@@ -4,5 +4,9 @@
   "platform.health.label": "API-Status",
   "platform.health.status.ok": "OK",
   "platform.health.status.degraded": "Eingeschränkt",
-  "platform.health.status.unavailable": "Nicht erreichbar"
+  "platform.health.status.unavailable": "Nicht erreichbar",
+  "auth.email.reset.subject": "Neues Passwort festlegen",
+  "auth.email.reset.body": "Für Ihr Konto wurde ein neues Passwort angefordert. Öffnen Sie diesen Link, um eins festzulegen. Er funktioniert einmal und läuft in 30 Minuten ab:\n\n{link}\n\nWaren Sie das nicht, ignorieren Sie diese E-Mail; Ihr Passwort bleibt unverändert.",
+  "auth.email.verify.subject": "E-Mail-Adresse bestätigen",
+  "auth.email.verify.body": "Öffnen Sie diesen Link, um Ihre E-Mail-Adresse zu bestätigen. Er funktioniert einmal und läuft in 24 Stunden ab:\n\n{link}\n\nHaben Sie kein Konto angelegt, ignorieren Sie diese E-Mail."
 }
