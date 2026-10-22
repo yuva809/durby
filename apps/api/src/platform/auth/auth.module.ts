@@ -44,6 +44,7 @@ import { UserDirectory } from './user-directory';
   ],
   exports: [
     AuthContext,
+    AuthRateLimits,
     Authenticator,
     Clock,
     PasswordService,

@@ -38,6 +38,8 @@ describe('route markers', () => {
     expect(withMarker(routes, 'authenticated')).toEqual([
       'GET /api/v1/auth/me',
       'POST /api/v1/auth/switch-organization',
+      // ADR 0007: writes only the caller's own membership, in the tenant the invitation proves.
+      'POST /api/v1/invitations/accept-signed-in',
     ]);
   });
 
@@ -52,6 +54,9 @@ describe('route markers', () => {
       'POST /api/v1/auth/refresh',
       'POST /api/v1/auth/verify-email',
       'POST /api/v1/auth/verify-email/resend',
+      // ADR 0007: authenticated by the single-use invitation token.
+      'POST /api/v1/invitations/accept',
+      'POST /api/v1/invitations/preview',
     ]);
   });
 

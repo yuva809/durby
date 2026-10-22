@@ -2,6 +2,9 @@ import { Global, Module } from '@nestjs/common';
 import { APP_GUARD, DiscoveryModule } from '@nestjs/core';
 import { AccessGuard } from './access.guard';
 import { AccessService } from './access.service';
+import { InvitationMailer } from './invitation-mailer';
+import { InvitationsController } from './invitations.controller';
+import { InvitationsService } from './invitations.service';
 import { MembersController } from './members.controller';
 import { MembersService } from './members.service';
 import { defaultPermissionRegistry, PERMISSION_REGISTRY } from './permission-registry';
@@ -14,9 +17,11 @@ import { SystemRoles } from './system-roles';
 @Global()
 @Module({
   imports: [DiscoveryModule],
-  controllers: [MembersController, RolesController],
+  controllers: [InvitationsController, MembersController, RolesController],
   providers: [
     AccessService,
+    InvitationMailer,
+    InvitationsService,
     MembersService,
     RolesService,
     RouteMarkerCheck,

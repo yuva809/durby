@@ -9,6 +9,7 @@ import {
   type TenantTransactionClient,
 } from '../tenancy';
 import { canGrantRole, canManageMember } from './granting';
+import { existingLocations } from './locations';
 import { isLastOwnerViolation, rbacErrors } from './rbac-errors';
 import { ROLE_SELECT, RolesService } from './roles.service';
 
@@ -69,9 +70,7 @@ export class MembersService {
         const allLocations =
           body.locationIds === undefined ? target.allLocations : body.locationIds === null;
         if (role?.systemKey === 'owner' && !allLocations) throw rbacErrors.ownerAllLocations();
-        const locationIds = body.locationIds
-          ? await this.existingLocations(tx, body.locationIds)
-          : [];
+        const locationIds = body.locationIds ? await existingLocations(tx, body.locationIds) : [];
 
         const roleChanged = (role?.id ?? null) !== target.roleId;
         if (roleChanged && target.role?.systemKey === 'owner') {
@@ -189,16 +188,6 @@ export class MembersService {
       where: { roleId: ownerRoleId, id: { not: membershipId } },
     });
     if (others === 0) throw rbacErrors.lastOwner();
-  }
-
-  private async existingLocations(
-    tx: TenantTransactionClient,
-    ids: readonly string[],
-  ): Promise<string[]> {
-    const unique = [...new Set(ids)];
-    const found = await tx.location.count({ where: { id: { in: unique } } });
-    if (found !== unique.length) throw rbacErrors.locationNotFound();
-    return unique;
   }
 
   private async lastOwnerGuard<T>(fn: () => Promise<T>): Promise<T> {

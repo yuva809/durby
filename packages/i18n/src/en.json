@@ -18,6 +18,8 @@
   "platform.permissions.settingsManage": "Manage settings",
   "platform.permissions.labelsManage": "Manage labels",
   "platform.permissions.auditRead": "View the audit log",
+  "platform.email.invite.subject": "You're invited to {organization}",
+  "platform.email.invite.body": "You've been invited to join {organization} on Durby. Open this link to accept. It works once and expires in 7 days:\n\n{link}\n\nIf you didn't expect this invitation, ignore this email.",
   "auth.email.reset.subject": "Set a new password",
   "auth.email.reset.body": "Someone asked to set a new password for your account. Open this link to choose one. It works once and expires in 30 minutes:\n\n{link}\n\nIf this wasn't you, ignore this email; your password stays unchanged.",
   "auth.email.verify.subject": "Confirm your email address",

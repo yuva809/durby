@@ -18,6 +18,8 @@
   "platform.permissions.settingsManage": "Einstellungen verwalten",
   "platform.permissions.labelsManage": "Bezeichnungen verwalten",
   "platform.permissions.auditRead": "Audit-Protokoll ansehen",
+  "platform.email.invite.subject": "Einladung zu {organization}",
+  "platform.email.invite.body": "Sie wurden eingeladen, {organization} auf Durby beizutreten. Öffnen Sie diesen Link, um die Einladung anzunehmen. Er funktioniert einmal und läuft in 7 Tagen ab:\n\n{link}\n\nHaben Sie diese Einladung nicht erwartet, ignorieren Sie diese E-Mail.",
   "auth.email.reset.subject": "Neues Passwort festlegen",
   "auth.email.reset.body": "Für Ihr Konto wurde ein neues Passwort angefordert. Öffnen Sie diesen Link, um eins festzulegen. Er funktioniert einmal und läuft in 30 Minuten ab:\n\n{link}\n\nWaren Sie das nicht, ignorieren Sie diese E-Mail; Ihr Passwort bleibt unverändert.",
   "auth.email.verify.subject": "E-Mail-Adresse bestätigen",

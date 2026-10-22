@@ -54,6 +54,24 @@ export const rbacErrors = {
       'rbac.role_in_use',
       'The role is assigned to members or open invitations.',
     ),
+  alreadyMember: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'invitations.already_member',
+      'This email belongs to a member already.',
+    ),
+  signInRequired: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'invitations.sign_in_required',
+      'An account exists for this email: sign in to accept.',
+    ),
+  emailMismatch: () =>
+    new ApiError(
+      HttpStatus.FORBIDDEN,
+      'invitations.email_mismatch',
+      'The invitation is for another email address.',
+    ),
   roleNameTaken: () =>
     new ApiError(HttpStatus.CONFLICT, 'rbac.role_name_taken', 'A role with this name exists.'),
 } as const;
