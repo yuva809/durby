@@ -1,4 +1,5 @@
-import { type AuthErrorCode, type MeResponse, sessionResponseSchema } from '@durby/shared';
+import { type MeResponse, sessionResponseSchema } from '@durby/shared';
+import type { ApiErrorCode } from './errors';
 
 /**
  * Client-side session (docs/platform/auth.md → Web). The access token lives in this module's
@@ -26,7 +27,7 @@ export interface Session extends MeResponse {
   expiresAt: number;
 }
 
-export type AuthResult = { ok: true } | { ok: false; code: AuthErrorCode | 'unknown' };
+export type AuthResult = { ok: true } | { ok: false; code: ApiErrorCode | 'unknown' };
 
 interface LockManagerLike {
   request<T>(name: string, callback: () => Promise<T>): Promise<T>;
@@ -172,10 +173,10 @@ export function createSessionStore(deps: SessionStoreDeps): SessionStore {
 }
 
 /** The `code` of an api error body, or 'unknown'. */
-export async function errorCode(res: Response): Promise<AuthErrorCode | 'unknown'> {
+export async function errorCode(res: Response): Promise<ApiErrorCode | 'unknown'> {
   try {
     const body = (await res.json()) as { code?: unknown };
-    return typeof body.code === 'string' ? (body.code as AuthErrorCode) : 'unknown';
+    return typeof body.code === 'string' ? (body.code as ApiErrorCode) : 'unknown';
   } catch {
     return 'unknown';
   }
