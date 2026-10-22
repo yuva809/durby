@@ -23,9 +23,15 @@ cp apps/api/.env.example apps/api/.env
 docker compose up -d --wait   # Postgres 18 + Redis 8 on 127.0.0.1
 pnpm db:roles                 # (re)applies infra/postgres/init role scripts as superuser
 pnpm db:migrate               # applies migrations as durby_migrator
-pnpm dev                      # api on :4000, web on :3000
+pnpm --filter @durby/api seed:dev   # demo orgs + owner@durby.local / durby-dev-password (local only)
+pnpm dev                      # api on :4000, web on :3000; mail lands in Mailpit at http://localhost:8025
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
+
+After pulling step 1.2, add the new auth/mail keys from `apps/api/.env.example` to your `apps/api/.env`
+(`JWT_ACCESS_SECRET`, `WEB_ORIGINS`, `WEB_BASE_URL`, `SMTP_URL`, `MAIL_FROM`, …): the api refuses to boot without them.
+To create a real admin instead of demo users: `pnpm --filter @durby/api create-admin --email you@example.com --org "Name"`
+(the password-set link arrives in Mailpit).
 
 Postgres runs `infra/postgres/init` only on an empty volume. After pulling changes to those scripts (e.g. a new
 role), run `pnpm db:roles` before `pnpm db:migrate`; the scripts are idempotent.

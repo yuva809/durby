@@ -12,6 +12,7 @@ import { MembershipLookup } from './membership-lookup';
 import { OriginGuard } from './origin.guard';
 import { PasswordHasher } from './password-hasher';
 import { PasswordService } from './password.service';
+import { ProvisioningService } from './provisioning.service';
 import { RefreshTokenStore } from './refresh-token.store';
 import { RevocationService } from './revocation.service';
 import { SecurityLog } from './security-log';
@@ -32,12 +33,13 @@ import { SessionService } from './session.service';
     OriginGuard,
     PasswordHasher,
     PasswordService,
+    ProvisioningService,
     RefreshTokenStore,
     RevocationService,
     SecurityLog,
     SessionService,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
-  exports: [AuthContext, PasswordService],
+  exports: [AuthContext, PasswordService, ProvisioningService],
 })
 export class AuthModule {}

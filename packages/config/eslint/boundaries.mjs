@@ -30,7 +30,11 @@ export function apiBoundaries({ rootPath, tsconfigPath }) {
         ],
         // Root files are classified as files, not as an element: an element at `src` would
         // become the closest element for everything under platform/ and modules/.
-        'boundaries/files': [{ category: 'app-root', pattern: 'src/*.ts' }],
+        // src/cli/*.ts: one-off commands (create-admin, seed-dev), wired like main.ts.
+        'boundaries/files': [
+          { category: 'app-root', pattern: 'src/*.ts' },
+          { category: 'app-root', pattern: 'src/cli/*.ts' },
+        ],
       },
       rules: {
         'boundaries/no-unknown-files': 'error',

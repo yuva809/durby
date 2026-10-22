@@ -13,7 +13,9 @@
     "test:int": "vitest run --project integration",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy",
+    "seed:dev": "nest build && node dist/cli/seed-dev.js",
+    "create-admin": "nest build && node dist/cli/create-admin.js"
   },
   "dependencies": {
     "@durby/i18n": "workspace:*",
