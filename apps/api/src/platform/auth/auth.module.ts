@@ -1,10 +1,9 @@
 import { Global, Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
 import { AccessTokenService } from './access-token.service';
 import { AuthContext } from './auth-context';
 import { AuthController } from './auth.controller';
-import { AuthGuard } from './auth.guard';
 import { AuthMailer } from './auth-mailer';
+import { Authenticator } from './authenticator';
 import { AuthRateLimits } from './auth-rate-limits';
 import { Clock } from './clock';
 import { LockoutService } from './lockout.service';
@@ -18,7 +17,10 @@ import { RevocationService } from './revocation.service';
 import { SecurityLog } from './security-log';
 import { SessionService } from './session.service';
 
-/** Back-office authentication (docs/platform/auth.md). The AuthGuard runs on every route. */
+/**
+ * Back-office authentication (docs/platform/auth.md). The global AccessGuard (platform/rbac) calls
+ * the Authenticator on every route that isn't @Public().
+ */
 @Global()
 @Module({
   controllers: [AuthController],
@@ -26,6 +28,7 @@ import { SessionService } from './session.service';
     AccessTokenService,
     AuthContext,
     AuthMailer,
+    Authenticator,
     AuthRateLimits,
     Clock,
     LockoutService,
@@ -38,8 +41,7 @@ import { SessionService } from './session.service';
     RevocationService,
     SecurityLog,
     SessionService,
-    { provide: APP_GUARD, useClass: AuthGuard },
   ],
-  exports: [AuthContext, PasswordService, ProvisioningService],
+  exports: [AuthContext, Authenticator, PasswordService, ProvisioningService],
 })
 export class AuthModule {}

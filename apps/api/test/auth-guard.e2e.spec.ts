@@ -6,7 +6,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
-import { AuthContext, Public } from '../src/platform/auth';
+import { AuthContext, Authenticated, Public } from '../src/platform/auth';
 import { AccessTokenService } from '../src/platform/auth/access-token.service';
 import { RevocationService } from '../src/platform/auth/revocation.service';
 import {
@@ -34,7 +34,8 @@ class ProbeController {
     return { ok: true };
   }
 
-  /** No marker: the guard requires a token. Reads the context after awaits and in a lazy query. */
+  /** Token only (a test probe). Reads the context after awaits and in a lazy query. */
+  @Authenticated()
   @Get('context')
   async context(): Promise<unknown> {
     await tick();
@@ -44,18 +45,20 @@ class ProbeController {
     return { auth: this.auth.get(), tenant: this.tenant.get()?.tenantId, dbTenant: row?.tenant };
   }
 
+  @Authenticated()
   @Post('context')
   contextViaPost(): Promise<unknown> {
     return this.context();
   }
 
+  @Authenticated()
   @Get('brands')
   async brands(): Promise<{ count: number }> {
     return { count: await this.db.brand.count() };
   }
 }
 
-describe('AuthGuard', () => {
+describe('Authenticator (via AccessGuard)', () => {
   let app: INestApplication;
   let server: App;
   let tokens: AccessTokenService;
@@ -105,7 +108,7 @@ describe('AuthGuard', () => {
     ['not Bearer', 'Basic ZHVyYnk6c2VjcmV0'],
     ['empty Bearer', 'Bearer '],
     ['garbage', 'Bearer not-a-token'],
-  ])('rejects unmarked routes with %s: 401 auth.unauthenticated', async (_, header) => {
+  ])('rejects token routes with %s: 401 auth.unauthenticated', async (_, header) => {
     const req = request(server).get('/api/v1/probe/context');
     if (header !== undefined) req.set('Authorization', header);
     const res = await req.expect(401);
