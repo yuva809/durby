@@ -10,3 +10,63 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ---------------------------------------------------------------------------
+// Tenancy (docs/platform/tenancy.md, ADR 0005)
+// Platform tables (no RLS): partners, organizations.
+// Tenant tables (RLS): carry tenant_id, UNIQUE (tenant_id, id), composite FKs.
+// ---------------------------------------------------------------------------
+
+model Partner {
+  id            String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  slug          String         @unique
+  name          String
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organizations Organization[]
+
+  @@map("partners")
+}
+
+/// The tenant. No RLS: holds non-sensitive platform fields only (ADR 0005).
+model Organization {
+  id        String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  partnerId String     @map("partner_id") @db.Uuid
+  name      String
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  partner   Partner    @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  brands    Brand[]
+  locations Location[]
+
+  @@index([partnerId])
+  @@map("organizations")
+}
+
+model Brand {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  name         String
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  locations    Location[]
+
+  @@unique([tenantId, id])
+  @@map("brands")
+}
+
+model Location {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  brandId      String       @map("brand_id") @db.Uuid
+  name         String
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  brand        Brand        @relation(fields: [tenantId, brandId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, brandId])
+  @@map("locations")
+}
