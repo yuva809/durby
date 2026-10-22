@@ -8,6 +8,8 @@ declare module 'vitest' {
   export interface ProvidedContext {
     databaseUrl: string;
     migrationDatabaseUrl: string;
+    /** Superuser on the same server: only for tests that create their own databases. */
+    superuserDatabaseUrl: string;
     redisUrl: string;
   }
 }
@@ -48,6 +50,7 @@ export async function setup(project: TestProject): Promise<void> {
 
   project.provide('databaseUrl', databaseUrl);
   project.provide('migrationDatabaseUrl', migrationDatabaseUrl);
+  project.provide('superuserDatabaseUrl', `postgresql://postgres:postgres@${hostPort}/durby`);
 
   redis = await redisStarting;
   project.provide('redisUrl', redis.getConnectionUrl());

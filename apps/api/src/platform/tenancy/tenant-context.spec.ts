@@ -66,6 +66,15 @@ describe('TenantContext', () => {
 
 describe('TENANT_MODELS', () => {
   it('lists exactly the models with a tenantId field', () => {
-    expect([...TENANT_MODELS].sort()).toEqual(['Brand', 'Location', 'Membership']);
+    expect([...TENANT_MODELS].sort()).toEqual([
+      'Brand',
+      'Invitation',
+      'InvitationLocation',
+      'Location',
+      'Membership',
+      'MembershipLocation',
+      'Role',
+      'RolePermission',
+    ]);
   });
 });

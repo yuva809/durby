@@ -30,17 +30,22 @@ model Partner {
 
 /// The tenant. No RLS: holds non-sensitive platform fields only (ADR 0005).
 model Organization {
-  id            String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  partnerId     String         @map("partner_id") @db.Uuid
-  name          String
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  partner       Partner        @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  brands        Brand[]
-  locations     Location[]
-  memberships   Membership[]
-  lastUsedBy    User[]
-  refreshTokens RefreshToken[]
+  id                  String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  partnerId           String               @map("partner_id") @db.Uuid
+  name                String
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  partner             Partner              @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  brands              Brand[]
+  locations           Location[]
+  memberships         Membership[]
+  lastUsedBy          User[]
+  refreshTokens       RefreshToken[]
+  roles               Role[]
+  rolePermissions     RolePermission[]
+  membershipLocations MembershipLocation[]
+  invitations         Invitation[]
+  invitationLocations InvitationLocation[]
 
   @@index([partnerId])
   @@map("organizations")
@@ -60,14 +65,16 @@ model Brand {
 }
 
 model Location {
-  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String       @map("tenant_id") @db.Uuid
-  brandId      String       @map("brand_id") @db.Uuid
+  id           String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String               @map("tenant_id") @db.Uuid
+  brandId      String               @map("brand_id") @db.Uuid
   name         String
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  brand        Brand        @relation(fields: [tenantId, brandId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  brand        Brand                @relation(fields: [tenantId, brandId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  memberships  MembershipLocation[]
+  invitations  InvitationLocation[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -82,20 +89,22 @@ model Location {
 
 /// A back-office user, once across all organizations. Email is stored normalized (trimmed, lower-case).
 model User {
-  id                 String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  email              String         @unique
+  id                  String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  email               String         @unique
   /// argon2id. Null until the first password reset (bootstrap admins, invites).
-  passwordHash       String?        @map("password_hash")
-  emailVerifiedAt    DateTime?      @map("email_verified_at") @db.Timestamptz(6)
-  locale             String         @default("en")
-  lastOrganizationId String?        @map("last_organization_id") @db.Uuid
-  passwordChangedAt  DateTime?      @map("password_changed_at") @db.Timestamptz(6)
-  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  lastOrganization   Organization?  @relation(fields: [lastOrganizationId], references: [id], onDelete: SetNull, onUpdate: Restrict)
-  tokens             UserToken[]
-  refreshTokens      RefreshToken[]
-  memberships        Membership[]
+  passwordHash        String?        @map("password_hash")
+  emailVerifiedAt     DateTime?      @map("email_verified_at") @db.Timestamptz(6)
+  locale              String         @default("en")
+  lastOrganizationId  String?        @map("last_organization_id") @db.Uuid
+  passwordChangedAt   DateTime?      @map("password_changed_at") @db.Timestamptz(6)
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastOrganization    Organization?  @relation(fields: [lastOrganizationId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  tokens              UserToken[]
+  refreshTokens       RefreshToken[]
+  memberships         Membership[]
+  invitationsSent     Invitation[]   @relation("InvitationInvitedBy")
+  invitationsAccepted Invitation[]   @relation("InvitationAcceptedBy")
 
   @@map("users")
 }
@@ -152,18 +161,133 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-/// User ↔ organization. Tenant table (RLS). Step 1.3 adds role and location scope.
+/// User ↔ organization with a role and optional location scope. Tenant table (RLS).
 model Membership {
-  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String       @map("tenant_id") @db.Uuid
-  userId       String       @map("user_id") @db.Uuid
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id           String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String               @map("tenant_id") @db.Uuid
+  userId       String               @map("user_id") @db.Uuid
+  /// Nullable until a later step (expand/contract, ADR 0004): a membership without a role has no permissions.
+  roleId       String?              @map("role_id") @db.Uuid
+  /// false: limited to the membership_locations rows (none = no locations).
+  allLocations Boolean              @default(true) @map("all_locations")
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  role         Role?                @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  locations    MembershipLocation[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, userId])
   @@index([userId])
+  @@index([tenantId, roleId])
   @@map("memberships")
+}
+
+// ---------------------------------------------------------------------------
+// RBAC (docs/platform/rbac.md, ADR 0007). Tenant tables (RLS): roles, role_permissions,
+// membership_locations, invitations, invitation_locations.
+// ---------------------------------------------------------------------------
+
+enum SystemRole {
+  owner
+  admin
+  manager
+  staff
+
+  @@map("system_role")
+}
+
+/// A system role (system_key set, permissions defined in code) or a custom role (name set, role_permissions rows).
+model Role {
+  id           String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String           @map("tenant_id") @db.Uuid
+  systemKey    SystemRole?      @map("system_key")
+  name         String?
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  permissions  RolePermission[]
+  memberships  Membership[]
+  invitations  Invitation[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, systemKey])
+  @@unique([tenantId, name])
+  @@map("roles")
+}
+
+/// Permission keys of a custom role. Keys are validated against the registry by the API.
+model RolePermission {
+  id            String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String       @map("tenant_id") @db.Uuid
+  roleId        String       @map("role_id") @db.Uuid
+  permissionKey String       @map("permission_key")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization  Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  role          Role         @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, roleId, permissionKey])
+  @@map("role_permissions")
+}
+
+model MembershipLocation {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  membershipId String       @map("membership_id") @db.Uuid
+  locationId   String       @map("location_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  membership   Membership   @relation(fields: [tenantId, membershipId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  /// Restrict: deleting a location must never widen a location-limited membership.
+  location     Location     @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, membershipId, locationId])
+  @@index([tenantId, locationId])
+  @@map("membership_locations")
+}
+
+/// An invitation by email. Token: `<orgId>.<secret>`, stored as sha256(secret), single-use, 7 days.
+model Invitation {
+  id               String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String               @map("tenant_id") @db.Uuid
+  /// Normalized (trimmed, lower-case).
+  email            String
+  roleId           String               @map("role_id") @db.Uuid
+  allLocations     Boolean              @default(true) @map("all_locations")
+  invitedByUserId  String               @map("invited_by_user_id") @db.Uuid
+  tokenHash        String               @unique @map("token_hash")
+  expiresAt        DateTime             @map("expires_at") @db.Timestamptz(6)
+  acceptedAt       DateTime?            @map("accepted_at") @db.Timestamptz(6)
+  acceptedByUserId String?              @map("accepted_by_user_id") @db.Uuid
+  revokedAt        DateTime?            @map("revoked_at") @db.Timestamptz(6)
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization     Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  role             Role                 @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  invitedBy        User                 @relation("InvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  acceptedBy       User?                @relation("InvitationAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  locations        InvitationLocation[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, email])
+  @@index([tenantId, roleId])
+  @@map("invitations")
+}
+
+model InvitationLocation {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  invitationId String       @map("invitation_id") @db.Uuid
+  locationId   String       @map("location_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invitation   Invitation   @relation(fields: [tenantId, invitationId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  location     Location     @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, invitationId, locationId])
+  @@map("invitation_locations")
 }
