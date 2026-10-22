@@ -30,6 +30,9 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 
 After pulling step 1.2, add the new auth/mail keys from `apps/api/.env.example` to your `apps/api/.env`
 (`JWT_ACCESS_SECRET`, `WEB_ORIGINS`, `WEB_BASE_URL`, `SMTP_URL`, `MAIL_FROM`, …): the api refuses to boot without them.
+Sign in at http://localhost:3000/login (`owner@durby.local` / `durby-dev-password` after `seed:dev`). The refresh
+cookie is `Secure`; Chromium and Firefox accept that on `http://localhost`. If your browser drops it (Safari), set
+`COOKIE_SECURE=false` in `apps/api/.env` (the cookie is then called `durby_rt`).
 To create a real admin instead of demo users: `pnpm --filter @durby/api create-admin --email you@example.com --org "Name"`
 (the password-set link arrives in Mailpit).
 

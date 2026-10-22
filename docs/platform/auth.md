@@ -237,11 +237,30 @@ asserts that no token or link appears.
 
 ## Web
 
-- Access token in a module-level variable only; never `localStorage`/`sessionStorage`.
-- On load the app calls `/auth/refresh` (the cookie restores the session after a reload); it refreshes shortly before
-  expiry. One refresh at a time across tabs (Web Locks API).
+Code: `apps/web/lib/auth/` (session store, link tokens, error labels), `apps/web/app/providers.tsx` (`AuthProvider`,
+`useAuth()`), pages under `apps/web/app/`.
+
+- **Access token in memory only:** a variable inside the session store. Never browser storage or a script-readable
+  cookie; a unit test traps `localStorage`, `sessionStorage` and `document` during every flow, and another scans the
+  web sources for them.
+- **Restore on load:** the `AuthProvider` calls `/auth/refresh` once per page load; the httpOnly cookie brings the
+  session back after a reload. Status is `loading` until that answers, then `authenticated` or `anonymous`.
+- **Renewal:** a timer refreshes 60 s before the access token expires. `apiFetch()` adds the bearer token and, on a
+  401, refreshes once and retries.
+- **One refresh at a time:** concurrent calls in a tab share one request, and the Web Locks API (`durby-auth-refresh`)
+  serializes tabs, so two tabs never rotate the cookie at once (which the api would treat as reuse).
+- **Only a dead session signs out:** `auth.refresh_invalid`, `auth.refresh_reused` or `auth.unauthenticated` clear
+  the session; rate limits, outages and network errors keep the current one until the next attempt.
+- **Email links:** `reset-password` and `verify-email` read `#token=…` once (`useLinkToken()`), then remove it from
+  the address bar and history (`history.replaceState`). Verification is sent once even when effects run twice.
+- **Errors:** every api error code maps to a label (`lib/auth/errors.ts`, e.g. `auth.invalid_credentials` →
+  `auth.errors.invalidCredentials`); unknown codes show `auth.errors.generic`. A test checks every code has an `en`
+  and `de` label.
 - Same origin everywhere: the Next.js `/api/v1` rewrite locally, Caddy on staging. No CORS.
-- Pages: `login`, `logout`, and the email link targets `forgot-password`, `reset-password`, `verify-email`.
+- **Pages:** `/login`, `/logout` (revokes the session, then back to `/login`), `/forgot-password` (same message whether
+  or not the account exists), `/reset-password`, `/verify-email`. The home page shows the signed-in user and an
+  organization switcher, and sends anonymous visitors to `/login`. Route protection is client-side only, for UX: the
+  api enforces access on every request.
 
 ## Tests
 
