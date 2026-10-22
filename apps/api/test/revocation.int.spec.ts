@@ -51,6 +51,21 @@ describe('RevocationService (Redis)', () => {
     expect(await revocations.isRevoked(claims(2001, { userId }))).toBe(false);
   });
 
+  it('a removed membership rejects tokens for that organization up to and including its second', async () => {
+    const userId = uuidv7();
+    const organizationId = uuidv7();
+    await revocations.revokeMembership(organizationId, userId, new Date(3_000_500));
+    expect(await revocations.isRevoked(claims(2999, { userId, organizationId }))).toBe(true);
+    // Same second as the removal: rejected (unlike the user marker).
+    expect(await revocations.isRevoked(claims(3000, { userId, organizationId }))).toBe(true);
+    expect(await revocations.isRevoked(claims(3001, { userId, organizationId }))).toBe(false);
+    // Other organizations and tokens without an organization are unaffected.
+    expect(await revocations.isRevoked(claims(3000, { userId, organizationId: uuidv7() }))).toBe(
+      false,
+    );
+    expect(await revocations.isRevoked(claims(3000, { userId }))).toBe(false);
+  });
+
   it('markers expire once no access token can still be valid', async () => {
     const sessionId = uuidv7();
     await revocations.revokeSession(sessionId);

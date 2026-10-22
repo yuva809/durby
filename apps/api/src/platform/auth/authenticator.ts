@@ -1,26 +1,25 @@
-import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { type ExecutionContext, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
 import { TenantContext } from '../tenancy';
 import { AccessTokenService, InvalidAccessTokenError } from './access-token.service';
 import { AuthContext } from './auth-context';
 import { authErrors } from './auth-errors';
 import { Clock } from './clock';
-import { IS_PUBLIC_KEY } from './public.decorator';
 import { RevocationService, RevocationUnavailableError } from './revocation.service';
 
 const BEARER = /^Bearer ([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/;
 
 /**
- * Global guard: every route needs a valid access token unless it is @Public(). Fills AuthContext
- * and, when the token has an active organization, TenantContext, into the request's CLS scope
- * (opened around the whole request by the TenancyModule middleware, so the handler and its lazy
- * queries run inside it). The tenant comes from the verified token only, never from the request.
+ * Verifies the request's access token and fills AuthContext and, when the token has an active
+ * organization, TenantContext, into the request's CLS scope (opened around the whole request by
+ * the TenancyModule middleware, so the handler and its lazy queries run inside it). The tenant
+ * comes from the verified token only, never from the request.
+ *
+ * Called by the global AccessGuard (platform/rbac) for every route that isn't @Public().
  */
 @Injectable()
-export class AuthGuard implements CanActivate {
+export class Authenticator {
   constructor(
-    private readonly reflector: Reflector,
     private readonly tokens: AccessTokenService,
     private readonly revocations: RevocationService,
     private readonly authContext: AuthContext,
@@ -28,13 +27,8 @@ export class AuthGuard implements CanActivate {
     private readonly clock: Clock,
   ) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const isPublic = this.reflector.getAllAndOverride<boolean | undefined>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (isPublic) return true;
-
+  /** Throws 401 auth.unauthenticated (or 503 auth.unavailable) unless the token is valid. */
+  async authenticate(context: ExecutionContext): Promise<void> {
     const header = context.switchToHttp().getRequest<Request>().headers.authorization;
     const token = header === undefined ? undefined : BEARER.exec(header)?.[1];
     if (token === undefined) throw authErrors.unauthenticated();
@@ -57,6 +51,5 @@ export class AuthGuard implements CanActivate {
     if (claims.organizationId !== null) {
       this.tenantContext.set({ tenantId: claims.organizationId, userId: claims.userId });
     }
-    return true;
   }
 }

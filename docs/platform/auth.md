@@ -66,16 +66,16 @@ security event is logged. There is no grace window; the web app runs at most one
 
 ### Early revocation of access tokens
 
-Access tokens are not stored, so a revoked session would otherwise stay usable until `exp`. Redis holds two
+Access tokens are not stored, so a revoked session would otherwise stay usable until `exp`. Redis holds three
 markers, each with a TTL of the access-token lifetime:
 
 - `auth:revoked:sid:<familyId>`: written on logout and on reuse detection.
 - `auth:revoked:user:<userId>` = unix time: written on password reset. Tokens with `iat` before it are rejected.
 
-The guard reads both with one `MGET`. If Redis is unavailable the guard fails closed (503).
+The guard reads all three with one `MGET`. If Redis is unavailable the guard fails closed (503).
 
-**TODO (step 1.3):** removing a membership must also end access immediately: write `auth:revoked:user` (or a
-per-organization marker) so access tokens carrying that `org` stop working.
+- `auth:revoked:org:<orgId>:<userId>` = unix time: written when a membership is removed (step 1.3,
+  [rbac.md](rbac.md)). Tokens for that organization with `iat` up to and including that second are rejected.
 
 ## Guard and context
 
@@ -86,9 +86,10 @@ A global guard (`APP_GUARD`) runs on every route:
 | `@Public()`                | anyone                          | health, login, refresh, logout, password and verification flows                                            |
 | `@Authenticated()`         | valid access token              | user-level routes that **never read or write tenant-scoped data**: `/auth/me`, `/auth/switch-organization` |
 | `@RequirePermission` (1.3) | valid access token + permission | everything that touches tenant data                                                                        |
+| `@PlatformOnly` (1.3)      | Durby platform staff            | not modelled yet: always 403 ([rbac.md](rbac.md))                                                          |
 
-Without a marker the guard still requires a valid access token; step 1.3 adds the startup check that every route has
-a marker. A test snapshots the list of `@Authenticated()` routes, so adding one shows up as a reviewable diff.
+Since step 1.3 the global guard is `AccessGuard` (platform/rbac), which runs this authentication and then applies
+the marker. Every route has exactly one marker or the api refuses to boot; a route without one is denied. A test snapshots the list of `@Authenticated()` routes, so adding one shows up as a reviewable diff.
 
 For a valid token the guard writes `AuthContext { userId, organizationId | null, sessionId }` into the request's CLS
 scope and, when `org` is set, `TenantContext.set({ tenantId: org, userId })`. The CLS middleware from TenancyModule

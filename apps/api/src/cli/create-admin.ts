@@ -1,13 +1,14 @@
 import { parseArgs } from 'node:util';
 import type { INestApplicationContext } from '@nestjs/common';
 import { emailRequestSchema } from '@durby/shared';
-import { PasswordService, ProvisioningService } from '../platform/auth';
+import { PasswordService } from '../platform/auth';
+import { ProvisioningService } from '../platform/provisioning';
 import { runCommand } from './run-command';
 
 const USAGE = `Usage: create-admin --email <email> --org <organization name> [--locale en|de]
 
-Creates the default partner, the organization, the user and the membership if missing, then
-emails the user a link to set their password. Safe to run again: nothing is duplicated or
+Creates the default partner, the organization (with its system roles), the user and an Owner
+membership if missing, then emails the user a link to set their password. Safe to run again: nothing is duplicated or
 overwritten, and a fresh link is sent. Never takes a password and never creates demo data.`;
 
 /** The default partner (ARCHITECTURE.md: Durby itself is the default partner). */
@@ -53,7 +54,7 @@ export async function createAdmin(
   const partner = await provisioning.ensurePartner(DEFAULT_PARTNER.slug, DEFAULT_PARTNER.name);
   const organization = await provisioning.ensureOrganization(partner.id, input.org);
   const user = await provisioning.ensureUser(input.email, { locale: input.locale });
-  const membership = await provisioning.ensureMembership(organization.id, user.id);
+  const membership = await provisioning.ensureMembership(organization.id, user.id, 'owner');
   await app.get(PasswordService).sendPasswordSetMail(user.id);
   return { partner, organization, user, membership };
 }
