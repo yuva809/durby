@@ -4,5 +4,9 @@
   "platform.health.label": "API health",
   "platform.health.status.ok": "OK",
   "platform.health.status.degraded": "Degraded",
-  "platform.health.status.unavailable": "Unavailable"
+  "platform.health.status.unavailable": "Unavailable",
+  "auth.email.reset.subject": "Set a new password",
+  "auth.email.reset.body": "Someone asked to set a new password for your account. Open this link to choose one. It works once and expires in 30 minutes:\n\n{link}\n\nIf this wasn't you, ignore this email; your password stays unchanged.",
+  "auth.email.verify.subject": "Confirm your email address",
+  "auth.email.verify.body": "Open this link to confirm your email address. It works once and expires in 24 hours:\n\n{link}\n\nIf you didn't create an account, ignore this email."
 }

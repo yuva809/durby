@@ -1,5 +1,6 @@
 # Local development infrastructure. Ports are bound to localhost only.
-# Override host ports in a root .env (DURBY_POSTGRES_PORT, DURBY_REDIS_PORT) if 5432/6379 are taken.
+# Override host ports in a root .env (DURBY_POSTGRES_PORT, DURBY_REDIS_PORT, DURBY_SMTP_PORT,
+# DURBY_MAILPIT_UI_PORT) if 5432/6379/1025/8025 are taken.
 services:
   postgres:
     image: postgres:18-alpine
@@ -26,6 +27,18 @@ services:
       - redis-data:/data
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Catches all mail locally (docs/platform/auth.md). SMTP 127.0.0.1:1025, UI http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    ports:
+      - '127.0.0.1:${DURBY_SMTP_PORT:-1025}:1025'
+      - '127.0.0.1:${DURBY_MAILPIT_UI_PORT:-8025}:8025'
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
       interval: 5s
       timeout: 5s
       retries: 10

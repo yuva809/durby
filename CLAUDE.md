@@ -23,7 +23,7 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 7. **Financial and stock history is append-only.** Ledgers, journals, payments, audit logs: no UPDATE/DELETE. Corrections are reversing entries.
 8. **Every client-originated write** accepts an `Idempotency-Key` header and is safe to replay.
 9. **Every state-changing action** writes an audit entry (actor, action, entity, before/after).
-10. **Every endpoint** declares `@RequireFeature(...)` (entitlement) and `@RequirePermission(...)` (RBAC), or is explicitly marked `@Public()` / `@PlatformOnly()`.
+10. **Every endpoint** declares `@RequireFeature(...)` (entitlement) and `@RequirePermission(...)` (RBAC), or is explicitly marked `@Public()` / `@PlatformOnly()` / `@Authenticated()`. `@Authenticated()` (ADR 0006) is only for user-level routes that never read or write tenant-scoped data (e.g. `/auth/me`, switch-organization); anything touching tenant data needs `@RequirePermission`. New `@Authenticated()` routes show up in a snapshot test and need review.
 
 ## Conventions
 
@@ -47,5 +47,6 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 - Migrations must stay backward compatible with the previous release (expand/contract): rollbacks redeploy older
   images without reverting the schema (ADR 0004). Drop or rename columns/tables only once no deployed code uses them.
 - DB roles (ADR 0002): the app connects only as `durby_app`; migrations run only as `durby_migrator`. Never grant the app role BYPASSRLS, ownership or CREATE.
+- Cross-tenant reads (ADR 0006) only through an allow-listed `SECURITY DEFINER` function owned by `durby_rls_definer`, taking no caller-chosen ids (it reads settings like `app.user_id` set from the verified token). Adding one needs an ADR.
 - If a rule above blocks you, stop and ask. Do not work around it.
 - When we make a new decision, add it to `docs/adr/` and update this file if it's a rule.

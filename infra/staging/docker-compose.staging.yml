@@ -1,8 +1,8 @@
 # Durby staging stack (Hetzner CPX22: 2 vCPU, 4 GB RAM). See docs/ops/deploy.md.
 # Lives in /opt/durby on the server; run it through bin/dc, which supplies .env and IMAGE_TAG.
 #
-# Only Caddy publishes ports (80/443). Postgres and Redis sit on the internal `db` network,
-# which has no route to the host or the internet.
+# Only Caddy publishes public ports (80/443); Mailpit's UI is on the server's 127.0.0.1 only. Postgres and
+# Redis sit on the internal `db` network, which has no route to the host or the internet.
 # Distinct from the local dev project ("durby", from the repo folder) so the two never share containers or volumes.
 name: durby-staging
 
@@ -119,14 +119,43 @@ services:
       # durby_app only: no BYPASSRLS, no ownership (ADR 0002). The migrator URL never reaches the api.
       DATABASE_URL: postgresql://durby_app:${DURBY_APP_PASSWORD}@postgres:5432/durby
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      # Auth (docs/platform/auth.md). Web and api share the origin behind Caddy.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set in .env (see docs/ops/deploy.md, Upgrading the existing server)}
+      WEB_ORIGINS: https://${STAGING_DOMAIN}
+      WEB_BASE_URL: https://${STAGING_DOMAIN}
+      # Caddy is the one proxy in front of the api; it overwrites client-sent X-Forwarded-For.
+      TRUST_PROXY: '1'
+      SMTP_URL: smtp://mailpit:1025
+      MAIL_FROM: ${MAIL_FROM:-Durby Staging <no-reply@staging.invalid>}
     deploy:
       resources:
         limits: { memory: 512m }
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      mailpit: { condition: service_started }
     # Healthcheck comes from the image: GET /api/v1/health/live.
-    networks: [db, edge]
+    networks: [db, edge, mail]
+
+  # Catches all staging mail (reset/verification links) until a real provider exists (ADR 0006).
+  # SMTP only on the internal `mail` network; the UI is published on the server's loopback only:
+  #   ssh -L 8025:127.0.0.1:8025 <you>@<server>   then open http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    restart: unless-stopped
+    <<: *hardening
+    read_only: true
+    tmpfs: [/tmp, /data]
+    logging: *logging
+    environment:
+      # Keep the newest 500 messages, in memory/tmpfs only: a restart drops them.
+      MP_MAX_MESSAGES: '500'
+    ports:
+      - '127.0.0.1:8025:8025'
+    deploy:
+      resources:
+        limits: { memory: 96m }
+    networks: [mail, mailui]
 
   web:
     image: ${IMAGE_PREFIX:-ghcr.io/yuva809/durby}-web:${IMAGE_TAG:?set by bin/dc}
@@ -179,6 +208,11 @@ networks:
   db:
     internal: true
   edge: {}
+  # api → Mailpit SMTP. Internal: Mailpit never sends mail out.
+  mail:
+    internal: true
+  # Only for publishing the Mailpit UI on 127.0.0.1 (internal networks cannot publish ports).
+  mailui: {}
 
 volumes:
   postgres-data:

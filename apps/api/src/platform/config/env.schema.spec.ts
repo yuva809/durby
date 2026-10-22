@@ -5,16 +5,75 @@ import { loadConfig } from './load-config';
 const validEnv = {
   DATABASE_URL: 'postgresql://durby_app:secret@localhost:5432/durby',
   REDIS_URL: 'redis://localhost:6379',
+  JWT_ACCESS_SECRET: 'x'.repeat(32),
+  WEB_ORIGINS: 'http://localhost:3000',
+  WEB_BASE_URL: 'http://localhost:3000',
+  SMTP_URL: 'smtp://localhost:1025',
+  MAIL_FROM: 'Durby <no-reply@durby.test>',
 };
+
+const without = (key: keyof typeof validEnv): Record<string, string> =>
+  Object.fromEntries(Object.entries(validEnv).filter(([k]) => k !== key));
 
 describe('appEnvSchema', () => {
   it('applies defaults for optional vars', () => {
     expect(appEnvSchema.parse(validEnv)).toEqual({
       ...validEnv,
+      WEB_ORIGINS: ['http://localhost:3000'],
       NODE_ENV: 'development',
       PORT: 4000,
       APP_VERSION: '0.0.0-dev',
       LOG_LEVEL: 'info',
+      JWT_ACCESS_TTL_SECONDS: 600,
+      JWT_ISSUER: 'durby-api',
+      JWT_AUDIENCE: 'durby-web',
+      REFRESH_TOKEN_TTL_DAYS: 14,
+      REFRESH_FAMILY_MAX_DAYS: 30,
+      COOKIE_SECURE: true,
+      TRUST_PROXY: 0,
+    });
+  });
+
+  describe('auth', () => {
+    const issuesOf = (env: Record<string, string>): string[] => {
+      const result = appEnvSchema.safeParse({ ...validEnv, ...env });
+      return result.success ? [] : result.error.issues.map((i) => i.path.join('.'));
+    };
+
+    it('requires a JWT secret of at least 32 characters', () => {
+      expect(issuesOf({ JWT_ACCESS_SECRET: 'x'.repeat(31) })).toEqual(['JWT_ACCESS_SECRET']);
+      expect(appEnvSchema.safeParse(without('JWT_ACCESS_SECRET')).success).toBe(false);
+    });
+
+    it('caps the access token lifetime at 15 minutes', () => {
+      expect(issuesOf({ JWT_ACCESS_TTL_SECONDS: '901' })).toEqual(['JWT_ACCESS_TTL_SECONDS']);
+      expect(issuesOf({ JWT_ACCESS_TTL_SECONDS: '900' })).toEqual([]);
+    });
+
+    it('parses WEB_ORIGINS as a list of bare origins', () => {
+      expect(
+        appEnvSchema.parse({ ...validEnv, WEB_ORIGINS: 'https://a.test, http://localhost:3000' })
+          .WEB_ORIGINS,
+      ).toEqual(['https://a.test', 'http://localhost:3000']);
+      expect(issuesOf({ WEB_ORIGINS: 'https://a.test/' })).toEqual(['WEB_ORIGINS.0']);
+      expect(issuesOf({ WEB_ORIGINS: 'https://a.test/app' })).toEqual(['WEB_ORIGINS.0']);
+      expect(issuesOf({ WEB_ORIGINS: ' , ' })).toEqual(['WEB_ORIGINS']);
+    });
+
+    it('parses COOKIE_SECURE as a boolean and rejects false in production', () => {
+      expect(appEnvSchema.parse({ ...validEnv, COOKIE_SECURE: 'false' }).COOKIE_SECURE).toBe(false);
+      expect(issuesOf({ NODE_ENV: 'production', COOKIE_SECURE: 'false' })).toEqual([
+        'COOKIE_SECURE',
+      ]);
+      expect(issuesOf({ NODE_ENV: 'production' })).toEqual([]);
+    });
+
+    it('keeps refresh tokens within the family lifetime', () => {
+      expect(issuesOf({ REFRESH_TOKEN_TTL_DAYS: '31' })).toEqual(['REFRESH_TOKEN_TTL_DAYS']);
+    });
+
+    it('requires an smtp:// SMTP_URL', () => {
+      expect(issuesOf({ SMTP_URL: 'http://localhost:1025' })).toEqual(['SMTP_URL']);
     });
   });
 
@@ -27,7 +86,7 @@ describe('appEnvSchema', () => {
   });
 
   it('rejects a missing DATABASE_URL', () => {
-    expect(appEnvSchema.safeParse({ REDIS_URL: validEnv.REDIS_URL }).success).toBe(false);
+    expect(appEnvSchema.safeParse(without('DATABASE_URL')).success).toBe(false);
   });
 
   it('rejects a DATABASE_URL that is not postgres', () => {
@@ -69,8 +128,6 @@ describe('loadConfig', () => {
   });
 
   it('reports a missing var as required', () => {
-    expect(() => loadConfig({ REDIS_URL: validEnv.REDIS_URL })).toThrow(
-      /DATABASE_URL: is required/,
-    );
+    expect(() => loadConfig(without('DATABASE_URL'))).toThrow(/DATABASE_URL: is required/);
   });
 });

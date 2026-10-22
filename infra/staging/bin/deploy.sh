@@ -29,6 +29,21 @@ mkdir -p "$STATE"
 exec 9>"$STATE/deploy.lock"
 flock -n 9 || die "another deploy is running"
 
+# 0. Preflight: every secret the stack needs is in .env. Fails before anything changes, so the
+#    current release keeps running. Values are never printed.
+env_value() { sed -n "s/^$1=//p" "$DEPLOY_DIR/.env" | tail -n 1 | tr -d "'\""; }
+required=(POSTGRES_SUPERUSER_PASSWORD DURBY_MIGRATOR_PASSWORD DURBY_APP_PASSWORD REDIS_PASSWORD
+  STAGING_DOMAIN ACME_EMAIL BASIC_AUTH_USER BASIC_AUTH_HASH JWT_ACCESS_SECRET)
+missing_keys=()
+for key in "${required[@]}"; do
+  value="$(env_value "$key")"
+  [[ -n "$value" && "$value" != change-me ]] || missing_keys+=("$key")
+done
+((${#missing_keys[@]} == 0)) ||
+  die "missing in $DEPLOY_DIR/.env: ${missing_keys[*]} (see docs/ops/deploy.md, Upgrading the existing server)"
+(($(env_value JWT_ACCESS_SECRET | wc -c) > 32)) ||
+  die "JWT_ACCESS_SECRET must be at least 32 characters (openssl rand -hex 32)"
+
 current="$(cat "$STATE/deployed.sha" 2>/dev/null || true)"
 prefix="$(sed -n 's/^IMAGE_PREFIX=//p' "$DEPLOY_DIR/.env" | tr -d "'\"")"
 prefix="${prefix:-ghcr.io/yuva809/durby}"
@@ -48,6 +63,12 @@ done
 # 2. Data services (no-op when already running and unchanged).
 log "starting postgres and redis"
 dc up -d --wait --wait-timeout "$WAIT_SECONDS" postgres redis
+
+# 2b. Roles that only a superuser can create (ADR 0006). Init scripts never re-run on an existing
+#     volume, so the idempotent ones are applied on every deploy, before migrations need them.
+log "applying database roles"
+dc exec -T postgres sh /docker-entrypoint-initdb.d/02-rls-definer.sh ||
+  die "applying database roles failed; still serving ${current:-nothing}"
 
 # 3. Release step: migrations as durby_migrator, before the new api starts.
 #    On failure the old api keeps running untouched.

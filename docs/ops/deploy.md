@@ -30,7 +30,7 @@ Server layout:
   .env                         secrets (never committed; template: infra/staging/.env.example)
   docker-compose.staging.yml   ┐
   caddy/Caddyfile              │ copied from infra/staging on every deploy
-  postgres-init/01-roles.sh    │
+  postgres-init/0{1,2}-*.sh    │
   bin/{dc,deploy.sh,backup.sh,restore.sh}
   state/deployed.sha           release that is live
   state/previous.sha           release before it
@@ -172,6 +172,51 @@ open https://staging.durby.tech                          # basic auth: durby / <
 
 Then run a backup by hand and a restore check (see [Backups](#backups)).
 
+### Upgrading the existing server
+
+`server-setup.sh` writes `/opt/durby/.env` only once, so secrets added by later steps must be appended by hand.
+`bin/deploy.sh` checks `.env` before it changes anything and names any missing key; the running release keeps
+serving until you fix it and re-run the deploy.
+
+**Step 1.2 (authentication)** needs `JWT_ACCESS_SECRET`. On the server, once, before merging step 1.2:
+
+```bash
+sudo -u deploy sh -c 'grep -q "^JWT_ACCESS_SECRET=" /opt/durby/.env ||
+  printf "JWT_ACCESS_SECRET=%s\n" "$(openssl rand -hex 32)" >>/opt/durby/.env'
+sudo grep -c '^JWT_ACCESS_SECRET=' /opt/durby/.env   # 1
+```
+
+Changing the secret later logs everyone out within one access-token lifetime (10 min); refresh tokens survive.
+
+Nothing else is manual. On every deploy, `bin/deploy.sh` applies `postgres-init/02-rls-definer.sh` as the Postgres
+superuser before migrations (it creates the `durby_rls_definer` role, ADR 0006; init scripts never re-run on an
+existing volume). Mailpit starts with the stack.
+
+### First admin
+
+There is no public signup. Create the first back-office user and organization on the server:
+
+```bash
+cd /opt/durby
+bin/dc run --rm --no-deps api node dist/cli/create-admin.js --email you@example.com --org "Your organization"
+```
+
+It creates the default partner, the organization, the user and the membership if missing, and emails a link to set
+the password (it never takes a password). Running it again is safe: nothing is duplicated, and a fresh link is sent.
+`--locale de` sends the German email. The link arrives in Mailpit (below).
+
+### Staging mail (Mailpit)
+
+All staging mail (password links, verification links) goes to Mailpit; nothing leaves the server. Its UI listens on
+the server's `127.0.0.1:8025` only. From your laptop:
+
+```bash
+ssh -L 8025:127.0.0.1:8025 <your-username>@<server-ip>
+open http://localhost:8025
+```
+
+Messages live in memory: a Mailpit restart (or deploy that recreates it) drops them; the newest 500 are kept.
+
 ---
 
 ## Deploying
@@ -187,8 +232,10 @@ Every push to `main` that passes CI deploys automatically. The workflow:
 
 `bin/deploy.sh <sha>` on the server:
 
+0. **preflight:** checks that `.env` has every required secret (names any that are missing; nothing has changed yet);
 1. pulls the three images for `<sha>` (skipped if already on the host);
-2. starts Postgres and Redis and waits until healthy;
+2. starts Postgres and Redis and waits until healthy, then applies the idempotent superuser role script
+   `postgres-init/02-rls-definer.sh`;
 3. **release step:** `prisma migrate deploy` in the `migrate` container as `durby_migrator`
    (`MIGRATION_DATABASE_URL`). If it fails, the deploy stops and the old api keeps running;
 4. starts the new api and web and waits for their healthchecks (`/api/v1/health/live`, `/healthz`).
@@ -300,8 +347,12 @@ password manager) so the role passwords match, deploy the last release, then do 
 
 ## Security notes
 
-- Only Caddy publishes ports. Postgres and Redis are on the internal `db` network (no route in or out); check with
-  `bin/dc ps` (only Caddy shows ports) and `sudo ss -tlnp` (only 22, 80, 443).
+- Only Caddy publishes public ports. Postgres and Redis are on the internal `db` network (no route in or out), Mailpit's
+  SMTP on the internal `mail` network; its UI is published on `127.0.0.1:8025` only. Check with `bin/dc ps` and
+  `sudo ss -tlnp` (public: only 22, 80, 443; plus `127.0.0.1:8025`).
+- The api's auth secret `JWT_ACCESS_SECRET` lives only in `.env`; refresh, reset and verification tokens are stored
+  hashed, and Caddy's access log drops query strings (reset/verification links carry their token in the URL fragment,
+  which browsers never send).
 - The api connects as `durby_app` (no BYPASSRLS, no ownership, no CREATE). The migrator password reaches only the
   `migrate` container, which runs during deploys only.
 - `deploy` is in the `docker` group, which is root-equivalent on this host. Its SSH key is restricted and stored

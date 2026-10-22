@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ConfigModule } from '../src/platform/config';
 import { DatabaseModule, PrismaService } from '../src/platform/database';
 import {
+  AuthPrivateModelOnPlatformClientError,
   PLATFORM_PRISMA,
   TENANT_PRISMA,
   TenancyModule,
@@ -258,6 +259,18 @@ describe('tenant isolation', () => {
       await context.run(a.ctx, async () => {
         await expect(platformDb.location.count()).rejects.toThrow(TenantModelOnPlatformClientError);
       });
+    });
+
+    it('the platform client refuses auth-private models (users, tokens)', async () => {
+      await expect(platformDb.user.findMany()).rejects.toThrow(
+        AuthPrivateModelOnPlatformClientError,
+      );
+      await expect(platformDb.userToken.count()).rejects.toThrow(
+        AuthPrivateModelOnPlatformClientError,
+      );
+      await expect(platformDb.refreshToken.findFirst()).rejects.toThrow(
+        AuthPrivateModelOnPlatformClientError,
+      );
     });
   });
 

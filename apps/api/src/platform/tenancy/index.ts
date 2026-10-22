@@ -1,4 +1,5 @@
 export {
+  AuthPrivateModelOnPlatformClientError,
   PLATFORM_PRISMA,
   TENANT_PRISMA,
   TenantModelOnPlatformClientError,
@@ -13,4 +14,4 @@ export {
   tenantContextSchema,
   type TenantContextValue,
 } from './tenant-context';
-export { TENANT_MODELS } from './tenant-models';
+export { AUTH_PRIVATE_MODELS, TENANT_MODELS } from './tenant-models';

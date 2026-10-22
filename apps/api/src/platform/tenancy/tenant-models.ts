@@ -13,3 +13,13 @@ export const TENANT_MODELS: ReadonlySet<Prisma.ModelName> = new Set(
     return 'tenantId' in fields;
   }),
 );
+
+/**
+ * Platform models private to platform/auth (ADR 0006): password and token hashes. The platform
+ * client refuses them like tenant models; platform/auth reads them through PrismaService.
+ */
+export const AUTH_PRIVATE_MODELS: ReadonlySet<Prisma.ModelName> = new Set<Prisma.ModelName>([
+  'User',
+  'UserToken',
+  'RefreshToken',
+]);
