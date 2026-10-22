@@ -3,6 +3,7 @@ export { AccessService } from './access.service';
 export { IS_PLATFORM_ONLY_KEY, PlatformOnly } from './platform-only.decorator';
 export { PERMISSION_REGISTRY, type PermissionRegistry } from './permission-registry';
 export { RbacModule } from './rbac.module';
+export { SystemRoles } from './system-roles';
 export { REQUIRED_PERMISSION_KEY, RequirePermission } from './require-permission.decorator';
 export {
   findRouteMarkerProblems,

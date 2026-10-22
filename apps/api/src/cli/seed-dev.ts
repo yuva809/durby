@@ -1,5 +1,5 @@
 import type { INestApplicationContext } from '@nestjs/common';
-import { ProvisioningService } from '../platform/auth';
+import { ProvisioningService } from '../platform/provisioning';
 import { APP_CONFIG, type AppConfig } from '../platform/config';
 import { DEFAULT_PARTNER } from './create-admin';
 import { runCommand } from './run-command';
@@ -13,8 +13,8 @@ export const DEV_PASSWORD = 'durby-dev-password';
 export const DEV_SEED = {
   organizations: ['Demo Bistro', 'Demo Café'],
   users: [
-    { email: 'owner@durby.local', organizations: ['Demo Bistro', 'Demo Café'] },
-    { email: 'staff@durby.local', organizations: ['Demo Bistro'] },
+    { email: 'owner@durby.local', role: 'owner', organizations: ['Demo Bistro', 'Demo Café'] },
+    { email: 'staff@durby.local', role: 'staff', organizations: ['Demo Bistro'] },
   ],
 } as const;
 
@@ -34,7 +34,7 @@ export async function seedDev(app: INestApplicationContext): Promise<void> {
       verified: true,
     });
     for (const org of seed.organizations) {
-      await provisioning.ensureMembership(orgIds.get(org) ?? '', user.id);
+      await provisioning.ensureMembership(orgIds.get(org) ?? '', user.id, seed.role);
     }
   }
 }
@@ -44,7 +44,9 @@ if (typeof require !== 'undefined' && require.main === module) {
   void runCommand('seed-dev', async (app) => {
     await seedDev(app);
     for (const user of DEV_SEED.users) {
-      console.log(`${user.email} / ${DEV_PASSWORD}  (${user.organizations.join(', ')})`);
+      console.log(
+        `${user.email} / ${DEV_PASSWORD}  ${user.role} (${user.organizations.join(', ')})`,
+      );
     }
   });
 }

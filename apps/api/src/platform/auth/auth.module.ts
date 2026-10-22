@@ -11,11 +11,11 @@ import { MembershipLookup } from './membership-lookup';
 import { OriginGuard } from './origin.guard';
 import { PasswordHasher } from './password-hasher';
 import { PasswordService } from './password.service';
-import { ProvisioningService } from './provisioning.service';
 import { RefreshTokenStore } from './refresh-token.store';
 import { RevocationService } from './revocation.service';
 import { SecurityLog } from './security-log';
 import { SessionService } from './session.service';
+import { UserDirectory } from './user-directory';
 
 /**
  * Back-office authentication (docs/platform/auth.md). The global AccessGuard (platform/rbac) calls
@@ -36,12 +36,12 @@ import { SessionService } from './session.service';
     OriginGuard,
     PasswordHasher,
     PasswordService,
-    ProvisioningService,
     RefreshTokenStore,
     RevocationService,
     SecurityLog,
     SessionService,
+    UserDirectory,
   ],
-  exports: [AuthContext, Authenticator, PasswordService, ProvisioningService],
+  exports: [AuthContext, Authenticator, PasswordService, RevocationService, UserDirectory],
 })
 export class AuthModule {}

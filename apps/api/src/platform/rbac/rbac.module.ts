@@ -4,6 +4,7 @@ import { AccessGuard } from './access.guard';
 import { AccessService } from './access.service';
 import { defaultPermissionRegistry, PERMISSION_REGISTRY } from './permission-registry';
 import { RouteMarkerCheck } from './route-marker.check';
+import { SystemRoles } from './system-roles';
 
 /** Roles, permissions and route access (docs/platform/rbac.md). AccessGuard runs on every route. */
 @Global()
@@ -12,9 +13,10 @@ import { RouteMarkerCheck } from './route-marker.check';
   providers: [
     AccessService,
     RouteMarkerCheck,
+    SystemRoles,
     { provide: PERMISSION_REGISTRY, useValue: defaultPermissionRegistry },
     { provide: APP_GUARD, useClass: AccessGuard },
   ],
-  exports: [AccessService, PERMISSION_REGISTRY],
+  exports: [AccessService, PERMISSION_REGISTRY, SystemRoles],
 })
 export class RbacModule {}

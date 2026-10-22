@@ -8,6 +8,7 @@ import { HealthService } from './health/health.service';
 import { ApiExceptionFilter } from './http';
 import { LoggingModule } from './logging';
 import { MailModule } from './mail';
+import { ProvisioningModule } from './provisioning';
 import { RateLimitModule } from './rate-limit';
 import { RbacModule } from './rbac';
 import { RedisModule } from './redis';
@@ -24,6 +25,7 @@ import { TenancyModule } from './tenancy';
     MailModule,
     AuthModule,
     RbacModule,
+    ProvisioningModule,
   ],
   controllers: [HealthController],
   providers: [HealthService, { provide: APP_FILTER, useClass: ApiExceptionFilter }],

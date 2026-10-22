@@ -31,6 +31,27 @@ describe('bootstrap commands', () => {
     await app.close();
   });
 
+  /** System role key of the user's membership in the org, read as that tenant (RLS). */
+  const roleOf = async (userId: string, orgId: string) => {
+    const [, rows] = await raw.$transaction([
+      raw.$executeRaw`SELECT set_config('app.tenant_id', ${orgId}, true)`,
+      raw.$queryRaw<{ key: string | null }[]>`
+        SELECT r.system_key::text AS key FROM memberships m
+        LEFT JOIN roles r ON r.tenant_id = m.tenant_id AND r.id = m.role_id
+        WHERE m.user_id = ${userId}::uuid`,
+    ]);
+    return rows[0]?.key;
+  };
+
+  const systemRolesOf = async (orgId: string) => {
+    const [, rows] = await raw.$transaction([
+      raw.$executeRaw`SELECT set_config('app.tenant_id', ${orgId}, true)`,
+      raw.$queryRaw<{ key: string }[]>`
+        SELECT system_key::text AS key FROM roles WHERE system_key IS NOT NULL ORDER BY system_key`,
+    ]);
+    return rows.map((r) => r.key);
+  };
+
   /** Memberships of a user across tenants, read as each tenant (RLS) through raw SQL. */
   const membershipCount = async (userId: string, orgId: string) => {
     const [, rows] = await raw.$transaction([
@@ -62,6 +83,13 @@ describe('bootstrap commands', () => {
       expect(await platformDb.organization.count({ where: { name: org } })).toBe(1);
       expect(await raw.user.count({ where: { email } })).toBe(1);
       expect(await membershipCount(first.user.id, first.organization.id)).toBe(1);
+      expect(await systemRolesOf(first.organization.id)).toEqual([
+        'owner',
+        'admin',
+        'manager',
+        'staff',
+      ]);
+      expect(await roleOf(first.user.id, first.organization.id)).toBe('owner');
 
       const user = await raw.user.findUniqueOrThrow({ where: { email } });
       expect(user).toMatchObject({ passwordHash: null, emailVerifiedAt: null, locale: 'de' });
@@ -89,6 +117,29 @@ describe('bootstrap commands', () => {
       expect(user).toMatchObject({ passwordHash: hash, locale: 'en' });
     });
 
+    it('gives a membership without a role (from before step 1.3) the Owner role', async () => {
+      const email = `admin-${uuidv7()}@example.test`;
+      const org = `Legacy ${uuidv7()}`;
+      // An organization whose admin was added by the previous release: membership without a role.
+      const existing = await createAdmin(app, {
+        email: `other-${uuidv7()}@example.test`,
+        org,
+        locale: 'en',
+      });
+      const user = await raw.user.create({ data: { email } });
+      await raw.$transaction([
+        raw.$executeRaw`SELECT set_config('app.tenant_id', ${existing.organization.id}, true)`,
+        raw.$executeRaw`
+          INSERT INTO memberships (tenant_id, user_id, updated_at)
+          VALUES (${existing.organization.id}::uuid, ${user.id}::uuid, now())`,
+      ]);
+      expect(await roleOf(user.id, existing.organization.id)).toBeNull();
+
+      const result = await createAdmin(app, { email, org, locale: 'en' });
+      expect(result.membership.created).toBe(false);
+      expect(await roleOf(user.id, existing.organization.id)).toBe('owner');
+    });
+
     it('creates no demo data', async () => {
       // Scoped to the default partner: other test files create organizations in parallel.
       const namesUnderDefaultPartner = async () =>
@@ -98,12 +149,16 @@ describe('bootstrap commands', () => {
             select: { name: true },
           })
         ).map((o) => o.name);
+      const demoUsers = () => raw.user.count({ where: { email: { endsWith: '@durby.local' } } });
       const before = await namesUnderDefaultPartner();
+      const demoBefore = await demoUsers();
       const org = `Only ${uuidv7()}`;
       await createAdmin(app, { email: `admin-${uuidv7()}@example.test`, org, locale: 'en' });
       const added = (await namesUnderDefaultPartner()).filter((name) => !before.includes(name));
-      expect(added).toEqual([org]);
-      expect(await raw.user.count({ where: { email: { endsWith: '@durby.local' } } })).toBe(0);
+      // Other tests (seed-dev) may add demo organizations in parallel, never under this name.
+      expect(added.filter((name) => name.startsWith('Demo '))).toEqual([]);
+      expect(added).toContain(org);
+      expect(await demoUsers()).toBe(demoBefore);
     });
   });
 
@@ -119,19 +174,8 @@ describe('bootstrap commands', () => {
           const orgs = await platformDb.organization.findMany({ where: { name } });
           expect(orgs).toHaveLength(1);
           expect(await membershipCount(user.id, orgs[0]?.id ?? '')).toBe(1);
+          expect(await roleOf(user.id, orgs[0]?.id ?? '')).toBe(seed.role);
         }
-      }
-      // Cleanup so the create-admin "no demo data" test stays order-independent.
-      for (const seed of DEV_SEED.users) {
-        const user = await raw.user.findUniqueOrThrow({ where: { email: seed.email } });
-        for (const name of seed.organizations) {
-          const org = await platformDb.organization.findFirstOrThrow({ where: { name } });
-          await raw.$transaction([
-            raw.$executeRaw`SELECT set_config('app.tenant_id', ${org.id}, true)`,
-            raw.$executeRaw`DELETE FROM memberships WHERE user_id = ${user.id}::uuid`,
-          ]);
-        }
-        await raw.user.delete({ where: { id: user.id } });
       }
     });
 
