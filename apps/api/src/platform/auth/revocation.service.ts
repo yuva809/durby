@@ -15,7 +15,8 @@ const TTL_SLACK_SECONDS = 30;
 
 /**
  * Ends access tokens before their `exp` (ADR 0006): per session on logout and reuse detection,
- * per user on password reset. Markers live as long as an access token can, then expire.
+ * per user on password reset, per user and organization when a membership is removed (ADR 0007).
+ * Markers live as long as an access token can, then expire.
  */
 @Injectable()
 export class RevocationService {
@@ -42,16 +43,24 @@ export class RevocationService {
     await this.call(() => this.redis.set(userKey(userId), seconds, 'EX', this.ttlSeconds));
   }
 
+  /** Rejects the user's access tokens for `organizationId` issued before `at` (membership removed). */
+  async revokeMembership(organizationId: string, userId: string, at: Date): Promise<void> {
+    const seconds = String(Math.floor(at.getTime() / 1000));
+    await this.call(() =>
+      this.redis.set(membershipKey(organizationId, userId), seconds, 'EX', this.ttlSeconds),
+    );
+  }
+
   async isRevoked(claims: AccessTokenClaims): Promise<boolean> {
-    const [session, userRevokedAt] = await this.call(() =>
-      this.redis.mget(sessionKey(claims.sessionId), userKey(claims.userId)),
+    const keys = [sessionKey(claims.sessionId), userKey(claims.userId)];
+    if (claims.organizationId !== null) {
+      keys.push(membershipKey(claims.organizationId, claims.userId));
+    }
+    const [session, userRevokedAt, membershipRevokedAt] = await this.call(() =>
+      this.redis.mget(...keys),
     );
     if (session !== null && session !== undefined) return true;
-    return (
-      userRevokedAt !== null &&
-      userRevokedAt !== undefined &&
-      claims.issuedAt < Number(userRevokedAt)
-    );
+    return issuedBefore(claims, userRevokedAt) || issuedBefore(claims, membershipRevokedAt);
   }
 
   private async call<T>(fn: () => Promise<T>): Promise<T> {
@@ -65,3 +74,8 @@ export class RevocationService {
 
 const sessionKey = (sessionId: string): string => `auth:revoked:sid:${sessionId}`;
 const userKey = (userId: string): string => `auth:revoked:user:${userId}`;
+const membershipKey = (organizationId: string, userId: string): string =>
+  `auth:revoked:org:${organizationId}:${userId}`;
+
+const issuedBefore = (claims: AccessTokenClaims, at: string | null | undefined): boolean =>
+  at !== null && at !== undefined && claims.issuedAt < Number(at);

@@ -42,6 +42,14 @@ import { UserDirectory } from './user-directory';
     SessionService,
     UserDirectory,
   ],
-  exports: [AuthContext, Authenticator, PasswordService, RevocationService, UserDirectory],
+  exports: [
+    AuthContext,
+    Authenticator,
+    Clock,
+    PasswordService,
+    RevocationService,
+    SecurityLog,
+    UserDirectory,
+  ],
 })
 export class AuthModule {}

@@ -4,8 +4,10 @@ export { AuthContext, type AuthContextValue } from './auth-context';
 export { AuthModule } from './auth.module';
 export { Authenticator } from './authenticator';
 export { Authenticated, IS_AUTHENTICATED_KEY } from './authenticated.decorator';
+export { Clock } from './clock';
 export { IS_PUBLIC_KEY, Public } from './public.decorator';
 export { RevocationService } from './revocation.service';
+export { SecurityLog } from './security-log';
 export { type UserProfile, UserDirectory } from './user-directory';
 
 // Bootstrap commands (src/cli) only.

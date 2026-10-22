@@ -113,13 +113,14 @@ A test snapshots the `@Public()` and `@Authenticated()` routes.
 
 "The actor's permissions" are the actor's effective organization-wide keys.
 
-| Action                                                     | Allowed when                                                                |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------- |
-| invite with role R, assign role R                          | R's keys ⊆ actor's keys; R = Owner only if the actor is an Owner            |
-| change or remove member M                                  | M's current role ⊆ actor's keys; M is an Owner → the actor must be an Owner |
-| change your own role or locations, remove yourself         | never                                                                       |
-| create custom role / edit custom role / delete custom role | the role's keys ⊆ actor's keys, before and after the change                 |
-| leave the organization's last Owner without an Owner       | never (409 `rbac.last_owner`)                                               |
+| Action                                                     | Allowed when                                                                 |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| invite with role R, assign role R                          | R's keys ⊆ actor's keys; R = Owner only if the actor is an Owner             |
+| change or remove member M                                  | M's current role ⊆ actor's keys; M is an Owner → the actor must be an Owner  |
+| change your own role or locations, remove yourself         | never                                                                        |
+| create custom role / edit custom role / delete custom role | the role's keys ⊆ actor's keys, before and after the change                  |
+| leave the organization's last Owner without an Owner       | never (409 `rbac.last_owner`)                                                |
+| limit an Owner (or an Owner invitation) to locations       | never (409 `rbac.owner_all_locations`): an Owner always covers all locations |
 
 **Last Owner:** changing or removing an Owner locks the organization's Owner role row (`SELECT … FOR UPDATE`) and
 counts the remaining Owners in the same transaction. A deferred constraint trigger
@@ -134,6 +135,8 @@ counts the remaining Owners in the same transaction. A deferred constraint trigg
   guard checks it in its `MGET` together with the 1.2 markers; tokens for that organization issued before it get 401.
   The web app then refreshes, and refresh re-checks the membership and issues a token with `org: null`. If Redis fails
   after the commit, the error is logged and not re-thrown: the database already denies access.
+  Like the 1.2 user marker it has second resolution: a token issued in the same second as the removal survives on
+  user-level routes until it expires, while `@RequirePermission` routes deny it from the database.
 
 ## Invitations
 
@@ -186,6 +189,8 @@ Ids of another tenant are invisible under RLS and answer 404.
 | `rbac.not_grantable`           | 403    | granting rules violated                                       |
 | `rbac.cannot_change_self`      | 403    | changing or removing your own membership                      |
 | `rbac.last_owner`              | 409    | the change would leave no Owner                               |
+| `rbac.owner_all_locations`     | 409    | an Owner membership or invitation limited to locations        |
+| `rbac.permission_unknown`      | 400    | a permission key that isn't registered (`details.keys`)       |
 | `rbac.role_not_found`          | 404    | role id unknown in this organization                          |
 | `rbac.member_not_found`        | 404    | membership id unknown in this organization                    |
 | `rbac.location_not_found`      | 404    | a location id unknown in this organization                    |
