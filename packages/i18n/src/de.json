@@ -87,6 +87,7 @@
   "auth.session.loading": "Wird geladen…",
   "auth.session.signedInAs": "Angemeldet als",
   "auth.session.organization": "Organisation",
+  "auth.session.role": "Rolle",
   "auth.session.noOrganization": "Sie gehören noch keiner Organisation an.",
   "auth.errors.unauthenticated": "Bitte melden Sie sich erneut an.",
   "auth.errors.invalidCredentials": "E-Mail oder Passwort ist falsch.",

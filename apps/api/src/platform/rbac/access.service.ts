@@ -74,7 +74,12 @@ export class AccessService {
         id: true,
         allLocations: true,
         role: {
-          select: { id: true, systemKey: true, permissions: { select: { permissionKey: true } } },
+          select: {
+            id: true,
+            systemKey: true,
+            name: true,
+            permissions: { select: { permissionKey: true } },
+          },
         },
         locations: { select: { locationId: true } },
       },

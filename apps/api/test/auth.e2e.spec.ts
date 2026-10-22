@@ -53,6 +53,9 @@ describe('auth', () => {
           { id: orgB, name: 'Beta' },
         ],
         activeOrganizationId: orgB,
+        // kit.join creates memberships without a role (see rbac tests for roles).
+        activeRole: null,
+        activePermissions: [],
       });
       expect(res.headers['cache-control']).toBe('no-store');
       const header = setCookieHeader(res) ?? '';
@@ -438,6 +441,8 @@ describe('auth', () => {
         user: { id: user.id, email: user.email, locale: 'de' },
         organizations: [{ id: org, name: 'Org' }],
         activeOrganizationId: org,
+        activeRole: null,
+        activePermissions: [],
       });
     });
 

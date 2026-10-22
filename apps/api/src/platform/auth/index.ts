@@ -1,5 +1,6 @@
 // Public API of platform/auth: route markers, the current user, the authenticator used by the
 // global guard, revocation and the user directory (ADR 0007). Everything else is internal.
+export { ACTIVE_ACCESS_LOOKUP, type ActiveAccess, type ActiveAccessLookup } from './active-access';
 export { AuthContext, type AuthContextValue } from './auth-context';
 export { authErrors } from './auth-errors';
 export { AuthRateLimits } from './auth-rate-limits';
