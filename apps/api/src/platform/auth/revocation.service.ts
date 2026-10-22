@@ -43,7 +43,11 @@ export class RevocationService {
     await this.call(() => this.redis.set(userKey(userId), seconds, 'EX', this.ttlSeconds));
   }
 
-  /** Rejects the user's access tokens for `organizationId` issued before `at` (membership removed). */
+  /**
+   * Rejects the user's access tokens for `organizationId` issued in or before the second of `at`
+   * (membership removed). Unlike a password reset, nothing legitimately issues a token for that
+   * organization in the same second: the membership is gone, so refresh drops the organization.
+   */
   async revokeMembership(organizationId: string, userId: string, at: Date): Promise<void> {
     const seconds = String(Math.floor(at.getTime() / 1000));
     await this.call(() =>
@@ -60,7 +64,7 @@ export class RevocationService {
       this.redis.mget(...keys),
     );
     if (session !== null && session !== undefined) return true;
-    return issuedBefore(claims, userRevokedAt) || issuedBefore(claims, membershipRevokedAt);
+    return issuedBefore(claims, userRevokedAt) || issuedAtOrBefore(claims, membershipRevokedAt);
   }
 
   private async call<T>(fn: () => Promise<T>): Promise<T> {
@@ -77,5 +81,10 @@ const userKey = (userId: string): string => `auth:revoked:user:${userId}`;
 const membershipKey = (organizationId: string, userId: string): string =>
   `auth:revoked:org:${organizationId}:${userId}`;
 
+/** User marker (password reset): a login in the same second as the reset keeps working. */
 const issuedBefore = (claims: AccessTokenClaims, at: string | null | undefined): boolean =>
   at !== null && at !== undefined && claims.issuedAt < Number(at);
+
+/** Membership marker: same-second tokens are rejected too. */
+const issuedAtOrBefore = (claims: AccessTokenClaims, at: string | null | undefined): boolean =>
+  at !== null && at !== undefined && claims.issuedAt <= Number(at);

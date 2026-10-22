@@ -75,7 +75,7 @@ markers, each with a TTL of the access-token lifetime:
 The guard reads all three with one `MGET`. If Redis is unavailable the guard fails closed (503).
 
 - `auth:revoked:org:<orgId>:<userId>` = unix time: written when a membership is removed (step 1.3,
-  [rbac.md](rbac.md)). Tokens for that organization with `iat` before it are rejected.
+  [rbac.md](rbac.md)). Tokens for that organization with `iat` up to and including that second are rejected.
 
 ## Guard and context
 

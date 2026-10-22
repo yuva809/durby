@@ -135,8 +135,8 @@ counts the remaining Owners in the same transaction. A deferred constraint trigg
   guard checks it in its `MGET` together with the 1.2 markers; tokens for that organization issued before it get 401.
   The web app then refreshes, and refresh re-checks the membership and issues a token with `org: null`. If Redis fails
   after the commit, the error is logged and not re-thrown: the database already denies access.
-  Like the 1.2 user marker it has second resolution: a token issued in the same second as the removal survives on
-  user-level routes until it expires, while `@RequirePermission` routes deny it from the database.
+  Markers have second resolution; unlike the 1.2 user marker, tokens issued in the same second as the removal are
+  rejected too (`iat <= marker`): nothing legitimately issues a token for that organization in that second.
 
 ## Invitations
 

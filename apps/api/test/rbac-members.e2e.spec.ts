@@ -260,9 +260,8 @@ describe('members API', () => {
       expect(session.res.body).toMatchObject({ activeOrganizationId: a.id });
       await api(session.accessToken).get('/members').expect(200);
 
-      // Markers have second resolution (like the 1.2 user marker): a token from the same second
-      // survives on user-level routes, while permission routes are denied by the database anyway.
-      kit.clock.advance(1000);
+      // The clock stands still: login and removal fall in the same second, and the token is
+      // still rejected (the membership marker compares iat <= marker).
       await api(owner.token).delete(`/members/${target.membershipId}`).expect(204);
       await api(session.accessToken).get('/members').expect(401);
 
