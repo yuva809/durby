@@ -13,9 +13,10 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'durby_rls_definer') THEN
     CREATE ROLE durby_rls_definer;
   END IF;
+  IF NOT pg_has_role('durby_migrator', 'durby_rls_definer', 'SET') THEN
+    GRANT durby_rls_definer TO durby_migrator WITH INHERIT FALSE, SET TRUE;
+  END IF;
 END
 $$;
 
 ALTER ROLE durby_rls_definer NOLOGIN NOSUPERUSER BYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;
-
-GRANT durby_rls_definer TO durby_migrator WITH INHERIT FALSE, SET TRUE;
