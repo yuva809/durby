@@ -41,6 +41,7 @@ describe('module boundary lint rules', () => {
     ['(g) platform → platform', 'src/platform/uses-platform.ts'],
     ['(h) root → platform and module index.ts', 'src/app.module.ts'],
     ['(i) root → root', 'src/main.ts'],
+    ['(l) platform → platform/database', 'src/platform/uses-database.ts'],
   ])('allows %s', (_label, file) => {
     expect(ruleIds(file)).toEqual([]);
   });
@@ -50,6 +51,7 @@ describe('module boundary lint rules', () => {
     ['(c) platform → module', 'src/platform/imports-module.ts'],
     ['(j) root → module internals', 'src/root-imports-internal.ts'],
     ['(k) platform → root files', 'src/platform/imports-root.ts'],
+    ['(m) module → platform/database', 'src/modules/beta/uses-database.ts'],
   ])('rejects %s', (_label, file) => {
     expect(ruleIds(file)).toEqual(['boundaries/dependencies']);
   });

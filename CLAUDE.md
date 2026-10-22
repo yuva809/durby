@@ -27,6 +27,8 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 
 ## Conventions
 
+- Tenant tables (ADR 0005): `tenant_id` FK to organizations, `UNIQUE (tenant_id, id)`, composite FKs `(tenant_id, x_id)` to other tenant tables, and in the same migration `ENABLE` + `FORCE ROW LEVEL SECURITY` with the `tenant_isolation` policy. Access only via the tenant client (`@Inject(TENANT_PRISMA)`); `src/modules/**` may not import `platform/database`.
+- `organizations` has no RLS: it may only hold non-sensitive platform fields (id, partner, name, plan). Tenant-private org data (address, tax id, bank details) goes in a separate tenant-scoped table with RLS.
 - IDs: UUID v7. Timestamps: `timestamptz`, stored UTC.
 - Table names snake_case plural; Prisma models PascalCase singular with `@@map`.
 - API: REST under `/api/v1`, DTOs validated with Zod, OpenAPI generated. Errors: `{ code, message, details? }` with stable `code` strings.

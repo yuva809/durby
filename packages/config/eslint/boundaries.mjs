@@ -4,6 +4,8 @@ import boundaries from 'eslint-plugin-boundaries';
  * Module boundary rules for apps/api (CLAUDE.md hard rules 4 and 5):
  * - platform/ may import platform/ only, never modules/.
  * - a module may import platform/, its own files, and other modules only via their index.ts.
+ * - platform/database (raw durby_app client) is private to platform/: modules use platform/tenancy
+ *   (ADR 0005), so they cannot skip the tenant-scoped client.
  * - root files (main.ts, app.module.ts, …) wire platform and module entry points together.
  *
  * `rootPath` must be the app root (the folder containing src/): element patterns are matched
@@ -20,7 +22,9 @@ export function apiBoundaries({ rootPath, tsconfigPath }) {
         'import/resolver': {
           typescript: { project: tsconfigPath, alwaysTryTypes: true },
         },
+        // First match wins, so the more specific platform/database comes before platform.
         'boundaries/elements': [
+          { type: 'platform-database', pattern: 'src/platform/database' },
           { type: 'platform', pattern: 'src/platform' },
           { type: 'module', pattern: 'src/modules/*', capture: ['moduleName'] },
         ],
@@ -47,8 +51,8 @@ export function apiBoundaries({ rootPath, tsconfigPath }) {
                 ],
               },
               {
-                from: { element: { type: 'platform' } },
-                allow: { to: { element: { type: 'platform' } } },
+                from: { element: { type: ['platform', 'platform-database'] } },
+                allow: { to: { element: { type: ['platform', 'platform-database'] } } },
               },
               {
                 from: { element: { type: 'module' } },
