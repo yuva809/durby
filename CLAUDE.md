@@ -24,6 +24,7 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 8. **Every client-originated write** accepts an `Idempotency-Key` header and is safe to replay.
 9. **Every state-changing action** writes an audit entry (actor, action, entity, before/after).
 10. **Every endpoint** declares `@RequireFeature(...)` (entitlement) and `@RequirePermission(...)` (RBAC), or is explicitly marked `@Public()` / `@PlatformOnly()` / `@Authenticated()`. `@Authenticated()` (ADR 0006) is only for user-level routes that never read or write tenant-scoped data (e.g. `/auth/me`, switch-organization); anything touching tenant data needs `@RequirePermission`. New `@Authenticated()` routes show up in a snapshot test and need review.
+    Each route has **exactly one** of these markers; the api refuses to boot otherwise (ADR 0007). `@PlatformOnly()` means Durby platform staff and denies every request until platform staff is modelled.
 
 ## Conventions
 
@@ -32,7 +33,7 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 - IDs: UUID v7. Timestamps: `timestamptz`, stored UTC.
 - Table names snake_case plural; Prisma models PascalCase singular with `@@map`.
 - API: REST under `/api/v1`, DTOs validated with Zod, OpenAPI generated. Errors: `{ code, message, details? }` with stable `code` strings.
-- Feature keys: `module.capability` (e.g. `inventory`, `inventory.counts`). Permission keys: `module.entity.action` (e.g. `inventory.stock.adjust`). Both registered in `packages/shared`.
+- Feature keys: `module.capability` (e.g. `inventory`, `inventory.counts`). Permission keys: `module.entity.action` (e.g. `inventory.stock.adjust`). Both registered in `packages/shared`. A new permission key needs a scope (`organization` | `location`) and an explicit grant/deny for each non-Owner system role (ADR 0007); Owner gets it automatically.
 - Label keys: `module.area.item` (e.g. `inventory.nav.title`).
 - Events: `module.entity.past_tense` (e.g. `inventory.stock.received`), versioned payload schemas in `packages/shared/events`.
 
