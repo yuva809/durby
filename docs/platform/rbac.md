@@ -228,6 +228,13 @@ a role.
 - account exists → sign in on the page (or already signed in as that email) → accept-signed-in → switch
 - signed in as another email → offer to sign out first
 
+### Active role and permissions
+
+The session body and `/auth/me` include `activeRole` and `activePermissions` for the caller's own membership in the
+active organization (ADR 0007, amendment). The home page shows "Role: …" (`auth.session.role`, role names from
+`platform.roles.*` or the custom name); step 1.10 uses the keys to filter navigation. Both are hints only: the api
+enforces every permission per request.
+
 ## Tests
 
 - Unit: registry shape; every non-Owner system role lists every key; granting and member-management matrix; location

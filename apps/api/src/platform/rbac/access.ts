@@ -6,6 +6,8 @@ export interface ResolvedAccess {
   membershipId: string | null;
   roleId: string | null;
   systemRole: SystemRole | null;
+  /** Custom roles only. */
+  roleName: string | null;
   /** The role's registered keys, before location scope (used to compare roles when granting). */
   roleKeys: ReadonlySet<string>;
   /** The keys the caller holds: organization-scope keys only when allLocations. */
@@ -19,6 +21,7 @@ export const NO_ACCESS: ResolvedAccess = Object.freeze({
   membershipId: null,
   roleId: null,
   systemRole: null,
+  roleName: null,
   roleKeys: new Set<string>(),
   permissions: new Set<string>(),
   allLocations: false,
@@ -32,6 +35,7 @@ export interface MembershipAccessRow {
   role: {
     id: string;
     systemKey: SystemRole | null;
+    name?: string | null;
     permissions: readonly { permissionKey: string }[];
   } | null;
   locations: readonly { locationId: string }[];
@@ -79,6 +83,7 @@ export function resolveAccess(
     membershipId: row.id,
     roleId: row.role?.id ?? null,
     systemRole: row.role?.systemKey ?? null,
+    roleName: row.role?.name ?? null,
     roleKeys,
     permissions,
     allLocations: row.allLocations,

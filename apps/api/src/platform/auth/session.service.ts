@@ -1,7 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { MeResponse, OrganizationSummary, SessionResponse } from '@durby/shared';
 import { PrismaService } from '../database';
 import { AccessTokenService } from './access-token.service';
+import {
+  ACTIVE_ACCESS_LOOKUP,
+  type ActiveAccess,
+  type ActiveAccessLookup,
+  NO_ACTIVE_ACCESS,
+} from './active-access';
 import type { AuthContextValue } from './auth-context';
 import { authErrors } from './auth-errors';
 import { AUTH_RATE_LIMITS, AuthRateLimits } from './auth-rate-limits';
@@ -35,6 +41,7 @@ export class SessionService {
     private readonly revocations: RevocationService,
     private readonly security: SecurityLog,
     private readonly clock: Clock,
+    @Inject(ACTIVE_ACCESS_LOOKUP) private readonly activeAccess: ActiveAccessLookup,
   ) {}
 
   async login(input: { email: string; password: string }, ip: string): Promise<IssuedSession> {
@@ -133,6 +140,7 @@ export class SessionService {
       user: { id: user.id, email: user.email, locale: user.locale },
       organizations: await this.memberships.organizationsOf(user.id),
       activeOrganizationId: auth.organizationId,
+      ...(await this.accessIn(auth.organizationId, user.id)),
     };
   }
 
@@ -177,8 +185,21 @@ export class SessionService {
         user: { id: user.id, email: user.email, locale: user.locale },
         organizations: organizations ?? (await this.memberships.organizationsOf(userId)),
         activeOrganizationId: organizationId,
+        ...(await this.accessIn(organizationId, userId)),
       },
     };
+  }
+
+  /** The caller's own role and permissions in the active organization (UI hints, ADR 0007). */
+  private async accessIn(
+    organizationId: string | null,
+    userId: string,
+  ): Promise<{ activeRole: ActiveAccess['role']; activePermissions: string[] }> {
+    const access =
+      organizationId === null
+        ? NO_ACTIVE_ACCESS
+        : await this.activeAccess.lookup(organizationId, userId);
+    return { activeRole: access.role, activePermissions: access.permissions };
   }
 
   private async lockoutCall<T>(fn: () => Promise<T>): Promise<T> {

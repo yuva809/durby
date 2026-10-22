@@ -119,13 +119,16 @@ All under `/api/v1/auth`. Bodies validated with Zod (`packages/shared/src/api/au
 | POST   | `/refresh`             | Public + Origin        | cookie                        | 200 session body + rotated cookie                                                                          |
 | POST   | `/logout`              | Public + Origin        | cookie (optional)             | 204, family revoked, cookie cleared. 204 also without a cookie, so it works after the access token expired |
 | POST   | `/switch-organization` | Authenticated + Origin | `{ organizationId }` + cookie | 200 session body + rotated cookie (same family, new org); `last_organization_id` updated                   |
-| GET    | `/me`                  | Authenticated          | –                             | 200 `{ user, organizations, activeOrganizationId }`                                                        |
+| GET    | `/me`                  | Authenticated          | –                             | 200 `{ user, organizations, activeOrganizationId, activeRole, activePermissions }`                         |
 | POST   | `/password/forgot`     | Public                 | `{ email }`                   | 202 always                                                                                                 |
 | POST   | `/password/reset`      | Public                 | `{ token, password }`         | 204                                                                                                        |
 | POST   | `/verify-email`        | Public                 | `{ token }`                   | 204                                                                                                        |
 | POST   | `/verify-email/resend` | Public                 | `{ email }`                   | 202 always                                                                                                 |
 
-Session body: `{ accessToken, expiresIn, user: { id, email, locale }, activeOrganizationId, organizations: [{ id, name }] }`.
+Session body: `{ accessToken, expiresIn, user: { id, email, locale }, activeOrganizationId, organizations: [{ id, name }],
+activeRole, activePermissions }`. `activeRole` (`{ id, systemKey, name }` or `null`) and `activePermissions` (registered
+keys, effective for the caller) describe the caller's own membership in the active organization. They are UI hints:
+stale until the next refresh, while the api checks every permission per request (ADR 0007, amendment).
 
 Active organization on login: `last_organization_id` if the user is still a member, else the first organization by
 name, else `null`. On refresh the membership is re-checked; if it is gone, the new token has `org: null`.

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { roleRefSchema } from './rbac';
 
 /** Request and response bodies of /api/v1/auth (docs/platform/auth.md → Endpoints). */
 
@@ -41,6 +42,13 @@ export const meResponseSchema = z.object({
   user: authUserSchema,
   organizations: z.array(organizationSummarySchema),
   activeOrganizationId: z.uuid().nullable(),
+  /**
+   * The caller's role and effective permission keys in the active organization (null / [] without
+   * one). UI hints only (ADR 0007, amendment): they can be stale until the next refresh, and the
+   * api checks every permission per request.
+   */
+  activeRole: roleRefSchema.nullable(),
+  activePermissions: z.array(z.string()),
 });
 
 export const sessionResponseSchema = meResponseSchema.extend({

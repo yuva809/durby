@@ -15,14 +15,12 @@ import {
   previewInvitation,
   type Result,
 } from '../../lib/rbac/invitations';
+import { roleName } from '../../lib/rbac/roles';
 import { AuthCard, fieldStyle, formText, Notice } from '../auth-layout';
 import { useAuth } from '../providers';
 
 const fill = (key: LabelKey, values: Record<string, string>) =>
   Object.entries(values).reduce((text, [name, value]) => text.replace(`{${name}}`, value), t(key));
-
-const roleName = (role: InvitationPreview['role']) =>
-  role.systemKey ? t(`platform.roles.${role.systemKey}`) : (role.name ?? '');
 
 /**
  * /accept-invite#token=… (docs/platform/rbac.md → Web). New users choose a password; existing

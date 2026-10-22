@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { errorLabel } from '../lib/auth/errors';
 import { t } from '../lib/i18n';
+import { roleName } from '../lib/rbac/roles';
 import { Notice } from './auth-layout';
 import { useAuth } from './providers';
 
@@ -50,6 +51,12 @@ export function AccountPanel() {
             ))}
           </select>
         </label>
+      )}
+      {session.activeRole && (
+        <p>
+          {t('auth.session.role')}:{' '}
+          <strong data-testid="role">{roleName(session.activeRole)}</strong>
+        </p>
       )}
       <Notice text={error} tone="error" />
     </section>
