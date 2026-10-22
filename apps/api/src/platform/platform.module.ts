@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
+import { AuthModule } from './auth';
 import { ConfigModule } from './config';
 import { DatabaseModule } from './database';
 import { HealthController } from './health/health.controller';
@@ -20,6 +21,7 @@ import { TenancyModule } from './tenancy';
     RedisModule,
     RateLimitModule,
     MailModule,
+    AuthModule,
   ],
   controllers: [HealthController],
   providers: [HealthService, { provide: APP_FILTER, useClass: ApiExceptionFilter }],

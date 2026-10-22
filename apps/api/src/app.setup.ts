@@ -3,8 +3,9 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'nestjs-pino';
 import { APP_CONFIG, type AppConfig } from './platform/config';
+import { API_PREFIX } from './platform/http';
 
-export const API_PREFIX = 'api/v1';
+export { API_PREFIX };
 
 /** Shared by main.ts and e2e tests so both run the same HTTP setup. */
 export function configureApp(app: INestApplication): INestApplication {
