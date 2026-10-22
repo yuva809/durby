@@ -14,6 +14,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "pnpm --filter @durby/api db:generate",
+    "db:roles": "sh infra/postgres/apply-roles.sh",
     "db:migrate": "pnpm --filter @durby/api db:migrate"
   },
   "devDependencies": {

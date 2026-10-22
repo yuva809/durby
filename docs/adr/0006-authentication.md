@@ -47,8 +47,13 @@ collide with the tenancy rules: a user belongs to several organizations, and lis
    - _Cost:_ `durby_migrator` is granted membership in `durby_rls_definer` so the migration can
      `ALTER FUNCTION … OWNER TO durby_rls_definer`. That gives the migrator nothing new: it owns the tables and can
      already disable RLS on them. `durby_app` still has no `BYPASSRLS`, no ownership, no `CREATE`.
+   - _Migration order for a definer function:_ set its ACL (`REVOKE … FROM PUBLIC`, `GRANT EXECUTE`) **before**
+     the owner change: afterwards the migrator (`SET`, not `INHERIT`) can no longer grant on it, and the change
+     carries the entries over. The new owner needs `CREATE` on the schema for `ALTER … OWNER`, so the migration
+     grants it right before and revokes it right after. New functions are not executable by `PUBLIC` by default
+     (`ALTER DEFAULT PRIVILEGES … REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`).
    - _Guard:_ an integration test fails unless every `SECURITY DEFINER` function in `public` is on an allow-list,
-     owned by `durby_rls_definer`, has a pinned `search_path`, and is not executable by `PUBLIC`.
+     owned by `durby_rls_definer`, has a pinned `search_path`, and is not executable by `PUBLIC`, and unless `durby_rls_definer` cannot log in and has no `CREATE` on `public`.
    - _Rejected:_ (a) `memberships` as a platform table without RLS: any code holding `PLATFORM_PRISMA` could list
      who works where across tenants, and 1.3's role assignments would need a second table anyway. (b) A second
      permissive "own memberships" policy on `app.user_id`: policies are OR'ed, and the ADR 0005 guard rightly

@@ -13,8 +13,9 @@ declare module 'vitest' {
 }
 
 const apiRoot = join(__dirname, '..', '..');
-// Same script as docker-compose, so tests and local dev get identical roles.
-const rolesScript = join(apiRoot, '..', '..', 'infra', 'postgres', 'init', '01-roles.sql');
+// Same scripts as docker-compose, so tests and local dev get identical roles.
+const initDir = join(apiRoot, '..', '..', 'infra', 'postgres', 'init');
+const roleScripts = ['01-roles.sql', '02-rls-definer.sql'];
 
 let container: StartedPostgreSqlContainer | undefined;
 let redis: StartedRedisContainer | undefined;
@@ -27,9 +28,12 @@ export async function setup(project: TestProject): Promise<void> {
     .withDatabase('durby')
     .withUsername('postgres')
     .withPassword('postgres')
-    .withCopyFilesToContainer([
-      { source: rolesScript, target: '/docker-entrypoint-initdb.d/01-roles.sql' },
-    ])
+    .withCopyFilesToContainer(
+      roleScripts.map((name) => ({
+        source: join(initDir, name),
+        target: `/docker-entrypoint-initdb.d/${name}`,
+      })),
+    )
     .start();
 
   const hostPort = `${container.getHost()}:${container.getPort()}`;

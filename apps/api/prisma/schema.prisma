@@ -30,14 +30,17 @@ model Partner {
 
 /// The tenant. No RLS: holds non-sensitive platform fields only (ADR 0005).
 model Organization {
-  id        String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  partnerId String     @map("partner_id") @db.Uuid
-  name      String
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
-  partner   Partner    @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  brands    Brand[]
-  locations Location[]
+  id            String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  partnerId     String         @map("partner_id") @db.Uuid
+  name          String
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  partner       Partner        @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  brands        Brand[]
+  locations     Location[]
+  memberships   Membership[]
+  lastUsedBy    User[]
+  refreshTokens RefreshToken[]
 
   @@index([partnerId])
   @@map("organizations")
@@ -69,4 +72,98 @@ model Location {
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
   @@map("locations")
+}
+
+// ---------------------------------------------------------------------------
+// Authentication (docs/platform/auth.md, ADR 0006)
+// Platform tables, private to platform/auth (the platform client refuses them):
+// users, user_tokens, refresh_tokens. Tenant table (RLS): memberships.
+// ---------------------------------------------------------------------------
+
+/// A back-office user, once across all organizations. Email is stored normalized (trimmed, lower-case).
+model User {
+  id                 String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  email              String         @unique
+  /// argon2id. Null until the first password reset (bootstrap admins, invites).
+  passwordHash       String?        @map("password_hash")
+  emailVerifiedAt    DateTime?      @map("email_verified_at") @db.Timestamptz(6)
+  locale             String         @default("en")
+  lastOrganizationId String?        @map("last_organization_id") @db.Uuid
+  passwordChangedAt  DateTime?      @map("password_changed_at") @db.Timestamptz(6)
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastOrganization   Organization?  @relation(fields: [lastOrganizationId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  tokens             UserToken[]
+  refreshTokens      RefreshToken[]
+  memberships        Membership[]
+
+  @@map("users")
+}
+
+enum UserTokenPurpose {
+  email_verification
+  password_reset
+
+  @@map("user_token_purpose")
+}
+
+/// Email verification and password reset tokens: sha256 of 32 random bytes, single-use, short-lived.
+model UserToken {
+  id        String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  purpose   UserTokenPurpose
+  tokenHash String           @unique @map("token_hash")
+  expiresAt DateTime         @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime?        @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([userId, purpose])
+  @@map("user_tokens")
+}
+
+enum RefreshTokenRevokeReason {
+  logout
+  reuse_detected
+  password_reset
+
+  @@map("refresh_token_revoke_reason")
+}
+
+/// Rotating refresh tokens (sha256). A family is one login session; reuse of a used token revokes the family.
+model RefreshToken {
+  id              String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId          String                    @map("user_id") @db.Uuid
+  familyId        String                    @map("family_id") @db.Uuid
+  tokenHash       String                    @unique @map("token_hash")
+  /// Active organization of the session. Not a tenant key: membership is re-checked on every refresh.
+  organizationId  String?                   @map("organization_id") @db.Uuid
+  expiresAt       DateTime                  @map("expires_at") @db.Timestamptz(6)
+  familyExpiresAt DateTime                  @map("family_expires_at") @db.Timestamptz(6)
+  usedAt          DateTime?                 @map("used_at") @db.Timestamptz(6)
+  revokedAt       DateTime?                 @map("revoked_at") @db.Timestamptz(6)
+  revokedReason   RefreshTokenRevokeReason? @map("revoked_reason")
+  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  organization    Organization?             @relation(fields: [organizationId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+
+  @@index([familyId])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// User ↔ organization. Tenant table (RLS). Step 1.3 adds role and location scope.
+model Membership {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@map("memberships")
 }
