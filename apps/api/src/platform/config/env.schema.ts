@@ -5,17 +5,78 @@ const urlError = (scheme: string) => (issue: { input?: unknown }) =>
 
 const postgresUrl = z.url({ protocol: /^postgres(ql)?$/, error: urlError('postgres') });
 const redisUrl = z.url({ protocol: /^rediss?$/, error: urlError('redis') });
+const smtpUrl = z.url({ protocol: /^smtps?$/, error: urlError('smtp') });
+const httpUrl = z.url({ protocol: /^https?$/, error: urlError('http(s)') });
+
+/** Comma-separated list of exact origins (scheme://host[:port], no path), compared as-is with `Origin`. */
+const originList = z
+  .string({ error: 'is required' })
+  .transform((value) =>
+    value
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean),
+  )
+  .pipe(
+    z
+      .array(
+        z.url({ protocol: /^https?$/ }).refine((entry) => new URL(entry).origin === entry, {
+          error:
+            'entries must be bare origins like https://app.example.com (no path or trailing slash)',
+        }),
+      )
+      .min(1, 'needs at least one origin'),
+  );
 
 /** Env vars read by the running API. Validated once at boot. */
-export const appEnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
-  APP_VERSION: z.string().min(1).default('0.0.0-dev'),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  /** Connects as durby_app (no BYPASSRLS). */
-  DATABASE_URL: postgresUrl,
-  REDIS_URL: redisUrl,
-});
+export const appEnvSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
+    APP_VERSION: z.string().min(1).default('0.0.0-dev'),
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
+    /** Connects as durby_app (no BYPASSRLS). */
+    DATABASE_URL: postgresUrl,
+    REDIS_URL: redisUrl,
+
+    // Auth (docs/platform/auth.md). HS256 secret: `openssl rand -hex 32`.
+    JWT_ACCESS_SECRET: z
+      .string({ error: 'is required' })
+      .min(32, 'must be at least 32 characters (openssl rand -hex 32)'),
+    JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(600),
+    JWT_ISSUER: z.string().min(1).default('durby-api'),
+    JWT_AUDIENCE: z.string().min(1).default('durby-web'),
+    REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(14),
+    REFRESH_FAMILY_MAX_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+    /** Origins allowed to call the cookie endpoints (CSRF check). */
+    WEB_ORIGINS: originList,
+    /** Base of links in emails (reset, verification). */
+    WEB_BASE_URL: httpUrl,
+    /** false only for local browsers that reject Secure cookies on http://localhost; never in production. */
+    COOKIE_SECURE: z.stringbool().default(true),
+    /** Number of reverse proxies in front of the api (Express `trust proxy`), for the client IP. */
+    TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
+    SMTP_URL: smtpUrl,
+    MAIL_FROM: z.string({ error: 'is required' }).min(3),
+  })
+  .superRefine((env, ctx) => {
+    if (env.NODE_ENV === 'production' && !env.COOKIE_SECURE) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['COOKIE_SECURE'],
+        message: 'must be true in production',
+      });
+    }
+    if (env.REFRESH_TOKEN_TTL_DAYS > env.REFRESH_FAMILY_MAX_DAYS) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['REFRESH_TOKEN_TTL_DAYS'],
+        message: 'must not exceed REFRESH_FAMILY_MAX_DAYS',
+      });
+    }
+  });
 
 /** Env vars read by the Prisma CLI (prisma.config.ts). Never used by the running API. */
 export const migrationEnvSchema = z.object({

@@ -7,14 +7,15 @@ import { describe, expect, it } from 'vitest';
 import type { AppConfig } from '../config';
 import { buildPinoHttpOptions, pathOnly, resolveRequestId } from './logger.options';
 
-const config: AppConfig = {
+// Only the fields the logger reads.
+const config = {
   NODE_ENV: 'production',
   PORT: 4000,
   APP_VERSION: '1.2.3',
   LOG_LEVEL: 'info',
   DATABASE_URL: 'postgresql://durby_app:secret@localhost:5432/durby',
   REDIS_URL: 'redis://localhost:6379',
-};
+} as AppConfig;
 
 /** Runs one request through pino-http with our options and returns the JSON lines it wrote. */
 function serverWithCapturedLogs(handler?: (log: Logger) => void) {

@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from '../database/generated/client';
 import type { TenantContext } from './tenant-context';
-import { TENANT_MODELS } from './tenant-models';
+import { AUTH_PRIVATE_MODELS, TENANT_MODELS } from './tenant-models';
 
 export const TENANT_PRISMA = Symbol('TENANT_PRISMA');
 export const PLATFORM_PRISMA = Symbol('PLATFORM_PRISMA');
@@ -15,6 +15,15 @@ export class TenantModelOnPlatformClientError extends Error {
       `${model} is tenant-scoped: use the tenant client (TENANT_PRISMA), not the platform client.`,
     );
     this.name = 'TenantModelOnPlatformClientError';
+  }
+}
+
+export class AuthPrivateModelOnPlatformClientError extends Error {
+  readonly code = 'tenancy.auth_private_model_on_platform_client';
+
+  constructor(model: string) {
+    super(`${model} is private to platform/auth: use its public API, not the platform client.`);
+    this.name = 'AuthPrivateModelOnPlatformClientError';
   }
 }
 
@@ -65,7 +74,8 @@ export function createTenantPrismaClient(base: PrismaClient, context: TenantCont
 }
 
 /**
- * Client for platform tables (partners, organizations, …). Rejects tenant models outright; raw
+ * Client for platform tables (partners, organizations, …). Rejects tenant models and auth-private
+ * models (users, tokens) outright; raw
  * queries on tenant tables see no rows, since no tenant is set (fail closed).
  */
 export function createPlatformPrismaClient(base: PrismaClient) {
@@ -75,6 +85,8 @@ export function createPlatformPrismaClient(base: PrismaClient) {
       $allModels: {
         $allOperations({ model, args, query }) {
           if (TENANT_MODELS.has(model)) throw new TenantModelOnPlatformClientError(model);
+          if (AUTH_PRIVATE_MODELS.has(model))
+            throw new AuthPrivateModelOnPlatformClientError(model);
           return query(args);
         },
       },

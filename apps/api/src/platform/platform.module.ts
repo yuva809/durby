@@ -1,15 +1,27 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from './config';
 import { DatabaseModule } from './database';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
+import { ApiExceptionFilter } from './http';
 import { LoggingModule } from './logging';
+import { MailModule } from './mail';
+import { RateLimitModule } from './rate-limit';
 import { RedisModule } from './redis';
 import { TenancyModule } from './tenancy';
 
 @Module({
-  imports: [ConfigModule, LoggingModule, DatabaseModule, TenancyModule, RedisModule],
+  imports: [
+    ConfigModule,
+    LoggingModule,
+    DatabaseModule,
+    TenancyModule,
+    RedisModule,
+    RateLimitModule,
+    MailModule,
+  ],
   controllers: [HealthController],
-  providers: [HealthService],
+  providers: [HealthService, { provide: APP_FILTER, useClass: ApiExceptionFilter }],
 })
 export class PlatformModule {}
