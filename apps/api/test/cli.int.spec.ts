@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
-import { createAdmin } from '../src/cli/create-admin';
+import { createAdmin, DEFAULT_PARTNER } from '../src/cli/create-admin';
 import { DEV_PASSWORD, DEV_SEED, seedDev } from '../src/cli/seed-dev';
 import { PasswordHasher } from '../src/platform/auth/password-hasher';
 import { APP_CONFIG, type AppConfig } from '../src/platform/config';
@@ -90,13 +90,19 @@ describe('bootstrap commands', () => {
     });
 
     it('creates no demo data', async () => {
-      const before = await platformDb.organization.count();
-      await createAdmin(app, {
-        email: `admin-${uuidv7()}@example.test`,
-        org: `Only ${uuidv7()}`,
-        locale: 'en',
-      });
-      expect(await platformDb.organization.count()).toBe(before + 1);
+      // Scoped to the default partner: other test files create organizations in parallel.
+      const namesUnderDefaultPartner = async () =>
+        (
+          await platformDb.organization.findMany({
+            where: { partner: { slug: DEFAULT_PARTNER.slug } },
+            select: { name: true },
+          })
+        ).map((o) => o.name);
+      const before = await namesUnderDefaultPartner();
+      const org = `Only ${uuidv7()}`;
+      await createAdmin(app, { email: `admin-${uuidv7()}@example.test`, org, locale: 'en' });
+      const added = (await namesUnderDefaultPartner()).filter((name) => !before.includes(name));
+      expect(added).toEqual([org]);
       expect(await raw.user.count({ where: { email: { endsWith: '@durby.local' } } })).toBe(0);
     });
   });
