@@ -18,6 +18,7 @@ set -euo pipefail
 
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/durby}"
 STAGING_DOMAIN="${STAGING_DOMAIN:-staging.durby.tech}"
+STAGING_DEMO_DOMAIN="${STAGING_DEMO_DOMAIN:-partner-demo.durby.tech}"
 SWAP_SIZE="${SWAP_SIZE:-2G}"
 
 log() { printf '\n==> %s\n' "$*"; }
@@ -157,6 +158,7 @@ REDIS_PASSWORD=$(secret)
 JWT_ACCESS_SECRET=$(secret)
 
 STAGING_DOMAIN=$STAGING_DOMAIN
+STAGING_DEMO_DOMAIN=$STAGING_DEMO_DOMAIN
 ACME_EMAIL=$ACME_EMAIL
 BASIC_AUTH_USER=durby
 BASIC_AUTH_HASH='$basic_auth_hash'

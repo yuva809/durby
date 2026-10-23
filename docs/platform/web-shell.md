@@ -154,7 +154,8 @@ value. Moving emails to the theme is later.
 - `/` is the signed-in home (a placeholder overview). Module pages (`/inventory`, `/billing`, `/pos`, `/reports`)
   are empty states until their phases; visiting one whose feature is disabled shows a "not available" state (the api
   enforces anyway).
-- `GET /healthz` stays as is (container healthcheck). The api health line moves off the home page.
+- `GET /healthz` stays as is (container healthcheck). The api health line is gone from the home page
+  (`/api/v1/health` stays for deploy checks and monitoring).
 
 ### Layout
 
@@ -184,7 +185,7 @@ interface NavItem {
   href: string;
   label: LabelKey; // e.g. 'inventory.nav.title'
   icon: LucideIcon;
-  group: 'modules' | 'settings';
+  group: 'main' | 'modules' | 'settings';
   feature?: FeatureKey; // shown only if active
   permission?: PermissionKey; // shown only if held
 }
@@ -195,7 +196,8 @@ interface NavItem {
   **UI hints**: the api checks `@RequireFeature` and `@RequirePermission` on every request.
 - Keys are typed against `FEATURES` and `PERMISSIONS`; a unit test fails on an unknown key or a label missing in
   `en` or `de`.
-- PR (a) registers the modules: Inventory (`inventory`), Billing (`billing`), POS (`pos`), Reports (`reports`).
+- PR (a) registers Overview (`/`, group `main`) and the modules: Inventory (`inventory`), Billing (`billing`), POS
+  (`pos`), Reports (`reports`).
   PRs (b)–(d) add their settings items as their pages land; a group with no visible items is not rendered.
 - Labels via `useT()`, so organization and partner overrides apply (e.g. "Stock" instead of "Inventory").
 
@@ -221,7 +223,8 @@ empty states) and `platform.nav.*` (group names), in `en` and `de`. All user-fac
 - **Staging data:** `create-admin --partner demo --plan inventory …` (new `--partner <slug>` option; the partner must
   exist).
 - `*.localhost` resolves to loopback in browsers. Local `WEB_ORIGINS` lists both origins; Next's `allowedDevOrigins`
-  allows `*.localhost`.
+  allows `*.localhost`. Local `TRUST_PROXY=1`: the web server's theme request and the Next.js rewrite send
+  `X-Forwarded-Host`, which the api otherwise ignores.
 - **Staging:** one Caddy site block with both addresses (`{$STAGING_DOMAIN}, {$STAGING_DEMO_DOMAIN}`), basic auth
   on both; `WEB_ORIGINS` lists both (the CSRF Origin check, ADR 0006 §6). DNS: `CNAME partner-demo.durby.tech →
 staging.durby.tech` (docs/ops/deploy.md). Cookies are host-only, so each domain has its own session.
@@ -279,6 +282,6 @@ staging.durby.tech` (docs/ops/deploy.md). Cookies are host-only, so each domain 
   redirect with a safe `next`; theme style rendering rejects non-hex values; the no-hex / no-palette / no-`Durby` scan.
 - **Playwright smoke (`apps/web/e2e`, Chromium, CI job on the local stack):**
   - `durby.localhost`: sign in as `owner@durby.local` → Durby wordmark, all module nav items, default labels.
-  - `partner-demo.localhost`: sign in as `owner@partner-demo.local` → demo product name and primary color, Inventory
-    only (as "Stock"), no Billing/POS/Reports.
+  - `partner-demo.localhost`: sign in as `owner@partner-demo.local` → demo product name and primary color, the
+    `inventory` plan's modules only: Inventory (as "Stock") and Reports, no Billing or POS.
   - Each user sees only their own organizations; sign out returns to the themed login.
