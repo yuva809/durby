@@ -43,10 +43,13 @@ export class OutboxService {
         `larger than ${EVENT_PAYLOAD_MAX_BYTES} bytes`,
       );
     }
-    const row = await tx.outboxEvent.create({
-      data: { tenantId, type: event.type, version: definition.current, payload },
-      select: { id: true },
-    });
+    // Raw insert: the database sets occurred_at and available_at. Prisma fills @default(now())
+    // on the client, and an app clock ahead of the database would delay the event's dispatch.
+    const [row] = await tx.$queryRaw<{ id: string }[]>`
+      INSERT INTO outbox_events (tenant_id, type, version, payload)
+      VALUES (${tenantId}::uuid, ${event.type}, ${definition.current}, ${JSON.stringify(payload)}::jsonb)
+      RETURNING id::text AS id`;
+    if (!row) throw new Error('outbox insert returned no row');
     return row.id;
   }
 }

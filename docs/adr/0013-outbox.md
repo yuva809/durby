@@ -17,7 +17,9 @@ Spec: [docs/platform/outbox.md](../platform/outbox.md).
 
 1. **`OutboxService.add(tx, event)` writes in the caller's transaction.** No `tx`, no write: the signature takes the
    transaction client, so an event exists if and only if the change commits. The payload is validated against the
-   event's current schema before the insert.
+   event's current schema before the insert. The insert is raw SQL so the **database** sets `occurred_at` and
+   `available_at`: Prisma fills `@default(now())` on the client, and an app clock ahead of the database would hold
+   the event back (found in testing with a few ms of skew).
 
 2. **Typed registry in `packages/shared/src/events/`.** Type `module.entity.past_tense`, a current version, and a strict
    Zod schema per version. Older versions stay registered while events of that version may still be in flight; a
@@ -38,7 +40,7 @@ Spec: [docs/platform/outbox.md](../platform/outbox.md).
    _Cost:_ any `durby_app` caller learns which tenants have pending events and how many. No payloads, no types.
 
 4. **Dispatch: enqueue, then mark published, in the claim transaction.** One BullMQ job per (event, registered
-   handler), `jobId = <eventId>:<handler>`, so a re-dispatch after a failed commit is dropped by BullMQ while the job
+   handler), `jobId = <eventId>@<handler>` (BullMQ ids can't contain `:`), so a re-dispatch after a failed commit is dropped by BullMQ while the job
    is retained, and caught by `processed_events` (§5) after that. A Redis failure increments `attempts`, stores a
    shortened `last_error` and sets `available_at = now + min(2^attempts s, 10 min)` with ±20 % jitter; at
    `OUTBOX_MAX_ATTEMPTS` (default 10) the event gets `dead_lettered_at` and stays until retried by the CLI. A type
@@ -47,7 +49,7 @@ Spec: [docs/platform/outbox.md](../platform/outbox.md).
    across events: handlers must not rely on order.
 
 5. **Handlers are idempotent through `processed_events`, in the handler's own transaction.**
-   `@OnEvent(type, { handler, version })` on a provider method; `handler` is a stable name (`module.camelCaseName`),
+   `@OnEvent(type, { handler, versions? })` on a provider method (`versions` defaults to the type's current one and must include it); `handler` is a stable name (`module.camelCaseName`),
    not derived from class names, because dedupe keys on it. Boot fails on an unknown type or version, or a duplicate
    handler name. A job runs as `TenantContext.run({ tenantId, userId: SYSTEM }, () => db.$transaction(tx => …))`
    with all work awaited inside: `INSERT INTO processed_events … ON CONFLICT DO NOTHING`; zero rows means already

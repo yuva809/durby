@@ -31,6 +31,11 @@ describe('appEnvSchema', () => {
       REFRESH_FAMILY_MAX_DAYS: 30,
       COOKIE_SECURE: true,
       TRUST_PROXY: 0,
+      OUTBOX_POLL_MS: 1000,
+      OUTBOX_BATCH_SIZE: 100,
+      OUTBOX_MAX_ATTEMPTS: 10,
+      OUTBOX_LAG_WARN_SECONDS: 60,
+      WORKER_CONCURRENCY: 5,
     });
   });
 

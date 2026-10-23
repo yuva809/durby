@@ -16,7 +16,10 @@
     "db:deploy": "prisma migrate deploy",
     "seed:dev": "nest build && node dist/cli/seed-dev.js",
     "create-admin": "nest build && node dist/cli/create-admin.js",
-    "entitlements": "nest build && node dist/cli/entitlements.js"
+    "entitlements": "nest build && node dist/cli/entitlements.js",
+    "outbox": "nest build && node dist/cli/outbox.js",
+    "worker": "nest build && node dist/worker.js",
+    "dev:worker": "nest start --watch --entryFile worker"
   },
   "dependencies": {
     "@durby/i18n": "workspace:*",
@@ -27,6 +30,7 @@
     "@node-rs/argon2": "^2.2.2",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
+    "bullmq": "6.3.11",
     "cookie-parser": "^1.4.7",
     "ioredis": "^6.0.0",
     "jose": "^6.2.13",

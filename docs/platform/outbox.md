@@ -69,7 +69,7 @@ await this.db.$transaction(async (tx) => {
 ```
 
 `add` takes the transaction client (no `tx`, no event), validates the payload against the current schema and takes
-the tenant from the tenant context. RLS `WITH CHECK` rejects any other tenant.
+the tenant from the tenant context. The insert is raw SQL, so the database clock sets `occurred_at`/`available_at`. RLS `WITH CHECK` rejects any other tenant.
 
 ## Dispatcher
 
@@ -79,7 +79,7 @@ Runs in the worker every `OUTBOX_POLL_MS` (1000; up to 5 s while idle):
 DEFINER` function that returns tenant ids and counts, never payloads (ADR 0013 §3).
 2. Per tenant, in `TenantContext.run` and one tenant-client transaction: claim up to `OUTBOX_BATCH_SIZE` (100) due
    rows of known types, oldest first, `FOR UPDATE SKIP LOCKED`.
-3. Per event: one BullMQ job per registered handler (`jobId = <eventId>:<handler>`), then `published_at = now()`.
+3. Per event: one BullMQ job per registered handler (`jobId = <eventId>@<handler>`; BullMQ ids can't contain `:`), then `published_at = now()`.
    No handler: published without a job.
 4. Redis error: `attempts + 1`, `last_error`, `available_at = now + min(2^attempts s, 600 s) ± 20 %`; at
    `OUTBOX_MAX_ATTEMPTS` (10) `dead_lettered_at = now()`.
@@ -94,12 +94,13 @@ about one second). Fine for config events; to be revisited before handlers with 
 ```ts
 @Injectable()
 export class StockProjection {
-  @OnEvent('inventory.stock.received', { handler: 'reports.stockProjection', version: 1 })
+  @OnEvent('inventory.stock.received', { handler: 'reports.stockProjection' })
   async apply(event: OutboxEvent<'inventory.stock.received'>, tx: TenantTransactionClient): Promise<void> { … }
 }
 ```
 
 - `handler` is a stable `module.camelCaseName`; renaming it re-delivers retained events to the "new" handler.
+- `versions` (optional) lists the payload versions it reads; default and required: the type's current one.
 - The worker discovers handlers at boot; unknown types or versions and duplicate names fail the boot.
 - Each job runs in `TenantContext.run({ tenantId: event.tenantId, userId: SYSTEM })` and one tenant-client
   transaction, all work awaited inside it: insert `processed_events (handler, event_id)` `ON CONFLICT DO NOTHING`;
