@@ -40,7 +40,7 @@ module issues the numbers, and the defaults an organization's series starts with
 | `{MM}`     | Two-digit month of the allocation                                  |
 | `{seq:N}`  | The sequence number, zero-padded to at least N digits (N = 1 … 12) |
 
-Rules (`numberPatternProblems`, used by the api and the web app):
+Rules (`numberFormatProblems`, used by the api and the web app):
 
 - Only the tokens above; any other `{…}`, or a lone `{` or `}`, is rejected.
 - `{seq:N}` appears **exactly once**.
