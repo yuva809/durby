@@ -123,8 +123,11 @@ an active CLS scope nothing is cached. No Redis and no event until 1.9.
 
 - `GET /labels` reuses `platform.settings.read` (ADR 0011 §7); the guard's "any location" check applies. A user locale
   that isn't supported resolves to `en`.
-- `GET /label-overrides` entries: `{ locale, key, value, defaultValue }`, sorted by key then locale. Stored rows that
-  would be skipped on read are listed too, with `active: false`, so they can be removed.
+- `GET /label-overrides` entries: `{ locale, key, value, defaultValue, active }`, sorted by key then locale. Stored
+  rows that would be skipped on read are listed too, with `active: false` (`defaultValue: null` if the key or locale
+  no longer exists), so they can be removed.
+- `DELETE` doesn't check the key or locale against `packages/i18n`: a row left behind by a removed key or locale, or
+  one that is no longer org-overridable, can still be removed.
 - `PUT` with the stored value, or `DELETE` without a stored row, writes nothing (no audit row; `DELETE` still 204).
 
 ### Errors
@@ -138,7 +141,7 @@ an active CLS scope nothing is cached. No Redis and no event until 1.9.
 | 422    | `labels.invalid_value`   | `details: { key, locale, reason, expected?, found? }` (placeholder names only, never value) |
 | 403    | `rbac.permission_denied` | Missing permission                                                                          |
 
-Checked in this order. Error labels: `platform.errors.<camelCaseCode>`, e.g. `platform.errors.labelsNotOverridable`.
+Checked in this order (`PUT`). Error labels: `platform.errors.<camelCaseCode>`, e.g. `platform.errors.labelsNotOverridable`.
 
 `Idempotency-Key` on `PUT`/`DELETE` comes with platform/idempotency (1.9); both are naturally idempotent.
 

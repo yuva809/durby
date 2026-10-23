@@ -9,6 +9,7 @@ import { DatabaseModule } from './database';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
 import { ApiExceptionFilter } from './http';
+import { LabelsModule } from './labels';
 import { LoggingModule } from './logging';
 import { MailModule } from './mail';
 import { ProvisioningModule } from './provisioning';
@@ -31,6 +32,7 @@ import { TenancyModule } from './tenancy';
     EntitlementsModule,
     RbacModule,
     SettingsModule,
+    LabelsModule,
     ProvisioningModule,
   ],
   controllers: [HealthController],

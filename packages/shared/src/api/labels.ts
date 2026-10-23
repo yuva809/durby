@@ -24,10 +24,12 @@ export const putLabelOverrideRequestSchema = z.strictObject({
 });
 
 export const labelOverrideSchema = z.object({
-  locale: z.enum(LOCALES),
+  /** Strings, not enums: a row left behind by a removed key or locale is listed so it can be removed. */
+  locale: z.string(),
   key: z.string(),
   value: z.string(),
-  defaultValue: z.string(),
+  /** null when the key or locale no longer exists. */
+  defaultValue: z.string().nullable(),
   /** false: stored but skipped on read (no longer overridable or valid); remove it. */
   active: z.boolean(),
 });
