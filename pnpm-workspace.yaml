@@ -11,5 +11,7 @@ allowBuilds:
   cpu-features: false
   protobufjs: false
   ssh2: false
+  # Optional native speedup of msgpackr (BullMQ, ADR 0013); msgpackr falls back to plain JS.
+  msgpackr-extract: false
 minimumReleaseAgeExclude:
   - nodemailer@10.2.0
