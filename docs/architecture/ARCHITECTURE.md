@@ -45,7 +45,7 @@ Most specific wins: **Location → Brand → Organization → Partner → Plan d
 | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
 | Feature keys                                                                                                     | registry in `packages/shared/features.ts` | `plan_features`, `tenant_feature_overrides`                   |
 | Settings                                                                                                         | registry with Zod schema + default        | `setting_values (scope_type, scope_id, key, value jsonb)`     |
-| Labels                                                                                                           | dictionaries in `packages/i18n/{en,de}`   | `label_overrides (scope_type, scope_id, locale, key, value)`  |
+| Labels                                                                                                           | dictionaries in `packages/i18n/{en,de}`   | `partner_label_overrides`, `label_overrides (locale, key, value)` (ADR 0011) |
 | Number series                                                                                                    | registry of series keys                   | `number_series (tenant_id, key, prefix, pattern, next_value)` |
 | Resolved config is cached in Redis per (tenant, location, locale) and invalidated on change via an outbox event. |
 
