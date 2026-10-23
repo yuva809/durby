@@ -39,14 +39,15 @@ describe('system roles', () => {
     },
   );
 
-  it('keeps admin below owner and staff without platform keys', () => {
+  it('keeps admin below owner and staff with settings.read only', () => {
     expect(systemRolePermissions('admin').has('platform.org.manage')).toBe(false);
     expect(systemRolePermissions('admin').has('platform.roles.manage')).toBe(true);
     expect([...systemRolePermissions('manager')].sort()).toEqual([
       'platform.roles.read',
+      'platform.settings.read',
       'platform.users.invite',
       'platform.users.read',
     ]);
-    expect(systemRolePermissions('staff').size).toBe(0);
+    expect([...systemRolePermissions('staff')]).toEqual(['platform.settings.read']);
   });
 });

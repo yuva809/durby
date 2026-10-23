@@ -163,7 +163,7 @@ Both keys are `location` scope (ADR 0010): a location-limited membership holds t
 | 403    | `rbac.permission_denied`      | Missing key, or not for that location / all locations                                       |
 | 409    | `settings.in_use`             | A data-bound key has data depending on it at that scope                                     |
 
-Error labels: `platform.errors.settings.<camelCaseCode>`.
+Error labels: `platform.errors.<camelCaseCode>`, e.g. `platform.errors.settingsUnknownKey`.
 
 `Idempotency-Key` on `PUT`/`DELETE` comes with platform/idempotency (1.9). Both are naturally idempotent (set to a
 value, remove), and a no-op writes nothing.
