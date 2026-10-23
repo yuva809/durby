@@ -85,6 +85,7 @@ describe('TENANT_MODELS', () => {
       'Brand',
       'Invitation',
       'InvitationLocation',
+      'LabelOverride',
       'Location',
       'Membership',
       'MembershipLocation',

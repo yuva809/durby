@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { createTranslator, DEFAULT_LOCALE, type LabelKey, type Locale, LOCALES } from '@durby/i18n';
+import { createTranslator, DEFAULT_LOCALE, isLocale, type LabelKey } from '@durby/i18n';
 import { PinoLogger } from 'nestjs-pino';
 import { APP_CONFIG, type AppConfig } from '../config';
 import { MAILER, type Mailer } from '../mail';
@@ -11,11 +11,9 @@ const PAGES: Record<AuthMailTemplate, string> = {
   verify: '/verify-email',
 };
 
-const toLocale = (locale: string): Locale =>
-  (LOCALES as readonly string[]).includes(locale) ? (locale as Locale) : DEFAULT_LOCALE;
-
 /**
- * Password-reset and verification emails. The token goes into the URL fragment, which browsers
+ * Password-reset and verification emails. User-level (no organization), so bundled default labels
+ * in the user's locale (docs/platform/labels.md → Backend t()). The token goes into the URL fragment, which browsers
  * never send to servers, so it cannot reach access logs, proxies or Referer headers. Logs only
  * the template and message id.
  */
@@ -30,12 +28,12 @@ export class AuthMailer {
   }
 
   async send(template: AuthMailTemplate, to: string, locale: string, token: string): Promise<void> {
-    const t = createTranslator(toLocale(locale));
+    const t = createTranslator(isLocale(locale) ? locale : DEFAULT_LOCALE);
     const link = `${new URL(PAGES[template], this.config.WEB_BASE_URL).toString()}#token=${token}`;
     const { messageId } = await this.mailer.send({
       to,
       subject: t(`auth.email.${template}.subject` as LabelKey),
-      text: t(`auth.email.${template}.body` as LabelKey).replace('{link}', link),
+      text: t(`auth.email.${template}.body` as LabelKey, { link }),
     });
     this.logger.info({ template: `auth.${template}`, messageId }, 'auth mail sent');
   }

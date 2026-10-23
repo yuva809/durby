@@ -175,5 +175,15 @@
   "platform.audit.actions.settingValueCreated": "Setting set",
   "platform.audit.actions.settingValueUpdated": "Setting changed",
   "platform.audit.actions.settingValueDeleted": "Setting removed",
-  "platform.audit.entities.settingValue": "Setting"
+  "platform.audit.entities.settingValue": "Setting",
+  "inventory.nav.title": "Inventory",
+  "platform.nav.label": "Main navigation",
+  "platform.errors.labelsUnknownLocale": "This language isn't supported.",
+  "platform.errors.labelsUnknownKey": "Unknown label.",
+  "platform.errors.labelsNotOverridable": "This text can't be changed for your organization.",
+  "platform.errors.labelsInvalidValue": "Invalid text. Use plain text with exactly the placeholders of the default text.",
+  "platform.audit.actions.labelOverrideCreated": "Label set",
+  "platform.audit.actions.labelOverrideUpdated": "Label changed",
+  "platform.audit.actions.labelOverrideDeleted": "Label removed",
+  "platform.audit.entities.labelOverride": "Label"
 }

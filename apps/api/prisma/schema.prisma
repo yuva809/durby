@@ -18,13 +18,14 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model Partner {
-  id            String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  slug          String                @unique
-  name          String
-  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organizations Organization[]
-  settingValues PartnerSettingValue[]
+  id             String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  slug           String                 @unique
+  name           String
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organizations  Organization[]
+  settingValues  PartnerSettingValue[]
+  labelOverrides PartnerLabelOverride[]
 
   @@map("partners")
 }
@@ -53,6 +54,7 @@ model Organization {
   auditLogs           AuditLog[]
   featureOverrides    TenantFeatureOverride[]
   settingValues       SettingValue[]
+  labelOverrides      LabelOverride[]
 
   @@index([partnerId])
   @@index([planId])
@@ -448,4 +450,38 @@ model SettingValue {
   @@index([tenantId, brandId])
   @@index([tenantId, locationId])
   @@map("setting_values")
+}
+
+/// A partner's label text (ADR 0011). Read-only for the app: changed only by reviewed migrations.
+/// Key, locale and placeholders are validated against packages/i18n by the api.
+model PartnerLabelOverride {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  partnerId String   @map("partner_id") @db.Uuid
+  locale    String
+  key       String
+  /// 1–1000 characters (CHECK).
+  value     String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  partner   Partner  @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([partnerId, locale, key])
+  @@map("partner_label_overrides")
+}
+
+/// An organization's label text for one org-overridable key in one locale (ADR 0011). Audited.
+model LabelOverride {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  locale       String
+  key          String
+  /// 1–200 characters, one line (CHECK).
+  value        String
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, locale, key])
+  @@map("label_overrides")
 }

@@ -16,6 +16,7 @@ import {
   normalizeEmail,
   UserDirectory,
 } from '../auth';
+import { SettingsService } from '../config/settings';
 import type { Prisma } from '../database/generated/client';
 import type { RateLimitRule } from '../rate-limit';
 import {
@@ -76,6 +77,7 @@ export class InvitationsService {
     private readonly users: UserDirectory,
     private readonly limits: AuthRateLimits,
     private readonly mailer: InvitationMailer,
+    private readonly settings: SettingsService,
     private readonly audit: AuditService,
     private readonly clock: Clock,
   ) {}
@@ -166,18 +168,23 @@ export class InvitationsService {
       return row;
     });
 
-    this.inBackground('invitation mail', async () => {
-      const [inviter, org] = await Promise.all([
-        this.users.findById(actor.userId),
-        this.platformDb.organization.findUniqueOrThrow({ where: { id: tenantId } }),
-      ]);
-      await this.mailer.send({
-        to: email,
-        locale: inviter?.locale ?? DEFAULT_LOCALE,
-        organizationName: org.name,
-        token,
-      });
-    });
+    // In the organization's tenant context: its labels and its `locale` setting. The invitee's own
+    // locale if they have an account (ADR 0011 §9).
+    this.inBackground('invitation mail', () =>
+      this.tenantContext.run({ tenantId, userId: actor.userId }, async () => {
+        const [invitee, org, orgLocale] = await Promise.all([
+          this.users.findByEmail(email),
+          this.platformDb.organization.findUniqueOrThrow({ where: { id: tenantId } }),
+          this.settings.get('locale'),
+        ]);
+        await this.mailer.send({
+          to: email,
+          locale: invitee?.locale ?? orgLocale,
+          organizationName: org.name,
+          token,
+        });
+      }),
+    );
     return toInvitation(row);
   }
 

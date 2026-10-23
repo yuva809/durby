@@ -25,6 +25,8 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   plan: ['id', 'key', 'features'],
   /** `value`: canonical JSON string (sorted keys). Settings never hold secrets (ADR 0010). */
   setting_value: ['id', 'key', 'scopeType', 'brandId', 'locationId', 'value'],
+  /** Label text is plain text, never a secret (ADR 0011). */
+  label_override: ['id', 'locale', 'key', 'value'],
 } as const satisfies Record<AuditEntityType, readonly string[]>;
 
 type Field<T extends AuditEntityType> = (typeof AUDIT_SNAPSHOT_FIELDS)[T][number];

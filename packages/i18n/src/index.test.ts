@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTranslator, dictionaries, LOCALES } from './index';
+import { createTranslator, dictionaries, LOCALES, placeholdersOf } from './index';
 
 describe('dictionaries', () => {
   it.each(LOCALES)('%s has exactly the same keys as en', (locale) => {
@@ -10,6 +10,13 @@ describe('dictionaries', () => {
     for (const [key, value] of Object.entries(dictionaries[locale])) {
       expect(key).toMatch(/^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/);
       expect(typeof value).toBe('string');
+    }
+  });
+
+  it.each(LOCALES)('%s keeps the placeholders of en for every key', (locale) => {
+    for (const [key, text] of Object.entries(dictionaries.en)) {
+      const translated = dictionaries[locale][key as keyof typeof dictionaries.en];
+      expect([key, placeholdersOf(translated)]).toEqual([key, placeholdersOf(text)]);
     }
   });
 });
@@ -37,5 +44,31 @@ describe('createTranslator', () => {
     } finally {
       dictionaries.de['platform.home.title'] = original;
     }
+  });
+
+  it('replaces every occurrence of a placeholder and leaves unknown ones', () => {
+    const t = createTranslator('en', {
+      'platform.email.invite.subject': '{organization} invites you to {organization} ({x})',
+    });
+    expect(t('platform.email.invite.subject', { organization: 'Acme' })).toBe(
+      'Acme invites you to Acme ({x})',
+    );
+  });
+
+  it('never expands placeholders inside a param value', () => {
+    const t = createTranslator('en', { 'platform.email.invite.subject': '{organization} {link}' });
+    expect(t('platform.email.invite.subject', { organization: '{link}', link: 'L' })).toBe(
+      '{link} L',
+    );
+  });
+
+  it('escapes the template and every param in html format, and nothing in text format', () => {
+    const overrides = { 'platform.email.invite.subject': '<b>{organization}</b> & co' };
+    const html = createTranslator('en', overrides, { format: 'html' });
+    expect(html('platform.email.invite.subject', { organization: `"A'<i>"` })).toBe(
+      '&lt;b&gt;&quot;A&#39;&lt;i&gt;&quot;&lt;/b&gt; &amp; co',
+    );
+    const text = createTranslator('en', overrides);
+    expect(text('platform.email.invite.subject', { organization: '<i>' })).toBe('<b><i></b> & co');
   });
 });
