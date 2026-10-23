@@ -52,9 +52,18 @@ export async function createAdmin(
 ): Promise<CreateAdminResult> {
   const provisioning = app.get(ProvisioningService);
   const partner = await provisioning.ensurePartner(DEFAULT_PARTNER.slug, DEFAULT_PARTNER.name);
-  const organization = await provisioning.ensureOrganization(partner.id, input.org);
+  const organization = await provisioning.ensureOrganization(
+    partner.id,
+    input.org,
+    'cli.create_admin',
+  );
   const user = await provisioning.ensureUser(input.email, { locale: input.locale });
-  const membership = await provisioning.ensureMembership(organization.id, user.id, 'owner');
+  const membership = await provisioning.ensureMembership(
+    organization.id,
+    user.id,
+    'owner',
+    'cli.create_admin',
+  );
   await app.get(PasswordService).sendPasswordSetMail(user.id);
   return { partner, organization, user, membership };
 }

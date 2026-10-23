@@ -62,6 +62,16 @@ describe('bootstrap commands', () => {
     return rows[0]?.n ?? 0;
   };
 
+  /** Audit rows of the org as [action, actor_system], read as that tenant (RLS). */
+  const auditOf = async (orgId: string) => {
+    const [, rows] = await raw.$transaction([
+      raw.$executeRaw`SELECT set_config('app.tenant_id', ${orgId}, true)`,
+      raw.$queryRaw<{ action: string; actor: string | null; after: unknown }[]>`
+        SELECT action, actor_system AS actor, after FROM audit_logs ORDER BY id`,
+    ]);
+    return rows;
+  };
+
   describe('create-admin', () => {
     it('creates partner, organization, user and membership once, and mails a password link', async () => {
       const email = `admin-${uuidv7()}@example.test`;
@@ -90,6 +100,11 @@ describe('bootstrap commands', () => {
         'staff',
       ]);
       expect(await roleOf(first.user.id, first.organization.id)).toBe('owner');
+      // Audited once with the command as actor; the second run changed nothing and wrote nothing.
+      expect((await auditOf(first.organization.id)).map((r) => [r.action, r.actor])).toEqual([
+        ['platform.organization.created', 'cli.create_admin'],
+        ['platform.membership.created', 'cli.create_admin'],
+      ]);
 
       const user = await raw.user.findUniqueOrThrow({ where: { email } });
       expect(user).toMatchObject({ passwordHash: null, emailVerifiedAt: null, locale: 'de' });
@@ -138,6 +153,12 @@ describe('bootstrap commands', () => {
       const result = await createAdmin(app, { email, org, locale: 'en' });
       expect(result.membership.created).toBe(false);
       expect(await roleOf(user.id, existing.organization.id)).toBe('owner');
+      const fill = (await auditOf(existing.organization.id)).at(-1);
+      expect(fill).toMatchObject({
+        action: 'platform.membership.updated',
+        actor: 'cli.create_admin',
+        after: { userId: user.id },
+      });
     });
 
     it('creates no demo data', async () => {
@@ -176,6 +197,13 @@ describe('bootstrap commands', () => {
           expect(await membershipCount(user.id, orgs[0]?.id ?? '')).toBe(1);
           expect(await roleOf(user.id, orgs[0]?.id ?? '')).toBe(seed.role);
         }
+      }
+      for (const name of DEV_SEED.organizations) {
+        const org = await platformDb.organization.findFirstOrThrow({ where: { name } });
+        const created = (await auditOf(org.id)).filter(
+          (r) => r.action === 'platform.organization.created',
+        );
+        expect(created.map((r) => r.actor)).toEqual(['cli.seed_dev']);
       }
     });
 

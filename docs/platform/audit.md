@@ -149,7 +149,9 @@ email verification) stay structured `security` log events (`platform/auth/securi
 - `audit-logs.e2e`: role change writes the expected row (actor, before/after, request id, ip via `TRUST_PROXY`);
   a rolled-back change writes none; filters; paging without gaps or duplicates; permission denied for Manager;
   cross-tenant isolation (list, `entityId`, foreign cursor, insert with another tenant's id).
-- `audit-secrets.e2e`: every audited flow, then no password, token, hash or email in any snapshot.
+- `audit-retrofit.e2e`: every audited flow writes its rows (actor, snapshots, request id, IP); rejected changes
+  and rolled-back transactions write none; finally no password, token, hash or email in any snapshot.
+- `cli.int`: create-admin and seed-dev write system-actor rows once; re-runs write none.
 
 ## Later
 

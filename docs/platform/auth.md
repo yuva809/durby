@@ -205,14 +205,16 @@ proxies or `Referer`.
 template key and message id; pino redaction covers the field names. A test captures the log output of every flow and
 asserts that no token or link appears.
 
-## Audit and idempotency (until 1.4 / 1.9)
+## Audit and idempotency (until 1.9)
 
 - Auth endpoints are exempt from `Idempotency-Key` (rule 8): refresh rotation cannot be replayed by design, and
   storing responses would persist tokens.
-- `audit_logs` arrives in 1.4. Until then every auth action writes a structured `security` log event without secrets:
-  `auth.login.succeeded`, `auth.login.failed`, `auth.login.locked`, `auth.refresh.reuse_detected`, `auth.logout`,
-  `auth.organization.switched`, `auth.password.reset_requested`, `auth.password.reset`, `auth.email.verified`.
-  Step 1.4 moves these into the audit log.
+- User-level auth actions belong to no tenant and stay structured `security` log events without secrets
+  (ADR 0008 §7): `auth.login.succeeded`, `auth.login.failed`, `auth.login.locked`, `auth.refresh.reuse_detected`,
+  `auth.logout`, `auth.password.reset_requested`, `auth.password.reset`, `auth.email.verification_requested`,
+  `auth.email.verified`.
+- The organization switch is audited in the target organization (`platform.session.organization_switched`,
+  [audit.md](audit.md)), in the same transaction as `users.last_organization_id`.
 
 ## Bootstrap and seed
 

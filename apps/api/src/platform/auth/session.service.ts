@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { MeResponse, OrganizationSummary, SessionResponse } from '@durby/shared';
+import { auditActor, AuditService, snapshot } from '../audit';
 import { PrismaService } from '../database';
+import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../tenancy';
 import { AccessTokenService } from './access-token.service';
 import {
   ACTIVE_ACCESS_LOOKUP,
@@ -42,6 +44,9 @@ export class SessionService {
     private readonly security: SecurityLog,
     private readonly clock: Clock,
     @Inject(ACTIVE_ACCESS_LOOKUP) private readonly activeAccess: ActiveAccessLookup,
+    @Inject(TENANT_PRISMA) private readonly tenantDb: TenantPrismaClient,
+    private readonly tenantContext: TenantContext,
+    private readonly audit: AuditService,
   ) {}
 
   async login(input: { email: string; password: string }, ip: string): Promise<IssuedSession> {
@@ -120,16 +125,25 @@ export class SessionService {
       familyId: auth.sessionId,
     });
     const session = await this.afterRotation(result, ip);
-    await this.db.user.update({
-      where: { id: auth.userId },
-      data: { lastOrganizationId: organizationId },
-    });
-    this.security.event('auth.organization.switched', {
-      userId: auth.userId,
-      sessionId: auth.sessionId,
-      organizationId,
-      ip,
-    });
+    // Audited in the organization switched to (ADR 0008 §8), with the remembered organization.
+    await this.tenantContext.run({ tenantId: organizationId, userId: auth.userId }, () =>
+      this.tenantDb.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: auth.userId },
+          data: { lastOrganizationId: organizationId },
+        });
+        await this.audit.record(tx, {
+          action: 'platform.session.organization_switched',
+          actor: auditActor.user(auth.userId),
+          entityId: auth.sessionId,
+          before: snapshot('session', { organizationId: auth.organizationId }),
+          after: snapshot('session', {
+            organizationId,
+            previousOrganizationId: auth.organizationId,
+          }),
+        });
+      }),
+    );
     return session;
   }
 

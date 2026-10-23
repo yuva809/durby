@@ -7,13 +7,13 @@ import {
   type InvitationPreview,
 } from '@durby/shared';
 import { DEFAULT_LOCALE, LOCALES } from '@durby/i18n';
+import { auditActor, AuditService, snapshot } from '../audit';
 import {
   AuthContext,
   authErrors,
   AuthRateLimits,
   Clock,
   normalizeEmail,
-  SecurityLog,
   UserDirectory,
 } from '../auth';
 import type { Prisma } from '../database/generated/client';
@@ -76,7 +76,7 @@ export class InvitationsService {
     private readonly users: UserDirectory,
     private readonly limits: AuthRateLimits,
     private readonly mailer: InvitationMailer,
-    private readonly security: SecurityLog,
+    private readonly audit: AuditService,
     private readonly clock: Clock,
   ) {}
 
@@ -102,7 +102,7 @@ export class InvitationsService {
     const allLocations = body.locationIds == null;
     const { token, hash } = issueInvitationToken(tenantId);
 
-    const { row, revoked } = await this.db.$transaction(async (tx) => {
+    const row = await this.db.$transaction(async (tx) => {
       const role = await tx.role.findUnique({
         where: { tenantId_id: { tenantId, id: body.roleId } },
         select: ROLE_SELECT,
@@ -119,10 +119,21 @@ export class InvitationsService {
       });
       if (member) throw rbacErrors.alreadyMember();
 
-      const revoked = await tx.invitation.updateMany({
+      // Any earlier open invitation for the email is replaced: revoked and audited one by one.
+      const replaced = await tx.invitation.findMany({
         where: { email, acceptedAt: null, revokedAt: null },
-        data: { revokedAt: now },
+        select: INVITATION_SELECT,
       });
+      for (const old of replaced) {
+        await tx.invitation.update({ where: { id: old.id }, data: { revokedAt: now } });
+        await this.audit.record(tx, {
+          action: 'platform.invitation.revoked',
+          actor: auditActor.user(actor.userId),
+          entityId: old.id,
+          before: snapshotOf(old),
+          after: snapshotOf(old, { revokedAt: now }),
+        });
+      }
       const created = await tx.invitation.create({
         data: {
           tenantId,
@@ -146,21 +157,15 @@ export class InvitationsService {
         where: { id: created.id },
         select: INVITATION_SELECT,
       });
-      return { row, revoked: revoked.count };
+      await this.audit.record(tx, {
+        action: 'platform.invitation.created',
+        actor: auditActor.user(actor.userId),
+        entityId: row.id,
+        after: snapshotOf(row),
+      });
+      return row;
     });
 
-    this.security.event('rbac.invitation.created', {
-      userId: actor.userId,
-      organizationId: tenantId,
-      invitationId: row.id,
-      roleId: row.roleId,
-    });
-    if (revoked > 0) {
-      this.security.event('rbac.invitation.revoked', {
-        userId: actor.userId,
-        organizationId: tenantId,
-      });
-    }
     this.inBackground('invitation mail', async () => {
       const [inviter, org] = await Promise.all([
         this.users.findById(actor.userId),
@@ -179,7 +184,6 @@ export class InvitationsService {
   /** Revokes an open invitation, if the actor could have granted its role. */
   async revoke(id: string): Promise<void> {
     const actor = await this.roles.actor();
-    const { tenantId } = this.tenantContext.require();
     const now = this.clock.now();
     await this.db.$transaction(async (tx) => {
       const invitation = await tx.invitation.findFirst({
@@ -189,11 +193,13 @@ export class InvitationsService {
       if (!invitation) throw rbacErrors.invitationNotFound();
       if (!canGrantRole(actor, this.roles.viewOf(invitation.role))) throw rbacErrors.notGrantable();
       await tx.invitation.update({ where: { id }, data: { revokedAt: now } });
-    });
-    this.security.event('rbac.invitation.revoked', {
-      userId: actor.userId,
-      organizationId: tenantId,
-      invitationId: id,
+      await this.audit.record(tx, {
+        action: 'platform.invitation.revoked',
+        actor: auditActor.user(actor.userId),
+        entityId: id,
+        before: snapshotOf(invitation),
+        after: snapshotOf(invitation, { revokedAt: now }),
+      });
     });
   }
 
@@ -238,7 +244,7 @@ export class InvitationsService {
       ? (body.locale as string)
       : DEFAULT_LOCALE;
 
-    const result = await this.tenantContext.run(
+    await this.tenantContext.run(
       { tenantId: organizationId, userId: ANONYMOUS_ACTOR },
       async () => {
         try {
@@ -252,9 +258,7 @@ export class InvitationsService {
               password: body.password,
               locale,
             });
-            await this.consume(tx, invitation, user.id);
-            const membershipId = await this.join(tx, organizationId, invitation, user.id);
-            return { invitationId: invitation.id, userId: user.id, membershipId };
+            await this.acceptInto(tx, organizationId, invitation, user.id);
           });
         } catch (error) {
           // The email got an account between the check and the insert.
@@ -263,13 +267,6 @@ export class InvitationsService {
         }
       },
     );
-    this.security.event('rbac.invitation.accepted', {
-      userId: result.userId,
-      organizationId,
-      invitationId: result.invitationId,
-      membershipId: result.membershipId ?? undefined,
-      ip,
-    });
     return { organizationId };
   }
 
@@ -283,23 +280,47 @@ export class InvitationsService {
     const profile = await this.users.findById(userId);
     if (!profile) throw authErrors.unauthenticated();
 
-    const result = await this.tenantContext.run({ tenantId: organizationId, userId }, () =>
+    await this.tenantContext.run({ tenantId: organizationId, userId }, () =>
       this.db.$transaction(async (tx) => {
         const invitation = await this.openByHash(tx, hash);
         if (invitation.email !== profile.email) throw rbacErrors.emailMismatch();
-        await this.consume(tx, invitation, userId);
-        const membershipId = await this.join(tx, organizationId, invitation, userId);
-        return { invitationId: invitation.id, membershipId };
+        await this.acceptInto(tx, organizationId, invitation, userId);
       }),
     );
-    this.security.event('rbac.invitation.accepted', {
-      userId,
-      organizationId,
-      invitationId: result.invitationId,
-      membershipId: result.membershipId ?? undefined,
-      ip,
-    });
     return { organizationId };
+  }
+
+  /** Consumes the invitation, joins the user and audits both, all in the caller's transaction. */
+  private async acceptInto(
+    tx: TenantTransactionClient,
+    tenantId: string,
+    invitation: InvitationRow,
+    userId: string,
+  ): Promise<void> {
+    const acceptedAt = await this.consume(tx, invitation, userId);
+    const actor = auditActor.user(userId);
+    await this.audit.record(tx, {
+      action: 'platform.invitation.accepted',
+      actor,
+      entityId: invitation.id,
+      before: snapshotOf(invitation),
+      after: snapshotOf(invitation, { acceptedAt, acceptedByUserId: userId }),
+    });
+    const membershipId = await this.join(tx, tenantId, invitation, userId);
+    if (membershipId !== null) {
+      await this.audit.record(tx, {
+        action: 'platform.membership.created',
+        actor,
+        entityId: membershipId,
+        after: snapshot('membership', {
+          id: membershipId,
+          userId,
+          roleId: invitation.roleId,
+          allLocations: invitation.allLocations,
+          locationIds: invitation.locations.map((l) => l.locationId),
+        }),
+      });
+    }
   }
 
   private async openByHash(tx: TenantTransactionClient, hash: string): Promise<InvitationRow> {
@@ -311,18 +332,19 @@ export class InvitationsService {
     return invitation;
   }
 
-  /** Single use: only the first of concurrent accepts gets the row. */
+  /** Single use: only the first of concurrent accepts gets the row. Returns the accept time. */
   private async consume(
     tx: TenantTransactionClient,
     invitation: InvitationRow,
     userId: string,
-  ): Promise<void> {
+  ): Promise<Date> {
     const now = this.clock.now();
     const { count } = await tx.invitation.updateMany({
       where: { id: invitation.id, ...openAt(now) },
       data: { acceptedAt: now, acceptedByUserId: userId },
     });
     if (count !== 1) throw authErrors.tokenInvalid();
+    return now;
   }
 
   /** The membership from the invitation; an existing membership is left as it is (null). */
@@ -383,4 +405,22 @@ function toInvitation(row: InvitationRow): Invitation {
     expiresAt: row.expiresAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+/** Audit snapshot of an invitation; INVITATION_SELECT only reads open ones, so the states start null. */
+function snapshotOf(
+  row: InvitationRow,
+  changes: { acceptedAt?: Date; acceptedByUserId?: string; revokedAt?: Date } = {},
+) {
+  return snapshot('invitation', {
+    id: row.id,
+    roleId: row.roleId,
+    allLocations: row.allLocations,
+    locationIds: row.locations.map((l) => l.locationId),
+    expiresAt: row.expiresAt,
+    acceptedAt: null,
+    acceptedByUserId: null,
+    revokedAt: null,
+    ...changes,
+  });
 }

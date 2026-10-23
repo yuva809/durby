@@ -83,7 +83,9 @@ table atomically with the change, what goes in it, what happens to events that h
 
 - Every new state-changing service method takes an audit action from the registry and calls `record(tx, …)` inside
   its transaction; reviewers check for it. A new action needs a label in `en` and `de`.
-- The audit-secrets test grows with every audited flow.
+- The secrets scan in `audit-retrofit.e2e` grows with every audited flow.
+- `TenantContext.run()` carries the HTTP request (only that) into its fresh scope, so rows written inside it keep
+  their request id and IP.
 - Provisioning creates an organization, its system roles and its audit row in one tenant transaction (uuid v7 id
   generated in the app).
 - Open before production: IP retention (§10). Open later: tenant offboarding (§11), an auth events table (§7).
