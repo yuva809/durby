@@ -3,12 +3,18 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
-import { errorLabel } from '../../lib/auth/errors';
-import { t } from '../../lib/i18n';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { AuthCard, fieldClass, formText, Notice } from '../auth-layout';
-import { useAuth } from '../providers';
+import { errorLabel } from '../../../lib/auth/errors';
+import { safeNextPath } from '../../../lib/auth/next-path';
+import { t } from '../../../lib/i18n';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { AuthCard, fieldClass, formText, Notice } from '../../auth-layout';
+import { useAuth } from '../../providers';
+
+/** Where to go after signing in: the guard's `next` (same-origin only) or home. */
+function nextPath(): string {
+  return safeNextPath(new URLSearchParams(window.location.search).get('next'));
+}
 
 export default function LoginPage() {
   const { store, status } = useAuth();
@@ -17,7 +23,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (status === 'authenticated') router.replace('/');
+    if (status === 'authenticated') router.replace(nextPath());
   }, [status, router]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -27,7 +33,7 @@ export default function LoginPage() {
     setError(null);
     const result = await store.login(formText(form, 'email'), formText(form, 'password'));
     setBusy(false);
-    if (result.ok) router.replace('/');
+    if (result.ok) router.replace(nextPath());
     else setError(t(errorLabel(result.code)));
   }
 

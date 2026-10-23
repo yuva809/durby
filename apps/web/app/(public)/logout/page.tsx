@@ -2,9 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { t } from '../../lib/i18n';
-import { AuthCard } from '../auth-layout';
-import { useAuth } from '../providers';
+import { t } from '../../../lib/i18n';
+import { AuthCard } from '../../auth-layout';
+import { useAuth } from '../../providers';
 
 /** Ends the session on the server (refresh family revoked) and drops the in-memory token. */
 export default function LogoutPage() {

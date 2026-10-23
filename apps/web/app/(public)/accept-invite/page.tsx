@@ -5,21 +5,21 @@ import { DEFAULT_LOCALE, type LabelKey } from '@durby/i18n';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
-import { errorLabel } from '../../lib/auth/errors';
-import { useLinkToken } from '../../lib/auth/link-token';
-import { t } from '../../lib/i18n';
+import { errorLabel } from '../../../lib/auth/errors';
+import { useLinkToken } from '../../../lib/auth/link-token';
+import { t } from '../../../lib/i18n';
 import {
   invitationTokenFromHash,
   joinAsNewUser,
   joinAsSignedIn,
   previewInvitation,
   type Result,
-} from '../../lib/rbac/invitations';
-import { roleName } from '../../lib/rbac/roles';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { AuthCard, fieldClass, formText, Notice } from '../auth-layout';
-import { useAuth } from '../providers';
+} from '../../../lib/rbac/invitations';
+import { roleName } from '../../../lib/rbac/roles';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { AuthCard, fieldClass, formText, Notice } from '../../auth-layout';
+import { useAuth } from '../../providers';
 
 const fill = (key: LabelKey, values: Record<string, string>) =>
   Object.entries(values).reduce((text, [name, value]) => text.replace(`{${name}}`, value), t(key));

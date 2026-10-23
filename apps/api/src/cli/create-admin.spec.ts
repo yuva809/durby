@@ -35,6 +35,15 @@ describe('parseCreateAdminArgs', () => {
     expect(() => parseCreateAdminArgs(argv)).toThrow(/Usage: create-admin/);
   });
 
+  it('reads an optional partner slug', () => {
+    const argv = ['--email', 'a@b.test', '--org', 'X'];
+    expect(parseCreateAdminArgs([...argv, '--partner', 'demo']).partner).toBe('demo');
+    expect(parseCreateAdminArgs(argv)).not.toHaveProperty('partner');
+    expect(() => parseCreateAdminArgs([...argv, '--partner', 'Demo Partner'])).toThrow(
+      /Usage: create-admin/,
+    );
+  });
+
   it('does not accept a password on the command line', () => {
     expect(() =>
       parseCreateAdminArgs(['--email', 'a@b.test', '--org', 'X', '--password', 'secret']),

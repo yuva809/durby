@@ -33,6 +33,11 @@ export function LabelsProvider({ children }: { children: ReactNode }) {
     };
   }, [cache, userId, organizationId, locale, key]);
 
+  // Screen readers pronounce the page in the user's language once signed in.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
   const labels = loaded?.key === key ? loaded.labels : null;
   const t = useMemo(() => createTranslator(locale, labels ?? {}), [locale, labels]);
   return <LabelsContext value={t}>{children}</LabelsContext>;

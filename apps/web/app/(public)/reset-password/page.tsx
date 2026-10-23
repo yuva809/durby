@@ -3,13 +3,13 @@
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@durby/shared';
 import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
-import { errorLabel } from '../../lib/auth/errors';
-import { useLinkToken } from '../../lib/auth/link-token';
-import { postPublic } from '../../lib/auth/public-requests';
-import { t } from '../../lib/i18n';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { AuthCard, fieldClass, formText, Notice } from '../auth-layout';
+import { errorLabel } from '../../../lib/auth/errors';
+import { useLinkToken } from '../../../lib/auth/link-token';
+import { postPublic } from '../../../lib/auth/public-requests';
+import { t } from '../../../lib/i18n';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { AuthCard, fieldClass, formText, Notice } from '../../auth-layout';
 
 export default function ResetPasswordPage() {
   // undefined: not read yet; null: missing or malformed.

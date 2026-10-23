@@ -73,6 +73,36 @@ describe('bootstrap commands', () => {
   };
 
   describe('create-admin', () => {
+    // ADR 0015 §3: the demo partner comes from the partner_theming migration.
+    it('creates the organization under an existing partner with --partner', async () => {
+      const demo = await platformDb.partner.findUniqueOrThrow({ where: { slug: 'demo' } });
+      const org = `Org ${uuidv7()}`;
+      const result = await createAdmin(app, {
+        email: `admin-${uuidv7()}@example.test`,
+        org,
+        locale: 'en',
+        plan: 'inventory',
+        partner: 'demo',
+      });
+      expect(result.partner).toEqual({ id: demo.id, created: false });
+      expect(
+        await platformDb.organization.findUniqueOrThrow({ where: { id: result.organization.id } }),
+      ).toMatchObject({ partnerId: demo.id, name: org });
+    });
+
+    it('refuses an unknown partner instead of creating it', async () => {
+      await expect(
+        createAdmin(app, {
+          email: `admin-${uuidv7()}@example.test`,
+          org: `Org ${uuidv7()}`,
+          locale: 'en',
+          plan: 'full',
+          partner: 'nope',
+        }),
+      ).rejects.toThrow(/Partner "nope" does not exist/);
+      expect(await platformDb.partner.count({ where: { slug: 'nope' } })).toBe(0);
+    });
+
     it('creates partner, organization, user and membership once, and mails a password link', async () => {
       const email = `admin-${uuidv7()}@example.test`;
       const org = `Org ${uuidv7()}`;
@@ -230,8 +260,13 @@ describe('bootstrap commands', () => {
           expect(await roleOf(user.id, orgs[0]?.id ?? '')).toBe(seed.role);
         }
       }
-      for (const name of DEV_SEED.organizations) {
-        const org = await platformDb.organization.findFirstOrThrow({ where: { name } });
+      for (const seed of DEV_SEED.organizations) {
+        const org = await platformDb.organization.findFirstOrThrow({
+          where: { name: seed.name },
+          include: { partner: true, plan: true },
+        });
+        // Two-domain demo (docs/platform/web-shell.md): partner and plan per organization.
+        expect([org.partner.slug, org.plan?.key]).toEqual([seed.partner, seed.plan]);
         const created = (await auditOf(org.id)).filter(
           (r) => r.action === 'platform.organization.created',
         );

@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
-import { errorLabel } from '../../lib/auth/errors';
-import { postPublic } from '../../lib/auth/public-requests';
-import { t } from '../../lib/i18n';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { AuthCard, fieldClass, formText, Notice } from '../auth-layout';
+import { errorLabel } from '../../../lib/auth/errors';
+import { postPublic } from '../../../lib/auth/public-requests';
+import { t } from '../../../lib/i18n';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { AuthCard, fieldClass, formText, Notice } from '../../auth-layout';
 
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
