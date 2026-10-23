@@ -26,7 +26,10 @@ export async function seedDev(app: INestApplicationContext): Promise<void> {
   const partner = await provisioning.ensurePartner(DEFAULT_PARTNER.slug, DEFAULT_PARTNER.name);
   const orgIds = new Map<string, string>();
   for (const name of DEV_SEED.organizations) {
-    orgIds.set(name, (await provisioning.ensureOrganization(partner.id, name, 'cli.seed_dev')).id);
+    orgIds.set(
+      name,
+      (await provisioning.ensureOrganization(partner.id, name, 'cli.seed_dev', 'full')).id,
+    );
   }
   for (const seed of DEV_SEED.users) {
     const user = await provisioning.ensureUser(seed.email, {

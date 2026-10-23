@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { APP_GUARD, DiscoveryModule } from '@nestjs/core';
 import { ACTIVE_ACCESS_LOOKUP } from '../auth';
+import { ACTIVE_ENTITLEMENTS_LOOKUP } from '../config/entitlements';
 import { AccessGuard } from './access.guard';
 import { AccessService } from './access.service';
 import { ActiveAccessProvider } from './active-access.provider';
@@ -29,9 +30,17 @@ import { SystemRoles } from './system-roles';
     RouteMarkerCheck,
     SystemRoles,
     { provide: PERMISSION_REGISTRY, useValue: defaultPermissionRegistry },
-    { provide: ACTIVE_ACCESS_LOOKUP, useClass: ActiveAccessProvider },
+    ActiveAccessProvider,
+    { provide: ACTIVE_ACCESS_LOOKUP, useExisting: ActiveAccessProvider },
+    { provide: ACTIVE_ENTITLEMENTS_LOOKUP, useExisting: ActiveAccessProvider },
     { provide: APP_GUARD, useClass: AccessGuard },
   ],
-  exports: [ACTIVE_ACCESS_LOOKUP, AccessService, PERMISSION_REGISTRY, SystemRoles],
+  exports: [
+    ACTIVE_ACCESS_LOOKUP,
+    ACTIVE_ENTITLEMENTS_LOOKUP,
+    AccessService,
+    PERMISSION_REGISTRY,
+    SystemRoles,
+  ],
 })
 export class RbacModule {}

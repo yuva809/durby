@@ -1,13 +1,15 @@
 import { parseArgs } from 'node:util';
 import type { INestApplicationContext } from '@nestjs/common';
-import { emailRequestSchema } from '@durby/shared';
+import { emailRequestSchema, PLAN_KEYS, type PlanKey } from '@durby/shared';
 import { PasswordService } from '../platform/auth';
 import { ProvisioningService } from '../platform/provisioning';
 import { runCommand } from './run-command';
 
 const USAGE = `Usage: create-admin --email <email> --org <organization name> [--locale en|de]
+                    [--plan ${PLAN_KEYS.join('|')}]
 
-Creates the default partner, the organization (with its system roles), the user and an Owner
+Creates the default partner, the organization (with its system roles, on --plan, default full; an
+existing organization keeps its plan), the user and an Owner
 membership if missing, then emails the user a link to set their password. Safe to run again: nothing is duplicated or
 overwritten, and a fresh link is sent. Never takes a password and never creates demo data.`;
 
@@ -18,6 +20,7 @@ export interface CreateAdminInput {
   email: string;
   org: string;
   locale: string;
+  plan: PlanKey;
 }
 
 export interface CreateAdminResult {
@@ -34,6 +37,7 @@ export function parseCreateAdminArgs(argv: string[]): CreateAdminInput {
       email: { type: 'string' },
       org: { type: 'string' },
       locale: { type: 'string', default: 'en' },
+      plan: { type: 'string', default: 'full' },
       help: { type: 'boolean', default: false },
     },
     strict: true,
@@ -43,7 +47,9 @@ export function parseCreateAdminArgs(argv: string[]): CreateAdminInput {
   const org = values.org?.trim();
   if (!email.success || !org) throw new UsageError(USAGE);
   if (!['en', 'de'].includes(values.locale)) throw new UsageError(USAGE);
-  return { email: email.data.email, org, locale: values.locale };
+  const plan = PLAN_KEYS.find((key) => key === values.plan);
+  if (plan === undefined) throw new UsageError(USAGE);
+  return { email: email.data.email, org, locale: values.locale, plan };
 }
 
 export async function createAdmin(
@@ -56,6 +62,7 @@ export async function createAdmin(
     partner.id,
     input.org,
     'cli.create_admin',
+    input.plan,
   );
   const user = await provisioning.ensureUser(input.email, { locale: input.locale });
   const membership = await provisioning.ensureMembership(
