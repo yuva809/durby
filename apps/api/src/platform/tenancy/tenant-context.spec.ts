@@ -67,6 +67,7 @@ describe('TenantContext', () => {
 describe('TENANT_MODELS', () => {
   it('lists exactly the models with a tenantId field', () => {
     expect([...TENANT_MODELS].sort()).toEqual([
+      'AuditLog',
       'Brand',
       'Invitation',
       'InvitationLocation',
