@@ -202,8 +202,9 @@ organization-scope settings); reads need it for any location (the guard's check)
 
 Error labels: `platform.errors.<camelCaseCode>`, e.g. `platform.errors.numberingCounterBackwards`.
 
-`Idempotency-Key` comes with platform/idempotency (1.9). Both writes are naturally idempotent (set to a value) and a
-no-op writes nothing.
+Both writes require `Idempotency-Key` (`@Idempotent()`, [idempotency.md](idempotency.md)). Both are naturally
+idempotent (set to a value) and a no-op writes nothing. Each change emits `config.number_series.changed`
+(`{ key, change: 'format' | 'counter' }`, [outbox.md](outbox.md)) in its transaction.
 
 ## Audit
 
@@ -240,7 +241,6 @@ document that receives the number is.
 
 ## Later
 
-- Outbox event `config.number_series.changed` (1.9) and `Idempotency-Key` on the writes.
 - More reset policies (monthly) if a client needs them: a new period format, same counter table.
 - Per-location series (e.g. POS receipts per till) when POS needs them: a scope column, like settings.
 - An editor in the web app (1.10).

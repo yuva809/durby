@@ -107,7 +107,8 @@ entitlements.getLimit('inventory', 'maxLocations'); // Promise<number | null>; n
 queued work. Without an active CLS scope nothing is cached.
 
 No Redis cache yet: resolution is two indexed queries (organization + plan features, overrides). If one is added,
-the CLI invalidates it after each change (later through the `config` outbox event, 1.9).
+it registers a handler for `config.entitlements.changed`, which the CLI emits in the transaction of each change
+([outbox.md](outbox.md)).
 
 ## `@RequireFeature(key)`
 
@@ -220,5 +221,6 @@ partner-level white-label is revisited in 1.10.
 
 - `organizations.plan_id NOT NULL` once no deployed release creates organizations without a plan.
 - HTTP endpoints for platform staff (when `@PlatformOnly` is modelled).
-- Redis cache with invalidation through the outbox (1.9); usage counters to enforce limits.
+- Redis cache with a `config.entitlements.changed` handler; usage counters to enforce limits; events from plan
+  migrations (ADR 0013 §7).
 - Partner-level white-label (1.10).

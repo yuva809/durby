@@ -52,6 +52,7 @@ collide with the tenancy rules: a user belongs to several organizations, and lis
      carries the entries over. The new owner needs `CREATE` on the schema for `ALTER … OWNER`, so the migration
      grants it right before and revokes it right after. New functions are not executable by `PUBLIC` by default
      (`ALTER DEFAULT PRIVILEGES … REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`).
+   - _Allow-list:_ `auth_user_organization_ids` (this ADR), `outbox_due_tenants` ([ADR 0013](0013-outbox.md) §3).
    - _Guard:_ an integration test fails unless every `SECURITY DEFINER` function in `public` is on an allow-list,
      owned by `durby_rls_definer`, has a pinned `search_path`, and is not executable by `PUBLIC`, and unless `durby_rls_definer` cannot log in and has no `CREATE` on `public`.
    - _Rejected:_ (a) `memberships` as a platform table without RLS: any code holding `PLATFORM_PRISMA` could list

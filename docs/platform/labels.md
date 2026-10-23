@@ -110,7 +110,8 @@ labels.translator('de', { format: 'html' }); // escapes template and params
 
 All of the tenant's `label_overrides` rows and its partner's `partner_label_overrides` rows (every locale) are loaded
 in one transaction, once per request (cached in the request's CLS scope by tenant id); writes drop the cache. Without
-an active CLS scope nothing is cached. No Redis and no event until 1.9.
+an active CLS scope nothing is cached. Each change emits `config.labels.changed` (`{ locale, key }`,
+[outbox.md](outbox.md)) in its transaction; no Redis cache yet (ADR 0013 §7).
 
 ## API
 
@@ -143,7 +144,8 @@ an active CLS scope nothing is cached. No Redis and no event until 1.9.
 
 Checked in this order (`PUT`). Error labels: `platform.errors.<camelCaseCode>`, e.g. `platform.errors.labelsNotOverridable`.
 
-`Idempotency-Key` on `PUT`/`DELETE` comes with platform/idempotency (1.9); both are naturally idempotent.
+`PUT` and `DELETE` require `Idempotency-Key` (`@Idempotent()`, [idempotency.md](idempotency.md)); both are naturally
+idempotent.
 
 ## Audit
 
@@ -200,7 +202,7 @@ Recorded with `AuditService.record(tx, …)` in the write's transaction. Snapsho
 
 ## Later
 
-- Redis cache invalidated by an outbox event (1.9).
+- A Redis cache with a `config.labels.changed` handler, if measurements need one.
 - Brand or location overrides, if a step needs them (own columns, ADR 0010 §3).
 - Partner writes by platform staff (when `@PlatformOnly` is modelled).
 - Override editor in the web app (1.10).

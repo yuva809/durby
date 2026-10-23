@@ -118,8 +118,9 @@ A `brandId` or `locationId` that isn't the current tenant's → `404 settings.br
 `setting_values` rows and its partner's rows are loaded in one transaction, once per request (cached in the request's
 CLS scope by tenant id); writes drop the cache. Without an active CLS scope nothing is cached.
 
-No Redis cache and no event yet. Step 1.9 adds the outbox event `config.settings.changed` and, if needed, a Redis
-cache invalidated by it.
+Each change emits the outbox event `config.settings.changed` (`{ scope, scopeId, key }`, [outbox.md](outbox.md)) in
+its transaction; a no-op write emits nothing. No Redis cache yet (ADR 0013 §7): when one is added, it registers a
+handler for this event.
 
 ## API (`/api/v1/settings`)
 
@@ -167,8 +168,8 @@ Both keys are `location` scope (ADR 0010): a location-limited membership holds t
 
 Error labels: `platform.errors.<camelCaseCode>`, e.g. `platform.errors.settingsUnknownKey`.
 
-`Idempotency-Key` on `PUT`/`DELETE` comes with platform/idempotency (1.9). Both are naturally idempotent (set to a
-value, remove), and a no-op writes nothing.
+`PUT` and `DELETE` require `Idempotency-Key` (`@Idempotent()`, [idempotency.md](idempotency.md)). Both are naturally
+idempotent (set to a value, remove), and a no-op writes nothing.
 
 ## Audit
 
@@ -211,6 +212,6 @@ A future migration that sets partner values writes one audit row per organizatio
 
 ## Later
 
-- Outbox event `config.settings.changed` and a Redis cache (1.9).
+- A Redis cache with a `config.settings.changed` handler, if measurements need one.
 - Writes of partner values by platform staff (when `@PlatformOnly` is modelled).
 - In-use checks from inventory (valuation method) and billing (currency) when those modules exist.
