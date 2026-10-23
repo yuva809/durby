@@ -23,6 +23,8 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   feature_override: ['id', 'featureKey', 'enabled', 'limits'],
   /** `features`: sorted keys, `key:<canonical limits json>` where a plan sets limits. */
   plan: ['id', 'key', 'features'],
+  /** `value`: canonical JSON string (sorted keys). Settings never hold secrets (ADR 0010). */
+  setting_value: ['id', 'key', 'scopeType', 'brandId', 'locationId', 'value'],
 } as const satisfies Record<AuditEntityType, readonly string[]>;
 
 type Field<T extends AuditEntityType> = (typeof AUDIT_SNAPSHOT_FIELDS)[T][number];

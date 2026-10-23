@@ -90,6 +90,7 @@ describe('TENANT_MODELS', () => {
       'MembershipLocation',
       'Role',
       'RolePermission',
+      'SettingValue',
       'TenantFeatureOverride',
     ]);
   });
