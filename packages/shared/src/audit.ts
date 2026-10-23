@@ -15,6 +15,7 @@ export const AUDIT_ENTITY_TYPES = [
   'session',
   'feature_override',
   'plan',
+  'setting_value',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -81,6 +82,18 @@ export const AUDIT_ACTIONS = {
   'platform.plan.features_changed': {
     entityType: 'plan',
     label: 'platform.audit.actions.planFeaturesChanged',
+  },
+  'platform.setting_value.created': {
+    entityType: 'setting_value',
+    label: 'platform.audit.actions.settingValueCreated',
+  },
+  'platform.setting_value.updated': {
+    entityType: 'setting_value',
+    label: 'platform.audit.actions.settingValueUpdated',
+  },
+  'platform.setting_value.deleted': {
+    entityType: 'setting_value',
+    label: 'platform.audit.actions.settingValueDeleted',
   },
 } as const satisfies Record<string, AuditActionDefinition>;
 

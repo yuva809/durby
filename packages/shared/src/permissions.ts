@@ -22,10 +22,9 @@ export const PERMISSIONS = {
   'platform.users.manage': { scope: 'organization', label: 'platform.permissions.usersManage' },
   'platform.roles.read': { scope: 'organization', label: 'platform.permissions.rolesRead' },
   'platform.roles.manage': { scope: 'organization', label: 'platform.permissions.rolesManage' },
-  'platform.settings.manage': {
-    scope: 'organization',
-    label: 'platform.permissions.settingsManage',
-  },
+  // Location scope (ADR 0010): location values need the key there, other scopes all locations.
+  'platform.settings.read': { scope: 'location', label: 'platform.permissions.settingsRead' },
+  'platform.settings.manage': { scope: 'location', label: 'platform.permissions.settingsManage' },
   'platform.labels.manage': { scope: 'organization', label: 'platform.permissions.labelsManage' },
   'platform.audit.read': { scope: 'organization', label: 'platform.permissions.auditRead' },
 } as const satisfies Record<string, PermissionDefinition>;
@@ -57,6 +56,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'platform.users.manage': 'grant',
     'platform.roles.read': 'grant',
     'platform.roles.manage': 'grant',
+    'platform.settings.read': 'grant',
     'platform.settings.manage': 'grant',
     'platform.labels.manage': 'grant',
     'platform.audit.read': 'grant',
@@ -68,6 +68,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'platform.users.manage': 'deny',
     'platform.roles.read': 'grant',
     'platform.roles.manage': 'deny',
+    'platform.settings.read': 'grant',
     'platform.settings.manage': 'deny',
     'platform.labels.manage': 'deny',
     'platform.audit.read': 'deny',
@@ -79,6 +80,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'platform.users.manage': 'deny',
     'platform.roles.read': 'deny',
     'platform.roles.manage': 'deny',
+    'platform.settings.read': 'grant',
     'platform.settings.manage': 'deny',
     'platform.labels.manage': 'deny',
     'platform.audit.read': 'deny',

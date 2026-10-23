@@ -6,7 +6,7 @@ import {
   isFeatureKey,
   PLAN_KEYS,
 } from '@durby/shared';
-import { auditActor, AuditService, snapshot } from '../../audit';
+import { auditActor, AuditService, canonicalJson, snapshot } from '../../audit';
 import { Prisma } from '../../database/generated/client';
 import {
   TENANT_PRISMA,
@@ -234,20 +234,6 @@ function parseLimits(
   }
   const data = parsed.data as Record<string, number | undefined>;
   return Object.keys(data).length === 0 ? null : data;
-}
-
-/** JSON with sorted keys, for comparing and auditing limits; null for no limits. */
-export function canonicalJson(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
-  const sorted = (v: unknown): unknown =>
-    v !== null && typeof v === 'object' && !Array.isArray(v)
-      ? Object.fromEntries(
-          Object.keys(v)
-            .sort()
-            .map((k) => [k, sorted((v as Record<string, unknown>)[k])]),
-        )
-      : v;
-  return JSON.stringify(sorted(value));
 }
 
 function overrideSnapshot(row: {

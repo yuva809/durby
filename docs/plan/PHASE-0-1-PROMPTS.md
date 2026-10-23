@@ -251,6 +251,8 @@ Build the apps/web foundation:
 - Settings pages: organization profile, users & roles, plan/features (read-only),
   labels editor, number series, audit log viewer.
 - Use the API's generated OpenAPI types for all calls.
+- Settings (docs/platform/settings.md → Web app): if GET /settings is denied (custom role without
+  platform.settings.read) or fails, fall back to the registry's code defaults instead of failing.
 ```
 
 **Done when:** two demo orgs on two domains look different, see different modules, and show different labels.

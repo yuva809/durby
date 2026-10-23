@@ -37,6 +37,7 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 - Feature keys: `module.capability` (e.g. `inventory`, `inventory.counts`). Permission keys: `module.entity.action` (e.g. `inventory.stock.adjust`). Both registered in `packages/shared`. A new permission key needs a scope (`organization` | `location`) and an explicit grant/deny for each non-Owner system role (ADR 0007); Owner gets it automatically. A new feature key needs name/description labels, `dependsOn` and a strict limits schema (ADR 0009).
 - Plans (`plans`, `plan_features`) are read-only for the app: their contents change only through reviewed migrations, which write a per-org audit row (ADR 0009). Organizations' plans and overrides change through the `entitlements` CLI until platform staff is modelled.
 - Label keys: `module.area.item` (e.g. `inventory.nav.title`).
+- Settings (ADR 0010): keys `module.camelCaseName` in `packages/shared/src/settings.ts` with name/description labels, a strict Zod schema, a default, allowed scopes and `dataBound`. Settings never hold secrets. Partner values change only through reviewed migrations.
 - Audit (ADR 0008): actions are keys of `AUDIT_ACTIONS` in `packages/shared` (never free-form strings). Record with `AuditService.record(tx, …)` inside the change's own transaction; `before`/`after` only via the per-entity allow-list, never secrets or emails. No `@Audited` interceptor.
 - Events: `module.entity.past_tense` (e.g. `inventory.stock.received`), versioned payload schemas in `packages/shared/events`.
 

@@ -9,7 +9,7 @@ export interface ValidationIssue {
 }
 
 /** Path, code and message per issue: never the input values (bodies carry passwords and tokens). */
-function issuesOf(error: z.ZodError): ValidationIssue[] {
+export function issuesOf(error: z.ZodError): ValidationIssue[] {
   return error.issues.map((issue) => ({
     path: issue.path.join('.'),
     code: issue.code,

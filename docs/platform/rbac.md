@@ -46,7 +46,8 @@ Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a 
 | `platform.users.manage`    | organization | change a member's role or locations, remove a member           |
 | `platform.roles.read`      | organization | list roles (needed by the invite dialog)                       |
 | `platform.roles.manage`    | organization | create, edit, delete custom roles                              |
-| `platform.settings.manage` | organization | settings (1.6)                                                 |
+| `platform.settings.read`   | location     | read resolved settings (1.6, ADR 0010)                         |
+| `platform.settings.manage` | location     | set and remove setting values (1.6, ADR 0010)                  |
 | `platform.labels.manage`   | organization | label overrides (1.7)                                          |
 | `platform.audit.read`      | organization | audit log (1.4)                                                |
 
@@ -59,12 +60,12 @@ Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a 
 Created for every organization (`SystemRoles.ensureFor`, called by provisioning and backfilled by the migration).
 Their permissions are **defined in code** (`SYSTEM_ROLE_PERMISSIONS`), the same for every organization:
 
-| Role    | Permissions                                                           |
-| ------- | --------------------------------------------------------------------- |
-| Owner   | every registered key, including future ones                           |
-| Admin   | everything except `platform.org.manage`                               |
-| Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read` |
-| Staff   | none of the `platform.*` keys                                         |
+| Role    | Permissions                                                                                     |
+| ------- | ----------------------------------------------------------------------------------------------- |
+| Owner   | every registered key, including future ones                                                     |
+| Admin   | everything except `platform.org.manage`                                                         |
+| Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read`, `platform.settings.read` |
+| Staff   | `platform.settings.read` only                                                                   |
 
 Admin, Manager and Staff list **every** key as `grant` or `deny`; a new key that isn't listed fails the typecheck and a
 unit test, so each new key is a conscious decision per role. System roles cannot be edited or deleted. Display names
@@ -121,6 +122,11 @@ A test snapshots the `@Public()` and `@Authenticated()` routes.
 | create custom role / edit custom role / delete custom role | the role's keys ⊆ actor's keys, before and after the change                  |
 | leave the organization's last Owner without an Owner       | never (409 `rbac.last_owner`)                                                |
 | limit an Owner (or an Owner invitation) to locations       | never (409 `rbac.owner_all_locations`): an Owner always covers all locations |
+
+**Custom roles that invite or manage members** need every permission of the roles they assign or manage. Every system
+role holds `platform.settings.read` (ADR 0010 §6), so such a role needs it too, or it can't invite, assign or manage
+Staff (or any system role). Existing custom roles were not backfilled. Open question for when Staff gains operational
+permissions: ADR 0007 → Open questions.
 
 **Last Owner:** changing or removing an Owner locks the organization's Owner role row (`SELECT … FOR UPDATE`) and
 counts the remaining Owners in the same transaction. A deferred constraint trigger

@@ -36,8 +36,14 @@ describe('members API', () => {
   }
 
   /** A custom role that may manage members but holds nothing else of note. */
+  // settings.read too: every system role holds it, and you can only manage roles within your own
+  // keys (ADR 0010 §6).
   const userManagerRole = (org: SeededOrg) =>
-    seed.customRole(org.id, ['platform.users.read', 'platform.users.manage']);
+    seed.customRole(org.id, [
+      'platform.users.read',
+      'platform.users.manage',
+      'platform.settings.read',
+    ]);
 
   describe('GET /members', () => {
     it('lists members with email, role and locations; needs platform.users.read', async () => {

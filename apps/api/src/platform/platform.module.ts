@@ -4,6 +4,7 @@ import { AuditModule } from './audit';
 import { AuthModule } from './auth';
 import { ConfigModule } from './config';
 import { EntitlementsModule } from './config/entitlements';
+import { SettingsModule } from './config/settings';
 import { DatabaseModule } from './database';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
@@ -29,6 +30,7 @@ import { TenancyModule } from './tenancy';
     AuthModule,
     EntitlementsModule,
     RbacModule,
+    SettingsModule,
     ProvisioningModule,
   ],
   controllers: [HealthController],
