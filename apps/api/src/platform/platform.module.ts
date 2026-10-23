@@ -20,6 +20,7 @@ import { RateLimitModule } from './rate-limit';
 import { RbacModule } from './rbac';
 import { RedisModule } from './redis';
 import { TenancyModule } from './tenancy';
+import { ThemeModule } from './theme';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { TenancyModule } from './tenancy';
     LabelsModule,
     NumberingModule,
     ProvisioningModule,
+    ThemeModule,
   ],
   controllers: [HealthController],
   providers: [HealthService, { provide: APP_FILTER, useClass: ApiExceptionFilter }],

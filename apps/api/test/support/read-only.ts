@@ -1,11 +1,16 @@
 import type { Client } from 'pg';
 
-/** Platform tables the app only reads; contents change through migrations (ADR 0009 §2, ADR 0010 §2, ADR 0011). */
+/**
+ * Platform tables the app only reads; contents change through migrations (ADR 0009 §2, ADR 0010 §2,
+ * ADR 0011, ADR 0015 §3).
+ */
 export const APP_READ_ONLY_TABLES = [
   'plans',
   'plan_features',
   'partner_setting_values',
   'partner_label_overrides',
+  'partner_themes',
+  'partner_domains',
 ] as const;
 
 export interface ReadOnlyGap {

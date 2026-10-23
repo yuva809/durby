@@ -4,7 +4,9 @@
 	email {$ACME_EMAIL}
 }
 
-{$STAGING_DOMAIN} {
+# Both domains of the two-domain demo (ADR 0015 §10): same routes, one certificate each. Web and api
+# read the original Host (Caddy passes it on and sets X-Forwarded-Host) to pick the partner theme.
+{$STAGING_DOMAIN}, {$STAGING_DEMO_DOMAIN} {
 	encode zstd gzip
 
 	# One id per request, shared with the api logs. Client-supplied ids are overwritten.

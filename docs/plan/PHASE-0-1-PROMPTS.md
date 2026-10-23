@@ -257,6 +257,10 @@ Build the apps/web foundation:
   numberFormatProblems from packages/shared and show each problem's label; nextValue is a string.
 ```
 
+As built (ADR 0015, docs/platform/web-shell.md): four PRs, (a) shell + design system + nav + partner theming by
+domain, (b) users/roles/invites, (c) settings/labels/number series/plan, (d) audit log viewer. Calls are typed with the
+shared Zod schemas; OpenAPI generation is deferred to `api.public`.
+
 **Done when:** two demo orgs on two domains look different, see different modules, and show different labels.
 
 ### 1.11 Phase 1 review
@@ -269,3 +273,12 @@ missing audit calls, TODOs. Then fix them one by one.
 ```
 
 **Done when:** the review list is empty. Phase 1 complete → next: Phase 2 (shell + catalog for inventory).
+
+## Before production
+
+Items that must be done before the first production deploy:
+
+- [ ] **Remove the demo partner** (ADR 0015 §6): a contract migration deletes the `demo` partner's
+      `partner_label_overrides`, `partner_domains` (`partner-demo.localhost`, `partner-demo.durby.tech`),
+      `partner_themes` row and the partner itself, after the staging demo organizations on it are removed.
+- [ ] **Audit IP retention** (ADR 0008 §10): a retention limit for `ip` in audit entries.

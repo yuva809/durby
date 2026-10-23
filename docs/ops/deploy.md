@@ -62,6 +62,9 @@ age-keygen -o durby-backup.key        # prints "Public key: age1..."
 Create an `A` record `staging.durby.tech` pointing to the server's IPv4 address (and `AAAA` for IPv6 if you want it).
 Caddy gets the certificate on the first deploy, so the record must resolve before then.
 
+For the two-domain demo (ADR 0015 §10) add a `CNAME` record `partner-demo.durby.tech` → `staging.durby.tech` (or an
+`A`/`AAAA` record to the same addresses). It serves the same stack with the demo partner's theme.
+
 ### 3. Hetzner Cloud Firewall (console)
 
 Defense in depth on top of ufw. Docker publishes ports through its own iptables rules, which bypass ufw, so
@@ -188,6 +191,16 @@ sudo grep -c '^JWT_ACCESS_SECRET=' /opt/durby/.env   # 1
 
 Changing the secret later logs everyone out within one access-token lifetime (10 min); refresh tokens survive.
 
+**Step 1.10 (admin web shell)** needs `STAGING_DEMO_DOMAIN` and its DNS record (above). Add the record first and wait
+until it resolves (`dig +short partner-demo.durby.tech`), then on the server:
+
+```bash
+sudo -u deploy sh -c 'grep -q "^STAGING_DEMO_DOMAIN=" /opt/durby/.env ||
+  printf "STAGING_DEMO_DOMAIN=partner-demo.durby.tech\n" >>/opt/durby/.env'
+```
+
+Caddy requests the second certificate on the next deploy; `WEB_ORIGINS` then lists both origins.
+
 Nothing else is manual. On every deploy, `bin/deploy.sh` applies `postgres-init/02-rls-definer.sh` as the Postgres
 superuser before migrations (it creates the `durby_rls_definer` role, ADR 0006; init scripts never re-run on an
 existing volume). Mailpit starts with the stack.
@@ -204,6 +217,18 @@ bin/dc run --rm --no-deps api node dist/cli/create-admin.js --email you@example.
 It creates the default partner, the organization, the user and the membership if missing, and emails a link to set
 the password (it never takes a password). Running it again is safe: nothing is duplicated, and a fresh link is sent.
 `--locale de` sends the German email. The link arrives in Mailpit (below).
+
+**Two-domain demo** (docs/platform/web-shell.md): an organization on the demo partner (created by a migration) and the
+`inventory` plan, signed in on `https://partner-demo.durby.tech`:
+
+```bash
+bin/dc run --rm --no-deps api node dist/cli/create-admin.js --email demo@example.com --org "Demo Trattoria" \
+  --partner demo --plan inventory
+```
+
+`--partner` only uses an existing partner; it never creates one. The password link points to `WEB_BASE_URL` (the
+first domain); after setting the password, sign in on the demo domain. Each domain has its own session (host-only
+cookies).
 
 ### Staging mail (Mailpit)
 

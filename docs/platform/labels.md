@@ -174,8 +174,8 @@ Recorded with `AuditService.record(tx, …)` in the write's transaction. Snapsho
 - `useT()` returns `t(key, params)` over the loaded dictionary. Authenticated UI (navigation, account panel) uses it.
 - Public pages (login, password reset, accept-invite, verify-email) use the bundled defaults, never overrides.
 - Overrides render as text: React escapes them; `dangerouslySetInnerHTML` is never used for labels.
-- Navigation: `inventory.nav.title` in the main navigation (`platform.nav.label`), plain text until the inventory
-  pages exist.
+- Navigation: the nav registry's `*.nav.title` labels in the main navigation (`platform.nav.label`), filtered by
+  features and permissions (docs/platform/web-shell.md → Nav registry).
 
 ## Tests
 

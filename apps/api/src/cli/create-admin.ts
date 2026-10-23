@@ -6,9 +6,10 @@ import { ProvisioningService } from '../platform/provisioning';
 import { runCommand } from './run-command';
 
 const USAGE = `Usage: create-admin --email <email> --org <organization name> [--locale en|de]
-                    [--plan ${PLAN_KEYS.join('|')}]
+                    [--plan ${PLAN_KEYS.join('|')}] [--partner <slug>]
 
-Creates the default partner, the organization (with its system roles, on --plan, default full; an
+Creates the default partner (or uses --partner, which must exist: other partners come from
+migrations with their theme and domains), the organization (with its system roles, on --plan, default full; an
 existing organization keeps its plan), the user and an Owner
 membership if missing, then emails the user a link to set their password. Safe to run again: nothing is duplicated or
 overwritten, and a fresh link is sent. Never takes a password and never creates demo data.`;
@@ -21,6 +22,8 @@ export interface CreateAdminInput {
   org: string;
   locale: string;
   plan: PlanKey;
+  /** Slug of an existing partner; default: the default partner (created if missing). */
+  partner?: string;
 }
 
 export interface CreateAdminResult {
@@ -38,6 +41,7 @@ export function parseCreateAdminArgs(argv: string[]): CreateAdminInput {
       org: { type: 'string' },
       locale: { type: 'string', default: 'en' },
       plan: { type: 'string', default: 'full' },
+      partner: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
     strict: true,
@@ -49,7 +53,9 @@ export function parseCreateAdminArgs(argv: string[]): CreateAdminInput {
   if (!['en', 'de'].includes(values.locale)) throw new UsageError(USAGE);
   const plan = PLAN_KEYS.find((key) => key === values.plan);
   if (plan === undefined) throw new UsageError(USAGE);
-  return { email: email.data.email, org, locale: values.locale, plan };
+  const partner = values.partner?.trim();
+  if (partner !== undefined && !/^[a-z0-9-]+$/.test(partner)) throw new UsageError(USAGE);
+  return { email: email.data.email, org, locale: values.locale, plan, ...(partner && { partner }) };
 }
 
 export async function createAdmin(
@@ -57,7 +63,7 @@ export async function createAdmin(
   input: CreateAdminInput,
 ): Promise<CreateAdminResult> {
   const provisioning = app.get(ProvisioningService);
-  const partner = await provisioning.ensurePartner(DEFAULT_PARTNER.slug, DEFAULT_PARTNER.name);
+  const partner = await resolvePartner(provisioning, input.partner);
   const organization = await provisioning.ensureOrganization(
     partner.id,
     input.org,
@@ -75,6 +81,18 @@ export async function createAdmin(
   return { partner, organization, user, membership };
 }
 
+async function resolvePartner(
+  provisioning: ProvisioningService,
+  slug: string | undefined,
+): Promise<CreateAdminResult['partner']> {
+  if (slug === undefined || slug === DEFAULT_PARTNER.slug) {
+    return provisioning.ensurePartner(DEFAULT_PARTNER.slug, DEFAULT_PARTNER.name);
+  }
+  const partner = await provisioning.findPartner(slug);
+  if (!partner) throw new Error(`Partner "${slug}" does not exist (partners come from migrations)`);
+  return { id: partner.id, created: false };
+}
+
 class UsageError extends Error {}
 
 // Entry point when run with node (CJS build); skipped when imported (tests).
@@ -89,7 +107,7 @@ if (typeof require !== 'undefined' && require.main === module) {
   void runCommand('create-admin', async (app) => {
     const result = await createAdmin(app, input);
     const state = (r: { created: boolean }) => (r.created ? 'created' : 'exists');
-    console.log(`partner       ${DEFAULT_PARTNER.slug}: ${state(result.partner)}`);
+    console.log(`partner       ${input.partner ?? DEFAULT_PARTNER.slug}: ${state(result.partner)}`);
     console.log(
       `organization  ${input.org} (${result.organization.id}): ${state(result.organization)}`,
     );

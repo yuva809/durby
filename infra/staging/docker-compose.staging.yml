@@ -22,9 +22,10 @@ x-api-env: &api-env
   # durby_app only: no BYPASSRLS, no ownership (ADR 0002). The migrator URL never reaches the api.
   DATABASE_URL: postgresql://durby_app:${DURBY_APP_PASSWORD}@postgres:5432/durby
   REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
-  # Auth (docs/platform/auth.md). Web and api share the origin behind Caddy.
+  # Auth (docs/platform/auth.md). Web and api share the origin behind Caddy, on both demo domains
+  # (ADR 0015 §10); email links use the first one.
   JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set in .env (see docs/ops/deploy.md, Upgrading the existing server)}
-  WEB_ORIGINS: https://${STAGING_DOMAIN}
+  WEB_ORIGINS: https://${STAGING_DOMAIN},https://${STAGING_DEMO_DOMAIN:?set in .env}
   WEB_BASE_URL: https://${STAGING_DOMAIN}
   # Caddy is the one proxy in front of the api; it overwrites client-sent X-Forwarded-For.
   TRUST_PROXY: '1'
@@ -222,6 +223,7 @@ services:
     security_opt: ['no-new-privileges:true']
     environment:
       STAGING_DOMAIN: ${STAGING_DOMAIN:?set in .env}
+      STAGING_DEMO_DOMAIN: ${STAGING_DEMO_DOMAIN:?set in .env}
       ACME_EMAIL: ${ACME_EMAIL:?set in .env}
       BASIC_AUTH_USER: ${BASIC_AUTH_USER:?set in .env}
       BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?set in .env}

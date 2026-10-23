@@ -7,10 +7,10 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 
 - Monorepo: pnpm workspaces + Turborepo
 - `apps/api`: NestJS (TypeScript strict), Prisma, PostgreSQL, Redis + BullMQ
-- `apps/web`: Next.js App Router (admin/back office)
+- `apps/web`: Next.js App Router (admin/back office), Tailwind CSS v4 + shadcn/ui (Radix) components in `apps/web/components/ui/` (ADR 0015)
 - `packages/shared`: shared types, Zod schemas, feature keys, permission keys
 - `packages/i18n`: default label dictionaries (`en`, `de`)
-- Tests: Vitest (unit), Testcontainers Postgres (integration), Playwright (E2E, later)
+- Tests: Vitest (unit), Testcontainers Postgres (integration), Playwright (E2E smoke)
 
 ## Hard rules (never break these)
 
@@ -37,6 +37,7 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 - Feature keys: `module.capability` (e.g. `inventory`, `inventory.counts`). Permission keys: `module.entity.action` (e.g. `inventory.stock.adjust`). Both registered in `packages/shared`. A new permission key needs a scope (`organization` | `location`) and an explicit grant/deny for each non-Owner system role (ADR 0007); Owner gets it automatically. A new feature key needs name/description labels, `dependsOn` and a strict limits schema (ADR 0009).
 - Plans (`plans`, `plan_features`) are read-only for the app: their contents change only through reviewed migrations, which write a per-org audit row (ADR 0009). Organizations' plans and overrides change through the `entitlements` CLI until platform staff is modelled.
 - Label keys: `module.area.item` (e.g. `inventory.nav.title`).
+- Theming (ADR 0015): web components use semantic CSS-variable tokens only, never hex colors or Tailwind palette colors, and never the literal product name (it comes from the theme). Partner themes and domains (`partner_themes`, `partner_domains`) are read-only for the app and change only through reviewed migrations. Every web call is typed and parsed with the shared Zod schemas in `packages/shared`.
 - Settings (ADR 0010): keys `module.camelCaseName` in `packages/shared/src/settings.ts` with name/description labels, a strict Zod schema, a default, allowed scopes and `dataBound`. Settings never hold secrets. Partner values change only through reviewed migrations.
 - Labels (ADR 0011): organizations may override only keys allowed by `ORG_OVERRIDABLE` in `packages/i18n` (terminology: `*.nav.**`, `*.entities.**`, `*.fields.**`; never email templates, `**.errors.**` or `platform.app.name`); partner overrides (migrations only) may change any key. Overrides are plain text with exactly the default's `{placeholders}` and never fall back across locales. Code rendering on an organization's behalf takes its `t()` from `LabelService`; HTML output uses `format: 'html'`.
 - Number series (ADR 0012): keys `module.camelCaseName` in `packages/shared/src/numbering.ts` with name/description labels, the owning feature and default prefix/pattern/reset policy. Allocate with `NumberingService.next(key, tx)` inside the document's own transaction, **as late as possible** (the counter row stays locked until commit). **Every module table that stores a generated number has `UNIQUE (tenant_id, number)`** as a backstop: a prefix/pattern edit can rarely render a number that already exists. Counters only move forward; never delete series or counters.

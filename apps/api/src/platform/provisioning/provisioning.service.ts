@@ -52,6 +52,14 @@ export class ProvisioningService {
   }
 
   /**
+   * An existing partner by slug, or null. Partners other than the default come from migrations
+   * with their theme and domains (ADR 0015 §3), so provisioning never creates them.
+   */
+  async findPartner(slug: string): Promise<{ id: string } | null> {
+    return this.platformDb.partner.findUnique({ where: { slug }, select: { id: true } });
+  }
+
+  /**
    * Organizations are matched by exact name within the partner. A new organization (on `plan`), its
    * system roles and its audit row are created in one transaction. An existing organization keeps
    * its plan (change it with the entitlements CLI). The system roles and the registered number

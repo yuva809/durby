@@ -26,8 +26,45 @@ model Partner {
   organizations  Organization[]
   settingValues  PartnerSettingValue[]
   labelOverrides PartnerLabelOverride[]
+  theme          PartnerTheme?
+  domains        PartnerDomain[]
 
   @@map("partners")
+}
+
+// ---------------------------------------------------------------------------
+// Partner theming (docs/platform/web-shell.md, ADR 0015)
+// Platform tables (no RLS), read-only for the app: changed only through reviewed migrations.
+// ---------------------------------------------------------------------------
+
+/// A partner's white-label theme. Without a row the partner uses the default theme (DEFAULT_THEME).
+model PartnerTheme {
+  partnerId    String   @id @map("partner_id") @db.Uuid
+  /// 1–60 characters, no control characters (CHECK).
+  productName  String   @map("product_name")
+  /// Static file under apps/web/public/brand/<slug>/ (CHECK); null = text wordmark.
+  logoPath     String?  @map("logo_path")
+  /// `#rrggbb`, lowercase (CHECK). Ink and paper: null = default.
+  colorPrimary String   @map("color_primary")
+  colorInk     String?  @map("color_ink")
+  colorPaper   String?  @map("color_paper")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  partner      Partner  @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("partner_themes")
+}
+
+/// A hostname that serves a partner's theme. Lowercase DNS name without port (CHECK).
+model PartnerDomain {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  partnerId String   @map("partner_id") @db.Uuid
+  hostname  String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  partner   Partner  @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([partnerId])
+  @@map("partner_domains")
 }
 
 /// The tenant. No RLS: holds non-sensitive platform fields only (ADR 0005).

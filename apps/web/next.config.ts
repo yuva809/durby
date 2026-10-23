@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   // Self-contained server (apps/web/Dockerfile); tracing from the repo root picks up workspace packages.
   output: 'standalone',
   outputFileTracingRoot: fileURLToPath(new URL('../..', import.meta.url)),
+  // Local two-domain demo (docs/platform/web-shell.md): durby.localhost, partner-demo.localhost.
+  allowedDevOrigins: ['*.localhost'],
   rewrites() {
     return Promise.resolve([{ source: '/api/v1/:path*', destination: `${apiUrl}/api/v1/:path*` }]);
   },

@@ -1,0 +1,65 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens (docs/platform/web-shell.md → Tokens, ADR 0015 §5). Components use only these
+ * semantic tokens. The values below are the default theme (DEFAULT_THEME in packages/shared, kept
+ * equal by lib/theme.test.ts); the root layout overrides them with the request's partner theme.
+ */
+:root {
+  --background: #fbf8f3;
+  --foreground: #17140f;
+  --card: #ffffff;
+  --muted: #f0ede8;
+  --muted-foreground: #6c6964;
+  --border: #e0ddd8;
+  --input: #918e89;
+  --primary: #ff5a1f;
+  --primary-foreground: #17140f;
+  --primary-text: #b9451a;
+  --ring: #b9451a;
+  --destructive: #b42318;
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--muted);
+  --color-accent-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-text: var(--primary-text);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  /* System fonts: no third-party font requests. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+  a {
+    @apply text-primary-text underline-offset-4 hover:underline;
+  }
+}

@@ -52,6 +52,8 @@ describe('route markers', () => {
     expect(withMarker(routes, 'public')).toEqual([
       'GET /api/v1/health',
       'GET /api/v1/health/live',
+      // ADR 0015 §3: the partner theme for the request's host; no tenant data.
+      'GET /api/v1/theme',
       'POST /api/v1/auth/login',
       'POST /api/v1/auth/logout',
       'POST /api/v1/auth/password/forgot',

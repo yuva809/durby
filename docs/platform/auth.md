@@ -244,7 +244,8 @@ asserts that no token or link appears.
 ## Web
 
 Code: `apps/web/lib/auth/` (session store, link tokens, error labels), `apps/web/app/providers.tsx` (`AuthProvider`,
-`useAuth()`), pages under `apps/web/app/`.
+`useAuth()`), sign-in pages under `apps/web/app/(public)/`, signed-in pages under `apps/web/app/(app)/` behind the
+client guard (docs/platform/web-shell.md → Routes).
 
 - **Access token in memory only:** a variable inside the session store. Never browser storage or a script-readable
   cookie; a unit test traps `localStorage`, `sessionStorage` and `document` during every flow, and another scans the
