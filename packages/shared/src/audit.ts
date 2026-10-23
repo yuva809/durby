@@ -6,13 +6,15 @@
  * defaults in packages/i18n (a test fails without them).
  */
 
-/** Entity types an audit row can point at. Labels: `platform.audit.entities.<type>`. */
+/** Entity types an audit row can point at. Labels: `platform.audit.entities.<camelCaseType>`. */
 export const AUDIT_ENTITY_TYPES = [
   'organization',
   'role',
   'membership',
   'invitation',
   'session',
+  'feature_override',
+  'plan',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -59,6 +61,27 @@ export const AUDIT_ACTIONS = {
     entityType: 'session',
     label: 'platform.audit.actions.sessionOrganizationSwitched',
   },
+  'platform.organization.plan_changed': {
+    entityType: 'organization',
+    label: 'platform.audit.actions.organizationPlanChanged',
+  },
+  'platform.feature_override.created': {
+    entityType: 'feature_override',
+    label: 'platform.audit.actions.featureOverrideCreated',
+  },
+  'platform.feature_override.updated': {
+    entityType: 'feature_override',
+    label: 'platform.audit.actions.featureOverrideUpdated',
+  },
+  'platform.feature_override.deleted': {
+    entityType: 'feature_override',
+    label: 'platform.audit.actions.featureOverrideDeleted',
+  },
+  /** Written per organization on the plan by a migration that changes plan contents (ADR 0009). */
+  'platform.plan.features_changed': {
+    entityType: 'plan',
+    label: 'platform.audit.actions.planFeaturesChanged',
+  },
 } as const satisfies Record<string, AuditActionDefinition>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -79,6 +102,7 @@ export function isAuditAction(value: string): value is AuditAction {
 export const AUDIT_SYSTEM_ACTORS = {
   'cli.create_admin': { label: 'platform.audit.actors.cliCreateAdmin' },
   'cli.seed_dev': { label: 'platform.audit.actors.cliSeedDev' },
+  'cli.entitlements': { label: 'platform.audit.actors.cliEntitlements' },
   migration: { label: 'platform.audit.actors.migration' },
 } as const satisfies Record<string, { label: string }>;
 
@@ -89,5 +113,5 @@ export const AUDIT_SYSTEM_ACTOR_KEYS = Object.keys(
 ) as readonly AuditSystemActor[];
 
 export function auditEntityLabel(type: AuditEntityType): string {
-  return `platform.audit.entities.${type}`;
+  return `platform.audit.entities.${type.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`;
 }
