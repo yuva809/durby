@@ -66,8 +66,9 @@ describe('roles API', () => {
       'platform.users.read',
       'platform.users.invite',
       'platform.roles.read',
+      'platform.settings.read',
     ]);
-    expect(data[3]?.permissions).toEqual([]);
+    expect(data[3]?.permissions).toEqual(['platform.settings.read']);
     expect(data.map((r) => r.id)).not.toContain(custom);
 
     const staff = await tokenAs(a, a.roles.staff);

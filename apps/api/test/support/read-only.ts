@@ -1,7 +1,7 @@
 import type { Client } from 'pg';
 
-/** Platform reference tables the app only reads; contents change through migrations (ADR 0009 §2). */
-export const APP_READ_ONLY_TABLES = ['plans', 'plan_features'] as const;
+/** Platform tables the app only reads; contents change through migrations (ADR 0009 §2, ADR 0010 §2). */
+export const APP_READ_ONLY_TABLES = ['plans', 'plan_features', 'partner_setting_values'] as const;
 
 export interface ReadOnlyGap {
   table: string;

@@ -123,6 +123,11 @@ A test snapshots the `@Public()` and `@Authenticated()` routes.
 | leave the organization's last Owner without an Owner       | never (409 `rbac.last_owner`)                                                |
 | limit an Owner (or an Owner invitation) to locations       | never (409 `rbac.owner_all_locations`): an Owner always covers all locations |
 
+**Custom roles that invite or manage members** need every permission of the roles they assign or manage. Every system
+role holds `platform.settings.read` (ADR 0010 §6), so such a role needs it too, or it can't invite, assign or manage
+Staff (or any system role). Existing custom roles were not backfilled. Open question for when Staff gains operational
+permissions: ADR 0007 → Open questions.
+
 **Last Owner:** changing or removing an Owner locks the organization's Owner role row (`SELECT … FOR UPDATE`) and
 counts the remaining Owners in the same transaction. A deferred constraint trigger
 (`memberships_keep_last_owner`) re-checks at commit and takes the same lock, so concurrent demotions can't both pass.

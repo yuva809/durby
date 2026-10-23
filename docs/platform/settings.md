@@ -50,10 +50,12 @@ Some settings change the meaning of data already recorded under them: `currency`
 - **Rule:** a data-bound setting may change at a scope only while no module has recorded data that depends on it
   there. The module that owns such data decides, through an in-use check it provides; changing anyway needs that
   module's migration path (e.g. revaluation), not a settings write.
-- Mechanism: platform/config/settings defines `SETTING_IN_USE_CHECKS`, a multi-provider of
-  `{ key, inUse(tx, scope) }`. Modules provide checks (platform never imports modules, rule 5). A write or delete
-  of a data-bound key runs every check for it inside the write's transaction; any `true` → `409 settings.in_use`
-  and nothing is written. No module exists yet, so no checks are registered; tests use a test-only check.
+- Mechanism: platform/config/settings exports the registry `SettingInUseChecks`. A module registers
+  `{ key, inUse(tx, scope) }` with `register(…)` **in `onModuleInit`** (platform never imports modules, rule 5).
+  Registration closes at application bootstrap, before the app serves requests: a later `register` throws, so no
+  write ever runs with a check missing. A write or delete of a data-bound key runs every check for it inside the
+  write's transaction; any `true` → `409 settings.in_use` and nothing is written. No module exists yet, so no checks
+  are registered; tests use a test-only provider that registers in `onModuleInit`.
 - Data-bound keys start at organization scope (plus partner): widening scopes later is easy, narrowing them once
   values are stored is not.
 - The read API returns `dataBound` so the web app can warn before a change.

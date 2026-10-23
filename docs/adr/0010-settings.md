@@ -33,9 +33,10 @@ Spec: [docs/platform/settings.md](../platform/settings.md).
    default, and skipping a bad value is safer than failing every request.
 
 5. **Data-bound settings** (`currency`, `inventory.valuationMethod`) may change only while no module has data that
-   depends on them at that scope. Modules provide in-use checks through a platform-defined multi-provider token
-   (`SETTING_IN_USE_CHECKS`), so platform never imports modules; any check → `409 settings.in_use`. Data-bound keys
-   start at organization scope.
+   depends on them at that scope. Modules register in-use checks with the platform registry `SettingInUseChecks` in
+   `onModuleInit` (registration closes at bootstrap, before any request), so platform never imports modules; any
+   check → `409 settings.in_use`. Data-bound keys start at organization scope.
+   _Rejected:_ a multi-provider injection token: Nest has no native multi-providers.
 
 6. **Permissions.** `platform.settings.manage` changes from `organization` to `location` scope, and a new
    `platform.settings.read` (`location` scope) is granted to every system role. Location writes need the key at that
@@ -44,6 +45,15 @@ Spec: [docs/platform/settings.md](../platform/settings.md).
    _Rejected:_ an `@Authenticated()` exception like `/me/entitlements` (ADR 0009 §6): settings include business
    policy (e.g. negative stock), and a permission keeps rule 10 without a new exception. Consequence: a custom role
    without `settings.read` can't read settings; the web app falls back to code defaults (spec → Web app).
+   Granting rules (ADR 0007) are unchanged: **a custom role that invites or manages members needs every permission
+   of the roles it assigns or manages, including `settings.read`**. Since every system role now holds
+   `settings.read`, a "people manager" custom role without it can no longer invite, assign or manage Staff (or any
+   system role). Accepted: it is one more key in the role editor. No backfill of existing custom roles.
+   _Rejected:_ exempting `settings.read` from the granting checks as a "baseline" key: a new kind of key in the
+   rules for little gain.
+   _Open (revisit later):_ once Staff gains operational permissions (inventory, POS), a people-manager role will need
+   all of them just to assign Staff. Revisit then, e.g. letting `platform.users.manage` assign specific system roles
+   (see ADR 0007, Open questions).
 
 7. **Two locales.** `users.locale` drives the user's own UI; the `locale` setting is the default for output on the
    organization's or location's behalf (emails, later invoices and PDFs) and the fallback for users without one.
@@ -57,4 +67,6 @@ Spec: [docs/platform/settings.md](../platform/settings.md).
 - Adding a setting is a code change (registry, labels); setting values needs no deploy.
 - Partner defaults need a migration (review + deploy).
 - One extra query per request that reads settings; a Redis cache can come later behind `SettingsService`.
-- Open: `config.settings.changed` and Redis (1.9), partner writes for platform staff, module in-use checks.
+- Custom roles that invite or manage members need `platform.settings.read` to assign or manage any system role.
+- Open: `config.settings.changed` and Redis (1.9), partner writes for platform staff, module in-use checks,
+  assigning system roles without holding all their keys (§6).
