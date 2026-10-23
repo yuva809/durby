@@ -1,7 +1,9 @@
 import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import type { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
+import { isFeatureKey } from '@durby/shared';
 import { IS_AUTHENTICATED_KEY, IS_PUBLIC_KEY } from '../auth';
+import { featuresOf } from '../config/entitlements';
 import { API_PREFIX } from '../http';
 import { IS_PLATFORM_ONLY_KEY } from './platform-only.decorator';
 import type { PermissionRegistry } from './permission-registry';
@@ -55,6 +57,8 @@ export interface RouteInfo {
   /** e.g. `GET /api/v1/auth/me` */
   route: string;
   markers: RouteMarker[];
+  /** @RequireFeature keys (an extra check, not a marker; ADR 0009). */
+  features: string[];
 }
 
 /** Every controller route of the application with its markers, sorted by route. */
@@ -78,19 +82,23 @@ export function listRoutes(
       routes.push({
         route: `${method} /${full.join('/')}`,
         markers: markersOf(reflector, handler, metatype),
+        features: featuresOf(reflector, handler, metatype),
       });
     }
   }
   return routes.sort((a, b) => a.route.localeCompare(b.route));
 }
 
-/** Problems that make the api refuse to boot: no marker, several, or an unregistered key. */
+/**
+ * Problems that make the api refuse to boot: no marker, several, an unregistered permission or
+ * feature key, or @RequireFeature on a route without @RequirePermission.
+ */
 export function findRouteMarkerProblems(
   routes: readonly RouteInfo[],
   registry: PermissionRegistry,
 ): string[] {
   const problems: string[] = [];
-  for (const { route, markers } of routes) {
+  for (const { route, markers, features } of routes) {
     if (markers.length === 0) {
       problems.push(`${route}: no access marker`);
     } else if (markers.length > 1) {
@@ -102,6 +110,12 @@ export function findRouteMarkerProblems(
       if (marker.kind === 'permission' && !Object.hasOwn(registry, marker.key)) {
         problems.push(`${route}: unregistered permission key ${marker.key}`);
       }
+    }
+    for (const feature of features) {
+      if (!isFeatureKey(feature)) problems.push(`${route}: unregistered feature key ${feature}`);
+    }
+    if (features.length > 0 && !markers.some((marker) => marker.kind === 'permission')) {
+      problems.push(`${route}: @RequireFeature needs @RequirePermission (ADR 0009)`);
     }
   }
   return problems;

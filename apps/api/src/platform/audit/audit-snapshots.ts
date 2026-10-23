@@ -5,7 +5,7 @@ import type { AuditEntityType } from '@durby/shared';
  * password or token hashes, tokens, links or email addresses: audit rows can't be updated or erased.
  */
 export const AUDIT_SNAPSHOT_FIELDS = {
-  organization: ['id', 'partnerId', 'name'],
+  organization: ['id', 'partnerId', 'name', 'planId'],
   role: ['id', 'systemKey', 'name', 'permissions'],
   membership: ['id', 'userId', 'roleId', 'allLocations', 'locationIds'],
   invitation: [
@@ -19,6 +19,10 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'revokedAt',
   ],
   session: ['organizationId', 'previousOrganizationId'],
+  /** `limits`: canonical JSON string (sorted keys); snapshots hold flat values only. */
+  feature_override: ['id', 'featureKey', 'enabled', 'limits'],
+  /** `features`: sorted keys, `key:<canonical limits json>` where a plan sets limits. */
+  plan: ['id', 'key', 'features'],
 } as const satisfies Record<AuditEntityType, readonly string[]>;
 
 type Field<T extends AuditEntityType> = (typeof AUDIT_SNAPSHOT_FIELDS)[T][number];

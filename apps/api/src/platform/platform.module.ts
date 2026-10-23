@@ -3,6 +3,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { AuditModule } from './audit';
 import { AuthModule } from './auth';
 import { ConfigModule } from './config';
+import { EntitlementsModule } from './config/entitlements';
 import { DatabaseModule } from './database';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
@@ -26,6 +27,7 @@ import { TenancyModule } from './tenancy';
     MailModule,
     AuditModule,
     AuthModule,
+    EntitlementsModule,
     RbacModule,
     ProvisioningModule,
   ],

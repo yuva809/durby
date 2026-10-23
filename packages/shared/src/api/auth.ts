@@ -49,6 +49,12 @@ export const meResponseSchema = z.object({
    */
   activeRole: roleRefSchema.nullable(),
   activePermissions: z.array(z.string()),
+  /**
+   * Enabled feature keys of the active organization ([] without one or without a membership). UI
+   * hint only (ADR 0009 §6): the api checks @RequireFeature per request. Defaults to [] so a web
+   * build can talk to an api from before 1.5 (rollback, ADR 0004).
+   */
+  activeFeatures: z.array(z.string()).default([]),
 });
 
 export const sessionResponseSchema = meResponseSchema.extend({

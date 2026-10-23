@@ -77,12 +77,12 @@ describe('bootstrap commands', () => {
       const email = `admin-${uuidv7()}@example.test`;
       const org = `Org ${uuidv7()}`;
 
-      const first = await createAdmin(app, { email, org, locale: 'de' });
+      const first = await createAdmin(app, { email, org, locale: 'de', plan: 'full' });
       expect(first.organization.created).toBe(true);
       expect(first.user.created).toBe(true);
       expect(first.membership.created).toBe(true);
 
-      const second = await createAdmin(app, { email, org, locale: 'de' });
+      const second = await createAdmin(app, { email, org, locale: 'de', plan: 'full' });
       expect(second).toEqual({
         partner: { id: first.partner.id, created: false },
         organization: { id: first.organization.id, created: false },
@@ -107,7 +107,11 @@ describe('bootstrap commands', () => {
       ]);
 
       const user = await raw.user.findUniqueOrThrow({ where: { email } });
-      expect(user).toMatchObject({ passwordHash: null, emailVerifiedAt: null, locale: 'de' });
+      expect(user).toMatchObject({
+        passwordHash: null,
+        emailVerifiedAt: null,
+        locale: 'de',
+      });
 
       // A fresh link each run; only the newest works.
       const mails = mailer.to(email);
@@ -121,11 +125,11 @@ describe('bootstrap commands', () => {
 
     it('adds an existing user to a new organization without touching their account', async () => {
       const email = `admin-${uuidv7()}@example.test`;
-      const a = await createAdmin(app, { email, org: `A ${uuidv7()}`, locale: 'en' });
+      const a = await createAdmin(app, { email, org: `A ${uuidv7()}`, locale: 'en', plan: 'full' });
       const hash = await app.get(PasswordHasher).hash('existing password!');
       await raw.user.update({ where: { id: a.user.id }, data: { passwordHash: hash } });
 
-      const b = await createAdmin(app, { email, org: `B ${uuidv7()}`, locale: 'de' });
+      const b = await createAdmin(app, { email, org: `B ${uuidv7()}`, locale: 'de', plan: 'full' });
       expect(b.user).toEqual({ id: a.user.id, created: false });
       expect(b.organization.created).toBe(true);
       const user = await raw.user.findUniqueOrThrow({ where: { id: a.user.id } });
@@ -140,6 +144,7 @@ describe('bootstrap commands', () => {
         email: `other-${uuidv7()}@example.test`,
         org,
         locale: 'en',
+        plan: 'full',
       });
       const user = await raw.user.create({ data: { email } });
       await raw.$transaction([
@@ -150,7 +155,7 @@ describe('bootstrap commands', () => {
       ]);
       expect(await roleOf(user.id, existing.organization.id)).toBeNull();
 
-      const result = await createAdmin(app, { email, org, locale: 'en' });
+      const result = await createAdmin(app, { email, org, locale: 'en', plan: 'full' });
       expect(result.membership.created).toBe(false);
       expect(await roleOf(user.id, existing.organization.id)).toBe('owner');
       const fill = (await auditOf(existing.organization.id)).at(-1);
@@ -159,6 +164,28 @@ describe('bootstrap commands', () => {
         actor: 'cli.create_admin',
         after: { userId: user.id },
       });
+    });
+
+    it('puts a new organization on --plan, audited with it; an existing one keeps its plan', async () => {
+      const org = `Planned ${uuidv7()}`;
+      const email = `admin-${uuidv7()}@example.test`;
+      const first = await createAdmin(app, { email, org, locale: 'en', plan: 'inventory' });
+      const planOf = async () =>
+        (
+          await platformDb.organization.findUniqueOrThrow({
+            where: { id: first.organization.id },
+            select: { plan: { select: { id: true, key: true } } },
+          })
+        ).plan;
+      const plan = await planOf();
+      expect(plan?.key).toBe('inventory');
+      expect((await auditOf(first.organization.id))[0]).toMatchObject({
+        action: 'platform.organization.created',
+        after: { id: first.organization.id, planId: plan?.id },
+      });
+
+      await createAdmin(app, { email, org, locale: 'en', plan: 'full' });
+      expect((await planOf())?.key).toBe('inventory');
     });
 
     it('creates no demo data', async () => {
@@ -174,7 +201,12 @@ describe('bootstrap commands', () => {
       const before = await namesUnderDefaultPartner();
       const demoBefore = await demoUsers();
       const org = `Only ${uuidv7()}`;
-      await createAdmin(app, { email: `admin-${uuidv7()}@example.test`, org, locale: 'en' });
+      await createAdmin(app, {
+        email: `admin-${uuidv7()}@example.test`,
+        org,
+        locale: 'en',
+        plan: 'full',
+      });
       const added = (await namesUnderDefaultPartner()).filter((name) => !before.includes(name));
       // Other tests (seed-dev) may add demo organizations in parallel, never under this name.
       expect(added.filter((name) => name.startsWith('Demo '))).toEqual([]);

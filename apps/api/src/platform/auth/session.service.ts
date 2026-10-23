@@ -204,16 +204,24 @@ export class SessionService {
     };
   }
 
-  /** The caller's own role and permissions in the active organization (UI hints, ADR 0007). */
+  /** The caller's role, permissions and features in the active organization (UI hints, ADR 0007/0009). */
   private async accessIn(
     organizationId: string | null,
     userId: string,
-  ): Promise<{ activeRole: ActiveAccess['role']; activePermissions: string[] }> {
+  ): Promise<{
+    activeRole: ActiveAccess['role'];
+    activePermissions: string[];
+    activeFeatures: string[];
+  }> {
     const access =
       organizationId === null
         ? NO_ACTIVE_ACCESS
         : await this.activeAccess.lookup(organizationId, userId);
-    return { activeRole: access.role, activePermissions: access.permissions };
+    return {
+      activeRole: access.role,
+      activePermissions: access.permissions,
+      activeFeatures: access.features,
+    };
   }
 
   private async lockoutCall<T>(fn: () => Promise<T>): Promise<T> {

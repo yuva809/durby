@@ -37,6 +37,8 @@ describe('route markers', () => {
   it('lists every @Authenticated() route', () => {
     expect(withMarker(routes, 'authenticated')).toEqual([
       'GET /api/v1/auth/me',
+      // ADR 0009 §6: reads only the token's active organization's features, for a member.
+      'GET /api/v1/me/entitlements',
       'POST /api/v1/auth/switch-organization',
       // ADR 0007: writes only the caller's own membership, in the tenant the invitation proves.
       'POST /api/v1/invitations/accept-signed-in',

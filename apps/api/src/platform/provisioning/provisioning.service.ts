@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AuditSystemActor, SystemRole } from '@durby/shared';
+import type { AuditSystemActor, PlanKey, SystemRole } from '@durby/shared';
 import { v7 as uuidv7 } from 'uuid';
 import { auditActor, AuditService, snapshot } from '../audit';
 import { UserDirectory } from '../auth';
+import { planIdOf } from '../config/entitlements';
 import { SystemRoles } from '../rbac';
 import {
   PLATFORM_PRISMA,
@@ -49,14 +50,16 @@ export class ProvisioningService {
   }
 
   /**
-   * Organizations are matched by exact name within the partner. A new organization, its system
-   * roles and its audit row are created in one transaction. The system roles are ensured on every
+   * Organizations are matched by exact name within the partner. A new organization (on `plan`), its
+   * system roles and its audit row are created in one transaction. An existing organization keeps
+   * its plan (change it with the entitlements CLI). The system roles are ensured on every
    * call, so an organization whose creation was interrupted (before this step) is completed.
    */
   async ensureOrganization(
     partnerId: string,
     name: string,
     actor: AuditSystemActor,
+    plan: PlanKey = 'full',
   ): Promise<Ensured> {
     const existing = await this.platformDb.organization.findFirst({
       where: { partnerId, name },
@@ -66,7 +69,8 @@ export class ProvisioningService {
     await this.tenantContext.run({ tenantId: id, userId: PROVISIONING_ACTOR }, () =>
       this.tenantDb.$transaction(async (tx) => {
         if (!existing) {
-          const org = await tx.organization.create({ data: { id, partnerId, name } });
+          const planId = await planIdOf(tx, plan);
+          const org = await tx.organization.create({ data: { id, partnerId, name, planId } });
           await this.audit.record(tx, {
             action: 'platform.organization.created',
             actor: auditActor.system(actor),
