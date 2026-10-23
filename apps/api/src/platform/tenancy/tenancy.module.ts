@@ -11,8 +11,9 @@ import { TenantContext } from './tenant-context';
 
 @Global()
 @Module({
-  // One CLS scope per HTTP request; the auth guard (step 1.2) puts the tenant into it.
-  imports: [ClsModule.forRoot({ global: true, middleware: { mount: true } })],
+  // One CLS scope per HTTP request; the auth guard (step 1.2) puts the tenant into it. The request
+  // is kept for platform/audit (request id, client IP).
+  imports: [ClsModule.forRoot({ global: true, middleware: { mount: true, saveReq: true } })],
   providers: [
     TenantContext,
     {

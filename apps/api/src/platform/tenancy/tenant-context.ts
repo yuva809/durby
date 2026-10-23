@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ClsService } from 'nestjs-cls';
+import { CLS_REQ, ClsService } from 'nestjs-cls';
 import { z } from 'zod';
 
 export const tenantContextSchema = z.object({
@@ -55,7 +55,11 @@ export class TenantContext {
    */
   run<T>(ctx: TenantContextValue, fn: () => PromiseLike<T>): Promise<T> {
     const value = Object.freeze(tenantContextSchema.parse(ctx));
+    // A fresh scope: tenant, auth and cached access never leak in from the caller. Only the HTTP
+    // request is carried over, for its request id and client IP (platform/audit).
+    const req: unknown = this.cls.isActive() ? this.cls.get(CLS_REQ) : undefined;
     return this.cls.run({ ifNested: 'override' }, async () => {
+      if (req !== undefined) this.cls.set(CLS_REQ, req);
       this.cls.set(CLS_KEY, value);
       return await fn();
     });

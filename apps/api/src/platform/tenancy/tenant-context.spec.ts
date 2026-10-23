@@ -1,4 +1,4 @@
-import { ClsModule } from 'nestjs-cls';
+import { CLS_REQ, ClsModule, ClsService } from 'nestjs-cls';
 import { Test } from '@nestjs/testing';
 import { v7 as uuidv7 } from 'uuid';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { TENANT_MODELS } from './tenant-models';
 
 describe('TenantContext', () => {
   let context: TenantContext;
+  let cls: ClsService;
   const ctx = { tenantId: uuidv7(), userId: uuidv7() };
 
   beforeAll(async () => {
@@ -15,6 +16,7 @@ describe('TenantContext', () => {
       providers: [TenantContext],
     }).compile();
     context = moduleRef.get(TenantContext);
+    cls = moduleRef.get(ClsService);
   });
 
   it('has no context outside a scope', () => {
@@ -49,6 +51,18 @@ describe('TenantContext', () => {
       context.run(inner, () => Promise.resolve(context.require())),
     );
     expect(seen.tenantId).toBe(inner.tenantId);
+  });
+
+  it('carries the HTTP request into run(), and nothing else from the caller', async () => {
+    const req = { id: 'req-1', ip: '203.0.113.7' };
+    const seen = await cls.run(async () => {
+      cls.set(CLS_REQ, req);
+      cls.set('durby:access', { cached: true });
+      return context.run(ctx, () =>
+        Promise.resolve([cls.get<unknown>(CLS_REQ), cls.get<unknown>('durby:access')]),
+      );
+    });
+    expect(seen).toEqual([req, undefined]);
   });
 
   it('rejects ids that are not UUIDs', () => {
