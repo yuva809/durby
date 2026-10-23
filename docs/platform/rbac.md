@@ -46,7 +46,8 @@ Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a 
 | `platform.users.manage`    | organization | change a member's role or locations, remove a member           |
 | `platform.roles.read`      | organization | list roles (needed by the invite dialog)                       |
 | `platform.roles.manage`    | organization | create, edit, delete custom roles                              |
-| `platform.settings.manage` | organization | settings (1.6)                                                 |
+| `platform.settings.read`   | location     | read resolved settings (1.6, ADR 0010)                         |
+| `platform.settings.manage` | location     | set and remove setting values (1.6, ADR 0010)                  |
 | `platform.labels.manage`   | organization | label overrides (1.7)                                          |
 | `platform.audit.read`      | organization | audit log (1.4)                                                |
 
@@ -59,12 +60,12 @@ Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a 
 Created for every organization (`SystemRoles.ensureFor`, called by provisioning and backfilled by the migration).
 Their permissions are **defined in code** (`SYSTEM_ROLE_PERMISSIONS`), the same for every organization:
 
-| Role    | Permissions                                                           |
-| ------- | --------------------------------------------------------------------- |
-| Owner   | every registered key, including future ones                           |
-| Admin   | everything except `platform.org.manage`                               |
-| Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read` |
-| Staff   | none of the `platform.*` keys                                         |
+| Role    | Permissions                                                                                     |
+| ------- | ----------------------------------------------------------------------------------------------- |
+| Owner   | every registered key, including future ones                                                     |
+| Admin   | everything except `platform.org.manage`                                                         |
+| Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read`, `platform.settings.read` |
+| Staff   | `platform.settings.read` only                                                                   |
 
 Admin, Manager and Staff list **every** key as `grant` or `deny`; a new key that isn't listed fails the typecheck and a
 unit test, so each new key is a conscious decision per role. System roles cannot be edited or deleted. Display names
