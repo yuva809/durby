@@ -253,6 +253,8 @@ Build the apps/web foundation:
 - Use the API's generated OpenAPI types for all calls.
 - Settings (docs/platform/settings.md → Web app): if GET /settings is denied (custom role without
   platform.settings.read) or fails, fall back to the registry's code defaults instead of failing.
+- Number series (docs/platform/numbering.md → API): validate prefix/pattern with
+  numberFormatProblems from packages/shared and show each problem's label; nextValue is a string.
 ```
 
 **Done when:** two demo orgs on two domains look different, see different modules, and show different labels.
