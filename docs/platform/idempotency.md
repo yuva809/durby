@@ -96,9 +96,17 @@ result itself. Outside such a request (jobs, scripts, tests) `completeInTransact
 
 ## Web
 
-`idempotentFetch(store, input, init, key)` sets the header; `useActionKey()` gives one key per user action: the same
-key for every retry of that action (including `apiFetch`'s resend after a token refresh), a new one after success or
-when the input changes.
+`apps/web/lib/idempotency.ts` and `lib/use-action-key.ts`:
+
+- `ActionKey`: one key per user action. `for(input)` returns the same key while the input stays the same (every retry
+  of the action) and a new one when it changes; `done()` ends the action.
+- `useActionKey()`: one `ActionKey` per component instance (a form).
+- `sendAction(store, action, url, init)`: sends the write through `apiFetch` with the action's key. A network error, a
+  409 (still running) or a 5xx keeps the key for the retry; any other answer ends the action. `apiFetch`'s resend
+  after a token refresh reuses the same headers, so the same key.
+- The four `idempotency.*` error codes have labels (`platform.errors.idempotency*`) in `lib/auth/errors.ts`.
+
+No admin write screens exist yet; step 1.10 uses these for its forms.
 
 ## Tests
 

@@ -1,8 +1,14 @@
-import type { AuthErrorCode, InvitationErrorCode, RbacErrorCode } from '@durby/shared';
+import type {
+  AuthErrorCode,
+  IdempotencyErrorCode,
+  InvitationErrorCode,
+  RbacErrorCode,
+} from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
 
 /** Every stable error code the api returns to the web app. */
-export type ApiErrorCode = AuthErrorCode | RbacErrorCode | InvitationErrorCode;
+export type ApiErrorCode =
+  AuthErrorCode | RbacErrorCode | InvitationErrorCode | IdempotencyErrorCode;
 
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
 const LABELS: Record<ApiErrorCode, LabelKey> = {
@@ -37,6 +43,10 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'invitations.already_member': 'platform.invite.errors.alreadyMember',
   'invitations.sign_in_required': 'platform.invite.errors.signInRequired',
   'invitations.email_mismatch': 'platform.invite.errors.emailMismatch',
+  'idempotency.key_required': 'platform.errors.idempotencyKeyRequired',
+  'idempotency.key_invalid': 'platform.errors.idempotencyKeyInvalid',
+  'idempotency.key_reused': 'platform.errors.idempotencyKeyReused',
+  'idempotency.request_in_progress': 'platform.errors.idempotencyRequestInProgress',
 };
 
 export function errorLabel(code: ApiErrorCode | 'unknown'): LabelKey {
