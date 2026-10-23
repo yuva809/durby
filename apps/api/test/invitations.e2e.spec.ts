@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PasswordHasher } from '../src/platform/auth/password-hasher';
 import { PASSWORD, randomIp, startAuthApp, WEB_ORIGIN, type AuthTestKit } from './support/auth-app';
 import { RbacSeed, type SeededOrg } from './support/rbac';
+import { withIdempotencyKey } from './support/idempotency';
 
 const NEW_PASSWORD = 'a brand new password';
 
@@ -36,12 +37,13 @@ describe('invitations', () => {
     get: (path: string) =>
       request(kit.server).get(`/api/v1/invitations${path}`).auth(token, { type: 'bearer' }),
     post: (path: string, body: object) =>
-      request(kit.server)
-        .post(`/api/v1/invitations${path}`)
-        .auth(token, { type: 'bearer' })
-        .send(body),
+      withIdempotencyKey(
+        request(kit.server).post(`/api/v1/invitations${path}`).auth(token, { type: 'bearer' }),
+      ).send(body),
     delete: (path: string) =>
-      request(kit.server).delete(`/api/v1/invitations${path}`).auth(token, { type: 'bearer' }),
+      withIdempotencyKey(
+        request(kit.server).delete(`/api/v1/invitations${path}`).auth(token, { type: 'bearer' }),
+      ),
   });
 
   /** Public endpoints, each test with its own client IP (rate limits are per IP). */

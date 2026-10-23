@@ -1,3 +1,4 @@
+import { IdempotencyExempt } from '../idempotency/idempotent.decorator';
 import {
   Body,
   Controller,
@@ -35,6 +36,8 @@ import { PasswordService } from './password.service';
 import { Public } from './public.decorator';
 import { type IssuedSession, SessionService } from './session.service';
 
+/** ADR 0006 §12: rotation can't be replayed by design, and stored responses would hold tokens. */
+const AUTH_EXEMPT = 'auth route (ADR 0006 §12)';
 /**
  * /api/v1/auth (docs/platform/auth.md → Endpoints). Exempt from Idempotency-Key (ADR 0006):
  * refresh rotation cannot be replayed and stored responses would persist tokens.
@@ -50,6 +53,7 @@ export class AuthController {
 
   @Public()
   @RequireOrigin()
+  @IdempotencyExempt(AUTH_EXEMPT)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'no-store')
@@ -63,6 +67,7 @@ export class AuthController {
 
   @Public()
   @RequireOrigin()
+  @IdempotencyExempt(AUTH_EXEMPT)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'no-store')
@@ -81,6 +86,7 @@ export class AuthController {
   /** Public, authenticated by its cookie: logging out must work after the access token expired. */
   @Public()
   @RequireOrigin()
+  @IdempotencyExempt(AUTH_EXEMPT)
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
@@ -90,6 +96,7 @@ export class AuthController {
 
   @Authenticated()
   @RequireOrigin()
+  @IdempotencyExempt(AUTH_EXEMPT)
   @Post('switch-organization')
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'no-store')
@@ -115,6 +122,7 @@ export class AuthController {
   }
 
   @Public()
+  @IdempotencyExempt(AUTH_EXEMPT)
   @Post('password/forgot')
   @HttpCode(HttpStatus.ACCEPTED)
   async forgotPassword(
@@ -125,6 +133,7 @@ export class AuthController {
   }
 
   @Public()
+  @IdempotencyExempt(AUTH_EXEMPT)
   @Post('password/reset')
   @HttpCode(HttpStatus.NO_CONTENT)
   async resetPassword(
@@ -135,6 +144,7 @@ export class AuthController {
   }
 
   @Public()
+  @IdempotencyExempt(AUTH_EXEMPT)
   @Post('verify-email')
   @HttpCode(HttpStatus.NO_CONTENT)
   async verifyEmail(
@@ -145,6 +155,7 @@ export class AuthController {
   }
 
   @Public()
+  @IdempotencyExempt(AUTH_EXEMPT)
   @Post('verify-email/resend')
   @HttpCode(HttpStatus.ACCEPTED)
   async resendVerification(

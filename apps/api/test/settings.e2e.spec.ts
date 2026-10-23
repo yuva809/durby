@@ -79,12 +79,14 @@ describe('/api/v1/settings', () => {
   ) =>
     request(server)
       .put(`/api/v1/settings/${key}?${scopeQuery(q)}`)
+      .set('Idempotency-Key', uuidv7())
       .auth(token, { type: 'bearer' })
       .send({ value });
 
   const del = (token: string, key: string, q: { brandId?: string; locationId?: string } = {}) =>
     request(server)
       .delete(`/api/v1/settings/${key}?${scopeQuery(q)}`)
+      .set('Idempotency-Key', uuidv7())
       .auth(token, { type: 'bearer' });
 
   const valueOf = (body: unknown, key: string) =>
@@ -268,6 +270,7 @@ describe('/api/v1/settings', () => {
 
       const missing = await request(server)
         .put('/api/v1/settings/locale')
+        .set('Idempotency-Key', uuidv7())
         .auth(token, { type: 'bearer' })
         .send({})
         .expect(400);

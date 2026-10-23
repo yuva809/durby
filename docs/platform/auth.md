@@ -205,9 +205,9 @@ proxies or `Referer`.
 template key and message id; pino redaction covers the field names. A test captures the log output of every flow and
 asserts that no token or link appears.
 
-## Audit and idempotency (until 1.9)
+## Audit and idempotency
 
-- Auth endpoints are exempt from `Idempotency-Key` (rule 8): refresh rotation cannot be replayed by design, and
+- Auth endpoints are exempt from `Idempotency-Key` (rule 8, `@IdempotencyExempt`, [idempotency.md](idempotency.md)): refresh rotation cannot be replayed by design, and
   storing responses would persist tokens.
 - User-level auth actions belong to no tenant and stay structured `security` log events without secrets
   (ADR 0008 §7): `auth.login.succeeded`, `auth.login.failed`, `auth.login.locked`, `auth.refresh.reuse_detected`,

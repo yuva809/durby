@@ -19,6 +19,7 @@ export const AUDIT_ENTITY_TYPES = [
   'label_override',
   'number_series',
   'number_series_counter',
+  'outbox_event',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -118,6 +119,11 @@ export const AUDIT_ACTIONS = {
     entityType: 'number_series_counter',
     label: 'platform.audit.actions.numberSeriesCounterRaised',
   },
+  /** A dead-lettered event or a failed handler job re-queued by the outbox CLI (ADR 0013). */
+  'platform.outbox_event.retried': {
+    entityType: 'outbox_event',
+    label: 'platform.audit.actions.outboxEventRetried',
+  },
 } as const satisfies Record<string, AuditActionDefinition>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -139,6 +145,9 @@ export const AUDIT_SYSTEM_ACTORS = {
   'cli.create_admin': { label: 'platform.audit.actors.cliCreateAdmin' },
   'cli.seed_dev': { label: 'platform.audit.actors.cliSeedDev' },
   'cli.entitlements': { label: 'platform.audit.actors.cliEntitlements' },
+  'cli.outbox': { label: 'platform.audit.actors.cliOutbox' },
+  /** Outbox handlers (ADR 0013), when one records audit rows. */
+  'job.outbox': { label: 'platform.audit.actors.jobOutbox' },
   migration: { label: 'platform.audit.actors.migration' },
 } as const satisfies Record<string, { label: string }>;
 

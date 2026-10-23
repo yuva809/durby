@@ -7,6 +7,7 @@ import {
   PLAN_KEYS,
 } from '@durby/shared';
 import { auditActor, AuditService, canonicalJson, snapshot } from '../../audit';
+import { OutboxService } from '../../outbox';
 import { Prisma } from '../../database/generated/client';
 import {
   TENANT_PRISMA,
@@ -54,6 +55,7 @@ export class EntitlementsAdmin {
     private readonly tenantContext: TenantContext,
     private readonly entitlements: EntitlementService,
     private readonly audit: AuditService,
+    private readonly outbox: OutboxService,
   ) {}
 
   async show(organizationId: string): Promise<OrganizationEntitlements> {
@@ -105,6 +107,7 @@ export class EntitlementsAdmin {
           before: snapshot('organization', { id: organizationId, planId: current.planId }),
           after: snapshot('organization', { id: organizationId, planId }),
         });
+        await this.changed(tx);
         return { changed: true };
       }),
     );
@@ -147,6 +150,7 @@ export class EntitlementsAdmin {
           before: existing ? overrideSnapshot(existing) : null,
           after: overrideSnapshot(row),
         });
+        await this.changed(tx);
         return { changed: true };
       }),
     );
@@ -171,9 +175,15 @@ export class EntitlementsAdmin {
           entityId: existing.id,
           before: overrideSnapshot(existing),
         });
+        await this.changed(tx);
         return { changed: true };
       }),
     );
+  }
+
+  /** Every plan or override change emits `config.entitlements.changed` in its transaction. */
+  private async changed(tx: TenantTransactionClient): Promise<void> {
+    await this.outbox.add(tx, { type: 'config.entitlements.changed', payload: {} });
   }
 
   private asOrg<T>(organizationId: string, fn: () => Promise<T>): Promise<T> {

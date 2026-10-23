@@ -240,6 +240,9 @@ Every push to `main` that passes CI deploys automatically. The workflow:
    (`MIGRATION_DATABASE_URL`). If it fails, the deploy stops and the old api keeps running;
 4. starts the new api and web and waits for their healthchecks (`/api/v1/health/live`, `/healthz`).
    **If they do not become healthy, it starts the previous release again** and fails;
+   4b. starts the **outbox worker** (same api image, `node dist/worker.js`, healthcheck on a heartbeat file) if the
+   image has the label `org.durby.worker`; for an older image it removes the worker service. If the new worker does
+   not become healthy, it restores the previous api, web and worker and fails;
 5. starts/reloads Caddy (picks up Caddyfile changes);
 6. records the release in `state/` and deletes images older than the last 5 releases.
 
@@ -274,6 +277,12 @@ bin/deploy.sh --skip-migrations "$(cat state/previous.sha)"
 
 If a migration itself broke data, restore the last good backup (below) and then deploy the matching release.
 
+**Rolling back to a release before the outbox worker (step 1.9):** the workflow copies that release's
+`infra/staging`, whose compose file and `deploy.sh` don't know the `worker` service, so the newer worker keeps
+running. That is harmless (it only reads and writes the outbox tables, which stay), but remove it to keep the stack
+at one release: `docker rm -f durby-staging-worker-1`. A rollback with the current `deploy.sh` (on the server,
+`--skip-migrations`) removes it by itself.
+
 ## Logs
 
 The api writes one JSON line per request with `req.id`. Caddy sets `X-Request-Id` on every request
@@ -289,6 +298,23 @@ bin/dc logs api | grep '"level":50'              # errors
 ```
 
 Container logs rotate at 10 MB × 5 files per container.
+
+## Outbox worker
+
+The `worker` service publishes committed outbox events and runs their handlers ([outbox.md](../platform/outbox.md)).
+It has no HTTP port; `bin/dc ps worker` shows its heartbeat healthcheck.
+
+```bash
+cd /opt/durby
+bin/dc logs -f --since 10m worker
+bin/dc logs worker | grep '"outbox.lag"'          # every 30 s: due, pending, oldest pending age
+bin/dc run --rm worker node dist/cli/outbox.js dead-letters
+bin/dc run --rm worker node dist/cli/outbox.js retry --org <organization-id> --event <event-id>
+bin/dc run --rm worker node dist/cli/outbox.js handler-failures
+bin/dc run --rm worker node dist/cli/outbox.js retry-handler --job '<event-id>@<handler>'
+```
+
+Lag is a log line, not part of `/api/v1/health` (ADR 0013 §10): a slow worker never fails a deploy's health check.
 
 ## Backups
 

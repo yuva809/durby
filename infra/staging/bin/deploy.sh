@@ -48,6 +48,20 @@ current="$(cat "$STATE/deployed.sha" 2>/dev/null || true)"
 prefix="$(sed -n 's/^IMAGE_PREFIX=//p' "$DEPLOY_DIR/.env" | tr -d "'\"")"
 prefix="${prefix:-ghcr.io/yuva809/durby}"
 
+# The outbox worker (ADR 0013 §9) runs from the api image of releases labelled org.durby.worker.
+# Older releases have no worker: rolling back to one removes the service instead of crash-looping it.
+has_worker() {
+  [[ "$(docker image inspect -f '{{ index .Config.Labels "org.durby.worker" }}' "$prefix-api:$1" 2>/dev/null || true)" == "dist/worker.js" ]]
+}
+start_worker() {
+  if has_worker "$1"; then
+    IMAGE_TAG="$1" dc up -d --wait --wait-timeout "$WAIT_SECONDS" worker
+  else
+    log "release $1 has no outbox worker; removing the service"
+    dc rm -sf worker >/dev/null 2>&1 || true
+  fi
+}
+
 log "release $release (current: ${current:-none})"
 
 # 1. Images: pull only what is not on the host yet.
@@ -90,6 +104,19 @@ if ! dc up -d --wait --wait-timeout "$WAIT_SECONDS" api web; then
   fi
   dc logs --tail 50 api web || true
   die "release $release did not become healthy"
+fi
+
+# 4b. Outbox worker, after the api is healthy (events wait in Postgres meanwhile). Old and new
+#     workers overlapping is safe: claims use SKIP LOCKED and handlers dedupe on processed_events.
+log "starting worker"
+if ! start_worker "$release"; then
+  if [[ -n "$current" && "$current" != "$release" ]]; then
+    log "new worker unhealthy; restoring $current"
+    IMAGE_TAG="$current" dc up -d --wait --wait-timeout "$WAIT_SECONDS" api web || true
+    start_worker "$current" || true
+  fi
+  dc logs --tail 50 worker || true
+  die "release $release worker did not become healthy"
 fi
 
 # 5. Edge. Reload picks up a changed Caddyfile without dropping connections.

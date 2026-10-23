@@ -16,6 +16,7 @@ import { EntitlementsAdmin } from '../src/platform/config/entitlements';
 import { NumberingService } from '../src/platform/numbering';
 import { FakeClock } from './support/fake-clock';
 import { RbacSeed, type SeededOrg } from './support/rbac';
+import { withIdempotencyKey } from './support/idempotency';
 
 /** docs/platform/numbering.md → API: listing, edits, counter raises, access, audit, isolation. */
 describe('/api/v1/number-series', () => {
@@ -58,16 +59,14 @@ describe('/api/v1/number-series', () => {
     request(server).get('/api/v1/number-series').auth(token, { type: 'bearer' });
 
   const patch = (token: string, key: string, body: unknown) =>
-    request(server)
-      .patch(`/api/v1/number-series/${key}`)
-      .auth(token, { type: 'bearer' })
-      .send(body as object);
+    withIdempotencyKey(
+      request(server).patch(`/api/v1/number-series/${key}`).auth(token, { type: 'bearer' }),
+    ).send(body as object);
 
   const raise = (token: string, key: string, body: unknown) =>
-    request(server)
-      .put(`/api/v1/number-series/${key}/counter`)
-      .auth(token, { type: 'bearer' })
-      .send(body as object);
+    withIdempotencyKey(
+      request(server).put(`/api/v1/number-series/${key}/counter`).auth(token, { type: 'bearer' }),
+    ).send(body as object);
 
   const allocate = (orgId: string, key: 'billing.invoice' = 'billing.invoice') =>
     seed.as(orgId, (db) => db.$transaction((tx) => numbering.next(key, tx)));

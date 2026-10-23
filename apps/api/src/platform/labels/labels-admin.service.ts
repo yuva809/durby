@@ -9,6 +9,7 @@ import {
 } from '@durby/i18n';
 import type { LabelOverride } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../audit';
+import { OutboxService } from '../outbox';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../tenancy';
 import { labelsErrors } from './labels-errors';
 import { LabelService } from './labels.service';
@@ -34,6 +35,7 @@ export class LabelsAdmin {
     private readonly tenantContext: TenantContext,
     private readonly labels: LabelService,
     private readonly audit: AuditService,
+    private readonly outbox: OutboxService,
   ) {}
 
   /** Stored overrides (all locales or one), sorted by key then locale. */
@@ -79,6 +81,7 @@ export class LabelsAdmin {
           before: existing ? overrideSnapshot(existing) : null,
           after: overrideSnapshot(row),
         });
+        await this.outbox.add(tx, { type: 'config.labels.changed', payload: { locale, key } });
         return row;
       });
     let row: StoredRow;
@@ -112,6 +115,10 @@ export class LabelsAdmin {
         actor: auditActor.user(userId),
         entityId: existing.id,
         before: overrideSnapshot(existing),
+      });
+      await this.outbox.add(tx, {
+        type: 'config.labels.changed',
+        payload: { locale: existing.locale, key: existing.key },
       });
     });
     this.labels.forget();

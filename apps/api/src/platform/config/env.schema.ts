@@ -60,6 +60,13 @@ export const appEnvSchema = z
     TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
     SMTP_URL: smtpUrl,
     MAIL_FROM: z.string({ error: 'is required' }).min(3),
+
+    // Outbox worker (docs/platform/outbox.md → Worker process). Read only by src/worker.ts.
+    OUTBOX_POLL_MS: z.coerce.number().int().min(100).max(60_000).default(1000),
+    OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(1000).default(100),
+    OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(50).default(10),
+    OUTBOX_LAG_WARN_SECONDS: z.coerce.number().int().min(1).default(60),
+    WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.COOKIE_SECURE) {

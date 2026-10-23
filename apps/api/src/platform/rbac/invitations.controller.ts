@@ -1,3 +1,4 @@
+import { IdempotencyExempt, Idempotent } from '../idempotency/idempotent.decorator';
 import {
   Body,
   Controller,
@@ -47,6 +48,7 @@ export class InvitationsController {
   }
 
   @RequirePermission('platform.users.invite')
+  @Idempotent()
   @Post()
   create(
     @Body(new ZodBody(createInvitationRequestSchema)) body: CreateInvitationRequest,
@@ -55,6 +57,7 @@ export class InvitationsController {
   }
 
   @RequirePermission('platform.users.invite')
+  @Idempotent()
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   revoke(@Param('id', invitationId) id: string): Promise<void> {
@@ -63,6 +66,7 @@ export class InvitationsController {
 
   /** Authenticated by the token itself (ADR 0007). */
   @Public()
+  @IdempotencyExempt('reads only; authenticated by the single-use invitation token')
   @Post('preview')
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'no-store')
@@ -75,6 +79,7 @@ export class InvitationsController {
 
   /** New users only: an existing account must sign in and use accept-signed-in. */
   @Public()
+  @IdempotencyExempt('consumes a single-use token; the response starts a session (ADR 0007)')
   @Post('accept')
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'no-store')
@@ -90,6 +95,7 @@ export class InvitationsController {
    * active one. Writes only the caller's own membership, in the tenant the invitation proves.
    */
   @Authenticated()
+  @IdempotencyExempt('consumes a single-use token (ADR 0007)')
   @Post('accept-signed-in')
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'no-store')

@@ -211,5 +211,13 @@
   "platform.audit.entities.numberSeries": "Number series",
   "platform.audit.entities.numberSeriesCounter": "Number counter",
   "platform.audit.actions.numberSeriesUpdated": "Number series changed",
-  "platform.audit.actions.numberSeriesCounterRaised": "Next number raised"
+  "platform.audit.actions.numberSeriesCounterRaised": "Next number raised",
+  "platform.errors.idempotencyKeyRequired": "This request is missing its retry key. Reload the page and try again.",
+  "platform.errors.idempotencyKeyInvalid": "This request's retry key is invalid. Reload the page and try again.",
+  "platform.errors.idempotencyKeyReused": "This retry key was already used for a different change. Start the action again.",
+  "platform.errors.idempotencyRequestInProgress": "This change is still being saved. Wait a moment and try again.",
+  "platform.audit.entities.outboxEvent": "Event",
+  "platform.audit.actions.outboxEventRetried": "Event delivery retried",
+  "platform.audit.actors.cliOutbox": "Outbox command",
+  "platform.audit.actors.jobOutbox": "Background event processing"
 }

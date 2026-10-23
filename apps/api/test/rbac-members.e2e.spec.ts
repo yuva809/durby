@@ -2,6 +2,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { cookie, startAuthApp, type AuthTestKit } from './support/auth-app';
 import { RbacSeed, type SeededOrg } from './support/rbac';
+import { withIdempotencyKey } from './support/idempotency';
 
 describe('members API', () => {
   let kit: AuthTestKit;
@@ -23,9 +24,13 @@ describe('members API', () => {
     get: (path: string) =>
       request(kit.server).get(`/api/v1${path}`).auth(token, { type: 'bearer' }),
     patch: (path: string, body: object) =>
-      request(kit.server).patch(`/api/v1${path}`).auth(token, { type: 'bearer' }).send(body),
+      withIdempotencyKey(
+        request(kit.server).patch(`/api/v1${path}`).auth(token, { type: 'bearer' }),
+      ).send(body),
     delete: (path: string) =>
-      request(kit.server).delete(`/api/v1${path}`).auth(token, { type: 'bearer' }),
+      withIdempotencyKey(
+        request(kit.server).delete(`/api/v1${path}`).auth(token, { type: 'bearer' }),
+      ),
   });
 
   /** A user with a membership in `org` and an access token for it. */

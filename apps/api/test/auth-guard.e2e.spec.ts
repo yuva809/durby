@@ -16,6 +16,7 @@ import {
   type PlatformPrismaClient,
   type TenantPrismaClient,
 } from '../src/platform/tenancy';
+import { IdempotencyExempt } from '../src/platform/idempotency';
 
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -46,6 +47,7 @@ class ProbeController {
   }
 
   @Authenticated()
+  @IdempotencyExempt('test probe: reads the request context only')
   @Post('context')
   contextViaPost(): Promise<unknown> {
     return this.context();

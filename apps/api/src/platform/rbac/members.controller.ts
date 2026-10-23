@@ -1,3 +1,4 @@
+import { Idempotent } from '../idempotency/idempotent.decorator';
 import {
   Body,
   Controller,
@@ -37,6 +38,7 @@ export class MembersController {
   }
 
   @RequirePermission('platform.users.manage')
+  @Idempotent()
   @Patch(':id')
   update(
     @Param('id', memberId) id: string,
@@ -46,6 +48,7 @@ export class MembersController {
   }
 
   @RequirePermission('platform.users.manage')
+  @Idempotent()
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', memberId) id: string): Promise<void> {

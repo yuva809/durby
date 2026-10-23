@@ -30,6 +30,8 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   number_series: ['id', 'key', 'prefix', 'pattern', 'resetPolicy'],
   /** `nextValue` as a string of digits (bigint). */
   number_series_counter: ['id', 'seriesKey', 'period', 'nextValue'],
+  /** Never `payload` or `lastError`. `handler`: set when one failed handler job was re-queued. */
+  outbox_event: ['id', 'type', 'version', 'attempts', 'deadLetteredAt', 'handler'],
 } as const satisfies Record<AuditEntityType, readonly string[]>;
 
 type Field<T extends AuditEntityType> = (typeof AUDIT_SNAPSHOT_FIELDS)[T][number];

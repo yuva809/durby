@@ -8,11 +8,13 @@ import { SettingsModule } from './config/settings';
 import { DatabaseModule } from './database';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
+import { IdempotencyModule } from './idempotency';
 import { ApiExceptionFilter } from './http';
 import { LabelsModule } from './labels';
 import { LoggingModule } from './logging';
 import { MailModule } from './mail';
 import { NumberingModule } from './numbering';
+import { OutboxModule } from './outbox';
 import { ProvisioningModule } from './provisioning';
 import { RateLimitModule } from './rate-limit';
 import { RbacModule } from './rbac';
@@ -29,6 +31,8 @@ import { TenancyModule } from './tenancy';
     RateLimitModule,
     MailModule,
     AuditModule,
+    OutboxModule,
+    IdempotencyModule,
     AuthModule,
     EntitlementsModule,
     RbacModule,
