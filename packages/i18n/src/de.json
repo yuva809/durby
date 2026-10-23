@@ -211,5 +211,13 @@
   "platform.audit.entities.numberSeries": "Nummernkreis",
   "platform.audit.entities.numberSeriesCounter": "Nummernzähler",
   "platform.audit.actions.numberSeriesUpdated": "Nummernkreis geändert",
-  "platform.audit.actions.numberSeriesCounterRaised": "Nächste Nummer erhöht"
+  "platform.audit.actions.numberSeriesCounterRaised": "Nächste Nummer erhöht",
+  "platform.errors.idempotencyKeyRequired": "Dieser Anfrage fehlt ihr Wiederholungsschlüssel. Laden Sie die Seite neu und versuchen Sie es erneut.",
+  "platform.errors.idempotencyKeyInvalid": "Der Wiederholungsschlüssel dieser Anfrage ist ungültig. Laden Sie die Seite neu und versuchen Sie es erneut.",
+  "platform.errors.idempotencyKeyReused": "Dieser Wiederholungsschlüssel wurde schon für eine andere Änderung verwendet. Starten Sie die Aktion neu.",
+  "platform.errors.idempotencyRequestInProgress": "Diese Änderung wird noch gespeichert. Warten Sie kurz und versuchen Sie es erneut.",
+  "platform.audit.entities.outboxEvent": "Ereignis",
+  "platform.audit.actions.outboxEventRetried": "Ereigniszustellung wiederholt",
+  "platform.audit.actors.cliOutbox": "Outbox-Befehl",
+  "platform.audit.actors.jobOutbox": "Ereignisverarbeitung im Hintergrund"
 }
