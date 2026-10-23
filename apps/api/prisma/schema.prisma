@@ -30,12 +30,15 @@ model Partner {
 
 /// The tenant. No RLS: holds non-sensitive platform fields only (ADR 0005).
 model Organization {
-  id                  String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  partnerId           String               @map("partner_id") @db.Uuid
+  id                  String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  partnerId           String                  @map("partner_id") @db.Uuid
   name                String
-  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
-  partner             Partner              @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Nullable until a later step (expand/contract, ADR 0004/0009): no plan = nothing enabled.
+  planId              String?                 @map("plan_id") @db.Uuid
+  createdAt           DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  partner             Partner                 @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  plan                Plan?                   @relation(fields: [planId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   brands              Brand[]
   locations           Location[]
   memberships         Membership[]
@@ -47,8 +50,10 @@ model Organization {
   invitations         Invitation[]
   invitationLocations InvitationLocation[]
   auditLogs           AuditLog[]
+  featureOverrides    TenantFeatureOverride[]
 
   @@index([partnerId])
+  @@index([planId])
   @@map("organizations")
 }
 
@@ -332,4 +337,56 @@ model AuditLog {
   @@index([tenantId, createdAt])
   @@index([tenantId, entityType, entityId, id])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Entitlements (docs/platform/entitlements.md, ADR 0009)
+// Platform reference tables, read-only for durby_app (contents change only through migrations):
+// plans, plan_features. Tenant table (RLS): tenant_feature_overrides.
+// ---------------------------------------------------------------------------
+
+model Plan {
+  id            String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  /// Stable; users see the label `platform.plans.<key>`.
+  key           String         @unique
+  /// Operator name (CLI output).
+  name          String
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  features      PlanFeature[]
+  organizations Organization[]
+
+  @@map("plans")
+}
+
+/// The plan includes the feature. Key and limits are validated against the registry by the api.
+model PlanFeature {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  planId     String   @map("plan_id") @db.Uuid
+  featureKey String   @map("feature_key")
+  /// Strict per-feature schema in packages/shared; absent limit = unlimited.
+  limits     Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  plan       Plan     @relation(fields: [planId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([planId, featureKey])
+  @@map("plan_features")
+}
+
+/// Enables or disables one feature for one organization, whatever its plan says. Audited.
+model TenantFeatureOverride {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  featureKey   String       @map("feature_key")
+  enabled      Boolean
+  /// Only with enabled = true (CHECK). Per-limit override of the plan's limits.
+  limits       Json?
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, featureKey])
+  @@map("tenant_feature_overrides")
 }
