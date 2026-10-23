@@ -26,7 +26,7 @@ export async function seedDev(app: INestApplicationContext): Promise<void> {
   const partner = await provisioning.ensurePartner(DEFAULT_PARTNER.slug, DEFAULT_PARTNER.name);
   const orgIds = new Map<string, string>();
   for (const name of DEV_SEED.organizations) {
-    orgIds.set(name, (await provisioning.ensureOrganization(partner.id, name)).id);
+    orgIds.set(name, (await provisioning.ensureOrganization(partner.id, name, 'cli.seed_dev')).id);
   }
   for (const seed of DEV_SEED.users) {
     const user = await provisioning.ensureUser(seed.email, {
@@ -34,7 +34,12 @@ export async function seedDev(app: INestApplicationContext): Promise<void> {
       verified: true,
     });
     for (const org of seed.organizations) {
-      await provisioning.ensureMembership(orgIds.get(org) ?? '', user.id, seed.role);
+      await provisioning.ensureMembership(
+        orgIds.get(org) ?? '',
+        user.id,
+        seed.role,
+        'cli.seed_dev',
+      );
     }
   }
 }

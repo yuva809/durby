@@ -6,7 +6,8 @@ import {
   type SystemRole,
   type UpdateRoleRequest,
 } from '@durby/shared';
-import { AuthContext, Clock, SecurityLog } from '../auth';
+import { auditActor, AuditService, snapshot } from '../audit';
+import { AuthContext, Clock } from '../auth';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../tenancy';
 import { roleKeysOf } from './access';
 import { AccessService } from './access.service';
@@ -37,7 +38,7 @@ export class RolesService {
     private readonly tenantContext: TenantContext,
     private readonly access: AccessService,
     private readonly auth: AuthContext,
-    private readonly security: SecurityLog,
+    private readonly audit: AuditService,
     private readonly clock: Clock,
   ) {}
 
@@ -62,6 +63,11 @@ export class RolesService {
       // Registry order, so the list is stable.
       permissions: Object.keys(this.registry).filter((key) => keys.has(key)),
     };
+  }
+
+  /** The audit snapshot of a role: its effective permission keys, like the API shows them. */
+  snapshotOf(role: RoleRow) {
+    return snapshot('role', { ...this.toResponse(role) });
   }
 
   async actor(): Promise<Actor> {
@@ -89,14 +95,19 @@ export class RolesService {
         await tx.rolePermission.createMany({
           data: [...keys].map((permissionKey) => ({ tenantId, roleId: created.id, permissionKey })),
         });
-        return tx.role.findUniqueOrThrow({ where: { id: created.id }, select: ROLE_SELECT });
+        const role = await tx.role.findUniqueOrThrow({
+          where: { id: created.id },
+          select: ROLE_SELECT,
+        });
+        await this.audit.record(tx, {
+          action: 'platform.role.created',
+          actor: auditActor.user(actor.userId),
+          entityId: role.id,
+          after: this.snapshotOf(role),
+        });
+        return role;
       }),
     );
-    this.security.event('rbac.role.created', {
-      userId: actor.userId,
-      organizationId: tenantId,
-      roleId: role.id,
-    });
     return this.toResponse(role);
   }
 
@@ -126,14 +137,17 @@ export class RolesService {
           // Keeps updated_at meaningful when only the permissions changed.
           await tx.role.update({ where: { id }, data: { updatedAt: this.clock.now() } });
         }
-        return tx.role.findUniqueOrThrow({ where: { id }, select: ROLE_SELECT });
+        const updated = await tx.role.findUniqueOrThrow({ where: { id }, select: ROLE_SELECT });
+        await this.audit.record(tx, {
+          action: 'platform.role.updated',
+          actor: auditActor.user(actor.userId),
+          entityId: id,
+          before: this.snapshotOf(current),
+          after: this.snapshotOf(updated),
+        });
+        return updated;
       }),
     );
-    this.security.event('rbac.role.updated', {
-      userId: actor.userId,
-      organizationId: tenantId,
-      roleId: id,
-    });
     return this.toResponse(role);
   }
 
@@ -161,11 +175,12 @@ export class RolesService {
       if (members > 0 || openInvitations > 0) throw rbacErrors.roleInUse();
       await tx.invitation.deleteMany({ where: { roleId: id } });
       await tx.role.delete({ where: { id } });
-    });
-    this.security.event('rbac.role.deleted', {
-      userId: actor.userId,
-      organizationId: tenantId,
-      roleId: id,
+      await this.audit.record(tx, {
+        action: 'platform.role.deleted',
+        actor: auditActor.user(actor.userId),
+        entityId: id,
+        before: this.snapshotOf(current),
+      });
     });
   }
 

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Member, UpdateMemberRequest } from '@durby/shared';
-import { Clock, RevocationService, SecurityLog, UserDirectory } from '../auth';
+import { auditActor, AuditService, snapshot } from '../audit';
+import { Clock, RevocationService, UserDirectory } from '../auth';
 import type { Prisma } from '../database/generated/client';
 import {
   TENANT_PRISMA,
@@ -38,7 +39,7 @@ export class MembersService {
     private readonly roles: RolesService,
     private readonly users: UserDirectory,
     private readonly revocations: RevocationService,
-    private readonly security: SecurityLog,
+    private readonly audit: AuditService,
     private readonly clock: Clock,
   ) {}
 
@@ -54,7 +55,7 @@ export class MembersService {
   async update(id: string, body: UpdateMemberRequest): Promise<Member> {
     const actor = await this.roles.actor();
     const { tenantId } = this.tenantContext.require();
-    const { row, previousRoleId, roleChanged } = await this.lastOwnerGuard(() =>
+    const row = await this.lastOwnerGuard(() =>
       this.db.$transaction(async (tx) => {
         const target = await this.manageable(tx, tenantId, id, actor);
 
@@ -94,25 +95,16 @@ export class MembersService {
           where: { id: target.id },
           select: MEMBER_SELECT,
         });
-        return { row, previousRoleId: target.roleId, roleChanged };
+        await this.audit.record(tx, {
+          action: 'platform.membership.updated',
+          actor: auditActor.user(actor.userId),
+          entityId: row.id,
+          before: snapshotOf(target),
+          after: snapshotOf(row),
+        });
+        return row;
       }),
     );
-
-    const fields = {
-      userId: actor.userId,
-      organizationId: tenantId,
-      membershipId: row.id,
-      targetUserId: row.userId,
-    };
-    if (roleChanged) {
-      this.security.event('rbac.membership.role_changed', {
-        ...fields,
-        roleId: row.roleId ?? undefined,
-        previousRoleId,
-      });
-    }
-    if (body.locationIds !== undefined)
-      this.security.event('rbac.membership.locations_changed', fields);
     const profile = await this.users.findById(row.userId);
     return this.toMember(row, profile?.email ?? '');
   }
@@ -131,6 +123,12 @@ export class MembersService {
           await this.assertAnotherOwner(tx, target.role.id, target.id);
         }
         await tx.membership.delete({ where: { id: target.id } });
+        await this.audit.record(tx, {
+          action: 'platform.membership.removed',
+          actor: auditActor.user(actor.userId),
+          entityId: target.id,
+          before: snapshotOf(target),
+        });
         return target;
       }),
     );
@@ -143,13 +141,6 @@ export class MembersService {
         'membership revocation marker not written',
       );
     }
-    this.security.event('rbac.membership.removed', {
-      userId: actor.userId,
-      organizationId: tenantId,
-      membershipId: target.id,
-      targetUserId: target.userId,
-      previousRoleId: target.roleId,
-    });
   }
 
   /** The member, if the actor may change or remove them (404 / 403 otherwise). */
@@ -211,4 +202,14 @@ export class MembersService {
       locationIds: row.locations.map((l) => l.locationId).sort(),
     };
   }
+}
+
+function snapshotOf(row: MemberRow) {
+  return snapshot('membership', {
+    id: row.id,
+    userId: row.userId,
+    roleId: row.roleId,
+    allLocations: row.allLocations,
+    locationIds: row.locations.map((l) => l.locationId),
+  });
 }

@@ -1,31 +1,29 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { SYSTEM_ROLES, type SystemRole } from '@durby/shared';
-import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../tenancy';
+import { TenantContext, type TenantTransactionClient } from '../tenancy';
 
 /** The system roles every organization has (docs/platform/rbac.md → System roles). */
 @Injectable()
 export class SystemRoles {
-  constructor(
-    private readonly tenantContext: TenantContext,
-    @Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient,
-  ) {}
+  constructor(private readonly tenantContext: TenantContext) {}
 
   /**
    * Creates the missing system roles of the current tenant and returns all of their ids.
-   * Idempotent, so it also completes an organization whose creation was interrupted.
+   * Idempotent, so it also completes an organization whose creation was interrupted. Runs in the
+   * caller's tenant transaction (e.g. together with the organization and its audit row).
    */
-  async ensure(): Promise<Record<SystemRole, string>> {
+  async ensure(tx: TenantTransactionClient): Promise<Record<SystemRole, string>> {
     const { tenantId } = this.tenantContext.require();
-    await this.db.role.createMany({
+    await tx.role.createMany({
       data: SYSTEM_ROLES.map((systemKey) => ({ tenantId, systemKey })),
       skipDuplicates: true,
     });
-    return this.ids();
+    return this.ids(tx);
   }
 
   /** Ids of the current tenant's system roles. */
-  async ids(): Promise<Record<SystemRole, string>> {
-    const roles = await this.db.role.findMany({
+  async ids(tx: TenantTransactionClient): Promise<Record<SystemRole, string>> {
+    const roles = await tx.role.findMany({
       where: { systemKey: { not: null } },
       select: { id: true, systemKey: true },
     });

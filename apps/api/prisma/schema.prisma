@@ -46,6 +46,7 @@ model Organization {
   membershipLocations MembershipLocation[]
   invitations         Invitation[]
   invitationLocations InvitationLocation[]
+  auditLogs           AuditLog[]
 
   @@index([partnerId])
   @@map("organizations")
@@ -290,4 +291,45 @@ model InvitationLocation {
   @@unique([tenantId, id])
   @@unique([tenantId, invitationId, locationId])
   @@map("invitation_locations")
+}
+
+// ---------------------------------------------------------------------------
+// Audit (docs/platform/audit.md, ADR 0008)
+// Append-only: UPDATE/DELETE/TRUNCATE revoked from durby_app and blocked by a statement trigger.
+// ---------------------------------------------------------------------------
+
+enum AuditActorType {
+  user
+  system
+
+  @@map("audit_actor_type")
+}
+
+/// One row per state-changing action, written in the change's transaction. Never updated or deleted.
+model AuditLog {
+  id           String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String         @map("tenant_id") @db.Uuid
+  actorType    AuditActorType @map("actor_type")
+  /// Set iff actor_type = user. No FK: rows outlive users.
+  actorUserId  String?        @map("actor_user_id") @db.Uuid
+  /// Set iff actor_type = system; a key of AUDIT_SYSTEM_ACTORS.
+  actorSystem  String?        @map("actor_system")
+  /// A key of AUDIT_ACTIONS.
+  action       String
+  entityType   String         @map("entity_type")
+  /// No FK: the entity may be deleted later.
+  entityId     String         @map("entity_id") @db.Uuid
+  /// Allow-listed snapshot (ADR 0008 §5).
+  before       Json?
+  after        Json?
+  requestId    String?        @map("request_id")
+  /// Personal data; retention open before production (ADR 0008 §10).
+  ip           String?        @db.Inet
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, entityType, entityId, id])
+  @@map("audit_logs")
 }

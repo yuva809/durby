@@ -98,6 +98,7 @@ describe('auth logs', () => {
     }
     expect(all).not.toMatch(/#token=/);
 
+    // The organization switch is audited in the target organization instead (ADR 0008 §7).
     const events = logs
       .map((line) => (JSON.parse(line) as { security?: string }).security)
       .filter(Boolean);
@@ -105,7 +106,6 @@ describe('auth logs', () => {
       new Set([
         'auth.login.failed',
         'auth.login.succeeded',
-        'auth.organization.switched',
         'auth.refresh.reuse_detected',
         'auth.logout',
         'auth.password.reset_requested',

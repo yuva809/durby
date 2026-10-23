@@ -103,7 +103,8 @@ collide with the tenancy rules: a user belongs to several organizations, and lis
 
 12. **Rules 8 and 9 for auth.** Auth endpoints are exempt from `Idempotency-Key`: rotation is not replayable by
     design and stored responses would persist tokens. Until `audit_logs` exists (1.4), auth actions write structured
-    `security` log events without secrets; 1.4 moves them into the audit log. User creation goes through the
+    `security` log events without secrets; 1.4 moves them into the audit log
+    (superseded in part by [ADR 0008](0008-audit-log.md) §7: tenant events moved, user-level auth events stay). User creation goes through the
     `create-admin` bootstrap command and the dev seed; there is no public signup (invites come in 1.3).
 
 13. **Staging basic auth stays on the web routes for now** (ADR 0004 asked to revisit it in 1.2). The api is not

@@ -368,6 +368,5 @@ describe('invitations', () => {
     const all = logs.join('\n');
     expect(all).not.toContain(secret);
     expect(all).not.toContain('accept-invite#');
-    expect(all).toContain('rbac.invitation.accepted');
   });
 });

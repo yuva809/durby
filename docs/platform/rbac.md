@@ -210,12 +210,11 @@ rollback; such memberships have no permissions. The migration backfills system r
 every existing membership the Owner role. `NOT NULL` follows in a later step, once no deployed code inserts without
 a role.
 
-## Audit and idempotency (until 1.4 / 1.9)
+## Audit and idempotency (until 1.9)
 
-- Structured `security` log events, ids only: `rbac.role.created`, `rbac.role.updated`, `rbac.role.deleted`,
-  `rbac.membership.role_changed`, `rbac.membership.locations_changed`, `rbac.membership.removed`,
-  `rbac.invitation.created`, `rbac.invitation.revoked`, `rbac.invitation.accepted`. Step 1.4 moves them into the
-  audit log.
+- Role, membership and invitation changes are audited in the change's transaction (`platform.role.*`,
+  `platform.membership.*`, `platform.invitation.*`, see [audit.md](audit.md)). A new invitation that replaces an
+  open one for the same email writes one `platform.invitation.revoked` row per replaced invitation.
 - `Idempotency-Key` (rule 8) comes with platform/idempotency (1.9) for `POST /roles`, `PATCH|DELETE /roles/:id`,
   `PATCH|DELETE /members/:id`, `POST /invitations`, `DELETE /invitations/:id`. Accept endpoints consume a single-use
   token and stay exempt like the auth endpoints.
