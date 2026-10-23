@@ -56,7 +56,7 @@ Actions are never free-form strings. `AuditService.record` accepts only `AuditAc
 | `platform.session.organization_switched` | `session`      | `POST /auth/switch-organization`, in the target org                                    |
 
 Each action has a label key (`platform.audit.actions.<camelCase>`), each entity type one too
-(`platform.audit.entities.<type>`), with `en` and `de` defaults in `packages/i18n`.
+(`platform.audit.entities.<camelCaseType>`), with `en` and `de` defaults in `packages/i18n`.
 
 System actors (`AUDIT_SYSTEM_ACTORS`): `cli.create_admin`, `cli.seed_dev`, `migration` (reserved for data migrations
 that need to leave a trace). Jobs add theirs as `job.<name>` when queues exist.
