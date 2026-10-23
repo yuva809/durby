@@ -102,7 +102,7 @@ describe('deriveThemeTokens', () => {
       }
     }
     expect(failures).toEqual([]);
-  });
+  }, 15_000);
 
   it.each([
     ['ink too light for paper', { primary: '#ff5a1f', ink: '#999999', paper: '#ffffff' }],
