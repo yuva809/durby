@@ -14,6 +14,7 @@ import {
   type PutNumberSeriesCounterRequest,
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../audit';
+import { OutboxService } from '../outbox';
 import { Clock } from '../auth';
 import { EntitlementService } from '../config/entitlements';
 import { SettingsService } from '../config/settings';
@@ -43,6 +44,7 @@ export class NumberingAdmin {
     private readonly entitlements: EntitlementService,
     private readonly settings: SettingsService,
     private readonly audit: AuditService,
+    private readonly outbox: OutboxService,
     private readonly clock: Clock,
   ) {}
 
@@ -108,6 +110,10 @@ export class NumberingAdmin {
         before: seriesSnapshot(before),
         after: seriesSnapshot(after),
       });
+      await this.outbox.add(tx, {
+        type: 'config.number_series.changed',
+        payload: { key, change: 'format' },
+      });
       return this.view(tx, key, after, now);
     });
   }
@@ -157,6 +163,10 @@ export class NumberingAdmin {
           // A counter created just now held the default 1, like no counter at all.
           before: created ? null : view(stored),
           after: view(wanted),
+        });
+        await this.outbox.add(tx, {
+          type: 'config.number_series.changed',
+          payload: { key, change: 'counter' },
         });
       }
       return this.view(tx, key, series, now);

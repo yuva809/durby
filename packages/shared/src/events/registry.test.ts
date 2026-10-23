@@ -53,6 +53,9 @@ describe('event registry', () => {
     expect(
       schema?.safeParse({ scope: 'partner', scopeId: uuid, key: 'platform.timezone' }).success,
     ).toBe(false);
+    expect(schema?.safeParse({ scope: 'brand', scopeId: uuid, key: 'timezone' }).success).toBe(
+      true,
+    );
     expect(eventSchema('config.entitlements.changed', 1)?.safeParse({}).success).toBe(true);
     expect(
       eventSchema('config.number_series.changed', 1)?.safeParse({

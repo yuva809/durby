@@ -1,21 +1,25 @@
 import { z } from 'zod';
-import { TENANT_SETTING_SCOPES } from '../settings';
+import { SETTING_KEY_PATTERN, TENANT_SETTING_SCOPES } from '../settings';
 
 /**
  * Config change events (docs/platform/outbox.md, ADR 0013 §7). Emitted by the writers in the
  * change's transaction, only when something changed. No handlers yet: config caches are per request.
  */
 
+/** Dotted registry or label key (`billing.invoice`, `inventory.nav.title`). */
 const configKey = z
   .string()
   .regex(/^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/)
-  .max(100);
+  .max(200);
+
+/** Setting keys may be a single word (`timezone`), see SETTING_KEY_PATTERN. */
+const settingKey = z.string().regex(SETTING_KEY_PATTERN).max(100);
 
 export const configSettingsChangedV1 = z.strictObject({
   scope: z.enum(TENANT_SETTING_SCOPES),
   /** The organization, brand or location id of the scope. */
   scopeId: z.uuid(),
-  key: configKey,
+  key: settingKey,
 });
 
 export const configLabelsChangedV1 = z.strictObject({

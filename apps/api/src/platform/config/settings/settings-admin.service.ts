@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   isSettingKey,
+  type NewEvent,
   SETTINGS,
   type SettingKey,
   settingAllowsScope,
@@ -9,6 +10,7 @@ import {
 import { auditActor, AuditService, canonicalJson, snapshot } from '../../audit';
 import type { Prisma } from '../../database/generated/client';
 import { issuesOf } from '../../http';
+import { OutboxService } from '../../outbox';
 import { AccessService } from '../../rbac';
 import {
   TENANT_PRISMA,
@@ -46,6 +48,7 @@ export class SettingsAdmin {
     private readonly settings: SettingsService,
     private readonly inUse: SettingInUseChecks,
     private readonly audit: AuditService,
+    private readonly outbox: OutboxService,
   ) {}
 
   /** Sets `value` at exactly `at`; returns the key resolved there. */
@@ -84,6 +87,7 @@ export class SettingsAdmin {
           before: existing ? valueSnapshot(existing) : null,
           after: valueSnapshot(row),
         });
+        await this.outbox.add(tx, changedEvent(tenantId, key, scope));
       });
     try {
       await write();
@@ -115,6 +119,7 @@ export class SettingsAdmin {
         entityId: existing.id,
         before: valueSnapshot(existing),
       });
+      await this.outbox.add(tx, changedEvent(tenantId, key, scope));
     });
     this.settings.forget();
   }
@@ -155,6 +160,17 @@ function isUniqueViolation(error: unknown): boolean {
 function requireKey(key: string): SettingKey {
   if (!isSettingKey(key)) throw settingsErrors.unknownKey(key);
   return key;
+}
+
+/** `config.settings.changed` for a change at `scope` (docs/platform/outbox.md). */
+function changedEvent(tenantId: string, key: SettingKey, scope: SettingScopeRef): NewEvent {
+  const scopeId =
+    scope.type === 'location'
+      ? scope.locationId
+      : scope.type === 'brand'
+        ? scope.brandId
+        : tenantId;
+  return { type: 'config.settings.changed', payload: { scope: scope.type, scopeId, key } };
 }
 
 export function scopeOf(at: SettingsAt): SettingScopeRef {

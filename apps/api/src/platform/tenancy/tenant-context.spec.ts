@@ -83,6 +83,7 @@ describe('TENANT_MODELS', () => {
     expect([...TENANT_MODELS].sort()).toEqual([
       'AuditLog',
       'Brand',
+      'IdempotencyKey',
       'Invitation',
       'InvitationLocation',
       'LabelOverride',
@@ -91,6 +92,8 @@ describe('TENANT_MODELS', () => {
       'MembershipLocation',
       'NumberSeries',
       'NumberSeriesCounter',
+      'OutboxEvent',
+      'ProcessedEvent',
       'Role',
       'RolePermission',
       'SettingValue',

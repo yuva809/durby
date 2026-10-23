@@ -13,6 +13,7 @@ import { LabelsModule } from './labels';
 import { LoggingModule } from './logging';
 import { MailModule } from './mail';
 import { NumberingModule } from './numbering';
+import { OutboxModule } from './outbox';
 import { ProvisioningModule } from './provisioning';
 import { RateLimitModule } from './rate-limit';
 import { RbacModule } from './rbac';
@@ -29,6 +30,7 @@ import { TenancyModule } from './tenancy';
     RateLimitModule,
     MailModule,
     AuditModule,
+    OutboxModule,
     AuthModule,
     EntitlementsModule,
     RbacModule,
