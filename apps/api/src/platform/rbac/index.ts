@@ -7,6 +7,7 @@ export { REQUIRED_PERMISSION_KEY, RequirePermission } from './require-permission
 export {
   findRouteMarkerProblems,
   listRoutes,
+  markersOf,
   type RouteInfo,
   type RouteMarker,
   RouteMarkerError,

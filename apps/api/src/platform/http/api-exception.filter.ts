@@ -38,29 +38,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
     res.status(status).json(body);
   }
 
-  private toResponse(exception: unknown): {
-    status: number;
-    body: ApiErrorBody;
-    headers: Readonly<Record<string, string>>;
-  } {
-    if (exception instanceof ApiError) {
-      return { status: exception.getStatus(), body: exception.body(), headers: exception.headers };
-    }
-    if (exception instanceof TenantContextMissingError) {
-      return {
-        status: HttpStatus.FORBIDDEN,
-        body: { code: exception.code, message: 'No active organization for this request.' },
-        headers: {},
-      };
-    }
-    if (exception instanceof HttpException) {
-      const status = exception.getStatus();
-      return {
-        status,
-        body: { code: STATUS_CODES[status] ?? 'http.error', message: exception.message },
-        headers: {},
-      };
-    }
+  private toResponse(exception: unknown): ErrorResponse {
+    const known = knownErrorResponse(exception);
+    if (known) return known;
     // Log the type and stack frames only: messages of driver errors can contain query values, and
     // the first line of `stack` repeats the message.
     const error = exception instanceof Error ? exception : new Error('non-Error thrown');
@@ -72,4 +52,37 @@ export class ApiExceptionFilter implements ExceptionFilter {
       headers: {},
     };
   }
+}
+
+export interface ErrorResponse {
+  status: number;
+  body: ApiErrorBody;
+  headers: Readonly<Record<string, string>>;
+}
+
+/**
+ * The response for an expected error (ApiError, Nest's HttpException, a missing tenant), exactly as
+ * the filter sends it; null for unexpected errors, which become a logged 500. Also used by
+ * platform/idempotency to store a rejected request's response.
+ */
+export function knownErrorResponse(exception: unknown): ErrorResponse | null {
+  if (exception instanceof ApiError) {
+    return { status: exception.getStatus(), body: exception.body(), headers: exception.headers };
+  }
+  if (exception instanceof TenantContextMissingError) {
+    return {
+      status: HttpStatus.FORBIDDEN,
+      body: { code: exception.code, message: 'No active organization for this request.' },
+      headers: {},
+    };
+  }
+  if (exception instanceof HttpException) {
+    const status = exception.getStatus();
+    return {
+      status,
+      body: { code: STATUS_CODES[status] ?? 'http.error', message: exception.message },
+      headers: {},
+    };
+  }
+  return null;
 }

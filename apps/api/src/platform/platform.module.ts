@@ -8,6 +8,7 @@ import { SettingsModule } from './config/settings';
 import { DatabaseModule } from './database';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
+import { IdempotencyModule } from './idempotency';
 import { ApiExceptionFilter } from './http';
 import { LabelsModule } from './labels';
 import { LoggingModule } from './logging';
@@ -31,6 +32,7 @@ import { TenancyModule } from './tenancy';
     MailModule,
     AuditModule,
     OutboxModule,
+    IdempotencyModule,
     AuthModule,
     EntitlementsModule,
     RbacModule,

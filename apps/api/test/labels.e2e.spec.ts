@@ -47,12 +47,14 @@ describe('/api/v1/labels and /api/v1/label-overrides', () => {
   const put = (token: string, locale: string, key: string, value: unknown) =>
     request(kit.server)
       .put(`/api/v1/label-overrides/${locale}/${key}`)
+      .set('Idempotency-Key', uuidv7())
       .auth(token, { type: 'bearer' })
       .send({ value });
 
   const del = (token: string, locale: string, key: string) =>
     request(kit.server)
       .delete(`/api/v1/label-overrides/${locale}/${key}`)
+      .set('Idempotency-Key', uuidv7())
       .auth(token, { type: 'bearer' });
 
   const list = (token: string, locale?: string) =>
@@ -307,6 +309,7 @@ describe('/api/v1/labels and /api/v1/label-overrides', () => {
       const before = kit.mailer.to(email).length;
       await request(kit.server)
         .post('/api/v1/invitations')
+        .set('Idempotency-Key', uuidv7())
         .auth(inviterToken, { type: 'bearer' })
         .send({ email, roleId: org.roles.staff })
         .expect(201);
@@ -331,6 +334,7 @@ describe('/api/v1/labels and /api/v1/label-overrides', () => {
       const owner = await memberOf(org, 'owner', 'en');
       await request(kit.server)
         .put('/api/v1/settings/locale')
+        .set('Idempotency-Key', uuidv7())
         .auth(owner.token, { type: 'bearer' })
         .send({ value: 'de' })
         .expect(200);

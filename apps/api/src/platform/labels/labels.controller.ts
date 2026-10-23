@@ -1,3 +1,4 @@
+import { Idempotent } from '../idempotency/idempotent.decorator';
 import {
   Body,
   Controller,
@@ -71,6 +72,7 @@ export class LabelOverridesController {
   }
 
   @RequirePermission('platform.labels.manage')
+  @Idempotent()
   @Put(':locale/:key')
   set(
     @Param('locale') locale: string,
@@ -81,6 +83,7 @@ export class LabelOverridesController {
   }
 
   @RequirePermission('platform.labels.manage')
+  @Idempotent()
   @Delete(':locale/:key')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('locale') locale: string, @Param('key') key: string): Promise<void> {

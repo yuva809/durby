@@ -4,6 +4,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startAuthApp, type AuthTestKit } from './support/auth-app';
 import { RbacSeed, type SeededOrg } from './support/rbac';
+import { withIdempotencyKey } from './support/idempotency';
 
 describe('roles API', () => {
   let kit: AuthTestKit;
@@ -25,11 +26,17 @@ describe('roles API', () => {
     get: (path: string) =>
       request(kit.server).get(`/api/v1${path}`).auth(token, { type: 'bearer' }),
     post: (path: string, body: object) =>
-      request(kit.server).post(`/api/v1${path}`).auth(token, { type: 'bearer' }).send(body),
+      withIdempotencyKey(
+        request(kit.server).post(`/api/v1${path}`).auth(token, { type: 'bearer' }),
+      ).send(body),
     patch: (path: string, body: object) =>
-      request(kit.server).patch(`/api/v1${path}`).auth(token, { type: 'bearer' }).send(body),
+      withIdempotencyKey(
+        request(kit.server).patch(`/api/v1${path}`).auth(token, { type: 'bearer' }),
+      ).send(body),
     delete: (path: string) =>
-      request(kit.server).delete(`/api/v1${path}`).auth(token, { type: 'bearer' }),
+      withIdempotencyKey(
+        request(kit.server).delete(`/api/v1${path}`).auth(token, { type: 'bearer' }),
+      ),
   });
 
   async function tokenAs(org: SeededOrg, roleId: string) {

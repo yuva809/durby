@@ -1,3 +1,4 @@
+import { Idempotent } from '../../idempotency/idempotent.decorator';
 import {
   Body,
   Controller,
@@ -54,6 +55,7 @@ export class SettingsController {
   }
 
   @RequirePermission('platform.settings.manage')
+  @Idempotent()
   @Put(':key')
   async set(
     @Param('key') key: string,
@@ -65,6 +67,7 @@ export class SettingsController {
   }
 
   @RequirePermission('platform.settings.manage')
+  @Idempotent()
   @Delete(':key')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(

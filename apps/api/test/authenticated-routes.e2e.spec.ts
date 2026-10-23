@@ -1,19 +1,21 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
-import { listRoutes, type RouteInfo } from '../src/platform/rbac';
+import { listIdempotencyRoutes, type IdempotencyRouteInfo } from '../src/platform/idempotency';
+import { listRoutes, RequirePermission, type RouteInfo } from '../src/platform/rbac';
 
-async function routesOf(): Promise<RouteInfo[]> {
+async function routesOf(): Promise<{ access: RouteInfo[]; idempotency: IdempotencyRouteInfo[] }> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   await moduleRef.init();
   try {
-    return listRoutes(
+    const deps = [
       moduleRef.get(DiscoveryService),
       moduleRef.get(MetadataScanner),
       moduleRef.get(Reflector),
-    );
+    ] as const;
+    return { access: listRoutes(...deps), idempotency: listIdempotencyRoutes(...deps) };
   } finally {
     await moduleRef.close();
   }
@@ -29,9 +31,10 @@ const withMarker = (routes: RouteInfo[], kind: string): string[] =>
  */
 describe('route markers', () => {
   let routes: RouteInfo[];
+  let idempotency: IdempotencyRouteInfo[];
 
   beforeAll(async () => {
-    routes = await routesOf();
+    ({ access: routes, idempotency } = await routesOf());
   });
 
   it('lists every @Authenticated() route', () => {
@@ -78,6 +81,59 @@ describe('route markers', () => {
     }).compile();
     const app = moduleRef.createNestApplication({ logger: false });
     await expect(app.init()).rejects.toThrow('GET /api/v1/forgotten: no access marker');
+    await app.close();
+  });
+
+  /** CLAUDE.md rule 8 / ADR 0014: a new exempt write route changes this list and needs review. */
+  it('lists every @IdempotencyExempt() write route', () => {
+    expect(idempotency.filter((r) => r.exempt !== undefined).map((r) => r.route)).toEqual([
+      'POST /api/v1/auth/login',
+      'POST /api/v1/auth/logout',
+      'POST /api/v1/auth/password/forgot',
+      'POST /api/v1/auth/password/reset',
+      'POST /api/v1/auth/refresh',
+      'POST /api/v1/auth/switch-organization',
+      'POST /api/v1/auth/verify-email',
+      'POST /api/v1/auth/verify-email/resend',
+      'POST /api/v1/invitations/accept',
+      'POST /api/v1/invitations/accept-signed-in',
+      'POST /api/v1/invitations/preview',
+    ]);
+  });
+
+  it('lists every @Idempotent() route', () => {
+    expect(idempotency.filter((r) => r.idempotent).map((r) => r.route)).toEqual([
+      'DELETE /api/v1/invitations/:id',
+      'DELETE /api/v1/label-overrides/:locale/:key',
+      'DELETE /api/v1/members/:id',
+      'DELETE /api/v1/roles/:id',
+      'DELETE /api/v1/settings/:key',
+      'PATCH /api/v1/members/:id',
+      'PATCH /api/v1/number-series/:key',
+      'PATCH /api/v1/roles/:id',
+      'POST /api/v1/invitations',
+      'POST /api/v1/roles',
+      'PUT /api/v1/label-overrides/:locale/:key',
+      'PUT /api/v1/number-series/:key/counter',
+      'PUT /api/v1/settings/:key',
+    ]);
+  });
+
+  it('refuses to boot the api when a write route has no idempotency marker', async () => {
+    @Controller('unmarked')
+    class UnmarkedController {
+      @RequirePermission('platform.settings.manage')
+      @Post()
+      create(): void {}
+    }
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+      controllers: [UnmarkedController],
+    }).compile();
+    const app = moduleRef.createNestApplication({ logger: false });
+    await expect(app.init()).rejects.toThrow(
+      'POST /api/v1/unmarked: no @Idempotent() or @IdempotencyExempt(reason)',
+    );
     await app.close();
   });
 });

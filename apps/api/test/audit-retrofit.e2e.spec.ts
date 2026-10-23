@@ -13,6 +13,7 @@ import {
   type AuthTestKit,
 } from './support/auth-app';
 import { RbacSeed, type SeededOrg } from './support/rbac';
+import { withIdempotencyKey } from './support/idempotency';
 
 const NEW_PASSWORD = 'a brand new password';
 
@@ -52,11 +53,13 @@ describe('audited actions', () => {
     body?: object,
     meta = { requestId: `req-${uuidv7()}`, ip: randomIp() },
   ) => {
-    const req = request(kit.server)
-      [method](`/api/v1${path}`)
-      .auth(token, { type: 'bearer' })
-      .set('X-Request-Id', meta.requestId)
-      .set('X-Forwarded-For', meta.ip);
+    const req = withIdempotencyKey(
+      request(kit.server)
+        [method](`/api/v1${path}`)
+        .auth(token, { type: 'bearer' })
+        .set('X-Request-Id', meta.requestId)
+        .set('X-Forwarded-For', meta.ip),
+    );
     return body ? req.send(body) : req;
   };
 

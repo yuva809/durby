@@ -28,7 +28,10 @@ Every `POST`, `PUT`, `PATCH` and `DELETE` route has exactly one of these, or the
 | `POST /auth/*`                                                 | exempt (ADR 0006 §12)    |
 | `POST /invitations/preview`, `accept`, `accept-signed-in`      | exempt: single-use token |
 
-`@Idempotent()` next to `@Public()` fails the boot.
+`@Idempotent()` without `@RequirePermission` (any non-tenant route, e.g. `@Public()`) fails the boot, as does either
+marker on a `GET` route or an empty exempt reason. Controllers import the decorators from
+`platform/idempotency/idempotent.decorator` (not the index), like `@Public()`, to avoid an import cycle through
+rbac and auth.
 
 ## Behaviour
 
@@ -68,7 +71,7 @@ await this.db.$transaction(async (tx) => {
 The result commits with the change, so a crash after commit can't lead to a second write: a retry replays it. If a
 takeover happened meanwhile, `completeInTransaction` throws `idempotency.request_in_progress` and the slow original
 rolls back (ADR 0014 §6). Without the call, the interceptor logs `idempotency.completion_missing` and stores the
-result itself.
+result itself. Outside such a request (jobs, scripts, tests) `completeInTransaction` does nothing.
 
 ## Model
 

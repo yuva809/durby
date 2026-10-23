@@ -1,3 +1,4 @@
+import { Idempotent } from '../idempotency/idempotent.decorator';
 import {
   Body,
   Controller,
@@ -40,12 +41,14 @@ export class RolesController {
   }
 
   @RequirePermission('platform.roles.manage')
+  @Idempotent()
   @Post()
   create(@Body(new ZodBody(createRoleRequestSchema)) body: CreateRoleRequest): Promise<Role> {
     return this.roles.create(body);
   }
 
   @RequirePermission('platform.roles.manage')
+  @Idempotent()
   @Patch(':id')
   update(
     @Param('id', roleId) id: string,
@@ -55,6 +58,7 @@ export class RolesController {
   }
 
   @RequirePermission('platform.roles.manage')
+  @Idempotent()
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', roleId) id: string): Promise<void> {

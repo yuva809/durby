@@ -1,3 +1,4 @@
+import { Idempotent } from '../idempotency/idempotent.decorator';
 import { Body, Controller, Get, Param, Patch, Put } from '@nestjs/common';
 import {
   type NumberSeries,
@@ -27,6 +28,7 @@ export class NumberingController {
   }
 
   @RequirePermission('platform.settings.manage')
+  @Idempotent()
   @Patch(':key')
   update(
     @Param('key') key: string,
@@ -36,6 +38,7 @@ export class NumberingController {
   }
 
   @RequirePermission('platform.settings.manage')
+  @Idempotent()
   @Put(':key/counter')
   raiseCounter(
     @Param('key') key: string,
