@@ -32,29 +32,31 @@ model Partner {
 
 /// The tenant. No RLS: holds non-sensitive platform fields only (ADR 0005).
 model Organization {
-  id                  String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  partnerId           String                  @map("partner_id") @db.Uuid
-  name                String
+  id                   String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  partnerId            String                  @map("partner_id") @db.Uuid
+  name                 String
   /// Nullable until a later step (expand/contract, ADR 0004/0009): no plan = nothing enabled.
-  planId              String?                 @map("plan_id") @db.Uuid
-  createdAt           DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
-  partner             Partner                 @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  plan                Plan?                   @relation(fields: [planId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  brands              Brand[]
-  locations           Location[]
-  memberships         Membership[]
-  lastUsedBy          User[]
-  refreshTokens       RefreshToken[]
-  roles               Role[]
-  rolePermissions     RolePermission[]
-  membershipLocations MembershipLocation[]
-  invitations         Invitation[]
-  invitationLocations InvitationLocation[]
-  auditLogs           AuditLog[]
-  featureOverrides    TenantFeatureOverride[]
-  settingValues       SettingValue[]
-  labelOverrides      LabelOverride[]
+  planId               String?                 @map("plan_id") @db.Uuid
+  createdAt            DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  partner              Partner                 @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  plan                 Plan?                   @relation(fields: [planId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  brands               Brand[]
+  locations            Location[]
+  memberships          Membership[]
+  lastUsedBy           User[]
+  refreshTokens        RefreshToken[]
+  roles                Role[]
+  rolePermissions      RolePermission[]
+  membershipLocations  MembershipLocation[]
+  invitations          Invitation[]
+  invitationLocations  InvitationLocation[]
+  auditLogs            AuditLog[]
+  featureOverrides     TenantFeatureOverride[]
+  settingValues        SettingValue[]
+  labelOverrides       LabelOverride[]
+  numberSeries         NumberSeries[]
+  numberSeriesCounters NumberSeriesCounter[]
 
   @@index([partnerId])
   @@index([planId])
@@ -484,4 +486,56 @@ model LabelOverride {
   @@unique([tenantId, id])
   @@unique([tenantId, locale, key])
   @@map("label_overrides")
+}
+
+// ---------------------------------------------------------------------------
+// Number series (ADR 0012)
+// ---------------------------------------------------------------------------
+
+enum NumberSeriesResetPolicy {
+  yearly
+  never
+
+  @@map("number_series_reset_policy")
+}
+
+/// An organization's definition of a registry series. Never deleted (DELETE revoked); a trigger
+/// keeps tenant_id and key fixed and the reset policy once a number was issued.
+model NumberSeries {
+  id           String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String                  @map("tenant_id") @db.Uuid
+  key          String
+  /// 1–16 of A–Z a–z 0–9 . _ / - (CHECK).
+  prefix       String
+  /// At most 64 characters with {seq:N} (CHECK); a yearly reset needs {YYYY} or {YY} (CHECK).
+  pattern      String
+  resetPolicy  NumberSeriesResetPolicy @map("reset_policy")
+  createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization            @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  counters     NumberSeriesCounter[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, key])
+  @@map("number_series")
+}
+
+/// The next number of one series in one period (`all` or a year). Only moves forward (trigger);
+/// never deleted (DELETE revoked).
+model NumberSeriesCounter {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  seriesId     String       @map("series_id") @db.Uuid
+  /// `all` or a four-digit year (CHECK).
+  period       String
+  /// ≥ 1 (CHECK).
+  nextValue    BigInt       @default(1) @map("next_value")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  series       NumberSeries @relation(fields: [tenantId, seriesId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, seriesId, period])
+  @@map("number_series_counters")
 }
