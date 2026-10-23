@@ -18,12 +18,13 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model Partner {
-  id            String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  slug          String         @unique
+  id            String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  slug          String                @unique
   name          String
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
   organizations Organization[]
+  settingValues PartnerSettingValue[]
 
   @@map("partners")
 }
@@ -51,6 +52,7 @@ model Organization {
   invitationLocations InvitationLocation[]
   auditLogs           AuditLog[]
   featureOverrides    TenantFeatureOverride[]
+  settingValues       SettingValue[]
 
   @@index([partnerId])
   @@index([planId])
@@ -58,29 +60,31 @@ model Organization {
 }
 
 model Brand {
-  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String       @map("tenant_id") @db.Uuid
-  name         String
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  locations    Location[]
+  id            String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  name          String
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization  Organization   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  locations     Location[]
+  settingValues SettingValue[]
 
   @@unique([tenantId, id])
   @@map("brands")
 }
 
 model Location {
-  id           String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String               @map("tenant_id") @db.Uuid
-  brandId      String               @map("brand_id") @db.Uuid
-  name         String
-  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  brand        Brand                @relation(fields: [tenantId, brandId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  memberships  MembershipLocation[]
-  invitations  InvitationLocation[]
+  id            String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String               @map("tenant_id") @db.Uuid
+  brandId       String               @map("brand_id") @db.Uuid
+  name          String
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization  Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  brand         Brand                @relation(fields: [tenantId, brandId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  memberships   MembershipLocation[]
+  invitations   InvitationLocation[]
+  settingValues SettingValue[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -389,4 +393,59 @@ model TenantFeatureOverride {
   @@unique([tenantId, id])
   @@unique([tenantId, featureKey])
   @@map("tenant_feature_overrides")
+}
+
+// ---------------------------------------------------------------------------
+// Settings (docs/platform/settings.md, ADR 0010)
+// Platform table, read-only for durby_app (values change only through migrations):
+// partner_setting_values. Tenant table (RLS): setting_values.
+// ---------------------------------------------------------------------------
+
+enum SettingScopeType {
+  organization
+  brand
+  location
+
+  @@map("setting_scope_type")
+}
+
+/// A partner-level default. Key and value are validated against the registry by the api.
+model PartnerSettingValue {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  partnerId String   @map("partner_id") @db.Uuid
+  key       String
+  /// Never JSON null (CHECK).
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  partner   Partner  @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([partnerId, key])
+  @@map("partner_setting_values")
+}
+
+/// One value of one setting at one organization, brand or location scope. Audited.
+model SettingValue {
+  id           String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String           @map("tenant_id") @db.Uuid
+  scopeType    SettingScopeType @map("scope_type")
+  /// Set iff scope_type = brand (CHECK).
+  brandId      String?          @map("brand_id") @db.Uuid
+  /// Set iff scope_type = location (CHECK).
+  locationId   String?          @map("location_id") @db.Uuid
+  key          String
+  /// Never JSON null (CHECK): delete the row to inherit.
+  value        Json
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  brand        Brand?           @relation(fields: [tenantId, brandId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  location     Location?        @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  /// NULLS NOT DISTINCT in the migration: one value per key and scope.
+  @@unique([tenantId, scopeType, brandId, locationId, key], map: "setting_values_scope_key_key")
+  @@index([tenantId, brandId])
+  @@index([tenantId, locationId])
+  @@map("setting_values")
 }
