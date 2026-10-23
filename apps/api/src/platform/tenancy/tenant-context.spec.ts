@@ -89,6 +89,8 @@ describe('TENANT_MODELS', () => {
       'Location',
       'Membership',
       'MembershipLocation',
+      'NumberSeries',
+      'NumberSeriesCounter',
       'Role',
       'RolePermission',
       'SettingValue',

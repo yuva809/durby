@@ -12,6 +12,7 @@ import { ApiExceptionFilter } from './http';
 import { LabelsModule } from './labels';
 import { LoggingModule } from './logging';
 import { MailModule } from './mail';
+import { NumberingModule } from './numbering';
 import { ProvisioningModule } from './provisioning';
 import { RateLimitModule } from './rate-limit';
 import { RbacModule } from './rbac';
@@ -33,6 +34,7 @@ import { TenancyModule } from './tenancy';
     RbacModule,
     SettingsModule,
     LabelsModule,
+    NumberingModule,
     ProvisioningModule,
   ],
   controllers: [HealthController],
