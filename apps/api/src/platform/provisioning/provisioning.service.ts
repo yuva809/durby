@@ -4,6 +4,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { auditActor, AuditService, snapshot } from '../audit';
 import { UserDirectory } from '../auth';
 import { planIdOf } from '../config/entitlements';
+import { NumberingService } from '../numbering';
 import { SystemRoles } from '../rbac';
 import {
   PLATFORM_PRISMA,
@@ -36,6 +37,7 @@ export class ProvisioningService {
     private readonly users: UserDirectory,
     private readonly systemRoles: SystemRoles,
     private readonly audit: AuditService,
+    private readonly numbering: NumberingService,
   ) {}
 
   async ensurePartner(slug: string, name: string): Promise<Ensured> {
@@ -52,8 +54,9 @@ export class ProvisioningService {
   /**
    * Organizations are matched by exact name within the partner. A new organization (on `plan`), its
    * system roles and its audit row are created in one transaction. An existing organization keeps
-   * its plan (change it with the entitlements CLI). The system roles are ensured on every
-   * call, so an organization whose creation was interrupted (before this step) is completed.
+   * its plan (change it with the entitlements CLI). The system roles and the registered number
+   * series are ensured on every call, so an organization whose creation was interrupted (before
+   * this step) is completed.
    */
   async ensureOrganization(
     partnerId: string,
@@ -79,6 +82,7 @@ export class ProvisioningService {
           });
         }
         await this.systemRoles.ensure(tx);
+        await this.numbering.ensureAll(tx);
       }),
     );
     return { id, created: existing === null };

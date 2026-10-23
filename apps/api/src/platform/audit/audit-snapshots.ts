@@ -27,6 +27,9 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   setting_value: ['id', 'key', 'scopeType', 'brandId', 'locationId', 'value'],
   /** Label text is plain text, never a secret (ADR 0011). */
   label_override: ['id', 'locale', 'key', 'value'],
+  number_series: ['id', 'key', 'prefix', 'pattern', 'resetPolicy'],
+  /** `nextValue` as a string of digits (bigint). */
+  number_series_counter: ['id', 'seriesKey', 'period', 'nextValue'],
 } as const satisfies Record<AuditEntityType, readonly string[]>;
 
 type Field<T extends AuditEntityType> = (typeof AUDIT_SNAPSHOT_FIELDS)[T][number];

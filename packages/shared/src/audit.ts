@@ -17,6 +17,8 @@ export const AUDIT_ENTITY_TYPES = [
   'plan',
   'setting_value',
   'label_override',
+  'number_series',
+  'number_series_counter',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -107,6 +109,14 @@ export const AUDIT_ACTIONS = {
   'platform.label_override.deleted': {
     entityType: 'label_override',
     label: 'platform.audit.actions.labelOverrideDeleted',
+  },
+  'platform.number_series.updated': {
+    entityType: 'number_series',
+    label: 'platform.audit.actions.numberSeriesUpdated',
+  },
+  'platform.number_series_counter.raised': {
+    entityType: 'number_series_counter',
+    label: 'platform.audit.actions.numberSeriesCounterRaised',
   },
 } as const satisfies Record<string, AuditActionDefinition>;
 
