@@ -33,9 +33,9 @@ to the partner (white-label). Settings (ADR 0010) already solved two-level stora
 
 4. **Values are plain text that keeps the default's placeholders.** An override must contain exactly the same set of
    `{name}` placeholders as the default text for that key **in the same locale**, no other braces, no control or
-   bidi-override characters, and isn't blank. Organization values are single-line and at most 200 characters (api);
-   partner values may span lines, at most 1000 characters (the SQL check, which is only a shape limit for both
-   tables). Rendering escapes: React escapes in the web app; HTML output (emails, later PDFs) uses the translator's
+   bidi-override characters, and isn't blank. Organization values are single-line and at most 200 characters;
+   partner values may span lines, at most 1000 characters. Both the api and each table's CHECK enforce the length
+   and line rules of their level. Rendering escapes: React escapes in the web app; HTML output (emails, later PDFs) uses the translator's
    `html` format, which escapes the template and every parameter.
 
 5. **Overrides are per locale and never cross locales.** Per key: organization override (locale) → partner override

@@ -71,14 +71,14 @@ through reviewed migrations (like partner setting values, ADR 0010 §2); none ar
 `label_overrides` (tenant table, ADR 0005 block: `UNIQUE (tenant_id, id)`, `ENABLE` + `FORCE` RLS,
 `tenant_isolation` policy)
 
-| Column      | Type        | Notes                                                        |
-| ----------- | ----------- | ------------------------------------------------------------ |
-| `id`        | uuid v7     |                                                              |
-| `tenant_id` | uuid        | FK → organizations, `ON DELETE RESTRICT`                     |
-| `locale`    | text        | Supported locale; SQL checks the shape                       |
-| `key`       | text        | Org-overridable key; SQL checks the shape                    |
-| `value`     | text        | SQL: 1–1000 characters (shape only); api: ≤ 200, single line |
-| timestamps  | timestamptz |                                                              |
+| Column      | Type        | Notes                                                  |
+| ----------- | ----------- | ------------------------------------------------------ |
+| `id`        | uuid v7     |                                                        |
+| `tenant_id` | uuid        | FK → organizations, `ON DELETE RESTRICT`               |
+| `locale`    | text        | Supported locale; SQL checks the shape                 |
+| `key`       | text        | Org-overridable key; SQL checks the shape              |
+| `value`     | text        | 1–200 characters, no line break (SQL); validated above |
+| timestamps  | timestamptz |                                                        |
 
 `UNIQUE (tenant_id, locale, key)`. Overrides are configuration, not history: rows are updated and deleted, and every
 change is audited. Keys, locales and placeholders are checked by the api against `packages/i18n`, never by SQL (a
