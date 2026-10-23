@@ -175,5 +175,15 @@
   "platform.audit.actions.settingValueCreated": "Einstellung gesetzt",
   "platform.audit.actions.settingValueUpdated": "Einstellung geändert",
   "platform.audit.actions.settingValueDeleted": "Einstellung entfernt",
-  "platform.audit.entities.settingValue": "Einstellung"
+  "platform.audit.entities.settingValue": "Einstellung",
+  "inventory.nav.title": "Lager",
+  "platform.nav.label": "Hauptnavigation",
+  "platform.errors.labelsUnknownLocale": "Diese Sprache wird nicht unterstützt.",
+  "platform.errors.labelsUnknownKey": "Unbekannte Bezeichnung.",
+  "platform.errors.labelsNotOverridable": "Dieser Text kann für Ihre Organisation nicht geändert werden.",
+  "platform.errors.labelsInvalidValue": "Ungültiger Text. Verwenden Sie reinen Text mit genau den Platzhaltern des Standardtexts.",
+  "platform.audit.actions.labelOverrideCreated": "Bezeichnung festgelegt",
+  "platform.audit.actions.labelOverrideUpdated": "Bezeichnung geändert",
+  "platform.audit.actions.labelOverrideDeleted": "Bezeichnung entfernt",
+  "platform.audit.entities.labelOverride": "Bezeichnung"
 }

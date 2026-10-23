@@ -3,6 +3,7 @@ export * from './api/auth';
 export * from './api/entitlements';
 export * from './api/health';
 export * from './api/invitations';
+export * from './api/labels';
 export * from './api/rbac';
 export * from './api/settings';
 export * from './audit';
