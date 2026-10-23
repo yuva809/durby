@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from './api-error';
-import { ZodBody } from './zod-body.pipe';
+import { ZodBody, ZodQuery } from './zod-body.pipe';
 
 const schema = z.object({ email: z.email(), password: z.string().min(12) });
 
@@ -32,5 +32,25 @@ describe('ZodBody', () => {
     });
     expect(JSON.stringify(apiError.body())).not.toContain(secret);
     expect(JSON.stringify(apiError.body())).not.toContain('not-an-email');
+  });
+});
+
+describe('ZodQuery', () => {
+  const pipe = new ZodQuery(z.object({ limit: z.coerce.number().int().max(10) }));
+
+  it('returns the parsed query', () => {
+    expect(pipe.transform({ limit: '5' })).toEqual({ limit: 5 });
+  });
+
+  it('throws 400 validation.failed for the query', () => {
+    expect(() => pipe.transform({ limit: '11' })).toThrow(ApiError);
+    try {
+      pipe.transform({ limit: '11' });
+    } catch (e) {
+      expect((e as ApiError).body()).toMatchObject({
+        code: 'validation.failed',
+        message: 'Invalid query.',
+      });
+    }
   });
 });
