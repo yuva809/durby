@@ -35,6 +35,7 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 - API: REST under `/api/v1`, DTOs validated with Zod, OpenAPI generated. Errors: `{ code, message, details? }` with stable `code` strings.
 - Feature keys: `module.capability` (e.g. `inventory`, `inventory.counts`). Permission keys: `module.entity.action` (e.g. `inventory.stock.adjust`). Both registered in `packages/shared`. A new permission key needs a scope (`organization` | `location`) and an explicit grant/deny for each non-Owner system role (ADR 0007); Owner gets it automatically.
 - Label keys: `module.area.item` (e.g. `inventory.nav.title`).
+- Audit (ADR 0008): actions are keys of `AUDIT_ACTIONS` in `packages/shared` (never free-form strings). Record with `AuditService.record(tx, …)` inside the change's own transaction; `before`/`after` only via the per-entity allow-list, never secrets or emails. No `@Audited` interceptor.
 - Events: `module.entity.past_tense` (e.g. `inventory.stock.received`), versioned payload schemas in `packages/shared/events`.
 
 ## How to work
