@@ -4,14 +4,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { errorLabel } from '../lib/auth/errors';
-import { t } from '../lib/i18n';
 import { roleName } from '../lib/rbac/roles';
 import { Notice } from './auth-layout';
+import { useT } from './labels-provider';
 import { useAuth } from './providers';
 
 /** Signed-in user, organization switcher and sign-out. Sends anonymous visitors to /login. */
 export function AccountPanel() {
   const { store, session, status } = useAuth();
+  const t = useT();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +56,7 @@ export function AccountPanel() {
       {session.activeRole && (
         <p>
           {t('auth.session.role')}:{' '}
-          <strong data-testid="role">{roleName(session.activeRole)}</strong>
+          <strong data-testid="role">{roleName(session.activeRole, t)}</strong>
         </p>
       )}
       <Notice text={error} tone="error" />

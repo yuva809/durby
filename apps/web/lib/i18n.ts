@@ -1,4 +1,8 @@
 import { createTranslator, DEFAULT_LOCALE } from '@durby/i18n';
 
-// Default dictionary only; per-session locale and scoped overrides arrive in step 1.7.
+/**
+ * Bundled default labels, for public pages (login, password reset, accept-invite) and server
+ * components: never an organization's overrides (docs/platform/labels.md → Web app). Signed-in UI
+ * uses useT() from app/labels-provider.tsx.
+ */
 export const t = createTranslator(DEFAULT_LOCALE);

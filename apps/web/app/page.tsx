@@ -1,6 +1,7 @@
 import { getHealth } from '../lib/api';
 import { t } from '../lib/i18n';
 import { AccountPanel } from './account-panel';
+import { Nav } from './nav';
 
 const STATUS_LABEL = {
   ok: 'platform.health.status.ok',
@@ -15,6 +16,7 @@ export default async function HomePage() {
   return (
     <main>
       <h1>{t('platform.home.title')}</h1>
+      <Nav />
       <AccountPanel />
       <p>
         {t('platform.health.label')}:{' '}
