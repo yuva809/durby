@@ -14,6 +14,7 @@ const sessionBody = (accessToken = 'access-1', activeOrganizationId: string | nu
   activeOrganizationId,
   activeRole: null,
   activePermissions: [],
+  activeFeatures: [],
 });
 const error = (status: number, code: string) => Response.json({ code, message: 'x' }, { status });
 
@@ -51,6 +52,7 @@ describe('session store', () => {
       activeOrganizationId: org.id,
       activeRole: null,
       activePermissions: [],
+      activeFeatures: [],
       accessToken: 'access-1',
       expiresAt: 1_000_000 + 600_000,
     });

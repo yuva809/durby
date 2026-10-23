@@ -94,7 +94,7 @@ For the active organization, once per request (cached in the request's CLS scope
 3. **Limits** of an enabled key, per limit name: override limit → plan limit → unlimited (`null`).
 
 Keys in stored rows that aren't registered are ignored (fail closed, like permissions). Stored limits that don't
-match the current schema are ignored per limit name and logged once.
+match the current schema are ignored per limit name and logged as a warning when resolved.
 
 ```ts
 entitlements.isEnabled('inventory.counts'); // Promise<boolean>

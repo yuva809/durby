@@ -12,9 +12,12 @@ export const REQUIRED_FEATURE_KEY = 'durby:requiredFeature';
 export const RequireFeature = (key: FeatureKey): MethodDecorator & ClassDecorator =>
   SetMetadata(REQUIRED_FEATURE_KEY, key);
 
-/** The feature keys on the handler and on its controller class (may be unregistered). */
+/**
+ * The feature keys on the controller class, then on the handler (may be unregistered). The class
+ * key is usually the broader one (e.g. `inventory` before `inventory.counts`), so it is reported.
+ */
 export function featuresOf(reflector: Reflector, handler: object, controller: object): string[] {
-  return [handler, controller]
+  return [controller, handler]
     .map((target) => reflector.get<string | undefined>(REQUIRED_FEATURE_KEY, target as never))
     .filter((key): key is string => key !== undefined);
 }
