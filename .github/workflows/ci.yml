@@ -83,3 +83,41 @@ jobs:
           push: false
           cache-from: type=gha,scope=${{ matrix.dockerfile }}-${{ matrix.target }}
           cache-to: type=gha,mode=max,scope=${{ matrix.dockerfile }}-${{ matrix.target }}
+
+  # Playwright smoke suite against the local stack (docs/platform/web-shell.md → Tests): login, nav
+  # filtering and theme by domain on durby.localhost and partner-demo.localhost.
+  e2e:
+    name: E2E smoke (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Start Postgres, Redis, Mailpit
+        run: docker compose up -d --wait postgres redis mailpit
+      - name: Configure api
+        run: cp apps/api/.env.example apps/api/.env
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @durby/api db:generate
+          pnpm --filter @durby/api db:deploy
+          pnpm turbo run build --filter=@durby/api --filter=@durby/web
+          node apps/api/dist/cli/seed-dev.js
+      - name: Install Chromium
+        run: pnpm --filter @durby/web exec playwright install --with-deps chromium
+      - name: Run Playwright
+        run: pnpm --filter @durby/web e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 7
