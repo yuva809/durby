@@ -7,7 +7,9 @@ import { errorLabel } from '../../lib/auth/errors';
 import { useLinkToken } from '../../lib/auth/link-token';
 import { postPublic } from '../../lib/auth/public-requests';
 import { t } from '../../lib/i18n';
-import { AuthCard, fieldStyle, formText, Notice } from '../auth-layout';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { AuthCard, fieldClass, formText, Notice } from '../auth-layout';
 
 export default function ResetPasswordPage() {
   // undefined: not read yet; null: missing or malformed.
@@ -38,9 +40,9 @@ export default function ResetPasswordPage() {
   else if (token !== undefined) {
     content = (
       <form onSubmit={(e) => void onSubmit(e)}>
-        <label style={fieldStyle}>
+        <label className={fieldClass}>
           {t('auth.reset.password')}
-          <input
+          <Input
             name="password"
             type="password"
             autoComplete="new-password"
@@ -50,14 +52,14 @@ export default function ResetPasswordPage() {
           />
           <small>{t('auth.reset.hint')}</small>
         </label>
-        <label style={fieldStyle}>
+        <label className={fieldClass}>
           {t('auth.reset.confirm')}
-          <input name="confirm" type="password" autoComplete="new-password" required />
+          <Input name="confirm" type="password" autoComplete="new-password" required />
         </label>
         <Notice text={error} tone="error" />
-        <button type="submit" disabled={busy}>
+        <Button type="submit" className="w-full" disabled={busy}>
           {t('auth.reset.submit')}
-        </button>
+        </Button>
       </form>
     );
   }

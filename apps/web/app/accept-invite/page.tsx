@@ -16,7 +16,9 @@ import {
   type Result,
 } from '../../lib/rbac/invitations';
 import { roleName } from '../../lib/rbac/roles';
-import { AuthCard, fieldStyle, formText, Notice } from '../auth-layout';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { AuthCard, fieldClass, formText, Notice } from '../auth-layout';
 import { useAuth } from '../providers';
 
 const fill = (key: LabelKey, values: Record<string, string>) =>
@@ -121,9 +123,9 @@ export default function AcceptInvitePage() {
           {intro}
           <p>{t('platform.invite.newAccount')}</p>
           <form onSubmit={onCreate}>
-            <label style={fieldStyle}>
+            <label className={fieldClass}>
               {t('platform.invite.email')}
-              <input
+              <Input
                 name="email"
                 type="email"
                 autoComplete="username"
@@ -131,9 +133,9 @@ export default function AcceptInvitePage() {
                 readOnly
               />
             </label>
-            <label style={fieldStyle}>
+            <label className={fieldClass}>
               {t('platform.invite.password')}
-              <input
+              <Input
                 name="password"
                 type="password"
                 autoComplete="new-password"
@@ -143,14 +145,14 @@ export default function AcceptInvitePage() {
               />
               <small>{t('platform.invite.hint')}</small>
             </label>
-            <label style={fieldStyle}>
+            <label className={fieldClass}>
               {t('platform.invite.confirm')}
-              <input name="confirm" type="password" autoComplete="new-password" required />
+              <Input name="confirm" type="password" autoComplete="new-password" required />
             </label>
             <Notice text={error} tone="error" />
-            <button type="submit" disabled={busy}>
+            <Button type="submit" className="w-full" disabled={busy}>
               {busy ? t('platform.invite.joining') : t('platform.invite.create')}
-            </button>
+            </Button>
           </form>
         </>
       );
@@ -161,13 +163,14 @@ export default function AcceptInvitePage() {
         <>
           {intro}
           <Notice text={error} tone="error" />
-          <button
+          <Button
             type="button"
+            className="w-full"
             disabled={busy}
             onClick={() => void run(() => joinAsSignedIn(store, token ?? ''))}
           >
             {busy ? t('platform.invite.joining') : t('platform.invite.accept')}
-          </button>
+          </Button>
         </>
       );
     } else if (session) {
@@ -180,9 +183,9 @@ export default function AcceptInvitePage() {
               email: preview.email,
             })}
           </p>
-          <button type="button" onClick={() => void store.logout()}>
+          <Button variant="outline" type="button" onClick={() => void store.logout()}>
             {t('platform.invite.signOut')}
-          </button>
+          </Button>
         </>
       );
     } else {
@@ -191,9 +194,9 @@ export default function AcceptInvitePage() {
           {intro}
           <p>{t('platform.invite.signIn')}</p>
           <form onSubmit={onSignIn}>
-            <label style={fieldStyle}>
+            <label className={fieldClass}>
               {t('platform.invite.email')}
-              <input
+              <Input
                 name="email"
                 type="email"
                 autoComplete="username"
@@ -201,14 +204,14 @@ export default function AcceptInvitePage() {
                 readOnly
               />
             </label>
-            <label style={fieldStyle}>
+            <label className={fieldClass}>
               {t('platform.invite.password')}
-              <input name="password" type="password" autoComplete="current-password" required />
+              <Input name="password" type="password" autoComplete="current-password" required />
             </label>
             <Notice text={error} tone="error" />
-            <button type="submit" disabled={busy}>
+            <Button type="submit" className="w-full" disabled={busy}>
               {busy ? t('platform.invite.joining') : t('platform.invite.signInSubmit')}
-            </button>
+            </Button>
           </form>
           <p>
             <Link href="/forgot-password">{t('auth.login.forgotPassword')}</Link>

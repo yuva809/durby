@@ -1,16 +1,22 @@
 import type { ReactNode } from 'react';
+import { Card } from '../components/ui/card';
+import { Wordmark } from '../components/wordmark';
+import { cn } from '../lib/utils';
 
-/** Narrow centered column for the sign-in pages. */
+/** Narrow centered card with the partner's wordmark for the sign-in pages. */
 export function AuthCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <main style={{ maxWidth: '22rem', margin: '4rem auto' }}>
-      <h1 style={{ fontSize: '1.5rem' }}>{title}</h1>
-      {children}
+    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-12">
+      <Wordmark className="self-center" />
+      <Card className="p-6">
+        <h1 className="mb-4 text-xl font-semibold">{title}</h1>
+        {children}
+      </Card>
     </main>
   );
 }
 
-export const fieldStyle = { display: 'grid', gap: '0.25rem', marginBottom: '1rem' } as const;
+export const fieldClass = 'mb-4 grid gap-1.5';
 
 /** Error or status text, announced to screen readers. */
 export function Notice({ text, tone }: { text: string | null; tone: 'error' | 'info' }) {
@@ -18,7 +24,7 @@ export function Notice({ text, tone }: { text: string | null; tone: 'error' | 'i
   return (
     <p
       role={tone === 'error' ? 'alert' : 'status'}
-      style={{ color: tone === 'error' ? '#b00020' : 'inherit' }}
+      className={cn('my-3 text-sm', tone === 'error' && 'text-destructive')}
     >
       {text}
     </p>

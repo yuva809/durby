@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 import { errorLabel } from '../../lib/auth/errors';
 import { t } from '../../lib/i18n';
-import { AuthCard, fieldStyle, formText, Notice } from '../auth-layout';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { AuthCard, fieldClass, formText, Notice } from '../auth-layout';
 import { useAuth } from '../providers';
 
 export default function LoginPage() {
@@ -32,18 +34,18 @@ export default function LoginPage() {
   return (
     <AuthCard title={t('auth.login.title')}>
       <form onSubmit={(e) => void onSubmit(e)}>
-        <label style={fieldStyle}>
+        <label className={fieldClass}>
           {t('auth.login.email')}
-          <input name="email" type="email" autoComplete="username" required />
+          <Input name="email" type="email" autoComplete="username" required />
         </label>
-        <label style={fieldStyle}>
+        <label className={fieldClass}>
           {t('auth.login.password')}
-          <input name="password" type="password" autoComplete="current-password" required />
+          <Input name="password" type="password" autoComplete="current-password" required />
         </label>
         <Notice text={error} tone="error" />
-        <button type="submit" disabled={busy}>
+        <Button type="submit" className="w-full" disabled={busy}>
           {busy ? t('auth.login.submitting') : t('auth.login.submit')}
-        </button>
+        </Button>
       </form>
       <p>
         <Link href="/forgot-password">{t('auth.login.forgotPassword')}</Link>

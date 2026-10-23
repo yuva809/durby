@@ -5,7 +5,9 @@ import { type FormEvent, useState } from 'react';
 import { errorLabel } from '../../lib/auth/errors';
 import { postPublic } from '../../lib/auth/public-requests';
 import { t } from '../../lib/i18n';
-import { AuthCard, fieldStyle, formText, Notice } from '../auth-layout';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { AuthCard, fieldClass, formText, Notice } from '../auth-layout';
 
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
@@ -31,14 +33,14 @@ export default function ForgotPasswordPage() {
       ) : (
         <form onSubmit={(e) => void onSubmit(e)}>
           <p>{t('auth.forgot.intro')}</p>
-          <label style={fieldStyle}>
+          <label className={fieldClass}>
             {t('auth.login.email')}
-            <input name="email" type="email" autoComplete="username" required />
+            <Input name="email" type="email" autoComplete="username" required />
           </label>
           <Notice text={error} tone="error" />
-          <button type="submit" disabled={busy}>
+          <Button type="submit" className="w-full" disabled={busy}>
             {t('auth.forgot.submit')}
-          </button>
+          </Button>
         </form>
       )}
       <p>
