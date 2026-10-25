@@ -12,6 +12,8 @@ const buttonVariants = cva(
         outline: 'border border-input bg-card hover:bg-muted',
         ghost: 'hover:bg-muted',
         link: 'text-primary-text underline-offset-4 hover:underline',
+        // --destructive is ≥ 4.5:1 as text on cards and the page (no foreground token needed).
+        destructive: 'border border-destructive bg-card text-destructive hover:bg-muted',
       },
       size: {
         default: '',

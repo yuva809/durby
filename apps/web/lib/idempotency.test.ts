@@ -40,10 +40,13 @@ describe('withIdempotencyKey', () => {
 
 describe('sendAction', () => {
   const put = { method: 'PUT', body: '{"value":"UTC"}' };
-  const store = (...statuses: number[]) => {
-    const apiFetch = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(() =>
-      Promise.resolve(new Response(null, { status: statuses.shift() ?? 200 })),
-    );
+  const store = (...statuses: (number | (() => Response))[]) => {
+    const apiFetch = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(() => {
+      const next = statuses.shift() ?? 200;
+      return Promise.resolve(
+        typeof next === 'number' ? new Response(null, { status: next }) : next(),
+      );
+    });
     return {
       apiFetch,
       keyOf: (i: number) =>
@@ -51,14 +54,36 @@ describe('sendAction', () => {
     };
   };
 
-  it('retries a 5xx or a 409 with the same key, then starts a new action after success', async () => {
-    const s = store(503, 409, 200, 200);
+  const inProgress = () =>
+    Response.json({ code: 'idempotency.request_in_progress' }, { status: 409 });
+
+  it('retries a 5xx or a 409 in progress with the same key, then starts a new action after success', async () => {
+    const s = store(503, inProgress, 200, 200);
     const action = new ActionKey(keys());
     await sendAction(s, action, '/api/v1/settings/timezone', put);
     await sendAction(s, action, '/api/v1/settings/timezone', put);
     await sendAction(s, action, '/api/v1/settings/timezone', put);
     await sendAction(s, action, '/api/v1/settings/timezone', put);
     expect([0, 1, 2, 3].map(s.keyOf)).toEqual(['key-1', 'key-1', 'key-1', 'key-2']);
+  });
+
+  it('ends the action on any other 409 (a final answer, stored by the api)', async () => {
+    const lastOwner = () => Response.json({ code: 'rbac.last_owner' }, { status: 409 });
+    const s = store(lastOwner, 200);
+    const action = new ActionKey(keys());
+    const res = await sendAction(s, action, '/x', put);
+    // The caller can still read the body.
+    expect(await res.json()).toEqual({ code: 'rbac.last_owner' });
+    await sendAction(s, action, '/x', put);
+    expect([0, 1].map(s.keyOf)).toEqual(['key-1', 'key-2']);
+  });
+
+  it('keeps the key on a 409 without a readable body (outcome unknown)', async () => {
+    const s = store(409, 200);
+    const action = new ActionKey(keys());
+    await sendAction(s, action, '/x', put);
+    await sendAction(s, action, '/x', put);
+    expect([0, 1].map(s.keyOf)).toEqual(['key-1', 'key-1']);
   });
 
   it('ends the action on a 4xx answer', async () => {
