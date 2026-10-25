@@ -170,7 +170,8 @@ organization-scope settings); reads need it for any location (the guard's check)
       "resetPolicy": "yearly",
       "period": "2026",
       "nextValue": "42",
-      "preview": "INV-2026-000042"
+      "preview": "INV-2026-000042",
+      "resetPolicyLocked": true
     }
   ]
 }
@@ -178,6 +179,8 @@ organization-scope settings); reads need it for any location (the guard's check)
 
 - `period`, `nextValue` and `preview` are for the current period (now, in the organization's time zone). A series
   that has issued nothing yet shows `nextValue: "1"`. Reading creates nothing.
+- `resetPolicyLocked` (since 1.10 c): true once any counter of the series is above 1 (numbers issued or the
+  counter raised); a reset policy change then answers `409 numbering.series_in_use`. UI hint for the web app.
 - `PATCH` and `PUT` return the series in the same shape. Writes create a missing series from the registry first.
 - `PATCH`: the result must pass the pattern rules (checked on the merged prefix, pattern and reset policy). A
   `resetPolicy` change is allowed only while no counter of the series has issued a number.

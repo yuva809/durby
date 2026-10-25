@@ -99,6 +99,13 @@ Spec: [docs/platform/web-shell.md](../platform/web-shell.md).
     functions used by the api (with the resolved access) and by the web app (with the session's role and
     permissions) to hide what the api would refuse. The api remains the only enforcement.
 
+14. **Auth rate limits are configurable, with production floors** (PR c). The counts of the auth rate limits
+    (ADR 0006) are env vars defaulting to today's values; production refuses to boot with a value below the default,
+    so configuration can only make production stricter. Only the Playwright run raises them, through its
+    `webServer` env, so end-to-end suites that sign in many times from one IP don't hit 429.
+    _Rejected:_ disabling rate limiting in tests (the e2e suite would no longer run the real code path) and a
+    per-IP allow-list (a bypass that could leak into production configuration).
+
 ## Consequences
 
 - A new partner or domain needs a migration and a deploy; a theme change shows within 5 minutes of the deploy.

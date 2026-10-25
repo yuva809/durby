@@ -15,12 +15,12 @@ permissions, labels), never code (rule 2).
 
 ## Pull requests
 
-| PR  | Scope                                                                                     | Needs api changes                                 |
-| --- | ----------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| (a) | Shell, design system, nav registry, partner theming by domain, two-domain demo, e2e suite | `partner_themes`, `partner_domains`, `GET /theme` |
-| (b) | Users, roles, invitations                                                                 | `GET /locations`, partner-domain invite links     |
-| (c) | Settings, labels editor, number series, plan/features (read-only), organization profile   | `PATCH /organization` (name)                      |
-| (d) | Audit log viewer                                                                          | none                                              |
+| PR  | Scope                                                                                     | Needs api changes                                               |
+| --- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| (a) | Shell, design system, nav registry, partner theming by domain, two-domain demo, e2e suite | `partner_themes`, `partner_domains`, `GET /theme`               |
+| (b) | Users, roles, invitations                                                                 | `GET /locations`, partner-domain invite links                   |
+| (c) | Settings, labels editor, number series, plan/features (read-only), organization profile   | `PATCH /organization`, `resetPolicyLocked`, rate-limit env vars |
+| (d) | Audit log viewer                                                                          | none                                                            |
 
 Each PR is one session, its own branch from `main`, and passes `pnpm lint && pnpm typecheck && pnpm test` plus the
 Playwright smoke suite.
@@ -346,23 +346,105 @@ New keys under `platform.nav.*` (members, roles), `platform.members.*`, `platfor
   available" on both pages. Each run signs in about 11 times from one IP, under the login limit of 20 per 5 minutes
   (auth.md → Rate limits); repeated local runs within that window answer 429.
 
-## Planned: (c) settings, labels, number series, plan, organization
+## Settings, labels, number series, plan, organization (PR c)
 
-- **Settings:** the registry's settings at organization scope (brand and location scopes when those pages exist),
-  showing `source` (inherited vs set here). **If `GET /settings` is denied (403) or fails, the app falls back to the
-  registry's code defaults** instead of failing (settings.md → Web app). Before changing a `dataBound` setting, a
-  confirmation dialog explains the effect on existing data.
-- **Labels editor** (`platform.labels.manage`): only offers keys allowed by `isOrgOverridable`, per locale, with the
-  default and the partner value for reference. Shows rows with `active: false` (no longer overridable or invalid)
-  as inactive with the reason, so they can be removed. Validation with `validateOverride` before sending.
-- **Number series** (`platform.settings.read` / `.manage`): prefix and pattern validated with
-  `numberFormatProblems`, each problem shown with its label; `nextValue` is a string.
-- **Plan and features** (read-only): `GET /me/entitlements`: plan name (`planLabel`), enabled features with their
-  limits (null = unlimited). No editing: plans change through the CLI.
-- **Organization profile:** the organization name, editable with `platform.org.manage`. Needs a new
-  `PATCH /api/v1/organization` (`@RequirePermission('platform.org.manage')`, `@Idempotent()`, audited
-  with a new `platform.organization.updated` action, name 1–100 characters). Tenant-private fields (address, tax id) need their own
-  RLS table and are not part of this step.
+### Routes and navigation (group `settings`, in this order)
+
+| Route                    | Nav label                   | Page needs (UI hint)     | Writes need                |
+| ------------------------ | --------------------------- | ------------------------ | -------------------------- |
+| `/settings/organization` | `platform.nav.organization` | (any member)             | `platform.org.manage`      |
+| `/settings/general`      | `platform.nav.settings`     | `platform.settings.read` | `platform.settings.manage` |
+| `/settings/members`      | `platform.nav.members`      | `platform.users.read`    | (PR b)                     |
+| `/settings/roles`        | `platform.nav.roles`        | `platform.roles.read`    | (PR b)                     |
+| `/settings/labels`       | `platform.nav.labels`       | `platform.labels.manage` | `platform.labels.manage`   |
+| `/settings/numbering`    | `platform.nav.numbering`    | `platform.settings.read` | `platform.settings.manage` |
+| `/settings/plan`         | `platform.nav.plan`         | (any member)             | none (read-only)           |
+
+Without the write permission a page is read-only (no edit controls). As in (b), permissions are UI hints and every
+write goes through `sendAction` with one `ActionKey` per form.
+
+### Organization profile
+
+- Shows the organization's name (from the session). With `platform.org.manage`: an edit form, name 1–100
+  characters after trimming. After saving, the session refreshes so the switcher and the home page show the new name.
+- **`PATCH /api/v1/organization`** `{ name }` → `{ id, name }`. `@RequirePermission('platform.org.manage')`,
+  `@Idempotent()` (naturally idempotent). Runs in the tenant's transaction: updates `organizations.name` for the
+  token's organization (never an id from the request) and records `platform.organization.updated` with before/after
+  `{ id, name }`. Saving the same name writes nothing (no audit row). Tenant-private fields (address, tax id) need
+  their own RLS table and are not part of this step.
+
+### Settings
+
+- One control per registry key that allows organization scope, **generated from the key's schema**
+  (`lib/settings/controls.ts`): an enum → select (option labels `platform.settings.<key>.options.<value>` when they
+  exist, else the value, e.g. currency codes), a boolean → checkbox, a string → text input checked against the key's
+  own schema before sending. A unit test fails on a registry key no control type covers.
+- Each row shows the label, description, the current value and its `source`: "Set here" (organization) or
+  "Inherited" (partner or default). **Save** stores a value; **Use inherited value** (`DELETE`) removes the
+  organization's value.
+- **Data-bound keys** (`dataBound: true`, e.g. currency, valuation method) carry a warning. Saving opens a confirm
+  dialog that explains the change reinterprets recorded data and is refused once data exists. `409 settings.in_use`
+  shows that explanation (its label) and locks the row for the rest of the visit.
+- **Fallback:** if `GET /settings` is denied (403) or fails, the page shows the registry's code defaults read-only
+  with a notice, instead of an error page (settings.md → Web app).
+
+### Labels editor (`platform.labels.manage`)
+
+- Lists only keys `isOrgOverridable` allows (terminology: `*.nav.**`, `*.entities.**`, `*.fields.**`), for every
+  locale (en, de), grouped by module, with a filter box. Each row: the default text, the current text (resolved:
+  the organization's override, else the partner's, else the default; from `GET /labels`), and the override if any.
+- Editing checks the value with `validateOverride(key, locale, value, 'organization')` as you type and shows the
+  problem inline (blank, too long, line break, control character, braces, placeholders with the expected and found
+  names). **Save** is disabled while there is a problem; the api checks again (`labels.invalid_value`).
+- **Live preview:** the text as it would render (placeholders filled with sample values), styled like a nav item for
+  `*.nav.*` keys.
+- Stored rows with `active: false` (no longer overridable, removed key or locale, or invalid) are listed separately
+  with the reason and a **Remove** action (`DELETE`, which never checks the key).
+- After a save or remove, the labels the shell uses are reloaded (`useReloadLabels()`), so the nav shows the new
+  text at once.
+
+### Number series (`platform.settings.read`, writes `platform.settings.manage`)
+
+- One card per series of an enabled feature (`GET /number-series`): name, description, `preview` and `nextValue`.
+- **Format editor:** prefix, pattern and reset policy, checked with `numberFormatProblems` as you type (each problem
+  with its `platform.numbering.problems.*` label), and a **live preview** rendered with `formatNumber` for the
+  series' current period and the current `nextValue`.
+- **Reset policy is locked once numbers exist:** the response's `resetPolicyLocked` (new, additive; true once any
+  counter of the series is above 1, the same check that answers `409 numbering.series_in_use`). The control is
+  disabled with an explanation.
+- **Counter:** "Raise next number" accepts only digits greater than the current `nextValue` (compared as `BigInt`,
+  the value travels as a string); `numbering.counter_backwards` from a concurrent allocation shows its label.
+
+### Plan and features (read-only)
+
+- `GET /me/entitlements`: the plan name (`planLabel`), the enabled features with their names and descriptions, and
+  their limits (`platform.features.limits.<name>`; null = unlimited). No editing: plans change through the CLI.
+
+### Rate limits in end-to-end runs
+
+The auth rate limits (auth.md → Rate limits) are read from env vars with today's values as defaults:
+`RATE_LIMIT_LOGIN_IP` (20 / 5 min), `RATE_LIMIT_LOGIN_EMAIL` (10 / 15 min), `RATE_LIMIT_REFRESH_IP` (60 / min),
+`RATE_LIMIT_MAIL_IP` (5 / 15 min), `RATE_LIMIT_MAIL_EMAIL` (3 / h), `RATE_LIMIT_TOKEN_IP` (10 / 15 min; reset,
+verification and invitation preview/accept). Only the counts are configurable, not the windows. **In production a
+value below the default fails the boot**; only the Playwright run raises them (its `webServer` env), so a growing
+suite that signs in many times from one IP never answers 429.
+
+### Labels (PR c)
+
+New keys under `platform.nav.*`, `platform.organizationPage.*`, `platform.settingsPage.*`,
+`platform.labelsEditor.*`, `platform.numberingPage.*`, `platform.planPage.*`, `platform.features.limits.*`,
+`platform.settings.<key>.options.*` and `platform.audit.actions.organizationUpdated`, in `en` and `de`.
+
+### Tests (PR c)
+
+- **Api:** `PATCH /organization` (rename audited, same name writes nothing, needs `platform.org.manage`, never
+  another organization); `resetPolicyLocked` before and after a raise; rate-limit env parsing (defaults, raised
+  values, production rejects lower values).
+- **Web (Vitest):** a control for every registry key; setting value checks; the 403 fallback; override problems and
+  preview; pattern problems and preview; the counter rule; nav items per permission.
+- **Playwright** (on Demo Café, so the shell tests on Demo Bistro stay untouched): change a setting and use the
+  inherited value again; override `inventory.nav.title` and see it in the nav, then remove it; raise the invoice
+  counter by one.
 
 ## Planned: (d) audit log viewer
 
