@@ -272,6 +272,16 @@ cross-tenant), routes without guards, any hardcoded UI strings, money as number,
 missing audit calls, TODOs. Then fix them one by one.
 ```
 
+Known items for the review list (found while building; add them to docs/reviews/phase-1.md):
+
+- [ ] **Outbox claim starvation** (docs/platform/outbox.md → Dispatcher, ADR 0013 §3): `outbox_due_tenants` groups
+      every pending event and keeps the 500 tenants with the oldest one, whether or not they are due. Tenants with
+      only events in backoff or of types this release doesn't know (rollback) fill those slots, so with more than 500
+      of them a tenant with due events is never claimed. Fix: only tenants with `due > 0` compete for the claim slots
+      (filter by `available_at <= now()` and known types before the `LIMIT`, ordered by the oldest due event); the
+      lag/backlog measurement becomes a separate query that still sees every pending event. **Must be fixed before
+      Phase 2 adds handlers with real side effects.**
+
 **Done when:** the review list is empty. Phase 1 complete → next: Phase 2 (shell + catalog for inventory).
 
 ## Before production

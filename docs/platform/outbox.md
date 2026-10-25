@@ -150,3 +150,7 @@ Retries are audited as `platform.outbox_event.retried` with the actor `cli.outbo
 - Cleanup keeps pending and dead-lettered events; CLI retry is audited.
 - `durby_app` can't change `type`/`payload`; the definer function passes the ADR 0006 guard; partial indexes exist.
 - Cross-tenant isolation on `outbox_events` and `processed_events`.
+- The dispatch, handler, cleanup and CLI tests (`outbox-dispatch.int.spec.ts`) run on **their own database**
+  (`test/support/own-database.ts`): backlog, lag and cleanup read every tenant, so on the shared test database their
+  results and run time would depend on the files running in parallel. Time-dependent checks (backoff, lag) use the
+  database clock only, never the test process's `Date.now()`.

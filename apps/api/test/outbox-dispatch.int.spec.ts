@@ -18,7 +18,13 @@ import {
   OutboxPublisher,
   OutboxService,
 } from '../src/platform/outbox';
-import { TenantContext, type TenantTransactionClient } from '../src/platform/tenancy';
+import {
+  PLATFORM_PRISMA,
+  type PlatformPrismaClient,
+  TenantContext,
+  type TenantTransactionClient,
+} from '../src/platform/tenancy';
+import { createOwnDatabase, useDatabase } from './support/own-database';
 import { RbacSeed } from './support/rbac';
 
 const QUEUE = 'durby-outbox';
@@ -66,7 +72,11 @@ class FlakyPublisher extends OutboxPublisher {
   }
 }
 
-/** docs/platform/outbox.md → Dispatcher, Handlers, Worker process, CLI (ADR 0013). */
+/**
+ * docs/platform/outbox.md → Dispatcher, Handlers, Worker process, CLI (ADR 0013). Runs on its own
+ * database: the backlog, lag and cleanup read every tenant, so on the shared database their
+ * results and run time would depend on the other test files running in parallel.
+ */
 describe('outbox dispatch and handlers', () => {
   let app: INestApplication;
   let seed: RbacSeed;
@@ -77,6 +87,7 @@ describe('outbox dispatch and handlers', () => {
   let worker: Worker<HandlerJobData> | undefined;
 
   beforeAll(async () => {
+    useDatabase(await createOwnDatabase('outbox_dispatch'));
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
       providers: [EchoHandler],
@@ -137,6 +148,12 @@ describe('outbox dispatch and handlers', () => {
       }),
     );
 
+  /** The database clock (the dispatcher's `now()`), not the test process's. */
+  const dbNow = async (orgId: string): Promise<number> => {
+    const [row] = await seed.as(orgId, (db) => db.$queryRaw<{ now: Date }[]>`SELECT now() AS now`);
+    return row?.now.getTime() ?? Number.NaN;
+  };
+
   /** Effects of test.echo in `orgId`. */
   const effects = async (orgId: string) =>
     (await rows(orgId)).filter((r) => r.type === 'config.labels.changed').length;
@@ -179,6 +196,13 @@ describe('outbox dispatch and handlers', () => {
       },
     );
   }
+
+  it('runs on its own database', async () => {
+    const [row] = await app.get<PlatformPrismaClient>(PLATFORM_PRISMA).$queryRaw<
+      { db: string }[]
+    >`SELECT current_database() AS db`;
+    expect(row?.db).toBe('durby_outbox_dispatch');
+  });
 
   it('publishes one job per handler and marks the event published', async () => {
     const { id: org } = await seed.org();
@@ -265,11 +289,21 @@ describe('outbox dispatch and handlers', () => {
     const { id: org } = await seed.org();
     await emit(org);
     control.publishFails = true;
+    const before = await dbNow(org);
     expect(await dispatcher.dispatchTenant(org)).toMatchObject({ claimed: 1, failed: 1 });
+    const after = await dbNow(org);
     const [failed] = await rows(org);
     expect(failed).toMatchObject({ attempts: 1, lastError: 'redis down', publishedAt: null });
-    expect(failed?.availableAt.getTime()).toBeGreaterThan(Date.now());
-    // In backoff: not claimed.
+    // dispatchBackoffMs(1) = 2 s ± 20 % after the claim's now(), all on the database clock
+    // (± 1 ms: timestamps reach JS truncated to milliseconds).
+    const availableAt = failed?.availableAt.getTime() ?? Number.NaN;
+    expect(availableAt).toBeGreaterThanOrEqual(before + 1600 - 1);
+    expect(availableAt).toBeLessThanOrEqual(after + 2400 + 1);
+    // In backoff: not claimed. Pushed out explicitly, since 1.6 s can pass on a slow run.
+    await seed.as(
+      org,
+      (db) => db.$executeRaw`UPDATE outbox_events SET available_at = now() + interval '1 hour'`,
+    );
     expect((await dispatcher.dispatchTenant(org)).claimed).toBe(0);
 
     const max = app.get<AppConfig>(APP_CONFIG).OUTBOX_MAX_ATTEMPTS;
@@ -299,24 +333,38 @@ describe('outbox dispatch and handlers', () => {
 
   it('two dispatchers claim disjoint events (SKIP LOCKED), each published once', async () => {
     const { id: org } = await seed.org();
-    const ids = [];
+    const ids: string[] = [];
     for (let i = 0; i < 20; i++) ids.push(await emit(org));
-    const [a, b] = await Promise.all([
-      dispatcher.dispatchTenant(org),
-      dispatcher.dispatchTenant(org),
-    ]);
-    expect((a?.claimed ?? 0) + (b?.claimed ?? 0)).toBe(20);
-    expect((await rows(org)).every((r) => r.publishedAt !== null)).toBe(true);
+    // The worker started by earlier tests would run these jobs as soon as they are enqueued, and
+    // test.echo writes a new pending event into `org` that a dispatcher could then claim too.
+    await worker?.pause();
+    try {
+      const [a, b] = await Promise.all([
+        dispatcher.dispatchTenant(org),
+        dispatcher.dispatchTenant(org),
+      ]);
+      expect((a?.claimed ?? 0) + (b?.claimed ?? 0)).toBe(20);
+    } finally {
+      void worker?.resume();
+    }
+    const emitted = (await rows(org)).filter((r) => ids.includes(r.id));
+    expect(emitted).toHaveLength(20);
+    expect(emitted.every((r) => r.publishedAt !== null)).toBe(true);
     const jobs = await Promise.all(ids.map((id) => queue.getJob(handlerJobId(id, 'test.echo'))));
     expect(jobs.filter(Boolean)).toHaveLength(20);
   });
 
   it('reports the backlog for the lag log', async () => {
     const { id: org } = await seed.org();
-    await emit(org);
-    const lag = await app.get(OutboxLagReporter).measure(new Date(Date.now() + 120_000));
+    const event = await emit(org);
+    const [row] = await seed.as(org, (db) =>
+      db.outboxEvent.findMany({ where: { id: event }, select: { occurredAt: true } }),
+    );
+    // Measured from the event's own (database) time, not the test process's clock.
+    const now = new Date((row?.occurredAt.getTime() ?? Number.NaN) + 120_000);
+    const lag = await app.get(OutboxLagReporter).measure(now);
     expect(lag.due).toBeGreaterThanOrEqual(1);
-    expect(lag.oldestPendingSeconds).toBeGreaterThanOrEqual(119);
+    expect(lag.oldestPendingSeconds).toBeGreaterThanOrEqual(120);
   });
 
   it('cleans up published events and old processed rows, keeps pending and dead-lettered', async () => {
