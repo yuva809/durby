@@ -172,6 +172,15 @@ describe('MembersPage', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
   });
 
+  it('offers no location choice when the organization has no locations', async () => {
+    signedInAs('owner');
+    api({ ...defaults, '/api/v1/locations': () => Response.json({ data: [] }) });
+    render(<MembersPage />);
+    await userEvent.click(within(await rowOf('staff@example.test')).getByTestId('member-change'));
+    await screen.findByTestId('role-select');
+    expect(screen.queryByTestId('scope-selected')).toBeNull();
+  });
+
   it('locks Owner invitations to all locations', async () => {
     signedInAs('owner');
     api(defaults);

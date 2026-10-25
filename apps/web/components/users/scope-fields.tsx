@@ -43,7 +43,8 @@ export function scopeProblem(value: ScopeValue): 'roleRequired' | 'locationsRequ
 
 /**
  * Role picker (only the roles the actor may grant) and location scope. Without readable locations
- * (`locations` null) the scope stays as it is and only the role can change.
+ * (`locations` null) the scope stays as it is and only the role can change; an organization
+ * without locations shows no scope choice.
  */
 export function ScopeFields({
   value,
@@ -86,7 +87,8 @@ export function ScopeFields({
         </Select>
       </div>
 
-      {locations !== null && (
+      {/* Without locations (none readable, or none yet) the only scope is all locations. */}
+      {locations !== null && locations.length > 0 && (
         <fieldset className="grid gap-2" disabled={isOwner}>
           <legend className="mb-1 text-sm font-medium">{t('platform.members.form.scope')}</legend>
           <label className="flex min-h-11 items-center gap-3">

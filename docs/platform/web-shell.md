@@ -341,8 +341,10 @@ New keys under `platform.nav.*` (members, roles), `platform.members.*`, `platfor
   (known codes, unknown code, unparseable body, network error); `sendAction` key rule for 409s.
 - **Playwright:** Owner invites a new email as Manager on `durby.localhost`, the test reads the link from Mailpit, a
   fresh browser context accepts it with a password, and the Owner sees the new member as Manager; the same on
-  `partner-demo.localhost` checks the link opens the demo domain; `staff@durby.local` sees neither nav item and gets
-  "not available" on `/settings/members`.
+  `partner-demo.localhost` checks the link opens the demo domain; a Staff member the test invites itself (not the
+  seeded `staff@durby.local`, whose role local dev data may have changed) sees neither nav item and gets "not
+  available" on both pages. Each run signs in about 11 times from one IP, under the login limit of 20 per 5 minutes
+  (auth.md → Rate limits); repeated local runs within that window answer 429.
 
 ## Planned: (c) settings, labels, number series, plan, organization
 
