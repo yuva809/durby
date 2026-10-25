@@ -1,6 +1,15 @@
 import type { LabelKey } from '@durby/i18n';
 import type { FeatureKey, PermissionKey } from '@durby/shared';
-import { ChartLine, CreditCard, House, type LucideIcon, Package, Receipt } from 'lucide-react';
+import {
+  ChartLine,
+  CreditCard,
+  House,
+  type LucideIcon,
+  Package,
+  Receipt,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 
 export type NavGroup = 'main' | 'modules' | 'settings';
 
@@ -60,6 +69,22 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: ChartLine,
     group: 'modules',
     feature: 'reports',
+  },
+  {
+    id: 'members',
+    href: '/settings/members',
+    label: 'platform.nav.members',
+    icon: Users,
+    group: 'settings',
+    permission: 'platform.users.read',
+  },
+  {
+    id: 'roles',
+    href: '/settings/roles',
+    label: 'platform.nav.roles',
+    icon: ShieldCheck,
+    group: 'settings',
+    permission: 'platform.roles.read',
   },
 ];
 

@@ -47,6 +47,23 @@ export function withIdempotencyKey(init: RequestInit, key: string): RequestInit 
 }
 
 /**
+ * Whether the answer leaves the action open for a retry with the same key: 5xx (not stored by the
+ * api) and 409 `idempotency.request_in_progress`. Other 409s (`rbac.last_owner`, …) are final
+ * answers the api stores; keeping their key would replay them even after the cause is fixed. A
+ * 409 whose body can't be read counts as unknown, so the key stays.
+ */
+async function retryable(res: Response): Promise<boolean> {
+  if (res.status >= 500) return true;
+  if (res.status !== 409) return false;
+  try {
+    const body = (await res.clone().json()) as { code?: unknown };
+    return body.code === 'idempotency.request_in_progress';
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Sends a write as part of `action`. The key stays for a retry when the outcome is unknown or
  * transient (network error, 409 still running, 5xx); any other answer ends the action. apiFetch's
  * own resend after a token refresh reuses the same headers, so the same key.
@@ -59,6 +76,6 @@ export async function sendAction(
 ): Promise<Response> {
   const key = action.for({ input, method: init.method ?? 'GET', body: init.body ?? null });
   const res = await store.apiFetch(input, withIdempotencyKey(init, key));
-  if (res.status !== 409 && res.status < 500) action.done();
+  if (!(await retryable(res))) action.done();
   return res;
 }

@@ -11,6 +11,8 @@ export const mockState = {
   store: {
     switchOrganization: vi.fn<SessionStore['switchOrganization']>(),
     logout: vi.fn<SessionStore['logout']>(),
+    refresh: vi.fn<SessionStore['refresh']>(),
+    apiFetch: vi.fn<SessionStore['apiFetch']>(),
   },
   router: { push: vi.fn(), replace: vi.fn() },
 };
@@ -22,6 +24,11 @@ export function resetMocks(): void {
   mockState.overrides = {};
   mockState.store.switchOrganization.mockReset().mockResolvedValue({ ok: true });
   mockState.store.logout.mockReset().mockResolvedValue(undefined);
+  mockState.store.refresh.mockReset().mockResolvedValue({ ok: true });
+  // A fresh Response per call: a body can be read only once.
+  mockState.store.apiFetch
+    .mockReset()
+    .mockImplementation(() => Promise.resolve(Response.json({ data: [] })));
   mockState.router.push.mockReset();
   mockState.router.replace.mockReset();
 }
