@@ -81,11 +81,29 @@ Spec: [docs/platform/web-shell.md](../platform/web-shell.md).
 10. **Staging serves both domains** from one Caddy site block (basic auth on both) with both origins in
     `WEB_ORIGINS`. Email links keep using the single `WEB_BASE_URL` for now.
 
+11. **Location list behind `platform.settings.read`** (PR b). The member and invitation pages need location names,
+    so `GET /api/v1/locations` exists, guarded by the existing location-scope `platform.settings.read` and filtered
+    with `locationIdsFor` (a location-limited member sees only their locations).
+    _Rejected:_ a new `platform.locations.read` key. Granted to every system role (as Staff needs it), it would
+    repeat the 1.6 cascade (ADR 0010 §6): every custom role that invites or manages members would need it too, or the
+    subset rule would stop it from assigning or managing Staff. Every system role already holds `settings.read`, and
+    location names are no more sensitive than the settings it shows.
+
+12. **Invitation links on the partner's domain** (PR b). The link base is the first `WEB_ORIGINS` entry whose
+    hostname is one of the organization's `partner_domains`, else `WEB_BASE_URL`. Deterministic per environment,
+    never derived from the request's `Host` (no header injection into emails), and every candidate is already an
+    allowed origin. Password reset and verification links stay on `WEB_BASE_URL`: they are user-level, and a user's
+    organizations can belong to several partners.
+
+13. **Granting rules in `packages/shared`** (PR b). `canGrantRole`, `canManageMember` and `canEditRole` are pure
+    functions used by the api (with the resolved access) and by the web app (with the session's role and
+    permissions) to hide what the api would refuse. The api remains the only enforcement.
+
 ## Consequences
 
 - A new partner or domain needs a migration and a deploy; a theme change shows within 5 minutes of the deploy.
 - Every web call is typed and parsed with the same schemas the api uses; there is no generated client to keep in
   sync.
 - The web app gains Tailwind, Radix and lucide as dependencies and a Playwright suite in CI.
-- Open: per-partner email link domains; binding sessions to a partner domain (§9); brand-level theming; logo
+- Open: per-partner domains for reset and verification links (§12); binding sessions to a partner domain (§9); brand-level theming; logo
   uploads; dark mode; OpenAPI generation (§2).

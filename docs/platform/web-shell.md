@@ -18,7 +18,7 @@ permissions, labels), never code (rule 2).
 | PR  | Scope                                                                                     | Needs api changes                                 |
 | --- | ----------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | (a) | Shell, design system, nav registry, partner theming by domain, two-domain demo, e2e suite | `partner_themes`, `partner_domains`, `GET /theme` |
-| (b) | Users, roles, invitations                                                                 | none                                              |
+| (b) | Users, roles, invitations                                                                 | `GET /locations`, partner-domain invite links     |
 | (c) | Settings, labels editor, number series, plan/features (read-only), organization profile   | `PATCH /organization` (name)                      |
 | (d) | Audit log viewer                                                                          | none                                              |
 
@@ -228,19 +228,121 @@ empty states) and `platform.nav.*` (group names), in `en` and `de`. All user-fac
 - **Staging:** one Caddy site block with both addresses (`{$STAGING_DOMAIN}, {$STAGING_DEMO_DOMAIN}`), basic auth
   on both; `WEB_ORIGINS` lists both (the CSRF Origin check, ADR 0006 §6). DNS: `CNAME partner-demo.durby.tech →
 staging.durby.tech` (docs/ops/deploy.md). Cookies are host-only, so each domain has its own session.
-- Known gap: email links use `WEB_BASE_URL` (one domain), so a demo-partner user's reset or invite link opens the
-  Durby domain. Per-partner link domains come with (b) or later.
+- Email links: **invitation** links use the organization's partner domain since (b) (→ Invitation links). Password
+  reset and email verification links still use `WEB_BASE_URL`: they are user-level (a user can belong to
+  organizations of several partners), so a demo-partner user's reset link opens the Durby domain. Open, see ADR 0015.
 
-## Planned: (b) users, roles, invitations
+## Users, roles, invitations (PR b)
 
-- **Members** (`platform.users.read`): list with role and locations. Change role or locations, remove
-  (`platform.users.manage`). The UI hides actions the granting rules (rbac.md) would refuse (your own row, Owners
-  for non-Owners, roles with keys you don't hold); the api still decides (`rbac.not_grantable`, `rbac.last_owner`).
-- **Invitations** (`platform.users.invite`): list, invite (email, role, locations), revoke.
-- **Roles** (`platform.roles.read`): system and custom roles with their permissions grouped by area.
-  **Custom-role editor** (`platform.roles.manage`) only offers **grantable** permissions: keys the actor holds
-  (`activePermissions`). Location-scoped keys are marked.
-- All writes via `sendAction`.
+### Routes and navigation
+
+| Route               | Nav item (group `settings`)      | Page needs (UI hint)  | Contents                                  |
+| ------------------- | -------------------------------- | --------------------- | ----------------------------------------- |
+| `/settings/members` | Members (`platform.nav.members`) | `platform.users.read` | tabs **Members** and **Invitations**      |
+| `/settings/roles`   | Roles (`platform.nav.roles`)     | `platform.roles.read` | system roles (read-only) and custom roles |
+
+Without the permission the nav item is hidden and a direct visit shows the "not available" state
+(`platform.shell.noAccess.*`). `activePermissions` and `activeRole` are UI hints only: the api enforces every
+request, and a stale hint just leads to an error message, never to access.
+
+### Members tab
+
+- A table (stacked rows below 768 px): email (with "You" on your own row), role name, location scope ("All
+  locations" or the location names, falling back to "N locations" when `GET /locations` is not readable).
+- **Change** (role and locations, one dialog) and **Remove** (confirm dialog) need `platform.users.manage` and are
+  shown only when `canManageMember` allows it (below): never on your own row, Owners only for Owners, other members
+  only when their current role is grantable.
+- The role picker offers only grantable roles. Choosing Owner switches the scope to "All locations" and disables the
+  location picker (`rbac.owner_all_locations`). A limited scope needs at least one location.
+
+### Invitations tab
+
+- Open invitations: email, role, scope, expiry; **Revoke** (confirm) with `platform.users.invite`, only when the
+  invitation's role is grantable (the api's rule for revoking).
+- **Invite** (`platform.users.invite`, and `platform.roles.read` for the role list): email, role (grantable roles
+  only), all locations or chosen ones. Same Owner rule as above. After success the list reloads and the dialog says
+  the invitation was sent; the response never reveals whether the email has an account.
+
+### Roles page
+
+- System roles (Owner, Admin, Manager, Staff) are read-only: their permissions grouped by area (the key's first two
+  segments, e.g. `platform.users`), with the permission labels from `PERMISSIONS`. Location-scope keys carry a
+  "per location" badge.
+- Custom roles with `platform.roles.manage`: **Create**, **Edit** (name and permissions), **Delete** (confirm).
+- The editor offers only keys the actor holds (`activePermissions`); keys the actor doesn't hold are shown disabled
+  with "Your role doesn't include this". Edit and delete are hidden for a custom role that has keys the actor
+  doesn't hold (`canEditRole` before the change).
+- Deleting a role in use answers `rbac.role_in_use`: shown as its message, the role stays.
+
+### Granting rules shared with the api
+
+`canGrantRole`, `canManageMember` and `canEditRole` move from `apps/api/src/platform/rbac/granting.ts` to
+`packages/shared/src/granting.ts` as pure functions over plain data (`{ systemRole, permissions }` of the actor;
+`{ systemKey, keys }` of a role). The api passes its `ResolvedAccess`; the web app passes `activeRole.systemKey`,
+`activePermissions` and `user.id`. One implementation, so the UI never offers what the api would refuse (except for
+stale hints).
+
+### Locations: `GET /api/v1/locations`
+
+- `@RequirePermission('platform.settings.read')`, filtered with `locationIdsFor('platform.settings.read')`: a
+  location-limited member sees only their locations. Response `{ data: [{ id, name, brandId }] }` ordered by name.
+  Read-only; no idempotency marker.
+- **Why `platform.settings.read` and not a new `platform.locations.read`:** every system role holds
+  `settings.read` already. A new key granted to Staff would repeat the 1.6 cascade: every custom role that invites or
+  manages members would need the new key too, or it could no longer assign or manage Staff (the subset rule,
+  rbac.md → Granting rules). Location names are not more sensitive than the settings the key already shows. ADR 0015
+  §11.
+- Code: `apps/api/src/platform/organization/` (organization structure; (c) adds `PATCH /organization` there).
+
+### Invitation links
+
+The link base is the **first origin in `WEB_ORIGINS` whose hostname is one of the organization's partner domains**
+(`partner_domains`), else `WEB_BASE_URL`. Examples: locally `http://partner-demo.localhost:3000` for Demo Trattoria;
+on staging `https://partner-demo.durby.tech`; Durby organizations (no partner domains) keep `WEB_BASE_URL`.
+
+- Never the request's `Host`: an attacker-controlled header can't land in an email, and the result doesn't depend on
+  which domain the inviter happened to use. `WEB_ORIGINS` is already the CSRF allow-list, so every candidate is an
+  origin this environment serves; listing the partner's origin first decides when a partner has several.
+- `inviteLinkBase(origins, fallback, hostnames)` is a pure function with unit tests; the service loads the
+  partner's hostnames (platform table, no RLS) when it sends the mail.
+- Reset and verification links: see Two-domain demo → Email links.
+
+### Writes and errors
+
+- Every write uses `sendAction` with one `useActionKey()` per dialog or confirm button, so a retry (timeout, token
+  refresh) replays with the same `Idempotency-Key`; changing the input makes a new key.
+- **`sendAction` keeps the key only on 409 `idempotency.request_in_progress`** (and on network errors and 5xx). Other
+  409s (`rbac.last_owner`, `rbac.role_in_use`, `rbac.role_name_taken`, `invitations.already_member`, …) are final
+  answers and end the action.
+- Errors show `errorLabel(code)` (`lib/auth/errors.ts`, en and de). A response that doesn't parse, an unknown code
+  or a network error shows the generic message; the UI never shows a raw code or `message`, and never crashes.
+- After a write the affected list reloads. Removing a member or changing a role doesn't touch your own session
+  (you can't change yourself).
+
+### Accessibility and tablet
+
+- Dialogs and confirms are Radix (`Dialog`, `AlertDialog`): focus trap, Escape, focus returns to the trigger. Form
+  fields have labels; errors are `role="alert"` and linked with `aria-describedby`.
+- Every action is a button with a text label (no icon-only or hover-only actions); tap targets ≥ 44 px. Tables
+  become stacked rows below 768 px.
+
+### Labels
+
+New keys under `platform.nav.*` (members, roles), `platform.members.*`, `platform.invitations.*`,
+`platform.rolesPage.*` and `platform.shell.noAccess.*`, in `en` and `de`.
+
+### Tests (PR b)
+
+- **Shared:** the granting matrix (Owner rules, subset rule, self).
+- **Api:** `inviteLinkBase` unit cases; e2e `GET /locations` (all locations, location-limited member, without
+  `settings.read` → 403, cross-tenant isolation), invitation mail link on a partner domain and on the fallback.
+- **Web (Vitest):** nav visibility for Owner, Manager and Staff; member actions hidden on yourself, on Owners for
+  non-Owners, without `users.manage`; role picker and editor offer only grantable roles and keys; error mapping
+  (known codes, unknown code, unparseable body, network error); `sendAction` key rule for 409s.
+- **Playwright:** Owner invites a new email as Manager on `durby.localhost`, the test reads the link from Mailpit, a
+  fresh browser context accepts it with a password, and the Owner sees the new member as Manager; the same on
+  `partner-demo.localhost` checks the link opens the demo domain; `staff@durby.local` sees neither nav item and gets
+  "not available" on `/settings/members`.
 
 ## Planned: (c) settings, labels, number series, plan, organization
 
