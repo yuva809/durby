@@ -14,6 +14,7 @@ import { LabelsModule } from './labels';
 import { LoggingModule } from './logging';
 import { MailModule } from './mail';
 import { NumberingModule } from './numbering';
+import { OrganizationModule } from './organization';
 import { OutboxModule } from './outbox';
 import { ProvisioningModule } from './provisioning';
 import { RateLimitModule } from './rate-limit';
@@ -40,6 +41,7 @@ import { ThemeModule } from './theme';
     SettingsModule,
     LabelsModule,
     NumberingModule,
+    OrganizationModule,
     ProvisioningModule,
     ThemeModule,
   ],

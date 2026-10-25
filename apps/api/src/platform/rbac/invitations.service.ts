@@ -174,7 +174,13 @@ export class InvitationsService {
       this.tenantContext.run({ tenantId, userId: actor.userId }, async () => {
         const [invitee, org, orgLocale] = await Promise.all([
           this.users.findByEmail(email),
-          this.platformDb.organization.findUniqueOrThrow({ where: { id: tenantId } }),
+          this.platformDb.organization.findUniqueOrThrow({
+            where: { id: tenantId },
+            select: {
+              name: true,
+              partner: { select: { domains: { select: { hostname: true } } } },
+            },
+          }),
           this.settings.get('locale'),
         ]);
         await this.mailer.send({
@@ -182,6 +188,8 @@ export class InvitationsService {
           locale: invitee?.locale ?? orgLocale,
           organizationName: org.name,
           token,
+          // The link opens on the partner's domain (web-shell.md → Invitation links).
+          partnerHostnames: org.partner.domains.map((d) => d.hostname),
         });
       }),
     );

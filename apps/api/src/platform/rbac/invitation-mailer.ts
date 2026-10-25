@@ -3,6 +3,7 @@ import { DEFAULT_LOCALE, isLocale } from '@durby/i18n';
 import { APP_CONFIG, type AppConfig } from '../config';
 import { LabelService } from '../labels';
 import { MAILER, type Mailer } from '../mail';
+import { inviteLinkBase } from './invitation-link';
 
 /**
  * Invitation emails, with the inviting organization's labels: call inside its tenant context. The
@@ -19,9 +20,21 @@ export class InvitationMailer {
     private readonly labels: LabelService,
   ) {}
 
-  async send(input: { to: string; locale: string; organizationName: string; token: string }) {
+  /** `partnerHostnames`: the organization's partner domains, which pick the link's origin. */
+  async send(input: {
+    to: string;
+    locale: string;
+    organizationName: string;
+    token: string;
+    partnerHostnames: readonly string[];
+  }) {
     const t = await this.labels.translator(isLocale(input.locale) ? input.locale : DEFAULT_LOCALE);
-    const link = `${new URL('/accept-invite', this.config.WEB_BASE_URL).toString()}#token=${input.token}`;
+    const base = inviteLinkBase(
+      this.config.WEB_ORIGINS,
+      this.config.WEB_BASE_URL,
+      input.partnerHostnames,
+    );
+    const link = `${new URL('/accept-invite', base).toString()}#token=${input.token}`;
     const params = { organization: input.organizationName, link };
     const { messageId } = await this.mailer.send({
       to: input.to,

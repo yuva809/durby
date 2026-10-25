@@ -38,11 +38,12 @@ export class RbacSeed {
     return this.context.run({ tenantId: orgId, userId: uuidv7() }, () => fn(this.tenant));
   }
 
-  async org(name = 'Org'): Promise<SeededOrg> {
-    const partner = await this.platform.partner.create({
-      data: { slug: `p-${uuidv7()}`, name: 'P' },
-    });
-    const org = await this.platform.organization.create({ data: { partnerId: partner.id, name } });
+  /** An organization on its own new partner, or on `opts.partnerId` (e.g. the demo partner). */
+  async org(name = 'Org', opts: { partnerId?: string } = {}): Promise<SeededOrg> {
+    const partnerId =
+      opts.partnerId ??
+      (await this.platform.partner.create({ data: { slug: `p-${uuidv7()}`, name: 'P' } })).id;
+    const org = await this.platform.organization.create({ data: { partnerId, name } });
     return this.as(org.id, async (db) => {
       const roles = {} as Record<SystemRole, string>;
       for (const systemKey of SYSTEM_ROLES) {
