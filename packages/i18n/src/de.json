@@ -303,5 +303,6 @@
   "platform.permissionAreas.roles": "Rollen",
   "platform.permissionAreas.settings": "Einstellungen",
   "platform.permissionAreas.labels": "Bezeichnungen",
-  "platform.permissionAreas.audit": "Protokoll"
+  "platform.permissionAreas.audit": "Protokoll",
+  "platform.audit.actions.organizationUpdated": "Organisation geändert"
 }

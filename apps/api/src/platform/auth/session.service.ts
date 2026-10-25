@@ -12,7 +12,7 @@ import {
 } from './active-access';
 import type { AuthContextValue } from './auth-context';
 import { authErrors } from './auth-errors';
-import { AUTH_RATE_LIMITS, AuthRateLimits } from './auth-rate-limits';
+import { AuthRateLimits } from './auth-rate-limits';
 import { Clock } from './clock';
 import { emailKey, normalizeEmail } from './crypto';
 import { LockoutService, LockoutUnavailableError } from './lockout.service';
@@ -51,7 +51,7 @@ export class SessionService {
 
   async login(input: { email: string; password: string }, ip: string): Promise<IssuedSession> {
     const key = emailKey(input.email);
-    await this.limits.enforce([AUTH_RATE_LIMITS.loginIp, ip], [AUTH_RATE_LIMITS.loginEmail, key]);
+    await this.limits.enforce([this.limits.rules.loginIp, ip], [this.limits.rules.loginEmail, key]);
 
     const lock = await this.lockoutCall(() => this.lockout.check(key));
     if (lock.locked) {
@@ -85,7 +85,7 @@ export class SessionService {
 
   /** Rotates the refresh token; the organization is kept only while the user is still a member. */
   async refresh(token: string | undefined, ip: string): Promise<IssuedSession> {
-    await this.limits.enforce([AUTH_RATE_LIMITS.refreshIp, ip]);
+    await this.limits.enforce([this.limits.rules.refreshIp, ip]);
     if (!token) throw authErrors.refreshInvalid();
     const result = await this.refreshTokens.rotate(token, async (session) =>
       session.organizationId !== null &&

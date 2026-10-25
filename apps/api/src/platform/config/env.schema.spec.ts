@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appEnvSchema, migrationEnvSchema } from './env.schema';
+import { appEnvSchema, migrationEnvSchema, RATE_LIMIT_DEFAULTS } from './env.schema';
 import { loadConfig } from './load-config';
 
 const validEnv = {
@@ -36,6 +36,48 @@ describe('appEnvSchema', () => {
       OUTBOX_MAX_ATTEMPTS: 10,
       OUTBOX_LAG_WARN_SECONDS: 60,
       WORKER_CONCURRENCY: 5,
+      ...RATE_LIMIT_DEFAULTS,
+    });
+  });
+
+  describe('auth rate limits', () => {
+    const parse = (env: Record<string, string>) => appEnvSchema.safeParse({ ...validEnv, ...env });
+
+    it("defaults to today's limits", () => {
+      expect(RATE_LIMIT_DEFAULTS).toEqual({
+        RATE_LIMIT_LOGIN_IP: 20,
+        RATE_LIMIT_LOGIN_EMAIL: 10,
+        RATE_LIMIT_REFRESH_IP: 60,
+        RATE_LIMIT_MAIL_IP: 5,
+        RATE_LIMIT_MAIL_EMAIL: 3,
+        RATE_LIMIT_TOKEN_IP: 10,
+      });
+    });
+
+    it('accepts raised limits (the Playwright run) and lower ones outside production', () => {
+      expect(parse({ RATE_LIMIT_LOGIN_IP: '1000' }).data?.RATE_LIMIT_LOGIN_IP).toBe(1000);
+      expect(parse({ RATE_LIMIT_LOGIN_IP: '2' }).data?.RATE_LIMIT_LOGIN_IP).toBe(2);
+    });
+
+    it('rejects non-positive and non-integer limits', () => {
+      for (const value of ['0', '-1', '1.5', 'many']) {
+        expect(parse({ RATE_LIMIT_MAIL_IP: value }).success, value).toBe(false);
+      }
+    });
+
+    it('refuses limits below the defaults in production, and accepts higher ones', () => {
+      const result = parse({
+        NODE_ENV: 'production',
+        RATE_LIMIT_LOGIN_IP: '19',
+        RATE_LIMIT_TOKEN_IP: '9',
+        RATE_LIMIT_LOGIN_EMAIL: '50',
+      });
+      expect(result.success).toBe(false);
+      expect(result.error?.issues.map((i) => [i.path.join('.'), i.message])).toEqual([
+        ['RATE_LIMIT_LOGIN_IP', 'must be at least 20 in production'],
+        ['RATE_LIMIT_TOKEN_IP', 'must be at least 10 in production'],
+      ]);
+      expect(parse({ NODE_ENV: 'production', RATE_LIMIT_LOGIN_IP: '200' }).success).toBe(true);
     });
   });
 

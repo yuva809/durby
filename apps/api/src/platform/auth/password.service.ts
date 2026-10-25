@@ -4,7 +4,7 @@ import { PrismaService } from '../database';
 import type { UserTokenPurpose } from '../database/generated/client';
 import { authErrors } from './auth-errors';
 import { AuthMailer } from './auth-mailer';
-import { AUTH_RATE_LIMITS, AuthRateLimits } from './auth-rate-limits';
+import { AuthRateLimits } from './auth-rate-limits';
 import { Clock } from './clock';
 import { emailKey, generateToken, hashToken, normalizeEmail } from './crypto';
 import { LockoutService } from './lockout.service';
@@ -41,8 +41,8 @@ export class PasswordService {
   /** Rate-limited; the reset mail (if the user exists) is sent in the background. */
   async requestPasswordReset(email: string, ip: string): Promise<void> {
     await this.limits.enforce(
-      [AUTH_RATE_LIMITS.mailIp, ip],
-      [AUTH_RATE_LIMITS.mailEmail, emailKey(email)],
+      [this.limits.rules.mailIp, ip],
+      [this.limits.rules.mailEmail, emailKey(email)],
     );
     this.inBackground('password reset mail', async () => {
       const user = await this.db.user.findUnique({ where: { email: normalizeEmail(email) } });
@@ -67,7 +67,7 @@ export class PasswordService {
    * tokens, revokes every session and clears the lockout.
    */
   async resetPassword(token: string, password: string, ip: string): Promise<void> {
-    await this.limits.enforce([AUTH_RATE_LIMITS.tokenIp, ip]);
+    await this.limits.enforce([this.limits.rules.tokenIp, ip]);
     const passwordHash = await this.hasher.hash(password);
     const now = this.clock.now();
     const user = await this.db.$transaction(async (tx) => {
@@ -100,7 +100,7 @@ export class PasswordService {
   }
 
   async verifyEmail(token: string, ip: string): Promise<void> {
-    await this.limits.enforce([AUTH_RATE_LIMITS.tokenIp, ip]);
+    await this.limits.enforce([this.limits.rules.tokenIp, ip]);
     const now = this.clock.now();
     const userId = await this.db.$transaction(async (tx) => {
       const id = await this.consumeToken(tx, token, 'email_verification', now);
@@ -116,8 +116,8 @@ export class PasswordService {
   /** Rate-limited; mails a new link only to an existing, unverified user. */
   async resendVerification(email: string, ip: string): Promise<void> {
     await this.limits.enforce(
-      [AUTH_RATE_LIMITS.mailIp, ip],
-      [AUTH_RATE_LIMITS.mailEmail, emailKey(email)],
+      [this.limits.rules.mailIp, ip],
+      [this.limits.rules.mailEmail, emailKey(email)],
     );
     this.inBackground('verification mail', async () => {
       const user = await this.db.user.findUnique({ where: { email: normalizeEmail(email) } });

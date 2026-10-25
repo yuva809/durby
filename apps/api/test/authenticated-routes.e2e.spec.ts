@@ -112,6 +112,7 @@ describe('route markers', () => {
       'DELETE /api/v1/settings/:key',
       'PATCH /api/v1/members/:id',
       'PATCH /api/v1/number-series/:key',
+      'PATCH /api/v1/organization',
       'PATCH /api/v1/roles/:id',
       'POST /api/v1/invitations',
       'POST /api/v1/roles',

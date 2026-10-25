@@ -218,6 +218,7 @@ export class NumberingAdmin {
         month: now.month,
         sequence: nextValue,
       }),
+      resetPolicyLocked: stored ? await hasIssued(tx, stored.id) : false,
     };
   }
 }

@@ -28,6 +28,23 @@ const originList = z
       .min(1, 'needs at least one origin'),
   );
 
+/**
+ * Counts of the auth rate limits (docs/platform/auth.md → Rate limits); the windows are fixed in
+ * code. Production may only be stricter than these defaults (ADR 0015 §14): the Playwright run
+ * raises them so end-to-end suites don't hit 429.
+ */
+export const RATE_LIMIT_DEFAULTS = {
+  RATE_LIMIT_LOGIN_IP: 20,
+  RATE_LIMIT_LOGIN_EMAIL: 10,
+  RATE_LIMIT_REFRESH_IP: 60,
+  RATE_LIMIT_MAIL_IP: 5,
+  RATE_LIMIT_MAIL_EMAIL: 3,
+  RATE_LIMIT_TOKEN_IP: 10,
+} as const;
+
+const rateLimit = (fallback: number) =>
+  z.coerce.number().int().min(1).max(1_000_000).default(fallback);
+
 /** Env vars read by the running API. Validated once at boot. */
 export const appEnvSchema = z
   .object({
@@ -67,6 +84,14 @@ export const appEnvSchema = z
     OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(50).default(10),
     OUTBOX_LAG_WARN_SECONDS: z.coerce.number().int().min(1).default(60),
     WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
+
+    // Auth rate limits (counts per window).
+    RATE_LIMIT_LOGIN_IP: rateLimit(RATE_LIMIT_DEFAULTS.RATE_LIMIT_LOGIN_IP),
+    RATE_LIMIT_LOGIN_EMAIL: rateLimit(RATE_LIMIT_DEFAULTS.RATE_LIMIT_LOGIN_EMAIL),
+    RATE_LIMIT_REFRESH_IP: rateLimit(RATE_LIMIT_DEFAULTS.RATE_LIMIT_REFRESH_IP),
+    RATE_LIMIT_MAIL_IP: rateLimit(RATE_LIMIT_DEFAULTS.RATE_LIMIT_MAIL_IP),
+    RATE_LIMIT_MAIL_EMAIL: rateLimit(RATE_LIMIT_DEFAULTS.RATE_LIMIT_MAIL_EMAIL),
+    RATE_LIMIT_TOKEN_IP: rateLimit(RATE_LIMIT_DEFAULTS.RATE_LIMIT_TOKEN_IP),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.COOKIE_SECURE) {
@@ -75,6 +100,17 @@ export const appEnvSchema = z
         path: ['COOKIE_SECURE'],
         message: 'must be true in production',
       });
+    }
+    if (env.NODE_ENV === 'production') {
+      for (const [name, floor] of Object.entries(RATE_LIMIT_DEFAULTS)) {
+        if (env[name as keyof typeof RATE_LIMIT_DEFAULTS] < floor) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [name],
+            message: `must be at least ${floor} in production`,
+          });
+        }
+      }
     }
     if (env.REFRESH_TOKEN_TTL_DAYS > env.REFRESH_FAMILY_MAX_DAYS) {
       ctx.addIssue({

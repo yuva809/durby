@@ -66,6 +66,10 @@ export const AUDIT_ACTIONS = {
     entityType: 'session',
     label: 'platform.audit.actions.sessionOrganizationSwitched',
   },
+  'platform.organization.updated': {
+    entityType: 'organization',
+    label: 'platform.audit.actions.organizationUpdated',
+  },
   'platform.organization.plan_changed': {
     entityType: 'organization',
     label: 'platform.audit.actions.organizationPlanChanged',
