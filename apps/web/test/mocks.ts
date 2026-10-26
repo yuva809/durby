@@ -15,6 +15,7 @@ export const mockState = {
     apiFetch: vi.fn<SessionStore['apiFetch']>(),
   },
   router: { push: vi.fn(), replace: vi.fn() },
+  reloadLabels: vi.fn(),
 };
 
 export function resetMocks(): void {
@@ -29,6 +30,7 @@ export function resetMocks(): void {
   mockState.store.apiFetch
     .mockReset()
     .mockImplementation(() => Promise.resolve(Response.json({ data: [] })));
+  mockState.reloadLabels.mockReset();
   mockState.router.push.mockReset();
   mockState.router.replace.mockReset();
 }
@@ -39,6 +41,7 @@ export const providersMock = () => ({
 
 export const labelsMock = () => ({
   useT: () => createTranslator('en', mockState.overrides),
+  useReloadLabels: () => mockState.reloadLabels,
 });
 
 export const navigationMock = () => ({

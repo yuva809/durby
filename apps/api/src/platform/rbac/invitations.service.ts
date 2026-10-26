@@ -18,7 +18,6 @@ import {
 } from '../auth';
 import { SettingsService } from '../config/settings';
 import type { Prisma } from '../database/generated/client';
-import type { RateLimitRule } from '../rate-limit';
 import {
   PLATFORM_PRISMA,
   TENANT_PRISMA,
@@ -35,13 +34,6 @@ import { isUniqueViolation, rbacErrors } from './rbac-errors';
 import { ROLE_SELECT, RolesService } from './roles.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** Preview and accept: like the 1.2 reset/verify endpoints (docs/platform/rbac.md). */
-export const INVITATION_TOKEN_IP: RateLimitRule = {
-  name: 'rbac.invitation.token.ip',
-  limit: 10,
-  windowMs: 15 * 60 * 1000,
-};
 
 /** Tenant-context actor for the public accept, before the new user exists. */
 const ANONYMOUS_ACTOR = '00000000-0000-0000-0000-000000000000';
@@ -220,7 +212,7 @@ export class InvitationsService {
 
   /** For the accept page. Only the token holder (proven inbox access) learns accountExists. */
   async preview(token: string, ip: string): Promise<InvitationPreview> {
-    await this.limits.enforce([INVITATION_TOKEN_IP, ip]);
+    await this.limits.enforce([this.limits.rules.invitationTokenIp, ip]);
     const parsed = parseInvitationToken(token);
     if (!parsed) throw authErrors.tokenInvalid();
     const invitation = await this.tenantContext.run(
@@ -251,7 +243,7 @@ export class InvitationsService {
    * existing account (409 invitations.sign_in_required).
    */
   async accept(body: AcceptInvitationRequest, ip: string): Promise<{ organizationId: string }> {
-    await this.limits.enforce([INVITATION_TOKEN_IP, ip]);
+    await this.limits.enforce([this.limits.rules.invitationTokenIp, ip]);
     const parsed = parseInvitationToken(body.token);
     if (!parsed) throw authErrors.tokenInvalid();
     const { organizationId, hash } = parsed;
@@ -287,7 +279,7 @@ export class InvitationsService {
 
   /** Accept by the signed-in user, whose email must be the invited one. */
   async acceptSignedIn(token: string, ip: string): Promise<{ organizationId: string }> {
-    await this.limits.enforce([INVITATION_TOKEN_IP, ip]);
+    await this.limits.enforce([this.limits.rules.invitationTokenIp, ip]);
     const parsed = parseInvitationToken(token);
     if (!parsed) throw authErrors.tokenInvalid();
     const { organizationId, hash } = parsed;

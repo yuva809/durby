@@ -40,6 +40,11 @@ export const numberSeriesSchema = z.object({
   nextValue: counterValueSchema,
   /** The number `nextValue` would render as now. */
   preview: z.string(),
+  /**
+   * True once a counter of the series is above 1 (numbers issued or raised): a reset policy
+   * change then answers 409 numbering.series_in_use. UI hint; false from an api before 1.10 (c).
+   */
+  resetPolicyLocked: z.boolean().default(false),
 });
 
 export const numberSeriesListResponseSchema = z.object({

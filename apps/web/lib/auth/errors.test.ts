@@ -1,9 +1,27 @@
-import { AUTH_ERROR_CODES, INVITATION_ERROR_CODES, RBAC_ERROR_CODES } from '@durby/shared';
+import {
+  AUTH_ERROR_CODES,
+  ENTITLEMENT_ERROR_CODES,
+  IDEMPOTENCY_ERROR_CODES,
+  INVITATION_ERROR_CODES,
+  LABEL_ERROR_CODES,
+  NUMBERING_ERROR_CODES,
+  RBAC_ERROR_CODES,
+  SETTING_ERROR_CODES,
+} from '@durby/shared';
 import { dictionaries, LOCALES } from '@durby/i18n';
 import { describe, expect, it } from 'vitest';
 import { errorLabel } from './errors';
 
-const CODES = [...AUTH_ERROR_CODES, ...RBAC_ERROR_CODES, ...INVITATION_ERROR_CODES];
+const CODES = [
+  ...AUTH_ERROR_CODES,
+  ...RBAC_ERROR_CODES,
+  ...INVITATION_ERROR_CODES,
+  ...IDEMPOTENCY_ERROR_CODES,
+  ...SETTING_ERROR_CODES,
+  ...LABEL_ERROR_CODES,
+  ...NUMBERING_ERROR_CODES,
+  ...ENTITLEMENT_ERROR_CODES,
+];
 
 describe('errorLabel', () => {
   it.each(LOCALES)('every api error code has a %s label', (locale) => {

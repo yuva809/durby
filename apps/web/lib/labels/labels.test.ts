@@ -76,6 +76,17 @@ describe('createLabelsCache', () => {
     expect(await cache.get('u1', 'org-a', 'en')).toBeNull();
     expect(await cache.get('u1', 'org-a', 'en')).toEqual({ 'inventory.nav.title': 'Products' });
   });
+
+  it('loads again after clear (an override changed)', async () => {
+    const load = vi
+      .fn()
+      .mockResolvedValueOnce({ 'inventory.nav.title': 'Products' })
+      .mockResolvedValueOnce({ 'inventory.nav.title': 'Pantry' });
+    const cache = createLabelsCache(load);
+    await cache.get('u1', 'org-a', 'en');
+    cache.clear();
+    expect(await cache.get('u1', 'org-a', 'en')).toEqual({ 'inventory.nav.title': 'Pantry' });
+  });
 });
 
 describe('rendering overrides', () => {

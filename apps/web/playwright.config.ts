@@ -26,6 +26,15 @@ export default defineConfig({
   webServer: [
     {
       command: 'pnpm --filter @durby/api start',
+      // A growing suite signs in many times from one IP: raise the auth rate limits for this run
+      // only (ADR 0015 §14; production refuses values below the defaults). Applies when
+      // Playwright starts the api (CI); a dev api you started yourself keeps its own values.
+      env: {
+        RATE_LIMIT_LOGIN_IP: '1000',
+        RATE_LIMIT_LOGIN_EMAIL: '1000',
+        RATE_LIMIT_REFRESH_IP: '1000',
+        RATE_LIMIT_TOKEN_IP: '1000',
+      },
       url: 'http://localhost:4000/api/v1/health/live',
       reuseExistingServer: !ci,
       timeout: 60_000,

@@ -164,7 +164,8 @@ use camelCase segments); the API's `message` is a developer-facing fallback.
 | password/forgot, verify-email/resend | 5 / 15 min per IP; 3 / h per email       |
 | password/reset, verify-email         | 10 / 15 min per IP                       |
 
-Email keys use `sha256(normalized email)`. The client IP comes from Express `trust proxy` (`TRUST_PROXY` hops;
+The counts are env vars (`RATE_LIMIT_*`, web-shell.md → Rate limits in end-to-end runs) with these defaults;
+production refuses to boot with a lower value. Email keys use `sha256(normalized email)`. The client IP comes from Express `trust proxy` (`TRUST_PROXY` hops;
 1 on staging behind Caddy).
 
 **Lockout** (Redis, keyed on the email hash, so unknown emails behave exactly like real ones):

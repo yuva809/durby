@@ -92,10 +92,25 @@ describe('nav for Owner, Manager and Staff', () => {
       .filter((i) => i.group === 'settings')
       .map((i) => i.id);
 
-  it('shows Members and Roles by permission', () => {
-    expect(settingsItems('owner')).toEqual(['members', 'roles']);
-    expect(settingsItems('manager')).toEqual(['members', 'roles']);
-    expect(settingsItems('staff')).toEqual([]);
+  it('shows the settings pages by permission', () => {
+    expect(settingsItems('owner')).toEqual([
+      'organization',
+      'settings',
+      'members',
+      'roles',
+      'labels',
+      'numbering',
+      'plan',
+    ]);
+    expect(settingsItems('manager')).toEqual([
+      'organization',
+      'settings',
+      'members',
+      'roles',
+      'numbering',
+      'plan',
+    ]);
+    expect(settingsItems('staff')).toEqual(['organization', 'settings', 'numbering', 'plan']);
   });
 });
 

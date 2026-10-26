@@ -1,9 +1,14 @@
 import { Module } from '@nestjs/common';
 import { LocationsController } from './locations.controller';
+import { OrganizationController } from './organization.controller';
+import { OrganizationService } from './organization.service';
 
 /**
- * The organization's structure (docs/platform/web-shell.md → Locations): the location list for
- * the member and invitation pages. Depends on tenancy and rbac.
+ * The organization's profile and structure (docs/platform/web-shell.md → Organization profile,
+ * Locations). Depends on tenancy, rbac and audit.
  */
-@Module({ controllers: [LocationsController] })
+@Module({
+  controllers: [LocationsController, OrganizationController],
+  providers: [OrganizationService],
+})
 export class OrganizationModule {}

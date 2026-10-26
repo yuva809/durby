@@ -104,6 +104,7 @@ describe('/api/v1/number-series', () => {
         period: '2026',
         nextValue: '1',
         preview: 'INV-2026-000001',
+        resetPolicyLocked: false,
       });
       expect(await storedSeriesCount(org.id)).toBe(0); // reading creates nothing
     });
@@ -123,6 +124,8 @@ describe('/api/v1/number-series', () => {
       expect(await series(token, 'billing.invoice')).toMatchObject({
         nextValue: '3',
         preview: 'INV-2026-000003',
+        // Numbers exist: a reset policy change would answer numbering.series_in_use.
+        resetPolicyLocked: true,
       });
     });
   });

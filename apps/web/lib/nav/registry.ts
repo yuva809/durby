@@ -1,13 +1,18 @@
 import type { LabelKey } from '@durby/i18n';
 import type { FeatureKey, PermissionKey } from '@durby/shared';
 import {
+  Building2,
   ChartLine,
   CreditCard,
+  Hash,
   House,
+  Languages,
+  Layers,
   type LucideIcon,
   Package,
   Receipt,
   ShieldCheck,
+  SlidersHorizontal,
   Users,
 } from 'lucide-react';
 
@@ -71,6 +76,21 @@ export const NAV_ITEMS: readonly NavItem[] = [
     feature: 'reports',
   },
   {
+    id: 'organization',
+    href: '/settings/organization',
+    label: 'platform.nav.organization',
+    icon: Building2,
+    group: 'settings',
+  },
+  {
+    id: 'settings',
+    href: '/settings/general',
+    label: 'platform.nav.settings',
+    icon: SlidersHorizontal,
+    group: 'settings',
+    permission: 'platform.settings.read',
+  },
+  {
     id: 'members',
     href: '/settings/members',
     label: 'platform.nav.members',
@@ -85,6 +105,29 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: ShieldCheck,
     group: 'settings',
     permission: 'platform.roles.read',
+  },
+  {
+    id: 'labels',
+    href: '/settings/labels',
+    label: 'platform.nav.labels',
+    icon: Languages,
+    group: 'settings',
+    permission: 'platform.labels.manage',
+  },
+  {
+    id: 'numbering',
+    href: '/settings/numbering',
+    label: 'platform.nav.numbering',
+    icon: Hash,
+    group: 'settings',
+    permission: 'platform.settings.read',
+  },
+  {
+    id: 'plan',
+    href: '/settings/plan',
+    label: 'platform.nav.plan',
+    icon: Layers,
+    group: 'settings',
   },
 ];
 

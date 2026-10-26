@@ -1,22 +1,47 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { APP_CONFIG, type AppConfig } from '../config';
 import { RateLimiter, RateLimiterUnavailableError, type RateLimitRule } from '../rate-limit';
 import { authErrors } from './auth-errors';
 
 const MIN = 60_000;
 
-/** docs/platform/auth.md → Abuse protection. Email keys are hashes (crypto.emailKey). */
-export const AUTH_RATE_LIMITS = {
-  loginIp: { name: 'auth.login.ip', limit: 20, windowMs: 5 * MIN },
-  loginEmail: { name: 'auth.login.email', limit: 10, windowMs: 15 * MIN },
-  refreshIp: { name: 'auth.refresh.ip', limit: 60, windowMs: MIN },
-  mailIp: { name: 'auth.mail.ip', limit: 5, windowMs: 15 * MIN },
-  mailEmail: { name: 'auth.mail.email', limit: 3, windowMs: 60 * MIN },
-  tokenIp: { name: 'auth.token.ip', limit: 10, windowMs: 15 * MIN },
-} as const satisfies Record<string, RateLimitRule>;
+/**
+ * docs/platform/auth.md → Abuse protection. Email keys are hashes (crypto.emailKey). The counts
+ * come from the `RATE_LIMIT_*` env vars (ADR 0015 §14), the windows are fixed here.
+ */
+export function authRateLimits(config: AppConfig) {
+  return {
+    loginIp: { name: 'auth.login.ip', limit: config.RATE_LIMIT_LOGIN_IP, windowMs: 5 * MIN },
+    loginEmail: {
+      name: 'auth.login.email',
+      limit: config.RATE_LIMIT_LOGIN_EMAIL,
+      windowMs: 15 * MIN,
+    },
+    refreshIp: { name: 'auth.refresh.ip', limit: config.RATE_LIMIT_REFRESH_IP, windowMs: MIN },
+    mailIp: { name: 'auth.mail.ip', limit: config.RATE_LIMIT_MAIL_IP, windowMs: 15 * MIN },
+    mailEmail: { name: 'auth.mail.email', limit: config.RATE_LIMIT_MAIL_EMAIL, windowMs: 60 * MIN },
+    tokenIp: { name: 'auth.token.ip', limit: config.RATE_LIMIT_TOKEN_IP, windowMs: 15 * MIN },
+    /** Invitation preview and accept: like the reset/verify endpoints (docs/platform/rbac.md). */
+    invitationTokenIp: {
+      name: 'rbac.invitation.token.ip',
+      limit: config.RATE_LIMIT_TOKEN_IP,
+      windowMs: 15 * MIN,
+    },
+  } as const satisfies Record<string, RateLimitRule>;
+}
+
+export type AuthRateLimitRules = ReturnType<typeof authRateLimits>;
 
 @Injectable()
 export class AuthRateLimits {
-  constructor(private readonly limiter: RateLimiter) {}
+  readonly rules: AuthRateLimitRules;
+
+  constructor(
+    private readonly limiter: RateLimiter,
+    @Inject(APP_CONFIG) config: AppConfig,
+  ) {
+    this.rules = authRateLimits(config);
+  }
 
   /** Counts a hit against every rule; 429 auth.rate_limited if any is over, 503 if Redis is down. */
   async enforce(...hits: [RateLimitRule, string][]): Promise<void> {

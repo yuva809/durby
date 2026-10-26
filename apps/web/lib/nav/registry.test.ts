@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { activeNavItem, NAV_GROUPS, NAV_ITEMS, type NavItem, visibleNav } from './registry';
 
 const ids = (items: NavItem[]) => items.map((i) => i.id);
+/** Main and module items: settings items depend on permissions, not on the plan. */
+const moduleIds = (items: NavItem[]) => ids(items.filter((i) => i.group !== 'settings'));
 
 describe('NAV_ITEMS', () => {
   it('uses registered features and permissions, and labels present in en and de', () => {
@@ -62,10 +64,10 @@ describe('visibleNav', () => {
   it('shows the modules of the plan', () => {
     const inventoryPlan = ['inventory', 'inventory.counts', 'inventory.purchasing', 'reports'];
     expect(
-      ids(visibleNav(NAV_ITEMS, { activeFeatures: inventoryPlan, activePermissions: [] })),
+      moduleIds(visibleNav(NAV_ITEMS, { activeFeatures: inventoryPlan, activePermissions: [] })),
     ).toEqual(['home', 'inventory', 'reports']);
     expect(
-      ids(
+      moduleIds(
         visibleNav(NAV_ITEMS, {
           activeFeatures: ['inventory', 'billing', 'pos', 'reports'],
           activePermissions: [],

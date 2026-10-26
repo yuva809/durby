@@ -7,6 +7,7 @@ export * from './api/invitations';
 export * from './api/labels';
 export * from './api/locations';
 export * from './api/numbering';
+export * from './api/organization';
 export * from './api/rbac';
 export * from './api/settings';
 export * from './api/theme';
