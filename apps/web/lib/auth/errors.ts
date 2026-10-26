@@ -1,14 +1,25 @@
 import type {
   AuthErrorCode,
+  EntitlementErrorCode,
   IdempotencyErrorCode,
   InvitationErrorCode,
+  LabelErrorCode,
+  NumberingErrorCode,
   RbacErrorCode,
+  SettingErrorCode,
 } from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
 
 /** Every stable error code the api returns to the web app. */
 export type ApiErrorCode =
-  AuthErrorCode | RbacErrorCode | InvitationErrorCode | IdempotencyErrorCode;
+  | AuthErrorCode
+  | RbacErrorCode
+  | InvitationErrorCode
+  | IdempotencyErrorCode
+  | SettingErrorCode
+  | LabelErrorCode
+  | NumberingErrorCode
+  | EntitlementErrorCode;
 
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
 const LABELS: Record<ApiErrorCode, LabelKey> = {
@@ -47,6 +58,23 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'idempotency.key_invalid': 'platform.errors.idempotencyKeyInvalid',
   'idempotency.key_reused': 'platform.errors.idempotencyKeyReused',
   'idempotency.request_in_progress': 'platform.errors.idempotencyRequestInProgress',
+  'settings.unknown_key': 'platform.errors.settingsUnknownKey',
+  'settings.scope_not_allowed': 'platform.errors.settingsScopeNotAllowed',
+  'settings.invalid_value': 'platform.errors.settingsInvalidValue',
+  'settings.brand_not_found': 'platform.errors.settingsBrandNotFound',
+  'settings.location_not_found': 'platform.errors.settingsLocationNotFound',
+  'settings.in_use': 'platform.errors.settingsInUse',
+  'labels.unknown_locale': 'platform.errors.labelsUnknownLocale',
+  'labels.unknown_key': 'platform.errors.labelsUnknownKey',
+  'labels.not_overridable': 'platform.errors.labelsNotOverridable',
+  'labels.invalid_value': 'platform.errors.labelsInvalidValue',
+  'numbering.unknown_key': 'platform.errors.numberingUnknownKey',
+  'numbering.invalid_prefix': 'platform.errors.numberingInvalidPrefix',
+  'numbering.invalid_pattern': 'platform.errors.numberingInvalidPattern',
+  'numbering.invalid_period': 'platform.errors.numberingInvalidPeriod',
+  'numbering.series_in_use': 'platform.errors.numberingSeriesInUse',
+  'numbering.counter_backwards': 'platform.errors.numberingCounterBackwards',
+  'entitlements.feature_disabled': 'platform.errors.featureDisabled',
 };
 
 export function errorLabel(code: ApiErrorCode | 'unknown'): LabelKey {

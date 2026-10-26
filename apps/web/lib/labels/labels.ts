@@ -36,6 +36,8 @@ export async function fetchLabels(store: SessionStore, locale: Locale): Promise<
 export interface LabelsCache {
   /** One request per user, organization and locale; a failed load is retried next time. */
   get: (userId: string, organizationId: string, locale: Locale) => Promise<Labels | null>;
+  /** Forgets every entry: the next get loads again (after an override changed). */
+  clear: () => void;
 }
 
 export function createLabelsCache(load: (locale: Locale) => Promise<Labels | null>): LabelsCache {
@@ -53,5 +55,6 @@ export function createLabelsCache(load: (locale: Locale) => Promise<Labels | nul
       }
       return entry;
     },
+    clear: () => entries.clear(),
   };
 }

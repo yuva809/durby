@@ -15,73 +15,17 @@ import {
   type UpdateMemberRequest,
   type UpdateRoleRequest,
 } from '@durby/shared';
-import type { ApiErrorCode } from '../auth/errors';
-import { errorCode, type SessionStore } from '../auth/session';
-import { type ActionKey, sendAction } from '../idempotency';
+import { list, read, type Result, write } from '../api-call';
+import type { ActionKey } from '../idempotency';
+
+export type { Result } from '../api-call';
 
 /**
- * Calls of the members, invitations and roles pages (docs/platform/rbac.md → Endpoints). Every
- * response is parsed with the shared schema; anything else (unparseable body, network error) is
- * `unknown`, which the UI shows as the generic message. Writes go through sendAction.
+ * Calls of the members, invitations and roles pages (docs/platform/rbac.md → Endpoints), through
+ * the parsed, idempotent helpers of lib/api-call.ts.
  */
 
-export type Result<T> = { ok: true; data: T } | { ok: false; code: ApiErrorCode | 'unknown' };
-
-interface Schema<T> {
-  safeParse: (value: unknown) => { success: true; data: T } | { success: false };
-}
-
-type Api = Pick<SessionStore, 'apiFetch'>;
-
-async function parsed<T>(res: Response, schema: Schema<T>): Promise<Result<T>> {
-  if (!res.ok) return { ok: false, code: await errorCode(res) };
-  try {
-    const result = schema.safeParse(await res.json());
-    return result.success ? { ok: true, data: result.data } : { ok: false, code: 'unknown' };
-  } catch {
-    return { ok: false, code: 'unknown' };
-  }
-}
-
-async function read<T>(store: Api, path: string, schema: Schema<T>): Promise<Result<T>> {
-  try {
-    return await parsed(await store.apiFetch(path, { cache: 'no-store' }), schema);
-  } catch {
-    return { ok: false, code: 'unknown' };
-  }
-}
-
-/** A write; 204 answers carry no body (`schema` omitted). */
-async function write<T = null>(
-  store: Api,
-  action: ActionKey,
-  path: string,
-  method: 'POST' | 'PATCH' | 'DELETE',
-  body?: unknown,
-  schema?: Schema<T>,
-): Promise<Result<T | null>> {
-  try {
-    const res = await sendAction(store, action, path, {
-      method,
-      cache: 'no-store',
-      ...(body === undefined
-        ? {}
-        : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
-    });
-    if (!schema)
-      return res.ok ? { ok: true, data: null } : { ok: false, code: await errorCode(res) };
-    return await parsed(res, schema);
-  } catch {
-    return { ok: false, code: 'unknown' };
-  }
-}
-
-const list = <T>(schema: Schema<{ data: T[] }>) => ({
-  safeParse: (value: unknown) => {
-    const result = schema.safeParse(value);
-    return result.success ? { success: true as const, data: result.data.data } : result;
-  },
-});
+type Api = Parameters<typeof read>[0];
 
 export const loadMembers = (store: Api): Promise<Result<Member[]>> =>
   read(store, '/api/v1/members', list(memberListResponseSchema));
