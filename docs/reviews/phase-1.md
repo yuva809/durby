@@ -15,23 +15,23 @@
 
 | ID  | Finding                                                                                        | Category             | Severity | Decision                                                   |
 | --- | ---------------------------------------------------------------------------------------------- | -------------------- | -------- | ---------------------------------------------------------- |
-| R1  | Outbox claim starvation in `outbox_due_tenants`                                                | correctness          | medium   | Fix now: PR 1 (outbox)                                     |
-| R2  | Import cycles between platform folders; no lint rule; export-order and deep-import workarounds | architecture         | medium   | Fix now: PR 2 (import cycles)                              |
-| R3  | `memberships.role_id` and `organizations.plan_id` still nullable (expand/contract)             | expand/contract      | low      | Fix now: PR 3 (contract)                                   |
+| R1  | Outbox claim starvation in `outbox_due_tenants`                                                | correctness          | medium   | Fix: PR 1 (#23)                                            |
+| R2  | Import cycles between platform folders; no lint rule; export-order and deep-import workarounds | architecture         | medium   | Fix: PR 2 (#24)                                            |
+| R3  | `memberships.role_id` and `organizations.plan_id` still nullable (expand/contract)             | expand/contract      | low      | Fix: PR 3 (#25)                                            |
 | R4  | `body-parser` 2.3.0 (high, DoS) and `multer` 2.4.0 (high) in the api runtime                   | dependencies         | high     | Done: PR 4 (security)                                      |
 | R5  | `handlebars` 4.7.9 (2 critical, 1 moderate) in lint tooling                                    | dependencies         | medium   | Done: PR 4 (security)                                      |
 | R6  | No test pins every privilege of `durby_rls_definer`                                            | missing test         | low      | Done: PR 4 (security)                                      |
 | R7  | `outbox_events` column-privilege test skips `tenant_id`, `id`, `occurred_at`                   | missing test         | low      | Done: PR 4 (security)                                      |
 | R8  | Theme service uses the raw `PrismaService` instead of `PLATFORM_PRISMA`                        | rule (ADR 0005/0006) | low      | Done: PR 4 (security)                                      |
-| R9  | Web error bodies are cast, not parsed with a shared schema                                     | rule (contracts)     | low      | Fix now: PR 5 (misc)                                       |
-| R10 | PR template out of date with hard rules 8 and 10                                               | doc drift            | low      | Fix now: PR 5 (misc)                                       |
-| R11 | CLAUDE.md rule 10's first sentence says every endpoint declares `@RequireFeature`              | doc drift            | low      | Fix now: PR 5 (misc)                                       |
-| R12 | CLAUDE.md names switch-organization as never touching tenant data; it writes an audit row      | doc drift            | low      | Fix now: PR 5 (misc)                                       |
-| R13 | CLAUDE.md shows `@OnEvent(…, { version })`; the code and ADR 0013 use `versions`               | doc drift            | low      | Fix now: PR 5 (misc)                                       |
-| R14 | CLAUDE.md requires `module.camelCaseName` setting keys; platform keys have no prefix           | doc drift            | low      | Fix now: PR 5 (misc)                                       |
-| R15 | ARCHITECTURE.md config section contradicts ADR 0010 and ADR 0013                               | doc drift            | low      | Fix now: PR 5 (misc)                                       |
-| R16 | Creating the default partner writes no audit or log entry, and no ADR says why                 | audit                | low      | Fix now: PR 5 (misc)                                       |
-| R17 | ADR 0007 still says "(1.2 TODO)" for something done                                            | doc drift            | info     | Fix now: PR 5 (misc)                                       |
+| R9  | Web error bodies are cast, not parsed with a shared schema                                     | rule (contracts)     | low      | Done: PR 5 (#26)                                           |
+| R10 | PR template out of date with hard rules 8 and 10                                               | doc drift            | low      | Done: PR 5 (#26)                                           |
+| R11 | CLAUDE.md rule 10's first sentence says every endpoint declares `@RequireFeature`              | doc drift            | low      | Done: PR 5 (#26)                                           |
+| R12 | CLAUDE.md names switch-organization as never touching tenant data; it writes an audit row      | doc drift            | low      | Done: PR 5 (#26)                                           |
+| R13 | CLAUDE.md shows `@OnEvent(…, { version })`; the code and ADR 0013 use `versions`               | doc drift            | low      | Done: PR 5 (#26)                                           |
+| R14 | CLAUDE.md requires `module.camelCaseName` setting keys; platform keys have no prefix           | doc drift            | low      | Done: PR 5 (#26)                                           |
+| R15 | ARCHITECTURE.md config section contradicts ADR 0010 and ADR 0013                               | doc drift            | low      | Done: PR 5 (#26)                                           |
+| R16 | Creating the default partner writes no audit or log entry, and no ADR says why                 | audit                | low      | Done: PR 5 (#26)                                           |
+| R17 | ADR 0007 still says "(1.2 TODO)" for something done                                            | doc drift            | info     | Done: PR 5 (#26)                                           |
 | S1  | "Leave organization" flow (`docs/platform/rbac.md` TODO)                                       | TODO                 | low      | Scheduled: Phase 2 backlog                                 |
 | S2  | Redis durability before handlers with real side effects (ADR 0013 §6)                          | deferred             | medium   | Scheduled: before Phase 2 handlers                         |
 | S3  | Before-production checklist (below)                                                            | deferred             | high     | Scheduled: before production                               |
@@ -169,6 +169,19 @@ NULL` on `memberships` sees no rows without a tenant. The pre-check loops over `
   sentence in ADR 0008 §7 naming platform bootstrap as outside the tenant audit log.
 - **R17.** ADR 0007 line 47 "(1.2 TODO)" refers to the organization revocation marker, which exists
   (`auth/revocation.service.ts`, `members.service.ts`). Fix: remove the TODO mark.
+
+## Status
+
+| PR         | Items  | State                                                      |
+| ---------- | ------ | ---------------------------------------------------------- |
+| PR 4 (#22) | R4–R8  | open, merged first (security), carries this document       |
+| PR 1 (#23) | R1     | open                                                       |
+| PR 2 (#24) | R2     | open                                                       |
+| PR 3 (#25) | R3     | open; staging NULL checks (superuser) were 0 and 0         |
+| PR 5 (#26) | R9–R17 | open, stacked on #22; scheduled items moved to `docs/plan` |
+
+Phase 1 is complete when these five are merged. S1–S5 are tracked in `docs/plan/PHASE-0-1-PROMPTS.md` → Phase 2
+backlog and Before production.
 
 ## Scheduled
 
