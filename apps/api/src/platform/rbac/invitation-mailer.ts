@@ -1,9 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DEFAULT_LOCALE, isLocale } from '@durby/i18n';
 import { APP_CONFIG, type AppConfig } from '../config';
-import { LabelService } from '../labels';
 import { MAILER, type Mailer } from '../mail';
 import { inviteLinkBase } from './invitation-link';
+import { INVITATION_LABELS, type InvitationLabels } from './invitation-ports';
 
 /**
  * Invitation emails, with the inviting organization's labels: call inside its tenant context. The
@@ -17,7 +17,7 @@ export class InvitationMailer {
   constructor(
     @Inject(MAILER) private readonly mailer: Mailer,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
-    private readonly labels: LabelService,
+    @Inject(INVITATION_LABELS) private readonly labels: InvitationLabels,
   ) {}
 
   /** `partnerHostnames`: the organization's partner domains, which pick the link's origin. */

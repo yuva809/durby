@@ -5,9 +5,9 @@ import { isFeatureKey } from '@durby/shared';
 import { IS_AUTHENTICATED_KEY, IS_PUBLIC_KEY } from '../auth';
 import { featuresOf } from '../config/entitlements';
 import { API_PREFIX } from '../http';
-import { IS_PLATFORM_ONLY_KEY } from './platform-only.decorator';
+import { IS_PLATFORM_ONLY_KEY } from '../markers';
 import type { PermissionRegistry } from './permission-registry';
-import { REQUIRED_PERMISSION_KEY } from './require-permission.decorator';
+import { REQUIRED_PERMISSION_KEY } from '../markers';
 
 /** The access marker of a route (CLAUDE.md rule 10). */
 export type RouteMarker =

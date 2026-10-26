@@ -5,7 +5,7 @@ import {
   updateOrganizationRequestSchema,
 } from '@durby/shared';
 import { ZodBody } from '../http';
-import { Idempotent } from '../idempotency/idempotent.decorator';
+import { Idempotent } from '../markers';
 import { RequirePermission } from '../rbac';
 import { OrganizationService } from './organization.service';
 

@@ -1,8 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { auditLogQuerySchema, type AuditLogListResponse, type AuditLogQuery } from '@durby/shared';
 import { ZodQuery } from '../http';
-// The decorator file, not the rbac index: rbac uses AuditService, so its index would be a cycle.
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequirePermission } from '../markers';
 import { AuditLogsService } from './audit-logs.service';
 
 /** /api/v1/audit-logs (docs/platform/audit.md). Read-only. */

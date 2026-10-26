@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest';
 import { Authenticated, Public } from '../auth';
 import { RequireFeature } from '../config/entitlements';
 import { PERMISSION_REGISTRY } from './permission-registry';
-import { PlatformOnly } from './platform-only.decorator';
-import { RequirePermission } from './require-permission.decorator';
+import { PlatformOnly } from '../markers';
+import { RequirePermission } from '../markers';
 import { RouteMarkerCheck } from './route-marker.check';
 
 @Controller('ok')

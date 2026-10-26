@@ -1,7 +1,7 @@
 import { Controller, Get, Header, Req } from '@nestjs/common';
 import type { ThemeResponse } from '@durby/shared';
 import type { Request } from 'express';
-import { Public } from '../auth/public.decorator';
+import { Public } from '../markers';
 import { ThemeService } from './theme.service';
 
 @Controller('theme')

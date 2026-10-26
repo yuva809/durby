@@ -1,4 +1,4 @@
-import { Idempotent } from '../idempotency/idempotent.decorator';
+import { Idempotent } from '../markers';
 import {
   Body,
   Controller,
@@ -19,7 +19,7 @@ import {
 import { ZodBody } from '../http';
 import { MembersService } from './members.service';
 import { rbacErrors } from './rbac-errors';
-import { RequirePermission } from './require-permission.decorator';
+import { RequirePermission } from '../markers';
 
 const memberId = new ParseUUIDPipe({ exceptionFactory: () => rbacErrors.memberNotFound() });
 

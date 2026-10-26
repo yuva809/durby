@@ -1,4 +1,4 @@
-import { Idempotent } from '../idempotency/idempotent.decorator';
+import { Idempotent } from '../markers';
 import { Body, Controller, Get, Param, Patch, Put } from '@nestjs/common';
 import {
   type NumberSeries,
