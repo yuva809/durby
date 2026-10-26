@@ -3,6 +3,7 @@ import type { ClientBase } from 'pg';
 /** The only SECURITY DEFINER functions allowed in `public` (ADR 0006). Adding one needs an ADR. */
 export const SECURITY_DEFINER_ALLOW_LIST: readonly string[] = [
   'auth_user_organization_ids',
+  'outbox_backlog',
   'outbox_due_tenants',
 ];
 

@@ -15,7 +15,7 @@
 
 | ID  | Finding                                                                                        | Category             | Severity | Decision                                                   |
 | --- | ---------------------------------------------------------------------------------------------- | -------------------- | -------- | ---------------------------------------------------------- |
-| R1  | Outbox claim starvation in `outbox_due_tenants`                                                | correctness          | medium   | Fix: PR 1 (#23)                                            |
+| R1  | Outbox claim starvation in `outbox_due_tenants`                                                | correctness          | medium   | Done: PR 1 (#23)                                           |
 | R2  | Import cycles between platform folders; no lint rule; export-order and deep-import workarounds | architecture         | medium   | Fix: PR 2 (#24)                                            |
 | R3  | `memberships.role_id` and `organizations.plan_id` still nullable (expand/contract)             | expand/contract      | low      | Fix: PR 3 (#25)                                            |
 | R4  | `body-parser` 2.3.0 (high, DoS) and `multer` 2.4.0 (high) in the api runtime                   | dependencies         | high     | Done: PR 4 (security)                                      |
@@ -172,13 +172,13 @@ NULL` on `memberships` sees no rows without a tenant. The pre-check loops over `
 
 ## Status
 
-| PR         | Items  | State                                                      |
-| ---------- | ------ | ---------------------------------------------------------- |
-| PR 4 (#22) | R4–R8  | open, merged first (security), carries this document       |
-| PR 1 (#23) | R1     | open                                                       |
-| PR 2 (#24) | R2     | open                                                       |
-| PR 3 (#25) | R3     | open; staging NULL checks (superuser) were 0 and 0         |
-| PR 5 (#26) | R9–R17 | open, stacked on #22; scheduled items moved to `docs/plan` |
+| PR         | Items  | State                                              |
+| ---------- | ------ | -------------------------------------------------- |
+| PR 4 (#22) | R4–R8  | merged (security first), with this document        |
+| PR 1 (#23) | R1     | merged                                             |
+| PR 2 (#24) | R2     | open                                               |
+| PR 3 (#25) | R3     | open; staging NULL checks (superuser) were 0 and 0 |
+| PR 5 (#26) | R9–R17 | open; scheduled items moved to `docs/plan`         |
 
 Phase 1 is complete when these five are merged. S1–S5 are tracked in `docs/plan/PHASE-0-1-PROMPTS.md` → Phase 2
 backlog and Before production.
