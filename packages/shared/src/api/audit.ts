@@ -45,12 +45,26 @@ export const auditActorSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('system'), key: z.enum(AUDIT_SYSTEM_ACTOR_KEYS) }),
 ]);
 
+/** The actor as the list shows it: user actors carry their email (display only). */
+export const auditLogActorSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('user'),
+    userId: z.uuid(),
+    /**
+     * Looked up when the page is read, never stored in audit rows. null if the user no longer
+     * exists, or from an api before 1.10 (d).
+     */
+    email: z.string().nullable().default(null),
+  }),
+  z.object({ type: z.literal('system'), key: z.enum(AUDIT_SYSTEM_ACTOR_KEYS) }),
+]);
+
 /** Allow-listed snapshot (ADR 0008 §5); null before a create and after a delete. */
 const snapshot = z.record(z.string(), z.unknown()).nullable();
 
 export const auditLogEntrySchema = z.object({
   id: z.uuid(),
-  actor: auditActorSchema,
+  actor: auditLogActorSchema,
   action: z.enum(AUDIT_ACTION_KEYS),
   entityType: z.enum(AUDIT_ENTITY_TYPES),
   entityId: z.uuid(),
@@ -77,5 +91,6 @@ export const AUDIT_ERROR_CODES = ['audit.cursor_invalid'] as const;
 export type AuditErrorCode = (typeof AUDIT_ERROR_CODES)[number];
 export type AuditLogQuery = z.infer<typeof auditLogQuerySchema>;
 export type AuditActor = z.infer<typeof auditActorSchema>;
+export type AuditLogActor = z.infer<typeof auditLogActorSchema>;
 export type AuditLogEntry = z.infer<typeof auditLogEntrySchema>;
 export type AuditLogListResponse = z.infer<typeof auditLogListResponseSchema>;

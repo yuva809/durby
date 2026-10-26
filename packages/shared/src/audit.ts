@@ -164,3 +164,37 @@ export const AUDIT_SYSTEM_ACTOR_KEYS = Object.keys(
 export function auditEntityLabel(type: AuditEntityType): string {
   return `platform.audit.entities.${type.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`;
 }
+
+/**
+ * The only fields that can ever reach `before`/`after` (ADR 0008 §5), per entity type. Never add
+ * password or token hashes, tokens, links or email addresses: audit rows can't be updated or erased.
+ */
+export const AUDIT_SNAPSHOT_FIELDS = {
+  organization: ['id', 'partnerId', 'name', 'planId'],
+  role: ['id', 'systemKey', 'name', 'permissions'],
+  membership: ['id', 'userId', 'roleId', 'allLocations', 'locationIds'],
+  invitation: [
+    'id',
+    'roleId',
+    'allLocations',
+    'locationIds',
+    'expiresAt',
+    'acceptedAt',
+    'acceptedByUserId',
+    'revokedAt',
+  ],
+  session: ['organizationId', 'previousOrganizationId'],
+  /** `limits`: canonical JSON string (sorted keys); snapshots hold flat values only. */
+  feature_override: ['id', 'featureKey', 'enabled', 'limits'],
+  /** `features`: sorted keys, `key:<canonical limits json>` where a plan sets limits. */
+  plan: ['id', 'key', 'features'],
+  /** `value`: canonical JSON string (sorted keys). Settings never hold secrets (ADR 0010). */
+  setting_value: ['id', 'key', 'scopeType', 'brandId', 'locationId', 'value'],
+  /** Label text is plain text, never a secret (ADR 0011). */
+  label_override: ['id', 'locale', 'key', 'value'],
+  number_series: ['id', 'key', 'prefix', 'pattern', 'resetPolicy'],
+  /** `nextValue` as a string of digits (bigint). */
+  number_series_counter: ['id', 'seriesKey', 'period', 'nextValue'],
+  /** Never `payload` or `lastError`. `handler`: set when one failed handler job was re-queued. */
+  outbox_event: ['id', 'type', 'version', 'attempts', 'deadLetteredAt', 'handler'],
+} as const satisfies Record<AuditEntityType, readonly string[]>;

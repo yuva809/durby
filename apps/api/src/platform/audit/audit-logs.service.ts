@@ -1,7 +1,7 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import type {
   AuditAction,
-  AuditActor,
+  AuditLogActor,
   AuditEntityType,
   AuditLogEntry,
   AuditLogListResponse,
@@ -11,6 +11,7 @@ import type {
 import type { Prisma } from '../database/generated/client';
 import { ApiError } from '../http';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../tenancy';
+import { AUDIT_ACTOR_DIRECTORY, type AuditActorDirectory } from './audit-actor-directory';
 import { decodeCursor, encodeCursor } from './audit-cursor';
 
 export const auditErrors = {
@@ -41,6 +42,7 @@ export class AuditLogsService {
   constructor(
     @Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient,
     private readonly tenantContext: TenantContext,
+    @Inject(AUDIT_ACTOR_DIRECTORY) private readonly actors: AuditActorDirectory,
   ) {}
 
   /** Newest first by uuid v7 id; `limit + 1` rows tell whether another page exists. */
@@ -70,8 +72,11 @@ export class AuditLogsService {
     });
     const page = rows.slice(0, query.limit);
     const last = page.at(-1);
+    // Display only: the emails of this page's user actors, looked up now, never stored.
+    const userIds = [...new Set(page.flatMap((r) => (r.actorUserId ? [r.actorUserId] : [])))];
+    const emails = await this.actors.emails(userIds);
     return {
-      data: page.map(toEntry),
+      data: page.map((row) => toEntry(row, emails)),
       meta: {
         nextCursor: rows.length > query.limit && last ? encodeCursor(last.id) : null,
         limit: query.limit,
@@ -80,10 +85,10 @@ export class AuditLogsService {
   }
 }
 
-function toEntry(row: AuditLogRow): AuditLogEntry {
+function toEntry(row: AuditLogRow, emails: ReadonlyMap<string, string>): AuditLogEntry {
   return {
     id: row.id,
-    actor: actorOf(row),
+    actor: actorOf(row, emails),
     action: row.action as AuditAction,
     entityType: row.entityType as AuditEntityType,
     entityId: row.entityId,
@@ -95,8 +100,10 @@ function toEntry(row: AuditLogRow): AuditLogEntry {
   };
 }
 
-function actorOf(row: AuditLogRow): AuditActor {
-  if (row.actorType === 'user' && row.actorUserId) return { type: 'user', userId: row.actorUserId };
+function actorOf(row: AuditLogRow, emails: ReadonlyMap<string, string>): AuditLogActor {
+  if (row.actorType === 'user' && row.actorUserId) {
+    return { type: 'user', userId: row.actorUserId, email: emails.get(row.actorUserId) ?? null };
+  }
   if (row.actorType === 'system' && row.actorSystem) {
     return { type: 'system', key: row.actorSystem as AuditSystemActor };
   }
