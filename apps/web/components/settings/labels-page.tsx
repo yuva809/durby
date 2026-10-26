@@ -16,6 +16,7 @@ import {
 import {
   EDITOR_LOCALES,
   inactiveReason,
+  moduleLabel,
   overridableKeys,
   overrideProblem,
   previewText,
@@ -110,6 +111,7 @@ function LocaleEditor({
   filter: string;
   onChanged: () => void;
 }) {
+  const t = useT();
   const { store } = useAuth();
   // The resolved texts (override, else partner, else default) for "Current".
   const [resolved, reloadResolved] = useResource(
@@ -130,8 +132,8 @@ function LocaleEditor({
         const shown = keys.filter(matches);
         if (shown.length === 0) return null;
         return (
-          <section key={module} className="flex flex-col gap-3" aria-label={module}>
-            <h2 className="text-lg font-medium">{module}</h2>
+          <section key={module} className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">{t(moduleLabel(module))}</h2>
             {shown.map((key) => (
               <LabelRow
                 key={key}
@@ -188,13 +190,14 @@ function LabelRow({
 
   return (
     <Card className="flex flex-col gap-3 p-4" data-testid="label-row" data-key={labelKey}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <code className="text-sm break-all">{labelKey}</code>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-col">
+          <h3 className="font-medium">{dictionaries[locale][labelKey]}</h3>
+          <span className="text-xs break-all text-muted-foreground">{labelKey}</span>
+        </div>
         {override && <Badge>{t('platform.labelsEditor.overridden')}</Badge>}
       </div>
       <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
-        <dt className="text-muted-foreground">{t('platform.labelsEditor.default')}</dt>
-        <dd>{dictionaries[locale][labelKey]}</dd>
         <dt className="text-muted-foreground">{t('platform.labelsEditor.current')}</dt>
         <dd>{current ?? dictionaries[locale][labelKey]}</dd>
       </dl>

@@ -334,7 +334,6 @@
   "platform.labelsEditor.language": "Language",
   "platform.labelsEditor.locales.en": "English",
   "platform.labelsEditor.locales.de": "German",
-  "platform.labelsEditor.default": "Default",
   "platform.labelsEditor.current": "Current",
   "platform.labelsEditor.override": "Your text",
   "platform.labelsEditor.overridden": "Changed",
@@ -382,5 +381,6 @@
   "platform.planPage.noFeatures": "No features are enabled.",
   "platform.planPage.limit": "Limit",
   "platform.planPage.unlimited": "Unlimited",
-  "platform.features.limits.maxLocations": "Locations"
+  "platform.features.limits.maxLocations": "Locations",
+  "platform.labelsEditor.general": "General"
 }

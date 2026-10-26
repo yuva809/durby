@@ -1,6 +1,12 @@
 import { createTranslator, isOrgOverridable } from '@durby/i18n';
 import { describe, expect, it } from 'vitest';
-import { inactiveReason, overridableKeys, overrideProblem, previewText } from './labels-editor';
+import {
+  inactiveReason,
+  moduleLabel,
+  overridableKeys,
+  overrideProblem,
+  previewText,
+} from './labels-editor';
 
 const t = createTranslator('en');
 
@@ -30,6 +36,13 @@ describe('labels editor', () => {
     expect(overrideProblem(t, 'inventory.nav.title', 'en', 'Stock }')).toBe(
       'Curly braces are only allowed around placeholders.',
     );
+  });
+
+  it('heads module groups with the module title, never a raw id', () => {
+    expect(moduleLabel('inventory')).toBe('inventory.nav.title');
+    expect(moduleLabel('platform')).toBe('platform.labelsEditor.general');
+    expect(moduleLabel('unknown')).toBe('platform.labelsEditor.general');
+    for (const { module } of overridableKeys()) expect(t(moduleLabel(module))).not.toBe(module);
   });
 
   it('previews placeholders as markers', () => {

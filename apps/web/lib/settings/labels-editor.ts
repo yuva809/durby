@@ -29,6 +29,15 @@ export function overridableKeys(): { module: string; keys: LabelKey[] }[] {
 }
 
 /**
+ * Heading of a module's group: the module's own nav title (so the organization's terminology
+ * applies), or "General" for platform keys and modules without one.
+ */
+export function moduleLabel(module: string): LabelKey {
+  const title = `${module}.nav.title`;
+  return module !== 'platform' && isLabelKey(title) ? title : 'platform.labelsEditor.general';
+}
+
+/**
  * The problem with `value` as an organization override of `key` in `locale`, as text, or null.
  * The same check the api runs (validateOverride); shown inline while typing.
  */
