@@ -3,6 +3,7 @@ import type { ClientBase } from 'pg';
 /** The only SECURITY DEFINER functions allowed in `public` (ADR 0006). Adding one needs an ADR. */
 export const SECURITY_DEFINER_ALLOW_LIST: readonly string[] = [
   'auth_user_organization_ids',
+  'outbox_backlog',
   'outbox_due_tenants',
 ];
 
@@ -71,4 +72,46 @@ export async function findDefinerRoleProblems(client: ClientBase): Promise<strin
     ...(role.superuser ? ['is superuser'] : []),
     ...(role.can_create ? ['has CREATE on schema public'] : []),
   ];
+}
+
+/**
+ * Everything durby_rls_definer may read or change (ADR 0006 §2, ADR 0013 §3): exactly the columns
+ * its functions need. A wider grant would let every allow-listed function, or a future one, read
+ * more across tenants than reviewed.
+ */
+export const DEFINER_PRIVILEGES: readonly string[] = [
+  'column memberships.tenant_id SELECT',
+  'column memberships.user_id SELECT',
+  'column outbox_events.available_at SELECT',
+  'column outbox_events.dead_lettered_at SELECT',
+  'column outbox_events.occurred_at SELECT',
+  'column outbox_events.published_at SELECT',
+  'column outbox_events.tenant_id SELECT',
+  'column outbox_events.type SELECT',
+  'schema public USAGE',
+];
+
+/**
+ * The definer role's privileges from the catalog ACLs (not information_schema, which only shows
+ * grants of roles the caller is a member of): on schemas, on any relation in `public`, and on
+ * their columns. Sorted, as `kind object PRIVILEGE`.
+ */
+export async function definerPrivileges(client: ClientBase): Promise<string[]> {
+  const { rows } = await client.query<{ entry: string }>(
+    `SELECT 'schema ' || n.nspname || ' ' || a.privilege_type AS entry
+       FROM pg_namespace n, aclexplode(n.nspacl) a
+      WHERE a.grantee = $1::regrole
+     UNION ALL
+     SELECT 'table ' || c.relname || ' ' || a.privilege_type
+       FROM pg_class c, aclexplode(c.relacl) a
+      WHERE c.relnamespace = 'public'::regnamespace AND a.grantee = $1::regrole
+     UNION ALL
+     SELECT 'column ' || c.relname || '.' || at.attname || ' ' || a.privilege_type
+       FROM pg_attribute at
+       JOIN pg_class c ON c.oid = at.attrelid, aclexplode(at.attacl) a
+      WHERE c.relnamespace = 'public'::regnamespace AND a.grantee = $1::regrole
+     ORDER BY 1`,
+    [DEFINER_ROLE],
+  );
+  return rows.map((r) => r.entry);
 }

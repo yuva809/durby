@@ -308,6 +308,20 @@ running. That is harmless (it only reads and writes the outbox tables, which sta
 at one release: `docker rm -f durby-staging-worker-1`. A rollback with the current `deploy.sh` (on the server,
 `--skip-migrations`) removes it by itself.
 
+## Contract migrations: check the data first
+
+A contract migration (`SET NOT NULL`, dropping a column) fails the deploy if old rows don't fit. Before merging one,
+check staging **as the superuser**:
+
+```bash
+bin/dc exec postgres psql -U postgres -d durby -c "SELECT count(*) FROM memberships WHERE role_id IS NULL"
+```
+
+Never use `$DATABASE_URL` or the migrator for this: `durby_app` and `durby_migrator` are subject to `FORCE ROW LEVEL
+SECURITY`, so without `app.tenant_id` they see **no rows** of a tenant table and the count is always 0. Inside a
+migration, a readable pre-check loops over `organizations` (no RLS) and sets `app.tenant_id` per organization, like
+the 1.3 and 1.5 backfills; the constraint itself (`SET NOT NULL`) checks every row regardless of RLS.
+
 ## Logs
 
 The api writes one JSON line per request with `req.id`. Caddy sets `X-Request-Id` on every request

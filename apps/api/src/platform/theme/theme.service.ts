@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import type { ThemeResponse } from '@durby/shared';
-import { PrismaService } from '../database';
+import type { PlatformPrismaClient } from '../tenancy';
 import { buildThemeSnapshot, type ThemeSnapshot, themeForHost } from './theme-snapshot';
 
 /** Themes change only by migration and deploy (ADR 0015 §3), so a few minutes of staleness is fine. */
@@ -19,7 +19,7 @@ export class ThemeService {
   private refreshing: Promise<void> | null = null;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: Pick<PlatformPrismaClient, 'partnerDomain'>,
     private readonly now: () => number = Date.now,
   ) {}
 
