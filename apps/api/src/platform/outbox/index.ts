@@ -15,6 +15,4 @@ export {
 export { type HandlerJobData, handlerJobId, OutboxPublisher } from './outbox-queue';
 export { HEARTBEAT_FILE, OutboxWorker } from './outbox-worker';
 export { OutboxPayloadInvalidError, OutboxService } from './outbox.service';
-// The Nest module is exported last: platform folders depend on each other's services and
-// decorators, so a partly loaded index (import cycle through a module) must already export them.
 export { OutboxModule } from './outbox.module';

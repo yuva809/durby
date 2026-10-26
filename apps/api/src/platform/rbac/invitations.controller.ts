@@ -1,4 +1,4 @@
-import { IdempotencyExempt, Idempotent } from '../idempotency/idempotent.decorator';
+import { IdempotencyExempt, Idempotent } from '../markers';
 import {
   Body,
   Controller,
@@ -29,7 +29,7 @@ import { Authenticated, Public } from '../auth';
 import { ZodBody } from '../http';
 import { InvitationsService } from './invitations.service';
 import { rbacErrors } from './rbac-errors';
-import { RequirePermission } from './require-permission.decorator';
+import { RequirePermission } from '../markers';
 
 const invitationId = new ParseUUIDPipe({ exceptionFactory: () => rbacErrors.invitationNotFound() });
 

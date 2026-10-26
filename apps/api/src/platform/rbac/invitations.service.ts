@@ -16,7 +16,6 @@ import {
   normalizeEmail,
   UserDirectory,
 } from '../auth';
-import { SettingsService } from '../config/settings';
 import type { Prisma } from '../database/generated/client';
 import {
   PLATFORM_PRISMA,
@@ -28,6 +27,7 @@ import {
 } from '../tenancy';
 import { canGrantRole } from './granting';
 import { InvitationMailer } from './invitation-mailer';
+import { INVITATION_SETTINGS, type InvitationSettings } from './invitation-ports';
 import { issueInvitationToken, parseInvitationToken } from './invitation-token';
 import { existingLocations } from './locations';
 import { isUniqueViolation, rbacErrors } from './rbac-errors';
@@ -69,7 +69,7 @@ export class InvitationsService {
     private readonly users: UserDirectory,
     private readonly limits: AuthRateLimits,
     private readonly mailer: InvitationMailer,
-    private readonly settings: SettingsService,
+    @Inject(INVITATION_SETTINGS) private readonly settings: InvitationSettings,
     private readonly audit: AuditService,
     private readonly clock: Clock,
   ) {}

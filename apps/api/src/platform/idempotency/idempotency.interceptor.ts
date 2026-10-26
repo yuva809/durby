@@ -18,7 +18,7 @@ import { PinoLogger } from 'nestjs-pino';
 import { canonicalJson } from '../audit';
 import { ApiError, knownErrorResponse } from '../http';
 import { TenantContext } from '../tenancy';
-import { IDEMPOTENT_KEY, type IdempotentOptions } from './idempotent.decorator';
+import { IDEMPOTENT_KEY, type IdempotentOptions } from '../markers';
 import { idempotencyErrors } from './idempotency-errors';
 import { IdempotencyService, type RequestLease } from './idempotency.service';
 import { IdempotencyStore } from './idempotency.store';

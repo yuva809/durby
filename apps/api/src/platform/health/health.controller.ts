@@ -1,7 +1,7 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import type { HealthResponse, LiveResponse } from '@durby/shared';
 import type { Response } from 'express';
-import { Public } from '../auth/public.decorator';
+import { Public } from '../markers';
 import { HealthService } from './health.service';
 
 @Controller('health')

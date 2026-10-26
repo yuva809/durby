@@ -1,4 +1,4 @@
-import { Idempotent } from '../idempotency/idempotent.decorator';
+import { Idempotent } from '../markers';
 import {
   Body,
   Controller,
@@ -21,7 +21,7 @@ import {
 } from '@durby/shared';
 import { ZodBody } from '../http';
 import { rbacErrors } from './rbac-errors';
-import { RequirePermission } from './require-permission.decorator';
+import { RequirePermission } from '../markers';
 import { RolesService } from './roles.service';
 
 const roleId = new ParseUUIDPipe({ exceptionFactory: () => rbacErrors.roleNotFound() });

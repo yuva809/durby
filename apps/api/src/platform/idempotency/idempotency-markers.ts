@@ -3,11 +3,7 @@ import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import type { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import { API_PREFIX } from '../http';
 import { markersOf, type RouteMarker } from '../rbac';
-import {
-  IDEMPOTENCY_EXEMPT_KEY,
-  IDEMPOTENT_KEY,
-  type IdempotentOptions,
-} from './idempotent.decorator';
+import { IDEMPOTENCY_EXEMPT_KEY, IDEMPOTENT_KEY, type IdempotentOptions } from '../markers';
 
 const WRITE_METHODS: ReadonlySet<string> = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

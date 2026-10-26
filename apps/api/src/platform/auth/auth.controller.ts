@@ -1,4 +1,4 @@
-import { IdempotencyExempt } from '../idempotency/idempotent.decorator';
+import { IdempotencyExempt } from '../markers';
 import {
   Body,
   Controller,
@@ -29,11 +29,11 @@ import type { Request, Response } from 'express';
 import { APP_CONFIG, type AppConfig } from '../config';
 import { ApiError, ZodBody } from '../http';
 import { AuthContext } from './auth-context';
-import { Authenticated } from './authenticated.decorator';
+import { Authenticated } from '../markers';
 import { clearRefreshCookieOptions, refreshCookieName, refreshCookieOptions } from './cookies';
 import { RequireOrigin } from './origin.guard';
 import { PasswordService } from './password.service';
-import { Public } from './public.decorator';
+import { Public } from '../markers';
 import { type IssuedSession, SessionService } from './session.service';
 
 /** ADR 0006 §12: rotation can't be replayed by design, and stored responses would hold tokens. */

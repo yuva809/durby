@@ -6,6 +6,7 @@
   "exports": {
     "./eslint": "./eslint/index.mjs",
     "./eslint/boundaries": "./eslint/boundaries.mjs",
+    "./eslint/no-cycles": "./eslint/no-cycles.mjs",
     "./eslint/next": "./eslint/next.mjs",
     "./prettier": "./prettier/index.mjs",
     "./tsconfig/*": "./tsconfig/*"
@@ -16,6 +17,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-boundaries": "7.2.0",
+    "eslint-plugin-import-x": "4.17.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",
     "typescript-eslint": "^8.72.0"

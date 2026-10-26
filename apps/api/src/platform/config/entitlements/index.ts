@@ -11,5 +11,5 @@ export {
 } from './entitlements-admin.service';
 export { entitlementsErrors } from './entitlements-errors';
 export { EntitlementsModule } from './entitlements.module';
-export { featuresOf, REQUIRED_FEATURE_KEY, RequireFeature } from './require-feature.decorator';
+export { featuresOf, REQUIRED_FEATURE_KEY, RequireFeature } from '../../markers';
 export { NO_ENTITLEMENTS, type ResolvedEntitlements, type ResolvedLimits } from './resolve';
