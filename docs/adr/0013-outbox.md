@@ -38,6 +38,13 @@ Spec: [docs/platform/outbox.md](../platform/outbox.md).
    see every tenant table. (c) Polling every organization each tick from the platform client (organizations has no
    RLS): one query per tenant per second. It is fine hourly, so retention cleanup uses it (§8).
    _Cost:_ any `durby_app` caller learns which tenants have pending events and how many. No payloads, no types.
+   **Amendment (step 1.11, R1 of docs/reviews/phase-1.md):** the function returns **only tenants with due events**
+   (available now, of a known type), ordered by their oldest due event, and applies the limit after that filter.
+   Before, it limited the oldest _pending_ tenants first, so more than 500 tenants with only events in backoff or of
+   unknown types could starve a tenant with work. Same signature and columns (a rollback keeps working). The lag
+   (§10) moved to a second definer function, `outbox_backlog(p_types)`, which returns **totals only**
+   (`due, pending, tenants, oldest_pending_at`): no tenant ids, no payloads, the same scheduling columns. It is on the
+   ADR 0006 allow-list; this amendment is its ADR.
 
 4. **Dispatch: enqueue, then mark published, in the claim transaction.** One BullMQ job per (event, registered
    handler), `jobId = <eventId>@<handler>` (BullMQ ids can't contain `:`), so a re-dispatch after a failed commit is dropped by BullMQ while the job
@@ -85,8 +92,8 @@ Spec: [docs/platform/outbox.md](../platform/outbox.md).
    it otherwise, so a rollback to a release before 1.9 works. Old and new workers running side by side during a
    rollout is safe (`SKIP LOCKED`, `jobId`, `processed_events`).
 
-10. **Lag is a log, not a health signal.** The worker logs `outbox.lag` (due, pending, oldest pending age) every
-    30 s and warns above `OUTBOX_LAG_WARN_SECONDS`. `/api/v1/health` stays as it is: a degraded health on lag would
+10. **Lag is a log, not a health signal.** The worker logs `outbox.lag` (due, pending, tenants, oldest pending age,
+    from `outbox_backlog`, over every pending event of every tenant) every 30 s and warns above `OUTBOX_LAG_WARN_SECONDS`. `/api/v1/health` stays as it is: a degraded health on lag would
     fail the deploy's post-check and roll back a healthy api.
 
 11. **Column-level privileges.** `durby_app` may `UPDATE` only `available_at`, `published_at`, `dead_lettered_at`,
