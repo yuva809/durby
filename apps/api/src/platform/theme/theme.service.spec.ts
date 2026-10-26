@@ -1,6 +1,6 @@
 import { DEFAULT_THEME } from '@durby/shared';
 import { describe, expect, it, vi } from 'vitest';
-import type { PrismaService } from '../database';
+import type { PlatformPrismaClient } from '../tenancy';
 import { THEME_SNAPSHOT_TTL_MS, ThemeService } from './theme.service';
 
 const demoRow = {
@@ -20,7 +20,10 @@ const demoRow = {
 function setup() {
   let now = 0;
   const findMany = vi.fn().mockResolvedValue([demoRow]);
-  const prisma = { partnerDomain: { findMany } } as unknown as PrismaService;
+  const prisma = { partnerDomain: { findMany } } as unknown as Pick<
+    PlatformPrismaClient,
+    'partnerDomain'
+  >;
   const service = new ThemeService(prisma, () => now);
   return { service, findMany, advance: (ms: number) => (now += ms) };
 }

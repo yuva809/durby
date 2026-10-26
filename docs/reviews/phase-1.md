@@ -18,11 +18,11 @@
 | R1  | Outbox claim starvation in `outbox_due_tenants`                                                | correctness          | medium   | Fix now: PR 1 (outbox)                                     |
 | R2  | Import cycles between platform folders; no lint rule; export-order and deep-import workarounds | architecture         | medium   | Fix now: PR 2 (import cycles)                              |
 | R3  | `memberships.role_id` and `organizations.plan_id` still nullable (expand/contract)             | expand/contract      | low      | Fix now: PR 3 (contract)                                   |
-| R4  | `body-parser` 2.3.0 (high, DoS) and `multer` 2.4.0 (high) in the api runtime                   | dependencies         | high     | Fix now: PR 4 (security)                                   |
-| R5  | `handlebars` 4.7.9 (2 critical, 1 moderate) in lint tooling                                    | dependencies         | medium   | Fix now: PR 4 (security)                                   |
-| R6  | No test pins every privilege of `durby_rls_definer`                                            | missing test         | low      | Fix now: PR 4 (security)                                   |
-| R7  | `outbox_events` column-privilege test skips `tenant_id`, `id`, `occurred_at`                   | missing test         | low      | Fix now: PR 4 (security)                                   |
-| R8  | Theme service uses the raw `PrismaService` instead of `PLATFORM_PRISMA`                        | rule (ADR 0005/0006) | low      | Fix now: PR 4 (security)                                   |
+| R4  | `body-parser` 2.3.0 (high, DoS) and `multer` 2.4.0 (high) in the api runtime                   | dependencies         | high     | Done: PR 4 (security)                                      |
+| R5  | `handlebars` 4.7.9 (2 critical, 1 moderate) in lint tooling                                    | dependencies         | medium   | Done: PR 4 (security)                                      |
+| R6  | No test pins every privilege of `durby_rls_definer`                                            | missing test         | low      | Done: PR 4 (security)                                      |
+| R7  | `outbox_events` column-privilege test skips `tenant_id`, `id`, `occurred_at`                   | missing test         | low      | Done: PR 4 (security)                                      |
+| R8  | Theme service uses the raw `PrismaService` instead of `PLATFORM_PRISMA`                        | rule (ADR 0005/0006) | low      | Done: PR 4 (security)                                      |
 | R9  | Web error bodies are cast, not parsed with a shared schema                                     | rule (contracts)     | low      | Fix now: PR 5 (misc)                                       |
 | R10 | PR template out of date with hard rules 8 and 10                                               | doc drift            | low      | Fix now: PR 5 (misc)                                       |
 | R11 | CLAUDE.md rule 10's first sentence says every endpoint declares `@RequireFeature`              | doc drift            | low      | Fix now: PR 5 (misc)                                       |
@@ -112,7 +112,7 @@ NULL` on `memberships` sees no rows without a tenant. The pre-check loops over `
   migration fails with the error naming `memberships.role_id` and that tenant; without NULLs it succeeds. Existing
   rbac and entitlements tests stay green.
 
-### R4–R8. Security and dependencies (PR 4, security)
+### R4–R8. Security and dependencies (PR 4, security) — done
 
 - **R4.**
   - `body-parser` 2.3.0 (GHSA-27r3-jxmh-p828, DoS through trailing bytes after a compressed body) is reachable
@@ -128,6 +128,10 @@ NULL` on `memberships` sees no rows without a tenant. The pre-check loops over `
   `user_id`/`tenant_id`, outbox scheduling columns).
 - **R7.** `test/outbox-migration.int.spec.ts:170-176` checks that the app can't update `payload`, `type` and
   `version`. Add `tenant_id`, `id` and `occurred_at`, and assert the exact set of updatable columns from the catalog.
+- **Done:** overrides in `pnpm-workspace.yaml` (`pnpm audit`: no known vulnerabilities; body-parser 2.4.0, multer
+  2.5.0, handlebars 4.7.10); `DEFINER_PRIVILEGES` pinned from the catalog with a self-test that a widened table or
+  column grant is caught; the outbox test denies `tenant_id`, `id`, `occurred_at` and pins the updatable set; theme on
+  `PLATFORM_PRISMA`, health documented.
 - **R8.** `platform/theme/theme.service.ts` injects the raw `PrismaService`. ADR 0005 §6 and ADR 0006 §1 reserve it
   for auth-private access. Fix: `PLATFORM_PRISMA`, which allows the partner tables. `health.service.ts` keeps the raw
   client: it runs `SELECT 1` only. Documented in the health service.

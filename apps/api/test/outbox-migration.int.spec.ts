@@ -167,7 +167,14 @@ describe('outbox and idempotency tables at the database', () => {
            published_at = now() WHERE id = $1`,
         [id],
       );
-      for (const set of [`payload = '{"a":1}'`, `type = 'config.labels.changed'`, 'version = 2']) {
+      for (const set of [
+        `payload = '{"a":1}'`,
+        `type = 'config.labels.changed'`,
+        'version = 2',
+        `tenant_id = '${orgB}'`,
+        `id = '${orgB}'`,
+        'occurred_at = now()',
+      ]) {
         const error = await failure(
           sql(orgA, `UPDATE outbox_events SET ${set} WHERE id = $1`, [id]),
         );
@@ -194,6 +201,22 @@ describe('outbox and idempotency tables at the database', () => {
   });
 
   describe('processed_events', () => {
+    it('grants the app UPDATE on exactly the scheduling columns (catalog)', async () => {
+      const { rows } = await migrator.query<{ column: string }>(
+        `SELECT attname AS column FROM pg_attribute
+         WHERE attrelid = 'outbox_events'::regclass AND attnum > 0 AND NOT attisdropped
+           AND has_column_privilege('durby_app', 'outbox_events', attname, 'UPDATE')
+         ORDER BY attname`,
+      );
+      expect(rows.map((r) => r.column)).toEqual([
+        'attempts',
+        'available_at',
+        'dead_lettered_at',
+        'last_error',
+        'published_at',
+      ]);
+    });
+
     it('is unique per handler and event, insert/delete only, and per tenant', async () => {
       const event = uuidv7();
       const insert = (tenant: string, handler = 'reports.stockProjection') =>
