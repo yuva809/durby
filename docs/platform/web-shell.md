@@ -20,7 +20,7 @@ permissions, labels), never code (rule 2).
 | (a) | Shell, design system, nav registry, partner theming by domain, two-domain demo, e2e suite | `partner_themes`, `partner_domains`, `GET /theme`               |
 | (b) | Users, roles, invitations                                                                 | `GET /locations`, partner-domain invite links                   |
 | (c) | Settings, labels editor, number series, plan/features (read-only), organization profile   | `PATCH /organization`, `resetPolicyLocked`, rate-limit env vars |
-| (d) | Audit log viewer                                                                          | none                                                            |
+| (d) | Audit log viewer                                                                          | actor `email` in `GET /audit-logs`                              |
 
 Each PR is one session, its own branch from `main`, and passes `pnpm lint && pnpm typecheck && pnpm test` plus the
 Playwright smoke suite.
