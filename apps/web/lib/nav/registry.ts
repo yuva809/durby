@@ -2,6 +2,7 @@ import type { LabelKey } from '@durby/i18n';
 import type { FeatureKey, PermissionKey } from '@durby/shared';
 import {
   Building2,
+  ClipboardList,
   ChartLine,
   CreditCard,
   Hash,
@@ -128,6 +129,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'platform.nav.plan',
     icon: Layers,
     group: 'settings',
+  },
+  {
+    id: 'audit',
+    href: '/settings/audit',
+    label: 'platform.nav.audit',
+    icon: ClipboardList,
+    group: 'settings',
+    permission: 'platform.audit.read',
   },
 ];
 

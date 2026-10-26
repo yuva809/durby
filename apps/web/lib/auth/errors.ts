@@ -1,4 +1,5 @@
 import type {
+  AuditErrorCode,
   AuthErrorCode,
   EntitlementErrorCode,
   IdempotencyErrorCode,
@@ -19,7 +20,8 @@ export type ApiErrorCode =
   | SettingErrorCode
   | LabelErrorCode
   | NumberingErrorCode
-  | EntitlementErrorCode;
+  | EntitlementErrorCode
+  | AuditErrorCode;
 
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
 const LABELS: Record<ApiErrorCode, LabelKey> = {
@@ -75,6 +77,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'numbering.series_in_use': 'platform.errors.numberingSeriesInUse',
   'numbering.counter_backwards': 'platform.errors.numberingCounterBackwards',
   'entitlements.feature_disabled': 'platform.errors.featureDisabled',
+  'audit.cursor_invalid': 'platform.errors.auditCursorInvalid',
 };
 
 export function errorLabel(code: ApiErrorCode | 'unknown'): LabelKey {

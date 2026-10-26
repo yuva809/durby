@@ -1,4 +1,4 @@
-import { type APIRequestContext, expect, type Page } from '@playwright/test';
+import { type APIRequestContext, type Browser, expect, type Page } from '@playwright/test';
 
 /** Seeded by `seed-dev` (apps/api/src/cli/seed-dev.ts); local and CI only. */
 export const DEV_PASSWORD = 'durby-dev-password';
@@ -50,3 +50,42 @@ export async function invitationLink(request: APIRequestContext, email: string):
   if (!link) throw new Error(`no invitation link in the mail to ${email}`);
   return new URL(link);
 }
+
+const NEW_PASSWORD = 'e2e-invitee-password';
+
+/** As the signed-in Owner: invites `email` as `role` from the Invitations tab. */
+export async function invite(
+  page: Page,
+  origin: string,
+  email: string,
+  role: string,
+): Promise<void> {
+  await page.goto(`${origin}/settings/members`);
+  await page.getByTestId('tab-invitations').click();
+  await page.getByTestId('invite-open').click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Email').fill(email);
+  await dialog.getByTestId('role-select').selectOption({ label: role });
+  await dialog.getByTestId('invite-send').click();
+  await expect(page.getByRole('status')).toHaveText(`Invitation sent to ${email}.`);
+  await expect(page.getByTestId('invitation-row').filter({ hasText: email })).toContainText(role);
+}
+
+/**
+ * Accepts the link in a fresh browser (no session) by choosing a password; returns that page,
+ * signed in as the new member. The caller closes its context.
+ */
+export async function accept(browser: Browser, link: URL): Promise<Page> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto(link.toString());
+  // Its name includes the hint ("Password At least 12 characters.").
+  await page.getByLabel(/^Password/).fill(NEW_PASSWORD);
+  await page.getByLabel('Repeat password').fill(NEW_PASSWORD);
+  await page.getByRole('button', { name: 'Create account and join' }).click();
+  await expect(page.getByRole('main')).toContainText('Back office');
+  return page;
+}
+
+export const uniqueEmail = (tag: string) =>
+  `e2e-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.test`;
