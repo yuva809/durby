@@ -39,15 +39,20 @@ Partner (white-label reseller; Durby itself is the default partner)
 
 ## Config resolution
 
-Most specific wins: **Location → Brand → Organization → Partner → Plan default → code default**.
+Settings: most specific wins, **Location → Brand → Organization → Partner → code default** (ADR 0010). Features: the
+organization's **plan**, then its overrides (ADR 0009). Labels: **organization override → partner override →
+default dictionary**, per locale (ADR 0011).
 
-| Thing                                                                                                            | Defined in code                           | Stored per scope                                              |
-| ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
-| Feature keys                                                                                                     | registry in `packages/shared/features.ts` | `plan_features`, `tenant_feature_overrides`                   |
-| Settings                                                                                                         | registry with Zod schema + default        | `setting_values (scope_type, scope_id, key, value jsonb)`     |
-| Labels                                                                                                           | dictionaries in `packages/i18n/{en,de}`   | `partner_label_overrides`, `label_overrides (locale, key, value)` (ADR 0011) |
-| Number series                                                                                                    | registry of series keys                   | `number_series (key, prefix, pattern, reset_policy)`, `number_series_counters (series, period, next_value)` (ADR 0012) |
-| Resolved config is cached in Redis per (tenant, location, locale) and invalidated on change via an outbox event. |
+| Thing         | Defined in code                                 | Stored per scope                                                                                                         |
+| ------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Feature keys  | registry in `packages/shared/src/features.ts`   | `plan_features` (per plan), `tenant_feature_overrides` (ADR 0009)                                                         |
+| Settings      | registry with Zod schema + default              | `partner_setting_values`; `setting_values (scope_type, brand_id?, location_id?, key, value jsonb)` (ADR 0010 §2–3)        |
+| Labels        | dictionaries in `packages/i18n/{en,de}`         | `partner_label_overrides`, `label_overrides (locale, key, value)` (ADR 0011)                                              |
+| Number series | registry of series keys                         | `number_series (key, prefix, pattern, reset_policy)`, `number_series_counters (series, period, next_value)` (ADR 0012)     |
+
+**Caching:** resolved settings, labels, entitlements and permissions are loaded once per request and cached in the
+request's CLS scope, which needs no invalidation (ADR 0010 §8, ADR 0013 §7). Writers emit `config.*` events through
+the outbox; a Redis cache is added only when measurements need one, and then registers handlers for those events.
 
 ## Cross-cutting guarantees
 

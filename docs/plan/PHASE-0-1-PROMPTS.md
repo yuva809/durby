@@ -272,17 +272,24 @@ cross-tenant), routes without guards, any hardcoded UI strings, money as number,
 missing audit calls, TODOs. Then fix them one by one.
 ```
 
-Known items for the review list (found while building; add them to docs/reviews/phase-1.md):
-
-- [ ] **Outbox claim starvation** (docs/platform/outbox.md → Dispatcher, ADR 0013 §3): `outbox_due_tenants` groups
-      every pending event and keeps the 500 tenants with the oldest one, whether or not they are due. Tenants with
-      only events in backoff or of types this release doesn't know (rollback) fill those slots, so with more than 500
-      of them a tenant with due events is never claimed. Fix: only tenants with `due > 0` compete for the claim slots
-      (filter by `available_at <= now()` and known types before the `LIMIT`, ordered by the oldest due event); the
-      lag/backlog measurement becomes a separate query that still sees every pending event. **Must be fixed before
-      Phase 2 adds handlers with real side effects.**
+Review: [docs/reviews/phase-1.md](../reviews/phase-1.md) (fresh reviewer, findings verified, fix now vs scheduled).
+Fixed in five themed PRs: security R4–R8 (#22, with the review), outbox claim starvation R1 (#23), import cycles R2
+(#24), contract step `role_id`/`plan_id` NOT NULL R3 (#25), misc R9–R17 (#26). The scheduled items moved to the
+sections below.
 
 **Done when:** the review list is empty. Phase 1 complete → next: Phase 2 (shell + catalog for inventory).
+
+## Phase 2 backlog (from the Phase 1 review)
+
+- [ ] **Redis durability before handlers with real side effects** (ADR 0013 §6; review S2): AOF `always`, a managed
+      Redis, or re-publishing from `published_at` within a window. **Before the first Phase 2 handler with external
+      effects.**
+- [ ] **Leave organization** (docs/platform/rbac.md → Granting rules; review S1): members without
+      `platform.users.manage` can't leave on their own.
+- [ ] **Tenant offboarding and erasure** (ADR 0008 §11; review S4): export, retention period, then removal of a
+      tenant's rows including the append-only audit log. Before the first customer leaves.
+- [ ] **Partner-bound sessions** (ADR 0015 §9; review S5): signing in on a partner domain shows all of a user's
+      organizations. With brand-level theming.
 
 ## Before production
 
@@ -292,3 +299,10 @@ Items that must be done before the first production deploy:
       `partner_label_overrides`, `partner_domains` (`partner-demo.localhost`, `partner-demo.durby.tech`),
       `partner_themes` row and the partner itself, after the staging demo organizations on it are removed.
 - [ ] **Audit IP retention** (ADR 0008 §10): a retention limit for `ip` in audit entries.
+- [ ] **A real email provider** for production; staging delivers to Mailpit only (`docs/ops/deploy.md` → Staging
+      mail).
+- [ ] **Password reset and email verification links on the user's partner domain** (ADR 0015 §12; invitations
+      already use the organization's partner domain).
+- [ ] **Redis durability for the outbox** (ADR 0013 §6), if not done in Phase 2.
+- [ ] **Auth rate limits** in the production env at or above the defaults (enforced at boot, ADR 0015 §14); review the
+      `RATE_LIMIT_*` values in the deploy checklist.

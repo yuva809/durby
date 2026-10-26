@@ -1,4 +1,4 @@
-import { type MeResponse, sessionResponseSchema } from '@durby/shared';
+import { apiErrorBodySchema, type MeResponse, sessionResponseSchema } from '@durby/shared';
 import type { ApiErrorCode } from './errors';
 
 /**
@@ -172,11 +172,14 @@ export function createSessionStore(deps: SessionStoreDeps): SessionStore {
   return store;
 }
 
-/** The `code` of an api error body, or 'unknown'. */
+/**
+ * The `code` of an api error body (parsed with the shared schema), or 'unknown'. A code the web
+ * app doesn't know still maps to the generic label (errorLabel).
+ */
 export async function errorCode(res: Response): Promise<ApiErrorCode | 'unknown'> {
   try {
-    const body = (await res.json()) as { code?: unknown };
-    return typeof body.code === 'string' ? (body.code as ApiErrorCode) : 'unknown';
+    const parsed = apiErrorBodySchema.safeParse(await res.json());
+    return parsed.success ? (parsed.data.code as ApiErrorCode) : 'unknown';
   } catch {
     return 'unknown';
   }

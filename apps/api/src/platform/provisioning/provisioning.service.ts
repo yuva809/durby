@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { AuditSystemActor, PlanKey, SystemRole } from '@durby/shared';
 import { v7 as uuidv7 } from 'uuid';
 import { auditActor, AuditService, snapshot } from '../audit';
@@ -30,6 +30,8 @@ const PROVISIONING_ACTOR = '00000000-0000-0000-0000-000000000000';
  */
 @Injectable()
 export class ProvisioningService {
+  private readonly logger = new Logger(ProvisioningService.name);
+
   constructor(
     @Inject(PLATFORM_PRISMA) private readonly platformDb: PlatformPrismaClient,
     @Inject(TENANT_PRISMA) private readonly tenantDb: TenantPrismaClient,
@@ -48,6 +50,11 @@ export class ProvisioningService {
       create: { slug, name },
       update: {},
     });
+    // Partners have no tenant, so no audit_logs row (ADR 0008 §7): a structured log line instead.
+    this.logger.log(
+      { event: 'provisioning.partner_created', partnerId: partner.id, slug },
+      'provisioning.partner_created',
+    );
     return { id: partner.id, created: true };
   }
 

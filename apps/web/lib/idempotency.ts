@@ -1,4 +1,4 @@
-import { IDEMPOTENCY_KEY_HEADER } from '@durby/shared';
+import { apiErrorBodySchema, IDEMPOTENCY_KEY_HEADER } from '@durby/shared';
 import type { SessionStore } from './auth/session';
 
 /**
@@ -56,8 +56,9 @@ async function retryable(res: Response): Promise<boolean> {
   if (res.status >= 500) return true;
   if (res.status !== 409) return false;
   try {
-    const body = (await res.clone().json()) as { code?: unknown };
-    return body.code === 'idempotency.request_in_progress';
+    const body = apiErrorBodySchema.safeParse(await res.clone().json());
+    // Not an error body: the outcome is unknown, so the key stays.
+    return !body.success || body.data.code === 'idempotency.request_in_progress';
   } catch {
     return true;
   }

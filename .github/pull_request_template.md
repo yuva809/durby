@@ -16,9 +16,9 @@ Tick each box, or write "n/a" next to it with a reason.
 - [ ] **Platform vs modules.** Cross-cutting code is in `apps/api/src/platform/`; platform does not import modules.
 - [ ] **Money and quantities** use `Prisma.Decimal` / `decimal.js`, never `number`; JSON carries decimals as strings.
 - [ ] **Append-only history.** No UPDATE/DELETE on ledgers, journals, payments or audit logs; corrections are reversing entries.
-- [ ] **Idempotency.** Every client-originated write accepts `Idempotency-Key` and is safe to replay.
+- [ ] **Idempotency.** Every `POST`/`PUT`/`PATCH`/`DELETE` route has `@Idempotent()` or `@IdempotencyExempt(reason)` (the api refuses to boot otherwise, ADR 0014); appending writes (stock movements, payments, journal entries) use `@Idempotent({ completion: 'transaction' })` and `completeInTransaction` in their transaction.
 - [ ] **Audit.** Every state-changing action writes an audit entry (actor, action, entity, before/after).
-- [ ] **Guards.** Every endpoint declares `@RequireFeature(...)` and `@RequirePermission(...)`, or is `@Public()` / `@PlatformOnly()`.
+- [ ] **Guards.** Every route has **exactly one** marker: `@RequirePermission(...)`, `@Public()`, `@PlatformOnly()` or `@Authenticated()` (user-level routes only, ADR 0006/0007; new ones show up in the snapshot test). Module routes add `@RequireFeature(...)` next to `@RequirePermission` (ADR 0009).
 
 ## Tests and data
 

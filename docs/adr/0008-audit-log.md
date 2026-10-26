@@ -61,6 +61,10 @@ table atomically with the change, what goes in it, what happens to events that h
    _Rejected:_ an auth-private `auth_events` table now. Revisit it (auth-private, with a retention job) when a
    "my sign-in history" screen or similar is needed.
 
+   **Platform bootstrap** has no tenant either: creating the default partner (`create-admin`, `seed-dev`) logs a
+   structured `provisioning.partner_created` line instead of an audit row. Other partners, themes and domains come
+   from reviewed migrations, which are their audit trail (ADR 0015 §3). (Step 1.11, docs/reviews/phase-1.md → R16.)
+
 8. **Organization switch is recorded in the target organization**, in the same tenant transaction as the
    `users.last_organization_id` update, after the refresh token rotation (as today).
 
