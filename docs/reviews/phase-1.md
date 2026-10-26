@@ -95,14 +95,22 @@
   - Local dev data has no NULLs in either column.
 - **Fix:**
   - One migration: `ALTER TABLE … SET NOT NULL` on both columns, preceded by a `DO` block that raises a clear error
-    naming the column if any NULL remains (no silent backfill: a NULL now would mean an unknown writer). Prisma types
-    become non-nullable.
+    naming the table and the tenant if any NULL remains (no silent backfill: a NULL now would mean an unknown
+    writer). Prisma types become non-nullable.
+  - **RLS:** `durby_migrator` is subject to `FORCE ROW LEVEL SECURITY` too, so a plain `SELECT … WHERE role_id IS
+NULL` on `memberships` sees no rows without a tenant. The pre-check loops over `organizations` (no RLS) and sets
+    `app.tenant_id` per organization, like the 1.3 and 1.5 backfills. `SET NOT NULL` itself scans every row
+    regardless of RLS, so it remains the hard guarantee; the loop only makes the failure readable.
   - The code paths that handled NULL (no role → no permissions, no plan → no features) stay as defensive reads, or
     go where the type makes them dead. Docs and ADRs record the contract step as done.
-- **Before merging:** run `SELECT count(*) FROM memberships WHERE role_id IS NULL` and the same for
-  `organizations.plan_id` on staging. I can't reach staging from here, so you run them. Both must be 0.
-- **Tests:** the migration fails with the clear error on a database seeded with a NULL (own test database, like the
-  backfill tests), and succeeds otherwise. Existing rbac and entitlements tests stay green.
+- **Before merging:** check staging as the **superuser** (not `$DATABASE_URL`: `durby_app` sees no memberships
+  under FORCE RLS without a tenant, so it would always print 0). Both must be 0:
+  `bin/dc exec postgres psql -U postgres -d durby -c "SELECT count(*) FROM memberships WHERE role_id IS NULL"` and
+  `bin/dc exec postgres psql -U postgres -d durby -c "SELECT count(*) FROM organizations WHERE plan_id IS NULL"`.
+  `docs/ops/deploy.md` documents this for every future contract migration (PR 4).
+- **Tests:** on its own test database (like the backfill tests): with a membership whose `role_id` is NULL, the
+  migration fails with the error naming `memberships.role_id` and that tenant; without NULLs it succeeds. Existing
+  rbac and entitlements tests stay green.
 
 ### R4–R8. Security and dependencies (PR 4, security)
 
@@ -235,11 +243,15 @@
 
 ## Fix PRs (each from `main`, each green: `pnpm lint && pnpm typecheck && pnpm test`, Playwright where the web changes)
 
-1. **Outbox** (R1)
-2. **Import cycles** (R2)
-3. **Contract migrations** (R3), after the staging NULL check
-4. **Security** (R4–R8)
-5. **Misc** (R9–R17; the CLAUDE.md wording of R11–R14 as you approve it)
+Merged in the order 4, 1, 2, 3, 5 (security first: `body-parser` is reachable through `POST /auth/login`):
+
+- **PR 4, security** (R4–R8), with this review document and the deploy.md note on checking contract migrations as
+  the superuser
+- **PR 1, outbox** (R1); its migration SQL is shown for approval before it is applied
+- **PR 2, import cycles** (R2)
+- **PR 3, contract migrations** (R3), after the staging NULL check; its SQL is shown for approval before it is
+  applied
+- **PR 5, misc** (R9–R17; the CLAUDE.md wording of R11–R14 as approved)
 
 When all five are merged: this document marks each item done, `docs/plan` → 1.11 is checked off with S1–S5 moved
 to their places, and Phase 1 is complete.
