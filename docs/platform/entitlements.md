@@ -65,9 +65,9 @@ through reviewed migrations, identical on every environment.
 
 `UNIQUE (plan_id, feature_key)`. A row means "the plan includes this feature".
 
-`organizations.plan_id`: uuid, nullable (expand/contract, ADR 0004), FK → plans `ON DELETE RESTRICT`. The migration
-backfills existing organizations to `full`; a later step makes it `NOT NULL`. An organization without a plan has
-every feature disabled (fail closed). `plan_id` is a non-sensitive platform field, allowed on `organizations` (ADR 0005).
+`organizations.plan_id`: uuid, **NOT NULL since 1.11** (expand/contract, ADR 0004), FK → plans `ON DELETE RESTRICT`.
+The 1.5 migration backfilled existing organizations to `full`; the 1.11 contract step made it `NOT NULL` (every
+release from 1.5 on writes it). The resolver still treats a missing plan as "every feature disabled" (fail closed). `plan_id` is a non-sensitive platform field, allowed on `organizations` (ADR 0005).
 
 `tenant_feature_overrides` (tenant table, ADR 0005 block: `UNIQUE (tenant_id, id)`, `ENABLE` + `FORCE` RLS,
 `tenant_isolation` policy)
@@ -219,7 +219,6 @@ partner-level white-label is revisited in 1.10.
 
 ## Later
 
-- `organizations.plan_id NOT NULL` once no deployed release creates organizations without a plan.
 - HTTP endpoints for platform staff (when `@PlatformOnly` is modelled).
 - Redis cache with a `config.entitlements.changed` handler; usage counters to enforce limits; events from plan
   migrations (ADR 0013 §7).

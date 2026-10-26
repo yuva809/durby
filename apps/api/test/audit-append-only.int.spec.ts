@@ -31,7 +31,8 @@ describe('audit_logs is append-only', () => {
       [`audit-${randomUUID()}`],
     );
     const org = await app.query<{ id: string }>(
-      `INSERT INTO organizations (partner_id, name, updated_at) VALUES ($1, 'Audit org', now()) RETURNING id`,
+      `INSERT INTO organizations (partner_id, name, plan_id, updated_at)
+       VALUES ($1, 'Audit org', (SELECT id FROM plans WHERE key = 'full'), now()) RETURNING id`,
       [partner.rows[0]?.id],
     );
     tenantId = org.rows[0]!.id;

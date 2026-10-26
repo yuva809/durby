@@ -25,7 +25,7 @@ Organization
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `roles`                | `id`, `tenant_id`, `system_key` (`system_role` enum, nullable), `name` (nullable), timestamps                                                                                                  | System role: key, no name. Custom role: trimmed name (1–100), no key. Unique per tenant |
 | `role_permissions`     | `id`, `tenant_id`, `role_id`, `permission_key`, `created_at`                                                                                                                                   | `(tenant_id, role_id)` → roles, cascade on role delete. Key shape checked in SQL        |
-| `memberships`          | + `role_id` (nullable, see Rollout), `all_locations` (default `true`)                                                                                                                          | `(tenant_id, role_id)` → roles, `RESTRICT`                                              |
+| `memberships`          | + `role_id` (NOT NULL since 1.11, see Rollout), `all_locations` (default `true`)                                                                                                               | `(tenant_id, role_id)` → roles, `RESTRICT`                                              |
 | `membership_locations` | `id`, `tenant_id`, `membership_id`, `location_id`, `created_at`                                                                                                                                | Composite FKs; location delete is `RESTRICT`                                            |
 | `invitations`          | `id`, `tenant_id`, `email` (normalized), `role_id`, `all_locations`, `invited_by_user_id`, `token_hash` (unique), `expires_at`, `accepted_at`, `accepted_by_user_id`, `revoked_at`, timestamps | Accepted or revoked, never both                                                         |
 | `invitation_locations` | `id`, `tenant_id`, `invitation_id`, `location_id`, `created_at`                                                                                                                                | Copied to `membership_locations` on accept                                              |
@@ -211,10 +211,11 @@ Ids of another tenant are invisible under RLS and answer 404.
 
 ## Rollout (expand/contract, ADR 0004)
 
-`memberships.role_id` is **nullable** in this release so the previous release can still insert memberships during a
-rollback; such memberships have no permissions. The migration backfills system roles for every organization and gives
-every existing membership the Owner role. `NOT NULL` follows in a later step, once no deployed code inserts without
-a role.
+`memberships.role_id` was **nullable** in release 1.3 so the previous release could still insert memberships during a
+rollback; such memberships had no permissions. The migration backfilled system roles for every organization and gave
+every existing membership the Owner role. **Contract step (1.11):** `NOT NULL`, since every release from 1.3 on writes
+it. The migration first checks per organization (with `app.tenant_id`, as FORCE RLS applies to the migrator too) and
+fails naming the organization if a NULL remains; `SET NOT NULL` itself checks every row.
 
 ## Audit and idempotency
 

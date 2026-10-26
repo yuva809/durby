@@ -61,12 +61,13 @@ export class MembersService {
 
         let role = target.role;
         if (body.roleId !== undefined && body.roleId !== target.roleId) {
-          role = await tx.role.findUnique({
+          const found = await tx.role.findUnique({
             where: { tenantId_id: { tenantId, id: body.roleId } },
             select: ROLE_SELECT,
           });
-          if (!role) throw rbacErrors.roleNotFound();
-          if (!canGrantRole(actor, this.roles.viewOf(role))) throw rbacErrors.notGrantable();
+          if (!found) throw rbacErrors.roleNotFound();
+          if (!canGrantRole(actor, this.roles.viewOf(found))) throw rbacErrors.notGrantable();
+          role = found;
         }
         const allLocations =
           body.locationIds === undefined ? target.allLocations : body.locationIds === null;

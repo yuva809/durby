@@ -14,6 +14,7 @@ import {
 import { RequirePermission } from '../src/platform/rbac';
 import { TenantContext } from '../src/platform/tenancy';
 import { RbacSeed, type SeededOrg } from './support/rbac';
+import { emptyPlanFor } from './support/plans';
 
 /** Test-only routes: an "inventory module" that doesn't exist yet. Never shipped. */
 @RequireFeature('inventory')
@@ -67,9 +68,10 @@ describe('@RequireFeature', () => {
     await app.close();
   });
 
-  /** An organization without a plan (as created by seed helpers) and an Owner's token. */
+  /** An organization on a plan that enables nothing, and an Owner's token. */
   async function orgWithOwner(): Promise<{ org: SeededOrg; token: string }> {
     const org = await seed.org();
+    await emptyPlanFor(org.id);
     const user = await seed.user();
     await seed.member(org.id, user, org.roles.owner);
     return { org, token: await seed.token(user, org.id) };

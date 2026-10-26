@@ -166,36 +166,6 @@ describe('bootstrap commands', () => {
       expect(user).toMatchObject({ passwordHash: hash, locale: 'en' });
     });
 
-    it('gives a membership without a role (from before step 1.3) the Owner role', async () => {
-      const email = `admin-${uuidv7()}@example.test`;
-      const org = `Legacy ${uuidv7()}`;
-      // An organization whose admin was added by the previous release: membership without a role.
-      const existing = await createAdmin(app, {
-        email: `other-${uuidv7()}@example.test`,
-        org,
-        locale: 'en',
-        plan: 'full',
-      });
-      const user = await raw.user.create({ data: { email } });
-      await raw.$transaction([
-        raw.$executeRaw`SELECT set_config('app.tenant_id', ${existing.organization.id}, true)`,
-        raw.$executeRaw`
-          INSERT INTO memberships (tenant_id, user_id, updated_at)
-          VALUES (${existing.organization.id}::uuid, ${user.id}::uuid, now())`,
-      ]);
-      expect(await roleOf(user.id, existing.organization.id)).toBeNull();
-
-      const result = await createAdmin(app, { email, org, locale: 'en', plan: 'full' });
-      expect(result.membership.created).toBe(false);
-      expect(await roleOf(user.id, existing.organization.id)).toBe('owner');
-      const fill = (await auditOf(existing.organization.id)).at(-1);
-      expect(fill).toMatchObject({
-        action: 'platform.membership.updated',
-        actor: 'cli.create_admin',
-        after: { userId: user.id },
-      });
-    });
-
     it('puts a new organization on --plan, audited with it; an existing one keeps its plan', async () => {
       const org = `Planned ${uuidv7()}`;
       const email = `admin-${uuidv7()}@example.test`;

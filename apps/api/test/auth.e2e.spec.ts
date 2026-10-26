@@ -1,4 +1,4 @@
-import { sessionResponseSchema, type SessionResponse } from '@durby/shared';
+import { FEATURE_KEYS, sessionResponseSchema, type SessionResponse } from '@durby/shared';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -53,10 +53,10 @@ describe('auth', () => {
           { id: orgB, name: 'Beta' },
         ],
         activeOrganizationId: orgB,
-        // kit.join creates memberships without a role (see rbac tests for roles).
-        activeRole: null,
-        activePermissions: [],
-        activeFeatures: [],
+        // kit.join gives the Staff role (see rbac tests for the others); kit orgs are on `full`.
+        activeRole: { id: expect.any(String) as string, systemKey: 'staff', name: null },
+        activePermissions: ['platform.settings.read'],
+        activeFeatures: [...FEATURE_KEYS],
       });
       expect(res.headers['cache-control']).toBe('no-store');
       const header = setCookieHeader(res) ?? '';
@@ -442,9 +442,9 @@ describe('auth', () => {
         user: { id: user.id, email: user.email, locale: 'de' },
         organizations: [{ id: org, name: 'Org' }],
         activeOrganizationId: org,
-        activeRole: null,
-        activePermissions: [],
-        activeFeatures: [],
+        activeRole: { id: expect.any(String) as string, systemKey: 'staff', name: null },
+        activePermissions: ['platform.settings.read'],
+        activeFeatures: [...FEATURE_KEYS],
       });
     });
 

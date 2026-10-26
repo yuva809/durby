@@ -103,10 +103,7 @@ export class ProvisioningService {
     return this.users.ensure(email, opts);
   }
 
-  /**
-   * The membership with `role`. An existing membership keeps its role; only a missing one (from
-   * before step 1.3 or the previous release) is filled in.
-   */
+  /** The membership with `role`; an existing membership keeps its role. */
   async ensureMembership(
     organizationId: string,
     userId: string,
@@ -123,7 +120,7 @@ export class ProvisioningService {
           skipDuplicates: true,
         });
         const membership = await tx.membership.findUniqueOrThrow({ where });
-        const view = (roleId: string | null) =>
+        const view = (roleId: string) =>
           snapshot('membership', {
             id: membership.id,
             userId,
@@ -139,16 +136,6 @@ export class ProvisioningService {
             after: view(roleId),
           });
           return { id: membership.id, created: true };
-        }
-        if (membership.roleId === null) {
-          await tx.membership.update({ where, data: { roleId } });
-          await this.audit.record(tx, {
-            action: 'platform.membership.updated',
-            actor: auditActor.system(actor),
-            entityId: membership.id,
-            before: view(null),
-            after: view(roleId),
-          });
         }
         return { id: membership.id, created: false };
       }),

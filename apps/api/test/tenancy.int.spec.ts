@@ -16,6 +16,7 @@ import {
   type TenantContextValue,
   type TenantPrismaClient,
 } from '../src/platform/tenancy';
+import { planIdOf } from './support/plans';
 
 // Tenant isolation (ADR 0005). All clients connect as durby_app (DATABASE_URL). The database is
 // shared per run, so every test creates its own tenants with fresh UUIDv7 ids and never relies
@@ -58,7 +59,9 @@ describe('tenant isolation', () => {
   });
 
   async function seedTenant(label: string): Promise<SeededTenant> {
-    const org = await platformDb.organization.create({ data: { partnerId, name: label } });
+    const org = await platformDb.organization.create({
+      data: { partnerId, name: label, planId: await planIdOf(platformDb) },
+    });
     const ctx = { tenantId: org.id, userId: uuidv7() };
     return context.run(ctx, async () => {
       const brand = await tenantDb.brand.create({

@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { EntitlementsAdmin } from '../src/platform/config/entitlements';
 import { RbacSeed } from './support/rbac';
+import { EMPTY_TEST_PLAN, emptyPlanFor } from './support/plans';
 
 const ACTOR = 'cli.entitlements';
 
@@ -76,12 +77,13 @@ describe('GET /me/entitlements and activeFeatures', () => {
     expect(await activeFeatures(token)).toEqual(enabled);
   });
 
-  it('is empty for an organization without a plan and for a token without organization', async () => {
+  it('is empty for a plan that enables nothing and for a token without organization', async () => {
     const org = await seed.org();
+    await emptyPlanFor(org.id);
     const user = await seed.user();
     await seed.member(org.id, user, org.roles.owner);
     expect(await entitlements(await seed.token(user, org.id))).toEqual({
-      plan: null,
+      plan: { key: EMPTY_TEST_PLAN },
       features: [],
     });
 
