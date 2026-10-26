@@ -366,6 +366,7 @@ function Entry({
     timeZone: ctx.timeZone,
   }).format(new Date(entry.createdAt));
   const rows = diffRows(entry);
+  const entryCtx = { ...ctx, entityType: entry.entityType };
 
   return (
     <Card className="flex flex-col gap-3 p-4" data-testid="audit-entry" data-action={entry.action}>
@@ -416,12 +417,12 @@ function Entry({
                   <Value
                     side="before"
                     present={row.hasBefore}
-                    text={row.hasBefore ? formatValue(row.field, row.before, ctx) : null}
+                    text={row.hasBefore ? formatValue(row.field, row.before, entryCtx) : null}
                   />
                   <Value
                     side="after"
                     present={row.hasAfter}
-                    text={row.hasAfter ? formatValue(row.field, row.after, ctx) : null}
+                    text={row.hasAfter ? formatValue(row.field, row.after, entryCtx) : null}
                   />
                 </tr>
               );
@@ -472,7 +473,11 @@ function Value({
 }) {
   const t = useT();
   return (
-    <td className="py-2 pr-4 max-md:py-0" data-testid={`audit-${side}`}>
+    // Stacked (below 768 px), a side that doesn't exist (create, delete) is left out.
+    <td
+      className={`py-2 pr-4 max-md:py-0 ${present ? '' : 'max-md:hidden'}`}
+      data-testid={`audit-${side}`}
+    >
       {/* Stacked below 768 px: the column header is gone, so each value says which side it is. */}
       <span className="text-muted-foreground md:sr-only">
         {t(side === 'before' ? 'platform.auditPage.before' : 'platform.auditPage.after')}:{' '}

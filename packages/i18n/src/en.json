@@ -450,5 +450,9 @@
   "platform.audit.fields.version": "Version",
   "platform.audit.fields.attempts": "Attempts",
   "platform.audit.fields.deadLetteredAt": "Given up",
-  "platform.audit.fields.handler": "Handler"
+  "platform.audit.fields.handler": "Handler",
+  "platform.auditPage.scopes.organization": "Organization",
+  "platform.auditPage.scopes.brand": "Brand",
+  "platform.auditPage.scopes.location": "Location",
+  "platform.auditPage.scopes.partner": "Partner"
 }

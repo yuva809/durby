@@ -1,11 +1,18 @@
 import { isLabelKey, type LabelKey, type Translator } from '@durby/i18n';
 import {
   AUDIT_SNAPSHOT_FIELDS,
+  type AuditEntityType,
   type AuditLogEntry,
+  FEATURES,
+  isFeatureKey,
+  isNumberSeriesKey,
   isPermissionKey,
+  isSettingKey,
   type LocationSummary,
+  numberSeriesLabelBase,
   PERMISSIONS,
   type Role,
+  SETTINGS,
 } from '@durby/shared';
 
 /**
@@ -26,7 +33,12 @@ export interface DiffRow {
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-/** The diff rows; `id` is left out (the entity id is in the details). */
+const empty = (value: unknown) => value === undefined || value === null;
+
+/**
+ * The diff rows; `id` is left out (the entity id is in the details), and so are fields empty on
+ * both sides (e.g. no brand before or after).
+ */
 export function diffRows(entry: Pick<AuditLogEntry, 'entityType' | 'before' | 'after'>): DiffRow[] {
   const before = entry.before ?? {};
   const after = entry.after ?? {};
@@ -35,7 +47,7 @@ export function diffRows(entry: Pick<AuditLogEntry, 'entityType' | 'before' | 'a
     (f) => !known.includes(f),
   );
   return [...known, ...extra]
-    .filter((field) => field !== 'id' && (field in before || field in after))
+    .filter((field) => field !== 'id' && !(empty(before[field]) && empty(after[field])))
     .map((field) => ({
       field,
       before: before[field],
@@ -54,6 +66,8 @@ export function fieldLabel(field: string): LabelKey | null {
 
 export interface FormatContext {
   t: Translator;
+  /** The entry's entity type: a `key` names a setting, a number series or a label. */
+  entityType?: AuditEntityType;
   locale: string;
   timeZone: string;
   roles: readonly Role[] | null;
@@ -85,6 +99,8 @@ export function formatValue(field: string, value: unknown, ctx: FormatContext): 
       : typeof value === 'number'
         ? String(value)
         : JSON.stringify(value);
+  const named = registryName(field, text, ctx);
+  if (named !== null) return named;
   if (field === 'roleId') {
     const role = ctx.roles?.find((r) => r.id === text);
     if (role) return role.systemKey ? t(`platform.roles.${role.systemKey}`) : (role.name ?? text);
@@ -108,6 +124,25 @@ export function formatValue(field: string, value: unknown, ctx: FormatContext): 
     }).format(new Date(text));
   }
   return text;
+}
+
+/** Display names of registry keys and enum values, or null. */
+function registryName(field: string, text: string, ctx: FormatContext): string | null {
+  const { t } = ctx;
+  const labelled = (key: string) => (isLabelKey(key) ? t(key) : null);
+  if (field === 'key' && ctx.entityType === 'setting_value' && isSettingKey(text)) {
+    return labelled(SETTINGS[text].label);
+  }
+  if (
+    (field === 'seriesKey' || (field === 'key' && ctx.entityType === 'number_series')) &&
+    isNumberSeriesKey(text)
+  ) {
+    return labelled(`${numberSeriesLabelBase(text)}.name`);
+  }
+  if (field === 'featureKey' && isFeatureKey(text)) return labelled(FEATURES[text].label);
+  if (field === 'scopeType') return labelled(`platform.auditPage.scopes.${text}`);
+  if (field === 'resetPolicy') return labelled(`platform.numberingPage.reset.${text}`);
+  return null;
 }
 
 function parseJson(text: string): { ok: true; value: unknown } | { ok: false } {

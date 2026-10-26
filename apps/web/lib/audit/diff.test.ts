@@ -31,6 +31,14 @@ describe('audit diff', () => {
       ['key', false],
       ['value', true],
     ]);
+    // Empty on both sides: left out.
+    expect(
+      diffRows({
+        entityType: 'setting_value',
+        before: { key: 'timezone', brandId: null },
+        after: { key: 'timezone', brandId: null },
+      }).map((r) => r.field),
+    ).toEqual(['key']);
   });
 
   it('shows only after for a create and only before for a delete', () => {
@@ -79,6 +87,19 @@ describe('audit diff', () => {
     expect(formatValue('value', '"Europe/Vienna"', ctx)).toBe('Europe/Vienna');
     expect(formatValue('value', 'true', ctx)).toBe('Yes');
     expect(formatValue('limits', '{"maxLocations":3}', ctx)).toBe('{"maxLocations":3}');
+    // Registry keys and enum values by their names.
+    const setting = { ...ctx, entityType: 'setting_value' as const };
+    expect(formatValue('key', 'inventory.allowNegativeStock', setting)).toBe(
+      'Allow negative stock',
+    );
+    expect(formatValue('scopeType', 'organization', setting)).toBe('Organization');
+    expect(formatValue('seriesKey', 'billing.invoice', ctx)).toBe('Invoices');
+    expect(formatValue('featureKey', 'inventory.counts', ctx)).toBe('Stock counts');
+    expect(formatValue('resetPolicy', 'yearly', ctx)).toBe('Every year');
+    // A label override's key stays a key.
+    expect(
+      formatValue('key', 'inventory.nav.title', { ...ctx, entityType: 'label_override' }),
+    ).toBe('inventory.nav.title');
     // Unknown ids stay as they are.
     expect(formatValue('roleId', LOC, ctx)).toBe(LOC);
   });
