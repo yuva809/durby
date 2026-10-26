@@ -82,7 +82,7 @@ describe('AccessGuard and @RequirePermission', () => {
   const get = (path: string, token: string) =>
     request(server).get(`/api/v1/rbac-probe/${path}`).auth(token, { type: 'bearer' });
 
-  async function memberOf(org: SeededOrg, roleId: string | null, opts?: { locations?: string[] }) {
+  async function memberOf(org: SeededOrg, roleId: string, opts?: { locations?: string[] }) {
     const userId = await seed.user();
     await seed.member(org.id, userId, roleId, opts);
     return { userId, token: await seed.token(userId, org.id) };
@@ -119,11 +119,13 @@ describe('AccessGuard and @RequirePermission', () => {
     expect(res.body).toMatchObject({ code: 'rbac.platform_only' });
   });
 
-  it('grants nothing without a membership or with a membership without a role', async () => {
+  it('grants nothing without a membership or with a role that has no permissions', async () => {
     const stranger = await seed.user();
     await get('users', await seed.token(stranger, a.id)).expect(403);
-    const roleless = await memberOf(a, null);
-    await get('users', roleless.token).expect(403);
+    // Every membership has a role since step 1.11 (role_id NOT NULL); an empty custom role is the
+    // closest thing to "no role".
+    const empty = await memberOf(a, await seed.customRole(a.id, []));
+    await get('users', empty.token).expect(403);
   });
 
   it('resolves permissions per request: a role change applies to the same token at once', async () => {

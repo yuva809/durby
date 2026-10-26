@@ -12,6 +12,7 @@ import {
   type PlatformPrismaClient,
   type TenantPrismaClient,
 } from '../src/platform/tenancy';
+import { planIdOf } from './support/plans';
 
 // Memberships are a tenant table (ADR 0005), and auth_user_organization_ids() is the one way to
 // list a user's organizations across tenants (ADR 0006). Everything runs as durby_app; each test
@@ -50,12 +51,20 @@ describe('memberships', () => {
     (await raw.user.create({ data: { email: `${uuidv7()}@example.test` } })).id;
 
   const createOrg = async (name: string): Promise<string> =>
-    (await platformDb.organization.create({ data: { partnerId, name } })).id;
+    (
+      await platformDb.organization.create({
+        data: { partnerId, name, planId: await planIdOf(platformDb) },
+      })
+    ).id;
 
+  /** A membership with the org's Staff role (role_id is NOT NULL). */
   const join = (tenantId: string, userId: string) =>
-    context.run({ tenantId, userId }, () =>
-      tenantDb.membership.create({ data: { tenantId, userId } }),
-    );
+    context.run({ tenantId, userId }, async () => {
+      const staff =
+        (await tenantDb.role.findFirst({ where: { systemKey: 'staff' } })) ??
+        (await tenantDb.role.create({ data: { tenantId, systemKey: 'staff' } }));
+      return tenantDb.membership.create({ data: { tenantId, userId, roleId: staff.id } });
+    });
 
   /** What platform/auth will do: app.user_id set from the verified token, same transaction. */
   async function organizationsOf(userId: string | null): Promise<string[]> {
@@ -89,7 +98,7 @@ describe('memberships', () => {
 
       await context.run({ tenantId: orgA, userId: user }, async () => {
         await expect(
-          tenantDb.membership.create({ data: { tenantId: orgB, userId: user } }),
+          tenantDb.membership.create({ data: { tenantId: orgB, userId: user, roleId: mA.roleId } }),
         ).rejects.toThrow(RLS_VIOLATION);
         await expect(
           tenantDb.membership.update({ where: { id: mA.id }, data: { tenantId: orgB } }),

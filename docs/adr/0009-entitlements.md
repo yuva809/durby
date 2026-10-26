@@ -58,8 +58,8 @@ let `@Authenticated()` routes read tenant data. Spec: [docs/platform/entitlement
    system actor `cli.entitlements` in the change's own transaction. No HTTP write endpoints.
 
 8. **Expand/contract for `organizations.plan_id`**: nullable now, backfilled to `full` for existing organizations in
-   the migration (with an audit row each), `NOT NULL` in a later step. An organization without a plan has nothing
-   enabled. New organizations get a plan from provisioning (`create-admin --plan`, default `full`).
+   the migration (with an audit row each), `NOT NULL` in a later step (done in step 1.11, docs/reviews/phase-1.md →
+   R3). An organization without a plan has nothing enabled. New organizations get a plan from provisioning (`create-admin --plan`, default `full`).
 
 ## Consequences
 
@@ -67,5 +67,5 @@ let `@Authenticated()` routes read tenant data. Spec: [docs/platform/entitlement
 - Switching plans or overriding features takes effect on the next request, without a deploy.
 - Changing a plan's contents needs a migration (review + deploy) and affects every organization on it.
 - One or two extra indexed queries per feature-checked request; a cache can come later behind `EntitlementService`.
-- Open: `plan_id NOT NULL` (later step), HTTP endpoints for platform staff, enforcing limits with usage counters,
+- Open: HTTP endpoints for platform staff, enforcing limits with usage counters,
   partner-level white-label (1.10).

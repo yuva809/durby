@@ -20,7 +20,8 @@ describe('label overrides at the database', () => {
   async function seedOrg(partnerId: string): Promise<string> {
     const org = uuidv7();
     await migrator.query(
-      `INSERT INTO organizations (id, partner_id, name, updated_at) VALUES ($1, $2, 'O', now())`,
+      `INSERT INTO organizations (id, partner_id, name, plan_id, updated_at)
+       VALUES ($1, $2, 'O', (SELECT id FROM plans WHERE key = 'full'), now())`,
       [org, partnerId],
     );
     return org;

@@ -34,7 +34,7 @@ describe('members API', () => {
   });
 
   /** A user with a membership in `org` and an access token for it. */
-  async function member(org: SeededOrg, roleId: string | null, opts?: { locations?: string[] }) {
+  async function member(org: SeededOrg, roleId: string, opts?: { locations?: string[] }) {
     const user = await kit.createUser();
     const membershipId = await seed.member(org.id, user.id, roleId, opts);
     return { ...user, membershipId, token: await seed.token(user.id, org.id) };

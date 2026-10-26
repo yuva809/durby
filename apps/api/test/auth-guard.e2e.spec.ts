@@ -17,6 +17,7 @@ import {
   type TenantPrismaClient,
 } from '../src/platform/tenancy';
 import { IdempotencyExempt } from '../src/platform/idempotency';
+import { planIdOf } from './support/plans';
 
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -85,7 +86,11 @@ describe('Authenticator (via AccessGuard)', () => {
     [orgA, orgB] = (await Promise.all(
       ['A', 'B'].map(
         async (name) =>
-          (await platform.organization.create({ data: { partnerId: partner.id, name } })).id,
+          (
+            await platform.organization.create({
+              data: { partnerId: partner.id, name, planId: await planIdOf(platform) },
+            })
+          ).id,
       ),
     )) as [string, string];
   });

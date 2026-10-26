@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Client } from 'pg';
 import { inject } from 'vitest';
@@ -22,7 +23,10 @@ export interface OwnDatabase {
  * reads across all tenants (outbox backlog, lag, cleanup): on the shared database their results
  * and run time would depend on what the other files write at the same time.
  */
-export async function createOwnDatabase(name: string): Promise<OwnDatabase> {
+export async function createOwnDatabase(
+  name: string,
+  opts: { before?: string } = {},
+): Promise<OwnDatabase> {
   if (!/^[a-z][a-z0-9_]{0,40}$/.test(name)) throw new Error(`bad database name: ${name}`);
   const database = `durby_${name}`;
   const superuser = new Client({ connectionString: inject('superuserDatabaseUrl') });
@@ -48,12 +52,41 @@ export async function createOwnDatabase(name: string): Promise<OwnDatabase> {
   }
 
   const migrationDatabaseUrl = withDatabase(inject('migrationDatabaseUrl'), database);
-  execFileSync(join(apiRoot, 'node_modules', '.bin', 'prisma'), ['migrate', 'deploy'], {
-    cwd: apiRoot,
-    env: { ...process.env, MIGRATION_DATABASE_URL: migrationDatabaseUrl },
-    stdio: 'pipe',
-  });
+  if (opts.before === undefined) {
+    execFileSync(join(apiRoot, 'node_modules', '.bin', 'prisma'), ['migrate', 'deploy'], {
+      cwd: apiRoot,
+      env: { ...process.env, MIGRATION_DATABASE_URL: migrationDatabaseUrl },
+      stdio: 'pipe',
+    });
+  } else {
+    // Migrated up to (not including) `before`, e.g. to test that migration on prepared data.
+    await applyMigrations(migrationDatabaseUrl, (dir) => dir < (opts.before as string));
+  }
   return { databaseUrl: withDatabase(inject('databaseUrl'), database), migrationDatabaseUrl };
+}
+
+const migrationsDir = join(apiRoot, 'prisma', 'migrations');
+
+/** The migration folders in order (their names start with a timestamp). */
+export function migrationNames(): string[] {
+  return readdirSync(migrationsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort();
+}
+
+/** The SQL of one migration. */
+export const migrationSql = (name: string): string =>
+  readFileSync(join(migrationsDir, name, 'migration.sql'), 'utf8');
+
+async function applyMigrations(url: string, include: (dir: string) => boolean): Promise<void> {
+  const migrator = new Client({ connectionString: url });
+  await migrator.connect();
+  try {
+    for (const name of migrationNames().filter(include)) await migrator.query(migrationSql(name));
+  } finally {
+    await migrator.end();
+  }
 }
 
 /** Points the app config (read when a Nest app boots) at `db`; call before compiling AppModule. */

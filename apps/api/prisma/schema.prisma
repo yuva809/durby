@@ -72,12 +72,12 @@ model Organization {
   id                   String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
   partnerId            String                  @map("partner_id") @db.Uuid
   name                 String
-  /// Nullable until a later step (expand/contract, ADR 0004/0009): no plan = nothing enabled.
-  planId               String?                 @map("plan_id") @db.Uuid
+  /// NOT NULL since step 1.11 (contract step, ADR 0004/0009).
+  planId               String                  @map("plan_id") @db.Uuid
   createdAt            DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
   partner              Partner                 @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  plan                 Plan?                   @relation(fields: [planId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  plan                 Plan                    @relation(fields: [planId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   brands               Brand[]
   locations            Location[]
   memberships          Membership[]
@@ -221,15 +221,15 @@ model Membership {
   id           String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId     String               @map("tenant_id") @db.Uuid
   userId       String               @map("user_id") @db.Uuid
-  /// Nullable until a later step (expand/contract, ADR 0004): a membership without a role has no permissions.
-  roleId       String?              @map("role_id") @db.Uuid
+  /// NOT NULL since step 1.11 (contract step, ADR 0004/0007).
+  roleId       String               @map("role_id") @db.Uuid
   /// false: limited to the membership_locations rows (none = no locations).
   allLocations Boolean              @default(true) @map("all_locations")
   createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   user         User                 @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  role         Role?                @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  role         Role                 @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   locations    MembershipLocation[]
 
   @@unique([tenantId, id])

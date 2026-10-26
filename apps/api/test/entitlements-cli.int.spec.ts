@@ -1,3 +1,4 @@
+import type { PlanKey } from '@durby/shared';
 import type { INestApplicationContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { v7 as uuidv7 } from 'uuid';
@@ -11,6 +12,7 @@ import {
 import { EntitlementsInputError } from '../src/platform/config/entitlements';
 import { PrismaService } from '../src/platform/database';
 import { PLATFORM_PRISMA, type PlatformPrismaClient } from '../src/platform/tenancy';
+import { planIdOf } from './support/plans';
 
 interface AuditRow {
   action: string;
@@ -39,10 +41,14 @@ describe('entitlements CLI', () => {
 
   const run = (...argv: string[]) => runEntitlements(app, parseEntitlementsArgs(argv));
 
-  async function newOrg(): Promise<string> {
+  /** A new organization on `plan` (organizations.plan_id is NOT NULL). */
+  async function newOrg(plan: PlanKey = 'full'): Promise<string> {
     const partner = await platformDb.partner.create({ data: { slug: `p-${uuidv7()}`, name: 'P' } });
-    return (await platformDb.organization.create({ data: { partnerId: partner.id, name: 'O' } }))
-      .id;
+    return (
+      await platformDb.organization.create({
+        data: { partnerId: partner.id, name: 'O', planId: await planIdOf(platformDb, plan) },
+      })
+    ).id;
   }
 
   /** The org's audit rows, read as that tenant (RLS). */
@@ -79,7 +85,7 @@ describe('entitlements CLI', () => {
         actor_type: 'system',
         actor_system: 'cli.entitlements',
         entity_id: org,
-        before: { id: org, planId: null },
+        before: { id: org, planId: await planId('full') },
         after: { id: org, planId: await planId('inventory') },
       },
       {
@@ -152,7 +158,8 @@ describe('entitlements CLI', () => {
   });
 
   it('warns when an enabled feature stays off because of a dependency', async () => {
-    const org = await newOrg();
+    // The inventory plan has no pos, so pos.fiscal (which depends on it) stays off.
+    const org = await newOrg('inventory');
     const result = await run('override', '--org', org, '--feature', 'pos.fiscal', '--enable');
     expect(result.state.blockedByDependency).toEqual(['pos.fiscal']);
     expect(formatEntitlements(result)).toContain(

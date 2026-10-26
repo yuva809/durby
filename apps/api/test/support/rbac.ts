@@ -10,6 +10,7 @@ import {
   type PlatformPrismaClient,
   type TenantPrismaClient,
 } from '../../src/platform/tenancy';
+import { planIdOf } from './plans';
 
 export interface SeededOrg {
   id: string;
@@ -43,7 +44,9 @@ export class RbacSeed {
     const partnerId =
       opts.partnerId ??
       (await this.platform.partner.create({ data: { slug: `p-${uuidv7()}`, name: 'P' } })).id;
-    const org = await this.platform.organization.create({ data: { partnerId, name } });
+    const org = await this.platform.organization.create({
+      data: { partnerId, name, planId: await planIdOf(this.platform) },
+    });
     return this.as(org.id, async (db) => {
       const roles = {} as Record<SystemRole, string>;
       for (const systemKey of SYSTEM_ROLES) {
@@ -82,7 +85,7 @@ export class RbacSeed {
   async member(
     orgId: string,
     userId: string,
-    roleId: string | null,
+    roleId: string,
     opts: { locations?: string[] } = {},
   ): Promise<string> {
     return this.as(orgId, async (db) => {

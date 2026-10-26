@@ -22,6 +22,7 @@ import {
   type TenantPrismaClient,
 } from '../../src/platform/tenancy';
 import { FakeClock } from './fake-clock';
+import { planIdOf } from './plans';
 
 export const WEB_ORIGIN = 'http://web.test';
 export const COOKIE = '__Secure-durby_rt';
@@ -105,7 +106,9 @@ export class AuthTestKit {
       await this.platformDb.partner.create({ data: { slug: `t-${uuidv7()}`, name: 'Partner' } })
     ).id;
     return (
-      await this.platformDb.organization.create({ data: { partnerId: this.partnerId, name } })
+      await this.platformDb.organization.create({
+        data: { partnerId: this.partnerId, name, planId: await planIdOf(this.platformDb) },
+      })
     ).id;
   }
 
@@ -126,10 +129,14 @@ export class AuthTestKit {
     return { id: user.id, email };
   }
 
+  /** A membership with the organization's Staff role (created here if the org has none yet). */
   join(tenantId: string, userId: string) {
-    return this.tenantContext.run({ tenantId, userId }, () =>
-      this.tenantDb.membership.create({ data: { tenantId, userId } }),
-    );
+    return this.tenantContext.run({ tenantId, userId }, async () => {
+      const staff =
+        (await this.tenantDb.role.findFirst({ where: { systemKey: 'staff' } })) ??
+        (await this.tenantDb.role.create({ data: { tenantId, systemKey: 'staff' } }));
+      return this.tenantDb.membership.create({ data: { tenantId, userId, roleId: staff.id } });
+    });
   }
 
   leave(tenantId: string, userId: string) {
