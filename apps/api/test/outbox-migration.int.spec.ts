@@ -328,8 +328,9 @@ describe('outbox and idempotency tables at the database', () => {
             INSERT INTO partners (id, slug, name, updated_at) VALUES (p, 'starve-' || p, 'P', now());
             FOR i IN 1..501 LOOP
               t := uuidv7();
-              INSERT INTO organizations (id, partner_id, name, updated_at)
-                VALUES (t, p, 'Backoff ' || i, now());
+              -- With a plan: organizations.plan_id is NOT NULL from the contract step (R3) on.
+              INSERT INTO organizations (id, partner_id, name, plan_id, updated_at)
+                VALUES (t, p, 'Backoff ' || i, (SELECT id FROM plans WHERE key = 'full'), now());
               PERFORM set_config('app.tenant_id', t::text, true);
               INSERT INTO outbox_events (tenant_id, type, version, payload, occurred_at, available_at)
                 VALUES (t, 'config.settings.changed', 1, '{}',
