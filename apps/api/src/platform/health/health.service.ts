@@ -12,6 +12,7 @@ export const CHECK_TIMEOUT_MS = 2_000;
 export class HealthService {
   constructor(
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    // The raw client on purpose: it runs `SELECT 1` only (no table), to see that the database answers.
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly logger: PinoLogger,

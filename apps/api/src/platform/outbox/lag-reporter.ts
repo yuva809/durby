@@ -25,18 +25,16 @@ export class OutboxLagReporter {
     this.logger.setContext('outbox');
   }
 
+  /** Totals over every tenant's pending events (outbox_backlog), not just the due tenants. */
   async measure(now: Date = new Date()): Promise<OutboxLag> {
-    const backlog = await this.dispatcher.backlog();
-    const oldest = backlog.reduce<number | null>((min, t) => {
-      const at = t.oldestPendingAt?.getTime();
-      return at === undefined ? min : min === null ? at : Math.min(min, at);
-    }, null);
+    const totals = await this.dispatcher.backlogTotals();
+    const oldest = totals.oldestPendingAt?.getTime();
     return {
-      due: backlog.reduce((n, t) => n + t.due, 0),
-      pending: backlog.reduce((n, t) => n + t.pending, 0),
-      tenants: backlog.length,
+      due: totals.due,
+      pending: totals.pending,
+      tenants: totals.tenants,
       oldestPendingSeconds:
-        oldest === null ? 0 : Math.max(0, Math.round((now.getTime() - oldest) / 1000)),
+        oldest === undefined ? 0 : Math.max(0, Math.round((now.getTime() - oldest) / 1000)),
     };
   }
 

@@ -75,8 +75,10 @@ the tenant from the tenant context. The insert is raw SQL, so the database clock
 
 Runs in the worker every `OUTBOX_POLL_MS` (1000; up to 5 s while idle):
 
-1. `outbox_due_tenants(<known types>, 500)`: tenants with due events. The only cross-tenant read; a `SECURITY
-DEFINER` function that returns tenant ids and counts, never payloads (ADR 0013 §3).
+1. `outbox_due_tenants(<known types>, 500)`: **only tenants with due events** (available now, of a known type),
+   oldest due event first, at most 500. Tenants whose events are all in backoff or of unknown types take no slot, so
+   they can't starve one that has work. A `SECURITY DEFINER` function that returns tenant ids and counts, never
+   payloads (ADR 0013 §3).
 2. Per tenant, in `TenantContext.run` and one tenant-client transaction: claim up to `OUTBOX_BATCH_SIZE` (100) due
    rows of known types, oldest first, `FOR UPDATE SKIP LOCKED`.
 3. Per event: one BullMQ job per registered handler (`jobId = <eventId>@<handler>`; BullMQ ids can't contain `:`), then `published_at = now()`.
@@ -122,8 +124,9 @@ No handlers are registered yet: the config caches are per request (ADR 0013 §7)
 | `OUTBOX_LAG_WARN_SECONDS` | 60      | `outbox.lag` is logged at `warn` above it |
 | `WORKER_CONCURRENCY`      | 5       | Handler jobs run in parallel              |
 
-- **Lag:** every 30 s, `{ event: 'outbox.lag', due, pending, tenants, oldestPendingSeconds }`. Not part of
-  `/api/v1/health` (ADR 0013 §10).
+- **Lag:** every 30 s, `{ event: 'outbox.lag', due, pending, tenants, oldestPendingSeconds }` over **every** pending
+  event of every tenant, from `outbox_backlog(<known types>)`, a second definer function that returns totals only (no
+  tenant ids). Not part of `/api/v1/health` (ADR 0013 §10).
 - **Cleanup (hourly, per organization):** published events after 7 days, `processed_events` after 30 days, expired
   idempotency keys. Pending and dead-lettered events stay.
 - **Liveness:** the worker touches `/tmp/worker.alive` each loop; the compose healthcheck fails after 30 s without.

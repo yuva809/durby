@@ -15,11 +15,19 @@ import { OutboxHandlerRegistry } from './handler-registry';
 import { type HandlerJobData, OutboxPublisher } from './outbox-queue';
 import { OUTBOX_SYSTEM_USER_ID } from './system-actor';
 
-/** Per tenant: events due now (known types only), all pending, and the oldest pending one. */
+/** A tenant with due events: how many are due now (known types), all pending, the oldest pending. */
 export interface TenantBacklog {
   tenantId: string;
   due: number;
   pending: number;
+  oldestPendingAt: Date | null;
+}
+
+/** The whole backlog for the lag log (every tenant, every pending event), as totals. */
+export interface BacklogTotals {
+  due: number;
+  pending: number;
+  tenants: number;
   oldestPendingAt: Date | null;
 }
 
@@ -51,8 +59,9 @@ function add(a: DispatchResult, b: DispatchResult): DispatchResult {
 }
 
 /**
- * Publishes committed events (docs/platform/outbox.md → Dispatcher, ADR 0013 §3–4). The only
- * cross-tenant read is outbox_due_tenants(); each tenant's events are claimed under RLS with
+ * Publishes committed events (docs/platform/outbox.md → Dispatcher, ADR 0013 §3–4). The
+ * cross-tenant reads are outbox_due_tenants() (which tenants to claim) and outbox_backlog()
+ * (totals for the lag log); each tenant's events are claimed under RLS with
  * FOR UPDATE SKIP LOCKED, enqueued (one job per handler) and marked published in one transaction.
  * A Redis failure backs the batch off and dead-letters after OUTBOX_MAX_ATTEMPTS.
  */
@@ -70,8 +79,12 @@ export class OutboxDispatcher {
     this.logger.setContext('outbox');
   }
 
-  /** Tenants with pending events, oldest first (at most 500 per call). */
-  async backlog(): Promise<TenantBacklog[]> {
+  /**
+   * Tenants with due events, oldest due event first (at most 500 per call). Only due tenants
+   * compete for these slots: tenants whose events are all in backoff or of types this release
+   * doesn't know never crowd out one that has work (docs/reviews/phase-1.md → R1).
+   */
+  async dueTenants(): Promise<TenantBacklog[]> {
     const rows = await this.platform.$queryRaw<
       { tenantId: string; due: bigint; pending: bigint; oldestPendingAt: Date | null }[]
     >`SELECT tenant_id::text AS "tenantId", due, pending, oldest_pending_at AS "oldestPendingAt"
@@ -79,11 +92,24 @@ export class OutboxDispatcher {
     return rows.map((r) => ({ ...r, due: Number(r.due), pending: Number(r.pending) }));
   }
 
+  /** Every pending event of every tenant, as totals (outbox_backlog: no tenant ids). */
+  async backlogTotals(): Promise<BacklogTotals> {
+    const [row] = await this.platform.$queryRaw<
+      { due: bigint; pending: bigint; tenants: bigint; oldestPendingAt: Date | null }[]
+    >`SELECT due, pending, tenants, oldest_pending_at AS "oldestPendingAt"
+      FROM outbox_backlog(${EVENT_TYPES as string[]}::text[])`;
+    return {
+      due: Number(row?.due ?? 0),
+      pending: Number(row?.pending ?? 0),
+      tenants: Number(row?.tenants ?? 0),
+      oldestPendingAt: row?.oldestPendingAt ?? null,
+    };
+  }
+
   /** One pass over every tenant with due events. */
   async dispatchOnce(): Promise<DispatchResult> {
     let total = EMPTY;
-    for (const tenant of await this.backlog()) {
-      if (tenant.due === 0) continue;
+    for (const tenant of await this.dueTenants()) {
       total = add(total, await this.dispatchTenant(tenant.tenantId));
     }
     return total;

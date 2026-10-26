@@ -319,6 +319,7 @@ describe('outbox dispatch and handlers', () => {
 
   it('leaves events of types this release does not know pending (rollback safety)', async () => {
     const { id: org } = await seed.org();
+    const before = await dispatcher.backlogTotals();
     await seed.as(
       org,
       (db) =>
@@ -327,8 +328,11 @@ describe('outbox dispatch and handlers', () => {
     );
     expect((await dispatcher.dispatchTenant(org)).claimed).toBe(0);
     expect((await rows(org))[0]?.publishedAt).toBeNull();
-    const backlog = (await dispatcher.backlog()).find((t) => t.tenantId === org);
-    expect(backlog).toMatchObject({ due: 0, pending: 1 });
+    // Not a due tenant (no claim slot), but still counted by the lag (this file's own database).
+    expect((await dispatcher.dueTenants()).some((t) => t.tenantId === org)).toBe(false);
+    const after = await dispatcher.backlogTotals();
+    expect(after.pending - before.pending).toBe(1);
+    expect(after.due - before.due).toBe(0);
   });
 
   it('two dispatchers claim disjoint events (SKIP LOCKED), each published once', async () => {

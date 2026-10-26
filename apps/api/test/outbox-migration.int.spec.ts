@@ -167,7 +167,14 @@ describe('outbox and idempotency tables at the database', () => {
            published_at = now() WHERE id = $1`,
         [id],
       );
-      for (const set of [`payload = '{"a":1}'`, `type = 'config.labels.changed'`, 'version = 2']) {
+      for (const set of [
+        `payload = '{"a":1}'`,
+        `type = 'config.labels.changed'`,
+        'version = 2',
+        `tenant_id = '${orgB}'`,
+        `id = '${orgB}'`,
+        'occurred_at = now()',
+      ]) {
         const error = await failure(
           sql(orgA, `UPDATE outbox_events SET ${set} WHERE id = $1`, [id]),
         );
@@ -194,6 +201,22 @@ describe('outbox and idempotency tables at the database', () => {
   });
 
   describe('processed_events', () => {
+    it('grants the app UPDATE on exactly the scheduling columns (catalog)', async () => {
+      const { rows } = await migrator.query<{ column: string }>(
+        `SELECT attname AS column FROM pg_attribute
+         WHERE attrelid = 'outbox_events'::regclass AND attnum > 0 AND NOT attisdropped
+           AND has_column_privilege('durby_app', 'outbox_events', attname, 'UPDATE')
+         ORDER BY attname`,
+      );
+      expect(rows.map((r) => r.column)).toEqual([
+        'attempts',
+        'available_at',
+        'dead_lettered_at',
+        'last_error',
+        'published_at',
+      ]);
+    });
+
     it('is unique per handler and event, insert/delete only, and per tenant', async () => {
       const event = uuidv7();
       const insert = (tenant: string, handler = 'reports.stockProjection') =>
@@ -256,9 +279,10 @@ describe('outbox and idempotency tables at the database', () => {
     });
   });
 
-  describe('outbox_due_tenants (ADR 0013 §3)', () => {
-    const due = async (types: string[]) => {
-      const { rows } = await app.query<{
+  describe('outbox_due_tenants and outbox_backlog (ADR 0013 §3, §10)', () => {
+    const TYPES = ['config.settings.changed', 'config.labels.changed'];
+    const due = async (types: string[], client: Client = app) => {
+      const { rows } = await client.query<{
         tenant_id: string;
         due: string;
         pending: string;
@@ -266,8 +290,17 @@ describe('outbox and idempotency tables at the database', () => {
       }>('SELECT * FROM outbox_due_tenants($1, 500)', [types]);
       return rows;
     };
+    const backlog = async (client: Client = app) => {
+      const { rows } = await client.query<{
+        due: string;
+        pending: string;
+        tenants: string;
+        oldest_pending_at: Date | null;
+      }>('SELECT * FROM outbox_backlog($1)', [TYPES]);
+      return rows[0];
+    };
 
-    it('reports pending counts of every tenant without a tenant set, never payloads', async () => {
+    it('lists only tenants with due events of known types, without a tenant set, never payloads', async () => {
       const orgC = await seedOrg();
       const orgD = await seedOrg();
       await insertEvent(orgC);
@@ -276,11 +309,11 @@ describe('outbox and idempotency tables at the database', () => {
       await insertEvent(orgD, { dead: true });
       await insertEvent(orgD, { type: 'future.thing.happened' });
 
-      const rows = await due(['config.settings.changed', 'config.labels.changed']);
+      const rows = await due(TYPES);
       const byTenant = new Map(rows.map((r) => [r.tenant_id, r]));
       expect(byTenant.get(orgC)).toMatchObject({ due: '2', pending: '2' });
-      // Unknown types are pending but not due for this caller (rollback safety).
-      expect(byTenant.get(orgD)).toMatchObject({ due: '0', pending: '1' });
+      // Only an unknown type pending (rollback safety): nothing to claim, so no claim slot.
+      expect(byTenant.has(orgD)).toBe(false);
       expect(Object.keys(rows[0] ?? {}).sort()).toEqual([
         'due',
         'oldest_pending_at',
@@ -289,7 +322,7 @@ describe('outbox and idempotency tables at the database', () => {
       ]);
     });
 
-    it('does not count events in backoff as due', async () => {
+    it('does not list a tenant whose only events are in backoff', async () => {
       const org = await seedOrg();
       const id = await insertEvent(org);
       await sql(
@@ -297,8 +330,81 @@ describe('outbox and idempotency tables at the database', () => {
         `UPDATE outbox_events SET available_at = now() + interval '1 hour' WHERE id = $1`,
         [id],
       );
-      const row = (await due(['config.settings.changed'])).find((r) => r.tenant_id === org);
-      expect(row).toMatchObject({ due: '0', pending: '1' });
+      expect((await due(TYPES)).some((r) => r.tenant_id === org)).toBe(false);
+    });
+
+    it('claims a due tenant behind more than 500 older tenants that only have events in backoff', async () => {
+      // Its own durby_app transaction, rolled back: 501 tenants never reach the shared database.
+      const tx = new Client({ connectionString: inject('databaseUrl') });
+      await tx.connect();
+      const dueOrg = await seedOrg();
+      try {
+        await tx.query('BEGIN');
+        // Older than anything else in the database, so they would take every slot if the LIMIT
+        // came before the due filter (the bug of docs/reviews/phase-1.md → R1).
+        await tx.query(`
+          DO $$
+          DECLARE
+            p uuid := uuidv7();
+            t uuid;
+          BEGIN
+            INSERT INTO partners (id, slug, name, updated_at) VALUES (p, 'starve-' || p, 'P', now());
+            FOR i IN 1..501 LOOP
+              t := uuidv7();
+              -- With a plan: organizations.plan_id is NOT NULL from the contract step (R3) on.
+              INSERT INTO organizations (id, partner_id, name, plan_id, updated_at)
+                VALUES (t, p, 'Backoff ' || i, (SELECT id FROM plans WHERE key = 'full'), now());
+              PERFORM set_config('app.tenant_id', t::text, true);
+              INSERT INTO outbox_events (tenant_id, type, version, payload, occurred_at, available_at)
+                VALUES (t, 'config.settings.changed', 1, '{}',
+                        '1999-01-01T00:00:00Z'::timestamptz + i * interval '1 second',
+                        now() + interval '1 hour');
+            END LOOP;
+          END $$`);
+        await tx.query(`SELECT set_config('app.tenant_id', $1, true)`, [dueOrg]);
+        await tx.query(
+          `INSERT INTO outbox_events (tenant_id, type, version, payload, occurred_at)
+           VALUES ($1, 'config.settings.changed', 1, '{}', '2000-01-01T00:00:00Z')`,
+          [dueOrg],
+        );
+        await tx.query(`SELECT set_config('app.tenant_id', '', true)`);
+
+        const rows = await due(TYPES, tx);
+        // The oldest due event leads; none of the backed-off tenants takes a slot.
+        expect(rows[0]).toMatchObject({ tenant_id: dueOrg, due: '1', pending: '1' });
+        expect(rows.every((r) => Number(r.due) > 0)).toBe(true);
+        // The lag still sees every pending event, the backed-off ones included.
+        const lag = await backlog(tx);
+        expect(Number(lag?.pending)).toBeGreaterThanOrEqual(502);
+        expect(Number(lag?.tenants)).toBeGreaterThanOrEqual(502);
+        expect(lag?.oldest_pending_at).toEqual(new Date('1999-01-01T00:00:01Z'));
+      } finally {
+        await tx.query('ROLLBACK');
+        await tx.end();
+      }
+    });
+
+    it('reports the whole backlog as totals: due, pending (unknown types and backoff too), tenants', async () => {
+      const org = await seedOrg();
+      const before = await backlog();
+      await insertEvent(org);
+      await insertEvent(org, { type: 'future.thing.happened' });
+      const backedOff = await insertEvent(org);
+      await sql(
+        org,
+        `UPDATE outbox_events SET available_at = now() + interval '1 hour' WHERE id = $1`,
+        [backedOff],
+      );
+      const after = await backlog();
+      // Other files write events concurrently: compare at least this file's rows.
+      expect(Number(after?.pending) - Number(before?.pending)).toBeGreaterThanOrEqual(3);
+      expect(Number(after?.due) - Number(before?.due)).toBeGreaterThanOrEqual(1);
+      expect(Object.keys(after ?? {}).sort()).toEqual([
+        'due',
+        'oldest_pending_at',
+        'pending',
+        'tenants',
+      ]);
     });
 
     it('gives durby_rls_definer no access to payloads or writes', async () => {
