@@ -20,7 +20,7 @@ permissions, labels), never code (rule 2).
 | (a) | Shell, design system, nav registry, partner theming by domain, two-domain demo, e2e suite | `partner_themes`, `partner_domains`, `GET /theme`               |
 | (b) | Users, roles, invitations                                                                 | `GET /locations`, partner-domain invite links                   |
 | (c) | Settings, labels editor, number series, plan/features (read-only), organization profile   | `PATCH /organization`, `resetPolicyLocked`, rate-limit env vars |
-| (d) | Audit log viewer                                                                          | none                                                            |
+| (d) | Audit log viewer                                                                          | actor `email` in `GET /audit-logs`                              |
 
 Each PR is one session, its own branch from `main`, and passes `pnpm lint && pnpm typecheck && pnpm test` plus the
 Playwright smoke suite.
@@ -446,13 +446,53 @@ New keys under `platform.nav.*`, `platform.organizationPage.*`, `platform.settin
   inherited value again; override `inventory.nav.title` and see it in the nav, then remove it; raise the invoice
   counter by one.
 
-## Planned: (d) audit log viewer
+## Audit log viewer (PR d)
 
-- `GET /audit-logs` (`platform.audit.read`): a table with time (organization time zone), actor, action label, entity.
-- Filters: action (multi), entity type, entity id, actor, from/to. Kept in the URL query so a view can be shared.
-- **Cursor paging:** "Load more" with `meta.nextCursor`; changing a filter starts over. `audit.cursor_invalid` resets
-  the cursor.
-- Row detail: `before` / `after` as a field-by-field diff with field labels.
+Route `/settings/audit`, nav item `platform.nav.audit` (group `settings`, last), page and nav need
+`platform.audit.read` (Owner, Admin). Without it: no nav item, and a direct visit shows "no access".
+
+### List
+
+- `GET /audit-logs`, newest first, 50 per page; **Load more** fetches `meta.nextCursor` and appends. Changing a
+  filter starts over. `audit.cursor_invalid` (a stale link) starts over from the first page.
+- Each entry: **who** (the user's email, or the system actor's label, e.g. "Command line: create admin"), **what**
+  (the action's label), **when** (in the organization's `timezone` setting, from `GET /settings`; if that is denied
+  or fails, the registry default, like the settings page), and the entity type.
+- **Diff** of the allow-listed snapshot fields (`AUDIT_SNAPSHOT_FIELDS`, now in `packages/shared`): one row per
+  field with its label (`platform.audit.fields.<camelCaseField>`), the value before and after; changed rows are
+  marked (text and color, not color alone). A create shows only "after", a delete only "before". Values are made
+  readable: yes/no, lists joined, timestamps in the organization's time zone, `roleId` as the role's name and
+  `locationIds` as location names when those lists are readable, `systemKey` as the role label, `permissions` as
+  permission labels; anything else as stored (ids in monospace). Below 768 px the before/after columns stack.
+- **Details** (a disclosure, closed by default): entity id, request id and IP. They appear nowhere else.
+- States: loading skeleton, empty ("No entries match these filters"), error with retry, "no access".
+
+### Filters (kept in the URL)
+
+`?action=<key>&entityType=<type>&actor=<userId>&from=YYYY-MM-DD&to=YYYY-MM-DD`, so a filtered view can be shared or
+reloaded; invalid values in the URL are ignored (unknown keys, malformed ids or dates).
+
+- **Action** (grouped by entity type) and **entity type**: selects from the registries.
+- **Actor**: the members (`GET /members`, if readable) or "only this actor" on an entry (works for former members
+  too). The api filters by `actorUserId`.
+- **Date range** in the organization's time zone: `from` is the start of that day, `to` the start of the day after
+  (exclusive), converted to instants with the zone's offset on that day (daylight saving time handled).
+
+### Actor emails (display only)
+
+`GET /audit-logs` adds `email` to user actors: `{ type: "user", userId, email }`, looked up when the page is read
+(`null` if the user no longer exists). Audit rows never store emails (ADR 0008 §5). platform/audit depends only
+on tenancy, so the lookup comes through the `AUDIT_ACTOR_DIRECTORY` interface that platform/auth implements (like
+`ACTIVE_ACCESS_LOOKUP`). Additive: a web app parses a missing `email` as `null`.
+
+### Tests (PR d)
+
+- **Api:** user actors carry their email, a deleted user `null`, system actors none; nothing new is stored.
+- **Web (Vitest):** filters ⇄ URL (round trip, invalid values dropped); day bounds in a time zone across a DST
+  change; diff rows (create, update, delete; changed marking) and value formatting; a label for every snapshot
+  field, action, entity type and system actor in en and de; the page's states and "load more".
+- **Playwright:** change a setting, open the audit log, see the entry with the old and new value; a Manager has no
+  nav item and gets "no access" on a direct visit.
 
 ## Tests (PR a)
 

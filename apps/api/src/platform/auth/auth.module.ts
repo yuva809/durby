@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { AUDIT_ACTOR_DIRECTORY } from '../audit';
 import { AccessTokenService } from './access-token.service';
 import { AuthContext } from './auth-context';
 import { AuthController } from './auth.controller';
@@ -41,8 +42,10 @@ import { UserDirectory } from './user-directory';
     SecurityLog,
     SessionService,
     UserDirectory,
+    { provide: AUDIT_ACTOR_DIRECTORY, useExisting: UserDirectory },
   ],
   exports: [
+    AUDIT_ACTOR_DIRECTORY,
     AuthContext,
     AuthRateLimits,
     Authenticator,

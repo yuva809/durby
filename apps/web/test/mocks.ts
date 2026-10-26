@@ -7,6 +7,7 @@ export const mockState = {
   session: null as Session | null,
   status: 'authenticated' as 'loading' | 'authenticated' | 'anonymous',
   pathname: '/',
+  search: '',
   overrides: {} as Record<string, string>,
   store: {
     switchOrganization: vi.fn<SessionStore['switchOrganization']>(),
@@ -22,6 +23,7 @@ export function resetMocks(): void {
   mockState.session = null;
   mockState.status = 'authenticated';
   mockState.pathname = '/';
+  mockState.search = '';
   mockState.overrides = {};
   mockState.store.switchOrganization.mockReset().mockResolvedValue({ ok: true });
   mockState.store.logout.mockReset().mockResolvedValue(undefined);
@@ -46,5 +48,6 @@ export const labelsMock = () => ({
 
 export const navigationMock = () => ({
   usePathname: () => mockState.pathname,
+  useSearchParams: () => new URLSearchParams(mockState.search),
   useRouter: () => mockState.router,
 });

@@ -80,7 +80,23 @@ describe('audit logs API', () => {
       before: null,
       after: { id: a.id },
     });
-    expect(body.data[1]?.actor).toEqual({ type: 'user', userId: actorA });
+    // actorA is no user (like one deleted since): no email.
+    expect(body.data[1]?.actor).toEqual({ type: 'user', userId: actorA, email: null });
+  });
+
+  it("adds a user actor's email for display; nothing is stored in the row", async () => {
+    const org = await seed.org('Emails');
+    const admin = await tokenAs(org, org.roles.admin);
+    const user = await kit.createUser();
+    const row = await write(org, 'platform.role.created', uuidv7(), user.id);
+    const res = await list(admin, { action: 'platform.role.created' }).expect(200);
+    expect((res.body as AuditLogListResponse).data).toMatchObject([
+      { id: row.id, actor: { type: 'user', userId: user.id, email: user.email } },
+    ]);
+    const stored = await seed.as(org.id, (db) =>
+      db.auditLog.findUniqueOrThrow({ where: { id: row.id } }),
+    );
+    expect(JSON.stringify(stored)).not.toContain(user.email);
   });
 
   it('pages with a cursor, without gaps or duplicates', async () => {

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { AuditActorDirectory } from '../audit';
 import { PrismaService } from '../database';
 import type { TenantTransactionClient } from '../tenancy';
 import { normalizeEmail } from './crypto';
@@ -15,7 +16,7 @@ export interface UserProfile {
  * to platform/auth: only profiles (id, email, locale) leave it, never hashes or tokens.
  */
 @Injectable()
-export class UserDirectory {
+export class UserDirectory implements AuditActorDirectory {
   constructor(
     private readonly db: PrismaService,
     private readonly hasher: PasswordHasher,
@@ -43,6 +44,12 @@ export class UserDirectory {
       select: { id: true, email: true, locale: true },
     });
     return new Map(users.map((u) => [u.id, u]));
+  }
+
+  /** AuditActorDirectory: emails of audit actors, for display only (docs/platform/audit.md). */
+  async emails(ids: readonly string[]): Promise<Map<string, string>> {
+    const profiles = await this.profiles(ids);
+    return new Map([...profiles].map(([id, profile]) => [id, profile.email]));
   }
 
   /**

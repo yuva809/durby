@@ -118,7 +118,7 @@ Newest first by `id` (`WHERE id < :cursor ORDER BY id DESC LIMIT limit + 1`). No
   "data": [
     {
       "id": "…",
-      "actor": { "type": "user", "userId": "…" },
+      "actor": { "type": "user", "userId": "…", "email": "owner@example.com" },
       "action": "platform.role.updated",
       "entityType": "role",
       "entityId": "…",
@@ -134,6 +134,11 @@ Newest first by `id` (`WHERE id < :cursor ORDER BY id DESC LIMIT limit + 1`). No
 ```
 
 The tenant comes from the session only; a cursor or `entityId` from another tenant simply finds no rows (RLS).
+
+`actor.email` (since 1.10 d) is looked up from the user when the page is read, for display only (`null` if the user
+no longer exists); audit rows never store emails. platform/auth provides the lookup (`AUDIT_ACTOR_DIRECTORY`), so
+platform/audit still depends only on tenancy. The snapshot allow-list `AUDIT_SNAPSHOT_FIELDS` lives in
+`packages/shared` (the web app labels each field).
 
 ## Not in the audit log
 
