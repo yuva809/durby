@@ -27,6 +27,8 @@ export const DEV_SEED = {
   users: [
     { email: 'owner@durby.local', role: 'owner', organizations: ['Demo Bistro', 'Demo Café'] },
     { email: 'staff@durby.local', role: 'staff', organizations: ['Demo Bistro'] },
+    { email: 'waiter@durby.local', role: 'waiter', organizations: ['Demo Bistro'] },
+    { email: 'cashier@durby.local', role: 'cashier', organizations: ['Demo Bistro'] },
     { email: 'owner@partner-demo.local', role: 'owner', organizations: ['Demo Trattoria'] },
   ],
 } as const;

@@ -253,6 +253,8 @@ enum SystemRole {
   admin
   manager
   staff
+  waiter
+  cashier
 
   @@map("system_role")
 }

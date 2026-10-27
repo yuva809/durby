@@ -37,6 +37,9 @@ Specs: [catalog](../modules/catalog.md), [pos](../modules/pos.md).
    printer driver or device integration is needed yet. ESC/POS or a print bridge is a later decision.
 
 7. **Waiter and cashier are system roles** (step 2), same grants for every organization, amending ADR 0007's list.
+   Two migrations: one adds the `system_role` enum values (a new value can't be used in the transaction that adds
+   it), the next creates both roles in every existing organization; new organizations get them from
+   `SystemRoles.ensure`. Waiter and Cashier start with Staff's reads; step 3 adds their order keys.
 
 ## Consequences
 

@@ -64,16 +64,18 @@ Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a 
 Created for every organization (`SystemRoles.ensureFor`, called by provisioning and backfilled by the migration).
 Their permissions are **defined in code** (`SYSTEM_ROLE_PERMISSIONS`), the same for every organization:
 
-| Role    | Permissions                                                                                     |
-| ------- | ----------------------------------------------------------------------------------------------- |
-| Owner   | every registered key, including future ones                                                     |
-| Admin   | everything except `platform.org.manage`                                                         |
-| Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read`, `platform.settings.read` |
-| Staff   | `platform.settings.read` only                                                                   |
+| Role    | Permissions                                                                                                                                   |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Owner   | every registered key, including future ones                                                                                                   |
+| Admin   | everything except `platform.org.manage`                                                                                                       |
+| Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read`, `platform.settings.read`, product and table reads, `pos.tables.manage` |
+| Staff   | `platform.settings.read`, `catalog.products.read`, `pos.tables.read`                                                                          |
+| Waiter  | as Staff, plus taking orders (step 3, [pos](../modules/pos.md)); added by ADR 0016                                                            |
+| Cashier | as Staff, plus reading and closing orders (step 3); the billing counter, added by ADR 0016                                                    |
 
-Admin, Manager and Staff list **every** key as `grant` or `deny`; a new key that isn't listed fails the typecheck and a
+Every role but Owner lists **every** key as `grant` or `deny`; a new key that isn't listed fails the typecheck and a
 unit test, so each new key is a conscious decision per role. System roles cannot be edited or deleted. Display names
-are labels: `platform.roles.owner`, `.admin`, `.manager`, `.staff`. Organizations that need something else create
+are labels: `platform.roles.owner`, `.admin`, `.manager`, `.staff`, `.waiter`, `.cashier`. Organizations that need something else create
 custom roles.
 
 ## Resolving access

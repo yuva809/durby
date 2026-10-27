@@ -43,7 +43,7 @@ export function isPermissionKey(value: string): value is PermissionKey {
 }
 
 /** System roles, created in every organization. Display names are `platform.roles.<key>` labels. */
-export const SYSTEM_ROLES = ['owner', 'admin', 'manager', 'staff'] as const;
+export const SYSTEM_ROLES = ['owner', 'admin', 'manager', 'staff', 'waiter', 'cashier'] as const;
 
 export type SystemRole = (typeof SYSTEM_ROLES)[number];
 
@@ -87,6 +87,40 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.tables.manage': 'grant',
   },
   staff: {
+    'platform.org.manage': 'deny',
+    'platform.users.read': 'deny',
+    'platform.users.invite': 'deny',
+    'platform.users.manage': 'deny',
+    'platform.roles.read': 'deny',
+    'platform.roles.manage': 'deny',
+    'platform.settings.read': 'grant',
+    'platform.settings.manage': 'deny',
+    'platform.labels.manage': 'deny',
+    'platform.audit.read': 'deny',
+    'catalog.products.read': 'grant',
+    'catalog.products.manage': 'deny',
+    'pos.tables.read': 'grant',
+    'pos.tables.manage': 'deny',
+  },
+  // Table service (ADR 0016): takes orders at the tables of their locations.
+  waiter: {
+    'platform.org.manage': 'deny',
+    'platform.users.read': 'deny',
+    'platform.users.invite': 'deny',
+    'platform.users.manage': 'deny',
+    'platform.roles.read': 'deny',
+    'platform.roles.manage': 'deny',
+    'platform.settings.read': 'grant',
+    'platform.settings.manage': 'deny',
+    'platform.labels.manage': 'deny',
+    'platform.audit.read': 'deny',
+    'catalog.products.read': 'grant',
+    'catalog.products.manage': 'deny',
+    'pos.tables.read': 'grant',
+    'pos.tables.manage': 'deny',
+  },
+  // Table service (ADR 0016): the billing counter.
+  cashier: {
     'platform.org.manage': 'deny',
     'platform.users.read': 'deny',
     'platform.users.invite': 'deny',

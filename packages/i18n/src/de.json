@@ -9,6 +9,8 @@
   "platform.roles.admin": "Administrator",
   "platform.roles.manager": "Manager",
   "platform.roles.staff": "Mitarbeiter",
+  "platform.roles.waiter": "Service",
+  "platform.roles.cashier": "Kasse",
   "platform.permissions.orgManage": "Organisation verwalten",
   "platform.permissions.usersRead": "Mitglieder und Einladungen ansehen",
   "platform.permissions.usersInvite": "Mitglieder einladen",
