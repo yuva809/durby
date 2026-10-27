@@ -100,6 +100,9 @@ model Organization {
   productCategories    ProductCategory[]
   products             Product[]
   diningTables         DiningTable[]
+  posOrders            PosOrder[]
+  posKitchenTickets    PosKitchenTicket[]
+  posOrderLines        PosOrderLine[]
 
   @@index([partnerId])
   @@index([planId])
@@ -133,6 +136,7 @@ model Location {
   invitations   InvitationLocation[]
   settingValues SettingValue[]
   diningTables  DiningTable[]
+  posOrders     PosOrder[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -711,6 +715,7 @@ model Product {
   updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   category     ProductCategory @relation(fields: [tenantId, categoryId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  orderLines   PosOrderLine[]
 
   @@unique([tenantId, id])
   @@index([tenantId, categoryId])
@@ -734,8 +739,99 @@ model DiningTable {
   updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   location     Location     @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  orders       PosOrder[]
 
   @@unique([tenantId, id])
   @@index([tenantId, locationId])
   @@map("dining_tables")
+}
+
+enum PosOrderStatus {
+  open
+  closed
+
+  @@map("pos_order_status")
+}
+
+enum PosKitchenTicketKind {
+  order
+  void
+
+  @@map("pos_kitchen_ticket_kind")
+}
+
+/// A table's order (docs/modules/pos.md → Step 3). At most one open order per table: a partial unique index in the
+/// migration. User ids have no foreign key: users are platform rows private to platform/auth.
+model PosOrder {
+  id             String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String             @map("tenant_id") @db.Uuid
+  locationId     String             @map("location_id") @db.Uuid
+  tableId        String             @map("table_id") @db.Uuid
+  number         String
+  status         PosOrderStatus     @default(open)
+  openedByUserId String             @map("opened_by_user_id") @db.Uuid
+  openedAt       DateTime           @default(now()) @map("opened_at") @db.Timestamptz(6)
+  closedByUserId String?            @map("closed_by_user_id") @db.Uuid
+  closedAt       DateTime?          @map("closed_at") @db.Timestamptz(6)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization       @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location       Location           @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  table          DiningTable        @relation(fields: [tenantId, tableId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  tickets        PosKitchenTicket[]
+  lines          PosOrderLine[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, number])
+  @@index([tenantId, locationId, status])
+  @@index([tenantId, tableId])
+  @@map("pos_orders")
+}
+
+/// One send to the kitchen (or one void). Append-only.
+model PosKitchenTicket {
+  id              String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String               @map("tenant_id") @db.Uuid
+  orderId         String               @map("order_id") @db.Uuid
+  sequence        Int
+  kind            PosKitchenTicketKind
+  createdByUserId String               @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  order           PosOrder             @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  lines           PosOrderLine[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, orderId, sequence])
+  @@map("pos_kitchen_tickets")
+}
+
+/// A sent item (quantity > 0) or a void of one (quantity < 0, voidsLineId set). Append-only; name, gross unit price
+/// and VAT rate are snapshots of the product at the time.
+model PosOrderLine {
+  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  orderId         String           @map("order_id") @db.Uuid
+  ticketId        String           @map("ticket_id") @db.Uuid
+  productId       String           @map("product_id") @db.Uuid
+  productName     String           @map("product_name")
+  unitPrice       Decimal          @map("unit_price") @db.Decimal(12, 2)
+  taxRate         Decimal          @map("tax_rate") @db.Decimal(5, 2)
+  quantity        Int
+  note            String?
+  voidsLineId     String?          @map("voids_line_id") @db.Uuid
+  createdByUserId String           @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  order           PosOrder         @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  ticket          PosKitchenTicket @relation(fields: [tenantId, ticketId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  product         Product          @relation(fields: [tenantId, productId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  voidsLine       PosOrderLine?    @relation("PosOrderLineVoids", fields: [tenantId, voidsLineId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  voidedBy        PosOrderLine[]   @relation("PosOrderLineVoids")
+
+  @@unique([tenantId, id])
+  @@index([tenantId, orderId])
+  @@index([tenantId, ticketId])
+  @@index([tenantId, voidsLineId])
+  @@map("pos_order_lines")
 }

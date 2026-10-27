@@ -3,7 +3,17 @@ import {
   type DiningTable,
   diningTableListResponseSchema,
   diningTableSchema,
+  type FloorTable,
+  floorResponseSchema,
+  type Order,
+  orderSchema,
+  type SendTicketRequest,
+  type SendTicketResponse,
+  sendTicketResponseSchema,
+  type TableOrderResponse,
+  tableOrderResponseSchema,
   type UpdateDiningTableRequest,
+  type VoidLinesRequest,
 } from '@durby/shared';
 import { type Api, list, read, type Result, write } from '../api-call';
 import type { ActionKey } from '../idempotency';
@@ -35,3 +45,52 @@ export const updateTable = (
   body: UpdateDiningTableRequest,
 ): Promise<Result<DiningTable | null>> =>
   write(store, action, `/api/v1/pos/tables/${id}`, 'PATCH', body, diningTableSchema);
+
+/** Calls of the floor and order screens (docs/modules/pos.md → Step 3). */
+
+export const loadFloor = (store: Api, locationId: string): Promise<Result<FloorTable[]>> =>
+  read(
+    store,
+    `/api/v1/pos/floor?locationId=${encodeURIComponent(locationId)}`,
+    list(floorResponseSchema),
+  );
+
+export const loadTableOrder = (store: Api, tableId: string): Promise<Result<TableOrderResponse>> =>
+  read(store, `/api/v1/pos/tables/${tableId}/order`, tableOrderResponseSchema);
+
+export const sendTicket = (
+  store: Api,
+  action: ActionKey,
+  tableId: string,
+  body: SendTicketRequest,
+): Promise<Result<SendTicketResponse | null>> =>
+  write(
+    store,
+    action,
+    `/api/v1/pos/tables/${tableId}/tickets`,
+    'POST',
+    body,
+    sendTicketResponseSchema,
+  );
+
+export const voidLines = (
+  store: Api,
+  action: ActionKey,
+  orderId: string,
+  body: VoidLinesRequest,
+): Promise<Result<SendTicketResponse | null>> =>
+  write(
+    store,
+    action,
+    `/api/v1/pos/orders/${orderId}/voids`,
+    'POST',
+    body,
+    sendTicketResponseSchema,
+  );
+
+export const closeOrder = (
+  store: Api,
+  action: ActionKey,
+  orderId: string,
+): Promise<Result<Order | null>> =>
+  write(store, action, `/api/v1/pos/orders/${orderId}/close`, 'POST', undefined, orderSchema);

@@ -54,6 +54,10 @@ Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a 
 | `catalog.products.manage`  | organization | create, edit, archive categories and products                   |
 | `pos.tables.read`          | location     | list a location's tables ([pos](../modules/pos.md))             |
 | `pos.tables.manage`        | location     | create, edit, archive a location's tables                       |
+| `pos.orders.read`          | location     | floor, orders, kitchen tickets ([pos](../modules/pos.md))       |
+| `pos.orders.take`          | location     | send items to the kitchen (opens a table's order)               |
+| `pos.orders.void`          | location     | void sent items                                                 |
+| `pos.orders.close`         | location     | close an order (frees the table)                                |
 
 - **organization** scope: only memberships with `all_locations = true` can hold it.
 - **location** scope (later module keys, e.g. inventory): held per location. A location-limited membership holds only
@@ -64,14 +68,14 @@ Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a 
 Created for every organization (`SystemRoles.ensureFor`, called by provisioning and backfilled by the migration).
 Their permissions are **defined in code** (`SYSTEM_ROLE_PERMISSIONS`), the same for every organization:
 
-| Role    | Permissions                                                                                                                                   |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner   | every registered key, including future ones                                                                                                   |
-| Admin   | everything except `platform.org.manage`                                                                                                       |
-| Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read`, `platform.settings.read`, product and table reads, `pos.tables.manage` |
-| Staff   | `platform.settings.read`, `catalog.products.read`, `pos.tables.read`                                                                          |
-| Waiter  | as Staff, plus taking orders (step 3, [pos](../modules/pos.md)); added by ADR 0016                                                            |
-| Cashier | as Staff, plus reading and closing orders (step 3); the billing counter, added by ADR 0016                                                    |
+| Role    | Permissions                                                                                                                                                            |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Owner   | every registered key, including future ones                                                                                                                            |
+| Admin   | everything except `platform.org.manage`                                                                                                                                |
+| Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read`, `platform.settings.read`, product and table reads, `pos.tables.manage`, all `pos.orders.*` keys |
+| Staff   | `platform.settings.read`, `catalog.products.read`, `pos.tables.read`                                                                                                   |
+| Waiter  | as Staff, plus `pos.orders.read`, `.take`, `.close` ([pos](../modules/pos.md)); added by ADR 0016                                                                      |
+| Cashier | as Staff, plus `pos.orders.read`, `.close`; the billing counter, added by ADR 0016                                                                                     |
 
 Every role but Owner lists **every** key as `grant` or `deny`; a new key that isn't listed fails the typecheck and a
 unit test, so each new key is a conscious decision per role. System roles cannot be edited or deleted. Display names

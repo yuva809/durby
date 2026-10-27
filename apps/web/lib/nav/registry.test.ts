@@ -70,7 +70,8 @@ describe('visibleNav', () => {
       moduleIds(
         visibleNav(NAV_ITEMS, {
           activeFeatures: ['inventory', 'billing', 'pos', 'reports'],
-          activePermissions: [],
+          // POS is the order floor: it also needs pos.orders.read (docs/modules/pos.md → Step 3).
+          activePermissions: ['pos.orders.read'],
         }),
       ),
     ).toEqual(['home', 'inventory', 'billing', 'pos', 'reports']);
@@ -82,12 +83,12 @@ describe('table service items', () => {
     const features = ['catalog', 'pos'];
     expect(
       moduleIds(visibleNav(NAV_ITEMS, { activeFeatures: features, activePermissions: [] })),
-    ).toEqual(['home', 'pos']);
+    ).toEqual(['home']);
     expect(
       moduleIds(
         visibleNav(NAV_ITEMS, {
           activeFeatures: features,
-          activePermissions: ['catalog.products.read', 'pos.tables.read'],
+          activePermissions: ['catalog.products.read', 'pos.orders.read', 'pos.tables.read'],
         }),
       ),
     ).toEqual(['home', 'catalog', 'pos', 'tables']);

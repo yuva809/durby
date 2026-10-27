@@ -63,6 +63,11 @@ export const POS_ERROR_CODES = [
   'pos.table_not_found',
   'pos.location_not_found',
   'pos.table_name_taken',
+  'pos.order_not_found',
+  'pos.order_closed',
+  'pos.product_unavailable',
+  'pos.line_not_found',
+  'pos.void_exceeds',
 ] as const;
 
 export type PosErrorCode = (typeof POS_ERROR_CODES)[number];

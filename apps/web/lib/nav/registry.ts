@@ -78,6 +78,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: CreditCard,
     group: 'modules',
     feature: 'pos',
+    permission: 'pos.orders.read',
   },
   {
     id: 'tables',

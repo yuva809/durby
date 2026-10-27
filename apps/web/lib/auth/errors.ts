@@ -90,6 +90,11 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'pos.table_not_found': 'pos.errors.tableNotFound',
   'pos.location_not_found': 'pos.errors.locationNotFound',
   'pos.table_name_taken': 'pos.errors.tableNameTaken',
+  'pos.order_not_found': 'pos.errors.orderNotFound',
+  'pos.order_closed': 'pos.errors.orderClosed',
+  'pos.product_unavailable': 'pos.errors.productUnavailable',
+  'pos.line_not_found': 'pos.errors.lineNotFound',
+  'pos.void_exceeds': 'pos.errors.voidExceeds',
 };
 
 export function errorLabel(code: ApiErrorCode | 'unknown'): LabelKey {

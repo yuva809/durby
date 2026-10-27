@@ -14,7 +14,7 @@ yet: they need a TSE (`pos.fiscal`, a later step).
 | 3    | Orders: a waiter picks a table, adds products, confirms → order number + kitchen ticket print view.                         |
 | 4    | Guest checks ("Zwischenrechnung", not a receipt): print from the table; billing counter lists open, recent and past checks. |
 
-Steps 2–4 get their own plan and update this spec before they are built.
+Step 4 gets its own plan and updates this spec before it is built.
 
 ## Step 1: dining tables
 
@@ -72,3 +72,91 @@ Labels: `pos.errors.<camelCase>`.
 
 `/pos/tables` (nav: Modules → Tables, feature `pos`, permission `pos.tables.read`): location picker, list of tables;
 create/edit/archive only where the user holds `pos.tables.manage` for the selected location.
+
+## Step 3: orders and kitchen tickets
+
+**One open order per table.** A waiter picks a table, builds a cart in the browser and **sends it to the kitchen**:
+that writes one kitchen ticket and its lines, opening the table's order (with a number) if it has none. Sending
+again adds ticket 2, 3, …. Nothing is edited afterwards: a correction is a **void ticket** whose lines have negative
+quantities and point at the voided line (CLAUDE.md rule 7). Closing the order frees the table; step 4 ties closing
+to the guest check.
+
+```
+Location
+ └─ DiningTable
+     └─ PosOrder              pos_orders           one with status 'open' per table (partial unique index)
+         ├─ PosKitchenTicket  pos_kitchen_tickets  append-only; sequence 1, 2, … per order; kind order | void
+         └─ PosOrderLine      pos_order_lines      append-only; snapshot of name, price, VAT rate
+```
+
+| Table                 | Columns                                                                                                                                                                                                          | Notes                                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `pos_orders`          | `id`, `tenant_id`, `location_id`, `table_id`, `number`, `status` (`open`/`closed`), `opened_by_user_id`, `opened_at`, `closed_by_user_id`, `closed_at`, timestamps                                               | `UNIQUE (tenant_id, number)`; partial `UNIQUE (tenant_id, table_id) WHERE status = 'open'`; no DELETE |
+| `pos_kitchen_tickets` | `id`, `tenant_id`, `order_id`, `sequence`, `kind` (`order`/`void`), `created_by_user_id`, `created_at`                                                                                                           | `UNIQUE (tenant_id, order_id, sequence)`; no UPDATE/DELETE                                            |
+| `pos_order_lines`     | `id`, `tenant_id`, `order_id`, `ticket_id`, `product_id`, `product_name`, `unit_price numeric(12,2)`, `tax_rate numeric(5,2)`, `quantity` (int ≠ 0), `note`, `voids_line_id`, `created_by_user_id`, `created_at` | no UPDATE/DELETE; `quantity < 0` exactly when `voids_line_id` is set                                  |
+
+- **Snapshots.** Name, gross unit price and VAT rate are copied from the product when the line is written; later
+  menu edits never change an order. Quantity is a portion count (an integer), not money or stock.
+- **Numbers.** Series `pos.order` (feature `pos`, `ORD-{YYYY}-{seq:6}`, yearly), allocated in the transaction that
+  opens the order.
+- **Totals** (computed, gross): line total = unit price × quantity; the order total and the per-VAT-rate split
+  (gross, net = gross / (1 + rate), tax = gross − net, rounded to cents) use `decimal.js`. JSON carries strings.
+- **Concurrency.** Ticket writes lock the order row; two first sends to a free table race on the partial unique
+  index and the loser retries once, landing on the same order.
+- User ids are stored without a foreign key (users are platform rows private to platform/auth) and never returned;
+  tickets don't name the waiter.
+
+### Permissions (location scope, checked at the table's location)
+
+| Key                | Grants                                   | admin | manager | staff | waiter | cashier |
+| ------------------ | ---------------------------------------- | ----- | ------- | ----- | ------ | ------- |
+| `pos.orders.read`  | floor, orders, tickets                   | ✓     | ✓       |       | ✓      | ✓       |
+| `pos.orders.take`  | send items to the kitchen (opens orders) | ✓     | ✓       |       | ✓      |         |
+| `pos.orders.void`  | void sent items                          | ✓     | ✓       |       |        |         |
+| `pos.orders.close` | close an order (frees the table)         | ✓     | ✓       |       | ✓      | ✓       |
+
+A table or order at a location where the caller can't read orders doesn't exist for them (404).
+
+### API (`/api/v1`, `@RequireFeature('pos')`)
+
+| Method + path                       | Permission         | Idempotency                 | Body / query                                                      |
+| ----------------------------------- | ------------------ | --------------------------- | ----------------------------------------------------------------- |
+| `GET /pos/floor`                    | `pos.orders.read`  |                             | `?locationId=`: non-archived tables with their open order summary |
+| `GET /pos/tables/:tableId/order`    | `pos.orders.read`  |                             | the table and its open order (or `null`)                          |
+| `POST /pos/tables/:tableId/tickets` | `pos.orders.take`  | `completion: 'transaction'` | `{ lines: [{ productId, quantity 1–99, note? }] }`, 1–100 lines   |
+| `GET /pos/orders`                   | `pos.orders.read`  |                             | `?locationId=&status=open\|closed`, newest first, at most 100     |
+| `GET /pos/orders/:id`               | `pos.orders.read`  |                             |                                                                   |
+| `POST /pos/orders/:id/voids`        | `pos.orders.void`  | `completion: 'transaction'` | `{ lines: [{ lineId, quantity 1–99 }] }`                          |
+| `POST /pos/orders/:id/close`        | `pos.orders.close` | response                    | no body; closing a closed order changes nothing                   |
+
+Products must exist, not be archived, and not be in an archived category; the table must not be archived.
+
+### Errors
+
+| Code                      | Status | When                                                              |
+| ------------------------- | ------ | ----------------------------------------------------------------- |
+| `pos.order_not_found`     | 404    | unknown id, another tenant's, or a location the caller can't read |
+| `pos.order_closed`        | 409    | a void on a closed order                                          |
+| `pos.product_unavailable` | 409    | unknown or archived product (or category); `details.productIds`   |
+| `pos.line_not_found`      | 404    | void of a line that isn't a sent item of this order               |
+| `pos.void_exceeds`        | 409    | voiding more than is left of a line                               |
+
+### Audit
+
+| Action                       | Entity           | Snapshot fields                                               |
+| ---------------------------- | ---------------- | ------------------------------------------------------------- |
+| `pos.order.opened`           | `pos_order`      | `id`, `number`, `tableId`, `locationId`, `status`, `closedAt` |
+| `pos.order.closed`           | `pos_order`      | same                                                          |
+| `pos.kitchen_ticket.created` | `kitchen_ticket` | `id`, `orderId`, `sequence`, `kind`, `lineCount`              |
+
+Notes are free text and stay out of snapshots. No outbox events yet (no consumer; a kitchen display would add one).
+
+### Web
+
+- `/pos` (nav "POS", `pos.orders.read`): the **floor**, a grid of the location's tables: free, or open with order
+  number, item count and total. A table opens the order screen.
+- `/pos/order/[tableId]`: menu by category, cart (quantity, note), **Send to kitchen** → the kitchen ticket print
+  view (`window.print()`); the order so far with voided items struck through, totals, **Reprint** per ticket,
+  **Void** (with `pos.orders.void`), **Close order** (with `pos.orders.close`).
+- Kitchen ticket: table, order number, ticket number, time, items with quantity and note; no prices; "VOID" for void
+  tickets. Printed through a print-only element (`#print-root`); everything else is hidden in print.

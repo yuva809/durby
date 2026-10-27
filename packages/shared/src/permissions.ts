@@ -32,6 +32,10 @@ export const PERMISSIONS = {
   'catalog.products.manage': { scope: 'organization', label: 'catalog.permissions.productsManage' },
   'pos.tables.read': { scope: 'location', label: 'pos.permissions.tablesRead' },
   'pos.tables.manage': { scope: 'location', label: 'pos.permissions.tablesManage' },
+  'pos.orders.read': { scope: 'location', label: 'pos.permissions.ordersRead' },
+  'pos.orders.take': { scope: 'location', label: 'pos.permissions.ordersTake' },
+  'pos.orders.void': { scope: 'location', label: 'pos.permissions.ordersVoid' },
+  'pos.orders.close': { scope: 'location', label: 'pos.permissions.ordersClose' },
 } as const satisfies Record<string, PermissionDefinition>;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -69,6 +73,10 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'catalog.products.manage': 'grant',
     'pos.tables.read': 'grant',
     'pos.tables.manage': 'grant',
+    'pos.orders.read': 'grant',
+    'pos.orders.take': 'grant',
+    'pos.orders.void': 'grant',
+    'pos.orders.close': 'grant',
   },
   manager: {
     'platform.org.manage': 'deny',
@@ -85,6 +93,10 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'catalog.products.manage': 'deny',
     'pos.tables.read': 'grant',
     'pos.tables.manage': 'grant',
+    'pos.orders.read': 'grant',
+    'pos.orders.take': 'grant',
+    'pos.orders.void': 'grant',
+    'pos.orders.close': 'grant',
   },
   staff: {
     'platform.org.manage': 'deny',
@@ -101,6 +113,10 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'catalog.products.manage': 'deny',
     'pos.tables.read': 'grant',
     'pos.tables.manage': 'deny',
+    'pos.orders.read': 'deny',
+    'pos.orders.take': 'deny',
+    'pos.orders.void': 'deny',
+    'pos.orders.close': 'deny',
   },
   // Table service (ADR 0016): takes orders at the tables of their locations.
   waiter: {
@@ -118,6 +134,10 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'catalog.products.manage': 'deny',
     'pos.tables.read': 'grant',
     'pos.tables.manage': 'deny',
+    'pos.orders.read': 'grant',
+    'pos.orders.take': 'grant',
+    'pos.orders.void': 'deny',
+    'pos.orders.close': 'grant',
   },
   // Table service (ADR 0016): the billing counter.
   cashier: {
@@ -135,6 +155,10 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'catalog.products.manage': 'deny',
     'pos.tables.read': 'grant',
     'pos.tables.manage': 'deny',
+    'pos.orders.read': 'grant',
+    'pos.orders.take': 'deny',
+    'pos.orders.void': 'deny',
+    'pos.orders.close': 'grant',
   },
 };
 

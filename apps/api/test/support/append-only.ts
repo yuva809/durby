@@ -1,7 +1,7 @@
 import type { Client } from 'pg';
 
 /** Tables whose rows are never updated or deleted (ADR 0002 §4, ADR 0008 §6). Ledgers join later. */
-export const APPEND_ONLY_TABLES = ['audit_logs'] as const;
+export const APPEND_ONLY_TABLES = ['audit_logs', 'pos_kitchen_tickets', 'pos_order_lines'] as const;
 
 export interface AppendOnlyGap {
   table: string;

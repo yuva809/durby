@@ -41,6 +41,14 @@ Specs: [catalog](../modules/catalog.md), [pos](../modules/pos.md).
    it), the next creates both roles in every existing organization; new organizations get them from
    `SystemRoles.ensure`. Waiter and Cashier start with Staff's reads; step 3 adds their order keys.
 
+8. **Orders (step 3): one open order per table, append-only tickets and lines.** A partial unique index allows one
+   open order per table. Items exist only once sent: each send is one kitchen ticket with its lines, a correction is a
+   void ticket with negative lines (rule 7). Tickets and lines get the audit log's protection: no UPDATE/DELETE for
+   durby_app plus statement-level triggers, checked by the append-only catalog test. Lines snapshot name, gross price
+   and VAT rate. Waiters send and close; only managers (and admins, owners) void, since voids are a fraud risk.
+   User ids on orders have no foreign key (users are private to platform/auth) and are never returned, so tickets
+   don't name the waiter.
+
 ## Consequences
 
 - Tenants in Germany can run table service with Durby but still need their existing cash register for payment until

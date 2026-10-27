@@ -49,12 +49,35 @@ describe('system roles', () => {
       'platform.settings.read',
       'platform.users.invite',
       'platform.users.read',
+      'pos.orders.close',
+      'pos.orders.read',
+      'pos.orders.take',
+      'pos.orders.void',
       'pos.tables.manage',
       'pos.tables.read',
     ]);
     expect([...systemRolePermissions('staff')].sort()).toEqual([
       'catalog.products.read',
       'platform.settings.read',
+      'pos.tables.read',
+    ]);
+  });
+
+  // docs/modules/pos.md → Step 3: voids are for managers; the counter reads and closes.
+  it('lets waiters take and close orders, and cashiers read and close them', () => {
+    expect([...systemRolePermissions('waiter')].sort()).toEqual([
+      'catalog.products.read',
+      'platform.settings.read',
+      'pos.orders.close',
+      'pos.orders.read',
+      'pos.orders.take',
+      'pos.tables.read',
+    ]);
+    expect([...systemRolePermissions('cashier')].sort()).toEqual([
+      'catalog.products.read',
+      'platform.settings.read',
+      'pos.orders.close',
+      'pos.orders.read',
       'pos.tables.read',
     ]);
   });

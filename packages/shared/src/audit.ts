@@ -23,6 +23,8 @@ export const AUDIT_ENTITY_TYPES = [
   'product_category',
   'product',
   'dining_table',
+  'pos_order',
+  'kitchen_ticket',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -155,6 +157,12 @@ export const AUDIT_ACTIONS = {
     entityType: 'dining_table',
     label: 'pos.audit.actions.diningTableUpdated',
   },
+  'pos.order.opened': { entityType: 'pos_order', label: 'pos.audit.actions.orderOpened' },
+  'pos.order.closed': { entityType: 'pos_order', label: 'pos.audit.actions.orderClosed' },
+  'pos.kitchen_ticket.created': {
+    entityType: 'kitchen_ticket',
+    label: 'pos.audit.actions.kitchenTicketCreated',
+  },
 } as const satisfies Record<string, AuditActionDefinition>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -228,4 +236,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   /** `price`, `taxRate`: decimal strings. Never `description` (free text). */
   product: ['id', 'categoryId', 'name', 'price', 'taxRate', 'sortOrder', 'archivedAt'],
   dining_table: ['id', 'locationId', 'name', 'seats', 'area', 'sortOrder', 'archivedAt'],
+  pos_order: ['id', 'number', 'tableId', 'locationId', 'status', 'closedAt'],
+  /** Never line notes (free text). */
+  kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'lineCount'],
 } as const satisfies Record<AuditEntityType, readonly string[]>;

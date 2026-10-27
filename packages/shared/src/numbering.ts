@@ -51,6 +51,15 @@ export const NUMBER_SERIES = {
     pattern: '{prefix}-{YYYY}-{seq:6}',
     resetPolicy: 'yearly',
   },
+  /** Table service orders (docs/modules/pos.md → Step 3). */
+  'pos.order': {
+    label: 'platform.numbering.series.posOrder.name',
+    description: 'platform.numbering.series.posOrder.description',
+    feature: 'pos',
+    prefix: 'ORD',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
 } as const satisfies Record<string, NumberSeriesDefinition>;
 
 export type NumberSeriesKey = keyof typeof NUMBER_SERIES;

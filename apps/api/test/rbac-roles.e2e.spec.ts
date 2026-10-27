@@ -77,6 +77,10 @@ describe('roles API', () => {
       'catalog.products.read',
       'pos.tables.read',
       'pos.tables.manage',
+      'pos.orders.read',
+      'pos.orders.take',
+      'pos.orders.void',
+      'pos.orders.close',
     ]);
     expect(data[3]?.permissions).toEqual([
       'platform.settings.read',

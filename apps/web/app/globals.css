@@ -63,3 +63,16 @@
     @apply text-primary-text underline-offset-4 hover:underline;
   }
 }
+
+/* Kitchen tickets (docs/modules/pos.md → Step 3): components/pos/print-root.tsx portals the ticket into
+   #print-root. On screen it is hidden; in print it is the only thing on the page. */
+@media screen {
+  #print-root {
+    display: none;
+  }
+}
+@media print {
+  body > :not(#print-root) {
+    display: none !important;
+  }
+}
