@@ -23,8 +23,9 @@ describe('import cycle lint rule', () => {
       ],
     });
     for (const result of await eslint.lintFiles(['src/platform/*cycle-*.ts'])) {
+      // Forward slashes on every OS, so Windows paths match the fixture names below.
       rulesByFile.set(
-        path.relative(fixtureRoot, result.filePath),
+        path.relative(fixtureRoot, result.filePath).split(path.sep).join('/'),
         result.messages.map((m) => m.ruleId),
       );
     }

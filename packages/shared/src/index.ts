@@ -1,5 +1,6 @@
 export * from './api/audit';
 export * from './api/auth';
+export * from './api/catalog';
 export * from './api/entitlements';
 export * from './api/errors';
 export * from './api/health';
@@ -9,6 +10,7 @@ export * from './api/labels';
 export * from './api/locations';
 export * from './api/numbering';
 export * from './api/organization';
+export * from './api/pos-tables';
 export * from './api/rbac';
 export * from './api/settings';
 export * from './api/theme';

@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -19,7 +19,8 @@ function sources(dir: string): string[] {
 }
 
 const files = SCANNED.flatMap((dir) => sources(join(ROOT, dir))).map((path) => ({
-  path: relative(ROOT, path),
+  // Forward slashes on every OS, so paths compare with TOKEN_SOURCE on Windows too.
+  path: relative(ROOT, path).split(sep).join('/'),
   text: readFileSync(path, 'utf8'),
 }));
 

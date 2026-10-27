@@ -39,15 +39,23 @@ describe('system roles', () => {
     },
   );
 
-  it('keeps admin below owner and staff with settings.read only', () => {
+  it('keeps admin below owner, and staff to reading settings, products and tables', () => {
     expect(systemRolePermissions('admin').has('platform.org.manage')).toBe(false);
     expect(systemRolePermissions('admin').has('platform.roles.manage')).toBe(true);
+    expect(systemRolePermissions('admin').has('catalog.products.manage')).toBe(true);
     expect([...systemRolePermissions('manager')].sort()).toEqual([
+      'catalog.products.read',
       'platform.roles.read',
       'platform.settings.read',
       'platform.users.invite',
       'platform.users.read',
+      'pos.tables.manage',
+      'pos.tables.read',
     ]);
-    expect([...systemRolePermissions('staff')]).toEqual(['platform.settings.read']);
+    expect([...systemRolePermissions('staff')].sort()).toEqual([
+      'catalog.products.read',
+      'platform.settings.read',
+      'pos.tables.read',
+    ]);
   });
 });

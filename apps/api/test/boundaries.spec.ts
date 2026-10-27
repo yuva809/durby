@@ -23,7 +23,9 @@ describe('module boundary lint rules', () => {
       ],
     });
     for (const result of await eslint.lintFiles(['src/**/*.ts'])) {
-      messagesByFile.set(path.relative(fixtureRoot, result.filePath), result.messages);
+      // Forward slashes on every OS, so Windows paths match the fixture names below.
+      const file = path.relative(fixtureRoot, result.filePath).split(path.sep).join('/');
+      messagesByFile.set(file, result.messages);
     }
   });
 

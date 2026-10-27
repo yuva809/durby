@@ -75,6 +75,7 @@ describe('entitlements CLI', () => {
       'inventory.counts',
       'inventory.purchasing',
       'reports',
+      'catalog',
     ]);
     await run('set-plan', '--org', org, '--plan', 'full');
     expect((await run('set-plan', '--org', org, '--plan', 'full')).changed).toBe(false);

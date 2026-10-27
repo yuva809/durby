@@ -20,6 +20,9 @@ export const AUDIT_ENTITY_TYPES = [
   'number_series',
   'number_series_counter',
   'outbox_event',
+  'product_category',
+  'product',
+  'dining_table',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -128,6 +131,30 @@ export const AUDIT_ACTIONS = {
     entityType: 'outbox_event',
     label: 'platform.audit.actions.outboxEventRetried',
   },
+  'catalog.product_category.created': {
+    entityType: 'product_category',
+    label: 'catalog.audit.actions.productCategoryCreated',
+  },
+  'catalog.product_category.updated': {
+    entityType: 'product_category',
+    label: 'catalog.audit.actions.productCategoryUpdated',
+  },
+  'catalog.product.created': {
+    entityType: 'product',
+    label: 'catalog.audit.actions.productCreated',
+  },
+  'catalog.product.updated': {
+    entityType: 'product',
+    label: 'catalog.audit.actions.productUpdated',
+  },
+  'pos.dining_table.created': {
+    entityType: 'dining_table',
+    label: 'pos.audit.actions.diningTableCreated',
+  },
+  'pos.dining_table.updated': {
+    entityType: 'dining_table',
+    label: 'pos.audit.actions.diningTableUpdated',
+  },
 } as const satisfies Record<string, AuditActionDefinition>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -197,4 +224,8 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   number_series_counter: ['id', 'seriesKey', 'period', 'nextValue'],
   /** Never `payload` or `lastError`. `handler`: set when one failed handler job was re-queued. */
   outbox_event: ['id', 'type', 'version', 'attempts', 'deadLetteredAt', 'handler'],
+  product_category: ['id', 'name', 'sortOrder', 'archivedAt'],
+  /** `price`, `taxRate`: decimal strings. Never `description` (free text). */
+  product: ['id', 'categoryId', 'name', 'price', 'taxRate', 'sortOrder', 'archivedAt'],
+  dining_table: ['id', 'locationId', 'name', 'seats', 'area', 'sortOrder', 'archivedAt'],
 } as const satisfies Record<AuditEntityType, readonly string[]>;

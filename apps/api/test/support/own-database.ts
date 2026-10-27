@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Client } from 'pg';
 import { inject } from 'vitest';
+import { prismaCli } from './prisma-cli';
 
 const apiRoot = join(__dirname, '..', '..');
 
@@ -53,7 +54,7 @@ export async function createOwnDatabase(
 
   const migrationDatabaseUrl = withDatabase(inject('migrationDatabaseUrl'), database);
   if (opts.before === undefined) {
-    execFileSync(join(apiRoot, 'node_modules', '.bin', 'prisma'), ['migrate', 'deploy'], {
+    execFileSync(process.execPath, [prismaCli(apiRoot), 'migrate', 'deploy'], {
       cwd: apiRoot,
       env: { ...process.env, MIGRATION_DATABASE_URL: migrationDatabaseUrl },
       stdio: 'pipe',

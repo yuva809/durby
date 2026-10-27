@@ -31,6 +31,7 @@ and limits that don't match the feature's schema.
 | `reports`              |             |                                        |
 | `api.public`           |             | `requestsPerMinute` (positive integer) |
 | `whitelabel`           |             |                                        |
+| `catalog`              |             |                                        |
 
 - A limit that is absent means unlimited. Limits are integers (counts and rates, not money or stock: rule 6 doesn't
   apply), so JSON numbers.
@@ -194,6 +195,7 @@ System actor: `cli.entitlements`.
 | `inventory`, `inventory.counts`, `inventory.purchasing`, `reports` | ✓           | ✓                   | ✓      |
 | `billing`, `billing.einvoice`                                      |             | ✓                   | ✓      |
 | `pos`, `pos.fiscal`, `api.public`, `whitelabel`                    |             |                     | ✓      |
+| `catalog` (added by `…_catalog_and_tables`, ADR 0016)              | ✓           | ✓                   | ✓      |
 
 No limits are seeded. Names: "Inventory", "Inventory + Billing", "Full". `whitelabel` stays in Full for now;
 partner-level white-label is revisited in 1.10.

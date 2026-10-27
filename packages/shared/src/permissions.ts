@@ -27,6 +27,11 @@ export const PERMISSIONS = {
   'platform.settings.manage': { scope: 'location', label: 'platform.permissions.settingsManage' },
   'platform.labels.manage': { scope: 'organization', label: 'platform.permissions.labelsManage' },
   'platform.audit.read': { scope: 'organization', label: 'platform.permissions.auditRead' },
+  // Location scope so location-limited members (waiters) can read the organization-wide menu.
+  'catalog.products.read': { scope: 'location', label: 'catalog.permissions.productsRead' },
+  'catalog.products.manage': { scope: 'organization', label: 'catalog.permissions.productsManage' },
+  'pos.tables.read': { scope: 'location', label: 'pos.permissions.tablesRead' },
+  'pos.tables.manage': { scope: 'location', label: 'pos.permissions.tablesManage' },
 } as const satisfies Record<string, PermissionDefinition>;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -60,6 +65,10 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'platform.settings.manage': 'grant',
     'platform.labels.manage': 'grant',
     'platform.audit.read': 'grant',
+    'catalog.products.read': 'grant',
+    'catalog.products.manage': 'grant',
+    'pos.tables.read': 'grant',
+    'pos.tables.manage': 'grant',
   },
   manager: {
     'platform.org.manage': 'deny',
@@ -72,6 +81,10 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'platform.settings.manage': 'deny',
     'platform.labels.manage': 'deny',
     'platform.audit.read': 'deny',
+    'catalog.products.read': 'grant',
+    'catalog.products.manage': 'deny',
+    'pos.tables.read': 'grant',
+    'pos.tables.manage': 'grant',
   },
   staff: {
     'platform.org.manage': 'deny',
@@ -84,6 +97,10 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'platform.settings.manage': 'deny',
     'platform.labels.manage': 'deny',
     'platform.audit.read': 'deny',
+    'catalog.products.read': 'grant',
+    'catalog.products.manage': 'deny',
+    'pos.tables.read': 'grant',
+    'pos.tables.manage': 'deny',
   },
 };
 

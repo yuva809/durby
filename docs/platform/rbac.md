@@ -38,18 +38,22 @@ location, even if the service had a bug.
 
 Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a **scope** and a label key.
 
-| Key                        | Scope        | Grants                                                         |
-| -------------------------- | ------------ | -------------------------------------------------------------- |
-| `platform.org.manage`      | organization | organization settings that only an owner should change (later) |
-| `platform.users.read`      | organization | list members and open invitations                              |
-| `platform.users.invite`    | organization | invite by email, revoke invitations                            |
-| `platform.users.manage`    | organization | change a member's role or locations, remove a member           |
-| `platform.roles.read`      | organization | list roles (needed by the invite dialog)                       |
-| `platform.roles.manage`    | organization | create, edit, delete custom roles                              |
-| `platform.settings.read`   | location     | read resolved settings (1.6, ADR 0010)                         |
-| `platform.settings.manage` | location     | set and remove setting values (1.6, ADR 0010)                  |
-| `platform.labels.manage`   | organization | label overrides (1.7)                                          |
-| `platform.audit.read`      | organization | audit log (1.4)                                                |
+| Key                        | Scope        | Grants                                                          |
+| -------------------------- | ------------ | --------------------------------------------------------------- |
+| `platform.org.manage`      | organization | organization settings that only an owner should change (later)  |
+| `platform.users.read`      | organization | list members and open invitations                               |
+| `platform.users.invite`    | organization | invite by email, revoke invitations                             |
+| `platform.users.manage`    | organization | change a member's role or locations, remove a member            |
+| `platform.roles.read`      | organization | list roles (needed by the invite dialog)                        |
+| `platform.roles.manage`    | organization | create, edit, delete custom roles                               |
+| `platform.settings.read`   | location     | read resolved settings (1.6, ADR 0010)                          |
+| `platform.settings.manage` | location     | set and remove setting values (1.6, ADR 0010)                   |
+| `platform.labels.manage`   | organization | label overrides (1.7)                                           |
+| `platform.audit.read`      | organization | audit log (1.4)                                                 |
+| `catalog.products.read`    | location     | list categories and products ([catalog](../modules/catalog.md)) |
+| `catalog.products.manage`  | organization | create, edit, archive categories and products                   |
+| `pos.tables.read`          | location     | list a location's tables ([pos](../modules/pos.md))             |
+| `pos.tables.manage`        | location     | create, edit, archive a location's tables                       |
 
 - **organization** scope: only memberships with `all_locations = true` can hold it.
 - **location** scope (later module keys, e.g. inventory): held per location. A location-limited membership holds only

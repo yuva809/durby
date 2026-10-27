@@ -77,12 +77,32 @@ describe('visibleNav', () => {
   });
 });
 
+describe('table service items', () => {
+  it('shows Products with the catalog feature and Tables with pos, each behind its read key', () => {
+    const features = ['catalog', 'pos'];
+    expect(
+      moduleIds(visibleNav(NAV_ITEMS, { activeFeatures: features, activePermissions: [] })),
+    ).toEqual(['home', 'pos']);
+    expect(
+      moduleIds(
+        visibleNav(NAV_ITEMS, {
+          activeFeatures: features,
+          activePermissions: ['catalog.products.read', 'pos.tables.read'],
+        }),
+      ),
+    ).toEqual(['home', 'catalog', 'pos', 'tables']);
+  });
+});
+
 describe('activeNavItem', () => {
   it.each([
     ['/', 'home'],
     ['/inventory', 'inventory'],
     ['/inventory/items/1', 'inventory'],
     ['/inventoryx', undefined],
+    ['/pos', 'pos'],
+    ['/pos/tables', 'tables'],
+    ['/pos/tables/x', 'tables'],
     ['/unknown', undefined],
   ])('%s → %s', (path, id) => {
     expect(activeNavItem(NAV_ITEMS, path)?.id).toBe(id);

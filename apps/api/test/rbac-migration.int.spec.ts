@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { Client } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
+import { prismaCli } from './support/prisma-cli';
 
 const apiRoot = join(__dirname, '..');
 const migrationsDir = join(apiRoot, 'prisma', 'migrations');
@@ -22,7 +23,7 @@ function withDatabase(url: string, database: string, credentials?: string): stri
 }
 
 function prisma(args: string[], migrationUrl: string): void {
-  execFileSync(join(apiRoot, 'node_modules', '.bin', 'prisma'), args, {
+  execFileSync(process.execPath, [prismaCli(apiRoot), ...args], {
     cwd: apiRoot,
     env: { ...process.env, MIGRATION_DATABASE_URL: migrationUrl },
     stdio: 'pipe',

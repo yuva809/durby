@@ -20,7 +20,7 @@ describe('feature registry', () => {
     expect(featureRegistryProblems(FEATURES)).toEqual([]);
   });
 
-  it('starts with the phase 1 keys', () => {
+  it('has the phase 1 keys, then the phase 2 ones', () => {
     expect(FEATURE_KEYS).toEqual([
       'inventory',
       'inventory.counts',
@@ -32,6 +32,7 @@ describe('feature registry', () => {
       'reports',
       'api.public',
       'whitelabel',
+      'catalog',
     ]);
   });
 
