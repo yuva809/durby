@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  type FloorTable,
   type KitchenTicket,
   type Order,
   ORDER_LINE_MAX_QUANTITY,
@@ -9,7 +10,7 @@ import {
   type ProductCategory,
   type SendTicketResponse,
 } from '@durby/shared';
-import { Minus, Plus } from 'lucide-react';
+import { ArrowLeft, Clock, Minus, Plus, Search, StickyNote, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
@@ -17,23 +18,21 @@ import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { loadCategories, loadProducts } from '../../lib/catalog/api';
-import { closeOrder, loadTableOrder, sendTicket, voidLines } from '../../lib/pos/api';
+import { loadTableOrder, sendTicket } from '../../lib/pos/api';
+import { minutesSince, sum, times } from '../../lib/pos/format';
+import { useNow } from '../../lib/pos/use-now';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
-import { Field, FormDialog } from '../form-dialog';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
-import { ConfirmAction, Loaded, NoAccess } from '../users/common';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Loaded, NoAccess } from '../users/common';
+import { BillPanel, type OrderAccess } from './bill-panel';
 import { KitchenTicketView, PrintRoot } from './kitchen-ticket';
-
-interface Access {
-  canTake: boolean;
-  canVoid: boolean;
-  canClose: boolean;
-}
+import { MoneyProvider, useMoney } from './money';
 
 /** /pos/order/[tableId]: take a table's order and send it to the kitchen (docs/modules/pos.md). */
 export function OrderPage({ tableId }: { tableId: string }) {
@@ -42,14 +41,16 @@ export function OrderPage({ tableId }: { tableId: string }) {
   const permissions = new Set(session.activePermissions);
   if (!permissions.has('pos.orders.read')) return <NoAccess title="pos.nav.title" />;
   return (
-    <TableOrder
-      tableId={tableId}
-      access={{
-        canTake: permissions.has('pos.orders.take'),
-        canVoid: permissions.has('pos.orders.void'),
-        canClose: permissions.has('pos.orders.close'),
-      }}
-    />
+    <MoneyProvider>
+      <TableOrder
+        tableId={tableId}
+        access={{
+          canTake: permissions.has('pos.orders.take'),
+          canVoid: permissions.has('pos.orders.void'),
+          canClose: permissions.has('pos.orders.close'),
+        }}
+      />
+    </MoneyProvider>
   );
 }
 
@@ -66,11 +67,21 @@ interface PrintJob {
   at: number;
 }
 
-function TableOrder({ tableId, access }: { tableId: string; access: Access }) {
+type Panel = 'cart' | 'bill';
+
+function TableOrder({ tableId, access }: { tableId: string; access: OrderAccess }) {
   const t = useT();
+  const money = useMoney();
   const { store } = useAuth();
+  const action = useActionKey();
   const [view, reload] = useResource(tableId, () => loadTableOrder(store, tableId));
+  const now = useNow(30_000);
   const [print, setPrint] = useState<PrintJob | null>(null);
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const [panel, setPanel] = useState<Panel>(access.canTake ? 'cart' : 'bill');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
 
   useEffect(() => {
     if (print) window.print();
@@ -85,37 +96,144 @@ function TableOrder({ tableId, access }: { tableId: string; access: Access }) {
     printTicket(response.order, response.ticketId);
   };
 
+  const add = (product: Product) => {
+    setSent(null);
+    setCart((lines) =>
+      lines.some((l) => l.product.id === product.id)
+        ? lines.map((l) =>
+            l.product.id === product.id
+              ? { ...l, quantity: Math.min(l.quantity + 1, ORDER_LINE_MAX_QUANTITY) }
+              : l,
+          )
+        : [...lines, { product, quantity: 1, note: '' }],
+    );
+  };
+  const change = (productId: string, patch: Partial<CartLine>) =>
+    setCart((lines) =>
+      lines
+        .map((l) => (l.product.id === productId ? { ...l, ...patch } : l))
+        .filter((l) => l.quantity > 0),
+    );
+
+  const cartCount = cart.reduce((n, l) => n + l.quantity, 0);
+  const cartTotal = sum(cart.map((l) => times(l.product.price, l.quantity)));
+
+  async function send() {
+    if (cart.length === 0) return;
+    setBusy(true);
+    setError(null);
+    const result = await sendTicket(store, action, tableId, {
+      lines: cart.map((l) => ({
+        productId: l.product.id,
+        quantity: l.quantity,
+        note: l.note.trim(),
+      })),
+    });
+    setBusy(false);
+    if (result.ok && result.data) {
+      const ticket = result.data.order.tickets.find((x) => x.id === result.data?.ticketId);
+      setCart([]);
+      setSent(t('pos.order.sent', { sequence: String(ticket?.sequence ?? '') }));
+      setPanel('bill');
+      afterWrite(result.data);
+    } else if (!result.ok) {
+      setError(t(errorLabel(result.code)));
+    }
+  }
+
   return (
     <Loaded resource={view} reload={reload}>
       {({ table, order }) => (
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-col gap-1">
-              <Link href="/pos" className="text-sm">
-                {t('pos.order.back')}
-              </Link>
-              <h1 className="text-2xl font-semibold">
-                {t('pos.order.title', { table: table.name })}
-              </h1>
-            </div>
-            {order && <Badge>{t('pos.order.current', { number: order.number })}</Badge>}
+        <div
+          className={cn(
+            'flex flex-col gap-5',
+            access.canTake && cart.length > 0 && 'pb-24 lg:pb-0',
+          )}
+        >
+          <OrderHeader table={table} order={order} now={now} />
+          <div
+            className={cn('grid items-start gap-6', access.canTake && 'lg:grid-cols-[1fr_26rem]')}
+          >
+            {access.canTake && <Menu tableId={tableId} cart={cart} onAdd={add} />}
+            <Card
+              id="order-panel"
+              className="flex flex-col gap-3 p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
+            >
+              <Tabs value={panel} onValueChange={(v) => setPanel(v as Panel)}>
+                <TabsList className="grid w-full grid-cols-2">
+                  {access.canTake && (
+                    <TabsTrigger value="cart" data-testid="tab-cart">
+                      {t('pos.order.cart')}
+                      {cartCount > 0 && <Badge className="ml-2">{cartCount}</Badge>}
+                    </TabsTrigger>
+                  )}
+                  <TabsTrigger
+                    value="bill"
+                    data-testid="tab-bill"
+                    className={cn(!access.canTake && 'col-span-2')}
+                  >
+                    {t('pos.bill.title')}
+                  </TabsTrigger>
+                </TabsList>
+                {access.canTake && (
+                  <TabsContent value="cart" className="flex flex-col gap-3 pt-3">
+                    <Cart
+                      cart={cart}
+                      onChange={change}
+                      onClear={() => setCart([])}
+                      total={cartTotal}
+                    />
+                    <Notice text={error} tone="error" />
+                    <Button
+                      className="min-h-12 text-base"
+                      disabled={cart.length === 0 || busy}
+                      onClick={() => void send()}
+                      data-testid="send-to-kitchen"
+                    >
+                      {t('pos.order.sendCount', { count: String(cartCount) })} · {money(cartTotal)}
+                    </Button>
+                  </TabsContent>
+                )}
+                <TabsContent value="bill" className="flex flex-col gap-3 pt-3">
+                  <Notice text={sent} tone="info" />
+                  {order ? (
+                    <BillPanel
+                      order={order}
+                      access={access}
+                      onReprint={(ticketId) => printTicket(order, ticketId)}
+                      onVoided={afterWrite}
+                      onClosed={reload}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t('pos.order.noOrder')}</p>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </Card>
           </div>
-          <div className={cn('grid gap-6', access.canTake && 'lg:grid-cols-[1fr_24rem]')}>
-            {access.canTake && <Menu tableId={tableId} onSent={afterWrite} />}
-            <div className="flex flex-col gap-4">
-              {order ? (
-                <OrderView
-                  order={order}
-                  access={access}
-                  onReprint={(ticketId) => printTicket(order, ticketId)}
-                  onVoided={afterWrite}
-                  onClosed={reload}
-                />
-              ) : (
-                <p className="text-muted-foreground">{t('pos.order.noOrder')}</p>
-              )}
+          {access.canTake && cart.length > 0 && (
+            <div
+              className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-border bg-card p-3 shadow-lg lg:hidden"
+              data-testid="send-bar"
+            >
+              <a
+                href="#order-panel"
+                className="flex min-w-0 flex-1 flex-col text-foreground no-underline"
+                onClick={() => setPanel('cart')}
+              >
+                <span className="font-semibold tabular-nums">
+                  {t('pos.order.cartSummary', {
+                    count: String(cartCount),
+                    total: money(cartTotal),
+                  })}
+                </span>
+                <span className="text-sm text-primary-text">{t('pos.order.viewOrder')}</span>
+              </a>
+              <Button className="min-h-12" disabled={busy} onClick={() => void send()}>
+                {t('pos.order.send')}
+              </Button>
             </div>
-          </div>
+          )}
           {print && (
             <PrintRoot>
               <KitchenTicketView
@@ -132,17 +250,59 @@ function TableOrder({ tableId, access }: { tableId: string; access: Access }) {
   );
 }
 
-/** Categories, products and the cart; Send to kitchen posts the cart as one ticket. */
+function OrderHeader({
+  table,
+  order,
+  now,
+}: {
+  table: Omit<FloorTable, 'order'>;
+  order: Order | null;
+  now: number;
+}) {
+  const t = useT();
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Button asChild variant="outline" size="icon">
+        <Link href="/pos" aria-label={t('pos.order.back')}>
+          <ArrowLeft aria-hidden />
+        </Link>
+      </Button>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <h1 className="text-2xl font-semibold">{t('pos.order.title', { table: table.name })}</h1>
+        <p className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Users aria-hidden className="size-4" />
+            {t('pos.floor.seats', { count: String(table.seats) })}
+          </span>
+          {table.area && <span>{table.area}</span>}
+        </p>
+      </div>
+      {order && (
+        <div className="flex flex-col items-end gap-1 text-sm">
+          <Badge>{order.number}</Badge>
+          <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <Clock aria-hidden className="size-3.5" />
+            {t('pos.order.opened', { minutes: String(minutesSince(order.openedAt, now)) })}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Search, category chips and the product grid; tiles show how many are in the cart. */
 function Menu({
   tableId,
-  onSent,
+  cart,
+  onAdd,
 }: {
   tableId: string;
-  onSent: (response: SendTicketResponse) => void;
+  cart: CartLine[];
+  onAdd: (product: Product) => void;
 }) {
   const t = useT();
   const { store } = useAuth();
-  const action = useActionKey();
+  const id = useId();
   const [menu, reloadMenu] = useResource(tableId, async () => {
     const [categories, products] = await Promise.all([loadCategories(store), loadProducts(store)]);
     if (!categories.ok) return categories;
@@ -150,81 +310,42 @@ function Menu({
     return { ok: true as const, data: { categories: categories.data, products: products.data } };
   });
   const [category, setCategory] = useState<string | null>(null);
-  const [cart, setCart] = useState<CartLine[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const add = (product: Product) =>
-    setCart((lines) =>
-      lines.some((l) => l.product.id === product.id)
-        ? lines.map((l) =>
-            l.product.id === product.id
-              ? { ...l, quantity: Math.min(l.quantity + 1, ORDER_LINE_MAX_QUANTITY) }
-              : l,
-          )
-        : [...lines, { product, quantity: 1, note: '' }],
-    );
-  const change = (productId: string, patch: Partial<CartLine>) =>
-    setCart((lines) =>
-      lines
-        .map((l) => (l.product.id === productId ? { ...l, ...patch } : l))
-        .filter((l) => l.quantity > 0),
-    );
-
-  async function send() {
-    setBusy(true);
-    setError(null);
-    const result = await sendTicket(store, action, tableId, {
-      lines: cart.map((l) => ({
-        productId: l.product.id,
-        quantity: l.quantity,
-        note: l.note.trim(),
-      })),
-    });
-    setBusy(false);
-    if (result.ok && result.data) {
-      setCart([]);
-      onSent(result.data);
-    } else if (!result.ok) {
-      setError(t(errorLabel(result.code)));
-    }
-  }
+  const [query, setQuery] = useState('');
+  const inCart = new Map(cart.map((l) => [l.product.id, l.quantity]));
 
   return (
-    <div className="flex flex-col gap-4">
-      <h2 className="text-lg font-medium">{t('pos.order.menu')}</h2>
+    <section className="flex flex-col gap-4" aria-label={t('pos.order.menu')}>
+      <div className="relative">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+        />
+        <label htmlFor={`${id}-search`} className="sr-only">
+          {t('pos.order.search')}
+        </label>
+        <Input
+          id={`${id}-search`}
+          type="search"
+          className="pl-9"
+          placeholder={t('pos.order.search')}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
       <Loaded resource={menu} reload={reloadMenu}>
         {({ categories, products }) => (
           <MenuGrid
             categories={categories}
             products={products}
             category={category}
+            query={query}
+            inCart={inCart}
             onCategory={setCategory}
-            onAdd={add}
+            onAdd={onAdd}
           />
         )}
       </Loaded>
-      <Card className="flex flex-col gap-3 p-4" aria-label={t('pos.order.cart')}>
-        <h2 className="text-lg font-medium">{t('pos.order.cart')}</h2>
-        {cart.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('pos.order.cartEmpty')}</p>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {cart.map((line) => (
-              <CartRow key={line.product.id} line={line} onChange={change} />
-            ))}
-          </ul>
-        )}
-        <Notice text={error} tone="error" />
-        <Button
-          disabled={cart.length === 0 || busy}
-          onClick={() => void send()}
-          data-testid="send-to-kitchen"
-        >
-          {t('pos.order.send')}
-        </Button>
-      </Card>
-    </div>
+    </section>
   );
 }
 
@@ -232,22 +353,37 @@ function MenuGrid({
   categories,
   products,
   category,
+  query,
+  inCart,
   onCategory,
   onAdd,
 }: {
   categories: ProductCategory[];
   products: Product[];
   category: string | null;
+  query: string;
+  inCart: ReadonlyMap<string, number>;
   onCategory: (id: string | null) => void;
   onAdd: (product: Product) => void;
 }) {
   const t = useT();
-  const shown = products.filter((p) => category === null || p.categoryId === category);
+  const needle = query.trim().toLocaleLowerCase();
+  const matching = products.filter(
+    (p) =>
+      (category === null || p.categoryId === category) &&
+      (needle === '' || p.name.toLocaleLowerCase().includes(needle)),
+  );
+  // Under category headings, in category order (only when showing more than one category).
+  const groups = categories
+    .map((c) => ({ category: c, products: matching.filter((p) => p.categoryId === c.id) }))
+    .filter((g) => g.products.length > 0);
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-4">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         <Button
           variant={category === null ? 'default' : 'outline'}
+          className="shrink-0"
           aria-pressed={category === null}
           onClick={() => onCategory(null)}
         >
@@ -257,6 +393,7 @@ function MenuGrid({
           <Button
             key={c.id}
             variant={category === c.id ? 'default' : 'outline'}
+            className="shrink-0"
             aria-pressed={category === c.id}
             onClick={() => onCategory(c.id)}
           >
@@ -264,21 +401,105 @@ function MenuGrid({
           </Button>
         ))}
       </div>
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {shown.map((product) => (
-          <li key={product.id}>
-            <Button
-              variant="outline"
-              className="flex h-auto min-h-16 w-full flex-col items-start gap-1 whitespace-normal p-3 text-left"
-              data-testid="menu-product"
-              onClick={() => onAdd(product)}
-            >
-              <span className="font-medium">{product.name}</span>
-              <span className="text-sm text-muted-foreground tabular-nums">{product.price}</span>
-            </Button>
-          </li>
+      {groups.length === 0 ? (
+        <p className="text-muted-foreground">{t('pos.order.noResults')}</p>
+      ) : (
+        groups.map((group) => (
+          <div key={group.category.id} className="flex flex-col gap-2">
+            {category === null && (
+              <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                {group.category.name}
+              </h2>
+            )}
+            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+              {group.products.map((product) => (
+                <li key={product.id}>
+                  <ProductTile
+                    product={product}
+                    count={inCart.get(product.id) ?? 0}
+                    onAdd={onAdd}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function ProductTile({
+  product,
+  count,
+  onAdd,
+}: {
+  product: Product;
+  count: number;
+  onAdd: (product: Product) => void;
+}) {
+  const t = useT();
+  const money = useMoney();
+  return (
+    <Button
+      variant="outline"
+      className={cn(
+        'relative flex h-auto min-h-20 w-full flex-col items-start justify-between gap-2 whitespace-normal p-3 text-left',
+        count > 0 && 'border-primary bg-primary/10 hover:bg-primary/15',
+      )}
+      data-testid="menu-product"
+      data-name={product.name}
+      onClick={() => onAdd(product)}
+    >
+      <span className="pr-8 font-medium leading-snug">{product.name}</span>
+      <span className="text-sm text-muted-foreground tabular-nums">{money(product.price)}</span>
+      {count > 0 && (
+        <span
+          className="absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+          data-testid="menu-count"
+          aria-label={t('pos.order.inCart', { count: String(count) })}
+        >
+          {count}
+        </span>
+      )}
+    </Button>
+  );
+}
+
+/** The cart: quantity, line total and an optional note per item; the total and Clear. */
+function Cart({
+  cart,
+  onChange,
+  onClear,
+  total,
+}: {
+  cart: CartLine[];
+  onChange: (productId: string, patch: Partial<CartLine>) => void;
+  onClear: () => void;
+  total: string;
+}) {
+  const t = useT();
+  const money = useMoney();
+  if (cart.length === 0) {
+    return (
+      <p className="py-6 text-center text-sm text-muted-foreground">{t('pos.order.cartEmpty')}</p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <ul className="flex flex-col divide-y divide-border">
+        {cart.map((line) => (
+          <CartRow key={line.product.id} line={line} onChange={onChange} />
         ))}
       </ul>
+      <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+        <Button variant="ghost" onClick={onClear}>
+          {t('pos.order.clear')}
+        </Button>
+        <span className="text-lg font-semibold tabular-nums" data-testid="cart-total">
+          {t('pos.order.total')} {money(total)}
+        </span>
+      </div>
     </div>
   );
 }
@@ -291,209 +512,62 @@ function CartRow({
   onChange: (productId: string, patch: Partial<CartLine>) => void;
 }) {
   const t = useT();
+  const money = useMoney();
   const id = useId();
   const name = line.product.name;
+  const [noteOpen, setNoteOpen] = useState(line.note !== '');
   return (
-    <li className="flex flex-col gap-2" data-testid="cart-line" data-name={name}>
+    <li className="flex flex-col gap-2 py-2" data-testid="cart-line" data-name={name}>
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label={t('pos.order.decrease', { name })}
-          onClick={() => onChange(line.product.id, { quantity: line.quantity - 1 })}
-        >
-          <Minus aria-hidden />
-        </Button>
-        <span className="w-8 text-center tabular-nums" data-testid="cart-quantity">
-          {line.quantity}
-        </span>
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label={t('pos.order.increase', { name })}
-          disabled={line.quantity >= ORDER_LINE_MAX_QUANTITY}
-          onClick={() => onChange(line.product.id, { quantity: line.quantity + 1 })}
-        >
-          <Plus aria-hidden />
-        </Button>
-        <span className="font-medium">{name}</span>
-      </div>
-      <label htmlFor={`${id}-note`} className="sr-only">
-        {t('pos.order.note', { name })}
-      </label>
-      <Input
-        id={`${id}-note`}
-        value={line.note}
-        maxLength={ORDER_NOTE_MAX_LENGTH}
-        placeholder={t('pos.order.note', { name })}
-        onChange={(e) => onChange(line.product.id, { note: e.target.value })}
-      />
-    </li>
-  );
-}
-
-/** The order so far: tickets with their lines, totals and the order actions. */
-function OrderView({
-  order,
-  access,
-  onReprint,
-  onVoided,
-  onClosed,
-}: {
-  order: Order;
-  access: Access;
-  onReprint: (ticketId: string) => void;
-  onVoided: (response: SendTicketResponse) => void;
-  onClosed: () => void;
-}) {
-  const t = useT();
-  const { store } = useAuth();
-  const closeAction = useActionKey();
-  return (
-    <Card className="flex flex-col gap-4 p-4" data-testid="order-view">
-      {order.tickets.map((ticket) => (
-        <section key={ticket.id} className="flex flex-col gap-2" data-testid="order-ticket">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="font-medium">
-              {t(ticket.kind === 'void' ? 'pos.order.voidTicket' : 'pos.order.ticket', {
-                sequence: String(ticket.sequence),
-              })}
-            </h3>
-            <Button variant="ghost" onClick={() => onReprint(ticket.id)}>
-              {t('pos.order.reprint')}
-            </Button>
-          </div>
-          <ul className="flex flex-col gap-1 text-sm">
-            {ticket.lines.map((line) => (
-              <li
-                key={line.id}
-                className={cn(
-                  'flex justify-between gap-2',
-                  line.quantity > 0 && line.remaining === 0 && 'text-muted-foreground line-through',
-                )}
-              >
-                <span>
-                  {t('pos.order.lineQuantity', {
-                    quantity: String(line.quantity),
-                    name: line.productName,
-                  })}
-                  {line.note && <span className="block text-muted-foreground">{line.note}</span>}
-                </span>
-                <span className="tabular-nums">{line.total}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
-      <div className="flex flex-col gap-1 border-t border-border pt-3">
-        <p className="flex justify-between font-semibold">
-          <span>
-            {t('pos.order.total')} ·{' '}
-            {t('pos.order.itemCount', { count: String(order.totals.itemCount) })}
+        <div className="flex items-center rounded-md border border-border">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('pos.order.decrease', { name })}
+            onClick={() => onChange(line.product.id, { quantity: line.quantity - 1 })}
+          >
+            <Minus aria-hidden />
+          </Button>
+          <span className="w-7 text-center font-semibold tabular-nums" data-testid="cart-quantity">
+            {line.quantity}
           </span>
-          <span className="tabular-nums" data-testid="order-total">
-            {order.totals.gross}
-          </span>
-        </p>
-        {order.totals.byTaxRate.map((rate) => (
-          <p key={rate.taxRate} className="text-sm text-muted-foreground">
-            {t('pos.order.vatLine', { rate: rate.taxRate, net: rate.net, tax: rate.tax })}
-          </p>
-        ))}
-      </div>
-      {order.status === 'open' && (access.canVoid || access.canClose) && (
-        <div className="flex flex-wrap gap-2">
-          {access.canVoid && order.totals.itemCount > 0 && (
-            <VoidDialog order={order} onVoided={onVoided} />
-          )}
-          {access.canClose && (
-            <ConfirmAction
-              testId="close-order"
-              trigger={t('pos.order.close')}
-              title={t('pos.order.closeTitle', { number: order.number })}
-              description={t('pos.order.closeDescription')}
-              confirm={t('pos.order.close')}
-              run={() => closeOrder(store, closeAction, order.id)}
-              onDone={onClosed}
-            />
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('pos.order.increase', { name })}
+            disabled={line.quantity >= ORDER_LINE_MAX_QUANTITY}
+            onClick={() => onChange(line.product.id, { quantity: line.quantity + 1 })}
+          >
+            <Plus aria-hidden />
+          </Button>
         </div>
-      )}
-    </Card>
-  );
-}
-
-/** Choose how many of each sent item to void; prints the VOID ticket. */
-function VoidDialog({
-  order,
-  onVoided,
-}: {
-  order: Order;
-  onVoided: (response: SendTicketResponse) => void;
-}) {
-  const t = useT();
-  const { store } = useAuth();
-  const action = useActionKey();
-  const id = useId();
-  const lines = order.tickets.flatMap((ticket) => ticket.lines.filter((l) => l.remaining > 0));
-  const [counts, setCounts] = useState<Record<string, string>>({});
-  const [problem, setProblem] = useState<string | null>(null);
-
-  return (
-    <FormDialog
-      trigger={t('pos.order.void')}
-      triggerVariant="outline"
-      testId="void-items"
-      title={t('pos.order.voidTitle')}
-      onOpen={() => {
-        setCounts({});
-        setProblem(null);
-      }}
-      submit={() => {
-        const chosen = lines
-          .map((line) => ({ lineId: line.id, quantity: Number(counts[line.id] ?? '0') }))
-          .filter((l) => l.quantity > 0);
-        const invalid = lines.some((line) => {
-          const n = Number(counts[line.id] ?? '0');
-          return !Number.isInteger(n) || n < 0 || n > line.remaining;
-        });
-        if (chosen.length === 0 || invalid) {
-          setProblem(t('pos.order.voidNothing'));
-          return null;
-        }
-        setProblem(null);
-        return voidLines(store, action, order.id, { lines: chosen }).then((result) => {
-          if (result.ok && result.data) onVoided(result.data);
-          return result;
-        });
-      }}
-      onDone={() => undefined}
-    >
-      <p className="text-sm text-muted-foreground">{t('pos.order.voidDescription')}</p>
-      {lines.map((line) => (
-        <Field
-          key={line.id}
-          id={`${id}-${line.id}`}
-          label={t('pos.order.lineQuantity', {
-            quantity: String(line.remaining),
-            name: line.productName,
-          })}
-          problem={null}
-        >
+        <span className="min-w-0 flex-1 font-medium leading-snug">{name}</span>
+        <span className="tabular-nums">{money(times(line.product.price, line.quantity))}</span>
+      </div>
+      {noteOpen ? (
+        <>
+          <label htmlFor={`${id}-note`} className="sr-only">
+            {t('pos.order.note', { name })}
+          </label>
           <Input
-            id={`${id}-${line.id}`}
-            inputMode="numeric"
-            aria-label={t('pos.order.voidQuantity', { name: line.productName })}
-            value={counts[line.id] ?? ''}
-            onChange={(e) => setCounts((c) => ({ ...c, [line.id]: e.target.value }))}
+            id={`${id}-note`}
+            autoFocus
+            value={line.note}
+            maxLength={ORDER_NOTE_MAX_LENGTH}
+            placeholder={t('pos.order.note', { name })}
+            onChange={(e) => onChange(line.product.id, { note: e.target.value })}
           />
-        </Field>
-      ))}
-      {problem && (
-        <p role="alert" className="text-sm text-destructive">
-          {problem}
-        </p>
+        </>
+      ) : (
+        <Button
+          variant="ghost"
+          className="min-h-8 self-start gap-1 px-2 text-sm text-muted-foreground"
+          onClick={() => setNoteOpen(true)}
+        >
+          <StickyNote aria-hidden className="size-4" />
+          {t('pos.order.addNote')}
+        </Button>
       )}
-    </FormDialog>
+    </li>
   );
 }
