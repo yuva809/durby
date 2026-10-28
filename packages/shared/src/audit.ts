@@ -26,6 +26,7 @@ export const AUDIT_ENTITY_TYPES = [
   'pos_order',
   'kitchen_ticket',
   'dining_area',
+  'location',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -75,6 +76,18 @@ export const AUDIT_ACTIONS = {
   'platform.organization.updated': {
     entityType: 'organization',
     label: 'platform.audit.actions.organizationUpdated',
+  },
+  'platform.location.created': {
+    entityType: 'location',
+    label: 'platform.audit.actions.locationCreated',
+  },
+  'platform.location.updated': {
+    entityType: 'location',
+    label: 'platform.audit.actions.locationUpdated',
+  },
+  'platform.location.deleted': {
+    entityType: 'location',
+    label: 'platform.audit.actions.locationDeleted',
   },
   'platform.organization.plan_changed': {
     entityType: 'organization',
@@ -264,4 +277,5 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   /** Never line notes (free text). */
   kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
+  location: ['id', 'brandId', 'name'],
 } as const satisfies Record<AuditEntityType, readonly string[]>;

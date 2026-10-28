@@ -12,6 +12,7 @@ import { useNow } from '../../lib/pos/use-now';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
 import { cn } from '../../lib/utils';
+import { NoLocations } from '../settings/locations-page';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
@@ -43,7 +44,7 @@ function Floor({ organizationId }: { organizationId: string | null }) {
         list.length === 0 ? (
           <div className="flex flex-col gap-6">
             <h1 className="text-2xl font-semibold">{t('pos.nav.service')}</h1>
-            <p className="text-muted-foreground">{t('pos.floor.noLocations')}</p>
+            <NoLocations message={t('pos.floor.noLocations')} />
           </div>
         ) : (
           <LocationFloor locations={list} />

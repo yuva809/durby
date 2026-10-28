@@ -35,6 +35,7 @@ import { loadLocations } from '../../lib/users/api';
 import { cn } from '../../lib/utils';
 import { Field, FormDialog } from '../form-dialog';
 import { TableIcon, tableColors } from '../pos/table-icon';
+import { NoLocations } from '../settings/locations-page';
 import { Button } from '../ui/button';
 import {
   DropdownMenu,
@@ -84,7 +85,7 @@ function Tables({ organizationId, access }: { organizationId: string | null; acc
         list.length === 0 ? (
           <div className="flex flex-col gap-4">
             <h1 className="text-2xl font-semibold">{t('pos.nav.tables')}</h1>
-            <p className="text-muted-foreground">{t('pos.tablesPage.noLocations')}</p>
+            <NoLocations message={t('pos.tablesPage.noLocations')} />
           </div>
         ) : (
           <LocationTables locations={list} access={access} />
