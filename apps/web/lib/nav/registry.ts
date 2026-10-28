@@ -3,6 +3,7 @@ import type { FeatureKey, PermissionKey } from '@durby/shared';
 import {
   Building2,
   ClipboardList,
+  ConciergeBell,
   ChartLine,
   CreditCard,
   Hash,
@@ -76,6 +77,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
     href: '/pos',
     label: 'pos.nav.title',
     icon: CreditCard,
+    group: 'modules',
+    feature: 'pos',
+  },
+  {
+    // Table service: the floor and the till per table (docs/modules/pos.md → Web).
+    id: 'service',
+    href: '/service',
+    label: 'pos.nav.service',
+    icon: ConciergeBell,
     group: 'modules',
     feature: 'pos',
     permission: 'pos.orders.read',

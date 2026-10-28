@@ -1,5 +1,5 @@
-import { FloorPage } from '../../../components/pos/floor-page';
+import { ModulePlaceholder } from '../../../components/module-placeholder';
 
 export default function Page() {
-  return <FloorPage />;
+  return <ModulePlaceholder feature="pos" title="pos.nav.title" />;
 }

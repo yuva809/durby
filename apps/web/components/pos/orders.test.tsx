@@ -175,7 +175,7 @@ describe('FloorPage', () => {
     expect(await within(tiles[0]!).findByText('€13.80')).toBeTruthy();
     expect(within(tiles[0]!).getByText('ORD-2026-000001')).toBeTruthy();
     expect(within(tiles[1]!).getByText('4 seats')).toBeTruthy();
-    expect(within(tiles[0]!).getByRole('link').getAttribute('href')).toBe(`/pos/order/${TABLE.id}`);
+    expect(within(tiles[0]!).getByRole('link').getAttribute('href')).toBe(`/service/${TABLE.id}`);
   });
 
   it('filters open and free tables', async () => {

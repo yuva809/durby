@@ -51,12 +51,12 @@ interface OrderAccess {
   canPrintBill: boolean;
 }
 
-/** /pos/order/[tableId]: the till for one table (docs/modules/pos.md → Web). */
+/** /service/[tableId]: the till for one table (docs/modules/pos.md → Web). */
 export function OrderPage({ tableId }: { tableId: string }) {
   const { session } = useAuth();
   if (!session) return null;
   const permissions = new Set(session.activePermissions);
-  if (!permissions.has('pos.orders.read')) return <NoAccess title="pos.nav.title" />;
+  if (!permissions.has('pos.orders.read')) return <NoAccess title="pos.nav.service" />;
   const organizationName =
     session.organizations.find((o) => o.id === session.activeOrganizationId)?.name ?? '';
   return (
@@ -382,7 +382,7 @@ function OrderHeader({
   return (
     <header className="flex flex-wrap items-center gap-4" data-testid="table-bar">
       <Button asChild variant="outline" size="icon" className="rounded-full">
-        <Link href="/pos" aria-label={t('pos.order.back')}>
+        <Link href="/service" aria-label={t('pos.order.back')}>
           <ArrowLeft aria-hidden />
         </Link>
       </Button>

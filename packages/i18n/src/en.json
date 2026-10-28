@@ -689,5 +689,6 @@
   "pos.tablesPage.areas": "Areas",
   "pos.tablesPage.allAreas": "All",
   "pos.tablesPage.actions": "More for {name}",
-  "pos.order.newTag": "NEW"
+  "pos.order.newTag": "NEW",
+  "pos.nav.service": "Service"
 }

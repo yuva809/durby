@@ -70,8 +70,7 @@ describe('visibleNav', () => {
       moduleIds(
         visibleNav(NAV_ITEMS, {
           activeFeatures: ['inventory', 'billing', 'pos', 'reports'],
-          // POS is the order floor: it also needs pos.orders.read (docs/modules/pos.md → Step 3).
-          activePermissions: ['pos.orders.read'],
+          activePermissions: [],
         }),
       ),
     ).toEqual(['home', 'inventory', 'billing', 'pos', 'reports']);
@@ -79,11 +78,11 @@ describe('visibleNav', () => {
 });
 
 describe('table service items', () => {
-  it('shows Products with the catalog feature and Tables with pos, each behind its read key', () => {
+  it('shows Products, Service and Tables with their feature, each behind its read key', () => {
     const features = ['catalog', 'pos'];
     expect(
       moduleIds(visibleNav(NAV_ITEMS, { activeFeatures: features, activePermissions: [] })),
-    ).toEqual(['home']);
+    ).toEqual(['home', 'pos']);
     expect(
       moduleIds(
         visibleNav(NAV_ITEMS, {
@@ -91,7 +90,7 @@ describe('table service items', () => {
           activePermissions: ['catalog.products.read', 'pos.orders.read', 'pos.tables.read'],
         }),
       ),
-    ).toEqual(['home', 'catalog', 'pos', 'tables']);
+    ).toEqual(['home', 'catalog', 'pos', 'service', 'tables']);
   });
 });
 
@@ -102,7 +101,8 @@ describe('activeNavItem', () => {
     ['/inventory/items/1', 'inventory'],
     ['/inventoryx', undefined],
     ['/pos', 'pos'],
-    ['/pos/order/x', 'pos'],
+    ['/service', 'service'],
+    ['/service/x', 'service'],
     ['/tables', 'tables'],
     ['/unknown', undefined],
   ])('%s → %s', (path, id) => {

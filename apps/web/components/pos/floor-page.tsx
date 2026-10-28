@@ -19,12 +19,12 @@ import { Loaded, NoAccess } from '../users/common';
 import { MoneyProvider, useMoney } from './money';
 import { TableIcon } from './table-icon';
 
-/** /pos: the floor, every table of a location and its open order (docs/modules/pos.md → Web). */
+/** /service: the floor, every table of a location and its open order (docs/modules/pos.md → Web). */
 export function FloorPage() {
   const { session } = useAuth();
   if (!session) return null;
   if (!session.activePermissions.includes('pos.orders.read')) {
-    return <NoAccess title="pos.nav.title" />;
+    return <NoAccess title="pos.nav.service" />;
   }
   return (
     <MoneyProvider>
@@ -42,7 +42,7 @@ function Floor({ organizationId }: { organizationId: string | null }) {
       {(list) =>
         list.length === 0 ? (
           <div className="flex flex-col gap-6">
-            <h1 className="text-2xl font-semibold">{t('pos.nav.title')}</h1>
+            <h1 className="text-2xl font-semibold">{t('pos.nav.service')}</h1>
             <p className="text-muted-foreground">{t('pos.floor.noLocations')}</p>
           </div>
         ) : (
@@ -75,7 +75,7 @@ function LocationFloor({ locations }: { locations: LocationSummary[] }) {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">{t('pos.nav.title')}</h1>
+          <h1 className="text-2xl font-semibold">{t('pos.nav.service')}</h1>
           {tables.status === 'ready' && (
             <p className="text-sm text-muted-foreground" data-testid="floor-summary">
               {t('pos.floor.summary', {
@@ -170,7 +170,7 @@ function TableTile({ table, now }: { table: FloorTable; now: number }) {
   return (
     <li data-testid="floor-table" data-name={table.name} data-state={order ? 'open' : 'free'}>
       <Link
-        href={`/pos/order/${table.id}`}
+        href={`/service/${table.id}`}
         className={cn(
           'flex h-full min-h-32 flex-col justify-between gap-3 rounded-lg border p-4 text-foreground no-underline shadow-sm transition-colors hover:no-underline focus-visible:outline-2',
           order

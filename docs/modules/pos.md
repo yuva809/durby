@@ -188,9 +188,9 @@ Notes are free text and stay out of snapshots. No outbox events yet (no consumer
 
 ### Web
 
-- `/pos` (nav "POS", `pos.orders.read`): the **floor**, a grid of the location's tables: free, or open with order
+- `/service` (nav "Service", `pos.orders.read`; the "POS" menu entry stays the official POS module): the **floor**, a grid of the location's tables: free, or open with order
   number, item count and total. A table opens the order screen.
-- `/pos/order/[tableId]`: menu by category, cart (quantity, note), **Send to kitchen** → the kitchen ticket print
+- `/service/[tableId]`: menu by category, cart (quantity, note), **Send to kitchen** → the kitchen ticket print
   view (`window.print()`); the order so far with voided items struck through, totals, **Reprint** per ticket,
   **Void** (with `pos.orders.void`), **Close order** (with `pos.orders.close`).
 - **Printing.** Waiters print the **order slip**: table, order number, time, the order's items (combined) with
