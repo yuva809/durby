@@ -8,8 +8,12 @@ import { safeNextPath } from '../../../lib/auth/next-path';
 import { t } from '../../../lib/i18n';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
+import { PasswordInput } from '../../../components/ui/password-input';
 import { AuthCard, fieldClass, formText, Notice } from '../../auth-layout';
 import { useAuth } from '../../providers';
+
+/** Names of the password fields' show/hide button. */
+const passwordLabels = { show: t('auth.password.show'), hide: t('auth.password.hide') };
 
 /** Where to go after signing in: the guard's `next` (same-origin only) or home. */
 function nextPath(): string {
@@ -44,10 +48,16 @@ export default function LoginPage() {
           {t('auth.login.email')}
           <Input name="email" type="email" autoComplete="username" required />
         </label>
-        <label className={fieldClass}>
-          {t('auth.login.password')}
-          <Input name="password" type="password" autoComplete="current-password" required />
-        </label>
+        <div className={fieldClass}>
+          <label htmlFor="login-password">{t('auth.login.password')}</label>
+          <PasswordInput
+            labels={passwordLabels}
+            id="login-password"
+            name="password"
+            autoComplete="current-password"
+            required
+          />
+        </div>
         <Notice text={error} tone="error" />
         <Button type="submit" className="w-full" disabled={busy}>
           {busy ? t('auth.login.submitting') : t('auth.login.submit')}

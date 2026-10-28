@@ -690,5 +690,7 @@
   "pos.tablesPage.allAreas": "Alle",
   "pos.tablesPage.actions": "Mehr zu {name}",
   "pos.order.newTag": "NEU",
-  "pos.nav.service": "Service"
+  "pos.nav.service": "Service",
+  "auth.password.show": "Passwort anzeigen",
+  "auth.password.hide": "Passwort verbergen"
 }
