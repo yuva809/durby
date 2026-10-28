@@ -179,6 +179,7 @@ describe('custom-role editor', () => {
       'catalog.products',
       'pos.tables',
       'pos.orders',
+      'pos.bills',
     ]);
     expect(groups.flatMap((g) => g.keys)).toEqual([...PERMISSION_KEYS]);
     for (const locale of LOCALES) {

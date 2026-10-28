@@ -39,7 +39,7 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { ConfirmAction, Loaded, NoAccess } from '../users/common';
-import { KitchenTicketView, PrintRoot } from './kitchen-ticket';
+import { KitchenTicketView, OrderSlip, PrintRoot } from './kitchen-ticket';
 import { MoneyProvider, useMoney } from './money';
 import { type PendingLine, Receipt, type ReceiptSelection } from './receipt';
 import { TableIcon, tableColors } from './table-icon';
@@ -49,6 +49,8 @@ interface OrderAccess {
   canTake: boolean;
   canVoid: boolean;
   canClose: boolean;
+  /** pos.bills.print: the bill with prices; without it the till prints the order only. */
+  canPrintBill: boolean;
 }
 
 /** /pos/order/[tableId]: the till for one table (docs/modules/pos.md → Web). */
@@ -68,6 +70,7 @@ export function OrderPage({ tableId }: { tableId: string }) {
           canTake: permissions.has('pos.orders.take'),
           canVoid: permissions.has('pos.orders.void'),
           canClose: permissions.has('pos.orders.close'),
+          canPrintBill: permissions.has('pos.bills.print'),
         }}
       />
     </MoneyProvider>
@@ -83,7 +86,7 @@ interface CartLine {
 /** What to print; `seq` grows with every request, so a reprint prints again. */
 type PrintJob =
   | { kind: 'ticket'; ticket: KitchenTicket; orderNumber: string; seq: number }
-  | { kind: 'bill'; seq: number };
+  | { kind: 'bill' | 'slip'; seq: number };
 
 function TableOrder({
   tableId,
@@ -192,17 +195,28 @@ function TableOrder({
           cart.length > 0 && access.canTake
             ? {
                 label: `${t('pos.order.sendCount', { count: String(cartCount) })} · ${money(cartTotal)}`,
+                short: t('pos.order.send'),
                 run: () => void send(),
                 testId: 'send-to-kitchen',
                 icon: null,
               }
             : order && order.totals.itemCount > 0
-              ? {
-                  label: `${t('pos.order.printBill')} · ${money(order.totals.gross)}`,
-                  run: () => setPrint((prev) => ({ kind: 'bill', seq: (prev?.seq ?? 0) + 1 })),
-                  testId: 'print-bill',
-                  icon: <Printer aria-hidden />,
-                }
+              ? access.canPrintBill
+                ? {
+                    label: `${t('pos.order.printBill')} · ${money(order.totals.gross)}`,
+                    short: t('pos.order.printBill'),
+                    run: () => setPrint((prev) => ({ kind: 'bill', seq: (prev?.seq ?? 0) + 1 })),
+                    testId: 'print-bill',
+                    icon: <Printer aria-hidden />,
+                  }
+                : {
+                    // Waiters print the order only: no prices, VAT or total.
+                    label: t('pos.order.printOrder'),
+                    short: t('pos.order.printOrder'),
+                    run: () => setPrint((prev) => ({ kind: 'slip', seq: (prev?.seq ?? 0) + 1 })),
+                    testId: 'print-order',
+                    icon: <Printer aria-hidden />,
+                  }
               : null;
 
         const receiptProps = {
@@ -310,7 +324,7 @@ function TableOrder({
                 </a>
                 <Button className="min-h-12 gap-2" disabled={busy} onClick={main.run}>
                   {main.icon}
-                  {main.testId === 'print-bill' ? t('pos.order.printBill') : t('pos.order.send')}
+                  {main.short}
                 </Button>
               </div>
             )}
@@ -322,6 +336,15 @@ function TableOrder({
                     ticket={print.ticket}
                     tableName={table.name}
                     orderNumber={print.orderNumber}
+                  />
+                ) : print.kind === 'slip' ? (
+                  <OrderSlip
+                    key={print.seq}
+                    organizationName={organizationName}
+                    tableName={table.name}
+                    orderNumber={order?.number ?? ''}
+                    lines={bill}
+                    printedAt={new Date(now)}
                   />
                 ) : (
                   <div key={print.seq} data-testid="printed-bill">

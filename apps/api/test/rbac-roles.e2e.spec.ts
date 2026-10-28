@@ -81,6 +81,7 @@ describe('roles API', () => {
       'pos.orders.take',
       'pos.orders.void',
       'pos.orders.close',
+      'pos.bills.print',
     ]);
     expect(data[3]?.permissions).toEqual([
       'platform.settings.read',

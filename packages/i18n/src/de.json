@@ -683,5 +683,9 @@
   "pos.areas.none": "Kein Bereich",
   "pos.areas.name": "Name",
   "pos.areas.nameRequired": "Gib einen Namen ein.",
-  "pos.areas.empty": "Noch keine Tische in diesem Bereich."
+  "pos.areas.empty": "Noch keine Tische in diesem Bereich.",
+  "pos.permissions.billsPrint": "Rechnungen mit Preisen drucken",
+  "pos.order.printOrder": "Bestellung drucken",
+  "pos.slip.title": "Bestellung",
+  "pos.permissionAreas.bills": "Rechnungen"
 }

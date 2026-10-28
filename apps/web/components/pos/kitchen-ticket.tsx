@@ -1,6 +1,7 @@
 'use client';
 
 import type { KitchenTicket } from '@durby/shared';
+import type { BillLine } from '../../lib/pos/format';
 import { type ReactNode, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useT } from '../../app/labels-provider';
@@ -65,6 +66,60 @@ export function KitchenTicketView({
           </li>
         ))}
       </ul>
+    </article>
+  );
+}
+
+/**
+ * The order as waiters print it (docs/modules/pos.md → Printing): what the table has ordered, combined
+ * across tickets, with quantities and notes. No prices, VAT or totals: the bill with amounts is for
+ * those holding `pos.bills.print`.
+ */
+export function OrderSlip({
+  organizationName,
+  tableName,
+  orderNumber,
+  lines,
+  printedAt,
+}: {
+  organizationName: string;
+  tableName: string;
+  orderNumber: string;
+  lines: BillLine[];
+  printedAt: Date;
+}) {
+  const t = useT();
+  const time = new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(printedAt);
+  const count = lines.reduce((n, l) => n + l.quantity, 0);
+  return (
+    <article
+      className="flex flex-col gap-2 p-2 font-mono text-sm text-foreground"
+      data-testid="order-slip"
+    >
+      <header className="flex flex-col items-center gap-0.5 border-b border-dashed border-border pb-2 text-center">
+        <p className="font-bold">{organizationName}</p>
+        <p>{t('pos.slip.title')}</p>
+        <p className="text-lg font-bold">{t('pos.ticket.table', { table: tableName })}</p>
+        <p>
+          {t('pos.ticket.order', { number: orderNumber })} · {time}
+        </p>
+      </header>
+      <ul className="flex flex-col gap-1">
+        {lines.map((line) => (
+          <li key={line.key}>
+            <p className="font-semibold">
+              {t('pos.order.lineQuantity', { quantity: String(line.quantity), name: line.name })}
+            </p>
+            {line.note && <p>{line.note}</p>}
+          </li>
+        ))}
+      </ul>
+      <p className="border-t border-dashed border-border pt-2 text-center">
+        {t('pos.order.itemCount', { count: String(count) })}
+      </p>
     </article>
   );
 }

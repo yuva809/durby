@@ -36,6 +36,8 @@ export const PERMISSIONS = {
   'pos.orders.take': { scope: 'location', label: 'pos.permissions.ordersTake' },
   'pos.orders.void': { scope: 'location', label: 'pos.permissions.ordersVoid' },
   'pos.orders.close': { scope: 'location', label: 'pos.permissions.ordersClose' },
+  // The bill with prices; waiters print the order only (docs/modules/pos.md → Printing).
+  'pos.bills.print': { scope: 'location', label: 'pos.permissions.billsPrint' },
 } as const satisfies Record<string, PermissionDefinition>;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -77,6 +79,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.take': 'grant',
     'pos.orders.void': 'grant',
     'pos.orders.close': 'grant',
+    'pos.bills.print': 'grant',
   },
   manager: {
     'platform.org.manage': 'deny',
@@ -97,6 +100,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.take': 'grant',
     'pos.orders.void': 'grant',
     'pos.orders.close': 'grant',
+    'pos.bills.print': 'grant',
   },
   staff: {
     'platform.org.manage': 'deny',
@@ -117,6 +121,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.take': 'deny',
     'pos.orders.void': 'deny',
     'pos.orders.close': 'deny',
+    'pos.bills.print': 'deny',
   },
   // Table service (ADR 0016): takes orders at the tables of their locations.
   waiter: {
@@ -138,6 +143,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.take': 'grant',
     'pos.orders.void': 'deny',
     'pos.orders.close': 'grant',
+    'pos.bills.print': 'deny',
   },
   // Table service (ADR 0016): the billing counter.
   cashier: {
@@ -159,6 +165,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.take': 'deny',
     'pos.orders.void': 'deny',
     'pos.orders.close': 'grant',
+    'pos.bills.print': 'grant',
   },
 };
 

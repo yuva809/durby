@@ -683,5 +683,9 @@
   "pos.areas.none": "No area",
   "pos.areas.name": "Name",
   "pos.areas.nameRequired": "Enter a name.",
-  "pos.areas.empty": "No tables in this area yet."
+  "pos.areas.empty": "No tables in this area yet.",
+  "pos.permissions.billsPrint": "Print bills with prices",
+  "pos.order.printOrder": "Print order",
+  "pos.slip.title": "Order",
+  "pos.permissionAreas.bills": "Bills"
 }

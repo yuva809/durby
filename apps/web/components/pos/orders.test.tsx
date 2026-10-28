@@ -286,7 +286,7 @@ describe('OrderPage (till)', () => {
     expect(screen.queryByTestId('send-to-kitchen')).toBeNull();
   });
 
-  it('combines sent items on the bill and prints it, marked as not a receipt', async () => {
+  it('combines sent items; a waiter prints the order only, without amounts', async () => {
     signedInAs('waiter');
     const twice: Order = {
       ...ORDER,
@@ -317,22 +317,30 @@ describe('OrderPage (till)', () => {
     await userEvent.click(within(lines[0]!).getByRole('button'));
     expect(screen.queryByTestId('void-items')).toBeNull();
 
-    await userEvent.click(screen.getByTestId('print-bill'));
+    expect(screen.queryByTestId('print-bill')).toBeNull();
+    await userEvent.click(screen.getByTestId('print-order'));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
-    const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
-    expect(within(printed).getByText('This is not a receipt.')).toBeTruthy();
-    expect(within(printed).getByTestId('order-total').textContent).toBe('€20.70');
+    const slip = within(document.getElementById('print-root')!).getByTestId('order-slip');
+    expect(within(slip).getByText('3 × Soup')).toBeTruthy();
+    expect(within(slip).getByText('Table T1')).toBeTruthy();
+    // No payment details: no amounts, VAT or totals.
+    expect(slip.textContent).not.toMatch(/€|VAT|TOTAL|receipt/i);
     expect(screen.getByTestId('close-order')).toBeTruthy();
   });
 
-  it('lets a cashier see and print the bill without the menu', async () => {
+  it('lets a cashier see and print the bill with prices, without the menu', async () => {
     signedInAs('cashier');
     api(withOrder(ORDER));
     render(<OrderPage tableId={TABLE.id} />);
     await screen.findAllByTestId('bill-line');
     expect(screen.queryAllByTestId('menu-product')).toEqual([]);
     expect(screen.queryByTestId('send-to-kitchen')).toBeNull();
-    expect(screen.getByTestId('print-bill')).toBeTruthy();
+    expect(screen.queryByTestId('print-order')).toBeNull();
+    await userEvent.click(screen.getByTestId('print-bill'));
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
+    expect(within(printed).getByText('This is not a receipt.')).toBeTruthy();
+    expect(within(printed).getByTestId('order-total').textContent).toBe('€13.80');
   });
 
   it('focuses the menu search with "/"', async () => {

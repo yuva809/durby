@@ -49,6 +49,7 @@ describe('system roles', () => {
       'platform.settings.read',
       'platform.users.invite',
       'platform.users.read',
+      'pos.bills.print',
       'pos.orders.close',
       'pos.orders.read',
       'pos.orders.take',
@@ -76,6 +77,7 @@ describe('system roles', () => {
     expect([...systemRolePermissions('cashier')].sort()).toEqual([
       'catalog.products.read',
       'platform.settings.read',
+      'pos.bills.print',
       'pos.orders.close',
       'pos.orders.read',
       'pos.tables.read',
