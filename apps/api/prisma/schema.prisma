@@ -103,6 +103,7 @@ model Organization {
   posOrders            PosOrder[]
   posKitchenTickets    PosKitchenTicket[]
   posOrderLines        PosOrderLine[]
+  diningAreas          DiningArea[]
 
   @@index([partnerId])
   @@index([planId])
@@ -137,6 +138,7 @@ model Location {
   settingValues SettingValue[]
   diningTables  DiningTable[]
   posOrders     PosOrder[]
+  diningAreas   DiningArea[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -732,7 +734,9 @@ model DiningTable {
   locationId   String           @map("location_id") @db.Uuid
   name         String
   seats        Int
+  /// The area's name, kept equal to `dining_areas.name` while older releases read it (expand phase, ADR 0004).
   area         String?
+  areaId       String?          @map("area_id") @db.Uuid
   /// How the table is drawn on the floor and tables pages.
   shape        DiningTableShape @default(square)
   color        DiningTableColor @default(neutral)
@@ -742,10 +746,12 @@ model DiningTable {
   updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   location     Location         @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  diningArea   DiningArea?      @relation(fields: [tenantId, locationId, areaId], references: [tenantId, locationId, id], onDelete: Restrict, onUpdate: Restrict)
   orders       PosOrder[]
 
   @@unique([tenantId, id])
   @@index([tenantId, locationId])
+  @@index([tenantId, areaId])
   @@map("dining_tables")
 }
 
@@ -860,4 +866,23 @@ enum DiningTableColor {
   teal
 
   @@map("dining_table_color")
+}
+
+/// A part of a location's floor (docs/modules/pos.md → Areas): "Terrace", "Bar". Deleted only while no table uses it.
+model DiningArea {
+  id           String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String        @map("tenant_id") @db.Uuid
+  locationId   String        @map("location_id") @db.Uuid
+  name         String
+  sortOrder    Int           @default(0) @map("sort_order")
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location     Location      @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  tables       DiningTable[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, locationId, id])
+  @@unique([tenantId, locationId, name])
+  @@map("dining_areas")
 }

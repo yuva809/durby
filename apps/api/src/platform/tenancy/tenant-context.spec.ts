@@ -83,6 +83,7 @@ describe('TENANT_MODELS', () => {
     expect([...TENANT_MODELS].sort()).toEqual([
       'AuditLog',
       'Brand',
+      'DiningArea',
       'DiningTable',
       'IdempotencyKey',
       'Invitation',

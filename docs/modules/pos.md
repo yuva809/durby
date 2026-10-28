@@ -73,6 +73,39 @@ Labels: `pos.errors.<camelCase>`.
 `/pos/tables` (nav: Modules → Tables, feature `pos`, permission `pos.tables.read`): location picker, list of tables;
 create/edit/archive only where the user holds `pos.tables.manage` for the selected location.
 
+## Areas
+
+A location's floor is divided into **areas** ("Dining room", "Terrace", "Bar"). Areas are records of their own
+(`dining_areas`): they exist before any table is put in them, can be renamed in one place and are deleted only while
+no table uses them (also no table out of service). A table has at most one area, always at its own location.
+
+| Table           | Columns                                                                           | Notes                                                                                        |
+| --------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `dining_areas`  | `id`, `tenant_id`, `location_id`, `name` (trimmed 1–50), `sort_order`, timestamps | `UNIQUE (tenant_id, location_id, name)`; RLS                                                 |
+| `dining_tables` | + `area_id`                                                                       | FK `(tenant_id, location_id, area_id)` → `dining_areas`: the area is at the table's location |
+
+**Expand/contract (ADR 0004).** Areas used to be the free text `dining_tables.area`. The `…_dining_areas` migration
+created one area per distinct `(location, area)` text and pointed the tables at it. The text column stays for now and
+the api keeps it equal to the area's name (table create/update, area rename), so the previous release still shows
+correct areas after a rollback. A later contract migration drops it (docs/plan → Contract migrations).
+
+| Method + path           | Permission                                 | Idempotency                 | Body / query                                        |
+| ----------------------- | ------------------------------------------ | --------------------------- | --------------------------------------------------- |
+| `GET /pos/areas`        | `pos.tables.read` (filters by location)    |                             | `?locationId=`; each with `tableCount` (in service) |
+| `POST /pos/areas`       | `pos.tables.manage` at `locationId`        | `completion: 'transaction'` | `{ locationId, name, sortOrder? }`                  |
+| `PATCH /pos/areas/:id`  | `pos.tables.manage` at the area's location | response                    | `{ name?, sortOrder? }`                             |
+| `DELETE /pos/areas/:id` | `pos.tables.manage` at the area's location | response                    | 409 `pos.area_not_empty` while tables use it        |
+
+Tables take `areaId` (or `null`) instead of the area text; responses have `areaId` and `area` (the name).
+Errors: `pos.area_not_found` (404: unknown, another tenant's, another location's for a table, or a location the
+caller can't read), `pos.area_name_taken` (409), `pos.area_not_empty` (409). Audit: `pos.dining_area.created`,
+`.updated`, `.deleted` (entity `dining_area`: `id`, `locationId`, `name`, `sortOrder`); `dining_table` snapshots add
+`areaId`.
+
+**Web.** Table management is its own page, **`/tables`** (nav "Tables", feature `pos`, `pos.tables.read`), apart from
+the POS screens. Sections are the areas in their order (empty ones too), then "No area"; each area has + add a table
+there, rename and delete (disabled with a hint while it has tables); the header has Add area and Add table.
+
 ## Step 3: orders and kitchen tickets
 
 **One open order per table.** A waiter picks a table, builds a cart in the browser and **sends it to the kitchen**:

@@ -10,6 +10,7 @@ export * from './api/labels';
 export * from './api/locations';
 export * from './api/numbering';
 export * from './api/organization';
+export * from './api/pos-areas';
 export * from './api/pos-orders';
 export * from './api/pos-tables';
 export * from './api/rbac';

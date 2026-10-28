@@ -9,7 +9,12 @@ import type {
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
 import { AccessService } from '../../platform/rbac';
-import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../../platform/tenancy';
+import {
+  TENANT_PRISMA,
+  TenantContext,
+  type TenantPrismaClient,
+  type TenantTransactionClient,
+} from '../../platform/tenancy';
 import { isUniqueViolation, posErrors } from './pos-errors';
 
 const TABLE_SELECT = {
@@ -17,6 +22,7 @@ const TABLE_SELECT = {
   locationId: true,
   name: true,
   seats: true,
+  areaId: true,
   area: true,
   shape: true,
   color: true,
@@ -70,13 +76,15 @@ export class TablesService {
     await this.access.assert('pos.tables.manage', { locationId: body.locationId });
     return this.unique(() =>
       this.db.$transaction(async (tx) => {
+        const area = body.areaId ? await areaAt(tx, body.areaId, body.locationId) : null;
         const row = await tx.diningTable.create({
           data: {
             tenantId,
             locationId: body.locationId,
             name: body.name,
             seats: body.seats,
-            area: body.area || null,
+            areaId: area?.id ?? null,
+            area: area?.name ?? null,
             shape: body.shape ?? 'square',
             color: body.color ?? 'neutral',
             sortOrder: body.sortOrder ?? 0,
@@ -110,10 +118,17 @@ export class TablesService {
       this.db.$transaction(async (tx) => {
         const current = await tx.diningTable.findUnique({ where: { id }, select: TABLE_SELECT });
         if (!current) throw posErrors.tableNotFound();
+        const area =
+          body.areaId === undefined
+            ? { id: current.areaId, name: current.area }
+            : body.areaId === null
+              ? { id: null, name: null }
+              : await areaAt(tx, body.areaId, current.locationId);
         const data = {
           name: body.name ?? current.name,
           seats: body.seats ?? current.seats,
-          area: body.area === undefined ? current.area : body.area || null,
+          areaId: area.id,
+          area: area.name,
           shape: body.shape ?? current.shape,
           color: body.color ?? current.color,
           sortOrder: body.sortOrder ?? current.sortOrder,
@@ -144,6 +159,16 @@ export class TablesService {
       throw error;
     }
   }
+}
+
+/** The area, if it exists here and is at `locationId` (a table's area is at its location). */
+async function areaAt(tx: TenantTransactionClient, areaId: string, locationId: string) {
+  const area = await tx.diningArea.findUnique({
+    where: { id: areaId },
+    select: { id: true, name: true, locationId: true },
+  });
+  if (!area || area.locationId !== locationId) throw posErrors.areaNotFound();
+  return area;
 }
 
 /** `archived`: true archives (keeping the first archive time), false restores, absent keeps. */

@@ -83,8 +83,11 @@ export function ConfirmAction({
   run,
   onDone,
   testId,
+  triggerIcon,
 }: {
   trigger: string;
+  /** An icon-only trigger; `trigger` becomes its accessible name. */
+  triggerIcon?: ReactNode;
   title: string;
   description: string;
   confirm: string;
@@ -119,9 +122,15 @@ export function ConfirmAction({
       }}
     >
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" data-testid={testId}>
-          {trigger}
-        </Button>
+        {triggerIcon ? (
+          <Button variant="outline" size="icon" aria-label={trigger} data-testid={testId}>
+            {triggerIcon}
+          </Button>
+        ) : (
+          <Button variant="destructive" data-testid={testId}>
+            {trigger}
+          </Button>
+        )}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogTitle>{title}</AlertDialogTitle>

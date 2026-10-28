@@ -25,6 +25,15 @@ export const posErrors = {
     ),
   lineNotFound: () =>
     new ApiError(HttpStatus.NOT_FOUND, 'pos.line_not_found', 'Not a sent item of this order.'),
+  areaNotFound: () => new ApiError(HttpStatus.NOT_FOUND, 'pos.area_not_found', 'Area not found.'),
+  areaNameTaken: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.area_name_taken',
+      'This location already has an area with this name.',
+    ),
+  areaNotEmpty: () =>
+    new ApiError(HttpStatus.CONFLICT, 'pos.area_not_empty', 'The area still has tables.'),
   voidExceeds: (lineId: string) =>
     new ApiError(HttpStatus.CONFLICT, 'pos.void_exceeds', 'More than is left of the item.', {
       lineId,

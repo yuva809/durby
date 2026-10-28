@@ -102,8 +102,8 @@ describe('activeNavItem', () => {
     ['/inventory/items/1', 'inventory'],
     ['/inventoryx', undefined],
     ['/pos', 'pos'],
-    ['/pos/tables', 'tables'],
-    ['/pos/tables/x', 'tables'],
+    ['/pos/order/x', 'pos'],
+    ['/tables', 'tables'],
     ['/unknown', undefined],
   ])('%s → %s', (path, id) => {
     expect(activeNavItem(NAV_ITEMS, path)?.id).toBe(id);

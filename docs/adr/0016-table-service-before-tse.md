@@ -49,6 +49,11 @@ Specs: [catalog](../modules/catalog.md), [pos](../modules/pos.md).
    User ids on orders have no foreign key (users are private to platform/auth) and are never returned, so tickets
    don't name the waiter.
 
+9. **Areas are records, managed on a Tables page of their own.** `dining_areas` per location replace the free-text
+   `dining_tables.area`, so an area exists without tables, renames once and can't be deleted while used. The text
+   column is kept in sync during the expand phase and dropped by a later contract migration (ADR 0004). Table
+   management moves from `/pos/tables` to `/tables`; the POS floor and till are for service only.
+
 ## Consequences
 
 - Tenants in Germany can run table service with Durby but still need their existing cash register for payment until

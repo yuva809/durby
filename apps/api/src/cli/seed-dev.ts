@@ -1,6 +1,6 @@
 import type { INestApplicationContext } from '@nestjs/common';
 import { CatalogService } from '../modules/catalog';
-import { TablesService } from '../modules/pos';
+import { AreasService, TablesService } from '../modules/pos';
 import { auditActor } from '../platform/audit';
 import { ProvisioningService } from '../platform/provisioning';
 import { APP_CONFIG, type AppConfig } from '../platform/config';
@@ -124,6 +124,7 @@ async function seedTableService(
   const db = app.get<TenantPrismaClient>(TENANT_PRISMA);
   const catalog = app.get(CatalogService);
   const tables = app.get(TablesService);
+  const areas = app.get(AreasService);
   const actor = auditActor.system('cli.seed_dev');
   // As the owner, so the per-location access checks of TablesService pass; audited as the seed.
   await app.get(TenantContext).run({ tenantId, userId: ownerId }, async () => {
@@ -145,14 +146,23 @@ async function seedTableService(
         await catalog.createProduct({ categoryId: category.id, name, price, taxRate }, actor);
       }
     }
+    const dining = await areas.create(
+      { locationId: location.id, name: 'Dining room', sortOrder: 0 },
+      actor,
+    );
+    const terrace = await areas.create(
+      { locationId: location.id, name: 'Terrace', sortOrder: 1 },
+      actor,
+    );
     for (const [index, name] of DEV_TABLE_SERVICE.tables.entries()) {
+      const outside = name.startsWith('Terrace');
       await tables.create(
         {
           locationId: location.id,
           name,
-          seats: name.startsWith('Terrace') ? 2 : 4,
+          seats: outside ? 2 : 4,
           sortOrder: index,
-          ...(name.startsWith('Terrace') ? { area: 'Terrace' } : {}),
+          areaId: outside ? terrace.id : dining.id,
         },
         actor,
       );

@@ -82,7 +82,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     id: 'tables',
-    href: '/pos/tables',
+    href: '/tables',
     label: 'pos.nav.tables',
     icon: LayoutGrid,
     group: 'modules',

@@ -3,12 +3,11 @@ import { z } from 'zod';
 /** Request and response bodies of /api/v1/pos/tables (docs/modules/pos.md → Step 1). */
 
 export const TABLE_NAME_MAX_LENGTH = 50;
-export const TABLE_AREA_MAX_LENGTH = 50;
 export const TABLE_MAX_SEATS = 100;
 
 const tableName = z.string().trim().min(1).max(TABLE_NAME_MAX_LENGTH);
-/** Empty means none. */
-const area = z.string().trim().max(TABLE_AREA_MAX_LENGTH);
+/** An area at the table's location (/api/v1/pos/areas), or null for none. */
+const areaId = z.uuid().nullable();
 const seats = z.int().min(1).max(TABLE_MAX_SEATS);
 const sortOrder = z.int().min(0).max(1_000_000);
 
@@ -35,6 +34,8 @@ export const diningTableSchema = z.object({
   locationId: z.uuid(),
   name: z.string(),
   seats: z.int(),
+  areaId: z.uuid().nullable(),
+  /** The area's name (null without one). */
   area: z.string().nullable(),
   shape,
   color,
@@ -46,7 +47,7 @@ export const createDiningTableRequestSchema = z.strictObject({
   locationId: z.uuid(),
   name: tableName,
   seats,
-  area: area.optional(),
+  areaId: areaId.optional(),
   shape: shape.optional(),
   color: color.optional(),
   sortOrder: sortOrder.optional(),
@@ -56,7 +57,7 @@ export const updateDiningTableRequestSchema = z
   .strictObject({
     name: tableName.optional(),
     seats: seats.optional(),
-    area: area.optional(),
+    areaId: areaId.optional(),
     shape: shape.optional(),
     color: color.optional(),
     sortOrder: sortOrder.optional(),
@@ -92,6 +93,9 @@ export const POS_ERROR_CODES = [
   'pos.product_unavailable',
   'pos.line_not_found',
   'pos.void_exceeds',
+  'pos.area_not_found',
+  'pos.area_name_taken',
+  'pos.area_not_empty',
 ] as const;
 
 export type PosErrorCode = (typeof POS_ERROR_CODES)[number];

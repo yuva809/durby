@@ -1,6 +1,11 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { diningTableListResponseSchema, diningTableSchema, type PlanKey } from '@durby/shared';
+import {
+  diningAreaSchema,
+  diningTableListResponseSchema,
+  diningTableSchema,
+  type PlanKey,
+} from '@durby/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { v7 as uuidv7 } from 'uuid';
@@ -57,6 +62,11 @@ describe('/api/v1/pos/tables', () => {
       key,
     ).send(body as object);
 
+  const post = (token: string, path: string, body: unknown) =>
+    withIdempotencyKey(request(server).post(`/api/v1${path}`).auth(token, { type: 'bearer' })).send(
+      body as object,
+    );
+
   const patch = (token: string, id: string, body: unknown) =>
     withIdempotencyKey(
       request(server).patch(`/api/v1/pos/tables/${id}`).auth(token, { type: 'bearer' }),
@@ -80,18 +90,32 @@ describe('/api/v1/pos/tables', () => {
   it('creates, lists per location in sort order, edits and archives', async () => {
     const { org, token } = await orgWith('owner');
     const [l1, l2] = org.locations;
+    const terrace = diningAreaSchema.parse(
+      (await post(token, '/pos/areas', { locationId: l1, name: 'Terrace' }).expect(201)).body,
+    );
     const t2 = await table(token, l1, { name: 'T2', sortOrder: 2 });
-    const t1 = await table(token, l1, { name: ' T1 ', seats: 2, area: ' Terrace ', sortOrder: 1 });
-    expect(t1).toMatchObject({ name: 'T1', seats: 2, area: 'Terrace', locationId: l1 });
+    const t1 = await table(token, l1, {
+      name: ' T1 ',
+      seats: 2,
+      areaId: terrace.id,
+      sortOrder: 1,
+    });
+    expect(t1).toMatchObject({
+      name: 'T1',
+      seats: 2,
+      areaId: terrace.id,
+      area: 'Terrace',
+      locationId: l1,
+    });
     await table(token, l2, { name: 'Bar 1' });
 
     expect(await names(token, `?locationId=${l1}`)).toEqual(['T1', 'T2']);
     expect(await names(token)).toEqual(['Bar 1', 'T1', 'T2']);
 
     const edited = diningTableSchema.parse(
-      (await patch(token, t1.id, { seats: 6, area: '' }).expect(200)).body,
+      (await patch(token, t1.id, { seats: 6, areaId: null }).expect(200)).body,
     );
-    expect(edited).toMatchObject({ seats: 6, area: null });
+    expect(edited).toMatchObject({ seats: 6, areaId: null, area: null });
 
     await patch(token, t2.id, { archived: true }).expect(200);
     expect(await names(token, `?locationId=${l1}`)).toEqual(['T1']);
@@ -228,6 +252,7 @@ describe('/api/v1/pos/tables', () => {
       locationId: org.locations[0],
       name: 'T1',
       seats: 4,
+      areaId: null,
       area: null,
       shape: 'square',
       color: 'neutral',

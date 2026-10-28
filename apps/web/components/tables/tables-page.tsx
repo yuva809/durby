@@ -1,10 +1,11 @@
 'use client';
 
 import {
+  AREA_NAME_MAX_LENGTH,
+  type DiningArea,
   type DiningTable,
   type FloorTable,
   type LocationSummary,
-  TABLE_AREA_MAX_LENGTH,
   TABLE_COLORS,
   TABLE_MAX_SEATS,
   TABLE_NAME_MAX_LENGTH,
@@ -12,11 +13,20 @@ import {
   type TableColor,
   type TableShape,
 } from '@durby/shared';
-import { Eye, EyeOff, Pencil, Search } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
-import { createTable, loadFloor, loadTables, updateTable } from '../../lib/pos/api';
+import {
+  createArea,
+  createTable,
+  deleteArea,
+  loadAreas,
+  loadFloor,
+  loadTables,
+  updateArea,
+  updateTable,
+} from '../../lib/pos/api';
 import { durationLabel, minutesSince } from '../../lib/pos/format';
 import { useNow } from '../../lib/pos/use-now';
 import { useActionKey } from '../../lib/use-action-key';
@@ -24,13 +34,13 @@ import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
 import { cn } from '../../lib/utils';
 import { Field, FormDialog } from '../form-dialog';
+import { TableIcon, tableColors } from '../pos/table-icon';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
-import { Loaded, NoAccess } from '../users/common';
-import { TableIcon, tableColors } from './table-icon';
+import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 
 interface Access {
   canManage: boolean;
@@ -39,8 +49,9 @@ interface Access {
 }
 
 /**
- * /pos/tables: the floor plan admin (docs/modules/pos.md → Web). Tables per area with their look
- * and status; "out of service" tables are the archived ones.
+ * /tables: the floor plan admin (docs/modules/pos.md → Web), apart from the POS screens. Areas with
+ * their tables, each drawn in its look with its status; "out of service" tables are the archived
+ * ones.
  */
 export function TablesPage() {
   const { session } = useAuth();
@@ -86,11 +97,13 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
   const [query, setQuery] = useState('');
   const [showOut, setShowOut] = useState(false);
   const [tables, reloadTables] = useResource(locationId, () => loadTables(store, locationId, true));
+  const [areas, reloadAreas] = useResource(locationId, () => loadAreas(store, locationId));
   const [floor, reloadFloor] = useResource(access.canSeeOrders ? locationId : null, () =>
     loadFloor(store, locationId),
   );
   const reload = () => {
     reloadTables();
+    reloadAreas();
     if (access.canSeeOrders) reloadFloor();
   };
   const now = useNow(30_000);
@@ -99,10 +112,10 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
     floor.status === 'ready' ? floor.data.map((x) => [x.id, x.order] as const) : [],
   );
   const all = tables.status === 'ready' ? tables.data : [];
+  const areaList = areas.status === 'ready' ? areas.data : [];
   const inService = all.filter((x) => x.archivedAt === null);
   const outOfService = all.length - inService.length;
   const occupied = inService.filter((x) => orders.get(x.id)).length;
-  const areas = [...new Set(all.map((x) => x.area).filter((a): a is string => a !== null))];
 
   return (
     <div className="flex flex-col gap-6">
@@ -130,7 +143,10 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
             </div>
           )}
           {access.canManage && (
-            <TableDialog locationId={locationId} areas={areas} onDone={reload} />
+            <>
+              <AreaDialog locationId={locationId} onDone={reload} />
+              <TableDialog locationId={locationId} areas={areaList} onDone={reload} />
+            </>
           )}
         </div>
       </div>
@@ -188,26 +204,24 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
 
       <Loaded resource={tables} reload={reloadTables}>
         {(list) => (
-          <AreaSections
-            tables={list.filter(
-              (x) =>
-                (showOut || x.archivedAt === null) && matches(x, query.trim().toLocaleLowerCase()),
+          <Loaded resource={areas} reload={reloadAreas}>
+            {(areaRows) => (
+              <AreaSections
+                areas={areaRows}
+                tables={list}
+                shown={(x) => showOut || x.archivedAt === null}
+                needle={query.trim().toLocaleLowerCase()}
+                orders={orders}
+                now={now}
+                access={access}
+                onDone={reload}
+              />
             )}
-            orders={orders}
-            now={now}
-            access={access}
-            areas={areas}
-            onDone={reload}
-          />
+          </Loaded>
         )}
       </Loaded>
     </div>
   );
-}
-
-function matches(table: DiningTable, needle: string): boolean {
-  if (needle === '') return true;
-  return [table.name, table.area ?? ''].some((s) => s.toLocaleLowerCase().includes(needle));
 }
 
 function Kpi({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
@@ -221,57 +235,179 @@ function Kpi({ label, value, highlight }: { label: string; value: number; highli
   );
 }
 
+/** The areas in their order (empty ones too), then tables without an area. */
 function AreaSections({
+  areas,
   tables,
+  shown,
+  needle,
   orders,
   now,
   access,
-  areas,
   onDone,
 }: {
+  areas: DiningArea[];
   tables: DiningTable[];
+  shown: (table: DiningTable) => boolean;
+  needle: string;
   orders: ReadonlyMap<string, FloorTable['order'] | undefined>;
   now: number;
   access: Access;
-  areas: string[];
   onDone: () => void;
 }) {
   const t = useT();
-  if (tables.length === 0)
+  const matches = (name: string) => needle === '' || name.toLocaleLowerCase().includes(needle);
+  const sections = [
+    ...areas.map((area) => ({ area, all: tables.filter((x) => x.areaId === area.id) })),
+    { area: null, all: tables.filter((x) => x.areaId === null) },
+  ]
+    .map(({ area, all }) => {
+      const areaMatches = area !== null && matches(area.name);
+      const list = all.filter(shown).filter((x) => areaMatches || matches(x.name));
+      return { area, all, list, visible: area ? areaMatches || list.length > 0 : list.length > 0 };
+    })
+    .filter((s) => s.visible);
+
+  if (sections.length === 0) {
     return <p className="text-muted-foreground">{t('pos.tablesPage.empty')}</p>;
-  const groups = new Map<string, DiningTable[]>();
-  for (const table of tables) {
-    const area = table.area ?? '';
-    groups.set(area, [...(groups.get(area) ?? []), table]);
   }
   return (
     <div className="flex flex-col gap-8">
-      {[...groups].map(([area, list]) => (
-        <section key={area} className="flex flex-col gap-3" data-testid="table-area">
-          <h2 className="flex items-baseline gap-2">
-            <span className="text-lg font-semibold">{area || t('pos.floor.noArea')}</span>
-            <span className="text-sm text-muted-foreground">
-              {list.length === 1
-                ? t('pos.tablesPage.tableCountOne')
-                : t('pos.tablesPage.tableCount', { count: String(list.length) })}
-            </span>
-          </h2>
-          <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {list.map((table) => (
-              <TableCard
-                key={table.id}
-                table={table}
-                order={orders.get(table.id) ?? null}
-                now={now}
-                access={access}
-                areas={areas}
-                onDone={onDone}
-              />
-            ))}
-          </ul>
+      {sections.map(({ area, all, list }) => (
+        <section key={area?.id ?? 'none'} className="flex flex-col gap-3" data-testid="table-area">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-baseline gap-2">
+              <span className="text-lg font-semibold">{area?.name ?? t('pos.areas.none')}</span>
+              <span className="text-sm text-muted-foreground">
+                {list.length === 1
+                  ? t('pos.tablesPage.tableCountOne')
+                  : t('pos.tablesPage.tableCount', { count: String(list.length) })}
+              </span>
+            </h2>
+            {access.canManage && area && (
+              <div className="flex gap-2" data-testid="area-actions">
+                <TableDialog
+                  locationId={area.locationId}
+                  areas={areas}
+                  defaultArea={area}
+                  onDone={onDone}
+                />
+                <AreaDialog locationId={area.locationId} area={area} onDone={onDone} />
+                <DeleteArea area={area} empty={all.length === 0} onDone={onDone} />
+              </div>
+            )}
+          </div>
+          {list.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('pos.areas.empty')}</p>
+          ) : (
+            <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {list.map((table) => (
+                <TableCard
+                  key={table.id}
+                  table={table}
+                  order={orders.get(table.id) ?? null}
+                  now={now}
+                  access={access}
+                  areas={areas}
+                  onDone={onDone}
+                />
+              ))}
+            </ul>
+          )}
         </section>
       ))}
     </div>
+  );
+}
+
+function DeleteArea({
+  area,
+  empty,
+  onDone,
+}: {
+  area: DiningArea;
+  empty: boolean;
+  onDone: () => void;
+}) {
+  const t = useT();
+  const { store } = useAuth();
+  const action = useActionKey();
+  if (!empty) {
+    // Only an empty area can be deleted (also no table out of service): say why instead.
+    return (
+      <Button
+        variant="outline"
+        size="icon"
+        disabled
+        aria-label={`${t('pos.areas.delete', { name: area.name })}: ${t('pos.areas.notEmptyHint')}`}
+        title={t('pos.areas.notEmptyHint')}
+        data-testid="area-delete"
+      >
+        <Trash2 aria-hidden />
+      </Button>
+    );
+  }
+  return (
+    <ConfirmAction
+      testId="area-delete"
+      trigger={t('pos.areas.delete', { name: area.name })}
+      triggerIcon={<Trash2 aria-hidden />}
+      title={t('pos.areas.deleteTitle', { name: area.name })}
+      description={t('pos.areas.deleteDescription')}
+      confirm={t('pos.areas.deleteConfirm')}
+      run={() => deleteArea(store, action, area.id)}
+      onDone={onDone}
+    />
+  );
+}
+
+/** Add (no `area`) or rename an area. */
+function AreaDialog({
+  locationId,
+  area,
+  onDone,
+}: {
+  locationId: string;
+  area?: DiningArea;
+  onDone: () => void;
+}) {
+  const t = useT();
+  const { store } = useAuth();
+  const action = useActionKey();
+  const id = useId();
+  const [name, setName] = useState('');
+  const [checked, setChecked] = useState(false);
+  const problem = checked && name.trim() === '' ? t('pos.areas.nameRequired') : null;
+  return (
+    <FormDialog
+      trigger={area ? t('pos.areas.rename', { name: area.name }) : t('pos.areas.add')}
+      triggerVariant="outline"
+      triggerIcon={area ? <Pencil aria-hidden /> : undefined}
+      testId={area ? 'area-rename' : 'area-create'}
+      title={t(area ? 'pos.areas.renameTitle' : 'pos.areas.addTitle')}
+      onOpen={() => {
+        setName(area?.name ?? '');
+        setChecked(false);
+      }}
+      submit={() => {
+        setChecked(true);
+        if (name.trim() === '') return null;
+        return area
+          ? updateArea(store, action, area.id, { name: name.trim() })
+          : createArea(store, action, { locationId, name: name.trim() });
+      }}
+      onDone={onDone}
+    >
+      <Field id={`${id}-name`} label={t('pos.areas.name')} problem={problem}>
+        <Input
+          id={`${id}-name`}
+          value={name}
+          maxLength={AREA_NAME_MAX_LENGTH}
+          aria-invalid={problem ? true : undefined}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </Field>
+    </FormDialog>
   );
 }
 
@@ -287,7 +423,7 @@ function TableCard({
   order: FloorTable['order'];
   now: number;
   access: Access;
-  areas: string[];
+  areas: DiningArea[];
   onDone: () => void;
 }) {
   const t = useT();
@@ -295,6 +431,11 @@ function TableCard({
   const action = useActionKey();
   const out = table.archivedAt !== null;
   const status = out ? 'outOfService' : order ? 'occupied' : 'available';
+  const statusLabel = {
+    outOfService: t('pos.tablesPage.status.outOfService'),
+    occupied: t('pos.tablesPage.status.occupied'),
+    available: t('pos.tablesPage.status.available'),
+  }[status];
   const duration = order ? durationLabel(minutesSince(order.openedAt, now)) : null;
 
   async function toggleService() {
@@ -324,7 +465,7 @@ function TableCard({
                 : 'bg-muted text-muted-foreground',
             )}
           >
-            {t(`pos.tablesPage.status.${status}`)}
+            {statusLabel}
           </span>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -346,9 +487,7 @@ function TableCard({
               data-testid={out ? 'table-in-service' : 'table-out-of-service'}
               aria-label={t(
                 out ? 'pos.tablesPage.putInService' : 'pos.tablesPage.takeOutOfService',
-                {
-                  name: table.name,
-                },
+                { name: table.name },
               )}
               onClick={() => void toggleService()}
             >
@@ -363,23 +502,28 @@ function TableCard({
 
 const SEATS = /^\d{1,3}$/;
 
-/** Add (no `table`) or edit a table: name, area, seats and its look. */
+/**
+ * Add (no `table`) or edit a table: name, area, seats and its look. `defaultArea`: adding from an
+ * area's section starts in that area (and the trigger is that section's "+").
+ */
 function TableDialog({
   locationId,
   table,
   areas,
+  defaultArea,
   onDone,
 }: {
   locationId: string;
   table?: DiningTable;
-  areas: string[];
+  areas: DiningArea[];
+  defaultArea?: DiningArea;
   onDone: () => void;
 }) {
   const t = useT();
   const { store } = useAuth();
   const action = useActionKey();
   const id = useId();
-  const [form, setForm] = useState({ name: '', seats: '', area: '' });
+  const [form, setForm] = useState({ name: '', seats: '', areaId: '' });
   const [shape, setShape] = useState<TableShape>('square');
   const [color, setColor] = useState<TableColor>('neutral');
   const [checked, setChecked] = useState(false);
@@ -394,21 +538,26 @@ function TableDialog({
   const shown = (field: keyof typeof problems) => (checked ? problems[field] : null);
   const set = (field: keyof typeof form) => (value: string) =>
     setForm((current) => ({ ...current, [field]: value }));
+  const here = areas.filter((a) => a.locationId === locationId);
+
+  const trigger = table
+    ? t('pos.tablesPage.editNamed', { name: table.name })
+    : defaultArea
+      ? t('pos.areas.addTable', { name: defaultArea.name })
+      : t('pos.tablesPage.create');
 
   return (
     <FormDialog
-      trigger={t(table ? 'pos.tablesPage.editNamed' : 'pos.tablesPage.create', {
-        name: table?.name ?? '',
-      })}
-      triggerVariant={table ? 'outline' : 'default'}
-      triggerIcon={table ? <Pencil aria-hidden /> : undefined}
-      testId={table ? 'table-edit' : 'table-create'}
+      trigger={trigger}
+      triggerVariant={table || defaultArea ? 'outline' : 'default'}
+      triggerIcon={table ? <Pencil aria-hidden /> : defaultArea ? <Plus aria-hidden /> : undefined}
+      testId={table ? 'table-edit' : defaultArea ? 'area-add-table' : 'table-create'}
       title={t(table ? 'pos.tablesPage.editTitle' : 'pos.tablesPage.createTitle')}
       onOpen={() => {
         setForm({
           name: table?.name ?? '',
           seats: table ? String(table.seats) : '4',
-          area: table?.area ?? '',
+          areaId: table ? (table.areaId ?? '') : (defaultArea?.id ?? ''),
         });
         setShape(table?.shape ?? 'square');
         setColor(table?.color ?? 'neutral');
@@ -417,7 +566,13 @@ function TableDialog({
       submit={() => {
         setChecked(true);
         if (problems.name || problems.seats) return null;
-        const body = { name: form.name.trim(), seats, area: form.area.trim(), shape, color };
+        const body = {
+          name: form.name.trim(),
+          seats,
+          areaId: form.areaId === '' ? null : form.areaId,
+          shape,
+          color,
+        };
         return table
           ? updateTable(store, action, table.id, body)
           : createTable(store, action, { locationId, ...body });
@@ -435,18 +590,18 @@ function TableDialog({
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id={`${id}-area`} label={t('pos.fields.area')} problem={null}>
-          <Input
+          <Select
             id={`${id}-area`}
-            list={`${id}-areas`}
-            value={form.area}
-            maxLength={TABLE_AREA_MAX_LENGTH}
-            onChange={(e) => set('area')(e.target.value)}
-          />
-          <datalist id={`${id}-areas`}>
-            {areas.map((a) => (
-              <option key={a} value={a} />
+            value={form.areaId}
+            onChange={(e) => set('areaId')(e.target.value)}
+          >
+            <option value="">{t('pos.areas.none')}</option>
+            {here.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
             ))}
-          </datalist>
+          </Select>
         </Field>
         <Field id={`${id}-seats`} label={t('pos.fields.seats')} problem={shown('seats')}>
           <Input

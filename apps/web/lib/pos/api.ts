@@ -1,5 +1,9 @@
 import {
+  type CreateDiningAreaRequest,
   type CreateDiningTableRequest,
+  type DiningArea,
+  diningAreaListResponseSchema,
+  diningAreaSchema,
   type DiningTable,
   diningTableListResponseSchema,
   diningTableSchema,
@@ -12,6 +16,7 @@ import {
   sendTicketResponseSchema,
   type TableOrderResponse,
   tableOrderResponseSchema,
+  type UpdateDiningAreaRequest,
   type UpdateDiningTableRequest,
   type VoidLinesRequest,
 } from '@durby/shared';
@@ -94,3 +99,30 @@ export const closeOrder = (
   orderId: string,
 ): Promise<Result<Order | null>> =>
   write(store, action, `/api/v1/pos/orders/${orderId}/close`, 'POST', undefined, orderSchema);
+
+/** Calls of the tables page's areas (docs/modules/pos.md → Areas). */
+
+export const loadAreas = (store: Api, locationId: string): Promise<Result<DiningArea[]>> =>
+  read(
+    store,
+    `/api/v1/pos/areas?locationId=${encodeURIComponent(locationId)}`,
+    list(diningAreaListResponseSchema),
+  );
+
+export const createArea = (
+  store: Api,
+  action: ActionKey,
+  body: CreateDiningAreaRequest,
+): Promise<Result<DiningArea | null>> =>
+  write(store, action, '/api/v1/pos/areas', 'POST', body, diningAreaSchema);
+
+export const updateArea = (
+  store: Api,
+  action: ActionKey,
+  id: string,
+  body: UpdateDiningAreaRequest,
+): Promise<Result<DiningArea | null>> =>
+  write(store, action, `/api/v1/pos/areas/${id}`, 'PATCH', body, diningAreaSchema);
+
+export const deleteArea = (store: Api, action: ActionKey, id: string): Promise<Result<null>> =>
+  write(store, action, `/api/v1/pos/areas/${id}`, 'DELETE');
