@@ -20,6 +20,12 @@ export const AUDIT_ENTITY_TYPES = [
   'number_series',
   'number_series_counter',
   'outbox_event',
+  'product_category',
+  'product',
+  'dining_table',
+  'pos_order',
+  'kitchen_ticket',
+  'dining_area',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -128,6 +134,48 @@ export const AUDIT_ACTIONS = {
     entityType: 'outbox_event',
     label: 'platform.audit.actions.outboxEventRetried',
   },
+  'catalog.product_category.created': {
+    entityType: 'product_category',
+    label: 'catalog.audit.actions.productCategoryCreated',
+  },
+  'catalog.product_category.updated': {
+    entityType: 'product_category',
+    label: 'catalog.audit.actions.productCategoryUpdated',
+  },
+  'catalog.product.created': {
+    entityType: 'product',
+    label: 'catalog.audit.actions.productCreated',
+  },
+  'catalog.product.updated': {
+    entityType: 'product',
+    label: 'catalog.audit.actions.productUpdated',
+  },
+  'pos.dining_table.created': {
+    entityType: 'dining_table',
+    label: 'pos.audit.actions.diningTableCreated',
+  },
+  'pos.dining_table.updated': {
+    entityType: 'dining_table',
+    label: 'pos.audit.actions.diningTableUpdated',
+  },
+  'pos.order.opened': { entityType: 'pos_order', label: 'pos.audit.actions.orderOpened' },
+  'pos.order.closed': { entityType: 'pos_order', label: 'pos.audit.actions.orderClosed' },
+  'pos.kitchen_ticket.created': {
+    entityType: 'kitchen_ticket',
+    label: 'pos.audit.actions.kitchenTicketCreated',
+  },
+  'pos.dining_area.created': {
+    entityType: 'dining_area',
+    label: 'pos.audit.actions.diningAreaCreated',
+  },
+  'pos.dining_area.updated': {
+    entityType: 'dining_area',
+    label: 'pos.audit.actions.diningAreaUpdated',
+  },
+  'pos.dining_area.deleted': {
+    entityType: 'dining_area',
+    label: 'pos.audit.actions.diningAreaDeleted',
+  },
 } as const satisfies Record<string, AuditActionDefinition>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -197,4 +245,23 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   number_series_counter: ['id', 'seriesKey', 'period', 'nextValue'],
   /** Never `payload` or `lastError`. `handler`: set when one failed handler job was re-queued. */
   outbox_event: ['id', 'type', 'version', 'attempts', 'deadLetteredAt', 'handler'],
+  product_category: ['id', 'name', 'sortOrder', 'archivedAt'],
+  /** `price`, `taxRate`: decimal strings. Never `description` (free text). */
+  product: ['id', 'categoryId', 'name', 'price', 'taxRate', 'sortOrder', 'archivedAt'],
+  dining_table: [
+    'id',
+    'locationId',
+    'name',
+    'seats',
+    'areaId',
+    'area',
+    'shape',
+    'color',
+    'sortOrder',
+    'archivedAt',
+  ],
+  pos_order: ['id', 'number', 'tableId', 'locationId', 'status', 'closedAt'],
+  /** Never line notes (free text). */
+  kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'lineCount'],
+  dining_area: ['id', 'locationId', 'name', 'sortOrder'],
 } as const satisfies Record<AuditEntityType, readonly string[]>;

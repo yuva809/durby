@@ -26,11 +26,12 @@ describe('number series registry', () => {
     expect(numberSeriesRegistryProblems(NUMBER_SERIES)).toEqual([]);
   });
 
-  it('starts with the phase 1 series', () => {
+  it('has the phase 1 series, then the table service ones', () => {
     expect(NUMBER_SERIES_KEYS).toEqual([
       'inventory.goodsReceipt',
       'inventory.purchaseOrder',
       'billing.invoice',
+      'pos.order',
     ]);
   });
 

@@ -82,6 +82,12 @@ export const FEATURES = {
     dependsOn: [],
     limits: noLimits,
   },
+  catalog: {
+    label: 'platform.features.catalog.name',
+    description: 'platform.features.catalog.description',
+    dependsOn: [],
+    limits: noLimits,
+  },
 } as const satisfies Record<string, FeatureDefinition>;
 
 export type FeatureKey = keyof typeof FEATURES;

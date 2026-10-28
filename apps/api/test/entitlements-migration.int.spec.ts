@@ -6,6 +6,7 @@ import { Client, type DatabaseError } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { findReadOnlyGaps } from './support/read-only';
+import { prismaCli } from './support/prisma-cli';
 
 const apiRoot = join(__dirname, '..');
 const migrationsDir = join(apiRoot, 'prisma', 'migrations');
@@ -30,19 +31,23 @@ function withDatabase(url: string, database: string, credentials?: string): stri
 }
 
 function prisma(args: string[], migrationUrl: string): void {
-  execFileSync(join(apiRoot, 'node_modules', '.bin', 'prisma'), args, {
+  execFileSync(process.execPath, [prismaCli(apiRoot), ...args], {
     cwd: apiRoot,
     env: { ...process.env, MIGRATION_DATABASE_URL: migrationUrl },
     stdio: 'pipe',
   });
 }
 
-/** docs/platform/entitlements.md → Seeded plans. */
+/**
+ * docs/platform/entitlements.md → Seeded plans, after every migration: the 1.5 seed plus `catalog`
+ * (added to every plan by the catalog_and_tables migration, ADR 0016).
+ */
 const SEEDED = {
-  inventory: ['inventory', 'inventory.counts', 'inventory.purchasing', 'reports'],
+  inventory: ['catalog', 'inventory', 'inventory.counts', 'inventory.purchasing', 'reports'],
   inventory_billing: [
     'billing',
     'billing.einvoice',
+    'catalog',
     'inventory',
     'inventory.counts',
     'inventory.purchasing',
@@ -52,6 +57,7 @@ const SEEDED = {
     'api.public',
     'billing',
     'billing.einvoice',
+    'catalog',
     'inventory',
     'inventory.counts',
     'inventory.purchasing',
@@ -141,7 +147,7 @@ describe('entitlements migration', () => {
 
       const audit = await db.query(`
         SELECT tenant_id, actor_type::text, actor_system, action, entity_type, entity_id, before, after
-        FROM audit_logs ORDER BY tenant_id`);
+        FROM audit_logs WHERE action = 'platform.organization.plan_changed' ORDER BY tenant_id`);
       expect(audit.rows).toEqual(
         orgs.map((id) => ({
           tenant_id: id,
@@ -152,6 +158,22 @@ describe('entitlements migration', () => {
           entity_id: id,
           before: { id, planId: null },
           after: { id, planId: fullId },
+        })),
+      );
+
+      // catalog_and_tables: one plan-contents row per organization on a changed plan (ADR 0009).
+      const fullBefore = SEEDED.full.filter((key) => key !== 'catalog');
+      const changed = await db.query(`
+        SELECT tenant_id, actor_system, entity_type, entity_id, before, after
+        FROM audit_logs WHERE action = 'platform.plan.features_changed' ORDER BY tenant_id`);
+      expect(changed.rows).toEqual(
+        orgs.map((id) => ({
+          tenant_id: id,
+          actor_system: 'migration',
+          entity_type: 'plan',
+          entity_id: fullId,
+          before: { id: fullId, key: 'full', features: fullBefore },
+          after: { id: fullId, key: 'full', features: SEEDED.full },
         })),
       );
     } finally {

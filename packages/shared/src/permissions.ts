@@ -27,6 +27,17 @@ export const PERMISSIONS = {
   'platform.settings.manage': { scope: 'location', label: 'platform.permissions.settingsManage' },
   'platform.labels.manage': { scope: 'organization', label: 'platform.permissions.labelsManage' },
   'platform.audit.read': { scope: 'organization', label: 'platform.permissions.auditRead' },
+  // Location scope so location-limited members (waiters) can read the organization-wide menu.
+  'catalog.products.read': { scope: 'location', label: 'catalog.permissions.productsRead' },
+  'catalog.products.manage': { scope: 'organization', label: 'catalog.permissions.productsManage' },
+  'pos.tables.read': { scope: 'location', label: 'pos.permissions.tablesRead' },
+  'pos.tables.manage': { scope: 'location', label: 'pos.permissions.tablesManage' },
+  'pos.orders.read': { scope: 'location', label: 'pos.permissions.ordersRead' },
+  'pos.orders.take': { scope: 'location', label: 'pos.permissions.ordersTake' },
+  'pos.orders.void': { scope: 'location', label: 'pos.permissions.ordersVoid' },
+  'pos.orders.close': { scope: 'location', label: 'pos.permissions.ordersClose' },
+  // The bill with prices; waiters print the order only (docs/modules/pos.md → Printing).
+  'pos.bills.print': { scope: 'location', label: 'pos.permissions.billsPrint' },
 } as const satisfies Record<string, PermissionDefinition>;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -38,7 +49,7 @@ export function isPermissionKey(value: string): value is PermissionKey {
 }
 
 /** System roles, created in every organization. Display names are `platform.roles.<key>` labels. */
-export const SYSTEM_ROLES = ['owner', 'admin', 'manager', 'staff'] as const;
+export const SYSTEM_ROLES = ['owner', 'admin', 'manager', 'staff', 'waiter', 'cashier'] as const;
 
 export type SystemRole = (typeof SYSTEM_ROLES)[number];
 
@@ -60,6 +71,15 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'platform.settings.manage': 'grant',
     'platform.labels.manage': 'grant',
     'platform.audit.read': 'grant',
+    'catalog.products.read': 'grant',
+    'catalog.products.manage': 'grant',
+    'pos.tables.read': 'grant',
+    'pos.tables.manage': 'grant',
+    'pos.orders.read': 'grant',
+    'pos.orders.take': 'grant',
+    'pos.orders.void': 'grant',
+    'pos.orders.close': 'grant',
+    'pos.bills.print': 'grant',
   },
   manager: {
     'platform.org.manage': 'deny',
@@ -72,6 +92,15 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'platform.settings.manage': 'deny',
     'platform.labels.manage': 'deny',
     'platform.audit.read': 'deny',
+    'catalog.products.read': 'grant',
+    'catalog.products.manage': 'deny',
+    'pos.tables.read': 'grant',
+    'pos.tables.manage': 'grant',
+    'pos.orders.read': 'grant',
+    'pos.orders.take': 'grant',
+    'pos.orders.void': 'grant',
+    'pos.orders.close': 'grant',
+    'pos.bills.print': 'grant',
   },
   staff: {
     'platform.org.manage': 'deny',
@@ -84,6 +113,59 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'platform.settings.manage': 'deny',
     'platform.labels.manage': 'deny',
     'platform.audit.read': 'deny',
+    'catalog.products.read': 'grant',
+    'catalog.products.manage': 'deny',
+    'pos.tables.read': 'grant',
+    'pos.tables.manage': 'deny',
+    'pos.orders.read': 'deny',
+    'pos.orders.take': 'deny',
+    'pos.orders.void': 'deny',
+    'pos.orders.close': 'deny',
+    'pos.bills.print': 'deny',
+  },
+  // Table service (ADR 0016): takes orders at the tables of their locations.
+  waiter: {
+    'platform.org.manage': 'deny',
+    'platform.users.read': 'deny',
+    'platform.users.invite': 'deny',
+    'platform.users.manage': 'deny',
+    'platform.roles.read': 'deny',
+    'platform.roles.manage': 'deny',
+    'platform.settings.read': 'grant',
+    'platform.settings.manage': 'deny',
+    'platform.labels.manage': 'deny',
+    'platform.audit.read': 'deny',
+    'catalog.products.read': 'grant',
+    'catalog.products.manage': 'deny',
+    'pos.tables.read': 'grant',
+    'pos.tables.manage': 'deny',
+    'pos.orders.read': 'grant',
+    'pos.orders.take': 'grant',
+    'pos.orders.void': 'deny',
+    'pos.orders.close': 'grant',
+    'pos.bills.print': 'deny',
+  },
+  // Table service (ADR 0016): the billing counter.
+  cashier: {
+    'platform.org.manage': 'deny',
+    'platform.users.read': 'deny',
+    'platform.users.invite': 'deny',
+    'platform.users.manage': 'deny',
+    'platform.roles.read': 'deny',
+    'platform.roles.manage': 'deny',
+    'platform.settings.read': 'grant',
+    'platform.settings.manage': 'deny',
+    'platform.labels.manage': 'deny',
+    'platform.audit.read': 'deny',
+    'catalog.products.read': 'grant',
+    'catalog.products.manage': 'deny',
+    'pos.tables.read': 'grant',
+    'pos.tables.manage': 'deny',
+    'pos.orders.read': 'grant',
+    'pos.orders.take': 'deny',
+    'pos.orders.void': 'deny',
+    'pos.orders.close': 'grant',
+    'pos.bills.print': 'grant',
   },
 };
 

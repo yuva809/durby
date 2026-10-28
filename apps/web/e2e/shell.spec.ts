@@ -70,7 +70,7 @@ test('signed-out visitors go to the themed login and come back after signing in'
   await expect(page).toHaveURL(`${DOMAINS.demo}/login?next=%2Finventory`);
   await expect(page.getByTestId('wordmark')).toHaveText('Gastro Demo');
   await page.getByLabel('Email').fill('owner@partner-demo.local');
-  await page.getByLabel('Password').fill('durby-dev-password');
+  await page.getByLabel('Password', { exact: true }).fill('durby-dev-password');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(`${DOMAINS.demo}/inventory`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Stock');

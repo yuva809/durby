@@ -291,6 +291,11 @@ sections below.
 - [ ] **Partner-bound sessions** (ADR 0015 §9; review S5): signing in on a partner domain shows all of a user's
       organizations. With brand-level theming.
 
+## Contract migrations
+
+- [ ] **Drop `dining_tables.area`** (docs/modules/pos.md → Areas): once no deployed release reads the text column
+      (the release after the one that added `dining_areas`), stop writing it and drop it.
+
 ## Before production
 
 Items that must be done before the first production deploy:

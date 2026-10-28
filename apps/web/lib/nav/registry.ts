@@ -3,18 +3,21 @@ import type { FeatureKey, PermissionKey } from '@durby/shared';
 import {
   Building2,
   ClipboardList,
+  ConciergeBell,
   ChartLine,
   CreditCard,
   Hash,
   House,
   Languages,
   Layers,
+  LayoutGrid,
   type LucideIcon,
   Package,
   Receipt,
   ShieldCheck,
   SlidersHorizontal,
   Users,
+  UtensilsCrossed,
 } from 'lucide-react';
 
 export type NavGroup = 'main' | 'modules' | 'settings';
@@ -53,6 +56,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
     feature: 'inventory',
   },
   {
+    id: 'catalog',
+    href: '/catalog',
+    label: 'catalog.nav.title',
+    icon: UtensilsCrossed,
+    group: 'modules',
+    feature: 'catalog',
+    permission: 'catalog.products.read',
+  },
+  {
     id: 'billing',
     href: '/billing',
     label: 'billing.nav.title',
@@ -67,6 +79,25 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: CreditCard,
     group: 'modules',
     feature: 'pos',
+  },
+  {
+    // Table service: the floor and the till per table (docs/modules/pos.md → Web).
+    id: 'service',
+    href: '/service',
+    label: 'pos.nav.service',
+    icon: ConciergeBell,
+    group: 'modules',
+    feature: 'pos',
+    permission: 'pos.orders.read',
+  },
+  {
+    id: 'tables',
+    href: '/tables',
+    label: 'pos.nav.tables',
+    icon: LayoutGrid,
+    group: 'modules',
+    feature: 'pos',
+    permission: 'pos.tables.read',
   },
   {
     id: 'reports',
@@ -157,11 +188,19 @@ export function visibleNav(items: readonly NavItem[], access: NavAccess): NavIte
   );
 }
 
-/** The item for a path: exact match for `/`, prefix match (by segment) for the others. */
+/**
+ * The item for a path: exact match for `/`, prefix match (by segment) for the others; the longest
+ * match wins, so `/pos/tables` is Tables, not POS.
+ */
 export function activeNavItem(items: readonly NavItem[], pathname: string): NavItem | undefined {
-  return items.find((item) =>
-    item.href === '/'
-      ? pathname === '/'
-      : pathname === item.href || pathname.startsWith(`${item.href}/`),
-  );
+  return items
+    .filter((item) =>
+      item.href === '/'
+        ? pathname === '/'
+        : pathname === item.href || pathname.startsWith(`${item.href}/`),
+    )
+    .reduce<NavItem | undefined>(
+      (best, item) => (best && best.href.length >= item.href.length ? best : item),
+      undefined,
+    );
 }

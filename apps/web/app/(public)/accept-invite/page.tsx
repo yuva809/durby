@@ -18,8 +18,12 @@ import {
 import { roleName } from '../../../lib/rbac/roles';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
+import { PasswordInput } from '../../../components/ui/password-input';
 import { AuthCard, fieldClass, formText, Notice } from '../../auth-layout';
 import { useAuth } from '../../providers';
+
+/** Names of the password fields' show/hide button. */
+const passwordLabels = { show: t('auth.password.show'), hide: t('auth.password.hide') };
 
 const fill = (key: LabelKey, values: Record<string, string>) =>
   Object.entries(values).reduce((text, [name, value]) => text.replace(`{${name}}`, value), t(key));
@@ -133,22 +137,29 @@ export default function AcceptInvitePage() {
                 readOnly
               />
             </label>
-            <label className={fieldClass}>
-              {t('platform.invite.password')}
-              <Input
+            <div className={fieldClass}>
+              <label htmlFor="invite-password">{t('platform.invite.password')}</label>
+              <PasswordInput
+                labels={passwordLabels}
+                id="invite-password"
                 name="password"
-                type="password"
                 autoComplete="new-password"
                 minLength={PASSWORD_MIN_LENGTH}
                 maxLength={PASSWORD_MAX_LENGTH}
                 required
               />
               <small>{t('platform.invite.hint')}</small>
-            </label>
-            <label className={fieldClass}>
-              {t('platform.invite.confirm')}
-              <Input name="confirm" type="password" autoComplete="new-password" required />
-            </label>
+            </div>
+            <div className={fieldClass}>
+              <label htmlFor="invite-confirm">{t('platform.invite.confirm')}</label>
+              <PasswordInput
+                labels={passwordLabels}
+                id="invite-confirm"
+                name="confirm"
+                autoComplete="new-password"
+                required
+              />
+            </div>
             <Notice text={error} tone="error" />
             <Button type="submit" className="w-full" disabled={busy}>
               {busy ? t('platform.invite.joining') : t('platform.invite.create')}
@@ -204,10 +215,16 @@ export default function AcceptInvitePage() {
                 readOnly
               />
             </label>
-            <label className={fieldClass}>
-              {t('platform.invite.password')}
-              <Input name="password" type="password" autoComplete="current-password" required />
-            </label>
+            <div className={fieldClass}>
+              <label htmlFor="invite-login-password">{t('platform.invite.password')}</label>
+              <PasswordInput
+                labels={passwordLabels}
+                id="invite-login-password"
+                name="password"
+                autoComplete="current-password"
+                required
+              />
+            </div>
             <Notice text={error} tone="error" />
             <Button type="submit" className="w-full" disabled={busy}>
               {busy ? t('platform.invite.joining') : t('platform.invite.signInSubmit')}

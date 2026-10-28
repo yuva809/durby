@@ -4,12 +4,18 @@ import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { createAdmin, DEFAULT_PARTNER } from '../src/cli/create-admin';
-import { DEV_PASSWORD, DEV_SEED, seedDev } from '../src/cli/seed-dev';
+import { DEV_PASSWORD, DEV_SEED, DEV_TABLE_SERVICE, seedDev } from '../src/cli/seed-dev';
 import { PasswordHasher } from '../src/platform/auth/password-hasher';
 import { APP_CONFIG, type AppConfig } from '../src/platform/config';
 import { PrismaService } from '../src/platform/database';
 import { InMemoryMailer, MAILER } from '../src/platform/mail';
-import { PLATFORM_PRISMA, type PlatformPrismaClient } from '../src/platform/tenancy';
+import {
+  PLATFORM_PRISMA,
+  type PlatformPrismaClient,
+  TENANT_PRISMA,
+  TenantContext,
+  type TenantPrismaClient,
+} from '../src/platform/tenancy';
 
 describe('bootstrap commands', () => {
   let app: INestApplicationContext;
@@ -61,6 +67,14 @@ describe('bootstrap commands', () => {
     ]);
     return rows[0]?.n ?? 0;
   };
+
+  /** As tenant `orgId` through the tenant client (RLS applies). */
+  const tenantAs = <T>(orgId: string, fn: (db: TenantPrismaClient) => PromiseLike<T>) =>
+    app
+      .get(TenantContext)
+      .run({ tenantId: orgId, userId: uuidv7() }, () =>
+        fn(app.get<TenantPrismaClient>(TENANT_PRISMA)),
+      );
 
   /** Audit rows of the org as [action, actor_system], read as that tenant (RLS). */
   const auditOf = async (orgId: string) => {
@@ -128,6 +142,8 @@ describe('bootstrap commands', () => {
         'admin',
         'manager',
         'staff',
+        'waiter',
+        'cashier',
       ]);
       expect(await roleOf(first.user.id, first.organization.id)).toBe('owner');
       // Audited once with the command as actor; the second run changed nothing and wrote nothing.
@@ -241,6 +257,36 @@ describe('bootstrap commands', () => {
           (r) => r.action === 'platform.organization.created',
         );
         expect(created.map((r) => r.actor)).toEqual(['cli.seed_dev']);
+      }
+    });
+
+    it('gives the full-plan organizations a location, a menu and tables, once', async () => {
+      await seedDev(app);
+      await seedDev(app);
+      const products = DEV_TABLE_SERVICE.menu.reduce((n, c) => n + c.products.length, 0);
+      for (const seed of DEV_SEED.organizations) {
+        const org = await platformDb.organization.findFirstOrThrow({ where: { name: seed.name } });
+        const counts = await tenantAs(org.id, async (db) => ({
+          locations: await db.location.count(),
+          categories: await db.productCategory.count(),
+          products: await db.product.count(),
+          tables: await db.diningTable.count(),
+        }));
+        expect(counts).toEqual(
+          seed.plan === 'full'
+            ? {
+                locations: 1,
+                categories: DEV_TABLE_SERVICE.menu.length,
+                products,
+                tables: DEV_TABLE_SERVICE.tables.length,
+              }
+            : { locations: 0, categories: 0, products: 0, tables: 0 },
+        );
+        if (seed.plan !== 'full') continue;
+        const actors = (await auditOf(org.id))
+          .filter((r) => r.action === 'catalog.product.created')
+          .map((r) => r.actor);
+        expect(new Set(actors)).toEqual(new Set(['cli.seed_dev']));
       }
     });
 

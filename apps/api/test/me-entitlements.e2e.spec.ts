@@ -108,6 +108,7 @@ describe('GET /me/entitlements and activeFeatures', () => {
       'inventory.counts',
       'inventory.purchasing',
       'reports',
+      'catalog',
     ]);
     expect((await entitlements(await seed.token(user, b.id))).plan).toEqual({ key: 'full' });
   });

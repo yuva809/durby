@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
 import { headers } from 'next/headers';
 import { cache, type ReactNode } from 'react';
 import { DEFAULT_LOCALE } from '@durby/i18n';
@@ -7,6 +8,12 @@ import { fetchTheme, tokensCss } from '../lib/theme';
 import { LabelsProvider } from './labels-provider';
 import { AuthProvider } from './providers';
 import './globals.css';
+
+/**
+ * The app's typeface (ADR 0015 §15). next/font downloads it at build time and serves it from the app,
+ * so browsers make no third-party font request.
+ */
+const inter = Inter({ subsets: ['latin', 'latin-ext'], display: 'swap', variable: '--font-inter' });
 
 /** One theme lookup per request, shared by the metadata and the layout. */
 const requestTheme = cache(async () => fetchTheme((await headers()).get('host')));
@@ -22,7 +29,7 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const theme = await requestTheme();
   return (
-    <html lang={DEFAULT_LOCALE}>
+    <html lang={DEFAULT_LOCALE} className={inter.variable}>
       <head>
         <style id="theme-tokens">{tokensCss(theme.tokens)}</style>
       </head>

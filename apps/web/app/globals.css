@@ -21,6 +21,31 @@
   --radius: 0.5rem;
 }
 
+/*
+ * Table colours (docs/modules/pos.md: dining_tables.color). A fixed palette, the same for every partner
+ * theme, so a table looks the same to everyone. `-soft` is the fill, the plain token the outline.
+ */
+:root {
+  --table-neutral: #9b968f;
+  --table-sand: #b8915a;
+  --table-sage: #5f8c66;
+  --table-blue: #4f7fc4;
+  --table-rose: #c45569;
+  --table-violet: #7f56a8;
+  --table-amber: #c98a1c;
+  --table-slate: #5d6876;
+  --table-teal: #2f9277;
+  --table-neutral-soft: color-mix(in srgb, var(--table-neutral) 18%, var(--card));
+  --table-sand-soft: color-mix(in srgb, var(--table-sand) 22%, var(--card));
+  --table-sage-soft: color-mix(in srgb, var(--table-sage) 22%, var(--card));
+  --table-blue-soft: color-mix(in srgb, var(--table-blue) 22%, var(--card));
+  --table-rose-soft: color-mix(in srgb, var(--table-rose) 22%, var(--card));
+  --table-violet-soft: color-mix(in srgb, var(--table-violet) 22%, var(--card));
+  --table-amber-soft: color-mix(in srgb, var(--table-amber) 22%, var(--card));
+  --table-slate-soft: color-mix(in srgb, var(--table-slate) 22%, var(--card));
+  --table-teal-soft: color-mix(in srgb, var(--table-teal) 22%, var(--card));
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -42,8 +67,9 @@
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
-  /* System fonts: no third-party font requests. */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Inter, self-hosted by next/font (app/layout.tsx); system fonts until it loads. */
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 @layer base {
@@ -61,5 +87,18 @@
   }
   a {
     @apply text-primary-text underline-offset-4 hover:underline;
+  }
+}
+
+/* Kitchen tickets (docs/modules/pos.md → Step 3): components/pos/print-root.tsx portals the ticket into
+   #print-root. On screen it is hidden; in print it is the only thing on the page. */
+@media screen {
+  #print-root {
+    display: none;
+  }
+}
+@media print {
+  body > :not(#print-root) {
+    display: none !important;
   }
 }

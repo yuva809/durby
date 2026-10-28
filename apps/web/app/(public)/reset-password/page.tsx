@@ -8,8 +8,11 @@ import { useLinkToken } from '../../../lib/auth/link-token';
 import { postPublic } from '../../../lib/auth/public-requests';
 import { t } from '../../../lib/i18n';
 import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
+import { PasswordInput } from '../../../components/ui/password-input';
 import { AuthCard, fieldClass, formText, Notice } from '../../auth-layout';
+
+/** Names of the password fields' show/hide button. */
+const passwordLabels = { show: t('auth.password.show'), hide: t('auth.password.hide') };
 
 export default function ResetPasswordPage() {
   // undefined: not read yet; null: missing or malformed.
@@ -40,22 +43,29 @@ export default function ResetPasswordPage() {
   else if (token !== undefined) {
     content = (
       <form onSubmit={(e) => void onSubmit(e)}>
-        <label className={fieldClass}>
-          {t('auth.reset.password')}
-          <Input
+        <div className={fieldClass}>
+          <label htmlFor="reset-password">{t('auth.reset.password')}</label>
+          <PasswordInput
+            labels={passwordLabels}
+            id="reset-password"
             name="password"
-            type="password"
             autoComplete="new-password"
             minLength={PASSWORD_MIN_LENGTH}
             maxLength={PASSWORD_MAX_LENGTH}
             required
           />
           <small>{t('auth.reset.hint')}</small>
-        </label>
-        <label className={fieldClass}>
-          {t('auth.reset.confirm')}
-          <Input name="confirm" type="password" autoComplete="new-password" required />
-        </label>
+        </div>
+        <div className={fieldClass}>
+          <label htmlFor="reset-confirm">{t('auth.reset.confirm')}</label>
+          <PasswordInput
+            labels={passwordLabels}
+            id="reset-confirm"
+            name="confirm"
+            autoComplete="new-password"
+            required
+          />
+        </div>
         <Notice text={error} tone="error" />
         <Button type="submit" className="w-full" disabled={busy}>
           {t('auth.reset.submit')}

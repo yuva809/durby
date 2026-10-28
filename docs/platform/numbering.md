@@ -21,6 +21,7 @@ module issues the numbers, and the defaults an organization's series starts with
 | `inventory.goodsReceipt`  | `inventory`            | `GR`   | `{prefix}-{YYYY}-{seq:6}` | yearly |
 | `inventory.purchaseOrder` | `inventory.purchasing` | `PO`   | `{prefix}-{YYYY}-{seq:6}` | yearly |
 | `billing.invoice`         | `billing`              | `INV`  | `{prefix}-{YYYY}-{seq:6}` | yearly |
+| `pos.order`               | `pos`                  | `ORD`  | `{prefix}-{YYYY}-{seq:6}` | yearly |
 
 - Labels: `platform.numbering.series.<camelCaseKey>.name` and `.description`, e.g.
   `platform.numbering.series.billingInvoice.name`.

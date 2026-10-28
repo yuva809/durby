@@ -11,7 +11,7 @@ export const DOMAINS = {
 export async function signIn(page: Page, origin: string, email: string): Promise<void> {
   await page.goto(`${origin}/login`);
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(DEV_PASSWORD);
+  await page.getByLabel('Password', { exact: true }).fill(DEV_PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('main')).toContainText('Back office');
 }

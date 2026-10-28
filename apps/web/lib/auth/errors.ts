@@ -1,11 +1,13 @@
 import type {
   AuditErrorCode,
   AuthErrorCode,
+  CatalogErrorCode,
   EntitlementErrorCode,
   IdempotencyErrorCode,
   InvitationErrorCode,
   LabelErrorCode,
   NumberingErrorCode,
+  PosErrorCode,
   RbacErrorCode,
   SettingErrorCode,
 } from '@durby/shared';
@@ -21,7 +23,9 @@ export type ApiErrorCode =
   | LabelErrorCode
   | NumberingErrorCode
   | EntitlementErrorCode
-  | AuditErrorCode;
+  | AuditErrorCode
+  | CatalogErrorCode
+  | PosErrorCode;
 
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
 const LABELS: Record<ApiErrorCode, LabelKey> = {
@@ -78,6 +82,22 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'numbering.counter_backwards': 'platform.errors.numberingCounterBackwards',
   'entitlements.feature_disabled': 'platform.errors.featureDisabled',
   'audit.cursor_invalid': 'platform.errors.auditCursorInvalid',
+  'catalog.category_not_found': 'catalog.errors.categoryNotFound',
+  'catalog.product_not_found': 'catalog.errors.productNotFound',
+  'catalog.category_name_taken': 'catalog.errors.categoryNameTaken',
+  'catalog.product_name_taken': 'catalog.errors.productNameTaken',
+  'catalog.category_archived': 'catalog.errors.categoryArchived',
+  'pos.table_not_found': 'pos.errors.tableNotFound',
+  'pos.location_not_found': 'pos.errors.locationNotFound',
+  'pos.table_name_taken': 'pos.errors.tableNameTaken',
+  'pos.order_not_found': 'pos.errors.orderNotFound',
+  'pos.order_closed': 'pos.errors.orderClosed',
+  'pos.product_unavailable': 'pos.errors.productUnavailable',
+  'pos.line_not_found': 'pos.errors.lineNotFound',
+  'pos.void_exceeds': 'pos.errors.voidExceeds',
+  'pos.area_not_found': 'pos.errors.areaNotFound',
+  'pos.area_name_taken': 'pos.errors.areaNameTaken',
+  'pos.area_not_empty': 'pos.errors.areaNotEmpty',
 };
 
 export function errorLabel(code: ApiErrorCode | 'unknown'): LabelKey {
