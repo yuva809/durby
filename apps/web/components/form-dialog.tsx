@@ -43,6 +43,7 @@ export function Field({
 export function FormDialog({
   trigger,
   triggerVariant,
+  triggerIcon,
   testId,
   title,
   onOpen,
@@ -52,6 +53,8 @@ export function FormDialog({
 }: {
   trigger: string;
   triggerVariant: 'default' | 'outline';
+  /** An icon-only trigger; `trigger` becomes its accessible name. */
+  triggerIcon?: ReactNode;
   testId: string;
   title: string;
   onOpen: () => void;
@@ -92,9 +95,15 @@ export function FormDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant={triggerVariant} data-testid={testId}>
-          {trigger}
-        </Button>
+        {triggerIcon ? (
+          <Button variant={triggerVariant} size="icon" aria-label={trigger} data-testid={testId}>
+            {triggerIcon}
+          </Button>
+        ) : (
+          <Button variant={triggerVariant} data-testid={testId}>
+            {trigger}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent closeLabel={t('platform.common.close')} aria-describedby={undefined}>
         <DialogTitle>{title}</DialogTitle>

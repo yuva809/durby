@@ -28,7 +28,15 @@ afterEach(() => {
 
 const id = (n: number) => `0190a000-0000-7000-8000-0000000003${String(n).padStart(2, '0')}`;
 const LOCATION = { id: id(1), name: 'Main street', brandId: id(2) };
-const TABLE = { id: id(3), locationId: LOCATION.id, name: 'T1', seats: 4, area: null };
+const TABLE = {
+  id: id(3),
+  locationId: LOCATION.id,
+  name: 'T1',
+  seats: 4,
+  area: null,
+  shape: 'square',
+  color: 'neutral',
+};
 const FOOD = { id: id(4), name: 'Food', sortOrder: 0, archivedAt: null };
 const product = (n: number, name: string, price: string, taxRate: string) => ({
   id: id(10 + n),
@@ -191,11 +199,11 @@ describe('FloorPage', () => {
   });
 });
 
-describe('OrderPage', () => {
+describe('OrderPage (till)', () => {
   const tile = async (name: string) =>
     (await screen.findAllByTestId('menu-product')).find((b) => b.dataset.name === name)!;
 
-  it('builds a cart, sends it to the kitchen and prints the ticket', async () => {
+  it('builds the order on the receipt, sends it to the kitchen and prints the ticket', async () => {
     signedInAs('waiter');
     const sent: Order = {
       ...ORDER,
@@ -215,28 +223,34 @@ describe('OrderPage', () => {
         Response.json({ order: sent, ticketId: id(22) }, { status: 201 }),
     });
     render(<OrderPage tableId={TABLE.id} />);
-    expect(await screen.findByText('Table T1')).toBeTruthy();
-    expect(screen.getByText('Tap a product to add it.')).toBeTruthy();
+    expect(within(await screen.findByTestId('table-bar')).getByText('T1')).toBeTruthy();
+    expect(screen.queryByTestId('send-to-kitchen')).toBeNull();
+
+    // Category chips carry their product counts.
+    const chips = await screen.findByTestId('category-chips');
+    expect(
+      within(chips)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['All categories2', 'Food2']);
 
     await userEvent.click(await tile('Soup'));
     await userEvent.click(await tile('Soup'));
     await userEvent.click(await tile('Cola'));
     expect(within(await tile('Soup')).getByTestId('menu-count').textContent).toBe('2');
-    // A note is behind "Add note"; it stays while the item is in the cart.
-    const cola = screen.getAllByTestId('cart-line').find((l) => l.dataset.name === 'Cola')!;
-    await userEvent.click(within(cola).getByRole('button', { name: 'Add note' }));
-    await userEvent.type(screen.getByLabelText('Note for Cola'), 'no ice');
-    await userEvent.click(screen.getByRole('button', { name: 'One more Cola' }));
-    await userEvent.click(screen.getByRole('button', { name: 'One less Cola' }));
-    expect(
-      screen
-        .getAllByTestId('cart-line')
-        .map((l) => [l.dataset.name, within(l).getByTestId('cart-quantity').textContent]),
-    ).toEqual([
-      ['Soup', '2'],
-      ['Cola', '1'],
+    expect(screen.getAllByTestId('receipt-new').map((l) => l.dataset.name)).toEqual([
+      'Soup',
+      'Cola',
     ]);
-    expect(screen.getByTestId('cart-total').textContent).toBe('Total €17.60');
+    expect(screen.getByTestId('to-send').textContent).toBe('3 to send · Send to kitchen');
+
+    // The last added line is selected: quantity, note, remove.
+    const controls = screen.getByTestId('line-controls');
+    await userEvent.type(within(controls).getByLabelText('Note for Cola'), 'no ice');
+    await userEvent.click(within(controls).getByRole('button', { name: 'One more Cola' }));
+    await userEvent.click(within(controls).getByRole('button', { name: 'One less Cola' }));
+    expect(within(controls).getByTestId('cart-quantity').textContent).toBe('1');
+    expect(screen.getByTestId('order-total').textContent).toBe('€17.60');
     expect(screen.getByTestId('send-to-kitchen').textContent).toBe('Send 3 to kitchen · €17.60');
 
     await userEvent.click(screen.getByTestId('send-to-kitchen'));
@@ -253,36 +267,26 @@ describe('OrderPage', () => {
         },
       },
     ]);
-    // The Bill tab opens with a confirmation.
     expect(await screen.findByText('Sent to the kitchen: ticket 1.')).toBeTruthy();
-    expect(screen.getByTestId('tab-bill').getAttribute('aria-selected')).toBe('true');
     // The ticket is in the print-only root: items and notes, no prices.
     const ticket = within(document.getElementById('print-root')!).getByTestId('kitchen-ticket');
     expect(within(ticket).getByText('Table T1')).toBeTruthy();
     expect(within(ticket).getByText('2 × Soup')).toBeTruthy();
     expect(within(ticket).getByText('no ice')).toBeTruthy();
     expect(within(ticket).queryByText(/13\.80/)).toBeNull();
-    await userEvent.click(screen.getByTestId('tab-cart'));
-    expect(screen.queryAllByTestId('cart-line')).toEqual([]);
   });
 
-  it('shows the bill with totals; a waiter can close but not void', async () => {
+  it('removes a NEW line from the receipt', async () => {
     signedInAs('waiter');
-    api(withOrder(ORDER));
+    api(withOrder(null));
     render(<OrderPage tableId={TABLE.id} />);
-    await userEvent.click(await screen.findByTestId('tab-bill'));
-    const view = await screen.findByTestId('order-view');
-    expect(within(view).getByTestId('order-total').textContent).toBe('€13.80');
-    expect(within(view).getByText('VAT 7 %: net €12.90 · VAT €0.90')).toBeTruthy();
-    expect(within(view).queryByTestId('void-items')).toBeNull();
-    expect(within(view).getByTestId('close-order')).toBeTruthy();
-
-    await userEvent.click(within(view).getByText('Kitchen tickets (1)'));
-    await userEvent.click(within(view).getByRole('button', { name: 'Reprint' }));
-    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    await userEvent.click(await tile('Soup'));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(screen.queryAllByTestId('receipt-new')).toEqual([]);
+    expect(screen.queryByTestId('send-to-kitchen')).toBeNull();
   });
 
-  it('combines the same item from several tickets on the bill', async () => {
+  it('combines sent items on the bill and prints it, marked as not a receipt', async () => {
     signedInAs('waiter');
     const twice: Order = {
       ...ORDER,
@@ -304,24 +308,45 @@ describe('OrderPage', () => {
     };
     api(withOrder(twice));
     render(<OrderPage tableId={TABLE.id} />);
-    await userEvent.click(await screen.findByTestId('tab-bill'));
     const lines = await screen.findAllByTestId('bill-line');
-    expect(lines.map((l) => l.textContent)).toEqual(['3 × Soup€6.90 each€20.70']);
-    expect(screen.getByText('VAT 7 %: net €19.35 · VAT €1.35')).toBeTruthy();
-    expect(screen.getAllByTestId('order-ticket')).toHaveLength(2);
+    expect(lines.map((l) => l.textContent)).toEqual(['Soup3 × €6.90€20.70']);
+    expect(screen.getByTestId('order-total').textContent).toBe('€20.70');
+    expect(screen.getByText('VAT 7 % (net + VAT)')).toBeTruthy();
+
+    // A waiter can't void: selecting a sent line shows no Void.
+    await userEvent.click(within(lines[0]!).getByRole('button'));
+    expect(screen.queryByTestId('void-items')).toBeNull();
+
+    await userEvent.click(screen.getByTestId('print-bill'));
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
+    expect(within(printed).getByText('This is not a receipt.')).toBeTruthy();
+    expect(within(printed).getByTestId('order-total').textContent).toBe('€20.70');
+    expect(screen.getByTestId('close-order')).toBeTruthy();
   });
 
-  it('lets a cashier see the bill without the menu', async () => {
+  it('lets a cashier see and print the bill without the menu', async () => {
     signedInAs('cashier');
     api(withOrder(ORDER));
     render(<OrderPage tableId={TABLE.id} />);
-    await screen.findByTestId('order-view');
-    expect(screen.queryByTestId('tab-cart')).toBeNull();
-    expect(screen.queryByTestId('send-to-kitchen')).toBeNull();
+    await screen.findAllByTestId('bill-line');
     expect(screen.queryAllByTestId('menu-product')).toEqual([]);
+    expect(screen.queryByTestId('send-to-kitchen')).toBeNull();
+    expect(screen.getByTestId('print-bill')).toBeTruthy();
   });
 
-  it('lets a manager void items and prints the VOID ticket', async () => {
+  it('focuses the menu search with "/"', async () => {
+    signedInAs('waiter');
+    api(withOrder(null));
+    render(<OrderPage tableId={TABLE.id} />);
+    await screen.findAllByTestId('menu-product');
+    await userEvent.keyboard('/');
+    expect(document.activeElement).toBe(screen.getByLabelText('Search the menu'));
+    await userEvent.type(screen.getByLabelText('Search the menu'), 'col');
+    expect(screen.getAllByTestId('menu-product').map((b) => b.dataset.name)).toEqual(['Cola']);
+  });
+
+  it('lets a manager void a sent item and prints the VOID ticket', async () => {
     signedInAs('manager');
     const voided: Order = {
       ...ORDER,
@@ -342,7 +367,8 @@ describe('OrderPage', () => {
         Response.json({ order: voided, ticketId: id(23) }, { status: 201 }),
     });
     render(<OrderPage tableId={TABLE.id} />);
-    await userEvent.click(await screen.findByTestId('tab-bill'));
+    const [soup] = await screen.findAllByTestId('bill-line');
+    await userEvent.click(within(soup!).getByRole('button'));
     await userEvent.click(await screen.findByTestId('void-items'));
     const dialog = await screen.findByRole('dialog');
     await userEvent.click(within(dialog).getByTestId('form-save'));

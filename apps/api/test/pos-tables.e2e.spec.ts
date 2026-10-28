@@ -109,6 +109,20 @@ describe('/api/v1/pos/tables', () => {
     await table(token, l1, { name: 'T1' });
   });
 
+  it('stores the look: square and neutral by default, changeable, validated', async () => {
+    const { org, token } = await orgWith('owner');
+    const plain = await table(token, org.locations[0]);
+    expect(plain).toMatchObject({ shape: 'square', color: 'neutral' });
+    const round = await table(token, org.locations[0], { shape: 'round', color: 'teal' });
+    expect(round).toMatchObject({ shape: 'round', color: 'teal' });
+    const changed = diningTableSchema.parse(
+      (await patch(token, plain.id, { shape: 'long', color: 'rose' }).expect(200)).body,
+    );
+    expect(changed).toMatchObject({ shape: 'long', color: 'rose' });
+    await patch(token, plain.id, { shape: 'oval' }).expect(400);
+    await patch(token, plain.id, { color: '#ff0000' }).expect(400);
+  });
+
   it('validates the body and the location', async () => {
     const { token } = await orgWith('owner');
     const { org: other } = await orgWith('owner');
@@ -215,6 +229,8 @@ describe('/api/v1/pos/tables', () => {
       name: 'T1',
       seats: 4,
       area: null,
+      shape: 'square',
+      color: 'neutral',
       sortOrder: 0,
       archivedAt: null,
     });

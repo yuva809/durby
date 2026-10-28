@@ -12,12 +12,32 @@ const area = z.string().trim().max(TABLE_AREA_MAX_LENGTH);
 const seats = z.int().min(1).max(TABLE_MAX_SEATS);
 const sortOrder = z.int().min(0).max(1_000_000);
 
+/** How a table is drawn (docs/modules/pos.md). Colours are keys; the web app maps them to theme tokens. */
+export const TABLE_SHAPES = ['square', 'round', 'long'] as const;
+export const TABLE_COLORS = [
+  'neutral',
+  'sand',
+  'sage',
+  'blue',
+  'rose',
+  'violet',
+  'amber',
+  'slate',
+  'teal',
+] as const;
+export type TableShape = (typeof TABLE_SHAPES)[number];
+export type TableColor = (typeof TABLE_COLORS)[number];
+const shape = z.enum(TABLE_SHAPES);
+const color = z.enum(TABLE_COLORS);
+
 export const diningTableSchema = z.object({
   id: z.uuid(),
   locationId: z.uuid(),
   name: z.string(),
   seats: z.int(),
   area: z.string().nullable(),
+  shape,
+  color,
   sortOrder: z.int(),
   archivedAt: z.iso.datetime().nullable(),
 });
@@ -27,6 +47,8 @@ export const createDiningTableRequestSchema = z.strictObject({
   name: tableName,
   seats,
   area: area.optional(),
+  shape: shape.optional(),
+  color: color.optional(),
   sortOrder: sortOrder.optional(),
 });
 
@@ -35,6 +57,8 @@ export const updateDiningTableRequestSchema = z
     name: tableName.optional(),
     seats: seats.optional(),
     area: area.optional(),
+    shape: shape.optional(),
+    color: color.optional(),
     sortOrder: sortOrder.optional(),
     archived: z.boolean().optional(),
   })

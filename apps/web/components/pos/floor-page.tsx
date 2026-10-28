@@ -7,7 +7,7 @@ import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { loadFloor } from '../../lib/pos/api';
-import { minutesSince } from '../../lib/pos/format';
+import { durationLabel, minutesSince } from '../../lib/pos/format';
 import { useNow } from '../../lib/pos/use-now';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
@@ -17,6 +17,7 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Loaded, NoAccess } from '../users/common';
 import { MoneyProvider, useMoney } from './money';
+import { TableIcon } from './table-icon';
 
 /** /pos: the floor, every table of a location and its open order (docs/modules/pos.md → Web). */
 export function FloorPage() {
@@ -178,7 +179,10 @@ function TableTile({ table, now }: { table: FloorTable; now: number }) {
         )}
       >
         <span className="flex items-start justify-between gap-2">
-          <span className="text-2xl font-semibold leading-none">{table.name}</span>
+          <span className="flex items-center gap-2">
+            <TableIcon shape={table.shape} color={table.color} className="size-9" />
+            <span className="text-2xl font-semibold leading-none">{table.name}</span>
+          </span>
           <span
             className={cn(
               'rounded-full px-2 py-0.5 text-xs font-medium',
@@ -195,7 +199,10 @@ function TableTile({ table, now }: { table: FloorTable; now: number }) {
               <span>{t('pos.floor.items', { count: String(order.itemCount) })}</span>
               <span className="inline-flex items-center gap-1">
                 <Clock aria-hidden className="size-3.5" />
-                {t('pos.floor.minutes', { count: String(minutesSince(order.openedAt, now)) })}
+                {(() => {
+                  const d = durationLabel(minutesSince(order.openedAt, now));
+                  return t(d.key, d.values);
+                })()}
               </span>
             </span>
             <span className="text-xs text-muted-foreground">{order.number}</span>

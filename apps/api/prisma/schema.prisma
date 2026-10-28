@@ -727,18 +727,21 @@ model Product {
 // ---------------------------------------------------------------------------
 
 model DiningTable {
-  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String       @map("tenant_id") @db.Uuid
-  locationId   String       @map("location_id") @db.Uuid
+  id           String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String           @map("tenant_id") @db.Uuid
+  locationId   String           @map("location_id") @db.Uuid
   name         String
   seats        Int
   area         String?
-  sortOrder    Int          @default(0) @map("sort_order")
-  archivedAt   DateTime?    @map("archived_at") @db.Timestamptz(6)
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  location     Location     @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  /// How the table is drawn on the floor and tables pages.
+  shape        DiningTableShape @default(square)
+  color        DiningTableColor @default(neutral)
+  sortOrder    Int              @default(0) @map("sort_order")
+  archivedAt   DateTime?        @map("archived_at") @db.Timestamptz(6)
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location     Location         @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   orders       PosOrder[]
 
   @@unique([tenantId, id])
@@ -834,4 +837,27 @@ model PosOrderLine {
   @@index([tenantId, ticketId])
   @@index([tenantId, voidsLineId])
   @@map("pos_order_lines")
+}
+
+enum DiningTableShape {
+  square
+  round
+  long
+
+  @@map("dining_table_shape")
+}
+
+/// Colour keys, not colours: the web app maps each to a theme token (ADR 0015).
+enum DiningTableColor {
+  neutral
+  sand
+  sage
+  blue
+  rose
+  violet
+  amber
+  slate
+  teal
+
+  @@map("dining_table_color")
 }

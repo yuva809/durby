@@ -41,6 +41,18 @@ export function minutesSince(since: string, now: number): number {
   return Math.max(0, Math.floor((now - Date.parse(since)) / 60_000));
 }
 
+/** The label of a duration: `{ key, values }` for `t()`, e.g. "18 h 11 min" or "35 min". */
+export function durationLabel(minutes: number): {
+  key: 'pos.time.minutes' | 'pos.time.hoursMinutes';
+  values: Record<string, string>;
+} {
+  if (minutes < 60) return { key: 'pos.time.minutes', values: { minutes: String(minutes) } };
+  return {
+    key: 'pos.time.hoursMinutes',
+    values: { hours: String(Math.floor(minutes / 60)), minutes: String(minutes % 60) },
+  };
+}
+
 export type MoneyFormat = (amount: string) => string;
 
 /**

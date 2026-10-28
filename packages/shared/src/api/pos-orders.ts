@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TABLE_COLORS, TABLE_SHAPES } from './pos-tables';
 
 /** Request and response bodies of the order endpoints (docs/modules/pos.md → Step 3). */
 
@@ -101,6 +102,8 @@ export const floorTableSchema = z.object({
   name: z.string(),
   seats: z.int(),
   area: z.string().nullable(),
+  shape: z.enum(TABLE_SHAPES),
+  color: z.enum(TABLE_COLORS),
   /** The table's open order, or null when it is free. */
   order: orderSummarySchema.nullable(),
 });

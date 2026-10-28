@@ -18,6 +18,8 @@ const TABLE_SELECT = {
   name: true,
   seats: true,
   area: true,
+  shape: true,
+  color: true,
   sortOrder: true,
   archivedAt: true,
 } as const;
@@ -75,6 +77,8 @@ export class TablesService {
             name: body.name,
             seats: body.seats,
             area: body.area || null,
+            shape: body.shape ?? 'square',
+            color: body.color ?? 'neutral',
             sortOrder: body.sortOrder ?? 0,
           },
           select: TABLE_SELECT,
@@ -110,6 +114,8 @@ export class TablesService {
           name: body.name ?? current.name,
           seats: body.seats ?? current.seats,
           area: body.area === undefined ? current.area : body.area || null,
+          shape: body.shape ?? current.shape,
+          color: body.color ?? current.color,
           sortOrder: body.sortOrder ?? current.sortOrder,
           archivedAt: archivedAt(current.archivedAt, body.archived),
         };

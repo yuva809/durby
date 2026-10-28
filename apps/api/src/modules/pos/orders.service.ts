@@ -105,7 +105,15 @@ export class OrdersService {
         archivedAt: null,
         ...(locations === 'all' ? {} : { locationId: { in: locations } }),
       },
-      select: { id: true, locationId: true, name: true, seats: true, area: true },
+      select: {
+        id: true,
+        locationId: true,
+        name: true,
+        seats: true,
+        area: true,
+        shape: true,
+        color: true,
+      },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
     });
     const open = await this.summaries(this.db, {
@@ -129,6 +137,8 @@ export class OrdersService {
         name: table.name,
         seats: table.seats,
         area: table.area,
+        shape: table.shape,
+        color: table.color,
       },
       order: open ? await this.load(this.db, open.id) : null,
     };
@@ -285,7 +295,16 @@ export class OrdersService {
   private async readableTable(tableId: string) {
     const table = await this.db.diningTable.findUnique({
       where: { id: tableId },
-      select: { id: true, locationId: true, name: true, seats: true, area: true, archivedAt: true },
+      select: {
+        id: true,
+        locationId: true,
+        name: true,
+        seats: true,
+        area: true,
+        shape: true,
+        color: true,
+        archivedAt: true,
+      },
     });
     if (!table || !(await this.access.can('pos.orders.read', { locationId: table.locationId }))) {
       throw posErrors.tableNotFound();

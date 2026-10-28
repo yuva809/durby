@@ -2,6 +2,7 @@ import type { Order, OrderLine } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import {
   billLines,
+  durationLabel,
   fromCents,
   minutesSince,
   moneyFormat,
@@ -36,6 +37,16 @@ describe('decimal strings', () => {
     const now = Date.parse('2026-10-27T12:35:30Z');
     expect(minutesSince('2026-10-27T12:00:00Z', now)).toBe(35);
     expect(minutesSince('2026-10-27T13:00:00Z', now)).toBe(0);
+  });
+});
+
+describe('durationLabel', () => {
+  it('uses minutes below an hour, hours and minutes above', () => {
+    expect(durationLabel(35)).toEqual({ key: 'pos.time.minutes', values: { minutes: '35' } });
+    expect(durationLabel(1091)).toEqual({
+      key: 'pos.time.hoursMinutes',
+      values: { hours: '18', minutes: '11' },
+    });
   });
 });
 

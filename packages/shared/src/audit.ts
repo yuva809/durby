@@ -235,7 +235,17 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   product_category: ['id', 'name', 'sortOrder', 'archivedAt'],
   /** `price`, `taxRate`: decimal strings. Never `description` (free text). */
   product: ['id', 'categoryId', 'name', 'price', 'taxRate', 'sortOrder', 'archivedAt'],
-  dining_table: ['id', 'locationId', 'name', 'seats', 'area', 'sortOrder', 'archivedAt'],
+  dining_table: [
+    'id',
+    'locationId',
+    'name',
+    'seats',
+    'area',
+    'shape',
+    'color',
+    'sortOrder',
+    'archivedAt',
+  ],
   pos_order: ['id', 'number', 'tableId', 'locationId', 'status', 'closedAt'],
   /** Never line notes (free text). */
   kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'lineCount'],
