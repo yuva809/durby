@@ -40,7 +40,7 @@ Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a 
 
 | Key                        | Scope        | Grants                                                                |
 | -------------------------- | ------------ | --------------------------------------------------------------------- |
-| `platform.org.manage`      | organization | organization settings that only an owner should change (later)        |
+| `platform.org.manage`      | organization | organization name and locations (create, rename, delete): owner only  |
 | `platform.users.read`      | organization | list members and open invitations                                     |
 | `platform.users.invite`    | organization | invite by email, revoke invitations                                   |
 | `platform.users.manage`    | organization | change a member's role or locations, remove a member                  |

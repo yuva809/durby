@@ -95,6 +95,7 @@ describe('nav for Owner, Manager and Staff', () => {
   it('shows the settings pages by permission', () => {
     expect(settingsItems('owner')).toEqual([
       'organization',
+      'locations',
       'settings',
       'members',
       'roles',
@@ -105,13 +106,20 @@ describe('nav for Owner, Manager and Staff', () => {
     ]);
     expect(settingsItems('manager')).toEqual([
       'organization',
+      'locations',
       'settings',
       'members',
       'roles',
       'numbering',
       'plan',
     ]);
-    expect(settingsItems('staff')).toEqual(['organization', 'settings', 'numbering', 'plan']);
+    expect(settingsItems('staff')).toEqual([
+      'organization',
+      'locations',
+      'settings',
+      'numbering',
+      'plan',
+    ]);
   });
 });
 

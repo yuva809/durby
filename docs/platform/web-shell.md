@@ -282,17 +282,32 @@ request, and a stale hint just leads to an error message, never to access.
 `activePermissions` and `user.id`. One implementation, so the UI never offers what the api would refuse (except for
 stale hints).
 
-### Locations: `GET /api/v1/locations`
+### Locations: `/api/v1/locations`
 
-- `@RequirePermission('platform.settings.read')`, filtered with `locationIdsFor('platform.settings.read')`: a
+- `GET`: `@RequirePermission('platform.settings.read')`, filtered with `locationIdsFor('platform.settings.read')`: a
   location-limited member sees only their locations. Response `{ data: [{ id, name, brandId }] }` ordered by name.
-  Read-only; no idempotency marker.
 - **Why `platform.settings.read` and not a new `platform.locations.read`:** every system role holds
   `settings.read` already. A new key granted to Staff would repeat the 1.6 cascade: every custom role that invites or
   manages members would need the new key too, or it could no longer assign or manage Staff (the subset rule,
   rbac.md → Granting rules). Location names are not more sensitive than the settings the key already shows. ADR 0015
   §11.
-- Code: `apps/api/src/platform/organization/` (organization structure; (c) adds `PATCH /organization` there).
+- Writes are **owner only** (`platform.org.manage`, ADR 0015 §11 amendment). Body `{ name }` (trimmed, 1–100),
+  response `{ id, name, brandId }`:
+
+  | Route                   | Idempotency                 | Notes                                                                                                                                                                                       |
+  | ----------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `POST /locations`       | `completion: 'transaction'` | The organization's first location also creates its brand, named after the organization (provisioning creates neither).                                                                      |
+  | `PATCH /locations/:id`  | response                    | Rename; the same name again writes nothing.                                                                                                                                                 |
+  | `DELETE /locations/:id` | response                    | 204. Only while nothing uses it: members limited to it, invitations, settings, tables, areas and orders all reference it with `RESTRICT`, and the violation becomes 409 `locations.in_use`. |
+
+  Names are unique per organization ignoring case (409 `locations.name_taken`), checked under a per-organization
+  transaction lock (`pg_advisory_xact_lock`). An unknown id, another organization's id or a bad UUID: 404
+  `rbac.location_not_found`. Audit: `platform.location.created|updated|deleted`, entity `location`, snapshot
+  `id, brandId, name`.
+
+- Web: **Settings → Locations** (`/settings/locations`, `platform.settings.read`); add, rename and delete only with
+  `platform.org.manage`. The Tables and Service pages link owners there when there is no location yet.
+- Code: `apps/api/src/platform/organization/` (organization structure, next to `PATCH /organization`).
 
 ### Invitation links
 

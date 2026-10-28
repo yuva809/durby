@@ -4,6 +4,7 @@ import {
   labelOverrideSchema,
   labelOverridesResponseSchema,
   labelsResponseSchema,
+  locationSchema,
   type MeEntitlementsResponse,
   meEntitlementsResponseSchema,
   type NumberSeries,
@@ -91,5 +92,15 @@ export const loadEntitlements = (store: Api): Promise<Result<MeEntitlementsRespo
 
 export const renameOrganization = (store: Api, action: ActionKey, name: string) =>
   write(store, action, '/api/v1/organization', 'PATCH', { name }, organizationSchema);
+
+/** Owner only (platform.org.manage); the list is lib/users/api.ts `loadLocations`. */
+export const createLocation = (store: Api, action: ActionKey, name: string) =>
+  write(store, action, '/api/v1/locations', 'POST', { name }, locationSchema);
+
+export const renameLocation = (store: Api, action: ActionKey, id: string, name: string) =>
+  write(store, action, `/api/v1/locations/${id}`, 'PATCH', { name }, locationSchema);
+
+export const deleteLocation = (store: Api, action: ActionKey, id: string) =>
+  write(store, action, `/api/v1/locations/${id}`, 'DELETE');
 
 export type { Organization };

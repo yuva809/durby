@@ -6,6 +6,7 @@ import type {
   IdempotencyErrorCode,
   InvitationErrorCode,
   LabelErrorCode,
+  LocationErrorCode,
   NumberingErrorCode,
   PosErrorCode,
   RbacErrorCode,
@@ -25,6 +26,7 @@ export type ApiErrorCode =
   | EntitlementErrorCode
   | AuditErrorCode
   | CatalogErrorCode
+  | LocationErrorCode
   | PosErrorCode;
 
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
@@ -82,6 +84,8 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'numbering.counter_backwards': 'platform.errors.numberingCounterBackwards',
   'entitlements.feature_disabled': 'platform.errors.featureDisabled',
   'audit.cursor_invalid': 'platform.errors.auditCursorInvalid',
+  'locations.name_taken': 'platform.errors.locationsNameTaken',
+  'locations.in_use': 'platform.errors.locationsInUse',
   'catalog.category_not_found': 'catalog.errors.categoryNotFound',
   'catalog.product_not_found': 'catalog.errors.productNotFound',
   'catalog.category_name_taken': 'catalog.errors.categoryNameTaken',

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockState, resetMocks } from '../../test/mocks';
 import { sessionFixture } from '../../test/session-fixture';
 import { LabelsPage } from './labels-page';
+import { LocationsPage, NoLocations } from './locations-page';
 import { NumberingPage } from './numbering-page';
 import { OrganizationPage } from './organization-page';
 import { PlanPage } from './plan-page';
@@ -327,6 +328,76 @@ describe('OrganizationPage', () => {
     render(<OrganizationPage />);
     expect(screen.queryByTestId('organization-name')).toBeNull();
     expect(screen.getByText('Demo Bistro')).toBeTruthy();
+  });
+});
+
+const L1 = {
+  id: '0190a000-0000-7000-8000-0000000000c1',
+  name: 'Main street',
+  brandId: '0190a000-0000-7000-8000-0000000000b1',
+};
+
+describe('LocationsPage', () => {
+  it('lets owners add, rename and delete, and explains a location still in use', async () => {
+    signedInAs('owner');
+    api({
+      'GET /api/v1/locations': () => Response.json({ data: [L1] }),
+      'POST /api/v1/locations': () =>
+        Response.json({ ...L1, id: '0190a000-0000-7000-8000-0000000000c2', name: 'Harbour' }),
+      [`PATCH /api/v1/locations/${L1.id}`]: () => Response.json({ ...L1, name: 'Old town' }),
+      [`DELETE /api/v1/locations/${L1.id}`]: () =>
+        Response.json({ code: 'locations.in_use', message: 'raw' }, { status: 409 }),
+    });
+    render(<LocationsPage />);
+    expect((await screen.findByTestId('location-row')).textContent).toContain('Main street');
+
+    await userEvent.click(screen.getByTestId('location-create'));
+    await userEvent.click(screen.getByTestId('form-save'));
+    expect((await screen.findByRole('alert')).textContent).toBe('Enter a name.');
+    await userEvent.type(screen.getByTestId('location-name'), ' Harbour ');
+    await userEvent.click(screen.getByTestId('form-save'));
+    await waitFor(() => expect(screen.queryByTestId('location-name')).toBeNull());
+
+    await userEvent.click(screen.getByTestId('location-rename'));
+    const input = screen.getByTestId('location-name');
+    expect((input as HTMLInputElement).value).toBe('Main street');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Old town');
+    await userEvent.click(screen.getByTestId('form-save'));
+    await waitFor(() => expect(screen.queryByTestId('location-name')).toBeNull());
+
+    await userEvent.click(screen.getByTestId('location-delete'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('still in use');
+
+    expect(writes()).toEqual([
+      { call: 'POST /api/v1/locations', body: { name: 'Harbour' }, key: ANY_KEY },
+      { call: `PATCH /api/v1/locations/${L1.id}`, body: { name: 'Old town' }, key: ANY_KEY },
+      { call: `DELETE /api/v1/locations/${L1.id}`, body: null, key: ANY_KEY },
+    ]);
+  });
+
+  it('is read-only for Admins (no platform.org.manage)', async () => {
+    signedInAs('admin');
+    api({ 'GET /api/v1/locations': () => Response.json({ data: [L1] }) });
+    render(<LocationsPage />);
+    expect(await screen.findByTestId('location-row')).toBeTruthy();
+    expect(screen.queryByTestId('location-create')).toBeNull();
+    expect(screen.queryByTestId('location-rename')).toBeNull();
+    expect(screen.queryByTestId('location-delete')).toBeNull();
+    expect(screen.getByText('Only owners can add, rename or delete locations.')).toBeTruthy();
+  });
+
+  it('links owners, and only owners, from "no locations" to this page', () => {
+    signedInAs('owner');
+    render(<NoLocations message="You have no locations." />);
+    expect(screen.getByTestId('add-first-location').getAttribute('href')).toBe(
+      '/settings/locations',
+    );
+    cleanup();
+    signedInAs('manager');
+    render(<NoLocations message="You have no locations." />);
+    expect(screen.queryByTestId('add-first-location')).toBeNull();
   });
 });
 

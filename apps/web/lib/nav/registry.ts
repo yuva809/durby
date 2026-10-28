@@ -11,6 +11,7 @@ import {
   Languages,
   Layers,
   LayoutGrid,
+  MapPin,
   type LucideIcon,
   Package,
   Receipt,
@@ -113,6 +114,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'platform.nav.organization',
     icon: Building2,
     group: 'settings',
+  },
+  {
+    id: 'locations',
+    href: '/settings/locations',
+    label: 'platform.nav.locations',
+    icon: MapPin,
+    group: 'settings',
+    permission: 'platform.settings.read',
   },
   {
     id: 'settings',

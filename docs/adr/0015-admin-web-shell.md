@@ -88,6 +88,10 @@ Spec: [docs/platform/web-shell.md](../platform/web-shell.md).
     repeat the 1.6 cascade (ADR 0010 §6): every custom role that invites or manages members would need it too, or the
     subset rule would stop it from assigning or managing Staff. Every system role already holds `settings.read`, and
     location names are no more sensitive than the settings it shows.
+    _Amended (table service, ADR 0016):_ owners create, rename and delete locations (`POST`, `PATCH`, `DELETE`
+    `/api/v1/locations`) behind the existing owner-only `platform.org.manage`, like the organization's name: a
+    location is organization structure, and a new key would need explicit grants for every role. Delete only while
+    no `RESTRICT` foreign key points at the location, so platform code never inspects module tables.
 
 12. **Invitation links on the partner's domain** (PR b). The link base is the first `WEB_ORIGINS` entry whose
     hostname is one of the organization's `partner_domains`, else `WEB_BASE_URL`. Deterministic per environment,
