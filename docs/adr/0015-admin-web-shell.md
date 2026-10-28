@@ -106,6 +106,12 @@ Spec: [docs/platform/web-shell.md](../platform/web-shell.md).
     _Rejected:_ disabling rate limiting in tests (the e2e suite would no longer run the real code path) and a
     per-IP allow-list (a bypass that could leak into production configuration).
 
+15. **Typeface: self-hosted Inter** (amendment, table service UI, 2026-10-28). The shell used system fonts so that no
+    third-party font was requested. It now uses Inter through `next/font/google`, which downloads the font at build
+    time and serves it from the app: browsers still make no third-party request. System fonts remain the fallback
+    (`--font-sans`). Building needs network once to fetch the font. Partners can't change the font yet; a theme
+    font would be a new theme token.
+
 ## Consequences
 
 - A new partner or domain needs a migration and a deploy; a theme change shows within 5 minutes of the deploy.

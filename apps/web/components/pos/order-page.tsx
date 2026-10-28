@@ -11,26 +11,24 @@ import {
   type SendTicketResponse,
   TABLE_COLORS,
 } from '@durby/shared';
-import {
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Minus,
-  Plus,
-  Printer,
-  Search,
-  Trash2,
-} from 'lucide-react';
+import { ArrowLeft, ChefHat, Minus, Plus, Printer, Search, StickyNote, Users } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { loadCategories, loadProducts } from '../../lib/catalog/api';
 import { closeOrder, loadTableOrder, sendTicket } from '../../lib/pos/api';
-import { billLines, durationLabel, minutesSince, sum, times } from '../../lib/pos/format';
+import {
+  type BillLine,
+  billLines,
+  durationLabel,
+  minutesSince,
+  rate,
+  sum,
+  times,
+} from '../../lib/pos/format';
 import { useNow } from '../../lib/pos/use-now';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
@@ -41,8 +39,8 @@ import { Input } from '../ui/input';
 import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { KitchenTicketView, OrderSlip, PrintRoot } from './kitchen-ticket';
 import { MoneyProvider, useMoney } from './money';
-import { type PendingLine, Receipt, type ReceiptSelection } from './receipt';
-import { TableIcon, tableColors } from './table-icon';
+import { Receipt } from './receipt';
+import { tableColors } from './table-icon';
 import { VoidDialog } from './void-dialog';
 
 interface OrderAccess {
@@ -106,7 +104,6 @@ function TableOrder({
   const now = useNow(30_000);
   const [print, setPrint] = useState<PrintJob | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [selected, setSelected] = useState<ReceiptSelection>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
@@ -133,7 +130,6 @@ function TableOrder({
 
   const add = (product: Product) => {
     setSent(null);
-    setSelected({ kind: 'new', key: product.id });
     setCart((lines) =>
       lines.some((l) => l.product.id === product.id)
         ? lines.map((l) =>
@@ -169,7 +165,6 @@ function TableOrder({
     if (result.ok && result.data) {
       const ticket = result.data.order.tickets.find((x) => x.id === result.data?.ticketId);
       setCart([]);
-      setSelected(null);
       setSent(t('pos.order.sent', { sequence: String(ticket?.sequence ?? '') }));
       afterWrite(result.data);
     } else if (!result.ok) {
@@ -181,64 +176,44 @@ function TableOrder({
     <Loaded resource={view} reload={reload}>
       {({ table, order }) => {
         const bill = order ? billLines(order) : [];
-        const pending: PendingLine[] = cart.map((l) => ({
-          key: l.product.id,
-          name: l.product.name,
-          note: l.note,
-          quantity: l.quantity,
-          unitPrice: l.product.price,
-          total: times(l.product.price, l.quantity),
-        }));
-        const grandTotal = sum([order?.totals.gross ?? '0.00', cartTotal]);
-        const itemCount = (order?.totals.itemCount ?? 0) + cartCount;
-        const main =
+        const sendAction =
           cart.length > 0 && access.canTake
             ? {
                 label: `${t('pos.order.sendCount', { count: String(cartCount) })} · ${money(cartTotal)}`,
                 short: t('pos.order.send'),
                 run: () => void send(),
                 testId: 'send-to-kitchen',
-                icon: null,
+                icon: <ChefHat aria-hidden />,
               }
-            : order && order.totals.itemCount > 0
-              ? access.canPrintBill
-                ? {
-                    label: `${t('pos.order.printBill')} · ${money(order.totals.gross)}`,
-                    short: t('pos.order.printBill'),
-                    run: () => setPrint((prev) => ({ kind: 'bill', seq: (prev?.seq ?? 0) + 1 })),
-                    testId: 'print-bill',
-                    icon: <Printer aria-hidden />,
-                  }
-                : {
-                    // Waiters print the order only: no prices, VAT or total.
-                    label: t('pos.order.printOrder'),
-                    short: t('pos.order.printOrder'),
-                    run: () => setPrint((prev) => ({ kind: 'slip', seq: (prev?.seq ?? 0) + 1 })),
-                    testId: 'print-order',
-                    icon: <Printer aria-hidden />,
-                  }
-              : null;
-
-        const receiptProps = {
-          organizationName,
-          tableName: table.name,
-          order,
-          bill,
-          pending,
-          pendingTotal: cartTotal,
-          grandTotal,
-        };
+            : null;
+        const printAction =
+          order && order.totals.itemCount > 0
+            ? access.canPrintBill
+              ? {
+                  label: t('pos.order.printBill'),
+                  short: t('pos.order.printBill'),
+                  run: () => setPrint((prev) => ({ kind: 'bill', seq: (prev?.seq ?? 0) + 1 })),
+                  testId: 'print-bill',
+                  icon: <Printer aria-hidden />,
+                }
+              : {
+                  // Waiters print the order only: no prices, VAT or total.
+                  label: t('pos.order.printOrder'),
+                  short: t('pos.order.printOrder'),
+                  run: () => setPrint((prev) => ({ kind: 'slip', seq: (prev?.seq ?? 0) + 1 })),
+                  testId: 'print-order',
+                  icon: <Printer aria-hidden />,
+                }
+            : null;
+        const barAction = sendAction ?? printAction;
 
         return (
-          <div className={cn('flex flex-col gap-4', main && 'pb-24 lg:pb-0')}>
-            <TableBar
+          <div className={cn('flex flex-col gap-5', barAction && 'pb-24 lg:pb-0')}>
+            <OrderHeader
               table={table}
               order={order}
               now={now}
-              pending={access.canTake ? cartCount : 0}
-              busy={busy}
-              onSend={() => void send()}
-              closeButton={
+              actions={
                 order && order.status === 'open' && access.canClose ? (
                   <ConfirmAction
                     testId="close-order"
@@ -255,60 +230,71 @@ function TableOrder({
             <div
               className={cn(
                 'grid items-start gap-5',
-                access.canTake ? 'lg:grid-cols-[1fr_25rem]' : 'mx-auto w-full max-w-md',
+                access.canTake ? 'lg:grid-cols-[minmax(0,1fr)_23rem]' : 'mx-auto w-full max-w-lg',
               )}
             >
               {access.canTake && <Menu tableId={tableId} cart={cart} onAdd={add} />}
               <aside
                 id="order-panel"
-                className="flex flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]"
-                aria-label={t('pos.bill.preview')}
+                className="flex flex-col gap-4 lg:sticky lg:top-4"
+                aria-label={t('pos.order.panel')}
               >
-                <Card className="flex min-h-0 flex-col gap-3 p-4">
-                  <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    <span>{t('pos.bill.preview')}</span>
-                    <span>{t('pos.order.itemCount', { count: String(itemCount) })}</span>
-                  </div>
-                  <div className="min-h-0 overflow-y-auto">
-                    <Receipt
-                      {...receiptProps}
-                      printedAt={new Date(now)}
-                      selected={selected}
-                      onSelect={setSelected}
-                      controls={
-                        selected?.kind === 'new' ? (
-                          <PendingControls
-                            line={cart.find((l) => l.product.id === selected.key)}
-                            onChange={change}
-                          />
-                        ) : selected?.kind === 'sent' && order && access.canVoid ? (
-                          <div className="flex justify-end px-2 pb-2">
-                            <VoidDialog order={order} onVoided={afterWrite} />
-                          </div>
-                        ) : null
-                      }
-                    />
-                  </div>
-                  <Notice text={error} tone="error" />
-                  <Notice text={sent} tone="info" />
-                  {main && (
-                    <Button
-                      className="hidden min-h-12 gap-2 text-base lg:flex"
-                      disabled={busy}
-                      onClick={main.run}
-                      data-testid={main.testId}
-                    >
-                      {main.icon}
-                      {main.label}
-                    </Button>
-                  )}
-                </Card>
+                {access.canTake && (
+                  <NewItems
+                    cart={cart}
+                    total={cartTotal}
+                    onChange={change}
+                    onClear={() => setCart([])}
+                    footer={
+                      <>
+                        <Notice text={error} tone="error" />
+                        {sendAction && (
+                          <Button
+                            className="hidden min-h-12 gap-2 text-base lg:flex"
+                            disabled={busy}
+                            onClick={sendAction.run}
+                            data-testid={sendAction.testId}
+                          >
+                            {sendAction.icon}
+                            {sendAction.label}
+                          </Button>
+                        )}
+                      </>
+                    }
+                  />
+                )}
+                <OnTheTable
+                  order={order}
+                  bill={bill}
+                  notice={sent}
+                  voidButton={
+                    order &&
+                    order.status === 'open' &&
+                    access.canVoid &&
+                    order.totals.itemCount > 0 ? (
+                      <VoidDialog order={order} onVoided={afterWrite} />
+                    ) : null
+                  }
+                  printButton={
+                    printAction && (
+                      <Button
+                        variant={sendAction ? 'outline' : 'default'}
+                        className="hidden min-h-11 gap-2 lg:flex"
+                        onClick={printAction.run}
+                        data-testid={printAction.testId}
+                      >
+                        {printAction.icon}
+                        {printAction.label}
+                      </Button>
+                    )
+                  }
+                />
                 {order && order.tickets.length > 0 && (
                   <TicketLog order={order} onReprint={(id) => printTicket(order, id)} />
                 )}
               </aside>
             </div>
-            {main && (
+            {barAction && (
               <div
                 className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-border bg-card p-3 shadow-lg lg:hidden"
                 data-testid="send-bar"
@@ -318,13 +304,15 @@ function TableOrder({
                   className="flex min-w-0 flex-1 flex-col text-foreground no-underline"
                 >
                   <span className="font-semibold tabular-nums">
-                    {t('pos.order.itemCount', { count: String(itemCount) })} · {money(grandTotal)}
+                    {sendAction
+                      ? `${t('pos.order.itemCount', { count: String(cartCount) })} · ${money(cartTotal)}`
+                      : `${t('pos.order.itemCount', { count: String(order?.totals.itemCount ?? 0) })} · ${money(order?.totals.gross ?? '0.00')}`}
                   </span>
                   <span className="text-sm text-primary-text">{t('pos.order.viewOrder')}</span>
                 </a>
-                <Button className="min-h-12 gap-2" disabled={busy} onClick={main.run}>
-                  {main.icon}
-                  {main.short}
+                <Button className="min-h-12 gap-2" disabled={busy} onClick={barAction.run}>
+                  {barAction.icon}
+                  {barAction.short}
                 </Button>
               </div>
             )}
@@ -349,7 +337,10 @@ function TableOrder({
                 ) : (
                   <div key={print.seq} data-testid="printed-bill">
                     <Receipt
-                      {...receiptProps}
+                      organizationName={organizationName}
+                      tableName={table.name}
+                      order={order}
+                      bill={bill}
                       pending={[]}
                       pendingTotal="0.00"
                       grandTotal={order?.totals.gross ?? '0.00'}
@@ -366,121 +357,259 @@ function TableOrder({
   );
 }
 
-function TableBar({
+/** Back, the table with a status dot in its colour, a quiet meta line, and the order actions. */
+function OrderHeader({
   table,
   order,
   now,
-  pending,
-  busy,
-  onSend,
-  closeButton,
+  actions,
 }: {
   table: Omit<FloorTable, 'order'>;
   order: Order | null;
   now: number;
-  pending: number;
-  busy: boolean;
-  onSend: () => void;
-  closeButton: React.ReactNode;
+  actions: ReactNode;
 }) {
   const t = useT();
   const duration = order ? durationLabel(minutesSince(order.openedAt, now)) : null;
+  const meta = [
+    t('pos.floor.seats', { count: String(table.seats) }),
+    table.area,
+    order && duration
+      ? t('pos.tablesPage.open', { duration: t(duration.key, duration.values) })
+      : null,
+    order?.number,
+  ].filter((x): x is string => Boolean(x));
   return (
-    <Card className="flex flex-wrap items-center gap-3 p-3" data-testid="table-bar">
-      <Button asChild variant="outline" className="gap-2">
-        <Link href="/pos">
-          <ArrowLeft aria-hidden className="size-4" />
-          {t('pos.order.back')}
+    <header className="flex flex-wrap items-center gap-4" data-testid="table-bar">
+      <Button asChild variant="outline" size="icon" className="rounded-full">
+        <Link href="/pos" aria-label={t('pos.order.back')}>
+          <ArrowLeft aria-hidden />
         </Link>
       </Button>
-      <TableIcon shape={table.shape} color={table.color} className="size-9" />
-      <h1 className="text-xl font-semibold">{table.name}</h1>
-      <span
-        className={cn(
-          'rounded-full px-2.5 py-0.5 text-xs font-medium',
-          order ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <h1 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight">
+          <span
+            aria-hidden
+            className="size-3 rounded-full"
+            style={{ backgroundColor: tableColors(table.color).stroke }}
+          />
+          {table.name}
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 text-xs font-medium',
+              order ? 'bg-primary/15 text-primary-text' : 'bg-muted text-muted-foreground',
+            )}
+          >
+            {t(order ? 'pos.floor.open' : 'pos.floor.free')}
+          </span>
+        </h1>
+        <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+          <Users aria-hidden className="size-3.5" />
+          {meta.join(' · ')}
+        </p>
+      </div>
+      {actions}
+    </header>
+  );
+}
+
+/** The items being added: − qty +, note, line total; Clear and the send button below. */
+function NewItems({
+  cart,
+  total,
+  onChange,
+  onClear,
+  footer,
+}: {
+  cart: CartLine[];
+  total: string;
+  onChange: (productId: string, patch: Partial<CartLine>) => void;
+  onClear: () => void;
+  footer: ReactNode;
+}) {
+  const t = useT();
+  const money = useMoney();
+  return (
+    <Card className="flex flex-col gap-3 p-4" data-testid="new-items">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-semibold">{t('pos.order.cart')}</h2>
+        {cart.length > 0 && (
+          <Button variant="ghost" className="min-h-8 px-2 text-sm" onClick={onClear}>
+            {t('pos.order.clearCart')}
+          </Button>
         )}
-      >
-        {t(order ? 'pos.floor.open' : 'pos.floor.free')}
-      </span>
-      {order && duration && (
-        <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-          <Clock aria-hidden className="size-3.5" />
-          {t('pos.tablesPage.open', { duration: t(duration.key, duration.values) })} ·{' '}
-          {order.number}
-        </span>
+      </div>
+      {cart.length === 0 ? (
+        <p className="rounded-md border border-dashed border-border px-3 py-5 text-center text-sm text-muted-foreground">
+          {t('pos.order.cartEmpty')}
+        </p>
+      ) : (
+        <>
+          <ul className="flex flex-col gap-3">
+            {cart.map((line) => (
+              <CartRow key={line.product.id} line={line} onChange={onChange} />
+            ))}
+          </ul>
+          <p className="flex justify-between border-t border-border pt-2 text-sm">
+            <span className="text-muted-foreground">{t('pos.order.total')}</span>
+            <span className="font-semibold tabular-nums" data-testid="cart-total">
+              {money(total)}
+            </span>
+          </p>
+        </>
       )}
-      {pending > 0 && (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onSend}
-          data-testid="to-send"
-          className="rounded-full border border-primary bg-primary/10 px-3 py-1 text-sm font-medium text-primary-text"
-        >
-          {t('pos.order.toSend', { count: String(pending) })}
-        </button>
-      )}
-      <span className="ml-auto">{closeButton}</span>
+      {footer}
     </Card>
   );
 }
 
-/** − quantity + / note / remove for a selected NEW line. */
-function PendingControls({
+function CartRow({
   line,
   onChange,
 }: {
-  line: CartLine | undefined;
+  line: CartLine;
   onChange: (productId: string, patch: Partial<CartLine>) => void;
 }) {
   const t = useT();
+  const money = useMoney();
   const id = useId();
-  if (!line) return null;
   const name = line.product.name;
+  const [noteOpen, setNoteOpen] = useState(line.note !== '');
   return (
-    <div className="flex flex-col gap-2 px-2 pb-2 font-sans text-sm" data-testid="line-controls">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label={t('pos.order.decrease', { name })}
-          onClick={() => onChange(line.product.id, { quantity: line.quantity - 1 })}
-        >
-          <Minus aria-hidden />
-        </Button>
-        <span className="w-8 text-center font-semibold tabular-nums" data-testid="cart-quantity">
-          {line.quantity}
+    <li className="flex flex-col gap-2" data-testid="cart-line" data-name={name}>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center rounded-full bg-muted p-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 rounded-full"
+            aria-label={t('pos.order.decrease', { name })}
+            onClick={() => onChange(line.product.id, { quantity: line.quantity - 1 })}
+          >
+            <Minus aria-hidden className="size-4" />
+          </Button>
+          <span
+            className="w-6 text-center text-sm font-semibold tabular-nums"
+            data-testid="cart-quantity"
+          >
+            {line.quantity}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 rounded-full"
+            aria-label={t('pos.order.increase', { name })}
+            disabled={line.quantity >= ORDER_LINE_MAX_QUANTITY}
+            onClick={() => onChange(line.product.id, { quantity: line.quantity + 1 })}
+          >
+            <Plus aria-hidden className="size-4" />
+          </Button>
+        </div>
+        <span className="min-w-0 flex-1 text-sm font-medium leading-snug">{name}</span>
+        <span className="text-sm tabular-nums">
+          {money(times(line.product.price, line.quantity))}
         </span>
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label={t('pos.order.increase', { name })}
-          disabled={line.quantity >= ORDER_LINE_MAX_QUANTITY}
-          onClick={() => onChange(line.product.id, { quantity: line.quantity + 1 })}
-        >
-          <Plus aria-hidden />
-        </Button>
-        <Button
-          variant="ghost"
-          className="ml-auto gap-1 text-destructive"
-          onClick={() => onChange(line.product.id, { quantity: 0 })}
-        >
-          <Trash2 aria-hidden className="size-4" />
-          {t('pos.order.remove')}
-        </Button>
       </div>
-      <label htmlFor={`${id}-note`} className="sr-only">
-        {t('pos.order.note', { name })}
-      </label>
-      <Input
-        id={`${id}-note`}
-        value={line.note}
-        maxLength={ORDER_NOTE_MAX_LENGTH}
-        placeholder={t('pos.order.note', { name })}
-        onChange={(e) => onChange(line.product.id, { note: e.target.value })}
-      />
-    </div>
+      {noteOpen ? (
+        <>
+          <label htmlFor={`${id}-note`} className="sr-only">
+            {t('pos.order.note', { name })}
+          </label>
+          <Input
+            id={`${id}-note`}
+            autoFocus
+            className="h-9 text-sm"
+            value={line.note}
+            maxLength={ORDER_NOTE_MAX_LENGTH}
+            placeholder={t('pos.order.note', { name })}
+            onChange={(e) => onChange(line.product.id, { note: e.target.value })}
+          />
+        </>
+      ) : (
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => setNoteOpen(true)}
+        >
+          <StickyNote aria-hidden className="size-3.5" />
+          {t('pos.order.noteToggle', { name })}
+        </button>
+      )}
+    </li>
+  );
+}
+
+/** What the table has: combined items, VAT split, total, and the print and void actions. */
+function OnTheTable({
+  order,
+  bill,
+  notice,
+  voidButton,
+  printButton,
+}: {
+  order: Order | null;
+  bill: BillLine[];
+  notice: string | null;
+  voidButton: ReactNode;
+  printButton: ReactNode;
+}) {
+  const t = useT();
+  const money = useMoney();
+  return (
+    <Card className="flex flex-col gap-3 p-4" data-testid="order-view">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-semibold">{t('pos.order.onTable')}</h2>
+        {voidButton}
+      </div>
+      <Notice text={notice} tone="info" />
+      {bill.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t('pos.order.noOrder')}</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {bill.map((line) => (
+            <li
+              key={line.key}
+              className="flex items-start justify-between gap-3 text-sm"
+              data-testid="bill-line"
+              data-name={line.name}
+            >
+              <span className="flex min-w-0 gap-2">
+                <span className="w-6 shrink-0 text-right font-semibold tabular-nums text-muted-foreground">
+                  {line.quantity}×
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="font-medium">{line.name}</span>
+                  {line.note && <span className="text-xs text-muted-foreground">{line.note}</span>}
+                </span>
+              </span>
+              <span className="tabular-nums">{money(line.total)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {order && order.totals.itemCount > 0 && (
+        <div className="flex flex-col gap-1 rounded-lg bg-muted px-3 py-2.5">
+          {order.totals.byTaxRate.map((r) => (
+            <p key={r.taxRate} className="flex justify-between text-xs text-muted-foreground">
+              <span>{t('pos.bill.vatShort', { rate: rate(r.taxRate) })}</span>
+              <span className="tabular-nums">
+                {money(r.net)} + {money(r.tax)}
+              </span>
+            </p>
+          ))}
+          <p className="flex items-baseline justify-between pt-1">
+            <span className="text-sm font-medium">{t('pos.order.total')}</span>
+            <span
+              className="text-2xl font-semibold tracking-tight tabular-nums"
+              data-testid="order-total"
+            >
+              {money(order.totals.gross)}
+            </span>
+          </p>
+        </div>
+      )}
+      {printButton}
+    </Card>
   );
 }
 
@@ -535,7 +664,7 @@ function TicketLog({ order, onReprint }: { order: Order; onReprint: (ticketId: s
   );
 }
 
-/** Search, category chips with counts, and the product cards. */
+/** A category rail (side list on wide screens, a scrolling row on phones), search and product cards. */
 function Menu({
   tableId,
   cart,
@@ -559,7 +688,7 @@ function Menu({
   const [query, setQuery] = useState('');
   const inCart = new Map(cart.map((l) => [l.product.id, l.quantity]));
 
-  // "/" focuses the search, like the reference till; not while typing elsewhere.
+  // "/" focuses the search; not while typing elsewhere.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -574,52 +703,100 @@ function Menu({
   }, []);
 
   return (
-    <section className="flex min-w-0 flex-col gap-4" aria-label={t('pos.order.menu')}>
-      <div className="relative">
-        <Search
-          aria-hidden
-          className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-        />
-        <label htmlFor={`${id}-search`} className="sr-only">
-          {t('pos.order.search')}
-        </label>
-        <Input
-          ref={search}
-          id={`${id}-search`}
-          type="search"
-          className="h-12 rounded-full pr-12 pl-11"
-          placeholder={t('pos.order.search')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <kbd className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 rounded border border-border px-1.5 text-xs text-muted-foreground">
-          /
-        </kbd>
-      </div>
-      <Loaded resource={menu} reload={reloadMenu}>
-        {({ categories, products }) => (
-          <MenuGrid
+    <Loaded resource={menu} reload={reloadMenu}>
+      {({ categories, products }) => (
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[11rem_minmax(0,1fr)]">
+          <CategoryRail
             categories={categories}
             products={products}
             category={category}
-            query={query}
-            inCart={inCart}
             onCategory={setCategory}
-            onAdd={onAdd}
           />
-        )}
-      </Loaded>
-    </section>
+          <section className="flex min-w-0 flex-col gap-4" aria-label={t('pos.order.menu')}>
+            <div className="relative">
+              <Search
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <label htmlFor={`${id}-search`} className="sr-only">
+                {t('pos.order.search')}
+              </label>
+              <Input
+                ref={search}
+                id={`${id}-search`}
+                type="search"
+                className="h-11 pl-9"
+                placeholder={t('pos.order.searchHint')}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            <ProductGrid
+              categories={categories}
+              products={products}
+              category={category}
+              query={query}
+              inCart={inCart}
+              onAdd={onAdd}
+            />
+          </section>
+        </div>
+      )}
+    </Loaded>
   );
 }
 
-function MenuGrid({
+function CategoryRail({
+  categories,
+  products,
+  category,
+  onCategory,
+}: {
+  categories: ProductCategory[];
+  products: Product[];
+  category: string | null;
+  onCategory: (id: string | null) => void;
+}) {
+  const t = useT();
+  const countOf = (id: string) => products.filter((p) => p.categoryId === id).length;
+  const item = (key: string | null, label: string, count: number) => {
+    const active = category === key;
+    return (
+      <button
+        key={key ?? 'all'}
+        type="button"
+        aria-pressed={active}
+        onClick={() => onCategory(key)}
+        className={cn(
+          'flex min-h-11 shrink-0 items-center justify-between gap-3 rounded-md px-3 text-left text-sm transition-colors lg:border-l-2',
+          active
+            ? 'bg-card font-semibold text-foreground shadow-sm lg:border-primary'
+            : 'text-muted-foreground hover:bg-card hover:text-foreground lg:border-transparent',
+        )}
+      >
+        <span>{label}</span>
+        <span className="text-xs tabular-nums">{count}</span>
+      </button>
+    );
+  };
+  return (
+    <nav
+      aria-label={t('pos.order.categories')}
+      className="flex gap-1 overflow-x-auto rounded-lg bg-muted p-1 lg:sticky lg:top-4 lg:flex-col lg:overflow-visible"
+      data-testid="category-chips"
+    >
+      {item(null, t('catalog.page.allCategories'), products.length)}
+      {categories.map((c) => item(c.id, c.name, countOf(c.id)))}
+    </nav>
+  );
+}
+
+function ProductGrid({
   categories,
   products,
   category,
   query,
   inCart,
-  onCategory,
   onAdd,
 }: {
   categories: ProductCategory[];
@@ -627,93 +804,46 @@ function MenuGrid({
   category: string | null;
   query: string;
   inCart: ReadonlyMap<string, number>;
-  onCategory: (id: string | null) => void;
   onAdd: (product: Product) => void;
 }) {
   const t = useT();
-  const chips = useRef<HTMLDivElement>(null);
   const needle = query.trim().toLocaleLowerCase();
-  const shown = products.filter(
+  const matching = products.filter(
     (p) =>
       (category === null || p.categoryId === category) &&
       (needle === '' || p.name.toLocaleLowerCase().includes(needle)),
   );
-  const countOf = (id: string) => products.filter((p) => p.categoryId === id).length;
   // Each category gets a tile colour from the table palette, in category order.
   const colorOf = new Map(
     categories.map((c, i) => [c.id, TABLE_COLORS[(i % (TABLE_COLORS.length - 1)) + 1]!]),
   );
-  const scroll = (direction: 1 | -1) =>
-    chips.current?.scrollBy({ left: direction * 240, behavior: 'smooth' });
-  const current = categories.find((c) => c.id === category);
+  const groups = categories
+    .map((c) => ({ category: c, products: matching.filter((p) => p.categoryId === c.id) }))
+    .filter((g) => g.products.length > 0);
 
-  const chip = (id: string | null, label: string, count: number) => (
-    <Button
-      key={id ?? 'all'}
-      variant={category === id ? 'default' : 'outline'}
-      className="shrink-0 gap-2 rounded-full"
-      aria-pressed={category === id}
-      onClick={() => onCategory(id)}
-    >
-      {label}
-      <span className={cn('text-xs', category === id ? 'opacity-80' : 'text-muted-foreground')}>
-        {count}
-      </span>
-    </Button>
-  );
-
+  if (groups.length === 0)
+    return <p className="text-muted-foreground">{t('pos.order.noResults')}</p>;
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          className="hidden shrink-0 rounded-full sm:flex"
-          aria-label={t('pos.order.scrollLeft')}
-          onClick={() => scroll(-1)}
-        >
-          <ChevronLeft aria-hidden />
-        </Button>
-        <div
-          ref={chips}
-          className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1"
-          data-testid="category-chips"
-        >
-          {chip(null, t('catalog.page.allCategories'), products.length)}
-          {categories.map((c) => chip(c.id, c.name, countOf(c.id)))}
+    <div className="flex flex-col gap-5">
+      {groups.map((group) => (
+        <div key={group.category.id} className="flex flex-col gap-2">
+          {category === null && (
+            <h2 className="text-sm font-semibold text-muted-foreground">{group.category.name}</h2>
+          )}
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+            {group.products.map((product) => (
+              <li key={product.id}>
+                <ProductCard
+                  product={product}
+                  count={inCart.get(product.id) ?? 0}
+                  color={colorOf.get(product.categoryId) ?? 'neutral'}
+                  onAdd={onAdd}
+                />
+              </li>
+            ))}
+          </ul>
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          className="hidden shrink-0 rounded-full sm:flex"
-          aria-label={t('pos.order.scrollRight')}
-          onClick={() => scroll(1)}
-        >
-          <ChevronRight aria-hidden />
-        </Button>
-      </div>
-      <div className="flex justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        <span data-testid="product-count">
-          {(current?.name ?? t('pos.order.allProducts')) + ' · ' + String(shown.length)}
-        </span>
-        <span className="normal-case">{t('pos.order.tapToAdd')}</span>
-      </div>
-      {shown.length === 0 ? (
-        <p className="text-muted-foreground">{t('pos.order.noResults')}</p>
-      ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {shown.map((product) => (
-            <li key={product.id}>
-              <ProductCard
-                product={product}
-                count={inCart.get(product.id) ?? 0}
-                color={colorOf.get(product.categoryId) ?? 'neutral'}
-                onAdd={onAdd}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
+      ))}
     </div>
   );
 }
@@ -736,8 +866,8 @@ function ProductCard({
     <button
       type="button"
       className={cn(
-        'relative flex h-full w-full items-center gap-3 rounded-lg border bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted focus-visible:outline-2',
-        count > 0 ? 'border-primary' : 'border-border',
+        'relative flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2',
+        count > 0 ? 'border-primary ring-1 ring-primary' : 'border-border',
       )}
       data-testid="menu-product"
       data-name={product.name}
@@ -745,20 +875,20 @@ function ProductCard({
     >
       <span
         aria-hidden
-        className="flex size-14 shrink-0 items-center justify-center rounded-md text-xl font-bold"
+        className="flex h-16 items-center justify-center text-2xl font-semibold"
         style={{ backgroundColor: fill, color: stroke }}
       >
         {product.name.slice(0, 1).toLocaleUpperCase()}
       </span>
-      <span className="flex min-w-0 flex-col gap-1">
-        <span className="line-clamp-2 leading-snug font-medium" title={product.name}>
+      <span className="flex flex-1 flex-col justify-between gap-1 p-3">
+        <span className="line-clamp-2 text-sm leading-snug font-medium" title={product.name}>
           {product.name}
         </span>
         <span className="text-sm text-muted-foreground tabular-nums">{money(product.price)}</span>
       </span>
       {count > 0 && (
         <span
-          className="absolute -top-2 -right-2 flex size-7 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+          className="absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow"
           data-testid="menu-count"
           aria-label={t('pos.order.inCart', { count: String(count) })}
         >

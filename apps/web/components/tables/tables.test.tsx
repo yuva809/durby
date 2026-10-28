@@ -101,12 +101,9 @@ const answers = {
 };
 
 const names = () => screen.getAllByTestId('table-card').map((c) => c.dataset.name);
-const sectionTitles = () =>
-  screen.getAllByTestId('table-area').map((a) => a.querySelector('h2')?.textContent);
-const section = (name: string) =>
-  screen
-    .getAllByTestId('table-area')
-    .find((a) => a.querySelector('h2')?.textContent?.startsWith(name))!;
+const tabs = () => screen.getAllByTestId('area-tab').map((t) => t.textContent);
+const tab = (name: string) =>
+  screen.getAllByTestId('area-tab').find((t) => t.dataset.name === name)!;
 
 describe('TablesPage', () => {
   it('shows "no access" without pos.tables.read', () => {
@@ -115,7 +112,7 @@ describe('TablesPage', () => {
     expect(screen.getByTestId('no-access')).toBeTruthy();
   });
 
-  it('shows the KPIs, the areas in order (also empty ones) and each table with status and look', async () => {
+  it('shows the summary, area tabs (also empty areas) and each table with status and look', async () => {
     signedInAs('manager');
     api(answers);
     render(<TablesPage />);
@@ -125,13 +122,8 @@ describe('TablesPage', () => {
         'Tables in service4Available3Occupied1Out of service1',
       ),
     );
-    expect(sectionTitles()).toEqual([
-      'Dining room2 tables',
-      'Terrace1 table',
-      'Garden0 tables',
-      'No area1 table',
-    ]);
-    expect(within(section('Garden')).getByText('No tables in this area yet.')).toBeTruthy();
+    expect(tabs()).toEqual(['All4', 'Dining room2', 'Terrace1', 'Garden0', 'No area1']);
+    expect(names()).toEqual(['T1', 'T2', 'Terrace 1', 'Bar 1']);
     const t1 = screen.getAllByTestId('table-card')[0]!;
     expect(t1.dataset.status).toBe('occupied');
     expect(within(t1).getByText('6 items · open 18 h 11 min')).toBeTruthy();
@@ -141,19 +133,21 @@ describe('TablesPage', () => {
     expect(terrace.querySelector('svg')?.dataset).toMatchObject({ shape: 'round', color: 'teal' });
   });
 
-  it('searches by table or area name and shows out-of-service tables on request', async () => {
+  it('filters by area tab, by search, and shows out-of-service tables on request', async () => {
     signedInAs('manager');
     api(answers);
     render(<TablesPage />);
     await screen.findAllByTestId('table-card');
+    await userEvent.click(tab('Terrace'));
+    expect(names()).toEqual(['Terrace 1']);
+    await userEvent.click(tab('Garden'));
+    expect(screen.getByText('No tables in this area yet.')).toBeTruthy();
+    await userEvent.click(tab('All'));
     await userEvent.type(screen.getByLabelText('Search tables or areas'), 'terr');
     expect(names()).toEqual(['Terrace 1']);
     await userEvent.clear(screen.getByLabelText('Search tables or areas'));
-    await userEvent.type(screen.getByLabelText('Search tables or areas'), 'garden');
-    expect(sectionTitles()).toEqual(['Garden0 tables']);
-    await userEvent.clear(screen.getByLabelText('Search tables or areas'));
     await userEvent.click(screen.getByTestId('toggle-out-of-service'));
-    expect(names()).toEqual(['T1', 'T2', 'Old 1', 'Terrace 1', 'Bar 1']);
+    expect(names()).toEqual(['T1', 'T2', 'Terrace 1', 'Old 1', 'Bar 1']);
   });
 
   it('is read-only for Staff, without order status', async () => {
@@ -163,7 +157,9 @@ describe('TablesPage', () => {
     await screen.findAllByTestId('table-card');
     expect(screen.queryByTestId('table-create')).toBeNull();
     expect(screen.queryByTestId('area-create')).toBeNull();
-    expect(screen.queryAllByTestId('area-actions')).toEqual([]);
+    expect(screen.queryByTestId('table-menu')).toBeNull();
+    await userEvent.click(tab('Terrace'));
+    expect(screen.queryByTestId('area-actions')).toBeNull();
     expect(screen.getByTestId('table-kpis').textContent).toBe('Tables in service4Out of service1');
     expect(
       mockState.store.apiFetch.mock.calls.some(([path]) =>
@@ -192,7 +188,7 @@ describe('TablesPage', () => {
     ]);
   });
 
-  it('renames an area and deletes only an empty one', async () => {
+  it('renames the selected area and deletes only an empty one', async () => {
     signedInAs('manager');
     const writes = api({
       ...answers,
@@ -201,10 +197,11 @@ describe('TablesPage', () => {
     });
     render(<TablesPage />);
     await screen.findAllByTestId('table-card');
+    expect(screen.queryByTestId('area-actions')).toBeNull();
 
-    await userEvent.click(
-      within(section('Terrace')).getByRole('button', { name: 'Rename Terrace' }),
-    );
+    await userEvent.click(tab('Terrace'));
+    const tools = screen.getByTestId('area-actions');
+    await userEvent.click(within(tools).getByRole('button', { name: 'Rename Terrace' }));
     const dialog = await screen.findByRole('dialog');
     await userEvent.clear(within(dialog).getByLabelText('Name'));
     await userEvent.type(within(dialog).getByLabelText('Name'), 'Patio');
@@ -212,11 +209,14 @@ describe('TablesPage', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     // An area with tables can't be deleted; the button says why.
-    const blocked = within(section('Terrace')).getByTestId('area-delete');
+    const blocked = within(screen.getByTestId('area-actions')).getByTestId('area-delete');
     expect(blocked.hasAttribute('disabled')).toBe(true);
     expect(blocked.getAttribute('title')).toBe('Only an area without tables can be deleted.');
 
-    await userEvent.click(within(section('Garden')).getByRole('button', { name: 'Delete Garden' }));
+    await userEvent.click(tab('Garden'));
+    await userEvent.click(
+      within(screen.getByTestId('area-actions')).getByRole('button', { name: 'Delete Garden' }),
+    );
     const confirm = await screen.findByRole('alertdialog');
     await userEvent.click(within(confirm).getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(writes).toHaveLength(2));
@@ -226,7 +226,7 @@ describe('TablesPage', () => {
     ]);
   });
 
-  it("adds a table from an area's section, with its look", async () => {
+  it('adds a table in the selected area, with its look', async () => {
     signedInAs('manager');
     const writes = api({
       ...answers,
@@ -234,9 +234,8 @@ describe('TablesPage', () => {
     });
     render(<TablesPage />);
     await screen.findAllByTestId('table-card');
-    await userEvent.click(
-      within(section('Terrace')).getByRole('button', { name: 'Add a table to Terrace' }),
-    );
+    await userEvent.click(tab('Terrace'));
+    await userEvent.click(screen.getByTestId('table-create'));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByLabelText<HTMLSelectElement>('Area').value).toBe(TERRACE.id);
     await userEvent.type(within(dialog).getByLabelText('Name'), 'T6');
@@ -266,7 +265,7 @@ describe('TablesPage', () => {
     ]);
   });
 
-  it('moves a table to another area or to none', async () => {
+  it('moves a table to no area', async () => {
     signedInAs('manager');
     const writes = api({
       ...answers,
@@ -286,7 +285,7 @@ describe('TablesPage', () => {
     });
   });
 
-  it('takes a table out of service and back', async () => {
+  it('takes a table out of service and back from its menu', async () => {
     signedInAs('owner');
     const writes = api({
       ...answers,
@@ -296,9 +295,13 @@ describe('TablesPage', () => {
     });
     render(<TablesPage />);
     await screen.findAllByTestId('table-card');
-    await userEvent.click(screen.getByRole('button', { name: 'Take T2 out of service' }));
+    await userEvent.click(screen.getByRole('button', { name: 'More for T2' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Take T2 out of service' }));
     await userEvent.click(screen.getByTestId('toggle-out-of-service'));
-    await userEvent.click(screen.getByRole('button', { name: 'Put Old 1 back in service' }));
+    await userEvent.click(screen.getByRole('button', { name: 'More for Old 1' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Put Old 1 back in service' }),
+    );
     await waitFor(() => expect(writes).toHaveLength(2));
     expect(writes).toEqual([
       { method: 'PATCH', path: `/api/v1/pos/tables/${T2.id}`, body: { archived: true } },

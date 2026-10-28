@@ -13,7 +13,7 @@ import {
   type TableColor,
   type TableShape,
 } from '@durby/shared';
-import { Eye, EyeOff, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, MoreHorizontal, Pencil, Search, Trash2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -36,7 +36,12 @@ import { cn } from '../../lib/utils';
 import { Field, FormDialog } from '../form-dialog';
 import { TableIcon, tableColors } from '../pos/table-icon';
 import { Button } from '../ui/button';
-import { Card } from '../ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
@@ -89,6 +94,8 @@ function Tables({ organizationId, access }: { organizationId: string | null; acc
   );
 }
 
+type AreaFilter = { kind: 'all' } | { kind: 'none' } | { kind: 'area'; id: string };
+
 function LocationTables({ locations, access }: { locations: LocationSummary[]; access: Access }) {
   const t = useT();
   const { store } = useAuth();
@@ -96,6 +103,7 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
   const [locationId, setLocationId] = useState(locations[0]!.id);
   const [query, setQuery] = useState('');
   const [showOut, setShowOut] = useState(false);
+  const [filter, setFilter] = useState<AreaFilter>({ kind: 'all' });
   const [tables, reloadTables] = useResource(locationId, () => loadTables(store, locationId, true));
   const [areas, reloadAreas] = useResource(locationId, () => loadAreas(store, locationId));
   const [floor, reloadFloor] = useResource(access.canSeeOrders ? locationId : null, () =>
@@ -116,13 +124,39 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
   const inService = all.filter((x) => x.archivedAt === null);
   const outOfService = all.length - inService.length;
   const occupied = inService.filter((x) => orders.get(x.id)).length;
+  const selectedArea =
+    filter.kind === 'area' ? areaList.find((a) => a.id === filter.id) : undefined;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">{t('pos.nav.tables')}</h1>
-          <p className="text-muted-foreground">{t('pos.tablesPage.description')}</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('pos.nav.tables')}</h1>
+          <p
+            className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground"
+            data-testid="table-kpis"
+          >
+            <Stat
+              dot="bg-muted-foreground"
+              label={t('pos.tablesPage.kpiInService')}
+              value={inService.length}
+            />
+            {access.canSeeOrders && (
+              <>
+                <Stat
+                  dot="bg-border"
+                  label={t('pos.tablesPage.kpiAvailable')}
+                  value={inService.length - occupied}
+                />
+                <Stat dot="bg-primary" label={t('pos.tablesPage.kpiOccupied')} value={occupied} />
+              </>
+            )}
+            <Stat
+              dot="bg-destructive"
+              label={t('pos.tablesPage.kpiOutOfService')}
+              value={outOfService}
+            />
+          </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           {locations.length > 1 && (
@@ -132,7 +166,10 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
                 id={`${id}-location`}
                 data-testid="location-select"
                 value={locationId}
-                onChange={(e) => setLocationId(e.target.value)}
+                onChange={(e) => {
+                  setLocationId(e.target.value);
+                  setFilter({ kind: 'all' });
+                }}
               >
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>
@@ -143,28 +180,30 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
             </div>
           )}
           {access.canManage && (
-            <>
-              <AreaDialog locationId={locationId} onDone={reload} />
-              <TableDialog locationId={locationId} areas={areaList} onDone={reload} />
-            </>
+            <TableDialog
+              locationId={locationId}
+              areas={areaList}
+              defaultArea={selectedArea}
+              primary
+              onDone={reload}
+            />
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="table-kpis">
-        <Kpi label={t('pos.tablesPage.kpiInService')} value={inService.length} />
-        {access.canSeeOrders && (
-          <>
-            <Kpi label={t('pos.tablesPage.kpiAvailable')} value={inService.length - occupied} />
-            <Kpi
-              label={t('pos.tablesPage.kpiOccupied')}
-              value={occupied}
-              highlight={occupied > 0}
-            />
-          </>
+      <Loaded resource={areas} reload={reloadAreas}>
+        {(areaRows) => (
+          <AreaTabs
+            areas={areaRows}
+            tables={all.filter((x) => showOut || x.archivedAt === null)}
+            filter={filter}
+            onFilter={setFilter}
+            access={access}
+            locationId={locationId}
+            onDone={reload}
+          />
         )}
-        <Kpi label={t('pos.tablesPage.kpiOutOfService')} value={outOfService} />
-      </div>
+      </Loaded>
 
       <div className="flex flex-wrap gap-3">
         <div className="relative min-w-60 flex-1">
@@ -185,7 +224,7 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
           />
         </div>
         <Button
-          variant="outline"
+          variant="ghost"
           className="gap-2"
           aria-pressed={showOut}
           data-testid="toggle-out-of-service"
@@ -204,119 +243,271 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
 
       <Loaded resource={tables} reload={reloadTables}>
         {(list) => (
-          <Loaded resource={areas} reload={reloadAreas}>
-            {(areaRows) => (
-              <AreaSections
-                areas={areaRows}
-                tables={list}
-                shown={(x) => showOut || x.archivedAt === null}
-                needle={query.trim().toLocaleLowerCase()}
-                orders={orders}
-                now={now}
-                access={access}
-                onDone={reload}
-              />
-            )}
-          </Loaded>
+          <FloorGrid
+            tables={list.filter((x) => {
+              if (!showOut && x.archivedAt !== null) return false;
+              if (filter.kind === 'none' && x.areaId !== null) return false;
+              if (filter.kind === 'area' && x.areaId !== filter.id) return false;
+              const needle = query.trim().toLocaleLowerCase();
+              return (
+                needle === '' ||
+                [x.name, x.area ?? ''].some((s) => s.toLocaleLowerCase().includes(needle))
+              );
+            })}
+            emptyArea={selectedArea !== undefined}
+            orders={orders}
+            now={now}
+            access={access}
+            areas={areaList}
+            onDone={reload}
+          />
         )}
       </Loaded>
     </div>
   );
 }
 
-function Kpi({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+function Stat({ dot, label, value }: { dot: string; label: string; value: number }) {
   return (
-    <Card className={cn('flex flex-col gap-1 p-4', highlight && 'border-primary')}>
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <span className="text-3xl font-semibold tabular-nums">{value}</span>
-    </Card>
+    <span className="inline-flex items-center gap-1.5">
+      <span aria-hidden className={cn('size-2 rounded-full', dot)} />
+      <span>{label}</span>
+      <span className="font-semibold text-foreground tabular-nums">{value}</span>
+    </span>
   );
 }
 
-/** The areas in their order (empty ones too), then tables without an area. */
-function AreaSections({
+/**
+ * Areas as tabs (All, each area, No area) with their table counts, and Add area; the selected area's
+ * tools (add a table there, rename, delete) next to them.
+ */
+function AreaTabs({
   areas,
   tables,
-  shown,
-  needle,
-  orders,
-  now,
+  filter,
+  onFilter,
   access,
+  locationId,
   onDone,
 }: {
   areas: DiningArea[];
   tables: DiningTable[];
-  shown: (table: DiningTable) => boolean;
-  needle: string;
-  orders: ReadonlyMap<string, FloorTable['order'] | undefined>;
-  now: number;
+  filter: AreaFilter;
+  onFilter: (filter: AreaFilter) => void;
   access: Access;
+  locationId: string;
   onDone: () => void;
 }) {
   const t = useT();
-  const matches = (name: string) => needle === '' || name.toLocaleLowerCase().includes(needle);
-  const sections = [
-    ...areas.map((area) => ({ area, all: tables.filter((x) => x.areaId === area.id) })),
-    { area: null, all: tables.filter((x) => x.areaId === null) },
-  ]
-    .map(({ area, all }) => {
-      const areaMatches = area !== null && matches(area.name);
-      const list = all.filter(shown).filter((x) => areaMatches || matches(x.name));
-      return { area, all, list, visible: area ? areaMatches || list.length > 0 : list.length > 0 };
-    })
-    .filter((s) => s.visible);
+  const loose = tables.filter((x) => x.areaId === null).length;
+  const selected = filter.kind === 'area' ? areas.find((a) => a.id === filter.id) : undefined;
+  const tab = (key: string, label: string, count: number, active: boolean, onClick: () => void) => (
+    <button
+      key={key}
+      type="button"
+      role="tab"
+      aria-selected={active}
+      data-testid="area-tab"
+      data-name={label}
+      onClick={onClick}
+      className={cn(
+        '-mb-px flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm transition-colors',
+        active
+          ? 'border-primary font-semibold text-foreground'
+          : 'border-transparent text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {label}
+      <span className="rounded-full bg-muted px-1.5 text-xs tabular-nums">{count}</span>
+    </button>
+  );
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-end gap-2 border-b border-border">
+        <div
+          role="tablist"
+          aria-label={t('pos.tablesPage.areas')}
+          className="flex min-w-0 flex-1 overflow-x-auto"
+        >
+          {tab('all', t('pos.tablesPage.allAreas'), tables.length, filter.kind === 'all', () =>
+            onFilter({ kind: 'all' }),
+          )}
+          {areas.map((a) =>
+            tab(
+              a.id,
+              a.name,
+              tables.filter((x) => x.areaId === a.id).length,
+              filter.kind === 'area' && filter.id === a.id,
+              () => onFilter({ kind: 'area', id: a.id }),
+            ),
+          )}
+          {loose > 0 &&
+            tab('none', t('pos.areas.none'), loose, filter.kind === 'none', () =>
+              onFilter({ kind: 'none' }),
+            )}
+        </div>
+        {access.canManage && (
+          <div className="pb-1.5">
+            <AreaDialog locationId={locationId} onDone={onDone} />
+          </div>
+        )}
+      </div>
+      {access.canManage && selected && (
+        <div className="flex flex-wrap items-center gap-2" data-testid="area-actions">
+          <span className="text-sm text-muted-foreground">{selected.name}</span>
+          <AreaDialog locationId={selected.locationId} area={selected} onDone={onDone} />
+          <DeleteArea
+            area={selected}
+            empty={!tables.some((x) => x.areaId === selected.id) && selected.tableCount === 0}
+            onDone={() => {
+              onFilter({ kind: 'all' });
+              onDone();
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
-  if (sections.length === 0) {
-    return <p className="text-muted-foreground">{t('pos.tablesPage.empty')}</p>;
+/** The tables as a floor plan: square tiles with the table drawn in its shape and colour. */
+function FloorGrid({
+  tables,
+  emptyArea,
+  orders,
+  now,
+  access,
+  areas,
+  onDone,
+}: {
+  tables: DiningTable[];
+  emptyArea: boolean;
+  orders: ReadonlyMap<string, FloorTable['order'] | undefined>;
+  now: number;
+  access: Access;
+  areas: DiningArea[];
+  onDone: () => void;
+}) {
+  const t = useT();
+  if (tables.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-muted-foreground">
+        {t(emptyArea ? 'pos.areas.empty' : 'pos.tablesPage.empty')}
+      </p>
+    );
   }
   return (
-    <div className="flex flex-col gap-8">
-      {sections.map(({ area, all, list }) => (
-        <section key={area?.id ?? 'none'} className="flex flex-col gap-3" data-testid="table-area">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-baseline gap-2">
-              <span className="text-lg font-semibold">{area?.name ?? t('pos.areas.none')}</span>
-              <span className="text-sm text-muted-foreground">
-                {list.length === 1
-                  ? t('pos.tablesPage.tableCountOne')
-                  : t('pos.tablesPage.tableCount', { count: String(list.length) })}
-              </span>
-            </h2>
-            {access.canManage && area && (
-              <div className="flex gap-2" data-testid="area-actions">
-                <TableDialog
-                  locationId={area.locationId}
-                  areas={areas}
-                  defaultArea={area}
-                  onDone={onDone}
-                />
-                <AreaDialog locationId={area.locationId} area={area} onDone={onDone} />
-                <DeleteArea area={area} empty={all.length === 0} onDone={onDone} />
-              </div>
-            )}
-          </div>
-          {list.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t('pos.areas.empty')}</p>
-          ) : (
-            <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {list.map((table) => (
-                <TableCard
-                  key={table.id}
-                  table={table}
-                  order={orders.get(table.id) ?? null}
-                  now={now}
-                  access={access}
-                  areas={areas}
-                  onDone={onDone}
-                />
-              ))}
-            </ul>
-          )}
-        </section>
+    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+      {tables.map((table) => (
+        <TableTile
+          key={table.id}
+          table={table}
+          order={orders.get(table.id) ?? null}
+          now={now}
+          access={access}
+          areas={areas}
+          onDone={onDone}
+        />
       ))}
-    </div>
+    </ul>
+  );
+}
+
+function TableTile({
+  table,
+  order,
+  now,
+  access,
+  areas,
+  onDone,
+}: {
+  table: DiningTable;
+  order: FloorTable['order'];
+  now: number;
+  access: Access;
+  areas: DiningArea[];
+  onDone: () => void;
+}) {
+  const t = useT();
+  const { store } = useAuth();
+  const action = useActionKey();
+  const out = table.archivedAt !== null;
+  const status = out ? 'outOfService' : order ? 'occupied' : 'available';
+  const statusLabel = {
+    outOfService: t('pos.tablesPage.status.outOfService'),
+    occupied: t('pos.tablesPage.status.occupied'),
+    available: t('pos.tablesPage.status.available'),
+  }[status];
+  const duration = order ? durationLabel(minutesSince(order.openedAt, now)) : null;
+  const { stroke, fill } = tableColors(table.color);
+
+  async function toggleService() {
+    const result = await updateTable(store, action, table.id, { archived: !out });
+    if (result.ok) onDone();
+  }
+
+  return (
+    <li data-testid="table-card" data-name={table.name} data-status={status}>
+      <div
+        className={cn(
+          'relative flex aspect-square flex-col items-center justify-center gap-1 rounded-2xl border-2 bg-card p-3 text-center transition-shadow hover:shadow-md',
+          out && 'border-dashed opacity-60',
+        )}
+        style={{
+          borderColor: order ? stroke : undefined,
+          backgroundColor: order ? fill : undefined,
+        }}
+      >
+        <TableIcon shape={table.shape} color={table.color} className="size-14" />
+        <span className="text-lg font-semibold leading-tight">{table.name}</span>
+        <span className="text-xs text-muted-foreground">
+          {t('pos.floor.seats', { count: String(table.seats) })}
+          {table.area && ` · ${table.area}`}
+        </span>
+        <span className="mt-1 text-xs font-medium">
+          {order && duration
+            ? `${t('pos.floor.items', { count: String(order.itemCount) })} · ${t('pos.tablesPage.open', { duration: t(duration.key, duration.values) })}`
+            : order === null && !out
+              ? t('pos.tablesPage.noOrder')
+              : statusLabel}
+        </span>
+        <span className="sr-only">{statusLabel}</span>
+        {access.canManage && (
+          <div className="absolute top-2 right-2 flex gap-1">
+            <TableDialog
+              locationId={table.locationId}
+              table={table}
+              areas={areas}
+              onDone={onDone}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  aria-label={t('pos.tablesPage.actions', { name: table.name })}
+                  data-testid="table-menu"
+                >
+                  <MoreHorizontal aria-hidden className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  data-testid={out ? 'table-in-service' : 'table-out-of-service'}
+                  onSelect={() => void toggleService()}
+                >
+                  {out ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
+                  {t(out ? 'pos.tablesPage.putInService' : 'pos.tablesPage.takeOutOfService', {
+                    name: table.name,
+                  })}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+      </div>
+    </li>
   );
 }
 
@@ -411,100 +602,11 @@ function AreaDialog({
   );
 }
 
-function TableCard({
-  table,
-  order,
-  now,
-  access,
-  areas,
-  onDone,
-}: {
-  table: DiningTable;
-  order: FloorTable['order'];
-  now: number;
-  access: Access;
-  areas: DiningArea[];
-  onDone: () => void;
-}) {
-  const t = useT();
-  const { store } = useAuth();
-  const action = useActionKey();
-  const out = table.archivedAt !== null;
-  const status = out ? 'outOfService' : order ? 'occupied' : 'available';
-  const statusLabel = {
-    outOfService: t('pos.tablesPage.status.outOfService'),
-    occupied: t('pos.tablesPage.status.occupied'),
-    available: t('pos.tablesPage.status.available'),
-  }[status];
-  const duration = order ? durationLabel(minutesSince(order.openedAt, now)) : null;
-
-  async function toggleService() {
-    const result = await updateTable(store, action, table.id, { archived: !out });
-    if (result.ok) onDone();
-  }
-
-  return (
-    <li data-testid="table-card" data-name={table.name} data-status={status}>
-      <Card
-        className={cn('flex h-full flex-col gap-4 border-l-4 p-4', out && 'opacity-60')}
-        style={{ borderLeftColor: order ? tableColors(table.color).stroke : undefined }}
-      >
-        <div className="flex items-start gap-3">
-          <TableIcon shape={table.shape} color={table.color} />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <span className="text-lg font-semibold">{table.name}</span>
-            <span className="text-sm text-muted-foreground">
-              {t('pos.floor.seats', { count: String(table.seats) })}
-            </span>
-          </div>
-          <span
-            className={cn(
-              'rounded-full px-2.5 py-0.5 text-xs font-medium',
-              status === 'occupied'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground',
-            )}
-          >
-            {statusLabel}
-          </span>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {order && duration
-            ? `${t('pos.floor.items', { count: String(order.itemCount) })} · ${t('pos.tablesPage.open', { duration: t(duration.key, duration.values) })}`
-            : t('pos.tablesPage.noOrder')}
-        </p>
-        {access.canManage && (
-          <div className="mt-auto flex justify-end gap-2 border-t border-border pt-3">
-            <TableDialog
-              locationId={table.locationId}
-              table={table}
-              areas={areas}
-              onDone={onDone}
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              data-testid={out ? 'table-in-service' : 'table-out-of-service'}
-              aria-label={t(
-                out ? 'pos.tablesPage.putInService' : 'pos.tablesPage.takeOutOfService',
-                { name: table.name },
-              )}
-              onClick={() => void toggleService()}
-            >
-              {out ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
-            </Button>
-          </div>
-        )}
-      </Card>
-    </li>
-  );
-}
-
 const SEATS = /^\d{1,3}$/;
 
 /**
- * Add (no `table`) or edit a table: name, area, seats and its look. `defaultArea`: adding from an
- * area's section starts in that area (and the trigger is that section's "+").
+ * Add (no `table`: the header's "New table") or edit a table (a tile's pencil): name, area, seats and
+ * its look. `defaultArea`: a new table starts in the area whose tab is selected.
  */
 function TableDialog({
   locationId,
@@ -517,6 +619,8 @@ function TableDialog({
   table?: DiningTable;
   areas: DiningArea[];
   defaultArea?: DiningArea;
+  /** The header's button (the only way to add a table). */
+  primary?: boolean;
   onDone: () => void;
 }) {
   const t = useT();
@@ -542,16 +646,15 @@ function TableDialog({
 
   const trigger = table
     ? t('pos.tablesPage.editNamed', { name: table.name })
-    : defaultArea
-      ? t('pos.areas.addTable', { name: defaultArea.name })
-      : t('pos.tablesPage.create');
+    : t('pos.tablesPage.create');
 
   return (
     <FormDialog
       trigger={trigger}
-      triggerVariant={table || defaultArea ? 'outline' : 'default'}
-      triggerIcon={table ? <Pencil aria-hidden /> : defaultArea ? <Plus aria-hidden /> : undefined}
-      testId={table ? 'table-edit' : defaultArea ? 'area-add-table' : 'table-create'}
+      triggerVariant={table ? 'ghost' : 'default'}
+      triggerIcon={table ? <Pencil aria-hidden className="size-4" /> : undefined}
+      triggerClassName={table ? 'size-8' : undefined}
+      testId={table ? 'table-edit' : 'table-create'}
       title={t(table ? 'pos.tablesPage.editTitle' : 'pos.tablesPage.createTitle')}
       onOpen={() => {
         setForm({

@@ -44,6 +44,7 @@ export function FormDialog({
   trigger,
   triggerVariant,
   triggerIcon,
+  triggerClassName,
   testId,
   title,
   onOpen,
@@ -52,9 +53,10 @@ export function FormDialog({
   children,
 }: {
   trigger: string;
-  triggerVariant: 'default' | 'outline';
+  triggerVariant: 'default' | 'outline' | 'ghost';
   /** An icon-only trigger; `trigger` becomes its accessible name. */
   triggerIcon?: ReactNode;
+  triggerClassName?: string;
   testId: string;
   title: string;
   onOpen: () => void;
@@ -96,7 +98,13 @@ export function FormDialog({
     >
       <DialogTrigger asChild>
         {triggerIcon ? (
-          <Button variant={triggerVariant} size="icon" aria-label={trigger} data-testid={testId}>
+          <Button
+            variant={triggerVariant}
+            size="icon"
+            className={triggerClassName}
+            aria-label={trigger}
+            data-testid={testId}
+          >
             {triggerIcon}
           </Button>
         ) : (

@@ -103,8 +103,10 @@ caller can't read), `pos.area_name_taken` (409), `pos.area_not_empty` (409). Aud
 `areaId`.
 
 **Web.** Table management is its own page, **`/tables`** (nav "Tables", feature `pos`, `pos.tables.read`), apart from
-the POS screens. Sections are the areas in their order (empty ones too), then "No area"; each area has + add a table
-there, rename and delete (disabled with a hint while it has tables); the header has Add area and Add table.
+the POS screens. Area tabs (All, each area in order with its count, also empty ones, and "No area") sit above a
+floor-plan grid of table tiles; the selected area's tools are rename and delete (disabled with a hint while it has
+tables). Add area sits by the tabs, New table in the header (it preselects the selected area); a tile's ⋯ menu takes
+the table out of service or back.
 
 ## Step 3: orders and kitchen tickets
 
