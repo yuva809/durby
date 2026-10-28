@@ -66,7 +66,7 @@ describe('/api/v1/pos/areas', () => {
     withIdempotencyKey(
       request(server)[method](`/api/v1${path}`).auth(token, { type: 'bearer' }),
       key,
-    ).send((body ?? {}));
+    ).send(body ?? {});
 
   async function area(token: string, locationId: string, name: string, sortOrder?: number) {
     const res = await send(token, 'post', '/pos/areas', { locationId, name, sortOrder }).expect(
