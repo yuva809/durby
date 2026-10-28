@@ -42,14 +42,25 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthCard title={t('auth.login.title')}>
+    <AuthCard title={t('auth.login.title')} description={t('auth.login.subtitle')}>
       <form onSubmit={(e) => void onSubmit(e)}>
         <label className={fieldClass}>
           {t('auth.login.email')}
-          <Input name="email" type="email" autoComplete="username" required />
+          <Input
+            name="email"
+            type="email"
+            autoComplete="username"
+            placeholder={t('auth.login.emailPlaceholder')}
+            required
+          />
         </label>
         <div className={fieldClass}>
-          <label htmlFor="login-password">{t('auth.login.password')}</label>
+          <span className="flex items-baseline justify-between gap-2">
+            <label htmlFor="login-password">{t('auth.login.password')}</label>
+            <Link href="/forgot-password" className="text-sm font-normal">
+              {t('auth.login.forgotPassword')}
+            </Link>
+          </span>
           <PasswordInput
             labels={passwordLabels}
             id="login-password"
@@ -59,13 +70,14 @@ export default function LoginPage() {
           />
         </div>
         <Notice text={error} tone="error" />
-        <Button type="submit" className="w-full" disabled={busy}>
+        <Button
+          type="submit"
+          className="mt-1 min-h-12 w-full text-base font-semibold"
+          disabled={busy}
+        >
           {busy ? t('auth.login.submitting') : t('auth.login.submit')}
         </Button>
       </form>
-      <p>
-        <Link href="/forgot-password">{t('auth.login.forgotPassword')}</Link>
-      </p>
     </AuthCard>
   );
 }

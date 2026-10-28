@@ -692,5 +692,7 @@
   "pos.order.newTag": "NEW",
   "pos.nav.service": "Service",
   "auth.password.show": "Show password",
-  "auth.password.hide": "Hide password"
+  "auth.password.hide": "Hide password",
+  "auth.login.subtitle": "Welcome back. Sign in to continue.",
+  "auth.login.emailPlaceholder": "you@restaurant.com"
 }
