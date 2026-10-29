@@ -807,5 +807,6 @@
   "staff.auditPage.reason": "Grund",
   "staff.auditPage.empty": "Noch keine Einträge.",
   "staff.auditPage.loadMore": "Mehr laden",
-  "staff.auditPage.unknownActor": "Entferntes Konto"
+  "staff.auditPage.unknownActor": "Entferntes Konto",
+  "staff.staffPage.invited": "Einladung gesendet."
 }

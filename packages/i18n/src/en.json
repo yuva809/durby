@@ -807,5 +807,6 @@
   "staff.auditPage.reason": "Reason",
   "staff.auditPage.empty": "No entries yet.",
   "staff.auditPage.loadMore": "Load more",
-  "staff.auditPage.unknownActor": "Removed account"
+  "staff.auditPage.unknownActor": "Removed account",
+  "staff.staffPage.invited": "Invitation sent."
 }

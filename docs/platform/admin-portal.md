@@ -96,9 +96,9 @@ needed), `/platform/audit`.
 ## Bootstrap
 
 ```bash
-pnpm --filter @durby/api cli:create-staff --email ops@durby.tech --role super_admin   # locally
+pnpm --filter @durby/api create-staff --email ops@durby.local --role super_admin   # locally (Mailpit)
 bin/dc run --rm --no-deps api node dist/cli/create-staff.js --email ops@durby.tech --role super_admin  # staging
 ```
 
-Emails an invitation link (Mailpit on staging). Run it for two people: the portal needs 2 active SuperAdmins before
+Emails an invitation link to `/platform/accept` (Mailpit locally and on staging). Run it for two people: the portal needs 2 active SuperAdmins before
 anyone can be demoted or deactivated.
