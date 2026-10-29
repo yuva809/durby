@@ -37,4 +37,28 @@ export class AuthMailer {
     });
     this.logger.info({ template: `auth.${template}`, messageId }, 'auth mail sent');
   }
+
+  /**
+   * To a customer's new Owner (admin portal onboarding). `ownerWelcome` carries a set-password
+   * token (fragment, like reset links); `ownerAdded` only links to the sign-in page.
+   */
+  async sendOwner(
+    template: 'ownerWelcome' | 'ownerAdded',
+    to: string,
+    locale: string,
+    organization: string,
+    token?: string,
+  ): Promise<void> {
+    const t = createTranslator(isLocale(locale) ? locale : DEFAULT_LOCALE);
+    const link =
+      template === 'ownerWelcome'
+        ? `${new URL(PAGES.reset, this.config.WEB_BASE_URL).toString()}#token=${token ?? ''}`
+        : new URL('/login', this.config.WEB_BASE_URL).toString();
+    const { messageId } = await this.mailer.send({
+      to,
+      subject: t(`auth.email.${template}.subject` as LabelKey, { organization }),
+      text: t(`auth.email.${template}.body` as LabelKey, { organization, link }),
+    });
+    this.logger.info({ template: `auth.${template}`, messageId }, 'auth mail sent');
+  }
 }

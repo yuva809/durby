@@ -10,10 +10,16 @@ export type SecurityEvent =
   | 'auth.password.reset_requested'
   | 'auth.password.reset'
   | 'auth.email.verification_requested'
-  | 'auth.email.verified';
+  | 'auth.email.verified'
+  // Durby staff (ADR 0017): the platform audit log has the successful actions too.
+  | 'staff.login.failed'
+  | 'staff.login.locked'
+  | 'staff.logout';
 
 export interface SecurityEventFields {
   userId?: string;
+  /** A staff account (ADR 0017); never in the same event as `userId`. */
+  staffId?: string;
   sessionId?: string;
   organizationId?: string | null;
   /** sha256 of the normalized email, for failures of unknown users. Never the email itself. */

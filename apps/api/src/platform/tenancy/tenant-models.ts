@@ -23,3 +23,15 @@ export const AUTH_PRIVATE_MODELS: ReadonlySet<Prisma.ModelName> = new Set<Prisma
   'UserToken',
   'RefreshToken',
 ]);
+
+/**
+ * Platform models private to platform/staff (ADR 0017 §1): staff credentials, sessions and the
+ * platform audit log. The platform client refuses them too.
+ */
+export const STAFF_PRIVATE_MODELS: ReadonlySet<Prisma.ModelName> = new Set<Prisma.ModelName>([
+  'StaffAccount',
+  'StaffToken',
+  'StaffSession',
+  'PlatformAuditLog',
+  'StaffIdempotencyKey',
+]);

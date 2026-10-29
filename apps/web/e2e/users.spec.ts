@@ -62,10 +62,13 @@ test.describe('access', () => {
 
     const nav = staff.getByRole('navigation', { name: 'Main navigation' });
     await expect(nav.getByTestId('nav-home')).toBeVisible();
-    await expect(nav.getByTestId('nav-members')).toHaveCount(0);
-    await expect(nav.getByTestId('nav-roles')).toHaveCount(0);
+    await expect(nav.getByTestId('nav-settings')).toBeVisible();
 
     const origin = new URL(staff.url()).origin;
+    await staff.goto(`${origin}/settings/organization`);
+    await expect(staff.getByTestId('settings-tab-general')).toBeVisible();
+    await expect(staff.getByTestId('settings-tab-members')).toHaveCount(0);
+    await expect(staff.getByTestId('settings-tab-roles')).toHaveCount(0);
     await staff.goto(`${origin}/settings/members`);
     await expect(staff.getByTestId('no-access')).toBeVisible();
     await staff.goto(`${origin}/settings/roles`);

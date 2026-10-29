@@ -64,6 +64,35 @@ describe('route markers', () => {
       // ADR 0007: authenticated by the single-use invitation token.
       'POST /api/v1/invitations/accept',
       'POST /api/v1/invitations/preview',
+      // ADR 0017: staff sign-in, authenticated by the password, the invitation token or the staff
+      // session cookie.
+      'POST /api/v1/platform/auth/accept',
+      'POST /api/v1/platform/auth/login',
+      'POST /api/v1/platform/auth/logout',
+    ]);
+  });
+
+  /** ADR 0017: every staff route with its staff key; a new one is a reviewable diff. */
+  it('lists every @PlatformOnly() route with its staff key', () => {
+    expect(
+      routes.flatMap((r) =>
+        r.markers.flatMap((m) =>
+          m.kind === 'platformOnly' ? [`${r.route} ${m.key}${m.fresh ? ' (fresh)' : ''}`] : [],
+        ),
+      ),
+    ).toEqual([
+      'GET /api/v1/platform/audit staff.audit.read',
+      'GET /api/v1/platform/auth/me staff.portal.access',
+      'GET /api/v1/platform/customers staff.customers.read',
+      'GET /api/v1/platform/customers/:id staff.customers.read',
+      'GET /api/v1/platform/onboarding-options staff.customers.create',
+      'GET /api/v1/platform/staff staff.staff.read',
+      'PATCH /api/v1/platform/staff/:id staff.staff.manage (fresh)',
+      'POST /api/v1/platform/auth/reauth staff.portal.access',
+      'POST /api/v1/platform/customers staff.customers.create (fresh)',
+      'POST /api/v1/platform/customers/:id/owner-invite staff.customers.invite (fresh)',
+      'POST /api/v1/platform/staff/:id/deactivate staff.staff.manage (fresh)',
+      'POST /api/v1/platform/staff/invitations staff.staff.manage (fresh)',
     ]);
   });
 
@@ -89,6 +118,7 @@ describe('route markers', () => {
   /** CLAUDE.md rule 8 / ADR 0014: a new exempt write route changes this list and needs review. */
   it('lists every @IdempotencyExempt() write route', () => {
     expect(idempotency.filter((r) => r.exempt !== undefined).map((r) => r.route)).toEqual([
+      'PATCH /api/v1/platform/staff/:id',
       'POST /api/v1/auth/login',
       'POST /api/v1/auth/logout',
       'POST /api/v1/auth/password/forgot',
@@ -100,6 +130,16 @@ describe('route markers', () => {
       'POST /api/v1/invitations/accept',
       'POST /api/v1/invitations/accept-signed-in',
       'POST /api/v1/invitations/preview',
+      'POST /api/v1/platform/auth/accept',
+      'POST /api/v1/platform/auth/login',
+      'POST /api/v1/platform/auth/logout',
+      'POST /api/v1/platform/auth/reauth',
+      // ADR 0017 §8: onboarding replays through the staff store; resending changes no data.
+      'POST /api/v1/platform/customers',
+      'POST /api/v1/platform/customers/:id/owner-invite',
+      // ADR 0017 §8 (with PATCH /platform/staff/:id above): replay-safe set-state staff writes.
+      'POST /api/v1/platform/staff/:id/deactivate',
+      'POST /api/v1/platform/staff/invitations',
     ]);
   });
 

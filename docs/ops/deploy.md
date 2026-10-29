@@ -201,6 +201,9 @@ sudo -u deploy sh -c 'grep -q "^STAGING_DEMO_DOMAIN=" /opt/durby/.env ||
 
 Caddy requests the second certificate on the next deploy; `WEB_ORIGINS` then lists both origins.
 
+**Admin portal 1a (staff accounts, ADR 0017)** needs no new secret. Optional: `STAFF_EMAIL_DOMAINS` (default
+`durby.tech`), the domains that can be invited as staff. After the deploy, create the first two super admins (see "First staff" below).
+
 Nothing else is manual. On every deploy, `bin/deploy.sh` applies `postgres-init/02-rls-definer.sh` as the Postgres
 superuser before migrations (it creates the `durby_rls_definer` role, ADR 0006; init scripts never re-run on an
 existing volume). Mailpit starts with the stack.
@@ -229,6 +232,18 @@ bin/dc run --rm --no-deps api node dist/cli/create-admin.js --email demo@example
 `--partner` only uses an existing partner; it never creates one. The password link points to `WEB_BASE_URL` (the
 first domain); after setting the password, sign in on the demo domain. Each domain has its own session (host-only
 cookies).
+
+### First staff (admin portal)
+
+The portal at `https://<STAGING_DOMAIN>/platform` is for Durby staff (docs/platform/admin-portal.md). Create the
+first super admins on the server; each gets an invitation link by mail (Mailpit) to set a password:
+
+```bash
+bin/dc run --rm --no-deps api node dist/cli/create-staff.js --email you@durby.tech --role super_admin
+```
+
+Do this for two people: the portal always keeps at least 2 active super admins. Further staff are invited in the
+portal (Staff → Invite).
 
 ### Staging mail (Mailpit)
 

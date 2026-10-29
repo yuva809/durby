@@ -2,6 +2,7 @@ import { dictionaries, isLabelKey } from '@durby/i18n';
 import { FEATURES, PERMISSIONS } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import { activeNavItem, NAV_GROUPS, NAV_ITEMS, type NavItem, visibleNav } from './registry';
+import { SETTINGS_TABS } from './settings-tabs';
 
 const ids = (items: NavItem[]) => items.map((i) => i.id);
 /** Main and module items: settings items depend on permissions, not on the plan. */
@@ -9,7 +10,7 @@ const moduleIds = (items: NavItem[]) => ids(items.filter((i) => i.group !== 'set
 
 describe('NAV_ITEMS', () => {
   it('uses registered features and permissions, and labels present in en and de', () => {
-    for (const item of NAV_ITEMS) {
+    for (const item of [...NAV_ITEMS, ...SETTINGS_TABS]) {
       if (item.feature) expect(Object.keys(FEATURES)).toContain(item.feature);
       if (item.permission) expect(Object.keys(PERMISSIONS)).toContain(item.permission);
       expect(isLabelKey(item.label)).toBe(true);
@@ -60,20 +61,42 @@ describe('visibleNav', () => {
     ).toEqual(['open', 'both']);
   });
 
-  // The two-domain demo: the inventory plan vs the full plan (docs/platform/entitlements.md).
-  it('shows the modules of the plan', () => {
-    const inventoryPlan = ['inventory', 'inventory.counts', 'inventory.purchasing', 'reports'];
+  // Inventory, Billing, POS and Reports aren't built yet: hidden whatever the plan.
+  it('never shows planned modules', () => {
+    const everything = {
+      activeFeatures: Object.keys(FEATURES),
+      activePermissions: Object.keys(PERMISSIONS),
+    };
+    expect(ids(visibleNav(NAV_ITEMS, everything))).toEqual([
+      'home',
+      'catalog',
+      'service',
+      'tables',
+      'settings',
+    ]);
+    expect(NAV_ITEMS.filter((i) => i.planned).map((i) => i.id)).toEqual([
+      'inventory',
+      'billing',
+      'pos',
+      'reports',
+    ]);
+  });
+
+  it('shows Settings while any of its tabs is visible', () => {
+    // The Company and Plan tabs need no permission: everyone has Settings.
+    expect(ids(visibleNav(NAV_ITEMS, { activeFeatures: [], activePermissions: [] }))).toEqual([
+      'home',
+      'settings',
+    ]);
+    const parent: NavItem = {
+      ...NAV_ITEMS[0]!,
+      id: 'parent',
+      children: [{ ...NAV_ITEMS[0]!, id: 'child', permission: 'platform.audit.read' }],
+    };
+    expect(ids(visibleNav([parent], { activeFeatures: [], activePermissions: [] }))).toEqual([]);
     expect(
-      moduleIds(visibleNav(NAV_ITEMS, { activeFeatures: inventoryPlan, activePermissions: [] })),
-    ).toEqual(['home', 'inventory', 'reports']);
-    expect(
-      moduleIds(
-        visibleNav(NAV_ITEMS, {
-          activeFeatures: ['inventory', 'billing', 'pos', 'reports'],
-          activePermissions: [],
-        }),
-      ),
-    ).toEqual(['home', 'inventory', 'billing', 'pos', 'reports']);
+      ids(visibleNav([parent], { activeFeatures: [], activePermissions: ['platform.audit.read'] })),
+    ).toEqual(['parent']);
   });
 });
 
@@ -82,7 +105,7 @@ describe('table service items', () => {
     const features = ['catalog', 'pos'];
     expect(
       moduleIds(visibleNav(NAV_ITEMS, { activeFeatures: features, activePermissions: [] })),
-    ).toEqual(['home', 'pos']);
+    ).toEqual(['home']);
     expect(
       moduleIds(
         visibleNav(NAV_ITEMS, {
@@ -90,7 +113,7 @@ describe('table service items', () => {
           activePermissions: ['catalog.products.read', 'pos.orders.read', 'pos.tables.read'],
         }),
       ),
-    ).toEqual(['home', 'catalog', 'pos', 'service', 'tables']);
+    ).toEqual(['home', 'catalog', 'service', 'tables']);
   });
 });
 
@@ -101,6 +124,8 @@ describe('activeNavItem', () => {
     ['/inventory/items/1', 'inventory'],
     ['/inventoryx', undefined],
     ['/pos', 'pos'],
+    ['/settings', 'settings'],
+    ['/settings/members', 'settings'],
     ['/service', 'service'],
     ['/service/x', 'service'],
     ['/tables', 'tables'],

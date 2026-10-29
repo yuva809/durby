@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from '../database/generated/client';
 import type { TenantContext } from './tenant-context';
-import { AUTH_PRIVATE_MODELS, TENANT_MODELS } from './tenant-models';
+import { AUTH_PRIVATE_MODELS, STAFF_PRIVATE_MODELS, TENANT_MODELS } from './tenant-models';
 
 export const TENANT_PRISMA = Symbol('TENANT_PRISMA');
 export const PLATFORM_PRISMA = Symbol('PLATFORM_PRISMA');
@@ -24,6 +24,15 @@ export class AuthPrivateModelOnPlatformClientError extends Error {
   constructor(model: string) {
     super(`${model} is private to platform/auth: use its public API, not the platform client.`);
     this.name = 'AuthPrivateModelOnPlatformClientError';
+  }
+}
+
+export class StaffPrivateModelOnPlatformClientError extends Error {
+  readonly code = 'tenancy.staff_private_model_on_platform_client';
+
+  constructor(model: string) {
+    super(`${model} is private to platform/staff: use its public API, not the platform client.`);
+    this.name = 'StaffPrivateModelOnPlatformClientError';
   }
 }
 
@@ -74,8 +83,8 @@ export function createTenantPrismaClient(base: PrismaClient, context: TenantCont
 }
 
 /**
- * Client for platform tables (partners, organizations, …). Rejects tenant models and auth-private
- * models (users, tokens) outright; raw
+ * Client for platform tables (partners, organizations, …). Rejects tenant models, auth-private
+ * models (users, tokens) and staff-private models (ADR 0017) outright; raw
  * queries on tenant tables see no rows, since no tenant is set (fail closed).
  */
 export function createPlatformPrismaClient(base: PrismaClient) {
@@ -87,6 +96,8 @@ export function createPlatformPrismaClient(base: PrismaClient) {
           if (TENANT_MODELS.has(model)) throw new TenantModelOnPlatformClientError(model);
           if (AUTH_PRIVATE_MODELS.has(model))
             throw new AuthPrivateModelOnPlatformClientError(model);
+          if (STAFF_PRIVATE_MODELS.has(model))
+            throw new StaffPrivateModelOnPlatformClientError(model);
           return query(args);
         },
       },

@@ -11,6 +11,7 @@ import type {
   PosErrorCode,
   RbacErrorCode,
   SettingErrorCode,
+  StaffErrorCode,
 } from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
 
@@ -27,7 +28,8 @@ export type ApiErrorCode =
   | AuditErrorCode
   | CatalogErrorCode
   | LocationErrorCode
-  | PosErrorCode;
+  | PosErrorCode
+  | StaffErrorCode;
 
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
 const LABELS: Record<ApiErrorCode, LabelKey> = {
@@ -102,6 +104,20 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'pos.area_not_found': 'pos.errors.areaNotFound',
   'pos.area_name_taken': 'pos.errors.areaNameTaken',
   'pos.area_not_empty': 'pos.errors.areaNotEmpty',
+  'staff.unauthenticated': 'staff.errors.unauthenticated',
+  'staff.invalid_credentials': 'staff.errors.invalidCredentials',
+  'staff.reauth_required': 'staff.errors.reauthRequired',
+  'staff.permission_denied': 'staff.errors.permissionDenied',
+  'staff.invitation_invalid': 'staff.errors.invitationInvalid',
+  'staff.email_domain': 'staff.errors.emailDomain',
+  'staff.not_found': 'staff.errors.notFound',
+  'staff.already_active': 'staff.errors.alreadyActive',
+  'staff.last_super_admins': 'staff.errors.lastSuperAdmins',
+  'staff.cannot_change_self': 'staff.errors.cannotChangeSelf',
+  'staff.customer_duplicate': 'staff.errors.customerDuplicate',
+  'staff.customer_not_found': 'staff.errors.customerNotFound',
+  'staff.owner_active': 'staff.errors.ownerActive',
+  'staff.partner_not_found': 'staff.errors.partnerNotFound',
 };
 
 export function errorLabel(code: ApiErrorCode | 'unknown'): LabelKey {

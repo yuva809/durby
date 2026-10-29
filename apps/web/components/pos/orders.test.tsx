@@ -99,9 +99,9 @@ const ORDER: Order = {
   },
 };
 
-function signedInAs(role: SystemRole) {
+function signedInAs(role: SystemRole, without: string[] = []) {
   mockState.session = sessionFixture({
-    activePermissions: [...systemRolePermissions(role)],
+    activePermissions: [...systemRolePermissions(role)].filter((key) => !without.includes(key)),
     activeFeatures: ['catalog', 'pos'],
   });
 }
@@ -287,8 +287,8 @@ describe('OrderPage (till)', () => {
     expect(screen.queryByTestId('send-to-kitchen')).toBeNull();
   });
 
-  it('combines sent items; a waiter prints the order only, without amounts', async () => {
-    signedInAs('waiter');
+  it('combines sent items; without bill printing (a custom role) only the order prints, without amounts', async () => {
+    signedInAs('waiter', ['pos.bills.print']);
     const twice: Order = {
       ...ORDER,
       tickets: [
@@ -324,6 +324,19 @@ describe('OrderPage (till)', () => {
     expect(within(slip).getByText('Table T1')).toBeTruthy();
     // No payment details: no amounts, VAT or totals.
     expect(slip.textContent).not.toMatch(/€|VAT|TOTAL|receipt/i);
+    expect(screen.getByTestId('close-order')).toBeTruthy();
+  });
+
+  it('lets a waiter print the bill with prices, like the cashier', async () => {
+    signedInAs('waiter');
+    api(withOrder(ORDER));
+    render(<OrderPage tableId={TABLE.id} />);
+    await screen.findAllByTestId('bill-line');
+    expect(screen.queryByTestId('print-order')).toBeNull();
+    await userEvent.click(screen.getByTestId('print-bill'));
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
+    expect(within(printed).getByTestId('order-total').textContent).toBe('€13.80');
     expect(screen.getByTestId('close-order')).toBeTruthy();
   });
 

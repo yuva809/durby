@@ -1,3 +1,3 @@
 // Bootstrap commands (src/cli) only.
 export { ProvisioningModule } from './provisioning.module';
-export { type Ensured, ProvisioningService } from './provisioning.service';
+export { DEFAULT_PARTNER, type Ensured, ProvisioningService } from './provisioning.service';

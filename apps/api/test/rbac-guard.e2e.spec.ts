@@ -33,7 +33,7 @@ class RbacProbeController {
     return { ok: true };
   }
 
-  @PlatformOnly()
+  @PlatformOnly('staff.portal.access')
   @Get('platform')
   platform(): { ok: true } {
     return { ok: true };
@@ -112,11 +112,11 @@ describe('AccessGuard and @RequirePermission', () => {
     expect(res.body).toMatchObject({ code: 'tenancy.context_missing' });
   });
 
-  it('denies @PlatformOnly() routes to everyone, including owners', async () => {
+  it('never lets a customer token through a @PlatformOnly route, not even an owner', async () => {
     await request(server).get('/api/v1/rbac-probe/platform').expect(401);
     const owner = await memberOf(a, a.roles.owner);
-    const res = await get('platform', owner.token).expect(403);
-    expect(res.body).toMatchObject({ code: 'rbac.platform_only' });
+    const res = await get('platform', owner.token).expect(401);
+    expect(res.body).toMatchObject({ code: 'staff.unauthenticated' });
   });
 
   it('grants nothing without a membership or with a role that has no permissions', async () => {

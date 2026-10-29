@@ -10,6 +10,7 @@ import { LocationsPage, NoLocations } from './locations-page';
 import { NumberingPage } from './numbering-page';
 import { OrganizationPage } from './organization-page';
 import { PlanPage } from './plan-page';
+import { SettingsIndex, SettingsTabs } from './settings-tabs';
 import { SettingsPage } from './settings-page';
 
 vi.mock('../../app/providers', async () => (await import('../../test/mocks')).providersMock());
@@ -421,5 +422,45 @@ describe('PlanPage', () => {
     expect(features[0]?.textContent).toContain('Locations');
     expect(features[0]?.textContent).toContain('3');
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+  });
+});
+
+describe('SettingsTabs', () => {
+  const tabIds = () =>
+    screen
+      .getAllByRole('link')
+      .map((a) => a.getAttribute('data-testid')?.replace('settings-tab-', ''));
+
+  it('shows every tab to an owner and marks the current one', () => {
+    signedInAs('owner');
+    mockState.pathname = '/settings/locations';
+    render(<SettingsTabs />);
+    expect(tabIds()).toEqual([
+      'organization',
+      'locations',
+      'members',
+      'roles',
+      'general',
+      'numbering',
+      'labels',
+      'plan',
+      'audit',
+    ]);
+    expect(screen.getByTestId('settings-tab-locations').getAttribute('aria-current')).toBe('page');
+    expect(screen.getByTestId('settings-tab-organization').textContent).toBe('Company');
+  });
+
+  it('shows a waiter only the tabs they may read', () => {
+    signedInAs('waiter');
+    render(<SettingsTabs />);
+    expect(tabIds()).toEqual(['organization', 'locations', 'general', 'numbering', 'plan']);
+  });
+
+  it('opens the first tab at /settings', async () => {
+    signedInAs('staff');
+    render(<SettingsIndex />);
+    await waitFor(() =>
+      expect(mockState.router.replace).toHaveBeenCalledWith('/settings/organization'),
+    );
   });
 });

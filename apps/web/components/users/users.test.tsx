@@ -3,7 +3,8 @@ import { type Role, type SystemRole, systemRolePermissions } from '@durby/shared
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NAV_ITEMS, visibleNav } from '../../lib/nav/registry';
+import { visibleNav } from '../../lib/nav/registry';
+import { SETTINGS_TABS } from '../../lib/nav/settings-tabs';
 import { mockState, resetMocks } from '../../test/mocks';
 import { sessionFixture } from '../../test/session-fixture';
 import { MembersPage } from './members-page';
@@ -85,41 +86,40 @@ const rowOf = async (email: string) =>
 
 describe('nav for Owner, Manager and Staff', () => {
   const settingsItems = (key: SystemRole) =>
-    visibleNav(NAV_ITEMS, {
+    visibleNav(SETTINGS_TABS, {
       activeFeatures: [],
       activePermissions: [...systemRolePermissions(key)],
-    })
-      .filter((i) => i.group === 'settings')
-      .map((i) => i.id);
+    }).map((i) => i.id);
 
-  it('shows the settings pages by permission', () => {
+  it('shows the settings tabs by permission', () => {
     expect(settingsItems('owner')).toEqual([
       'organization',
       'locations',
-      'settings',
       'members',
       'roles',
-      'labels',
+      'general',
       'numbering',
+      'labels',
       'plan',
       'audit',
     ]);
     expect(settingsItems('manager')).toEqual([
       'organization',
       'locations',
-      'settings',
       'members',
       'roles',
+      'general',
       'numbering',
       'plan',
     ]);
     expect(settingsItems('staff')).toEqual([
       'organization',
       'locations',
-      'settings',
+      'general',
       'numbering',
       'plan',
     ]);
+    expect(settingsItems('waiter')).toEqual(settingsItems('staff'));
   });
 });
 

@@ -193,9 +193,10 @@ Notes are free text and stay out of snapshots. No outbox events yet (no consumer
 - `/service/[tableId]`: menu by category, cart (quantity, note), **Send to kitchen** → the kitchen ticket print
   view (`window.print()`); the order so far with voided items struck through, totals, **Reprint** per ticket,
   **Void** (with `pos.orders.void`), **Close order** (with `pos.orders.close`).
-- **Printing.** Waiters print the **order slip**: table, order number, time, the order's items (combined) with
-  quantities and notes, item count; no prices, VAT or totals. Holders of `pos.bills.print` (cashier, manager,
-  admin, owner) print the **bill** with prices, VAT and total, marked "not a receipt". For now the key gates the web
+- **Printing.** Holders of `pos.bills.print` (waiter, cashier, manager, admin, owner) print the **bill** with
+  prices, VAT and total, marked "not a receipt". A role without it (a custom role) prints the **order slip**: table,
+  order number, time, the order's items (combined) with quantities and notes, item count; no prices, VAT or totals.
+  Waiters got `pos.bills.print` on 2026-10-29 (ADR 0016 §8 note): they bill and check out like the cashier. For now the key gates the web
   print; step 4's guest-check endpoints will require it in the api.
 - Kitchen ticket: table, order number, ticket number, time, items with quantity and note; no prices; "VOID" for void
   tickets. Printed through a print-only element (`#print-root`); everything else is hidden in print.

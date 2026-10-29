@@ -75,7 +75,7 @@ Their permissions are **defined in code** (`SYSTEM_ROLE_PERMISSIONS`), the same 
 | Admin   | everything except `platform.org.manage`                                                                                                                                |
 | Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read`, `platform.settings.read`, product and table reads, `pos.tables.manage`, all `pos.orders.*` keys |
 | Staff   | `platform.settings.read`, `catalog.products.read`, `pos.tables.read`                                                                                                   |
-| Waiter  | as Staff, plus `pos.orders.read`, `.take`, `.close` ([pos](../modules/pos.md)); added by ADR 0016                                                                      |
+| Waiter  | as Staff, plus `pos.orders.read`, `.take`, `.close`, `pos.bills.print` ([pos](../modules/pos.md)); added by ADR 0016                                                   |
 | Cashier | as Staff, plus `pos.orders.read`, `.close`, `pos.bills.print`; the billing counter, added by ADR 0016                                                                  |
 
 Every role but Owner lists **every** key as `grant` or `deny`; a new key that isn't listed fails the typecheck and a
@@ -112,7 +112,7 @@ Every controller route has **exactly one** marker (on the handler or the class):
 | `@Public()`             | anyone                                                  |
 | `@Authenticated()`      | valid access token; user-level routes only (ADR 0006)   |
 | `@RequirePermission(k)` | valid access token, active organization, permission `k` |
-| `@PlatformOnly()`       | Durby platform staff. Not modelled yet: **always 403**  |
+| `@PlatformOnly(key)`    | Durby staff with `key` (ADR 0017, admin-portal.md)      |
 
 `AccessGuard` is the only global guard: it authenticates (the 1.2 `AuthGuard` logic) unless the route is public,
 then applies the marker. A route without a marker is denied.
@@ -201,7 +201,7 @@ Ids of another tenant are invisible under RLS and answer 404.
 | Code                           | Status | When                                                          |
 | ------------------------------ | ------ | ------------------------------------------------------------- |
 | `rbac.permission_denied`       | 403    | caller lacks the route's permission (`details.permission`)    |
-| `rbac.platform_only`           | 403    | `@PlatformOnly()` route                                       |
+| `rbac.platform_only`           | 403    | unused since ADR 0017 (staff routes answer `staff.*` codes)   |
 | `rbac.route_unmarked`          | 403    | route without a marker (cannot pass the startup check)        |
 | `rbac.not_grantable`           | 403    | granting rules violated                                       |
 | `rbac.cannot_change_self`      | 403    | changing or removing your own membership                      |
@@ -256,7 +256,7 @@ enforces every permission per request.
 
 - Unit: registry shape; every non-Owner system role lists every key; granting and member-management matrix; location
   resolution; token parsing; startup check on fixture controllers.
-- Integration: allow/deny per permission; `@PlatformOnly` always 403; per-request resolution; location scope (test
+- Integration: allow/deny per permission; `@PlatformOnly` never passes a customer token (platform-staff.e2e covers staff access); per-request resolution; location scope (test
   registry with a location-scope key); cross-tenant role/location ids rejected (API 404, composite FK on direct
   insert); every granting rule; last Owner incl. concurrent demotions and transfer; removal ends the access token at
   once; invitation flows incl. forged org id with another tenant's secret, single use, expiry, rate limit, no tokens

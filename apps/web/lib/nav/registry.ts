@@ -1,25 +1,18 @@
 import type { LabelKey } from '@durby/i18n';
 import type { FeatureKey, PermissionKey } from '@durby/shared';
 import {
-  Building2,
-  ClipboardList,
   ConciergeBell,
   ChartLine,
   CreditCard,
-  Hash,
   House,
-  Languages,
-  Layers,
   LayoutGrid,
-  MapPin,
   type LucideIcon,
   Package,
   Receipt,
-  ShieldCheck,
   SlidersHorizontal,
-  Users,
   UtensilsCrossed,
 } from 'lucide-react';
+import { SETTINGS_TABS } from './settings-tabs';
 
 export type NavGroup = 'main' | 'modules' | 'settings';
 
@@ -33,13 +26,21 @@ export interface NavItem {
   feature?: FeatureKey;
   /** Shown only while the user holds this permission in the active organization. */
   permission?: PermissionKey;
+  /**
+   * A module that isn't built yet: its route shows a placeholder, the menu hides it. Remove the flag
+   * when the module ships.
+   */
+  planned?: true;
+  /** Pages behind this item (e.g. the Settings tabs): shown while at least one of them is. */
+  children?: readonly NavItem[];
 }
 
 /** Group headings in display order; `main` has none. */
 export const NAV_GROUPS: readonly { id: NavGroup; label: LabelKey | null }[] = [
   { id: 'main', label: null },
   { id: 'modules', label: 'platform.nav.groups.modules' },
-  { id: 'settings', label: 'platform.nav.groups.settings' },
+  // One Settings item (its pages are tabs, lib/nav/settings-tabs.ts): no heading needed.
+  { id: 'settings', label: null },
 ];
 
 /**
@@ -55,6 +56,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: Package,
     group: 'modules',
     feature: 'inventory',
+    planned: true,
   },
   {
     id: 'catalog',
@@ -72,6 +74,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: Receipt,
     group: 'modules',
     feature: 'billing',
+    planned: true,
   },
   {
     id: 'pos',
@@ -80,6 +83,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: CreditCard,
     group: 'modules',
     feature: 'pos',
+    planned: true,
   },
   {
     // Table service: the floor and the till per table (docs/modules/pos.md → Web).
@@ -107,76 +111,16 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: ChartLine,
     group: 'modules',
     feature: 'reports',
+    planned: true,
   },
   {
-    id: 'organization',
-    href: '/settings/organization',
-    label: 'platform.nav.organization',
-    icon: Building2,
-    group: 'settings',
-  },
-  {
-    id: 'locations',
-    href: '/settings/locations',
-    label: 'platform.nav.locations',
-    icon: MapPin,
-    group: 'settings',
-    permission: 'platform.settings.read',
-  },
-  {
+    // Company, Locations, Members, Roles, … as tabs of one page (lib/nav/settings-tabs.ts).
     id: 'settings',
-    href: '/settings/general',
+    href: '/settings',
     label: 'platform.nav.settings',
     icon: SlidersHorizontal,
     group: 'settings',
-    permission: 'platform.settings.read',
-  },
-  {
-    id: 'members',
-    href: '/settings/members',
-    label: 'platform.nav.members',
-    icon: Users,
-    group: 'settings',
-    permission: 'platform.users.read',
-  },
-  {
-    id: 'roles',
-    href: '/settings/roles',
-    label: 'platform.nav.roles',
-    icon: ShieldCheck,
-    group: 'settings',
-    permission: 'platform.roles.read',
-  },
-  {
-    id: 'labels',
-    href: '/settings/labels',
-    label: 'platform.nav.labels',
-    icon: Languages,
-    group: 'settings',
-    permission: 'platform.labels.manage',
-  },
-  {
-    id: 'numbering',
-    href: '/settings/numbering',
-    label: 'platform.nav.numbering',
-    icon: Hash,
-    group: 'settings',
-    permission: 'platform.settings.read',
-  },
-  {
-    id: 'plan',
-    href: '/settings/plan',
-    label: 'platform.nav.plan',
-    icon: Layers,
-    group: 'settings',
-  },
-  {
-    id: 'audit',
-    href: '/settings/audit',
-    label: 'platform.nav.audit',
-    icon: ClipboardList,
-    group: 'settings',
-    permission: 'platform.audit.read',
+    children: SETTINGS_TABS,
   },
 ];
 
@@ -192,8 +136,10 @@ export interface NavAccess {
 export function visibleNav(items: readonly NavItem[], access: NavAccess): NavItem[] {
   return items.filter(
     (item) =>
+      !item.planned &&
       (item.feature === undefined || access.activeFeatures.includes(item.feature)) &&
-      (item.permission === undefined || access.activePermissions.includes(item.permission)),
+      (item.permission === undefined || access.activePermissions.includes(item.permission)) &&
+      (item.children === undefined || visibleNav(item.children, access).length > 0),
   );
 }
 

@@ -48,6 +48,8 @@ Specs: [catalog](../modules/catalog.md), [pos](../modules/pos.md).
    and VAT rate. Waiters send and close; only managers (and admins, owners) void, since voids are a fraud risk.
    User ids on orders have no foreign key (users are private to platform/auth) and are never returned, so tickets
    don't name the waiter.
+   _Amended 2026-10-29:_ waiters also hold `pos.bills.print`, so they print the bill (with prices, "not a
+   receipt") and check out like the cashier; voids stay with managers.
 
 9. **Areas are records, managed on a Tables page of their own.** `dining_areas` per location replace the free-text
    `dining_tables.area`, so an area exists without tables, renames once and can't be deleted while used. The text

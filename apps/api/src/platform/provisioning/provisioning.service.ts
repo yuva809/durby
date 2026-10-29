@@ -14,6 +14,9 @@ import {
   type TenantPrismaClient,
 } from '../tenancy';
 
+/** The default partner (ARCHITECTURE.md: Durby itself is the default partner). */
+export const DEFAULT_PARTNER = { slug: 'durby', name: 'Durby' } as const;
+
 export interface Ensured {
   id: string;
   created: boolean;

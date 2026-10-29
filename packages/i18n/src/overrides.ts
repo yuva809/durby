@@ -20,14 +20,16 @@ export const ORG_OVERRIDABLE = ['*.nav.**', '*.entities.**', '*.fields.**'] as c
 
 /**
  * Never overridable by organizations, even if ORG_OVERRIDABLE matches: text sent from Durby's
- * address, error messages (security decisions among them) and the app's name (white-label is
- * partner-level).
+ * address, error messages (security decisions among them), the app's name (white-label is
+ * partner-level) and the staff portal.
  */
 export const NEVER_ORG_OVERRIDABLE = [
   'platform.email.**',
   'auth.email.**',
   '**.errors.**',
   'platform.app.name',
+  // The Durby staff portal (ADR 0017): never rendered for an organization.
+  'staff.**',
 ] as const;
 
 function patternToRegExp(pattern: string): RegExp {

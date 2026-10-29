@@ -16,6 +16,7 @@
     "db:deploy": "prisma migrate deploy",
     "seed:dev": "nest build && node dist/cli/seed-dev.js",
     "create-admin": "nest build && node dist/cli/create-admin.js",
+    "create-staff": "nest build && node dist/cli/create-staff.js",
     "entitlements": "nest build && node dist/cli/entitlements.js",
     "outbox": "nest build && node dist/cli/outbox.js",
     "worker": "nest build && node dist/worker.js",

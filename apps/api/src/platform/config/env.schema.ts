@@ -28,6 +28,25 @@ const originList = z
       .min(1, 'needs at least one origin'),
   );
 
+/** Comma-separated email domains, lower-case, without `@` (e.g. `durby.tech,durby.de`). */
+const domainList = z
+  .string({ error: 'is required' })
+  .transform((value) =>
+    value
+      .split(',')
+      .map((entry) => entry.trim().toLowerCase())
+      .filter(Boolean),
+  )
+  .pipe(
+    z
+      .array(
+        z
+          .string()
+          .regex(/^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+$/, 'entries must be domains like durby.tech'),
+      )
+      .min(1, 'needs at least one domain'),
+  );
+
 /**
  * Counts of the auth rate limits (docs/platform/auth.md → Rate limits); the windows are fixed in
  * code. Production may only be stricter than these defaults (ADR 0015 §14): the Playwright run
@@ -77,6 +96,12 @@ export const appEnvSchema = z
     TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
     SMTP_URL: smtpUrl,
     MAIL_FROM: z.string({ error: 'is required' }).min(3),
+
+    // Durby staff and the admin portal (docs/platform/admin-portal.md, ADR 0017).
+    /** Only these domains can be invited as staff. */
+    STAFF_EMAIL_DOMAINS: domainList,
+    /** Absolute lifetime of a staff session; at most 8 hours. */
+    STAFF_SESSION_TTL_SECONDS: z.coerce.number().int().min(300).max(28_800).default(28_800),
 
     // Outbox worker (docs/platform/outbox.md → Worker process). Read only by src/worker.ts.
     OUTBOX_POLL_MS: z.coerce.number().int().min(100).max(60_000).default(1000),

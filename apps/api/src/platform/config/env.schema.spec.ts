@@ -10,16 +10,41 @@ const validEnv = {
   WEB_BASE_URL: 'http://localhost:3000',
   SMTP_URL: 'smtp://localhost:1025',
   MAIL_FROM: 'Durby <no-reply@durby.test>',
+  STAFF_EMAIL_DOMAINS: 'durby.test',
 };
 
 const without = (key: keyof typeof validEnv): Record<string, string> =>
   Object.fromEntries(Object.entries(validEnv).filter(([k]) => k !== key));
 
 describe('appEnvSchema', () => {
+  describe('staff settings (ADR 0017)', () => {
+    it('reads the email domains as a lower-case list and needs at least one', () => {
+      expect(
+        appEnvSchema.parse({ ...validEnv, STAFF_EMAIL_DOMAINS: ' Durby.tech , durby.de' })
+          .STAFF_EMAIL_DOMAINS,
+      ).toEqual(['durby.tech', 'durby.de']);
+      expect(appEnvSchema.safeParse({ ...validEnv, STAFF_EMAIL_DOMAINS: ' , ' }).success).toBe(
+        false,
+      );
+      expect(
+        appEnvSchema.safeParse({ ...validEnv, STAFF_EMAIL_DOMAINS: '@durby.tech' }).success,
+      ).toBe(false);
+    });
+
+    it('caps staff sessions at 8 hours', () => {
+      expect(appEnvSchema.parse(validEnv).STAFF_SESSION_TTL_SECONDS).toBe(28_800);
+      expect(
+        appEnvSchema.safeParse({ ...validEnv, STAFF_SESSION_TTL_SECONDS: '28801' }).success,
+      ).toBe(false);
+    });
+  });
+
   it('applies defaults for optional vars', () => {
     expect(appEnvSchema.parse(validEnv)).toEqual({
       ...validEnv,
       WEB_ORIGINS: ['http://localhost:3000'],
+      STAFF_EMAIL_DOMAINS: ['durby.test'],
+      STAFF_SESSION_TTL_SECONDS: 28_800,
       NODE_ENV: 'development',
       PORT: 4000,
       APP_VERSION: '0.0.0-dev',

@@ -45,10 +45,10 @@ test('override a label and see it in the nav, then remove it', async ({ page }) 
   await onDemoCafe(page);
   const navItem = page
     .getByRole('navigation', { name: 'Main navigation' })
-    .getByTestId('nav-inventory');
+    .getByTestId('nav-catalog');
 
   await page.goto(`${DOMAINS.durby}/settings/labels`);
-  const row = page.locator('[data-testid="label-row"][data-key="inventory.nav.title"]').first();
+  const row = page.locator('[data-testid="label-row"][data-key="catalog.nav.title"]').first();
   await row.getByTestId('label-value').fill(text);
   await expect(row.getByTestId('label-preview')).toContainText(text);
   await row.getByTestId('label-save').click();
@@ -57,7 +57,7 @@ test('override a label and see it in the nav, then remove it', async ({ page }) 
 
   await row.getByTestId('label-remove').click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Remove' }).click();
-  await expect(navItem).toHaveText('Inventory');
+  await expect(navItem).toHaveText('Products');
 });
 
 test('raise a number series counter by one', async ({ page }) => {
