@@ -20,6 +20,7 @@ import { ProvisioningModule } from './provisioning';
 import { RateLimitModule } from './rate-limit';
 import { RbacModule } from './rbac';
 import { RedisModule } from './redis';
+import { StaffModule } from './staff';
 import { TenancyModule } from './tenancy';
 import { ThemeModule } from './theme';
 
@@ -36,6 +37,7 @@ import { ThemeModule } from './theme';
     OutboxModule,
     IdempotencyModule,
     AuthModule,
+    StaffModule,
     EntitlementsModule,
     RbacModule,
     SettingsModule,

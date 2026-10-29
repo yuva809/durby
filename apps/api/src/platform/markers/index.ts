@@ -10,7 +10,12 @@ export {
   IDEMPOTENT_KEY,
   type IdempotentOptions,
 } from './idempotent.decorator';
-export { IS_PLATFORM_ONLY_KEY, PlatformOnly } from './platform-only.decorator';
+export {
+  IS_PLATFORM_ONLY_KEY,
+  PlatformOnly,
+  type PlatformOnlyMetadata,
+  type PlatformOnlyOptions,
+} from './platform-only.decorator';
 export { IS_PUBLIC_KEY, Public } from './public.decorator';
 export { featuresOf, REQUIRED_FEATURE_KEY, RequireFeature } from './require-feature.decorator';
 export { REQUIRED_PERMISSION_KEY, RequirePermission } from './require-permission.decorator';

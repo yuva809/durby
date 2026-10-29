@@ -886,3 +886,111 @@ model DiningArea {
   @@unique([tenantId, locationId, name])
   @@map("dining_areas")
 }
+
+// ---------------------------------------------------------------------------
+// Durby staff and the admin portal (docs/platform/admin-portal.md, ADR 0017). Platform tables outside every
+// tenant (no tenant_id, no RLS), private to platform/staff: the platform client refuses them.
+
+enum StaffRole {
+  super_admin
+  onboarding
+  support
+
+  @@map("staff_role")
+}
+
+enum StaffStatus {
+  invited
+  active
+  deactivated
+
+  @@map("staff_status")
+}
+
+enum StaffSessionState {
+  /// Password checked, waiting for a TOTP code (or enrollment). Grants nothing else.
+  pending
+  active
+
+  @@map("staff_session_state")
+}
+
+/// A Durby staff member. Not a user: no link to `users`, own sessions, mandatory TOTP.
+model StaffAccount {
+  id             String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  /// Lower-case; a company domain (STAFF_EMAIL_DOMAINS) at invitation time.
+  email          String         @unique
+  /// argon2id. Null until the invitation is accepted.
+  passwordHash   String?        @map("password_hash")
+  role           StaffRole
+  status         StaffStatus    @default(invited)
+  /// AES-256-GCM under STAFF_TOTP_KEY (iv.tag.ciphertext, base64url). Null until enrolled or after a reset.
+  totpSecret     String?        @map("totp_secret")
+  totpEnrolledAt DateTime?      @map("totp_enrolled_at") @db.Timestamptz(6)
+  /// Last accepted 30-second step: a code can't be used twice.
+  totpLastStep   BigInt?        @map("totp_last_step")
+  lastLoginAt    DateTime?      @map("last_login_at") @db.Timestamptz(6)
+  deactivatedAt  DateTime?      @map("deactivated_at") @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tokens         StaffToken[]
+  sessions       StaffSession[]
+
+  @@map("staff_accounts")
+}
+
+/// Invitation links: sha256 of 32 random bytes, single-use, 48 hours.
+model StaffToken {
+  id        String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  staffId   String       @map("staff_id") @db.Uuid
+  tokenHash String       @unique @map("token_hash")
+  expiresAt DateTime     @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime?    @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  staff     StaffAccount @relation(fields: [staffId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([staffId])
+  @@map("staff_tokens")
+}
+
+/// Staff login sessions: opaque cookie token (sha256 stored), at most 8 hours, checked on every request.
+model StaffSession {
+  id              String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  staffId         String            @map("staff_id") @db.Uuid
+  tokenHash       String            @unique @map("token_hash")
+  state           StaffSessionState @default(pending)
+  expiresAt       DateTime          @map("expires_at") @db.Timestamptz(6)
+  /// Last password + TOTP confirmation: sensitive routes need one within 15 minutes.
+  authenticatedAt DateTime?         @map("authenticated_at") @db.Timestamptz(6)
+  revokedAt       DateTime?         @map("revoked_at") @db.Timestamptz(6)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  staff           StaffAccount      @relation(fields: [staffId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([staffId])
+  @@map("staff_sessions")
+}
+
+/// Every staff action (ADR 0017 §7). Append-only like audit_logs. No foreign keys: rows outlive staff and customers.
+model PlatformAuditLog {
+  id             String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  /// Set iff actor_system is null.
+  actorStaffId   String?  @map("actor_staff_id") @db.Uuid
+  /// A key of PLATFORM_AUDIT_SYSTEM_ACTORS.
+  actorSystem    String?  @map("actor_system")
+  /// A key of PLATFORM_AUDIT_ACTIONS.
+  action         String
+  entityType     String   @map("entity_type")
+  entityId       String   @map("entity_id") @db.Uuid
+  /// The customer the action touched, if any (from step 1b).
+  organizationId String?  @map("organization_id") @db.Uuid
+  /// Free text given by the staff member, where the action requires one.
+  reason         String?
+  /// Allow-listed snapshot (PLATFORM_AUDIT_SNAPSHOT_FIELDS).
+  before         Json?
+  after          Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@index([organizationId, id])
+  @@map("platform_audit_logs")
+}

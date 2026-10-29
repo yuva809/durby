@@ -15,7 +15,7 @@ class MarkedController {
   @Public() @Get('a') a(): void {}
   @Authenticated() @Get('b') b(): void {}
   @RequirePermission('platform.users.read') @Get('c') c(): void {}
-  @PlatformOnly() @Get('d') d(): void {}
+  @PlatformOnly('staff.portal.access') @Get('d') d(): void {}
 }
 
 @RequirePermission('platform.roles.read')
@@ -75,7 +75,17 @@ class AuthenticatedFeatureController {
 
 @Controller('platform-feature')
 class PlatformOnlyFeatureController {
-  @PlatformOnly() @RequireFeature('inventory') @Get() list(): void {}
+  @PlatformOnly('staff.portal.access') @RequireFeature('inventory') @Get() list(): void {}
+}
+
+@Controller('unknown-staff')
+class UnknownStaffKeyController {
+  @PlatformOnly('staff.everything' as never) @Get() list(): void {}
+}
+
+@Controller('customer-key-for-staff')
+class CustomerKeyForStaffController {
+  @PlatformOnly('platform.org.manage' as never) @Get() list(): void {}
 }
 
 async function boot(controllers: Type[]): Promise<void> {
@@ -123,6 +133,14 @@ describe('route marker startup check', () => {
     [
       AuthenticatedFeatureController,
       'GET /api/v1/authenticated-feature: @RequireFeature needs @RequirePermission (ADR 0009)',
+    ],
+    [
+      UnknownStaffKeyController,
+      'GET /api/v1/unknown-staff: unregistered staff permission key staff.everything',
+    ],
+    [
+      CustomerKeyForStaffController,
+      'GET /api/v1/customer-key-for-staff: unregistered staff permission key platform.org.manage',
     ],
     [
       PlatformOnlyFeatureController,
