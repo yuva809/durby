@@ -57,6 +57,10 @@ Spec: [docs/platform/admin-portal.md](../platform/admin-portal.md).
 8. **Idempotency.** `idempotency_keys` belongs to tenant users (RLS, FK to `users`), so staff routes are
    `@IdempotencyExempt(reason)` and designed replay-safe: invites upsert and resend, role changes and deactivation set a
    state. Auth routes are exempt as in ADR 0006 §12.
+   _Amended (step 1c):_ writes that append (onboarding a customer) need an `Idempotency-Key` and replay through
+   `staff_idempotency_keys` (`staff_id`, `key`, `route`, `request_hash`, `response`), written in the business
+   transaction, the staff counterpart of the tenant store (ADR 0014). Customer audit rows of staff actions use the
+   system actor `staff.admin_portal`; the platform log names the staff member.
 
 9. **The portal is a route group, not a separate app** (business-rules decision 3, deviating from its
    recommendation): `/platform/*` in `apps/web`, outside the customer shell, with the default theme only, no

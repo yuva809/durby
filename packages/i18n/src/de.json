@@ -762,7 +762,7 @@
   "staff.accept.submit": "Passwort festlegen",
   "staff.home.title": "Willkommen",
   "staff.home.signedInAs": "Angemeldet als {email} ({role}).",
-  "staff.home.next": "Kundenverwaltung, Onboarding und Funktionsschalter folgen in den nächsten Schritten.",
+  "staff.home.next": "Legen Sie hier neue Kunden an: Der Inhaber erhält eine Einladung und richtet die Organisation ein. Bestehende Kunden finden Sie unter Kunden.",
   "staff.staffPage.invite": "Mitarbeitende einladen",
   "staff.staffPage.inviteTitle": "Mitarbeitende einladen",
   "staff.staffPage.email": "E-Mail",

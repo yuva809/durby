@@ -762,7 +762,7 @@
   "staff.accept.submit": "Set password",
   "staff.home.title": "Welcome",
   "staff.home.signedInAs": "Signed in as {email} ({role}).",
-  "staff.home.next": "Customer management, onboarding and feature switches follow in the next steps.",
+  "staff.home.next": "Onboard new customers here: their owner gets an invitation and sets up the organization. Find existing customers under Customers.",
   "staff.staffPage.invite": "Invite staff",
   "staff.staffPage.inviteTitle": "Invite a staff member",
   "staff.staffPage.email": "Email",
