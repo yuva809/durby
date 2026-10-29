@@ -27,6 +27,7 @@ describe('isOrgOverridable', () => {
     'platform.invite.errors.emailMismatch',
     'inventory.nav.errors.x',
     'platform.app.name',
+    'staff.nav.home',
   ])('denies %s', (key) => {
     expect(isOrgOverridable(key)).toBe(false);
   });
