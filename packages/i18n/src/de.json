@@ -846,5 +846,15 @@
   "staff.onboard.doneTitle": "{name} ist bereit",
   "staff.onboard.doneInvited": "Eine Einladung wurde an {email} gesendet.",
   "staff.onboard.openCustomer": "Kunde öffnen",
-  "staff.onboard.another": "Weiteren Kunden anlegen"
+  "staff.onboard.another": "Weiteren Kunden anlegen",
+  "platform.settingsTabs.company": "Unternehmen",
+  "platform.settingsTabs.locations": "Standorte",
+  "platform.settingsTabs.members": "Mitglieder",
+  "platform.settingsTabs.roles": "Rollen",
+  "platform.settingsTabs.general": "Allgemein",
+  "platform.settingsTabs.numbering": "Nummernkreise",
+  "platform.settingsTabs.labels": "Bezeichnungen",
+  "platform.settingsTabs.plan": "Tarif",
+  "platform.settingsTabs.audit": "Protokoll",
+  "platform.settingsTabs.label": "Bereiche der Einstellungen"
 }

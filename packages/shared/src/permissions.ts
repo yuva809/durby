@@ -123,7 +123,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.close': 'deny',
     'pos.bills.print': 'deny',
   },
-  // Table service (ADR 0016): takes orders at the tables of their locations.
+  // Table service (ADR 0016): takes orders at the tables of their locations, and, like the cashier,
+  // prints the bill and checks out.
   waiter: {
     'platform.org.manage': 'deny',
     'platform.users.read': 'deny',
@@ -143,7 +144,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.take': 'grant',
     'pos.orders.void': 'deny',
     'pos.orders.close': 'grant',
-    'pos.bills.print': 'deny',
+    'pos.bills.print': 'grant',
   },
   // Table service (ADR 0016): the billing counter.
   cashier: {

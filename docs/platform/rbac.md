@@ -75,7 +75,7 @@ Their permissions are **defined in code** (`SYSTEM_ROLE_PERMISSIONS`), the same 
 | Admin   | everything except `platform.org.manage`                                                                                                                                |
 | Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read`, `platform.settings.read`, product and table reads, `pos.tables.manage`, all `pos.orders.*` keys |
 | Staff   | `platform.settings.read`, `catalog.products.read`, `pos.tables.read`                                                                                                   |
-| Waiter  | as Staff, plus `pos.orders.read`, `.take`, `.close` ([pos](../modules/pos.md)); added by ADR 0016                                                                      |
+| Waiter  | as Staff, plus `pos.orders.read`, `.take`, `.close`, `pos.bills.print` ([pos](../modules/pos.md)); added by ADR 0016                                                   |
 | Cashier | as Staff, plus `pos.orders.read`, `.close`, `pos.bills.print`; the billing counter, added by ADR 0016                                                                  |
 
 Every role but Owner lists **every** key as `grant` or `deny`; a new key that isn't listed fails the typecheck and a

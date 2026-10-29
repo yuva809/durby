@@ -846,5 +846,15 @@
   "staff.onboard.doneTitle": "{name} is ready",
   "staff.onboard.doneInvited": "An invitation was sent to {email}.",
   "staff.onboard.openCustomer": "Open customer",
-  "staff.onboard.another": "Onboard another"
+  "staff.onboard.another": "Onboard another",
+  "platform.settingsTabs.company": "Company",
+  "platform.settingsTabs.locations": "Locations",
+  "platform.settingsTabs.members": "Members",
+  "platform.settingsTabs.roles": "Roles",
+  "platform.settingsTabs.general": "General",
+  "platform.settingsTabs.numbering": "Number series",
+  "platform.settingsTabs.labels": "Labels",
+  "platform.settingsTabs.plan": "Plan",
+  "platform.settingsTabs.audit": "Audit log",
+  "platform.settingsTabs.label": "Settings sections"
 }

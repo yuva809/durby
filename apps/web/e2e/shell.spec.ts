@@ -26,9 +26,12 @@ test.describe('default partner domain', () => {
     await expect(page.getByRole('menuitemradio')).toHaveText(['Demo Bistro', 'Demo Café']);
     await page.keyboard.press('Escape');
 
-    await expect(nav.getByTestId('nav-inventory')).toHaveText('Inventory');
-    for (const id of ['billing', 'pos', 'reports']) {
+    for (const id of ['catalog', 'service', 'tables', 'settings']) {
       await expect(nav.getByTestId(`nav-${id}`)).toBeVisible();
+    }
+    // Modules not built yet stay out of the menu (their pages still open by URL).
+    for (const id of ['inventory', 'billing', 'pos', 'reports']) {
+      await expect(nav.getByTestId(`nav-${id}`)).toHaveCount(0);
     }
   });
 });
@@ -43,16 +46,20 @@ test.describe('demo partner domain', () => {
 
     await signIn(page, DOMAINS.demo, 'owner@partner-demo.local');
     const nav = page.getByRole('navigation', { name: 'Main navigation' });
-    await expect(nav.getByTestId('nav-inventory')).toHaveText('Stock');
-    await expect(nav.getByTestId('nav-reports')).toBeVisible();
-    await expect(nav.getByTestId('nav-billing')).toHaveCount(0);
-    await expect(nav.getByTestId('nav-pos')).toHaveCount(0);
+    await expect(nav.getByTestId('nav-catalog')).toBeVisible();
+    // The inventory plan has no pos feature: no Service or Tables.
+    await expect(nav.getByTestId('nav-service')).toHaveCount(0);
+    await expect(nav.getByTestId('nav-tables')).toHaveCount(0);
+    await expect(nav.getByTestId('nav-inventory')).toHaveCount(0);
     // One organization: its name, no switcher; the Durby organizations stay invisible.
     await expect(page.getByTestId('organization')).toHaveText('Demo Trattoria');
     await expect(page.getByTestId('organization-switcher')).toHaveCount(0);
 
     await page.goto(`${DOMAINS.demo}/billing`);
     await expect(page.getByTestId('module-notAvailable')).toBeVisible();
+    // Partner terminology: the inventory placeholder carries the partner's label.
+    await page.goto(`${DOMAINS.demo}/inventory`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Stock');
 
     // Sign out returns to the login page of the same domain, and the session is gone.
     await page.getByRole('button', { name: 'Account menu' }).click();
@@ -86,13 +93,13 @@ test.describe('tablet', () => {
     const nav = page.getByRole('navigation', { name: 'Main navigation' });
     await expect(nav).toHaveCount(0);
     await page.getByRole('button', { name: 'Open menu' }).click();
-    await nav.getByTestId('nav-inventory').click();
-    await expect(page).toHaveURL(`${DOMAINS.demo}/inventory`);
+    await nav.getByTestId('nav-catalog').click();
+    await expect(page).toHaveURL(`${DOMAINS.demo}/catalog`);
     await expect(nav).toHaveCount(0);
 
     // From a fresh page load, the first Tab reaches the skip link, which moves focus to <main>.
     await page.reload();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Stock');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Products');
     await page.keyboard.press('Tab');
     await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused();
     await page.keyboard.press('Enter');

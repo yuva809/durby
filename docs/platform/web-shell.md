@@ -188,6 +188,8 @@ interface NavItem {
   group: 'main' | 'modules' | 'settings';
   feature?: FeatureKey; // shown only if active
   permission?: PermissionKey; // shown only if held
+  planned?: true; // not built yet: hidden from the menu, the route shows a placeholder
+  children?: readonly NavItem[]; // e.g. the Settings tabs: shown while one of them is
 }
 ```
 
@@ -196,9 +198,13 @@ interface NavItem {
   **UI hints**: the api checks `@RequireFeature` and `@RequirePermission` on every request.
 - Keys are typed against `FEATURES` and `PERMISSIONS`; a unit test fails on an unknown key or a label missing in
   `en` or `de`.
-- PR (a) registers Overview (`/`, group `main`) and the modules: Inventory (`inventory`), Billing (`billing`), POS
-  (`pos`), Reports (`reports`).
-  PRs (b)–(d) add their settings items as their pages land; a group with no visible items is not rendered.
+- The menu (2026-10-29): Home, Products, Service, Tables, **Settings**. Inventory, Billing, POS and Reports are
+  `planned`: hidden whatever the plan, their placeholder pages still open by URL; remove the flag when a module
+  ships. A group with no visible items is not rendered.
+- **Settings is one item** (`/settings`) whose pages are tabs (`lib/nav/settings-tabs.ts`, rendered by
+  `app/(app)/settings/layout.tsx`): Company (`/settings/organization`), Locations, Members, Roles, General, Number
+  series, Labels, Plan, Audit log, each with its former permission rule; `/settings` opens the first tab the user may
+  see.
 - Labels via `useT()`, so organization and partner overrides apply (e.g. "Stock" instead of "Inventory").
 
 ### Labels
@@ -363,7 +369,7 @@ New keys under `platform.nav.*` (members, roles), `platform.members.*`, `platfor
 
 ## Settings, labels, number series, plan, organization (PR c)
 
-### Routes and navigation (group `settings`, in this order)
+### Routes and navigation (Settings tabs, see Nav registry; originally one nav item each)
 
 | Route                    | Nav label                   | Page needs (UI hint)     | Writes need                |
 | ------------------------ | --------------------------- | ------------------------ | -------------------------- |

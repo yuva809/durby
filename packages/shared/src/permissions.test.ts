@@ -65,10 +65,11 @@ describe('system roles', () => {
   });
 
   // docs/modules/pos.md → Step 3: voids are for managers; the counter reads and closes.
-  it('lets waiters take and close orders, and cashiers read and close them', () => {
+  it('lets waiters take orders and, like cashiers, print bills and close them', () => {
     expect([...systemRolePermissions('waiter')].sort()).toEqual([
       'catalog.products.read',
       'platform.settings.read',
+      'pos.bills.print',
       'pos.orders.close',
       'pos.orders.read',
       'pos.orders.take',

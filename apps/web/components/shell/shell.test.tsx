@@ -20,14 +20,19 @@ const CAFE = '0190a000-0000-7000-8000-0000000000a2';
 
 describe('SidebarNav', () => {
   it('shows only the modules of the active organization, with its labels', () => {
-    mockState.session = sessionFixture({ activeFeatures: ['inventory', 'reports'] });
-    mockState.overrides = { 'inventory.nav.title': 'Stock' };
+    mockState.session = sessionFixture({
+      activeFeatures: ['catalog', 'inventory', 'reports'],
+      activePermissions: ['catalog.products.read', 'pos.orders.read'],
+    });
+    mockState.overrides = { 'catalog.nav.title': 'Menu' };
     render(<SidebarNav />);
     const nav = screen.getByRole('navigation', { name: 'Main navigation' });
-    expect(within(nav).getByTestId('nav-inventory').textContent).toBe('Stock');
-    expect(within(nav).getByTestId('nav-reports')).toBeTruthy();
-    expect(within(nav).queryByTestId('nav-billing')).toBeNull();
-    expect(within(nav).queryByTestId('nav-pos')).toBeNull();
+    expect(within(nav).getByTestId('nav-catalog').textContent).toBe('Menu');
+    // No pos feature on this plan: no Service.
+    expect(within(nav).queryByTestId('nav-service')).toBeNull();
+    // Not built yet: hidden even with their feature.
+    expect(within(nav).queryByTestId('nav-inventory')).toBeNull();
+    expect(within(nav).queryByTestId('nav-reports')).toBeNull();
   });
 
   it('hides a group without visible items', () => {
@@ -38,10 +43,10 @@ describe('SidebarNav', () => {
   });
 
   it('marks the current page, also on sub-paths', () => {
-    mockState.session = sessionFixture({ activeFeatures: ['inventory'] });
-    mockState.pathname = '/inventory/items';
+    mockState.session = sessionFixture({ activeFeatures: [] });
+    mockState.pathname = '/settings/members';
     render(<SidebarNav />);
-    expect(screen.getByTestId('nav-inventory').getAttribute('aria-current')).toBe('page');
+    expect(screen.getByTestId('nav-settings').getAttribute('aria-current')).toBe('page');
     expect(screen.getByTestId('nav-home').getAttribute('aria-current')).toBeNull();
   });
 
