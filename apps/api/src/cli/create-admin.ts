@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import type { INestApplicationContext } from '@nestjs/common';
 import { emailRequestSchema, PLAN_KEYS, type PlanKey } from '@durby/shared';
 import { PasswordService } from '../platform/auth';
-import { ProvisioningService } from '../platform/provisioning';
+import { DEFAULT_PARTNER, ProvisioningService } from '../platform/provisioning';
 import { runCommand } from './run-command';
 
 const USAGE = `Usage: create-admin --email <email> --org <organization name> [--locale en|de]
@@ -14,8 +14,7 @@ existing organization keeps its plan), the user and an Owner
 membership if missing, then emails the user a link to set their password. Safe to run again: nothing is duplicated or
 overwritten, and a fresh link is sent. Never takes a password and never creates demo data.`;
 
-/** The default partner (ARCHITECTURE.md: Durby itself is the default partner). */
-export const DEFAULT_PARTNER = { slug: 'durby', name: 'Durby' } as const;
+export { DEFAULT_PARTNER };
 
 export interface CreateAdminInput {
   email: string;

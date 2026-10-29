@@ -3,6 +3,7 @@ import { isStaffPermissionKey, STAFF_ROLE_PERMISSIONS } from '@durby/shared';
 import type { Request } from 'express';
 import { authErrors, Clock } from '../auth';
 import { APP_CONFIG, type AppConfig } from '../config';
+import type { StaffAuthenticatorPort } from '../rbac';
 import { StaffContext } from './staff-context';
 import { staffCookie } from './staff-cookies';
 import { staffErrors } from './staff-errors';
@@ -17,7 +18,7 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  * routes. Fills StaffContext, never TenantContext.
  */
 @Injectable()
-export class StaffAuthenticator {
+export class StaffAuthenticator implements StaffAuthenticatorPort {
   private readonly origins: ReadonlySet<string>;
 
   constructor(

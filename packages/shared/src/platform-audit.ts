@@ -6,7 +6,7 @@
  * defaults in packages/i18n (a test fails without them).
  */
 
-export const PLATFORM_AUDIT_ENTITY_TYPES = ['staff_account'] as const;
+export const PLATFORM_AUDIT_ENTITY_TYPES = ['staff_account', 'organization'] as const;
 
 export type PlatformAuditEntityType = (typeof PLATFORM_AUDIT_ENTITY_TYPES)[number];
 
@@ -28,6 +28,15 @@ export const PLATFORM_AUDIT_ACTIONS = {
     entityType: 'staff_account',
     label: 'staff.audit.actions.loggedIn',
   },
+  /** A new customer: organization, system roles, number series and Owner membership (step 1c). */
+  'staff.customer.onboarded': {
+    entityType: 'organization',
+    label: 'staff.audit.actions.customerOnboarded',
+  },
+  'staff.customer.owner_invited': {
+    entityType: 'organization',
+    label: 'staff.audit.actions.ownerInvited',
+  },
 } as const satisfies Record<string, { entityType: PlatformAuditEntityType; label: string }>;
 
 export type PlatformAuditAction = keyof typeof PLATFORM_AUDIT_ACTIONS;
@@ -46,4 +55,5 @@ export type PlatformAuditSystemActor = keyof typeof PLATFORM_AUDIT_SYSTEM_ACTORS
 /** The only fields that can reach `before`/`after`. Never emails, hashes or secrets. */
 export const PLATFORM_AUDIT_SNAPSHOT_FIELDS = {
   staff_account: ['id', 'role', 'status'],
+  organization: ['id', 'partnerId', 'name', 'planId'],
 } as const satisfies Record<PlatformAuditEntityType, readonly string[]>;

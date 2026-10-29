@@ -211,6 +211,8 @@ export const AUDIT_SYSTEM_ACTORS = {
   'cli.seed_dev': { label: 'platform.audit.actors.cliSeedDev' },
   'cli.entitlements': { label: 'platform.audit.actors.cliEntitlements' },
   'cli.outbox': { label: 'platform.audit.actors.cliOutbox' },
+  /** Durby staff in the admin portal (ADR 0017); the platform audit log names the person. */
+  'staff.admin_portal': { label: 'platform.audit.actors.adminPortal' },
   /** Outbox handlers (ADR 0013), when one records audit rows. */
   'job.outbox': { label: 'platform.audit.actors.jobOutbox' },
   migration: { label: 'platform.audit.actors.migration' },

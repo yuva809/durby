@@ -11,6 +11,9 @@ export const STAFF_PERMISSIONS = {
   'staff.staff.read': { label: 'staff.permissions.staffRead' },
   'staff.staff.manage': { label: 'staff.permissions.staffManage' },
   'staff.audit.read': { label: 'staff.permissions.auditRead' },
+  'staff.customers.read': { label: 'staff.permissions.customersRead' },
+  'staff.customers.create': { label: 'staff.permissions.customersCreate' },
+  'staff.customers.invite': { label: 'staff.permissions.customersInvite' },
 } as const satisfies Record<string, { label: string }>;
 
 export type StaffPermissionKey = keyof typeof STAFF_PERMISSIONS;
@@ -28,11 +31,19 @@ export const STAFF_ROLES = ['super_admin', 'onboarding', 'support'] as const;
 
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
-/** What each role holds. SuperAdmin holds every key, including future ones. */
+/**
+ * What each role holds (business rules → Staff roles). SuperAdmin holds every key, including future
+ * ones; Onboarding creates customers; Support views them and resends invites.
+ */
 export const STAFF_ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermissionKey[]> = {
   super_admin: STAFF_PERMISSION_KEYS,
-  onboarding: ['staff.portal.access'],
-  support: ['staff.portal.access'],
+  onboarding: [
+    'staff.portal.access',
+    'staff.customers.read',
+    'staff.customers.create',
+    'staff.customers.invite',
+  ],
+  support: ['staff.portal.access', 'staff.customers.read', 'staff.customers.invite'],
 };
 
 export function staffRoleLabel(role: StaffRole): string {

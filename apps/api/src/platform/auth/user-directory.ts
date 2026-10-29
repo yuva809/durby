@@ -46,6 +46,16 @@ export class UserDirectory implements AuditActorDirectory {
     return new Map(users.map((u) => [u.id, u]));
   }
 
+  /** Which of the given users have set a password (never the hash itself). */
+  async withPassword(ids: readonly string[]): Promise<Set<string>> {
+    if (ids.length === 0) return new Set();
+    const users = await this.db.user.findMany({
+      where: { id: { in: [...ids] }, passwordHash: { not: null } },
+      select: { id: true },
+    });
+    return new Set(users.map((u) => u.id));
+  }
+
   /** AuditActorDirectory: emails of audit actors, for display only (docs/platform/audit.md). */
   async emails(ids: readonly string[]): Promise<Map<string, string>> {
     const profiles = await this.profiles(ids);

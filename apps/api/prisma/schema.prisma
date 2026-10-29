@@ -909,19 +909,20 @@ enum StaffStatus {
 
 /// A Durby staff member. Not a user: no link to `users`, own sessions.
 model StaffAccount {
-  id             String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id            String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
   /// Lower-case; a company domain (STAFF_EMAIL_DOMAINS) at invitation time.
-  email          String         @unique
+  email         String                @unique
   /// argon2id. Null until the invitation is accepted.
-  passwordHash   String?        @map("password_hash")
-  role           StaffRole
-  status         StaffStatus    @default(invited)
-  lastLoginAt    DateTime?      @map("last_login_at") @db.Timestamptz(6)
-  deactivatedAt  DateTime?      @map("deactivated_at") @db.Timestamptz(6)
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  tokens         StaffToken[]
-  sessions       StaffSession[]
+  passwordHash  String?               @map("password_hash")
+  role          StaffRole
+  status        StaffStatus           @default(invited)
+  lastLoginAt   DateTime?             @map("last_login_at") @db.Timestamptz(6)
+  deactivatedAt DateTime?             @map("deactivated_at") @db.Timestamptz(6)
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tokens        StaffToken[]
+  sessions      StaffSession[]
+  idempotency   StaffIdempotencyKey[]
 
   @@map("staff_accounts")
 }
@@ -942,15 +943,15 @@ model StaffToken {
 
 /// Staff login sessions: opaque cookie token (sha256 stored), at most 8 hours, checked on every request.
 model StaffSession {
-  id              String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  staffId         String            @map("staff_id") @db.Uuid
-  tokenHash       String            @unique @map("token_hash")
-  expiresAt       DateTime          @map("expires_at") @db.Timestamptz(6)
+  id              String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  staffId         String       @map("staff_id") @db.Uuid
+  tokenHash       String       @unique @map("token_hash")
+  expiresAt       DateTime     @map("expires_at") @db.Timestamptz(6)
   /// Last password confirmation: sensitive routes need one within 15 minutes.
-  authenticatedAt DateTime?         @map("authenticated_at") @db.Timestamptz(6)
-  revokedAt       DateTime?         @map("revoked_at") @db.Timestamptz(6)
-  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  staff           StaffAccount      @relation(fields: [staffId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  authenticatedAt DateTime?    @map("authenticated_at") @db.Timestamptz(6)
+  revokedAt       DateTime?    @map("revoked_at") @db.Timestamptz(6)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  staff           StaffAccount @relation(fields: [staffId], references: [id], onDelete: Cascade, onUpdate: Restrict)
 
   @@index([staffId])
   @@map("staff_sessions")
@@ -979,4 +980,20 @@ model PlatformAuditLog {
   @@index([createdAt])
   @@index([organizationId, id])
   @@map("platform_audit_logs")
+}
+
+/// Replays of appending staff writes (ADR 0017 §8, amended): the tenant idempotency store belongs to customer users.
+/// Written in the business transaction; a replay with the same key returns `response`.
+model StaffIdempotencyKey {
+  staffId     String       @map("staff_id") @db.Uuid
+  key         String
+  route       String
+  /// sha256 of the canonical request body: the same key with another body is refused.
+  requestHash String       @map("request_hash")
+  response    Json
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  staff       StaffAccount @relation(fields: [staffId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([staffId, key])
+  @@map("staff_idempotency_keys")
 }

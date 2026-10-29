@@ -83,9 +83,14 @@ describe('route markers', () => {
     ).toEqual([
       'GET /api/v1/platform/audit staff.audit.read',
       'GET /api/v1/platform/auth/me staff.portal.access',
+      'GET /api/v1/platform/customers staff.customers.read',
+      'GET /api/v1/platform/customers/:id staff.customers.read',
+      'GET /api/v1/platform/onboarding-options staff.customers.create',
       'GET /api/v1/platform/staff staff.staff.read',
       'PATCH /api/v1/platform/staff/:id staff.staff.manage (fresh)',
       'POST /api/v1/platform/auth/reauth staff.portal.access',
+      'POST /api/v1/platform/customers staff.customers.create (fresh)',
+      'POST /api/v1/platform/customers/:id/owner-invite staff.customers.invite (fresh)',
       'POST /api/v1/platform/staff/:id/deactivate staff.staff.manage (fresh)',
       'POST /api/v1/platform/staff/invitations staff.staff.manage (fresh)',
     ]);
@@ -129,6 +134,9 @@ describe('route markers', () => {
       'POST /api/v1/platform/auth/login',
       'POST /api/v1/platform/auth/logout',
       'POST /api/v1/platform/auth/reauth',
+      // ADR 0017 §8: onboarding replays through the staff store; resending changes no data.
+      'POST /api/v1/platform/customers',
+      'POST /api/v1/platform/customers/:id/owner-invite',
       // ADR 0017 §8 (with PATCH /platform/staff/:id above): replay-safe set-state staff writes.
       'POST /api/v1/platform/staff/:id/deactivate',
       'POST /api/v1/platform/staff/invitations',

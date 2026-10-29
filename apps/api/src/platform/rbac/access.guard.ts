@@ -1,12 +1,12 @@
-import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
+import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthContext, Authenticator } from '../auth';
 import { EntitlementService, featuresOf } from '../config/entitlements';
-import { StaffAuthenticator } from '../staff';
 import { TenantContextMissingError } from '../tenancy';
 import { AccessService } from './access.service';
 import { rbacErrors } from './rbac-errors';
 import { markerOf } from './route-markers';
+import { STAFF_AUTHENTICATOR, type StaffAuthenticatorPort } from './staff-port';
 
 /**
  * The only global guard (ADR 0007). Applies the route's single access marker:
@@ -25,7 +25,7 @@ export class AccessGuard implements CanActivate {
     private readonly authContext: AuthContext,
     private readonly access: AccessService,
     private readonly entitlements: EntitlementService,
-    private readonly staff: StaffAuthenticator,
+    @Inject(STAFF_AUTHENTICATOR) private readonly staff: StaffAuthenticatorPort,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

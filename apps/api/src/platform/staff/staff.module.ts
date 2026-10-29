@@ -1,4 +1,8 @@
 import { Global, Module } from '@nestjs/common';
+import { ProvisioningModule } from '../provisioning';
+import { STAFF_AUTHENTICATOR } from '../rbac';
+import { CustomersController, OnboardingOptionsController } from './customers.controller';
+import { CustomersService } from './customers.service';
 import { PlatformAuditReader } from './platform-audit.reader';
 import { PlatformAuditService } from './platform-audit.service';
 import { StaffAuthController } from './staff-auth.controller';
@@ -15,8 +19,16 @@ import { StaffService } from './staff.service';
  */
 @Global()
 @Module({
-  controllers: [StaffAuthController, StaffController, PlatformAuditController],
+  imports: [ProvisioningModule],
+  controllers: [
+    StaffAuthController,
+    StaffController,
+    PlatformAuditController,
+    CustomersController,
+    OnboardingOptionsController,
+  ],
   providers: [
+    CustomersService,
     PlatformAuditReader,
     PlatformAuditService,
     StaffAuthenticator,
@@ -24,7 +36,8 @@ import { StaffService } from './staff.service';
     StaffMailer,
     StaffService,
     StaffSessionsService,
+    { provide: STAFF_AUTHENTICATOR, useExisting: StaffAuthenticator },
   ],
-  exports: [StaffAuthenticator, StaffContext, StaffService],
+  exports: [STAFF_AUTHENTICATOR, StaffAuthenticator, StaffContext, StaffService],
 })
 export class StaffModule {}

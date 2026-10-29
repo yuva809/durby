@@ -17,6 +17,8 @@ const TOKEN_TTL_MS: Record<UserTokenPurpose, number> = {
   password_reset: 30 * MIN,
   email_verification: 24 * 60 * MIN,
 };
+/** A new Owner's first password link (admin portal onboarding): days, not minutes. */
+const OWNER_WELCOME_TTL_MS = 72 * 60 * MIN;
 
 /**
  * Forgot/reset password and email verification (docs/platform/auth.md). Responses never reveal
@@ -60,6 +62,22 @@ export class PasswordService {
     const user = await this.db.user.findUniqueOrThrow({ where: { id: userId } });
     const token = await this.issueToken(userId, 'password_reset');
     await this.mailer.send('reset', user.email, user.locale, token);
+  }
+
+  /**
+   * A new customer's Owner (admin portal onboarding, docs/platform/admin-portal.md): a set-password
+   * link valid for 72 hours, through the usual reset page. Older open links stop working.
+   */
+  async sendOwnerWelcomeMail(userId: string, organization: string): Promise<void> {
+    const user = await this.db.user.findUniqueOrThrow({ where: { id: userId } });
+    const token = await this.issueToken(userId, 'password_reset', OWNER_WELCOME_TTL_MS);
+    await this.mailer.sendOwner('ownerWelcome', user.email, user.locale, organization, token);
+  }
+
+  /** An existing user made Owner of a new customer: a sign-in link, the password stays as it is. */
+  async sendOwnerAddedMail(userId: string, organization: string): Promise<void> {
+    const user = await this.db.user.findUniqueOrThrow({ where: { id: userId } });
+    await this.mailer.sendOwner('ownerAdded', user.email, user.locale, organization);
   }
 
   /**
@@ -129,7 +147,11 @@ export class PasswordService {
   }
 
   /** New single-use token; older open tokens of the same purpose stop working. */
-  private async issueToken(userId: string, purpose: UserTokenPurpose): Promise<string> {
+  private async issueToken(
+    userId: string,
+    purpose: UserTokenPurpose,
+    ttlMs: number = TOKEN_TTL_MS[purpose],
+  ): Promise<string> {
     const token = generateToken();
     const now = this.clock.now();
     await this.db.$transaction([
@@ -142,7 +164,7 @@ export class PasswordService {
           userId,
           purpose,
           tokenHash: hashToken(token),
-          expiresAt: new Date(now.getTime() + TOKEN_TTL_MS[purpose]),
+          expiresAt: new Date(now.getTime() + ttlMs),
         },
       }),
     ]);

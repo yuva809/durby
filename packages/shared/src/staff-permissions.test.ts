@@ -24,12 +24,18 @@ describe('staff permissions', () => {
     expect(isStaffPermissionKey('toString')).toBe(false);
   });
 
-  it('gives the super admin everything and the others the portal only', () => {
+  it('gives the super admin everything; onboarding creates customers, support only reads and resends', () => {
     expect([...STAFF_ROLE_PERMISSIONS.super_admin].sort()).toEqual(
       [...STAFF_PERMISSION_KEYS].sort(),
     );
-    for (const role of STAFF_ROLES.filter((r) => r !== 'super_admin')) {
-      expect(STAFF_ROLE_PERMISSIONS[role]).toEqual(['staff.portal.access']);
+    for (const role of STAFF_ROLES) {
+      expect(STAFF_ROLE_PERMISSIONS[role]).toContain('staff.portal.access');
+      expect(STAFF_ROLE_PERMISSIONS[role]).toContain('staff.customers.read');
+    }
+    expect(STAFF_ROLE_PERMISSIONS.onboarding).toContain('staff.customers.create');
+    expect(STAFF_ROLE_PERMISSIONS.support).not.toContain('staff.customers.create');
+    for (const role of ['onboarding', 'support'] as const) {
+      expect(STAFF_ROLE_PERMISSIONS[role]).not.toContain('staff.staff.manage');
     }
   });
 });

@@ -33,4 +33,5 @@ export const STAFF_PRIVATE_MODELS: ReadonlySet<Prisma.ModelName> = new Set<Prism
   'StaffToken',
   'StaffSession',
   'PlatformAuditLog',
+  'StaffIdempotencyKey',
 ]);

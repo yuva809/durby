@@ -8,6 +8,7 @@ export {
 } from './invitation-ports';
 export { IS_PLATFORM_ONLY_KEY, PlatformOnly } from '../markers';
 export { PERMISSION_REGISTRY, type PermissionRegistry } from './permission-registry';
+export { STAFF_AUTHENTICATOR, type StaffAuthenticatorPort } from './staff-port';
 export { SystemRoles } from './system-roles';
 export { REQUIRED_PERMISSION_KEY, RequirePermission } from '../markers';
 export {

@@ -40,4 +40,21 @@ export const staffErrors = {
       'staff.cannot_change_self',
       'Another super admin must change your account.',
     ),
+  customerDuplicate: (details: { nameTaken: boolean; ownerHasAccount: boolean }) =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'staff.customer_duplicate',
+      'A customer with this name or an account with this email already exists.',
+      details,
+    ),
+  customerNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'staff.customer_not_found', 'Customer not found.'),
+  ownerActive: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'staff.owner_active',
+      'The owner has already set a password.',
+    ),
+  partnerNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'staff.partner_not_found', 'Partner not found.'),
 };

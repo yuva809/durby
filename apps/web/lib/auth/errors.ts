@@ -114,6 +114,10 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'staff.already_active': 'staff.errors.alreadyActive',
   'staff.last_super_admins': 'staff.errors.lastSuperAdmins',
   'staff.cannot_change_self': 'staff.errors.cannotChangeSelf',
+  'staff.customer_duplicate': 'staff.errors.customerDuplicate',
+  'staff.customer_not_found': 'staff.errors.customerNotFound',
+  'staff.owner_active': 'staff.errors.ownerActive',
+  'staff.partner_not_found': 'staff.errors.partnerNotFound',
 };
 
 export function errorLabel(code: ApiErrorCode | 'unknown'): LabelKey {

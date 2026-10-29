@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PLAN_KEYS } from '../features';
 import { PLATFORM_AUDIT_ACTION_KEYS } from '../platform-audit';
 import { STAFF_PERMISSION_KEYS, STAFF_ROLES } from '../staff-permissions';
 import { newPasswordSchema, PASSWORD_MAX_LENGTH } from './auth';
@@ -49,6 +50,45 @@ export const inviteStaffRequestSchema = z.strictObject({ email, role: staffRoleS
 
 export const updateStaffRequestSchema = z.strictObject({ role: staffRoleSchema });
 
+/** Customers (docs/platform/admin-portal.md → Customers, Onboarding). */
+export const CUSTOMER_NAME_MAX_LENGTH = 100;
+export const OWNER_LOCALES = ['en', 'de'] as const;
+
+export const partnerSummarySchema = z.object({ id: z.uuid(), slug: z.string(), name: z.string() });
+
+export const customerSummarySchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  partner: partnerSummarySchema,
+  plan: z.enum(PLAN_KEYS),
+  createdAt: z.iso.datetime(),
+});
+
+export const customerDetailSchema = customerSummarySchema.extend({
+  /** `invited` until the owner has set a password. Null if the organization has no owner. */
+  owner: z.object({ email: z.string(), status: z.enum(['invited', 'active']) }).nullable(),
+});
+
+export const customerListQuerySchema = z.object({ query: z.string().trim().max(100).optional() });
+export const customerListResponseSchema = z.object({ data: z.array(customerSummarySchema) });
+
+export const onboardCustomerRequestSchema = z.strictObject({
+  name: z.string().trim().min(1).max(CUSTOMER_NAME_MAX_LENGTH),
+  ownerEmail: email,
+  ownerLocale: z.enum(OWNER_LOCALES).default('en'),
+  plan: z.enum(PLAN_KEYS).default('full'),
+  /** Default: the default partner (Durby). */
+  partnerId: z.uuid().optional(),
+  /** Create even though the name or the owner email is already known (business rules: warn, confirm). */
+  confirmDuplicates: z.boolean().default(false),
+});
+
+export const onboardingOptionsResponseSchema = z.object({
+  partners: z.array(partnerSummarySchema),
+  defaultPartnerId: z.uuid().nullable(),
+  plans: z.array(z.enum(PLAN_KEYS)),
+});
+
 export const platformAuditEntrySchema = z.object({
   id: z.uuid(),
   createdAt: z.iso.datetime(),
@@ -86,6 +126,10 @@ export const STAFF_ERROR_CODES = [
   'staff.already_active',
   'staff.last_super_admins',
   'staff.cannot_change_self',
+  'staff.customer_duplicate',
+  'staff.customer_not_found',
+  'staff.owner_active',
+  'staff.partner_not_found',
 ] as const;
 
 export type StaffErrorCode = (typeof STAFF_ERROR_CODES)[number];
@@ -103,6 +147,14 @@ export type StaffMember = z.infer<typeof staffMemberSchema>;
 export type StaffListResponse = z.infer<typeof staffListResponseSchema>;
 export type InviteStaffRequest = z.infer<typeof inviteStaffRequestSchema>;
 export type UpdateStaffRequest = z.infer<typeof updateStaffRequestSchema>;
+export type PartnerSummary = z.infer<typeof partnerSummarySchema>;
+export type CustomerSummary = z.infer<typeof customerSummarySchema>;
+export type CustomerDetail = z.infer<typeof customerDetailSchema>;
+export type CustomerListQuery = z.infer<typeof customerListQuerySchema>;
+export type CustomerListResponse = z.infer<typeof customerListResponseSchema>;
+export type OnboardCustomerRequest = z.input<typeof onboardCustomerRequestSchema>;
+export type OnboardCustomerBody = z.output<typeof onboardCustomerRequestSchema>;
+export type OnboardingOptionsResponse = z.infer<typeof onboardingOptionsResponseSchema>;
 export type PlatformAuditEntry = z.infer<typeof platformAuditEntrySchema>;
 export type PlatformAuditQuery = z.infer<typeof platformAuditQuerySchema>;
 export type PlatformAuditResponse = z.infer<typeof platformAuditResponseSchema>;
