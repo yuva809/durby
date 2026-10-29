@@ -12,8 +12,8 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /**
  * Applies `@PlatformOnly(key, { fresh })` for the global AccessGuard (ADR 0017 §3): the staff
- * session cookie only (a customer bearer token is ignored), an allowed Origin on writes, an active
- * session of an active, enrolled account, the role's key, and a recent confirmation for fresh
+ * session cookie only (a customer bearer token is ignored), an allowed Origin on writes, a live
+ * session of an active account, the role's key, and a recent confirmation for fresh
  * routes. Fills StaffContext, never TenantContext.
  */
 @Injectable()

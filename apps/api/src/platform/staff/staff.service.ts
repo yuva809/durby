@@ -22,7 +22,6 @@ const MEMBER_SELECT = {
   email: true,
   role: true,
   status: true,
-  totpEnrolledAt: true,
   lastLoginAt: true,
   createdAt: true,
 } as const;
@@ -55,7 +54,7 @@ export class StaffService {
 
   /**
    * Invites a company address, or sends a fresh link to one still invited (older links stop
-   * working). A deactivated account is invited again from scratch: password and 2FA are cleared.
+   * working). A deactivated account is invited again from scratch: its password is cleared.
    */
   async invite(actor: PlatformAuditActor, rawEmail: string, role: StaffRole): Promise<StaffMember> {
     const email = normalizeEmail(rawEmail);
@@ -72,9 +71,6 @@ export class StaffService {
         role,
         status: 'invited' as const,
         passwordHash: null,
-        totpSecret: null,
-        totpEnrolledAt: null,
-        totpLastStep: null,
         deactivatedAt: null,
       };
       const after = before
@@ -137,20 +133,6 @@ export class StaffService {
     });
   }
 
-  /** Clears 2FA and ends every session: the next login enrolls a new authenticator. */
-  async resetTwoFactor(actorId: string, id: string): Promise<StaffMember> {
-    const now = this.clock.now();
-    return this.change(actorId, id, async (tx, before) => {
-      if (before.status === 'deactivated') throw staffErrors.notFound();
-      const after = await tx.staffAccount.update({
-        where: { id },
-        data: { totpSecret: null, totpEnrolledAt: null, totpLastStep: null },
-      });
-      await revokeSessions(tx, id, now);
-      return { action: 'staff.account.two_factor_reset', after };
-    });
-  }
-
   /** Shared frame: lock, load, never yourself, record. `fn` returns null when nothing changes. */
   private async change(
     actorId: string,
@@ -159,10 +141,7 @@ export class StaffService {
       tx: Tx,
       before: AccountRow,
     ) => Promise<{
-      action:
-        | 'staff.account.role_changed'
-        | 'staff.account.deactivated'
-        | 'staff.account.two_factor_reset';
+      action: 'staff.account.role_changed' | 'staff.account.deactivated';
       after: AccountRow;
     } | null>,
   ): Promise<StaffMember> {
@@ -213,7 +192,6 @@ function toMember(row: {
   email: string;
   role: StaffRole;
   status: 'invited' | 'active' | 'deactivated';
-  totpEnrolledAt: Date | null;
   lastLoginAt: Date | null;
   createdAt: Date;
 }): StaffMember {
@@ -222,7 +200,6 @@ function toMember(row: {
     email: row.email,
     role: row.role,
     status: row.status,
-    totpEnrolled: row.totpEnrolledAt !== null,
     lastLoginAt: row.lastLoginAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
   };

@@ -33,7 +33,7 @@ flock -n 9 || die "another deploy is running"
 #    current release keeps running. Values are never printed.
 env_value() { sed -n "s/^$1=//p" "$DEPLOY_DIR/.env" | tail -n 1 | tr -d "'\""; }
 required=(POSTGRES_SUPERUSER_PASSWORD DURBY_MIGRATOR_PASSWORD DURBY_APP_PASSWORD REDIS_PASSWORD
-  STAGING_DOMAIN STAGING_DEMO_DOMAIN ACME_EMAIL BASIC_AUTH_USER BASIC_AUTH_HASH JWT_ACCESS_SECRET STAFF_TOTP_KEY)
+  STAGING_DOMAIN STAGING_DEMO_DOMAIN ACME_EMAIL BASIC_AUTH_USER BASIC_AUTH_HASH JWT_ACCESS_SECRET)
 missing_keys=()
 for key in "${required[@]}"; do
   value="$(env_value "$key")"
@@ -43,8 +43,6 @@ done
   die "missing in $DEPLOY_DIR/.env: ${missing_keys[*]} (see docs/ops/deploy.md, Upgrading the existing server)"
 (($(env_value JWT_ACCESS_SECRET | wc -c) > 32)) ||
   die "JWT_ACCESS_SECRET must be at least 32 characters (openssl rand -hex 32)"
-[[ "$(env_value STAFF_TOTP_KEY)" =~ ^[0-9a-fA-F]{64}$ ]] ||
-  die "STAFF_TOTP_KEY must be 64 hex characters (openssl rand -hex 32)"
 
 current="$(cat "$STATE/deployed.sha" 2>/dev/null || true)"
 prefix="$(sed -n 's/^IMAGE_PREFIX=//p' "$DEPLOY_DIR/.env" | tr -d "'\"")"

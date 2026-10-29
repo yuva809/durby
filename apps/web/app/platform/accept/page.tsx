@@ -6,7 +6,6 @@ import { type FormEvent, useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import { PasswordInput } from '../../../components/ui/password-input';
 import { useStaffSession } from '../../../components/staff/staff-session';
-import { TwoFactorStep } from '../../../components/staff/two-factor-step';
 import { useLinkToken } from '../../../lib/auth/link-token';
 import { errorLabel } from '../../../lib/auth/errors';
 import { t } from '../../../lib/i18n';
@@ -15,13 +14,12 @@ import { AuthCard, fieldClass, formText, Notice } from '../../auth-layout';
 
 const passwordLabels = { show: t('auth.password.show'), hide: t('auth.password.hide') };
 
-/** /platform/accept#token=…: set a password, then set up two-factor authentication. */
+/** /platform/accept#token=…: set a password; the account is then signed in. */
 export default function StaffAcceptPage() {
   const { reload } = useStaffSession();
   const router = useRouter();
   // From the link's fragment, which browsers never send to a server; removed from the URL once read.
   const token = useLinkToken();
-  const [enrolling, setEnrolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -35,22 +33,12 @@ export default function StaffAcceptPage() {
       formText(new FormData(event.currentTarget), 'password'),
     );
     setBusy(false);
-    if (result.ok) setEnrolling(true);
-    else setError(t(errorLabel(result.code)));
-  }
-
-  if (enrolling) {
-    return (
-      <AuthCard title={t('staff.enroll.title')}>
-        <TwoFactorStep
-          mode="enroll"
-          onDone={async () => {
-            await reload();
-            router.replace('/platform');
-          }}
-        />
-      </AuthCard>
-    );
+    if (result.ok) {
+      await reload();
+      router.replace('/platform');
+      return;
+    }
+    setError(t(errorLabel(result.code)));
   }
 
   return (

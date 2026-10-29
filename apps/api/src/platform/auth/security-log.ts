@@ -14,7 +14,6 @@ export type SecurityEvent =
   // Durby staff (ADR 0017): the platform audit log has the successful actions too.
   | 'staff.login.failed'
   | 'staff.login.locked'
-  | 'staff.code.failed'
   | 'staff.logout';
 
 export interface SecurityEventFields {

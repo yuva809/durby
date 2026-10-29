@@ -8,7 +8,6 @@ import { staffApi, type StaffResult } from '../../lib/staff/api';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '../ui/dialog';
 import { PasswordInput } from '../ui/password-input';
-import { CodeInput } from './two-factor-step';
 
 interface Pending {
   run: () => Promise<StaffResult<unknown>>;
@@ -19,7 +18,7 @@ interface Pending {
 const passwordLabels = { show: t('auth.password.show'), hide: t('auth.password.hide') };
 
 /**
- * Sensitive staff actions need a password + code confirmation in the last 15 minutes (ADR 0017
+ * Sensitive staff actions need a password confirmation in the last 15 minutes (ADR 0017
  * §3). `guard(run)` runs the action; if the api asks for a confirmation, the dialog asks for it and
  * runs the action again. Cancelling returns the original answer.
  */
@@ -50,7 +49,7 @@ export function useReauth(onConfirmed?: () => void): {
     const form = new FormData(event.currentTarget);
     setBusy(true);
     setError(null);
-    const confirmed = await staffApi.reauth(formText(form, 'password'), formText(form, 'code'));
+    const confirmed = await staffApi.reauth(formText(form, 'password'));
     if (!confirmed.ok) {
       setBusy(false);
       setError(t(errorLabel(confirmed.code)));
@@ -86,10 +85,6 @@ export function useReauth(onConfirmed?: () => void): {
               autoComplete="current-password"
               required
             />
-          </div>
-          <div className={fieldClass}>
-            <label htmlFor="staff-reauth-code">{t('staff.login.code')}</label>
-            <CodeInput id="staff-reauth-code" />
           </div>
           <Notice text={error} tone="error" />
           <DialogFooter>

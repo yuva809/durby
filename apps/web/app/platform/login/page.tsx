@@ -6,7 +6,6 @@ import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { PasswordInput } from '../../../components/ui/password-input';
 import { useStaffSession } from '../../../components/staff/staff-session';
-import { TwoFactorStep } from '../../../components/staff/two-factor-step';
 import { errorLabel } from '../../../lib/auth/errors';
 import { t } from '../../../lib/i18n';
 import { staffApi } from '../../../lib/staff/api';
@@ -14,11 +13,10 @@ import { AuthCard, fieldClass, formText, Notice } from '../../auth-layout';
 
 const passwordLabels = { show: t('auth.password.show'), hide: t('auth.password.hide') };
 
-/** /platform/login: password, then a code from the authenticator (or its setup after a reset). */
+/** /platform/login: email and password open the staff session. */
 export default function StaffLoginPage() {
   const { session, reload } = useStaffSession();
   const router = useRouter();
-  const [next, setNext] = useState<'totp' | 'enroll' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -33,16 +31,8 @@ export default function StaffLoginPage() {
     setError(null);
     const result = await staffApi.login(formText(form, 'email'), formText(form, 'password'));
     setBusy(false);
-    if (result.ok) setNext(result.data.next);
+    if (result.ok) await reload();
     else setError(t(errorLabel(result.code)));
-  }
-
-  if (next) {
-    return (
-      <AuthCard title={next === 'enroll' ? t('staff.enroll.title') : t('staff.login.codeTitle')}>
-        <TwoFactorStep mode={next} onDone={reload} />
-      </AuthCard>
-    );
   }
 
   return (

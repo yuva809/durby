@@ -4,7 +4,7 @@ import type { StaffPermissionKey } from '@durby/shared';
 export const IS_PLATFORM_ONLY_KEY = 'durby:isPlatformOnly';
 
 export interface PlatformOnlyOptions {
-  /** Sensitive action: needs a password + TOTP confirmation in the last 15 minutes (ADR 0017 §3). */
+  /** Sensitive action: needs a password confirmation in the last 15 minutes (ADR 0017 §3). */
   fresh?: boolean;
 }
 

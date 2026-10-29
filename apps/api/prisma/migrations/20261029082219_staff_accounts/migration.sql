@@ -7,9 +7,6 @@ CREATE TYPE "staff_role" AS ENUM ('super_admin', 'onboarding', 'support');
 -- CreateEnum
 CREATE TYPE "staff_status" AS ENUM ('invited', 'active', 'deactivated');
 
--- CreateEnum
-CREATE TYPE "staff_session_state" AS ENUM ('pending', 'active');
-
 -- CreateTable
 CREATE TABLE "staff_accounts" (
     "id" UUID NOT NULL DEFAULT uuidv7(),
@@ -17,9 +14,6 @@ CREATE TABLE "staff_accounts" (
     "password_hash" TEXT,
     "role" "staff_role" NOT NULL,
     "status" "staff_status" NOT NULL DEFAULT 'invited',
-    "totp_secret" TEXT,
-    "totp_enrolled_at" TIMESTAMPTZ(6),
-    "totp_last_step" BIGINT,
     "last_login_at" TIMESTAMPTZ(6),
     "deactivated_at" TIMESTAMPTZ(6),
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -45,7 +39,6 @@ CREATE TABLE "staff_sessions" (
     "id" UUID NOT NULL DEFAULT uuidv7(),
     "staff_id" UUID NOT NULL,
     "token_hash" TEXT NOT NULL,
-    "state" "staff_session_state" NOT NULL DEFAULT 'pending',
     "expires_at" TIMESTAMPTZ(6) NOT NULL,
     "authenticated_at" TIMESTAMPTZ(6),
     "revoked_at" TIMESTAMPTZ(6),
@@ -101,12 +94,10 @@ ALTER TABLE "staff_sessions" ADD CONSTRAINT "staff_sessions_staff_id_fkey" FOREI
 -- Same form as users.email: stored lower-case and trimmed.
 ALTER TABLE "staff_accounts" ADD CONSTRAINT "staff_accounts_email_lower_check"
   CHECK ("email" = lower(btrim("email")));
--- Deactivated accounts carry the time; active ones have a password. 2FA is enforced per session (an active account
--- without it, after a reset, must enroll at its next login), and an enrolled account always has its secret.
+-- Deactivated accounts carry the time; active ones have a password.
 ALTER TABLE "staff_accounts" ADD CONSTRAINT "staff_accounts_status_check" CHECK (
   ("status" = 'deactivated') = ("deactivated_at" IS NOT NULL) AND
-  ("status" <> 'active' OR "password_hash" IS NOT NULL) AND
-  ("totp_enrolled_at" IS NULL OR "totp_secret" IS NOT NULL)
+  ("status" <> 'active' OR "password_hash" IS NOT NULL)
 );
 
 ALTER TABLE "platform_audit_logs" ADD CONSTRAINT "platform_audit_logs_actor_check"

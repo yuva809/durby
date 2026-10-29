@@ -8,11 +8,6 @@ import { newPasswordSchema, PASSWORD_MAX_LENGTH } from './auth';
 const email = z.string().trim().toLowerCase().max(254).pipe(z.email());
 /** 32 random bytes, base64url (43 characters). */
 const opaqueToken = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
-/** Six digits from the authenticator app; spaces are ignored. */
-export const totpCodeSchema = z
-  .string()
-  .transform((value) => value.replace(/\s+/g, ''))
-  .pipe(z.string().regex(/^\d{6}$/));
 
 export const staffRoleSchema = z.enum(STAFF_ROLES);
 
@@ -26,20 +21,8 @@ export const staffAcceptRequestSchema = z.strictObject({
   password: newPasswordSchema,
 });
 
-export const staffCodeRequestSchema = z.strictObject({ code: totpCodeSchema });
-
 export const staffReauthRequestSchema = z.strictObject({
   password: z.string().min(1).max(PASSWORD_MAX_LENGTH),
-  code: totpCodeSchema,
-});
-
-/** After the password: the session is pending until a code is confirmed. */
-export const staffLoginResponseSchema = z.object({ next: z.enum(['totp', 'enroll']) });
-
-export const staffEnrollResponseSchema = z.object({
-  /** Base32, for manual entry. */
-  secret: z.string(),
-  otpauthUri: z.string(),
 });
 
 export const staffMeResponseSchema = z.object({
@@ -56,7 +39,6 @@ export const staffMemberSchema = z.object({
   email: z.string(),
   role: staffRoleSchema,
   status: z.enum(['invited', 'active', 'deactivated']),
-  totpEnrolled: z.boolean(),
   lastLoginAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
 });
@@ -96,7 +78,6 @@ export const platformAuditResponseSchema = z.object({
 export const STAFF_ERROR_CODES = [
   'staff.unauthenticated',
   'staff.invalid_credentials',
-  'staff.invalid_code',
   'staff.reauth_required',
   'staff.permission_denied',
   'staff.invitation_invalid',
@@ -105,22 +86,18 @@ export const STAFF_ERROR_CODES = [
   'staff.already_active',
   'staff.last_super_admins',
   'staff.cannot_change_self',
-  'staff.enroll_not_allowed',
 ] as const;
 
 export type StaffErrorCode = (typeof STAFF_ERROR_CODES)[number];
 
-/** `staff.invalid_code` → `staff.errors.invalidCode`. */
+/** `staff.last_super_admins` → `staff.errors.lastSuperAdmins`. */
 export function staffErrorLabel(code: StaffErrorCode): string {
   return `staff.errors.${code.slice('staff.'.length).replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`;
 }
 
 export type StaffLoginRequest = z.infer<typeof staffLoginRequestSchema>;
 export type StaffAcceptRequest = z.infer<typeof staffAcceptRequestSchema>;
-export type StaffCodeRequest = z.infer<typeof staffCodeRequestSchema>;
 export type StaffReauthRequest = z.infer<typeof staffReauthRequestSchema>;
-export type StaffLoginResponse = z.infer<typeof staffLoginResponseSchema>;
-export type StaffEnrollResponse = z.infer<typeof staffEnrollResponseSchema>;
 export type StaffMeResponse = z.infer<typeof staffMeResponseSchema>;
 export type StaffMember = z.infer<typeof staffMemberSchema>;
 export type StaffListResponse = z.infer<typeof staffListResponseSchema>;

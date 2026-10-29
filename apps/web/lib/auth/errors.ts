@@ -106,7 +106,6 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'pos.area_not_empty': 'pos.errors.areaNotEmpty',
   'staff.unauthenticated': 'staff.errors.unauthenticated',
   'staff.invalid_credentials': 'staff.errors.invalidCredentials',
-  'staff.invalid_code': 'staff.errors.invalidCode',
   'staff.reauth_required': 'staff.errors.reauthRequired',
   'staff.permission_denied': 'staff.errors.permissionDenied',
   'staff.invitation_invalid': 'staff.errors.invitationInvalid',
@@ -115,7 +114,6 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'staff.already_active': 'staff.errors.alreadyActive',
   'staff.last_super_admins': 'staff.errors.lastSuperAdmins',
   'staff.cannot_change_self': 'staff.errors.cannotChangeSelf',
-  'staff.enroll_not_allowed': 'staff.errors.enrollNotAllowed',
 };
 
 export function errorLabel(code: ApiErrorCode | 'unknown'): LabelKey {

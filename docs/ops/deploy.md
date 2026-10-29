@@ -201,18 +201,8 @@ sudo -u deploy sh -c 'grep -q "^STAGING_DEMO_DOMAIN=" /opt/durby/.env ||
 
 Caddy requests the second certificate on the next deploy; `WEB_ORIGINS` then lists both origins.
 
-**Admin portal 1a (staff accounts, ADR 0017)** needs `STAFF_TOTP_KEY` (it encrypts the staff 2FA secrets; changing
-it later makes every staff member enroll 2FA again). Optional: `STAFF_EMAIL_DOMAINS` (default `durby.tech`). On the
-server, once, before merging:
-
-```bash
-sudo -u deploy sh -c 'grep -q "^STAFF_TOTP_KEY=" /opt/durby/.env ||
-  printf "STAFF_TOTP_KEY=%s
-" "$(openssl rand -hex 32)" >>/opt/durby/.env'
-sudo grep -c '^STAFF_TOTP_KEY=' /opt/durby/.env   # 1
-```
-
-After the deploy, create the first two super admins (see "First staff" below).
+**Admin portal 1a (staff accounts, ADR 0017)** needs no new secret. Optional: `STAFF_EMAIL_DOMAINS` (default
+`durby.tech`), the domains that can be invited as staff. After the deploy, create the first two super admins (see "First staff" below).
 
 Nothing else is manual. On every deploy, `bin/deploy.sh` applies `postgres-init/02-rls-definer.sh` as the Postgres
 superuser before migrations (it creates the `durby_rls_definer` role, ADR 0006; init scripts never re-run on an
@@ -246,7 +236,7 @@ cookies).
 ### First staff (admin portal)
 
 The portal at `https://<STAGING_DOMAIN>/platform` is for Durby staff (docs/platform/admin-portal.md). Create the
-first super admins on the server; each gets an invitation link by mail (Mailpit) to set a password and 2FA:
+first super admins on the server; each gets an invitation link by mail (Mailpit) to set a password:
 
 ```bash
 bin/dc run --rm --no-deps api node dist/cli/create-staff.js --email you@durby.tech --role super_admin

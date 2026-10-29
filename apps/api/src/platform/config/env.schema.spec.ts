@@ -11,7 +11,6 @@ const validEnv = {
   SMTP_URL: 'smtp://localhost:1025',
   MAIL_FROM: 'Durby <no-reply@durby.test>',
   STAFF_EMAIL_DOMAINS: 'durby.test',
-  STAFF_TOTP_KEY: 'ab'.repeat(32),
 };
 
 const without = (key: keyof typeof validEnv): Record<string, string> =>
@@ -32,12 +31,7 @@ describe('appEnvSchema', () => {
       ).toBe(false);
     });
 
-    it('needs a 64-hex TOTP key, generated in production, and caps sessions at 8 hours', () => {
-      expect(appEnvSchema.safeParse({ ...validEnv, STAFF_TOTP_KEY: 'ab' }).success).toBe(false);
-      expect(appEnvSchema.safeParse(without('STAFF_TOTP_KEY')).success).toBe(false);
-      const zero = { ...validEnv, STAFF_TOTP_KEY: '0'.repeat(64) };
-      expect(appEnvSchema.safeParse(zero).success).toBe(true);
-      expect(appEnvSchema.safeParse({ ...zero, NODE_ENV: 'production' }).success).toBe(false);
+    it('caps staff sessions at 8 hours', () => {
       expect(appEnvSchema.parse(validEnv).STAFF_SESSION_TTL_SECONDS).toBe(28_800);
       expect(
         appEnvSchema.safeParse({ ...validEnv, STAFF_SESSION_TTL_SECONDS: '28801' }).success,

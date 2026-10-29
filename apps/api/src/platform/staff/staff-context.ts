@@ -7,7 +7,7 @@ export interface StaffContextValue {
   staffId: string;
   sessionId: string;
   role: StaffRole;
-  /** Last password + TOTP confirmation of the session. */
+  /** Last password confirmation of the session (sign-in or re-confirmation). */
   authenticatedAt: Date;
 }
 

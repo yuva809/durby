@@ -3,12 +3,8 @@ import {
   type InviteStaffRequest,
   type PlatformAuditResponse,
   platformAuditResponseSchema,
-  type StaffEnrollResponse,
-  staffEnrollResponseSchema,
   type StaffListResponse,
   staffListResponseSchema,
-  type StaffLoginResponse,
-  staffLoginResponseSchema,
   type StaffMeResponse,
   staffMeResponseSchema,
   type StaffMember,
@@ -60,18 +56,12 @@ async function call<T>(
 
 export const staffApi = {
   me: (): Promise<StaffResult<StaffMeResponse>> => call('/auth/me', {}, staffMeResponseSchema),
-  login: (email: string, password: string): Promise<StaffResult<StaffLoginResponse>> =>
-    call('/auth/login', { method: 'POST', body: { email, password } }, staffLoginResponseSchema),
-  accept: (token: string, password: string): Promise<StaffResult<StaffLoginResponse>> =>
-    call('/auth/accept', { method: 'POST', body: { token, password } }, staffLoginResponseSchema),
-  enroll: (): Promise<StaffResult<StaffEnrollResponse>> =>
-    call('/auth/enroll', { method: 'POST' }, staffEnrollResponseSchema),
-  confirmEnrollment: (code: string): Promise<StaffResult<null>> =>
-    call('/auth/enroll/confirm', { method: 'POST', body: { code } }),
-  verifyCode: (code: string): Promise<StaffResult<null>> =>
-    call('/auth/totp', { method: 'POST', body: { code } }),
-  reauth: (password: string, code: string): Promise<StaffResult<null>> =>
-    call('/auth/reauth', { method: 'POST', body: { password, code } }),
+  login: (email: string, password: string): Promise<StaffResult<null>> =>
+    call('/auth/login', { method: 'POST', body: { email, password } }),
+  accept: (token: string, password: string): Promise<StaffResult<null>> =>
+    call('/auth/accept', { method: 'POST', body: { token, password } }),
+  reauth: (password: string): Promise<StaffResult<null>> =>
+    call('/auth/reauth', { method: 'POST', body: { password } }),
   logout: (): Promise<StaffResult<null>> => call('/auth/logout', { method: 'POST' }),
 
   listStaff: (): Promise<StaffResult<StaffListResponse>> =>
@@ -82,8 +72,6 @@ export const staffApi = {
     call(`/staff/${id}`, { method: 'PATCH', body: { role } }, staffMemberSchema),
   deactivate: (id: string): Promise<StaffResult<StaffMember>> =>
     call(`/staff/${id}/deactivate`, { method: 'POST' }, staffMemberSchema),
-  resetTwoFactor: (id: string): Promise<StaffResult<StaffMember>> =>
-    call(`/staff/${id}/reset-2fa`, { method: 'POST' }, staffMemberSchema),
 
   audit: (cursor?: string): Promise<StaffResult<PlatformAuditResponse>> =>
     call(`/audit?limit=50${cursor ? `&cursor=${cursor}` : ''}`, {}, platformAuditResponseSchema),

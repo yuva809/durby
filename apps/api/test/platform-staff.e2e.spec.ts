@@ -1,6 +1,5 @@
 import {
   platformAuditResponseSchema,
-  staffEnrollResponseSchema,
   staffListResponseSchema,
   staffMeResponseSchema,
   type StaffRole,
@@ -10,15 +9,13 @@ import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createStaff, parseCreateStaffArgs } from '../src/cli/create-staff';
 import { StaffService } from '../src/platform/staff';
-import { base32Decode, totpCode } from '../src/platform/staff/totp';
 import { PLATFORM_PRISMA, type PlatformPrismaClient } from '../src/platform/tenancy';
 import { type AuthTestKit, PASSWORD, startAuthApp, WEB_ORIGIN } from './support/auth-app';
 import { RbacSeed } from './support/rbac';
 
 const COOKIE = '__Secure-durby_staff';
-const STEP_MS = 30_000;
 
-/** docs/platform/admin-portal.md (ADR 0017): staff accounts, 2FA, sessions, permissions, audit. */
+/** docs/platform/admin-portal.md (ADR 0017): staff accounts, sessions, permissions, audit. */
 describe('/api/v1/platform (staff)', () => {
   let kit: AuthTestKit;
 
@@ -62,9 +59,6 @@ describe('/api/v1/platform (staff)', () => {
   }
 
   const email = () => `s-${uuidv7()}@durby.test`;
-  const nextStep = () => kit.clock.advance(STEP_MS);
-  const code = (secret: string) =>
-    totpCode(base32Decode(secret), Math.floor(kit.clock.now().getTime() / STEP_MS));
 
   function invitationToken(address: string): string {
     const mail = kit.mailer.to(address).at(-1);
@@ -73,38 +67,28 @@ describe('/api/v1/platform (staff)', () => {
     return token;
   }
 
-  /** Invited by the bootstrap command, accepted, enrolled and signed in. */
+  /** Invited by the bootstrap command, accepted (which signs in). */
   async function onboard(role: StaffRole = 'super_admin') {
     const address = email();
     const member = await kit.app
       .get(StaffService)
       .invite({ system: 'cli.create_staff' }, address, role);
     const browser = new Browser();
-    const accepted = await browser
+    await browser
       .send('post', '/auth/accept', { token: invitationToken(address), password: PASSWORD })
-      .expect(200);
-    expect(accepted.body).toEqual({ next: 'enroll' });
-    const { secret } = staffEnrollResponseSchema.parse(
-      (await browser.send('post', '/auth/enroll').expect(200)).body,
-    );
-    await browser.send('post', '/auth/enroll/confirm', { code: code(secret) }).expect(204);
-    return { id: member.id, email: address, secret, browser };
+      .expect(204);
+    return { id: member.id, email: address, browser };
   }
 
-  async function signIn(address: string, secret: string) {
+  async function signIn(address: string) {
     const browser = new Browser();
-    const res = await browser
-      .send('post', '/auth/login', { email: address, password: PASSWORD })
-      .expect(200);
-    expect(res.body).toEqual({ next: 'totp' });
-    nextStep();
-    await browser.send('post', '/auth/totp', { code: code(secret) }).expect(204);
+    await browser.send('post', '/auth/login', { email: address, password: PASSWORD }).expect(204);
     return browser;
   }
 
-  describe('invitation, enrollment and sign-in', () => {
-    it('accepts an invitation once, enrolls 2FA and signs in with password and code', async () => {
-      const { email: address, secret, browser, id } = await onboard();
+  describe('invitation and sign-in', () => {
+    it('accepts an invitation once, signs in with the password, and logs out per session', async () => {
+      const { email: address, browser, id } = await onboard();
       const me = staffMeResponseSchema.parse(
         (await browser.send('get', '/auth/me').expect(200)).body,
       );
@@ -118,48 +102,37 @@ describe('/api/v1/platform (staff)', () => {
         .expect(400);
       expect(again.body).toMatchObject({ code: 'staff.invitation_invalid' });
 
-      const second = await signIn(address, secret);
+      const second = await signIn(address);
       await second.send('get', '/auth/me').expect(200);
-      // Logout ends only that session.
       await second.send('post', '/auth/logout').expect(204);
       await second.send('get', '/auth/me').expect(401);
       await browser.send('get', '/auth/me').expect(200);
     });
 
-    it('grants nothing before the code, and refuses wrong and replayed codes', async () => {
-      const { email: address, secret } = await onboard();
-      const browser = new Browser();
-      await browser.send('post', '/auth/login', { email: address, password: PASSWORD }).expect(200);
-      const pending = await browser.send('get', '/auth/me').expect(401);
-      expect(pending.body).toMatchObject({ code: 'staff.unauthenticated' });
-      const wrong = await browser.send('post', '/auth/totp', { code: '000000' }).expect(401);
-      expect(wrong.body).toMatchObject({ code: 'staff.invalid_code' });
-      // The code used at enrollment (same step) can't be used again.
-      await browser.send('post', '/auth/totp', { code: code(secret) }).expect(401);
-      nextStep();
-      await browser.send('post', '/auth/totp', { code: code(secret) }).expect(204);
-      await browser.send('get', '/auth/me').expect(200);
-    });
-
-    it('treats unknown emails, wrong passwords and deactivated accounts alike', async () => {
+    it('treats unknown emails, wrong passwords and not yet accepted invitations alike', async () => {
       const { email: address } = await onboard();
+      const invited = email();
+      await kit.app.get(StaffService).invite({ system: 'cli.create_staff' }, invited, 'support');
       for (const body of [
         { email: email(), password: PASSWORD },
         { email: address, password: 'wrong password!!' },
+        { email: invited, password: PASSWORD },
       ]) {
         const res = await new Browser().send('post', '/auth/login', body).expect(401);
         expect(res.body).toMatchObject({ code: 'staff.invalid_credentials' });
       }
     });
 
-    it('locks code entry after repeated wrong codes', async () => {
+    it('locks sign-in after repeated wrong passwords', async () => {
       const { email: address } = await onboard();
-      const browser = new Browser();
-      await browser.send('post', '/auth/login', { email: address, password: PASSWORD }).expect(200);
       for (let i = 0; i < 5; i++) {
-        await browser.send('post', '/auth/totp', { code: '000000' }).expect(401);
+        await new Browser()
+          .send('post', '/auth/login', { email: address, password: 'wrong password!!' })
+          .expect(401);
       }
-      const locked = await browser.send('post', '/auth/totp', { code: '000000' }).expect(429);
+      const locked = await new Browser()
+        .send('post', '/auth/login', { email: address, password: PASSWORD })
+        .expect(429);
       expect(locked.body).toMatchObject({ code: 'auth.too_many_attempts' });
     });
 
@@ -241,7 +214,7 @@ describe('/api/v1/platform (staff)', () => {
         .expect(400);
       await new Browser()
         .send('post', '/auth/accept', { token: second, password: PASSWORD })
-        .expect(200);
+        .expect(204);
 
       const { email: active } = await onboard('support');
       const res = await browser
@@ -254,25 +227,20 @@ describe('/api/v1/platform (staff)', () => {
       );
       expect(list.data.find((m) => m.email === address)).toMatchObject({
         role: 'onboarding',
-        status: 'invited',
-        totpEnrolled: false,
+        status: 'active',
       });
     });
 
-    it('needs a fresh confirmation for changes', async () => {
-      const { browser, secret } = await onboard();
+    it('needs a fresh password confirmation for changes', async () => {
+      const { browser } = await onboard();
       kit.clock.advance(16 * 60_000);
       const stale = await browser
         .send('post', '/staff/invitations', { email: email(), role: 'support' })
         .expect(401);
       expect(stale.body).toMatchObject({ code: 'staff.reauth_required' });
       await browser.send('get', '/staff').expect(200); // reading isn't sensitive
-      await browser
-        .send('post', '/auth/reauth', { password: 'wrong password!!', code: code(secret) })
-        .expect(401);
-      await browser
-        .send('post', '/auth/reauth', { password: PASSWORD, code: code(secret) })
-        .expect(204);
+      await browser.send('post', '/auth/reauth', { password: 'wrong password!!' }).expect(401);
+      await browser.send('post', '/auth/reauth', { password: PASSWORD }).expect(204);
       await browser
         .send('post', '/staff/invitations', { email: email(), role: 'support' })
         .expect(200);
@@ -297,16 +265,8 @@ describe('/api/v1/platform (staff)', () => {
       await b.browser.send('get', '/staff').expect(403);
     });
 
-    it('deactivation and 2FA reset end sessions at once', async () => {
+    it('deactivation ends sessions at once and is replay-safe', async () => {
       const a = await onboard();
-      const c = await onboard('support');
-      await a.browser.send('post', `/staff/${c.id}/reset-2fa`).expect(200);
-      await c.browser.send('get', '/auth/me').expect(401);
-      const relogin = await new Browser()
-        .send('post', '/auth/login', { email: c.email, password: PASSWORD })
-        .expect(200);
-      expect(relogin.body).toEqual({ next: 'enroll' });
-
       const d = await onboard('onboarding');
       const res = await a.browser.send('post', `/staff/${d.id}/deactivate`).expect(200);
       expect(res.body).toMatchObject({ status: 'deactivated' });
@@ -314,7 +274,6 @@ describe('/api/v1/platform (staff)', () => {
       await new Browser()
         .send('post', '/auth/login', { email: d.email, password: PASSWORD })
         .expect(401);
-      // Replaying the deactivation changes nothing and records nothing more.
       await a.browser.send('post', `/staff/${d.id}/deactivate`).expect(200);
       expect(
         await kit.raw.platformAuditLog.count({
@@ -367,10 +326,7 @@ describe('/api/v1/platform (staff)', () => {
     it('parses its arguments', () => {
       expect(
         parseCreateStaffArgs(['--email', ' Ops@Durby.Test ', '--role', 'super_admin']),
-      ).toEqual({
-        email: 'ops@durby.test',
-        role: 'super_admin',
-      });
+      ).toEqual({ email: 'ops@durby.test', role: 'super_admin' });
       expect(() =>
         parseCreateStaffArgs(['--email', 'ops@durby.test', '--role', 'owner']),
       ).toThrow();

@@ -100,10 +100,6 @@ export const appEnvSchema = z
     // Durby staff and the admin portal (docs/platform/admin-portal.md, ADR 0017).
     /** Only these domains can be invited as staff. */
     STAFF_EMAIL_DOMAINS: domainList,
-    /** AES-256 key for the staff TOTP secrets, 64 hex characters: `openssl rand -hex 32`. */
-    STAFF_TOTP_KEY: z
-      .string({ error: 'is required' })
-      .regex(/^[0-9a-fA-F]{64}$/, 'must be 64 hex characters (openssl rand -hex 32)'),
     /** Absolute lifetime of a staff session; at most 8 hours. */
     STAFF_SESSION_TTL_SECONDS: z.coerce.number().int().min(300).max(28_800).default(28_800),
 
@@ -140,13 +136,6 @@ export const appEnvSchema = z
           });
         }
       }
-    }
-    if (env.NODE_ENV === 'production' && /^0+$/.test(env.STAFF_TOTP_KEY)) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['STAFF_TOTP_KEY'],
-        message: 'must be a generated key in production (openssl rand -hex 32)',
-      });
     }
     if (env.REFRESH_TOKEN_TTL_DAYS > env.REFRESH_FAMILY_MAX_DAYS) {
       ctx.addIssue({

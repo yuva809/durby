@@ -24,10 +24,6 @@ export const PLATFORM_AUDIT_ACTIONS = {
     entityType: 'staff_account',
     label: 'staff.audit.actions.deactivated',
   },
-  'staff.account.two_factor_reset': {
-    entityType: 'staff_account',
-    label: 'staff.audit.actions.twoFactorReset',
-  },
   'staff.session.logged_in': {
     entityType: 'staff_account',
     label: 'staff.audit.actions.loggedIn',

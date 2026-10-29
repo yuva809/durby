@@ -8,7 +8,7 @@ const USAGE = `Usage: create-staff --email <email> --role ${STAFF_ROLES.join('|'
 
 Bootstraps Durby staff for the admin portal (docs/platform/admin-portal.md): creates the staff
 account if missing (the email must be in STAFF_EMAIL_DOMAINS) and emails an invitation link to set
-a password and two-factor authentication. Safe to run again while the account is still invited: a
+a password. Safe to run again while the account is still invited: a
 fresh link is sent and older ones stop working. Never takes a password. Create two super admins:
 the portal always keeps at least 2 active.`;
 

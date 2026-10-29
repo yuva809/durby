@@ -5,7 +5,7 @@ import { APP_CONFIG, type AppConfig } from '../config';
 import { MAILER, type Mailer } from '../mail';
 
 /**
- * Staff invitation emails. Default English labels (staff aren't tied to an organization or locale).
+ * Staff invitation emails (set a password). Default English labels (staff aren't tied to an organization or locale).
  * The token goes into the URL fragment, which never reaches servers or logs.
  */
 @Injectable()

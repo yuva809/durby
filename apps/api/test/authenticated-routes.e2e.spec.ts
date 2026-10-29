@@ -64,14 +64,11 @@ describe('route markers', () => {
       // ADR 0007: authenticated by the single-use invitation token.
       'POST /api/v1/invitations/accept',
       'POST /api/v1/invitations/preview',
-      // ADR 0017: staff sign-in steps, authenticated by the password, the invitation token or the
-      // pending staff session cookie.
+      // ADR 0017: staff sign-in, authenticated by the password, the invitation token or the staff
+      // session cookie.
       'POST /api/v1/platform/auth/accept',
-      'POST /api/v1/platform/auth/enroll',
-      'POST /api/v1/platform/auth/enroll/confirm',
       'POST /api/v1/platform/auth/login',
       'POST /api/v1/platform/auth/logout',
-      'POST /api/v1/platform/auth/totp',
     ]);
   });
 
@@ -90,7 +87,6 @@ describe('route markers', () => {
       'PATCH /api/v1/platform/staff/:id staff.staff.manage (fresh)',
       'POST /api/v1/platform/auth/reauth staff.portal.access',
       'POST /api/v1/platform/staff/:id/deactivate staff.staff.manage (fresh)',
-      'POST /api/v1/platform/staff/:id/reset-2fa staff.staff.manage (fresh)',
       'POST /api/v1/platform/staff/invitations staff.staff.manage (fresh)',
     ]);
   });
@@ -130,15 +126,11 @@ describe('route markers', () => {
       'POST /api/v1/invitations/accept-signed-in',
       'POST /api/v1/invitations/preview',
       'POST /api/v1/platform/auth/accept',
-      'POST /api/v1/platform/auth/enroll',
-      'POST /api/v1/platform/auth/enroll/confirm',
       'POST /api/v1/platform/auth/login',
       'POST /api/v1/platform/auth/logout',
       'POST /api/v1/platform/auth/reauth',
-      'POST /api/v1/platform/auth/totp',
       // ADR 0017 §8 (with PATCH /platform/staff/:id above): replay-safe set-state staff writes.
       'POST /api/v1/platform/staff/:id/deactivate',
-      'POST /api/v1/platform/staff/:id/reset-2fa',
       'POST /api/v1/platform/staff/invitations',
     ]);
   });

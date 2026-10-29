@@ -7,14 +7,8 @@ export const staffErrors = {
     new ApiError(HttpStatus.UNAUTHORIZED, 'staff.unauthenticated', 'Staff sign-in required.'),
   invalidCredentials: () =>
     new ApiError(HttpStatus.UNAUTHORIZED, 'staff.invalid_credentials', 'Invalid credentials.'),
-  invalidCode: () =>
-    new ApiError(HttpStatus.UNAUTHORIZED, 'staff.invalid_code', 'Invalid or used code.'),
   reauthRequired: () =>
-    new ApiError(
-      HttpStatus.UNAUTHORIZED,
-      'staff.reauth_required',
-      'Confirm your password and a code first.',
-    ),
+    new ApiError(HttpStatus.UNAUTHORIZED, 'staff.reauth_required', 'Confirm your password first.'),
   permissionDenied: (permission: string) =>
     new ApiError(HttpStatus.FORBIDDEN, 'staff.permission_denied', 'Permission denied.', {
       permission,
@@ -45,11 +39,5 @@ export const staffErrors = {
       HttpStatus.CONFLICT,
       'staff.cannot_change_self',
       'Another super admin must change your account.',
-    ),
-  enrollNotAllowed: () =>
-    new ApiError(
-      HttpStatus.CONFLICT,
-      'staff.enroll_not_allowed',
-      'Two-factor authentication is already set up.',
     ),
 };

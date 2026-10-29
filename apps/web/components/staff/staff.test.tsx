@@ -55,7 +55,6 @@ const member = (id: string, email: string, role: StaffRole): StaffMember => ({
   email,
   role,
   status: 'active',
-  totpEnrolled: true,
   lastLoginAt: null,
   createdAt: '2026-10-29T10:00:00.000Z',
 });
@@ -80,11 +79,10 @@ const withSession = (ui: React.ReactNode) =>
   );
 
 describe('staff login', () => {
-  it('asks for the password, then a code, and opens the portal', async () => {
+  it('signs in with email and password and opens the portal', async () => {
     api({
       'GET /auth/me': [error('staff.unauthenticated', 401), me('support')],
-      'POST /auth/login': json({ next: 'totp' }),
-      'POST /auth/totp': empty,
+      'POST /auth/login': empty,
     });
     withSession(<StaffLoginPage />);
     const form = await screen.findByTestId('staff-login');
@@ -94,11 +92,8 @@ describe('staff login', () => {
       'secret-password',
     );
     await userEvent.click(within(form).getByRole('button', { name: 'Continue' }));
-
-    await userEvent.type(await screen.findByTestId('staff-code'), '123 456');
-    await userEvent.click(screen.getByRole('button', { name: 'Verify' }));
     await waitFor(() => expect(mockState.router.replace).toHaveBeenCalledWith('/platform'));
-    expect(calls).toContain('POST /auth/totp');
+    expect(calls).toEqual(['GET /auth/me', 'POST /auth/login', 'GET /auth/me']);
   });
 
   it('shows the staff error label', async () => {
@@ -135,7 +130,7 @@ describe('staff page', () => {
     expect(screen.getByTestId('staff-invite')).toBeTruthy();
   });
 
-  it('asks for password and code when the api needs a fresh confirmation, then retries', async () => {
+  it('asks for the password when the api needs a fresh confirmation, then retries', async () => {
     api({
       'GET /auth/me': me('super_admin'),
       'GET /staff': json(STAFF),
@@ -153,7 +148,6 @@ describe('staff page', () => {
 
     const dialog = await screen.findByTestId('staff-reauth');
     await userEvent.type(within(dialog).getByLabelText('Password', { exact: true }), 'secret');
-    await userEvent.type(within(dialog).getByTestId('staff-code'), '123456');
     await userEvent.click(within(dialog).getByTestId('staff-reauth-confirm'));
 
     await waitFor(() => expect(screen.queryByTestId('staff-reauth')).toBeNull());

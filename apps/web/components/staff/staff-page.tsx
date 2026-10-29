@@ -2,7 +2,7 @@
 
 import { STAFF_ROLES, type StaffMember, type StaffRole, staffRoleLabel } from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
-import { KeyRound, UserX } from 'lucide-react';
+import { UserX } from 'lucide-react';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { fieldClass, formText, Notice } from '../../app/auth-layout';
 import { errorLabel } from '../../lib/auth/errors';
@@ -81,7 +81,6 @@ export function StaffPage() {
                 <th className="px-4 py-3 font-medium">{t('staff.staffPage.email')}</th>
                 <th className="px-4 py-3 font-medium">{t('staff.staffPage.role')}</th>
                 <th className="px-4 py-3 font-medium">{t('staff.staffPage.status')}</th>
-                <th className="px-4 py-3 font-medium">{t('staff.staffPage.twoFactor')}</th>
                 <th className="px-4 py-3 font-medium">{t('staff.staffPage.lastLogin')}</th>
                 {canManage && <th className="px-4 py-3" />}
               </tr>
@@ -120,11 +119,6 @@ export function StaffPage() {
                         {t(`staff.status.${member.status}` as LabelKey)}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3">
-                      {member.totpEnrolled
-                        ? t('staff.staffPage.twoFactorOn')
-                        : t('staff.staffPage.twoFactorOff')}
-                    </td>
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
                       {member.lastLoginAt
                         ? new Date(member.lastLoginAt).toLocaleString()
@@ -134,16 +128,6 @@ export function StaffPage() {
                       <td className="px-4 py-3">
                         {editable && (
                           <span className="flex justify-end gap-2">
-                            <Confirm
-                              testId="staff-reset-2fa"
-                              icon={<KeyRound aria-hidden />}
-                              trigger={t('staff.staffPage.resetTwoFactor', { email: member.email })}
-                              title={t('staff.staffPage.resetTitle', { email: member.email })}
-                              description={t('staff.staffPage.resetDescription')}
-                              confirm={t('staff.staffPage.resetConfirm')}
-                              run={() => guard(() => staffApi.resetTwoFactor(member.id))}
-                              onDone={() => done(null)}
-                            />
                             <Confirm
                               testId="staff-deactivate"
                               icon={<UserX aria-hidden />}

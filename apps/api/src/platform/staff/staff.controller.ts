@@ -76,14 +76,6 @@ export class StaffController {
   deactivate(@Param('id', idPipe) id: string): Promise<StaffMember> {
     return this.staff.deactivate(this.context.require().staffId, id);
   }
-
-  @PlatformOnly('staff.staff.manage', { fresh: true })
-  @IdempotencyExempt(STAFF_EXEMPT)
-  @Post(':id/reset-2fa')
-  @HttpCode(HttpStatus.OK)
-  resetTwoFactor(@Param('id', idPipe) id: string): Promise<StaffMember> {
-    return this.staff.resetTwoFactor(this.context.require().staffId, id);
-  }
 }
 
 /** /api/v1/platform/audit: every staff action, newest first. */

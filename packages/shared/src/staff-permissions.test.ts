@@ -11,7 +11,7 @@ import {
   STAFF_ROLE_PERMISSIONS,
   STAFF_ROLES,
 } from './staff-permissions';
-import { staffErrorLabel, totpCodeSchema } from './api/staff';
+import { staffErrorLabel } from './api/staff';
 
 describe('staff permissions', () => {
   it('uses staff.entity.action keys, never a customer key', () => {
@@ -44,12 +44,6 @@ describe('platform audit registry', () => {
 });
 
 describe('staff api schemas', () => {
-  it('reads a 6-digit code, ignoring spaces', () => {
-    expect(totpCodeSchema.parse('123 456')).toBe('123456');
-    expect(totpCodeSchema.safeParse('12345').success).toBe(false);
-    expect(totpCodeSchema.safeParse('abcdef').success).toBe(false);
-  });
-
   it('maps error codes to labels', () => {
     expect(staffErrorLabel('staff.last_super_admins')).toBe('staff.errors.lastSuperAdmins');
   });

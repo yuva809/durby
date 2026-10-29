@@ -1,4 +1,4 @@
-# ADR 0017: Admin portal foundation: staff accounts, staff permissions, 2FA, platform audit
+# ADR 0017: Admin portal foundation: staff accounts, staff permissions, sessions, platform audit
 
 - Status: accepted
 - Date: 2026-10-29
@@ -27,21 +27,24 @@ Spec: [docs/platform/admin-portal.md](../platform/admin-portal.md).
 3. **`@PlatformOnly(key, { fresh? })` checks staff permissions** (amends ADR 0007, CLAUDE.md rule 10). The boot
    check refuses an unregistered staff key. The guard authenticates such routes **only** by the staff session cookie,
    never by a customer access token, and fills a `StaffContext`, never `TenantContext`. Customer routes never accept
-   the staff cookie (different name and path). `fresh: true` needs a password + TOTP confirmation in the last 15
+   the staff cookie (different name and path). `fresh: true` needs a password confirmation in the last 15
    minutes (401 `staff.reauth_required`). Every non-GET staff request needs an allowed `Origin`.
 
 4. **Sessions:** an opaque 32-byte token in `__Secure-durby_staff` (`durby_staff` with `COOKIE_SECURE=false`),
    `HttpOnly; SameSite=Strict; Path=/api/v1/platform`, stored as sha256 in `staff_sessions` and checked against the
-   database on every request (staff traffic is small; deactivation and 2FA reset end sessions at once without
-   Redis). At most 8 hours absolute, no refresh. A session is `pending` after the password and `active` only after
-   TOTP: **no 2FA, no access**.
+   database on every request (staff traffic is small; deactivation ends sessions at once without Redis). At most 8
+   hours absolute, no refresh.
 
-5. **TOTP** (RFC 6238: SHA-1, 30 s, 6 digits, ±1 step) on `node:crypto`, no new api dependency. Secrets are
-   encrypted with AES-256-GCM under `STAFF_TOTP_KEY`; a used time step can't be used again. Passkeys come later.
-   Lost authenticator: a SuperAdmin resets 2FA; the next login enrolls again.
+5. **No second factor (amended 2026-10-29).** The first version required TOTP 2FA for every staff member, as the
+   business rules ask. By the product owner's decision it was removed before release: staff sign in with email and
+   password, and sensitive actions re-confirm the password. Mitigations that remain: invitations only, company
+   domains only, argon2id passwords of at least 12 characters, rate limits and lockout, 8-hour sessions, a 15-minute
+   re-confirmation for staff changes, and the platform audit log. _Consequence:_ a leaked staff password gives
+   access to every customer the portal can reach; revisit (TOTP or passkeys) before the portal manages customer
+   data (step 1b on).
 
 6. **Invites only, company domain only.** A SuperAdmin invites (email must end in one of `STAFF_EMAIL_DOMAINS`);
-   the invitee sets a password and enrolls TOTP. The first SuperAdmins come from the `create-staff` bootstrap command,
+   the invitee sets a password, which also signs them in. The first SuperAdmins come from the `create-staff` bootstrap command,
    which never takes a password (like `create-admin`). **At least 2 active SuperAdmins**: a change that would leave
    fewer is refused, and so is changing your own account.
 
@@ -52,13 +55,13 @@ Spec: [docs/platform/admin-portal.md](../platform/admin-portal.md).
    `audit_logs`.
 
 8. **Idempotency.** `idempotency_keys` belongs to tenant users (RLS, FK to `users`), so staff routes are
-   `@IdempotencyExempt(reason)` and designed replay-safe: invites upsert and resend, role changes, deactivation and
-   2FA reset set a state. Auth routes are exempt as in ADR 0006 §12.
+   `@IdempotencyExempt(reason)` and designed replay-safe: invites upsert and resend, role changes and deactivation set a
+   state. Auth routes are exempt as in ADR 0006 §12.
 
 9. **The portal is a route group, not a separate app** (business-rules decision 3, deviating from its
    recommendation): `/platform/*` in `apps/web`, outside the customer shell, with the default theme only, no
    organization label overrides and `noindex`. The separation the recommendation wanted comes from the separate
-   session (§4: own cookie, path, lifetime, 2FA) and the separate permission registry (§2). Moving to
+   session (§4: own cookie, path, lifetime) and the separate permission registry (§2). Moving to
    `admin.durby.tech` later only changes routing and `WEB_ORIGINS`.
 
 10. **Accepted business-rules decisions:** (1) partner config is written by a separate `durby_platform` database role
@@ -69,6 +72,6 @@ Spec: [docs/platform/admin-portal.md](../platform/admin-portal.md).
 
 ## Consequences
 
-- New secret `STAFF_TOTP_KEY` and setting `STAFF_EMAIL_DOMAINS` on every environment (deploy preflight).
+- New setting `STAFF_EMAIL_DOMAINS` on every environment (default `durby.tech` on staging).
 - Each staff request costs one database read for the session; acceptable for a handful of staff.
 - A second login surface: its own rate limits and lockout (keys prefixed `staff:`), and security events.
