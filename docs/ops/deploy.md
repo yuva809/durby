@@ -257,6 +257,12 @@ open http://localhost:8025
 
 Messages live in memory: a Mailpit restart (or deploy that recreates it) drops them; the newest 500 are kept.
 
+**Sending real mail.** By default `SMTP_URL` is `smtp://mailpit:1025`. To deliver to real inboxes, add `SMTP_URL`
+(and `MAIL_FROM`, on a domain verified at the provider) to `/opt/durby/.env`, then recreate the api and worker
+(`bin/dc up -d api worker`; both read the same `x-api-env`, only the api sends mail). Removing the line restores
+Mailpit. Postgres, Redis and their volumes are not part of that recreate. The api and worker log a failed send by
+error type only (`invitation mail failed`); check `bin/dc logs api` and the provider's dashboard.
+
 ---
 
 ## Deploying
