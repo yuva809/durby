@@ -7,7 +7,7 @@ describe('mailErrorFields', () => {
       code: 'EAUTH',
       responseCode: 535,
       command: 'AUTH PLAIN',
-      response: '535 smtps://resend:re_topsecret@smtp.resend.com rejected',
+      response: '535 smtps://resend:example-secret-value@smtp.resend.com rejected',
     });
     const fields = mailErrorFields(error);
     expect(fields).toEqual({
