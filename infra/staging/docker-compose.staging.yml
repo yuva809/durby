@@ -29,7 +29,9 @@ x-api-env: &api-env
   WEB_BASE_URL: https://${STAGING_DOMAIN}
   # Caddy is the one proxy in front of the api; it overwrites client-sent X-Forwarded-For.
   TRUST_PROXY: '1'
-  SMTP_URL: smtp://mailpit:1025
+  # Mailpit unless /opt/durby/.env sets SMTP_URL (a real relay: smtps://user:pass@host:465). Unset or
+  # empty both mean Mailpit (":-"), so nothing changes until the .env line exists.
+  SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
   MAIL_FROM: ${MAIL_FROM:-Durby Staging <no-reply@staging.invalid>}
   # Durby staff and the admin portal (docs/platform/admin-portal.md, ADR 0017).
   STAFF_EMAIL_DOMAINS: ${STAFF_EMAIL_DOMAINS:-durby.tech}
