@@ -27,5 +27,4 @@ export const SETTINGS_TABS: readonly NavItem[] = [
   tab('numbering', 'platform.settingsTabs.numbering', 'platform.settings.read'),
   tab('labels', 'platform.settingsTabs.labels', 'platform.labels.manage'),
   tab('plan', 'platform.settingsTabs.plan'),
-  tab('audit', 'platform.settingsTabs.audit', 'platform.audit.read'),
 ];

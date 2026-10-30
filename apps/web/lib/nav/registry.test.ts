@@ -73,6 +73,7 @@ describe('visibleNav', () => {
       'service',
       'tables',
       'settings',
+      'audit',
     ]);
     expect(NAV_ITEMS.filter((i) => i.planned).map((i) => i.id)).toEqual([
       'inventory',
@@ -126,6 +127,7 @@ describe('activeNavItem', () => {
     ['/pos', 'pos'],
     ['/settings', 'settings'],
     ['/settings/members', 'settings'],
+    ['/audit', 'audit'],
     ['/service', 'service'],
     ['/service/x', 'service'],
     ['/tables', 'tables'],

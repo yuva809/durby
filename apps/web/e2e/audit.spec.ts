@@ -34,7 +34,7 @@ test('a changed setting shows in the audit log with its before and after values'
   await locale.getByTestId('setting-save').click();
   await expect(locale.getByTestId('setting-save')).toBeDisabled();
 
-  await page.goto(`${DOMAINS.durby}/settings/audit?entityType=setting_value`);
+  await page.goto(`${DOMAINS.durby}/audit?entityType=setting_value`);
   const entry = page.getByTestId('audit-entry').first();
   await expect(entry.getByTestId('audit-what')).toHaveText('Setting changed');
   await expect(entry.getByTestId('audit-who')).toHaveText('owner@durby.local');
@@ -52,16 +52,21 @@ test('a changed setting shows in the audit log with its before and after values'
   await expect(source).toHaveText('Inherited');
 });
 
-test('a Manager has no audit log tab and gets "no access"', async ({ page, browser, request }) => {
+test('a Manager has no audit log in the menu and gets "no access"', async ({
+  page,
+  browser,
+  request,
+}) => {
   const email = uniqueEmail('manager-audit');
   await signIn(page, DOMAINS.durby, 'owner@durby.local');
   await invite(page, DOMAINS.durby, email, 'Manager');
   const manager = await accept(browser, await invitationLink(request, email));
   const origin = new URL(manager.url()).origin;
   await manager.goto(`${origin}/settings/organization`);
-  await expect(manager.getByTestId('settings-tab-members')).toBeVisible();
-  await expect(manager.getByTestId('settings-tab-audit')).toHaveCount(0);
-  await manager.goto(`${origin}/settings/audit`);
+  const nav = manager.getByRole('navigation', { name: 'Main navigation' });
+  await expect(nav.getByTestId('nav-settings')).toBeVisible();
+  await expect(nav.getByTestId('nav-audit')).toHaveCount(0);
+  await manager.goto(`${origin}/audit`);
   await expect(manager.getByTestId('no-access')).toBeVisible();
   await manager.context().close();
 });

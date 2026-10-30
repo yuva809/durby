@@ -47,7 +47,7 @@ import { NoAccess } from '../users/common';
 
 const label = (key: string): LabelKey | null => (isLabelKey(key) ? key : null);
 
-/** /settings/audit (docs/platform/web-shell.md → Audit log viewer). */
+/** /audit (docs/platform/web-shell.md → Audit log viewer). */
 export function AuditPage() {
   const { session } = useAuth();
   if (!session) return null;
