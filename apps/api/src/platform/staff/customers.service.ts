@@ -9,13 +9,13 @@ import {
   PLAN_KEYS,
   type PlanKey,
 } from '@durby/shared';
-import { PinoLogger } from 'nestjs-pino';
 import { v7 as uuidv7 } from 'uuid';
 import { auditActor, AuditService, canonicalJson, snapshot } from '../audit';
 import { PasswordService, UserDirectory } from '../auth';
 import { planIdOf } from '../config/entitlements';
 import { PrismaService } from '../database';
 import { idempotencyErrors } from '../idempotency';
+import { MailDispatcher } from '../mail';
 import { NumberingService } from '../numbering';
 import { DEFAULT_PARTNER, ProvisioningService } from '../provisioning';
 import { SystemRoles } from '../rbac';
@@ -71,10 +71,8 @@ export class CustomersService {
     private readonly numbering: NumberingService,
     private readonly audit: AuditService,
     private readonly platformAudit: PlatformAuditService,
-    private readonly logger: PinoLogger,
-  ) {
-    this.logger.setContext(CustomersService.name);
-  }
+    private readonly dispatcher: MailDispatcher,
+  ) {}
 
   async list(query?: string): Promise<CustomerSummary[]> {
     const rows = await this.platformDb.organization.findMany({
@@ -217,7 +215,9 @@ export class CustomersService {
         organizationId: id,
       }),
     );
-    await this.passwords.sendOwnerWelcomeMail(ownerId, customer.name);
+    await this.dispatcher.dispatch('staff.customer.owner_mail_failed', () =>
+      this.passwords.sendOwnerWelcomeMail(ownerId, customer.name),
+    );
     return customer;
   }
 
@@ -248,16 +248,13 @@ export class CustomersService {
     return partner.id;
   }
 
+  /** Never throws: a failed send is logged by the dispatcher and the invitation can be resent. */
   private async mailOwner(userId: string, organization: string, hasPassword: boolean) {
-    try {
-      if (hasPassword) await this.passwords.sendOwnerAddedMail(userId, organization);
-      else await this.passwords.sendOwnerWelcomeMail(userId, organization);
-    } catch (error) {
-      this.logger.error(
-        { err: error, event: 'staff.customer.owner_mail_failed' },
-        'owner mail failed',
-      );
-    }
+    await this.dispatcher.dispatch('staff.customer.owner_mail_failed', () =>
+      hasPassword
+        ? this.passwords.sendOwnerAddedMail(userId, organization)
+        : this.passwords.sendOwnerWelcomeMail(userId, organization),
+    );
   }
 
   /** The first Owner of the customer, read inside its tenant (RLS applies). */

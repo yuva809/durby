@@ -19,7 +19,7 @@ import {
   staffMemberSchema,
   type StaffRole,
 } from '@durby/shared';
-import type { Schema } from '../api-call';
+import { type Schema, WRITE_TIMEOUT_MS } from '../api-call';
 import type { ApiErrorCode } from '../auth/errors';
 
 /**
@@ -47,6 +47,9 @@ async function call<T>(
       method: init.method ?? 'GET',
       credentials: 'same-origin',
       cache: 'no-store',
+      // Writes only; a timed-out write may still have been applied (see WRITE_TIMEOUT_MS).
+      ...(init.method &&
+        init.method !== 'GET' && { signal: AbortSignal.timeout(WRITE_TIMEOUT_MS) }),
       headers: {
         ...(init.body !== undefined && { 'Content-Type': 'application/json' }),
         ...init.headers,

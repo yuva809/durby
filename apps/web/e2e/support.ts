@@ -67,7 +67,9 @@ export async function invite(
   await dialog.getByLabel('Email').fill(email);
   await dialog.getByTestId('role-select').selectOption({ label: role });
   await dialog.getByTestId('invite-send').click();
-  await expect(page.getByRole('status')).toHaveText(`Invitation sent to ${email}.`);
+  await expect(page.getByRole('status')).toHaveText(
+    `Invitation created for ${email}. The email is on its way.`,
+  );
   await expect(page.getByTestId('invitation-row').filter({ hasText: email })).toContainText(role);
 }
 

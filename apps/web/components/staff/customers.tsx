@@ -10,7 +10,7 @@ import {
 import type { LabelKey } from '@durby/i18n';
 import { ArrowLeft, CheckCircle2, Mail, Search, TriangleAlert, UserPlus } from 'lucide-react';
 import Link from 'next/link';
-import { type FormEvent, useId, useState } from 'react';
+import { type FormEvent, useId, useRef, useState } from 'react';
 import { fieldClass, formText, Notice } from '../../app/auth-layout';
 import { errorLabel } from '../../lib/auth/errors';
 import { t } from '../../lib/i18n';
@@ -154,6 +154,7 @@ export function OnboardPage() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<CustomerDetail | null>(null);
   const [formKey, setFormKey] = useState(0);
+  const attempt = useRef<{ input: string; key: string } | null>(null);
 
   if (!canCreate) return <StaffNoAccess />;
   if (done) {
@@ -181,8 +182,6 @@ export function OnboardPage() {
     if (next.name || next.email) return;
     setBusy(true);
     setError(null);
-    // One key per submit; a retry after the password re-confirmation reuses it.
-    const key = crypto.randomUUID();
     const body = {
       name,
       ownerEmail,
@@ -191,8 +190,16 @@ export function OnboardPage() {
       partnerId: formText(data, 'partnerId') || undefined,
       confirmDuplicates,
     };
+    // One key per submit; a retry after the password re-confirmation reuses it. So does a retry
+    // after an answer we never saw (timeout, network error): the customer may exist already, and
+    // the api replays the stored answer for the same key instead of creating a second one.
+    const input = JSON.stringify(body);
+    const key = attempt.current?.input === input ? attempt.current.key : crypto.randomUUID();
+    attempt.current = { input, key };
     const result = await guard(() => staffApi.onboard(body, key));
     setBusy(false);
+    // Any real answer ends the attempt; only an unknown outcome keeps its key for the retry.
+    if (result.ok || result.code !== 'unknown') attempt.current = null;
     if (result.ok) {
       setDone(result.data);
     } else if (result.code === 'staff.customer_duplicate') {

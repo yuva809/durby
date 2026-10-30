@@ -17,6 +17,14 @@ export interface Schema<T> {
 
 export type Api = Pick<SessionStore, 'apiFetch'>;
 
+/**
+ * How long a write may wait for its answer before the page gives up and shows the generic error.
+ * The api bounds its own slow parts (mail has a few seconds), so a write that takes longer is
+ * stuck. Giving up does not cancel the action: it may still have been applied, so the action
+ * keeps its Idempotency-Key and a retry replays the stored answer instead of repeating the write.
+ */
+export const WRITE_TIMEOUT_MS = 30_000;
+
 async function parsed<T>(res: Response, schema: Schema<T>): Promise<Result<T>> {
   if (!res.ok) return { ok: false, code: await errorCode(res) };
   try {
@@ -48,6 +56,7 @@ export async function write<T = null>(
     const res = await sendAction(store, action, path, {
       method,
       cache: 'no-store',
+      signal: AbortSignal.timeout(WRITE_TIMEOUT_MS),
       ...(body === undefined
         ? {}
         : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),

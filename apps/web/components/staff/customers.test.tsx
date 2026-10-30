@@ -94,7 +94,9 @@ describe('onboard a customer', () => {
     await userEvent.click(screen.getByTestId('onboard-submit'));
     const done = await screen.findByTestId('onboard-done');
     expect(done.textContent).toContain('Cafe Nord is ready');
-    expect(done.textContent).toContain('An invitation was sent to owner@cafe-nord.test.');
+    expect(done.textContent).toContain(
+      'An invitation for owner@cafe-nord.test was created and is being emailed.',
+    );
     const post = calls.find((c) => c.key === 'POST /customers')!;
     expect(post.body).toEqual({
       name: 'Cafe Nord',
@@ -105,6 +107,41 @@ describe('onboard a customer', () => {
       confirmDuplicates: false,
     });
     expect(post.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('retries an unanswered create with the same Idempotency-Key, and takes a new one when the form changes', async () => {
+    const lost = () => {
+      throw new TypeError('network down');
+    };
+    api({
+      'GET /auth/me': me('onboarding'),
+      'GET /onboarding-options': OPTIONS,
+      'POST /customers': [lost, lost, json(CUSTOMER, 201)],
+    });
+    withSession(<OnboardPage />);
+    await fill('Cafe Nord', 'owner@cafe-nord.test');
+    await userEvent.click(screen.getByTestId('onboard-submit'));
+    await waitFor(() => expect(calls.filter((c) => c.key === 'POST /customers')).toHaveLength(1));
+    // Unknown outcome: the form stays, not loading, with the generic error.
+    await waitFor(() =>
+      expect(screen.getByTestId<HTMLButtonElement>('onboard-submit').disabled).toBe(false),
+    );
+
+    // Same data again: the customer may exist already, so the api must see the same key.
+    await userEvent.click(screen.getByTestId('onboard-submit'));
+    await waitFor(() => expect(calls.filter((c) => c.key === 'POST /customers')).toHaveLength(2));
+    await waitFor(() =>
+      expect(screen.getByTestId<HTMLButtonElement>('onboard-submit').disabled).toBe(false),
+    );
+
+    // A different request gets a different key.
+    await userEvent.type(screen.getByTestId('onboard-name'), ' Sued');
+    await userEvent.click(screen.getByTestId('onboard-submit'));
+    await screen.findByTestId('onboard-done');
+    const keys = calls.filter((c) => c.key === 'POST /customers').map((c) => c.idempotencyKey);
+    expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/);
+    expect(keys[1]).toBe(keys[0]);
+    expect(keys[2]).not.toBe(keys[0]);
   });
 
   it('warns about a known owner, then creates on confirmation', async () => {
