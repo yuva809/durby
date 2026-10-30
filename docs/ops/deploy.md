@@ -260,7 +260,10 @@ Messages live in memory: a Mailpit restart (or deploy that recreates it) drops t
 **Sending real mail.** By default `SMTP_URL` is `smtp://mailpit:1025`. To deliver to real inboxes, add `SMTP_URL`
 (and `MAIL_FROM`, on a domain verified at the provider) to `/opt/durby/.env`, then recreate the api and worker
 (`bin/dc up -d api worker`; both read the same `x-api-env`, only the api sends mail). Removing the line restores
-Mailpit. Postgres, Redis and their volumes are not part of that recreate. The api and worker log a failed send by
+Mailpit. Staging's host blocks outbound port 465: use 2465 (`smtps://`) or 587 (`smtp://`). The api gives up on an unreachable relay
+after 10-15 s (`SmtpMailer` timeouts); a staff or owner mail that fails is logged as `staff.invitation_mail_failed` /
+`staff.customer.owner_mail_failed` (error `code`, `responseCode`, `command` only) while the request still succeeds, so resend
+the invitation from the portal once the relay works. Postgres, Redis and their volumes are not part of that recreate. The api and worker log a failed send by
 error type only (`invitation mail failed`); check `bin/dc logs api` and the provider's dashboard.
 
 ---

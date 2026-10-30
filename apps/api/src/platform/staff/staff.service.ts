@@ -10,6 +10,7 @@ import {
   platformSnapshot,
 } from './platform-audit.service';
 import { staffErrors } from './staff-errors';
+import { MailDispatcher } from '../mail';
 import { StaffMailer } from './staff-mailer';
 
 /** Invitation links stay valid this long. */
@@ -41,6 +42,7 @@ export class StaffService {
     private readonly clock: Clock,
     private readonly audit: PlatformAuditService,
     private readonly mailer: StaffMailer,
+    private readonly dispatcher: MailDispatcher,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -100,8 +102,11 @@ export class StaffService {
       });
       return toMember(after);
     });
-    // After the commit: a failed send leaves a valid account; inviting again sends a new link.
-    await this.mailer.sendInvitation(email, token);
+    // After the commit: a failed send leaves a valid account (logged, not thrown); inviting again
+    // sends a new link.
+    await this.dispatcher.dispatch('staff.invitation_mail_failed', () =>
+      this.mailer.sendInvitation(email, token),
+    );
     return member;
   }
 

@@ -218,6 +218,51 @@ describe('MembersPage', () => {
   });
 });
 
+describe('InviteDialog with a stalled request', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('stops loading and shows the error when the write times out, then retries with the same key', async () => {
+    signedInAs('owner');
+    const controller = new AbortController();
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
+    const posts: RequestInit[] = [];
+    mockState.store.apiFetch.mockImplementation((input: string, init?: RequestInit) => {
+      const path = input.replace(/\?.*$/, '');
+      if (init?.method !== 'POST')
+        return Promise.resolve(
+          Response.json({
+            data: path === '/api/v1/roles' ? ROLES : path === '/api/v1/locations' ? [LOCATION] : [],
+          }),
+        );
+      posts.push(init);
+      return new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () =>
+          reject(new DOMException('timeout', 'TimeoutError')),
+        );
+      });
+    });
+    render(<MembersPage />);
+    await userEvent.click(await screen.findByTestId('tab-invitations'));
+    await userEvent.click(await screen.findByTestId('invite-open'));
+    await userEvent.type(await screen.findByLabelText('Email'), 'new@example.test');
+    await userEvent.selectOptions(await screen.findByTestId('role-select'), 'Staff');
+    await userEvent.click(screen.getByTestId('invite-send'));
+
+    const send = screen.getByTestId('invite-send');
+    await vi.waitFor(() => expect((send as HTMLButtonElement).disabled).toBe(true));
+
+    controller.abort();
+    await vi.waitFor(() => expect((send as HTMLButtonElement).disabled).toBe(false));
+    expect(screen.getByRole('alert').textContent?.length).toBeGreaterThan(0);
+
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(new AbortController().signal);
+    await userEvent.click(screen.getByTestId('invite-send'));
+    await vi.waitFor(() => expect(posts).toHaveLength(2));
+    const keyOf = (init: RequestInit) => new Headers(init.headers).get('Idempotency-Key');
+    expect(keyOf(posts[1]!)).toBe(keyOf(posts[0]!));
+  });
+});
+
 describe('RolesPage', () => {
   it('shows "not available" to Staff', () => {
     signedInAs('staff');
