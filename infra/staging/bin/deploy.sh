@@ -33,7 +33,7 @@ flock -n 9 || die "another deploy is running"
 #    current release keeps running. Values are never printed.
 env_value() { sed -n "s/^$1=//p" "$DEPLOY_DIR/.env" | tail -n 1 | tr -d "'\""; }
 required=(POSTGRES_SUPERUSER_PASSWORD DURBY_MIGRATOR_PASSWORD DURBY_APP_PASSWORD REDIS_PASSWORD
-  STAGING_DOMAIN STAGING_DEMO_DOMAIN ACME_EMAIL BASIC_AUTH_USER BASIC_AUTH_HASH JWT_ACCESS_SECRET)
+  STAGING_DOMAIN STAGING_DEMO_DOMAIN ACME_EMAIL JWT_ACCESS_SECRET)
 missing_keys=()
 for key in "${required[@]}"; do
   value="$(env_value "$key")"

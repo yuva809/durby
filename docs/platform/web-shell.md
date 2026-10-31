@@ -231,8 +231,8 @@ empty states) and `platform.nav.*` (group names), in `en` and `de`. All user-fac
 - `*.localhost` resolves to loopback in browsers. Local `WEB_ORIGINS` lists both origins; Next's `allowedDevOrigins`
   allows `*.localhost`. Local `TRUST_PROXY=1`: the web server's theme request and the Next.js rewrite send
   `X-Forwarded-Host`, which the api otherwise ignores.
-- **Staging:** one Caddy site block with both addresses (`{$STAGING_DOMAIN}, {$STAGING_DEMO_DOMAIN}`), basic auth
-  on both; `WEB_ORIGINS` lists both (the CSRF Origin check, ADR 0006 §6). DNS: `CNAME partner-demo.durby.tech →
+- **Staging:** one Caddy site block with both addresses (`{$STAGING_DOMAIN}, {$STAGING_DEMO_DOMAIN}`), no basic
+  auth since ADR 0018; `WEB_ORIGINS` lists both (the CSRF Origin check, ADR 0006 §6). DNS: `CNAME partner-demo.durby.tech →
 staging.durby.tech` (docs/ops/deploy.md). Cookies are host-only, so each domain has its own session.
 - Email links: **invitation** links use the organization's partner domain since (b) (→ Invitation links). Password
   reset and email verification links still use `WEB_BASE_URL`: they are user-level (a user can belong to

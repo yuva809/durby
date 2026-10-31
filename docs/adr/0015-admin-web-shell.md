@@ -78,7 +78,7 @@ Spec: [docs/platform/web-shell.md](../platform/web-shell.md).
    demo domain shows all of the user's organizations. Cookies are host-only, so each domain has its own session.
    Restricting a domain to its partner's organizations would be an auth change (ADR 0006) and is left open.
 
-10. **Staging serves both domains** from one Caddy site block (basic auth on both) with both origins in
+10. **Staging serves both domains** from one Caddy site block (basic auth on both; removed by [ADR 0018](0018-staging-without-basic-auth.md)) with both origins in
     `WEB_ORIGINS`. Email links keep using the single `WEB_BASE_URL` for now.
 
 11. **Location list behind `platform.settings.read`** (PR b). The member and invitation pages need location names,

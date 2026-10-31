@@ -229,8 +229,6 @@ services:
       STAGING_DOMAIN: ${STAGING_DOMAIN:?set in .env}
       STAGING_DEMO_DOMAIN: ${STAGING_DEMO_DOMAIN:?set in .env}
       ACME_EMAIL: ${ACME_EMAIL:?set in .env}
-      BASIC_AUTH_USER: ${BASIC_AUTH_USER:?set in .env}
-      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?set in .env}
     ports:
       - '80:80'
       - '443:443'

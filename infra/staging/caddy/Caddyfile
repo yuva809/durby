@@ -18,6 +18,8 @@
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
+		# Staging is public since ADR 0018 (no basic auth): keep it out of search engines.
+		X-Robots-Tag "noindex, nofollow"
 		-Server
 	}
 
@@ -32,16 +34,12 @@
 		}
 	}
 
-	# API: no basic auth. It would clash with the Bearer token from step 1.2 (ADR 0004).
 	handle /api/* {
 		reverse_proxy api:4000
 	}
 
-	# Web: behind basic auth until real sign-in exists.
+	# Web: no basic auth since ADR 0018; the app's own sign-in protects it.
 	handle {
-		basic_auth {
-			{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
-		}
 		reverse_proxy web:3000
 	}
 }
