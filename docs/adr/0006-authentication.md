@@ -111,6 +111,7 @@ collide with the tenancy rules: a user belongs to several organizations, and lis
 13. **Staging basic auth stays on the web routes for now** (ADR 0004 asked to revisit it in 1.2). The api is not
     behind it, and the web client always sets `Authorization: Bearer` explicitly, so a browser-cached Basic header
     on `/api/*` is ignored by `@Public()` routes and overridden elsewhere. Revisit when staging opens to testers.
+    _Superseded by [ADR 0018](0018-staging-without-basic-auth.md):_ staging has no basic auth any more.
 
 14. **Staff PIN login for POS devices is out of scope** (POS phase): a separate device-bound credential with its own
     token type, not a back-office refresh token.

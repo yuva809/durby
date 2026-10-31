@@ -31,7 +31,8 @@ Postgres role setup from ADR 0002.
    to web, sets `X-Request-Id` to its own per-request UUID (overwriting client values) and logs it as `request_id`.
    Query strings are redacted from access logs. **Basic auth protects the web routes only, not `/api/*`**: it would
    clash with the `Authorization: Bearer` token introduced in step 1.2. **Revisit in 1.2** (e.g. drop basic auth
-   once real sign-in exists, or move it to an IP allowlist).
+   once real sign-in exists, or move it to an IP allowlist). _Superseded by [ADR 0018](0018-staging-without-basic-auth.md):_
+   basic auth is gone; the app's sign-in is the only gate.
 5. **Database roles** match ADR 0002: `infra/staging/postgres-init/01-roles.sh` creates `durby_migrator` (owner,
    **NOCREATEDB**) and `durby_app` on the first start, with passwords from the server-side `.env` (read via psql
    `\getenv`, never in argv). The api only receives `DATABASE_URL` (durby_app); only the `migrate` container
