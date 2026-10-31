@@ -32,6 +32,8 @@ describe('settings registry', () => {
       'locale',
       'currency',
       'timezone',
+      'openingHours',
+      'closedDates',
       'inventory.valuationMethod',
       'inventory.allowNegativeStock',
     ]);

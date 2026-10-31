@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import {
   type FloorQuery,
   floorQuerySchema,
@@ -11,6 +11,8 @@ import {
   sendTicketRequestSchema,
   type SendTicketResponse,
   type TableOrderResponse,
+  type UpdateOrderRequest,
+  updateOrderRequestSchema,
   type VoidLinesRequest,
   voidLinesRequestSchema,
 } from '@durby/shared';
@@ -72,6 +74,16 @@ export class OrdersController {
     @Param('id', new ParseUUIDPipe({ exceptionFactory: posErrors.orderNotFound })) id: string,
   ): Promise<Order> {
     return this.orders.get(id);
+  }
+
+  @RequirePermission('pos.orders.take')
+  @Idempotent()
+  @Patch('orders/:id')
+  update(
+    @Param('id', new ParseUUIDPipe({ exceptionFactory: posErrors.orderNotFound })) id: string,
+    @Body(new ZodBody(updateOrderRequestSchema)) body: UpdateOrderRequest,
+  ): Promise<Order> {
+    return this.orders.update(id, body);
   }
 
   @RequirePermission('pos.orders.void')

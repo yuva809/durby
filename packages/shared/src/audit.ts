@@ -173,6 +173,7 @@ export const AUDIT_ACTIONS = {
   },
   'pos.order.opened': { entityType: 'pos_order', label: 'pos.audit.actions.orderOpened' },
   'pos.order.closed': { entityType: 'pos_order', label: 'pos.audit.actions.orderClosed' },
+  'pos.order.updated': { entityType: 'pos_order', label: 'pos.audit.actions.orderUpdated' },
   'pos.kitchen_ticket.created': {
     entityType: 'kitchen_ticket',
     label: 'pos.audit.actions.kitchenTicketCreated',
@@ -275,7 +276,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'sortOrder',
     'archivedAt',
   ],
-  pos_order: ['id', 'number', 'tableId', 'locationId', 'status', 'closedAt'],
+  pos_order: ['id', 'number', 'tableId', 'locationId', 'status', 'covers', 'closedAt'],
   /** Never line notes (free text). */
   kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],

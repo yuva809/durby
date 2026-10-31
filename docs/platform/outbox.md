@@ -18,6 +18,7 @@ Types are `module.entity.past_tense`. Each entry has a current version and a str
 | `config.labels.changed`        | 1       | `{ locale, key }`                                            | label override `PUT`/`DELETE`        |
 | `config.number_series.changed` | 1       | `{ key, change: 'format'│'counter' }`                        | number series `PATCH`, counter `PUT` |
 | `config.entitlements.changed`  | 1       | `{}`                                                         | entitlements CLI                     |
+| `pos.order.closed`             | 1       | `{ orderId, locationId, tableId }`                           | pos: closing an open order           |
 
 `scopeId` is the organization, brand or location id. Events are emitted only when something actually changed (a
 no-op write emits nothing), in the same transaction as the change and its audit row.

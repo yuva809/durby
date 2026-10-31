@@ -2,3 +2,4 @@
 export { PosModule } from './pos.module';
 export { TablesService } from './tables.service';
 export { AreasService } from './areas.service';
+export { type FloorTable, type OpenOrderRef, PosFloorReader } from './floor-reader';

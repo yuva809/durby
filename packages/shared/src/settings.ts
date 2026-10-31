@@ -1,6 +1,7 @@
 import { LOCALES } from '@durby/i18n';
 import { z } from 'zod';
 import { CURRENCY_CODES } from './currencies';
+import { closedDatesSchema, DEFAULT_OPENING_HOURS, weeklyHoursSchema } from './time/opening-hours';
 
 /**
  * Settings registry (`module.camelCaseName`; platform-wide keys have no module prefix). See
@@ -84,6 +85,22 @@ export const SETTINGS = {
     description: 'platform.settings.timezone.description',
     schema: timeZone,
     default: 'Europe/Berlin',
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  openingHours: define({
+    label: 'platform.settings.openingHours.name',
+    description: 'platform.settings.openingHours.description',
+    schema: weeklyHoursSchema,
+    default: DEFAULT_OPENING_HOURS,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  closedDates: define({
+    label: 'platform.settings.closedDates.name',
+    description: 'platform.settings.closedDates.description',
+    schema: closedDatesSchema,
+    default: [],
     scopes: ALL_SCOPES,
     dataBound: false,
   }),

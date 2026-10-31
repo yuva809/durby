@@ -5,6 +5,7 @@ import {
   configNumberSeriesChangedV1,
   configSettingsChangedV1,
 } from './config';
+import { posOrderClosedV1 } from './pos';
 
 /**
  * Outbox event registry (docs/platform/outbox.md, ADR 0013 §2).
@@ -27,6 +28,7 @@ export const EVENTS = {
   'config.labels.changed': { current: 1, versions: { 1: configLabelsChangedV1 } },
   'config.number_series.changed': { current: 1, versions: { 1: configNumberSeriesChangedV1 } },
   'config.entitlements.changed': { current: 1, versions: { 1: configEntitlementsChangedV1 } },
+  'pos.order.closed': { current: 1, versions: { 1: posOrderClosedV1 } },
 } as const satisfies Record<string, EventDefinition>;
 
 export type EventType = keyof typeof EVENTS;

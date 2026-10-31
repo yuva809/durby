@@ -1,8 +1,10 @@
 import {
+  addDays,
   AUDIT_ACTION_KEYS,
   AUDIT_ENTITY_TYPES,
   type AuditAction,
   type AuditEntityType,
+  zonedDayBounds,
 } from '@durby/shared';
 
 /**
@@ -63,48 +65,14 @@ export function paramsFromFilters(filters: AuditFilters): URLSearchParams {
   return params;
 }
 
-/** Offset of `timeZone` from UTC at `instant`, in ms (positive east of Greenwich). */
-function offsetMs(instant: number, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric',
-  }).formatToParts(instant);
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
-  const asUtc = Date.UTC(
-    get('year'),
-    get('month') - 1,
-    get('day'),
-    get('hour'),
-    get('minute'),
-    get('second'),
-  );
-  return asUtc - Math.floor(instant / 1000) * 1000;
-}
-
 /** The instant a calendar day starts in `timeZone` (ISO), with that day's offset (DST-safe). */
 export function dayStart(day: string, timeZone: string): string {
-  const m = DAY.exec(day);
-  if (!m) throw new Error(`not a day: ${day}`);
-  const local = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  // Two passes: the offset at the guess can differ from the offset at the result around a change.
-  let instant = local - offsetMs(local, timeZone);
-  instant = local - offsetMs(instant, timeZone);
-  return new Date(instant).toISOString();
+  return zonedDayBounds(day, timeZone).start.toISOString();
 }
 
 /** The day after `day` (`YYYY-MM-DD`). */
 export function nextDay(day: string): string {
-  const m = DAY.exec(day);
-  if (!m) throw new Error(`not a day: ${day}`);
-  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + 1))
-    .toISOString()
-    .slice(0, 10);
+  return addDays(day, 1);
 }
 
 /** The api query for `filters` (from inclusive, to exclusive: the start of the day after). */

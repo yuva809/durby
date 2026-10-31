@@ -108,6 +108,21 @@ floor-plan grid of table tiles; the selected area's tools are rename and delete 
 tables). Add area sits by the tabs, New table in the header (it preselects the selected area); a tile's ⋯ menu takes
 the table out of service or back.
 
+## Read port for other modules
+
+`PosFloorReader` (exported from `pos/index.ts`) is how other modules read pos's floor, never its tables
+(CLAUDE.md rule 4; first consumer: reservations, [ADR 0019](../adr/0019-reservations-exclusion-constraint-and-redis-holds.md) §7):
+
+| Method                   | Returns                                                                                                               |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `tablesAt(locationId)`   | the location's tables in service, floor order: id, location, name, seats, area id and name, shape, colour, sort order |
+| `table(id)`              | one table, archived or not (`archivedAt`), or `null`                                                                  |
+| `openOrders(locationId)` | `{ tableId, orderId, openedAt }` per open order, in floor order                                                       |
+
+It reads in the current tenant (RLS) and checks **no permission keys**: callers check their own keys at the location
+first. pos never imports its consumers. A composite FK from another module to `(tenant_id, location_id, id)` uses
+the unique index `dining_tables (tenant_id, id, location_id)` that pins orders to their table's location.
+
 ## Step 3: orders and kitchen tickets
 
 **One open order per table.** A waiter picks a table, builds a cart in the browser and **sends it to the kitchen**:
@@ -126,12 +141,18 @@ Location
 
 | Table                 | Columns                                                                                                                                                                                                          | Notes                                                                                                 |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `pos_orders`          | `id`, `tenant_id`, `location_id`, `table_id`, `number`, `status` (`open`/`closed`), `opened_by_user_id`, `opened_at`, `closed_by_user_id`, `closed_at`, timestamps                                               | `UNIQUE (tenant_id, number)`; partial `UNIQUE (tenant_id, table_id) WHERE status = 'open'`; no DELETE |
+| `pos_orders`          | `id`, `tenant_id`, `location_id`, `table_id`, `number`, `status` (`open`/`closed`), `covers` (int 1–100, nullable), `opened_by_user_id`, `opened_at`, `closed_by_user_id`, `closed_at`, timestamps               | `UNIQUE (tenant_id, number)`; partial `UNIQUE (tenant_id, table_id) WHERE status = 'open'`; no DELETE |
 | `pos_kitchen_tickets` | `id`, `tenant_id`, `order_id`, `sequence`, `kind` (`order`/`void`), `created_by_user_id`, `created_at`                                                                                                           | `UNIQUE (tenant_id, order_id, sequence)`; no UPDATE/DELETE                                            |
 | `pos_order_lines`     | `id`, `tenant_id`, `order_id`, `ticket_id`, `product_id`, `product_name`, `unit_price numeric(12,2)`, `tax_rate numeric(5,2)`, `quantity` (int ≠ 0), `note`, `voids_line_id`, `created_by_user_id`, `created_at` | no UPDATE/DELETE; `quantity < 0` exactly when `voids_line_id` is set                                  |
 
 - **Snapshots.** Name, gross unit price and VAT rate are copied from the product when the line is written; later
   menu edits never change an order. Quantity is a portion count (an integer), not money or stock.
+- **Covers** (guests at the table, `covers`, 1–100 or `null`): optional `covers` on a send counts only when that
+  send opens the order. On a table with an open order it is ignored (no error): another till may still hold a value
+  from before the table was opened. Changes go through `PATCH /pos/orders/:id` only, which sets or clears them; a
+  change writes `pos.order.updated`, the same value writes nothing. The till's "Guests" field sends them with the
+  first items, or saves a change on an open order. Reservations will pre-fill them from the seated booking (web only,
+  R1.9).
 - **Numbers.** Series `pos.order` (feature `pos`, `ORD-{YYYY}-{seq:6}`, yearly), allocated in the transaction that
   opens the order.
 - **Totals** (computed, gross): line total = unit price × quantity; the order total and the per-VAT-rate split
@@ -162,6 +183,7 @@ A table or order at a location where the caller can't read orders doesn't exist 
 | `GET /pos/orders`                   | `pos.orders.read`  |                             | `?locationId=&status=open\|closed`, newest first, at most 100     |
 | `GET /pos/orders/:id`               | `pos.orders.read`  |                             |                                                                   |
 | `POST /pos/orders/:id/voids`        | `pos.orders.void`  | `completion: 'transaction'` | `{ lines: [{ lineId, quantity 1–99 }] }`                          |
+| `PATCH /pos/orders/:id`             | `pos.orders.take`  | response                    | `{ covers: 1–100 \| null }` on an open order (else 409)           |
 | `POST /pos/orders/:id/close`        | `pos.orders.close` | response                    | no body; closing a closed order changes nothing                   |
 
 Products must exist, not be archived, and not be in an archived category; the table must not be archived.
@@ -178,13 +200,24 @@ Products must exist, not be archived, and not be in an archived category; the ta
 
 ### Audit
 
-| Action                       | Entity           | Snapshot fields                                               |
-| ---------------------------- | ---------------- | ------------------------------------------------------------- |
-| `pos.order.opened`           | `pos_order`      | `id`, `number`, `tableId`, `locationId`, `status`, `closedAt` |
-| `pos.order.closed`           | `pos_order`      | same                                                          |
-| `pos.kitchen_ticket.created` | `kitchen_ticket` | `id`, `orderId`, `sequence`, `kind`, `lineCount`              |
+| Action                       | Entity           | Snapshot fields                                                         |
+| ---------------------------- | ---------------- | ----------------------------------------------------------------------- |
+| `pos.order.opened`           | `pos_order`      | `id`, `number`, `tableId`, `locationId`, `status`, `covers`, `closedAt` |
+| `pos.order.updated`          | `pos_order`      | same (covers changed)                                                   |
+| `pos.order.closed`           | `pos_order`      | same                                                                    |
+| `pos.kitchen_ticket.created` | `kitchen_ticket` | `id`, `orderId`, `sequence`, `kind`, `lineCount`                        |
 
-Notes are free text and stay out of snapshots. No outbox events yet (no consumer; a kitchen display would add one).
+Notes are free text and stay out of snapshots.
+
+### Events
+
+| Type               | Version | Payload                            | Written when                                                        |
+| ------------------ | ------- | ---------------------------------- | ------------------------------------------------------------------- |
+| `pos.order.closed` | 1       | `{ orderId, locationId, tableId }` | `POST /pos/orders/:id/close` closes an open order (not on a repeat) |
+
+Written in the close's transaction (ADR 0013), ids only. First consumer: reservations finishes the seated booking on
+that table ([reservations.md](reservations.md), ADR 0019 §7). Sends and voids write no events yet; a kitchen display
+would add them.
 
 ### Web
 

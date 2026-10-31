@@ -18,13 +18,26 @@ describe('event registry', () => {
     expect(eventRegistryProblems(EVENTS)).toEqual([]);
   });
 
-  it('starts with the config events', () => {
+  it('has the config events and pos.order.closed', () => {
     expect(EVENT_TYPES).toEqual([
       'config.settings.changed',
       'config.labels.changed',
       'config.number_series.changed',
       'config.entitlements.changed',
+      'pos.order.closed',
     ]);
+  });
+
+  it('pos.order.closed carries ids only', () => {
+    const v1 = EVENTS['pos.order.closed'].versions[1];
+    const ids = {
+      orderId: '0190a000-0000-7000-8000-000000000001',
+      locationId: '0190a000-0000-7000-8000-000000000002',
+      tableId: '0190a000-0000-7000-8000-000000000003',
+    };
+    expect(v1.safeParse(ids).success).toBe(true);
+    expect(v1.safeParse({ ...ids, number: 'ORD-2026-000001' }).success).toBe(false);
+    expect(v1.safeParse({ ...ids, tableId: 'T1' }).success).toBe(false);
   });
 
   it('recognizes registered types and versions only', () => {

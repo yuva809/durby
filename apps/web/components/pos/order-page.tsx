@@ -5,6 +5,7 @@ import {
   type KitchenTicket,
   type Order,
   ORDER_LINE_MAX_QUANTITY,
+  ORDER_MAX_COVERS,
   ORDER_NOTE_MAX_LENGTH,
   type Product,
   type ProductCategory,
@@ -19,7 +20,7 @@ import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { loadCategories, loadProducts } from '../../lib/catalog/api';
-import { closeOrder, loadTableOrder, sendTicket } from '../../lib/pos/api';
+import { closeOrder, loadTableOrder, sendTicket, updateOrder } from '../../lib/pos/api';
 import {
   type BillLine,
   billLines,
@@ -107,6 +108,8 @@ function TableOrder({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
+  // Guests chosen before the table has an order: they go with the first send.
+  const [pendingCovers, setPendingCovers] = useState<number | null>(null);
 
   useEffect(() => {
     if (print) window.print();
@@ -160,11 +163,13 @@ function TableOrder({
         quantity: l.quantity,
         note: l.note.trim(),
       })),
+      ...(pendingCovers === null ? {} : { covers: pendingCovers }),
     });
     setBusy(false);
     if (result.ok && result.data) {
       const ticket = result.data.order.tickets.find((x) => x.id === result.data?.ticketId);
       setCart([]);
+      setPendingCovers(null);
       setSent(t('pos.order.sent', { sequence: String(ticket?.sequence ?? '') }));
       afterWrite(result.data);
     } else if (!result.ok) {
@@ -239,6 +244,15 @@ function TableOrder({
                 className="flex flex-col gap-4 lg:sticky lg:top-4"
                 aria-label={t('pos.order.panel')}
               >
+                {access.canTake && (
+                  <GuestsField
+                    key={`${order?.id ?? 'new'}:${order?.covers ?? ''}`}
+                    order={order}
+                    pending={pendingCovers}
+                    onPending={setPendingCovers}
+                    onSaved={reload}
+                  />
+                )}
                 {access.canTake && (
                   <NewItems
                     cart={cart}
@@ -377,6 +391,7 @@ function OrderHeader({
     order && duration
       ? t('pos.tablesPage.open', { duration: t(duration.key, duration.values) })
       : null,
+    order?.covers ? t('pos.order.guestCount', { count: String(order.covers) }) : null,
     order?.number,
   ].filter((x): x is string => Boolean(x));
   return (
@@ -410,6 +425,87 @@ function OrderHeader({
       </div>
       {actions}
     </header>
+  );
+}
+
+/**
+ * Guests at the table (docs/modules/pos.md → Covers): − n +. Before the table has an order the value
+ * goes with the first send; on an open order Save writes it (one audited change, not one per tap).
+ * Below one it is empty.
+ */
+function GuestsField({
+  order,
+  pending,
+  onPending,
+  onSaved,
+}: {
+  order: Order | null;
+  pending: number | null;
+  onPending: (covers: number | null) => void;
+  onSaved: () => void;
+}) {
+  const t = useT();
+  const { store } = useAuth();
+  const action = useActionKey();
+  const labelId = useId();
+  const [draft, setDraft] = useState<number | null>(order ? order.covers : pending);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const change = (next: number | null) => {
+    setDraft(next);
+    if (!order) onPending(next);
+  };
+  async function save() {
+    if (!order) return;
+    setBusy(true);
+    setError(null);
+    const result = await updateOrder(store, action, order.id, { covers: draft });
+    setBusy(false);
+    if (result.ok) onSaved();
+    else setError(t(errorLabel(result.code)));
+  }
+
+  return (
+    <Card className="flex flex-col gap-2 p-3" data-testid="guests">
+      <div className="flex items-center gap-2">
+        <span id={labelId} className="flex flex-1 items-center gap-2 text-sm font-medium">
+          <Users aria-hidden className="size-4" />
+          {t('pos.order.guests')}
+        </span>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={t('pos.order.fewerGuests')}
+          disabled={draft === null || busy}
+          onClick={() => change(draft !== null && draft > 1 ? draft - 1 : null)}
+        >
+          <Minus aria-hidden />
+        </Button>
+        <output
+          aria-labelledby={labelId}
+          className="w-8 text-center text-lg font-semibold tabular-nums"
+          data-testid="guests-value"
+        >
+          {draft ?? '–'}
+        </output>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={t('pos.order.moreGuests')}
+          disabled={draft === ORDER_MAX_COVERS || busy}
+          onClick={() => change(Math.min((draft ?? 0) + 1, ORDER_MAX_COVERS))}
+        >
+          <Plus aria-hidden />
+        </Button>
+        {order && draft !== order.covers && (
+          <Button disabled={busy} onClick={() => void save()}>
+            {t('platform.common.save')}
+          </Button>
+        )}
+      </div>
+      <Notice text={error} tone="error" />
+    </Card>
   );
 }
 

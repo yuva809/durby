@@ -68,8 +68,128 @@ const SETTINGS = [
   },
   { key: 'inventory.allowNegativeStock', value: false, source: 'organization', dataBound: false },
 ];
+const DAY = [{ from: '11:00', to: '23:00' }];
+const OPENING_HOURS = {
+  key: 'openingHours',
+  value: { mon: DAY, tue: DAY, wed: DAY, thu: DAY, fri: DAY, sat: DAY, sun: DAY },
+  source: 'default',
+  dataBound: false,
+};
+const CLOSED_DATES = {
+  key: 'closedDates',
+  value: ['2026-12-25'],
+  source: 'default',
+  dataBound: false,
+};
 const settingCard = async (key: string) =>
   (await screen.findAllByTestId('setting')).find((c) => c.dataset.key === key)!;
+
+describe('SettingsPage: opening hours and closed days', () => {
+  const answers = () => ({
+    'GET /api/v1/settings': () =>
+      Response.json({ data: [...SETTINGS, OPENING_HOURS, CLOSED_DATES] }),
+    'PUT /api/v1/settings/openingHours': (init?: RequestInit) =>
+      Response.json({
+        ...OPENING_HOURS,
+        ...(JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as object),
+        source: 'organization',
+      }),
+    'PUT /api/v1/settings/closedDates': (init?: RequestInit) =>
+      Response.json({
+        ...CLOSED_DATES,
+        ...(JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as object),
+        source: 'organization',
+      }),
+  });
+
+  it('edits the weekly windows: closes a day, adds a lunch window, sends the whole week', async () => {
+    signedInAs('admin');
+    api(answers());
+    render(<SettingsPage />);
+    const card = await settingCard('openingHours');
+    const monday = within(card).getByTestId('hours-day-mon');
+    await userEvent.click(within(monday).getByRole('button', { name: 'Remove window' }));
+    expect(within(monday).getByText('Closed')).toBeTruthy();
+    const tuesday = within(card).getByTestId('hours-day-tue');
+    await userEvent.click(within(tuesday).getByRole('button', { name: 'Add window' }));
+    const from = within(tuesday).getAllByLabelText('Opens')[1]!;
+    const to = within(tuesday).getAllByLabelText('Closes')[1]!;
+    await userEvent.clear(from);
+    await userEvent.type(from, '23:30');
+    await userEvent.clear(to);
+    await userEvent.type(to, '02:00');
+    await userEvent.click(within(card).getByTestId('setting-save'));
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0]).toEqual({
+      call: 'PUT /api/v1/settings/openingHours',
+      body: {
+        value: {
+          ...OPENING_HOURS.value,
+          mon: [],
+          tue: [
+            { from: '11:00', to: '23:00' },
+            { from: '23:30', to: '02:00' },
+          ],
+        },
+      },
+      key: ANY_KEY,
+    });
+  });
+
+  it('refuses overlapping windows before sending', async () => {
+    signedInAs('admin');
+    api(answers());
+    render(<SettingsPage />);
+    const card = await settingCard('openingHours');
+    const friday = within(card).getByTestId('hours-day-fri');
+    await userEvent.click(within(friday).getByRole('button', { name: 'Add window' }));
+    // The new window starts where the last one ends (23:00); moving it to 22:00 overlaps.
+    const from = within(friday).getAllByLabelText('Opens')[1]!;
+    await userEvent.clear(from);
+    await userEvent.type(from, '22:00');
+    expect(within(card).getByRole('alert').textContent).toBe(
+      "This value isn't valid for this setting.",
+    );
+    expect(within(card).getByTestId<HTMLButtonElement>('setting-save').disabled).toBe(true);
+  });
+
+  it("adds and removes closed days, sorted and shown in the user's locale", async () => {
+    signedInAs('admin');
+    api(answers());
+    render(<SettingsPage />);
+    const card = await settingCard('closedDates');
+    await userEvent.type(within(card).getByLabelText('Date to add'), '2026-12-24');
+    await userEvent.click(within(card).getByRole('button', { name: 'Add day' }));
+    expect(
+      within(card)
+        .getAllByTestId('closed-date')
+        .map((d) => d.dataset.date),
+    ).toEqual(['2026-12-24', '2026-12-25']);
+    expect(
+      within(card)
+        .getAllByTestId('closed-date')
+        .map((d) => d.textContent),
+    ).toEqual(['Dec 24, 2026', 'Dec 25, 2026']);
+    await userEvent.click(within(card).getByRole('button', { name: 'Remove Dec 25, 2026' }));
+    await userEvent.click(within(card).getByTestId('setting-save'));
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0]).toMatchObject({
+      call: 'PUT /api/v1/settings/closedDates',
+      body: { value: ['2026-12-24'] },
+    });
+  });
+
+  it('shows both read-only to members without platform.settings.manage', async () => {
+    signedInAs('staff');
+    api(answers());
+    render(<SettingsPage />);
+    const hours = await settingCard('openingHours');
+    expect(within(hours).queryByRole('button', { name: 'Add window' })).toBeNull();
+    expect(within(hours).getAllByLabelText<HTMLInputElement>('Opens')[0]!.disabled).toBe(true);
+    const closed = await settingCard('closedDates');
+    expect(within(closed).queryByRole('button', { name: 'Add day' })).toBeNull();
+  });
+});
 
 describe('SettingsPage', () => {
   it('generates a control per key and shows where the value comes from', async () => {
