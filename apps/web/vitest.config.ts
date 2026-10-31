@@ -8,5 +8,6 @@ export default defineConfig({
     // check that no browser storage exists, so node stays the default.
     include: ['**/*.test.{ts,tsx}'],
     exclude: ['node_modules', '.next', 'e2e'],
+    setupFiles: ['./test/setup.ts'],
   },
 });
