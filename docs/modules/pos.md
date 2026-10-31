@@ -108,6 +108,21 @@ floor-plan grid of table tiles; the selected area's tools are rename and delete 
 tables). Add area sits by the tabs, New table in the header (it preselects the selected area); a tile's ⋯ menu takes
 the table out of service or back.
 
+## Read port for other modules
+
+`PosFloorReader` (exported from `pos/index.ts`) is how other modules read pos's floor, never its tables
+(CLAUDE.md rule 4; first consumer: reservations, [ADR 0019](../adr/0019-reservations-exclusion-constraint-and-redis-holds.md) §7):
+
+| Method                   | Returns                                                                                                               |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `tablesAt(locationId)`   | the location's tables in service, floor order: id, location, name, seats, area id and name, shape, colour, sort order |
+| `table(id)`              | one table, archived or not (`archivedAt`), or `null`                                                                  |
+| `openOrders(locationId)` | `{ tableId, orderId, openedAt }` per open order, in floor order                                                       |
+
+It reads in the current tenant (RLS) and checks **no permission keys**: callers check their own keys at the location
+first. pos never imports its consumers. A composite FK from another module to `(tenant_id, location_id, id)` uses
+the unique index `dining_tables (tenant_id, id, location_id)` that pins orders to their table's location.
+
 ## Step 3: orders and kitchen tickets
 
 **One open order per table.** A waiter picks a table, builds a cart in the browser and **sends it to the kitchen**:
