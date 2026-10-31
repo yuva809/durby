@@ -13,7 +13,7 @@
 | Q3  | Seating does **not** open an empty pos order. No `reservations → pos` consumer.                                                                                                                                                                                                                                                          |
 | Q4  | Realtime is SSE over `fetch` streaming + Redis pub/sub with polling as fallback; it ships after R1 (step RT.1) and never blocks it.                                                                                                                                                                                                      |
 | Q5  | Tables are read through a pos read port (`PosFloorReader`); no floor module split.                                                                                                                                                                                                                                                       |
-| Q6  | Two feature keys: `reservations` (staff/host) and `reservations.online` (widget). Plans: Growth and Pro. **These plans don't exist yet** (seeded: `inventory`, `inventory_billing`, `full`); R1.1 needs the mapping.                                                                                                                     |
+| Q6  | Two feature keys: `reservations` (staff/host) and `reservations.online` (widget), both in the `full` plan only (amended 2026-10-31: "Growth"/"Pro" don't exist). A standalone add-on is an [open question](#open-questions).                                                                                                             |
 | Q7  | `pos_orders.covers` (nullable). The web pre-fills it from the seated reservation when the waiter opens the table (frontend composition; pos never reads reservations).                                                                                                                                                                   |
 | Q8  | Guest retention is per organization (`reservations.guestRetentionMonths`), default 12 months after the guest's last visit.                                                                                                                                                                                                               |
 | Q9  | Guest notices by email or in person for the MVP, behind a `GuestNotifier` channel interface (SMS later as another channel).                                                                                                                                                                                                              |
@@ -449,10 +449,11 @@ server-side (Q1, ADR in R2.1).
 | `reservations`        | `pos`          | `noLimits` | staff bookings, `/host`, `/reservations`, setup   |
 | `reservations.online` | `reservations` | `noLimits` | public page, holds, guest mails, self-cancel (R2) |
 
-Labels `platform.features.reservations{,Online}.{name,description}`. Both go into the **Growth** and **Pro** plans by
-migration with a `platform.plan.features_changed` audit row per organization (ADR 0009). Those plans don't exist
-yet: R1.1 needs either new plans (a reviewed migration) or a mapping to `full` / `inventory_billing`. Every route
-has `@RequireFeature(...)`; outbox handlers and delayed jobs check the feature too and do nothing when it's off.
+Labels `platform.features.reservations{,Online}.{name,description}`. Both go into the **`full` plan only**, by
+migration with a `platform.plan.features_changed` audit row per organization on it (ADR 0009). Not into
+`inventory` or `inventory_billing`: those plans have no `pos`, and reservations needs pos tables. Other
+organizations get them through the `entitlements` CLI override until a plan covers them. Every route has
+`@RequireFeature(...)`; outbox handlers and delayed jobs check the feature too and do nothing when it's off.
 
 ## Settings (ADR 0010; scopes partner, organization, brand, location unless noted; none data-bound)
 
@@ -705,7 +706,7 @@ finishes it.
 | R0.3 | pos read port `PosFloorReader` in `pos/index.ts` (`tablesAt(locationId)`, `table(id)`, `openOrders(locationId)` → `{ tableId, orderId, openedAt, covers }`); `UNIQUE (tenant_id, location_id, id)` on `dining_tables` (expand-only) | unit/e2e: port respects RLS, location access and archived tables                           | consumer test compiles against `index.ts` only; boundaries lint green         |
 | R0.4 | `pos.order.closed` v1 event (`orderId`, `locationId`, `tableId`) written in `OrdersService.close`; pos.md + events registry                                                                                                         | e2e: closing writes exactly one event; closing twice writes none                           | outbox e2e green                                                              |
 | R0.5 | `pos_orders.covers` (nullable, expand-only) + `covers?` on first send + `PATCH /pos/orders/:id`; till field                                                                                                                         | e2e: covers stored, range-checked, audited; replay-safe                                    | waiter sets covers on the till                                                |
-| R1.1 | Features `reservations`, `reservations.online` (+ plans migration once Q6 mapping is set), permission keys, Host system role (2 migrations), labels, ADR 0007 amendment                                                             | registry tests, rbac migration int test, route-marker snapshot                             | Host role exists in every org; `/me` shows the keys                           |
+| R1.1 | Features `reservations`, `reservations.online` (+ migration adding both to `full`), permission keys, Host system role (2 migrations), labels, ADR 0007 amendment                                                                    | registry tests, rbac migration int test, route-marker snapshot                             | Host role exists in every org; `/me` shows the keys                           |
 | R1.2 | Reservations settings keys (table above) with labels                                                                                                                                                                                | settings registry test, schema tests for `serviceHours`/`turnTimes`                        | settings page lists them; values resolve per location                         |
 | R1.3 | First: run the `btree_gist` check on staging (G4). Schema: rules, combinations, reservations, guests, `reservation_tables` (raw SQL above), status changes; number series                                                           | **constraint int tests, race test, trigger tests**, RLS coverage, append-only catalog      | migration SQL reviewed; `pnpm test` green on Testcontainers                   |
 | R1.4 | Availability engine (pure)                                                                                                                                                                                                          | engine unit tests (spec → Test plan)                                                       | 100 % branch coverage on the engine                                           |
@@ -724,3 +725,10 @@ finishes it.
 | R2.6 | Public web page `/(public)/b/[slug]` and `/b/manage`                                                                                                                                                                                | component tests, Playwright: full online flow                                              | lint, typecheck, test green; a11y check passes                                |
 
 R3 (waitlist, KPIs) gets its own plan after R2.
+
+## Open questions
+
+- **Standalone reservations add-on.** Today both features are in `full` only, because reservations reads pos
+  tables (`dependsOn: ['pos']`). Selling reservations without table service would need either a plan with `pos`
+  tables but not the till, or moving dining tables/areas out of `pos` into a module both depend on. Decide before
+  pricing a reservations-only product; until then organizations outside `full` get it by entitlements override.
