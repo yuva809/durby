@@ -159,6 +159,7 @@ describe('route markers', () => {
       'PATCH /api/v1/number-series/:key',
       'PATCH /api/v1/organization',
       'PATCH /api/v1/pos/areas/:id',
+      'PATCH /api/v1/pos/orders/:id',
       'PATCH /api/v1/pos/tables/:id',
       'PATCH /api/v1/roles/:id',
       'POST /api/v1/catalog/categories',
