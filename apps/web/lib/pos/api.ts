@@ -12,6 +12,7 @@ import {
   type Order,
   orderSchema,
   type SendTicketRequest,
+  type UpdateOrderRequest,
   type SendTicketResponse,
   sendTicketResponseSchema,
   type TableOrderResponse,
@@ -92,6 +93,15 @@ export const voidLines = (
     body,
     sendTicketResponseSchema,
   );
+
+/** Guests at the table of an open order (docs/modules/pos.md → Covers). */
+export const updateOrder = (
+  store: Api,
+  action: ActionKey,
+  orderId: string,
+  body: UpdateOrderRequest,
+): Promise<Result<Order | null>> =>
+  write(store, action, `/api/v1/pos/orders/${orderId}`, 'PATCH', body, orderSchema);
 
 export const closeOrder = (
   store: Api,

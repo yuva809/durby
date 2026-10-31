@@ -146,9 +146,16 @@ describe('PosFloorReader', () => {
     const o2 = await r.order(r.t2.id);
     await r.order(r.far.id);
     const open = await as(r.org, () => reader.openOrders(r.here));
-    expect(open.map((o) => ({ tableId: o.tableId, orderId: o.orderId }))).toEqual([
-      { tableId: r.t1.id, orderId: o1.id },
-      { tableId: r.t2.id, orderId: o2.id },
+    expect(open.map((o) => ({ tableId: o.tableId, orderId: o.orderId, covers: o.covers }))).toEqual(
+      [
+        { tableId: r.t1.id, orderId: o1.id, covers: null },
+        { tableId: r.t2.id, orderId: o2.id, covers: null },
+      ],
+    );
+    await patch(r.owner, `/pos/orders/${o2.id}`, { covers: 2 }).expect(200);
+    expect((await as(r.org, () => reader.openOrders(r.here))).map((o) => o.covers)).toEqual([
+      null,
+      2,
     ]);
     for (const o of open) {
       expect(o.openedAt).toBeInstanceOf(Date);

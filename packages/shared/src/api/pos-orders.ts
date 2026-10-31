@@ -6,11 +6,14 @@ import { TABLE_COLORS, TABLE_SHAPES } from './pos-tables';
 export const ORDER_NOTE_MAX_LENGTH = 200;
 export const ORDER_LINE_MAX_QUANTITY = 99;
 export const TICKET_MAX_LINES = 100;
+/** Guests at the table (docs/modules/pos.md → Covers). */
+export const ORDER_MAX_COVERS = 100;
 
 export const POS_ORDER_STATUSES = ['open', 'closed'] as const;
 export const KITCHEN_TICKET_KINDS = ['order', 'void'] as const;
 
 const quantity = z.int().min(1).max(ORDER_LINE_MAX_QUANTITY);
+const covers = z.int().min(1).max(ORDER_MAX_COVERS);
 
 export const sendTicketRequestSchema = z.strictObject({
   lines: z
@@ -24,7 +27,12 @@ export const sendTicketRequestSchema = z.strictObject({
     )
     .min(1)
     .max(TICKET_MAX_LINES),
+  /** Guests at the table: set when this send opens the order, changed when it differs. */
+  covers: covers.optional(),
 });
+
+/** `PATCH /pos/orders/:id`: `null` clears the covers. */
+export const updateOrderRequestSchema = z.strictObject({ covers: covers.nullable() });
 
 export const voidLinesRequestSchema = z.strictObject({
   lines: z
@@ -85,6 +93,8 @@ export const orderSummarySchema = z.object({
   status: z.enum(POS_ORDER_STATUSES),
   openedAt: z.iso.datetime(),
   closedAt: z.iso.datetime().nullable(),
+  /** Guests at the table, or null when not recorded. */
+  covers: z.int().nullable(),
   itemCount: z.int(),
   gross: z.string(),
 });
@@ -126,6 +136,7 @@ export const orderListResponseSchema = z.object({ data: z.array(orderSummarySche
 
 export type SendTicketRequest = z.infer<typeof sendTicketRequestSchema>;
 export type VoidLinesRequest = z.infer<typeof voidLinesRequestSchema>;
+export type UpdateOrderRequest = z.infer<typeof updateOrderRequestSchema>;
 export type OrderLine = z.infer<typeof orderLineSchema>;
 export type KitchenTicket = z.infer<typeof kitchenTicketSchema>;
 export type OrderTotals = z.infer<typeof orderTotalsSchema>;

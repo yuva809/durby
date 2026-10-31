@@ -23,6 +23,8 @@ export interface OpenOrderRef {
   tableId: string;
   orderId: string;
   openedAt: Date;
+  /** Guests at the table, or null when not recorded. */
+  covers: number | null;
 }
 
 const TABLE_SELECT = {
@@ -75,10 +77,15 @@ export class PosFloorReader {
     if (!uuid.safeParse(locationId).success) return [];
     const rows = await this.db.posOrder.findMany({
       where: { locationId, status: 'open' },
-      select: { id: true, tableId: true, openedAt: true },
+      select: { id: true, tableId: true, openedAt: true, covers: true },
       orderBy: [{ table: { sortOrder: 'asc' } }, { table: { name: 'asc' } }, { tableId: 'asc' }],
     });
-    return rows.map((r) => ({ tableId: r.tableId, orderId: r.id, openedAt: r.openedAt }));
+    return rows.map((r) => ({
+      tableId: r.tableId,
+      orderId: r.id,
+      openedAt: r.openedAt,
+      covers: r.covers,
+    }));
   }
 }
 

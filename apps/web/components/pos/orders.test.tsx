@@ -81,6 +81,7 @@ const ORDER: Order = {
   status: 'open',
   openedAt: '2026-10-27T12:00:00.000Z',
   closedAt: null,
+  covers: null,
   itemCount: 2,
   gross: '13.80',
   tickets: [
@@ -272,6 +273,78 @@ describe('OrderPage (till)', () => {
     expect(within(ticket).getByText('2 × Soup')).toBeTruthy();
     expect(within(ticket).getByText('no ice')).toBeTruthy();
     expect(within(ticket).queryByText(/13\.80/)).toBeNull();
+  });
+
+  // docs/modules/reservations.md → R0.5: guests at the table.
+  describe('guests', () => {
+    const guests = () => screen.findByTestId('guests');
+
+    it('on a free table, sends the guests with the first items', async () => {
+      signedInAs('waiter');
+      const writes = api({
+        ...withOrder(null),
+        [`POST /api/v1/pos/tables/${TABLE.id}/tickets`]: () =>
+          Response.json({ order: { ...ORDER, covers: 2 }, ticketId: id(21) }, { status: 201 }),
+      });
+      render(<OrderPage tableId={TABLE.id} />);
+      const field = await guests();
+      expect(within(field).getByTestId('guests-value').textContent).toBe('–');
+      await userEvent.click(within(field).getByRole('button', { name: 'More guests' }));
+      await userEvent.click(within(field).getByRole('button', { name: 'More guests' }));
+      expect(within(field).getByTestId('guests-value').textContent).toBe('2');
+      // Nothing to save yet: the guests go with the send.
+      expect(within(field).queryByRole('button', { name: 'Save' })).toBeNull();
+      await userEvent.click(await tile('Soup'));
+      await userEvent.click(screen.getByTestId('send-to-kitchen'));
+      await waitFor(() => expect(writes).toHaveLength(1));
+      expect(writes[0]?.body).toEqual({
+        lines: [{ productId: SOUP.id, quantity: 1, note: '' }],
+        covers: 2,
+      });
+    });
+
+    it('on an open order, shows them and saves a change; fewer than one clears them', async () => {
+      signedInAs('waiter');
+      const writes = api({
+        ...withOrder({ ...ORDER, covers: 3 }),
+        [`PATCH /api/v1/pos/orders/${ORDER.id}`]: () => Response.json({ ...ORDER, covers: 4 }),
+      });
+      render(<OrderPage tableId={TABLE.id} />);
+      const field = await guests();
+      expect(within(field).getByTestId('guests-value').textContent).toBe('3');
+      expect(within(screen.getByTestId('table-bar')).getByText(/3 guests/)).toBeTruthy();
+      await userEvent.click(within(field).getByRole('button', { name: 'More guests' }));
+      await userEvent.click(within(field).getByRole('button', { name: 'Save' }));
+      await waitFor(() => expect(writes).toHaveLength(1));
+      expect(writes[0]).toEqual({
+        method: 'PATCH',
+        path: `/api/v1/pos/orders/${ORDER.id}`,
+        body: { covers: 4 },
+      });
+    });
+
+    it('steps down to empty and back up', async () => {
+      signedInAs('waiter');
+      api(withOrder({ ...ORDER, covers: 1 }));
+      render(<OrderPage tableId={TABLE.id} />);
+      const field = await guests();
+      await userEvent.click(within(field).getByRole('button', { name: 'Fewer guests' }));
+      expect(within(field).getByTestId('guests-value').textContent).toBe('–');
+      expect(
+        within(field).getByRole<HTMLButtonElement>('button', { name: 'Fewer guests' }).disabled,
+      ).toBe(true);
+      expect(within(field).getByRole('button', { name: 'Save' })).toBeTruthy();
+    });
+
+    it('shows a cashier the guests in the header, without the field', async () => {
+      signedInAs('cashier');
+      api(withOrder({ ...ORDER, covers: 3 }));
+      render(<OrderPage tableId={TABLE.id} />);
+      expect(
+        await within(await screen.findByTestId('table-bar')).findByText(/3 guests/),
+      ).toBeTruthy();
+      expect(screen.queryByTestId('guests')).toBeNull();
+    });
   });
 
   it('removes a new item at quantity zero, and clears all', async () => {

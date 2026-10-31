@@ -778,6 +778,8 @@ model PosOrder {
   tableId        String             @map("table_id") @db.Uuid
   number         String
   status         PosOrderStatus     @default(open)
+  /// Guests at the table, 1–100 (pos_orders_covers_check); null when not recorded.
+  covers         Int?
   openedByUserId String             @map("opened_by_user_id") @db.Uuid
   openedAt       DateTime           @default(now()) @map("opened_at") @db.Timestamptz(6)
   closedByUserId String?            @map("closed_by_user_id") @db.Uuid

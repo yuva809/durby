@@ -110,11 +110,18 @@ describe('pos orders', () => {
     };
   }
 
-  const send = (token: string, tableId: string, lines: unknown[], key?: string) =>
-    post(token, `/pos/tables/${tableId}/tickets`, { lines }, key);
+  const send = (token: string, tableId: string, lines: unknown[], key?: string, covers?: unknown) =>
+    post(
+      token,
+      `/pos/tables/${tableId}/tickets`,
+      covers === undefined ? { lines } : { lines, covers },
+      key,
+    );
 
-  async function sent(token: string, tableId: string, lines: unknown[]) {
-    return sendTicketResponseSchema.parse((await send(token, tableId, lines).expect(201)).body);
+  async function sent(token: string, tableId: string, lines: unknown[], covers?: number) {
+    return sendTicketResponseSchema.parse(
+      (await send(token, tableId, lines, undefined, covers).expect(201)).body,
+    );
   }
 
   describe('sending to the kitchen', () => {
@@ -393,6 +400,91 @@ describe('pos orders', () => {
         (await get(r.owner, '/pos/orders?status=closed').expect(200)).body,
       );
       expect(closed.data.map((o) => o.id)).toEqual([order.id]);
+    });
+  });
+
+  // docs/modules/reservations.md → R0.5: how many guests sit at the table (reservations pre-fill it).
+  describe('covers', () => {
+    const coversAudit = (orgId: string) =>
+      seed.as(orgId, (db) =>
+        db.auditLog.findMany({
+          where: { entityType: 'pos_order' },
+          orderBy: { id: 'asc' },
+          select: { action: true, before: true, after: true },
+        }),
+      );
+
+    it('starts empty, or with the covers of the first send', async () => {
+      const r = await restaurant();
+      const plain = await sent(r.owner, r.table, [{ productId: r.soup, quantity: 1 }]);
+      expect(plain.order.covers).toBeNull();
+      const withCovers = await sent(r.owner, r.otherTable, [{ productId: r.soup, quantity: 1 }], 4);
+      expect(withCovers.order.covers).toBe(4);
+      const rows = await coversAudit(r.org.id);
+      expect(rows.filter((x) => x.action === 'pos.order.opened').map((x) => x.after)).toEqual([
+        expect.objectContaining({ covers: null }),
+        expect.objectContaining({ covers: 4 }),
+      ]);
+    });
+
+    it('changes on a later send that brings other covers, audited; the same covers change nothing', async () => {
+      const r = await restaurant();
+      const first = await sent(r.owner, r.table, [{ productId: r.soup, quantity: 1 }], 2);
+      await sent(r.owner, r.table, [{ productId: r.cola, quantity: 1 }], 2);
+      const third = await sent(r.owner, r.table, [{ productId: r.cola, quantity: 1 }], 3);
+      expect(third.order.id).toBe(first.order.id);
+      expect(third.order.covers).toBe(3);
+      const updates = (await coversAudit(r.org.id)).filter((x) => x.action === 'pos.order.updated');
+      expect(updates.map((x) => [x.before, x.after])).toEqual([
+        [expect.objectContaining({ covers: 2 }), expect.objectContaining({ covers: 3 })],
+      ]);
+    });
+
+    it('PATCH sets, changes and clears them; a no-op writes no audit row', async () => {
+      const r = await restaurant();
+      const { order } = await sent(r.owner, r.table, [{ productId: r.soup, quantity: 1 }]);
+      const set = orderSchema.parse(
+        (await patch(r.owner, `/pos/orders/${order.id}`, { covers: 5 }).expect(200)).body,
+      );
+      expect(set.covers).toBe(5);
+      await patch(r.owner, `/pos/orders/${order.id}`, { covers: 5 }).expect(200);
+      const cleared = orderSchema.parse(
+        (await patch(r.owner, `/pos/orders/${order.id}`, { covers: null }).expect(200)).body,
+      );
+      expect(cleared.covers).toBeNull();
+      const updates = (await coversAudit(r.org.id)).filter((x) => x.action === 'pos.order.updated');
+      expect(updates.map((x) => [x.before, x.after])).toEqual([
+        [expect.objectContaining({ covers: null }), expect.objectContaining({ covers: 5 })],
+        [expect.objectContaining({ covers: 5 }), expect.objectContaining({ covers: null })],
+      ]);
+    });
+
+    it('rejects out-of-range and malformed covers, and changes to a closed order', async () => {
+      const r = await restaurant();
+      const { order } = await sent(r.owner, r.table, [{ productId: r.soup, quantity: 1 }]);
+      for (const covers of [0, 101, 2.5, '4']) {
+        await patch(r.owner, `/pos/orders/${order.id}`, { covers }).expect(400);
+      }
+      await patch(r.owner, `/pos/orders/${order.id}`, {}).expect(400);
+      await send(r.owner, r.table, [{ productId: r.soup, quantity: 1 }], undefined, 0).expect(400);
+      await post(r.owner, `/pos/orders/${order.id}/close`).expect(201);
+      const closed = await patch(r.owner, `/pos/orders/${order.id}`, { covers: 2 }).expect(409);
+      expect(closed.body).toMatchObject({ code: 'pos.order_closed' });
+    });
+
+    it('waiters set covers; staff may not; another organization sees no order', async () => {
+      const r = await restaurant();
+      const { order } = await sent(r.owner, r.table, [{ productId: r.soup, quantity: 1 }]);
+      const waiter = await memberToken(r.org, 'waiter');
+      await patch(waiter, `/pos/orders/${order.id}`, { covers: 3 }).expect(200);
+      const staff = await memberToken(r.org, 'staff');
+      await patch(staff, `/pos/orders/${order.id}`, { covers: 4 }).expect(403);
+      const other = await restaurant();
+      await patch(other.owner, `/pos/orders/${order.id}`, { covers: 4 }).expect(404);
+      const view = orderSchema.parse(
+        (await get(r.owner, `/pos/orders/${order.id}`).expect(200)).body,
+      );
+      expect(view.covers).toBe(3);
     });
   });
 

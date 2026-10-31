@@ -10,6 +10,7 @@ import type {
   SendTicketRequest,
   SendTicketResponse,
   TableOrderResponse,
+  UpdateOrderRequest,
   VoidLinesRequest,
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
@@ -37,6 +38,7 @@ const ORDER_SELECT = {
   tableId: true,
   locationId: true,
   status: true,
+  covers: true,
   openedAt: true,
   closedAt: true,
   table: { select: { name: true } },
@@ -62,6 +64,7 @@ interface OrderRow {
   tableId: string;
   locationId: string;
   status: 'open' | 'closed';
+  covers: number | null;
   openedAt: Date;
   closedAt: Date | null;
   table: { name: string };
@@ -180,6 +183,9 @@ export class OrdersService {
           body.lines.map((l) => l.productId),
         );
         let orderId = await this.lockOpenOrder(tx, tableId);
+        if (orderId && body.covers !== undefined) {
+          await this.setCovers(tx, orderId, body.covers, userId);
+        }
         if (!orderId) {
           // As late as possible: the counter row stays locked until commit (ADR 0012).
           const { number } = await this.numbering.next('pos.order', tx);
@@ -189,6 +195,7 @@ export class OrdersService {
               locationId: table.locationId,
               tableId,
               number,
+              covers: body.covers ?? null,
               openedByUserId: userId,
             },
             select: ORDER_SELECT,
@@ -262,6 +269,18 @@ export class OrdersService {
       const response = { order: await this.load(tx, orderId), ticketId };
       await this.idempotency.completeInTransaction(tx, response);
       return response;
+    });
+  }
+
+  /** Sets or clears the covers of an open order (`PATCH /pos/orders/:id`). */
+  async update(orderId: string, body: UpdateOrderRequest): Promise<Order> {
+    const { userId } = this.tenantContext.require();
+    const order = await this.readableOrder(orderId);
+    await this.access.assert('pos.orders.take', { locationId: order.locationId });
+    return this.db.$transaction(async (tx) => {
+      if ((await this.lockOrder(tx, orderId)) !== 'open') throw posErrors.orderClosed();
+      await this.setCovers(tx, orderId, body.covers, userId);
+      return this.load(tx, orderId);
     });
   }
 
@@ -368,6 +387,32 @@ export class OrdersService {
     const rows = await tx.$queryRaw<{ status: string }[]>`
       SELECT status::text AS status FROM pos_orders WHERE id = ${orderId}::uuid FOR UPDATE`;
     return rows[0]?.status;
+  }
+
+  /** Changes the covers of a locked, open order, audited; the same value changes nothing. */
+  private async setCovers(
+    tx: TenantTransactionClient,
+    orderId: string,
+    covers: number | null,
+    userId: string,
+  ): Promise<void> {
+    const before = await tx.posOrder.findUniqueOrThrow({
+      where: { id: orderId },
+      select: ORDER_SELECT,
+    });
+    if (before.covers === covers) return;
+    const after = await tx.posOrder.update({
+      where: { id: orderId },
+      data: { covers },
+      select: ORDER_SELECT,
+    });
+    await this.audit.record(tx, {
+      action: 'pos.order.updated',
+      actor: auditActor.user(userId),
+      entityId: orderId,
+      before: orderSnapshot(before),
+      after: orderSnapshot(after),
+    });
   }
 
   /** The next ticket of a locked order with its lines, audited. Returns the ticket id. */
@@ -538,6 +583,7 @@ function summaryOf(order: OrderRow, itemCount: number, gross: string): OrderSumm
     status: order.status,
     openedAt: order.openedAt.toISOString(),
     closedAt: order.closedAt?.toISOString() ?? null,
+    covers: order.covers,
     itemCount,
     gross,
   };
@@ -550,6 +596,7 @@ function orderSnapshot(order: OrderRow) {
     tableId: order.tableId,
     locationId: order.locationId,
     status: order.status,
+    covers: order.covers,
     closedAt: order.closedAt,
   });
 }

@@ -141,12 +141,16 @@ Location
 
 | Table                 | Columns                                                                                                                                                                                                          | Notes                                                                                                 |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `pos_orders`          | `id`, `tenant_id`, `location_id`, `table_id`, `number`, `status` (`open`/`closed`), `opened_by_user_id`, `opened_at`, `closed_by_user_id`, `closed_at`, timestamps                                               | `UNIQUE (tenant_id, number)`; partial `UNIQUE (tenant_id, table_id) WHERE status = 'open'`; no DELETE |
+| `pos_orders`          | `id`, `tenant_id`, `location_id`, `table_id`, `number`, `status` (`open`/`closed`), `covers` (int 1–100, nullable), `opened_by_user_id`, `opened_at`, `closed_by_user_id`, `closed_at`, timestamps               | `UNIQUE (tenant_id, number)`; partial `UNIQUE (tenant_id, table_id) WHERE status = 'open'`; no DELETE |
 | `pos_kitchen_tickets` | `id`, `tenant_id`, `order_id`, `sequence`, `kind` (`order`/`void`), `created_by_user_id`, `created_at`                                                                                                           | `UNIQUE (tenant_id, order_id, sequence)`; no UPDATE/DELETE                                            |
 | `pos_order_lines`     | `id`, `tenant_id`, `order_id`, `ticket_id`, `product_id`, `product_name`, `unit_price numeric(12,2)`, `tax_rate numeric(5,2)`, `quantity` (int ≠ 0), `note`, `voids_line_id`, `created_by_user_id`, `created_at` | no UPDATE/DELETE; `quantity < 0` exactly when `voids_line_id` is set                                  |
 
 - **Snapshots.** Name, gross unit price and VAT rate are copied from the product when the line is written; later
   menu edits never change an order. Quantity is a portion count (an integer), not money or stock.
+- **Covers** (guests at the table, `covers`, 1–100 or `null`): optional `covers` on a send sets them when it
+  opens the order and changes them when they differ; `PATCH /pos/orders/:id` sets or clears them. A change writes
+  `pos.order.updated`; the same value writes nothing. The till's "Guests" field sends them with the first items, or
+  saves a change on an open order. Reservations will pre-fill them from the seated booking (web only, R1.9).
 - **Numbers.** Series `pos.order` (feature `pos`, `ORD-{YYYY}-{seq:6}`, yearly), allocated in the transaction that
   opens the order.
 - **Totals** (computed, gross): line total = unit price × quantity; the order total and the per-VAT-rate split
@@ -177,6 +181,7 @@ A table or order at a location where the caller can't read orders doesn't exist 
 | `GET /pos/orders`                   | `pos.orders.read`  |                             | `?locationId=&status=open\|closed`, newest first, at most 100     |
 | `GET /pos/orders/:id`               | `pos.orders.read`  |                             |                                                                   |
 | `POST /pos/orders/:id/voids`        | `pos.orders.void`  | `completion: 'transaction'` | `{ lines: [{ lineId, quantity 1–99 }] }`                          |
+| `PATCH /pos/orders/:id`             | `pos.orders.take`  | response                    | `{ covers: 1–100 \| null }` on an open order (else 409)           |
 | `POST /pos/orders/:id/close`        | `pos.orders.close` | response                    | no body; closing a closed order changes nothing                   |
 
 Products must exist, not be archived, and not be in an archived category; the table must not be archived.
@@ -193,11 +198,12 @@ Products must exist, not be archived, and not be in an archived category; the ta
 
 ### Audit
 
-| Action                       | Entity           | Snapshot fields                                               |
-| ---------------------------- | ---------------- | ------------------------------------------------------------- |
-| `pos.order.opened`           | `pos_order`      | `id`, `number`, `tableId`, `locationId`, `status`, `closedAt` |
-| `pos.order.closed`           | `pos_order`      | same                                                          |
-| `pos.kitchen_ticket.created` | `kitchen_ticket` | `id`, `orderId`, `sequence`, `kind`, `lineCount`              |
+| Action                       | Entity           | Snapshot fields                                                         |
+| ---------------------------- | ---------------- | ----------------------------------------------------------------------- |
+| `pos.order.opened`           | `pos_order`      | `id`, `number`, `tableId`, `locationId`, `status`, `covers`, `closedAt` |
+| `pos.order.updated`          | `pos_order`      | same (covers changed)                                                   |
+| `pos.order.closed`           | `pos_order`      | same                                                                    |
+| `pos.kitchen_ticket.created` | `kitchen_ticket` | `id`, `orderId`, `sequence`, `kind`, `lineCount`                        |
 
 Notes are free text and stay out of snapshots.
 
