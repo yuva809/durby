@@ -92,20 +92,44 @@ export function zonedInstant(date: LocalDate, time: LocalTime, timeZone: string)
 }
 
 /**
+ * `date` `time` as a bound (opening, closing, day start): `which` of its instants in a repeat, and
+ * the end of the gap when the wall time is skipped, i.e. the first instant the clock shows a later
+ * time. Never null.
+ */
+export function zonedBound(
+  date: LocalDate,
+  time: LocalTime,
+  timeZone: string,
+  which: 'first' | 'last' = 'first',
+): Date {
+  const instants = zonedInstants(date, time, timeZone);
+  const found = which === 'first' ? instants[0] : instants.at(-1);
+  if (found) return found;
+  // Skipped: the gap ends at the switch, which lies between the wall time read with the later
+  // (larger) offset, still before the switch, and read with the earlier one, already after it.
+  const local = localUtcMs(date, time);
+  const offsets = candidateOffsets(local, timeZone);
+  const before = offsetMs(local - Math.max(...offsets), timeZone);
+  let lo = local - Math.max(...offsets);
+  let hi = local - Math.min(...offsets);
+  // Bisect to the millisecond: hi ends as the first instant with the new offset.
+  while (hi - lo > 1) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    if (offsetMs(mid, timeZone) === before) lo = mid;
+    else hi = mid;
+  }
+  return new Date(hi);
+}
+
+/**
  * The instants a calendar day starts and ends in `timeZone`, `[start, end)`: 23 or 25 hours long on
  * DST switch days. If midnight falls in a gap, the day starts when the gap ends.
  */
 export function zonedDayBounds(date: LocalDate, timeZone: string): { start: Date; end: Date } {
-  return { start: dayStart(date, timeZone), end: dayStart(addDays(date, 1), timeZone) };
-}
-
-function dayStart(date: LocalDate, timeZone: string): Date {
-  const first = zonedInstant(date, '00:00', timeZone);
-  if (first) return first;
-  // Midnight is skipped: the day starts at the switch, i.e. local midnight read with the offset
-  // in force before it (the smaller one).
-  const local = localUtcMs(date, '00:00');
-  return new Date(local - Math.min(...candidateOffsets(local, timeZone)));
+  return {
+    start: zonedBound(date, '00:00', timeZone),
+    end: zonedBound(addDays(date, 1), '00:00', timeZone),
+  };
 }
 
 /**

@@ -1,6 +1,6 @@
 import { type INestApplication, Injectable, type OnModuleInit } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import type { ResolvedSetting, SettingsResponse } from '@durby/shared';
+import { DEFAULT_OPENING_HOURS, type ResolvedSetting, type SettingsResponse } from '@durby/shared';
 import { Client } from 'pg';
 import request from 'supertest';
 import type { App } from 'supertest/types';
@@ -115,6 +115,8 @@ describe('/api/v1/settings', () => {
         { key: 'locale', value: 'en', source: 'default', dataBound: false },
         { key: 'currency', value: 'EUR', source: 'default', dataBound: true },
         { key: 'timezone', value: 'Europe/Berlin', source: 'default', dataBound: false },
+        { key: 'openingHours', value: DEFAULT_OPENING_HOURS, source: 'default', dataBound: false },
+        { key: 'closedDates', value: [], source: 'default', dataBound: false },
         {
           key: 'inventory.valuationMethod',
           value: 'weighted_average',
@@ -173,6 +175,40 @@ describe('/api/v1/settings', () => {
         value: 'Europe/Vienna',
         source: 'organization',
       });
+    });
+
+    it('stores opening hours and closed days per location and rejects overlapping windows', async () => {
+      const { org, token } = await orgWith('owner');
+      const [here, there] = org.locations;
+      const lunchAndDinner = [
+        { from: '11:30', to: '14:30' },
+        { from: '17:30', to: '01:00' },
+      ];
+      const hours = { ...DEFAULT_OPENING_HOURS, mon: [], fri: lunchAndDinner };
+      await put(token, 'openingHours', hours, { locationId: here }).expect(200);
+      await put(token, 'closedDates', ['2026-12-24', '2026-12-25'], { locationId: here }).expect(
+        200,
+      );
+      const at: unknown = (await list(token, { locationId: here })).body;
+      expect(valueOf(at, 'openingHours')).toMatchObject({ value: hours, source: 'location' });
+      expect(valueOf(at, 'closedDates')).toMatchObject({
+        value: ['2026-12-24', '2026-12-25'],
+        source: 'location',
+      });
+      expect(
+        valueOf((await list(token, { locationId: there })).body, 'openingHours'),
+      ).toMatchObject({ value: DEFAULT_OPENING_HOURS, source: 'default' });
+
+      for (const [key, value] of [
+        ['openingHours', { ...hours, sat: [{ from: '00:30', to: '03:00' }] }], // Fri night runs into Sat
+        ['openingHours', { ...hours, holiday: [] }],
+        ['openingHours', { ...hours, tue: [{ from: '9:00', to: '17:00' }] }],
+        ['closedDates', ['2026-02-30']],
+        ['closedDates', ['2026-12-24', '2026-12-24']],
+      ] as const) {
+        const res = await put(token, key, value, { locationId: there }).expect(422);
+        expect(res.body).toMatchObject({ code: 'settings.invalid_value', details: { key } });
+      }
     });
 
     it('brand values apply to the brand and its locations, below location values', async () => {

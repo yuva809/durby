@@ -4,6 +4,7 @@ import {
   isLocalDate,
   isLocalTime,
   weekdayOf,
+  zonedBound,
   zonedDayBounds,
   zonedInstant,
   zonedInstants,
@@ -124,6 +125,20 @@ describe('zonedInstant (one instant or none)', () => {
       '2026-10-25T18:00:00.000Z',
       '2026-10-25T21:45:00.000Z',
     ]);
+  });
+});
+
+describe('zonedBound (a bound that always exists)', () => {
+  it('moves a skipped time to the end of the gap, wherever in the gap it lies', () => {
+    for (const time of ['02:00', '02:30', '02:59']) {
+      expect(iso(zonedBound('2026-03-29', time, BERLIN))).toBe('2026-03-29T01:00:00.000Z');
+    }
+  });
+
+  it('picks the first or last instant of a repeated time', () => {
+    expect(iso(zonedBound('2026-10-25', '02:30', BERLIN))).toBe('2026-10-25T00:30:00.000Z');
+    expect(iso(zonedBound('2026-10-25', '02:30', BERLIN, 'last'))).toBe('2026-10-25T01:30:00.000Z');
+    expect(iso(zonedBound('2026-07-01', '19:00', BERLIN, 'last'))).toBe('2026-07-01T17:00:00.000Z');
   });
 });
 

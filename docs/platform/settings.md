@@ -18,13 +18,20 @@ step needs them.
 Keys are `module.camelCaseName` (platform-wide keys have no module prefix). Each entry has a name and a description
 label, a strict Zod schema, a default that passes the schema, the scopes it may be set at, and `dataBound`.
 
-| Key                            | Value                                   | Default            | Scopes                                 | dataBound |
-| ------------------------------ | --------------------------------------- | ------------------ | -------------------------------------- | --------- |
-| `locale`                       | a supported locale (`LOCALES`: en, de)  | `en`               | partner, organization, brand, location |           |
-| `currency`                     | an active ISO 4217 code, e.g. `EUR`     | `EUR`              | partner, organization                  | ✓         |
-| `timezone`                     | an IANA time zone, e.g. `Europe/Berlin` | `Europe/Berlin`    | partner, organization, brand, location |           |
-| `inventory.valuationMethod`    | `fifo` \| `weighted_average`            | `weighted_average` | partner, organization                  | ✓         |
-| `inventory.allowNegativeStock` | boolean                                 | `false`            | partner, organization, brand, location |           |
+| Key                            | Value                                                                                                                                               | Default                 | Scopes                                 | dataBound |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | -------------------------------------- | --------- |
+| `locale`                       | a supported locale (`LOCALES`: en, de)                                                                                                              | `en`                    | partner, organization, brand, location |           |
+| `currency`                     | an active ISO 4217 code, e.g. `EUR`                                                                                                                 | `EUR`                   | partner, organization                  | ✓         |
+| `timezone`                     | an IANA time zone, e.g. `Europe/Berlin`                                                                                                             | `Europe/Berlin`         | partner, organization, brand, location |           |
+| `openingHours`                 | `{ mon … sun: [{ from, to }] }`: `HH:mm` windows, ≤ 4 a day, no overlaps (also past midnight, Sunday into Monday); `to` ≤ `from` runs past midnight | every day `11:00–23:00` | partner, organization, brand, location |           |
+| `closedDates`                  | ≤ 366 unique dates `YYYY-MM-DD`                                                                                                                     | `[]`                    | partner, organization, brand, location |           |
+| `inventory.valuationMethod`    | `fifo` \| `weighted_average`                                                                                                                        | `weighted_average`      | partner, organization                  | ✓         |
+| `inventory.allowNegativeStock` | boolean                                                                                                                                             | `false`                 | partner, organization, brand, location |           |
+
+`openingHours` and `closedDates` (reservations R0.2) are read with `serviceWindowsOn(date, hours, closedDates,
+timeZone)` from `packages/shared/src/time/opening-hours.ts`, which turns a local day's windows into UTC instants
+(DST-safe). The web settings page edits them at organization scope; a location picker for location values is a
+later step.
 
 - Currency: a static list of active ISO 4217 codes in `packages/shared` (`Intl` accepts any three letters).
   Timezone: accepted by `Intl.DateTimeFormat` in the runtime (Node and browsers ship the IANA database).

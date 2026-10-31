@@ -42,6 +42,8 @@ describe('setting controls from the registry', () => {
     });
     expect(controlOf('inventory.allowNegativeStock')).toEqual({ kind: 'boolean' });
     expect(controlOf('timezone')).toEqual({ kind: 'text' });
+    expect(controlOf('openingHours')).toEqual({ kind: 'weeklyHours' });
+    expect(controlOf('closedDates')).toEqual({ kind: 'dateList' });
   });
 
   it('labels every option label it names in en and de', () => {

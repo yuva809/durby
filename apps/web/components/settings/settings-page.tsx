@@ -1,6 +1,6 @@
 'use client';
 
-import type { ResolvedSetting, SettingKey } from '@durby/shared';
+import type { ResolvedSetting, SettingKey, WeeklyHours } from '@durby/shared';
 import { TriangleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
@@ -31,6 +31,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
+import { DateListEditor, WeeklyHoursEditor } from './hours-editor';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
@@ -101,10 +102,23 @@ export function SettingsPage() {
   );
 }
 
-/** The value in the form's representation: text for selects and inputs, a boolean for checkboxes. */
-type Draft = string | boolean;
+/**
+ * The value in the form's representation: text for selects and inputs, a boolean for checkboxes,
+ * the value itself for structured settings (opening hours, closed days).
+ */
+type Draft = string | boolean | WeeklyHours | string[];
 
-const draftOf = (value: unknown): Draft => (typeof value === 'boolean' ? value : String(value));
+const draftOf = (value: unknown): Draft => {
+  if (typeof value === 'boolean' || typeof value === 'string') return value;
+  if (typeof value === 'object' && value !== null) return value as Draft;
+  return JSON.stringify(value);
+};
+
+/** The text of a select or input draft. */
+const textOf = (draft: Draft) => (typeof draft === 'string' ? draft : '');
+
+/** Drafts are plain JSON values: equal when their JSON is. */
+const sameDraft = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b);
 
 function SettingRow({
   setting,
@@ -130,7 +144,7 @@ function SettingRow({
   // 409 settings.in_use: data already depends on the value; it can't change any more.
   const [locked, setLocked] = useState(false);
 
-  const changed = draftOf(setting.value) !== draft;
+  const changed = !sameDraft(draftOf(setting.value), draft);
   const invalid = changed && !isValidSettingValue(setting.key, draft);
   const canEdit = editable && !locked;
 
@@ -208,12 +222,26 @@ function SettingRow({
               {draft === true ? t('platform.settingsPage.on') : t('platform.settingsPage.off')}
             </span>
           </div>
+        ) : control.kind === 'weeklyHours' ? (
+          <WeeklyHoursEditor
+            value={draft as WeeklyHours}
+            disabled={!canEdit}
+            describedBy={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={setDraft}
+          />
+        ) : control.kind === 'dateList' ? (
+          <DateListEditor
+            value={draft as string[]}
+            disabled={!canEdit}
+            describedBy={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={setDraft}
+          />
         ) : control.kind === 'select' ? (
           <Select
             id={`${id}-value`}
             data-testid="setting-value"
             className="max-w-xs"
-            value={String(draft)}
+            value={textOf(draft)}
             disabled={!canEdit}
             aria-describedby={`${id}-description`}
             onChange={(e) => setDraft(e.target.value)}
@@ -229,7 +257,7 @@ function SettingRow({
             id={`${id}-value`}
             data-testid="setting-value"
             className="max-w-xs"
-            value={String(draft)}
+            value={textOf(draft)}
             disabled={!canEdit}
             aria-invalid={invalid || undefined}
             aria-describedby={invalid ? `${id}-problem` : `${id}-description`}

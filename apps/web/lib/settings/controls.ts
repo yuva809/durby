@@ -1,11 +1,13 @@
 import { isLabelKey, type LabelKey } from '@durby/i18n';
 import {
+  closedDatesSchema,
   type ResolvedSetting,
   SETTING_KEYS,
   type SettingKey,
   settingAllowsScope,
   settingLabelBase,
   SETTINGS,
+  weeklyHoursSchema,
 } from '@durby/shared';
 
 /**
@@ -21,7 +23,13 @@ export interface SettingOption {
 }
 
 export type SettingControl =
-  { kind: 'select'; options: SettingOption[] } | { kind: 'boolean' } | { kind: 'text' };
+  | { kind: 'select'; options: SettingOption[] }
+  | { kind: 'boolean' }
+  | { kind: 'text' }
+  /** Windows per weekday (`openingHours`). */
+  | { kind: 'weeklyHours' }
+  /** A set of calendar days (`closedDates`). */
+  | { kind: 'dateList' };
 
 /** `weighted_average` → `weightedAverage` (label keys are camelCase). */
 const camel = (value: string) =>
@@ -34,6 +42,8 @@ interface SchemaShape {
 
 /** The control for `key`, or null if its schema is of a kind no control covers yet. */
 export function controlOf(key: SettingKey): SettingControl | null {
+  if (SETTINGS[key].schema === weeklyHoursSchema) return { kind: 'weeklyHours' };
+  if (SETTINGS[key].schema === closedDatesSchema) return { kind: 'dateList' };
   const schema = SETTINGS[key].schema as unknown as SchemaShape;
   switch (schema.def.type) {
     case 'enum':
