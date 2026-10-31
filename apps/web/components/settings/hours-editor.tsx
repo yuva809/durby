@@ -4,6 +4,7 @@ import { type HoursWindow, WEEKDAYS, type WeeklyHours } from '@durby/shared';
 import { Plus, X } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
+import { useAuth } from '../../app/providers';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 
@@ -132,9 +133,16 @@ export function DateListEditor({
   onChange: (next: string[]) => void;
 }) {
   const t = useT();
+  const { session } = useAuth();
   const id = useId();
   const [pending, setPending] = useState('');
   const sorted = [...value].sort();
+  // A calendar day, not an instant: read at UTC midnight and shown in UTC, so no zone shifts it.
+  const dayFormat = new Intl.DateTimeFormat(session?.user.locale, {
+    dateStyle: 'medium',
+    timeZone: 'UTC',
+  });
+  const shown = (date: string) => dayFormat.format(new Date(`${date}T00:00:00Z`));
 
   return (
     <div className="flex w-full flex-col gap-2" aria-describedby={describedBy}>
@@ -149,12 +157,12 @@ export function DateListEditor({
               data-date={date}
               className="flex items-center gap-1 rounded-md border px-2 py-1 text-sm"
             >
-              {date}
+              {shown(date)}
               {!disabled && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={t('platform.settingsPage.removeDate', { date })}
+                  aria-label={t('platform.settingsPage.removeDate', { date: shown(date) })}
                   onClick={() => onChange(sorted.filter((d) => d !== date))}
                 >
                   <X aria-hidden className="size-3" />

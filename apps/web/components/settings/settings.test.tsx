@@ -153,7 +153,7 @@ describe('SettingsPage: opening hours and closed days', () => {
     expect(within(card).getByTestId<HTMLButtonElement>('setting-save').disabled).toBe(true);
   });
 
-  it('adds and removes closed days, sorted', async () => {
+  it("adds and removes closed days, sorted and shown in the user's locale", async () => {
     signedInAs('admin');
     api(answers());
     render(<SettingsPage />);
@@ -165,7 +165,12 @@ describe('SettingsPage: opening hours and closed days', () => {
         .getAllByTestId('closed-date')
         .map((d) => d.dataset.date),
     ).toEqual(['2026-12-24', '2026-12-25']);
-    await userEvent.click(within(card).getByRole('button', { name: 'Remove 2026-12-25' }));
+    expect(
+      within(card)
+        .getAllByTestId('closed-date')
+        .map((d) => d.textContent),
+    ).toEqual(['Dec 24, 2026', 'Dec 25, 2026']);
+    await userEvent.click(within(card).getByRole('button', { name: 'Remove Dec 25, 2026' }));
     await userEvent.click(within(card).getByTestId('setting-save'));
     await waitFor(() => expect(writes()).toHaveLength(1));
     expect(writes()[0]).toMatchObject({
