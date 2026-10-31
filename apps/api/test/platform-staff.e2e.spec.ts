@@ -11,6 +11,7 @@ import { createStaff, parseCreateStaffArgs } from '../src/cli/create-staff';
 import { StaffService } from '../src/platform/staff';
 import { PLATFORM_PRISMA, type PlatformPrismaClient } from '../src/platform/tenancy';
 import { type AuthTestKit, PASSWORD, startAuthApp, WEB_ORIGIN } from './support/auth-app';
+import { createOwnDatabase, useDatabase } from './support/own-database';
 import { RbacSeed } from './support/rbac';
 
 const COOKIE = '__Secure-durby_staff';
@@ -20,6 +21,10 @@ describe('/api/v1/platform (staff)', () => {
   let kit: AuthTestKit;
 
   beforeAll(async () => {
+    // The "at least 2 super admins" rule counts every staff account in the database, so this file
+    // gets a database of its own: on the shared one, other files sign in super admins at the same
+    // time, and resetting staff here would end their sessions (issue #34).
+    useDatabase(await createOwnDatabase('platform_staff'));
     kit = await startAuthApp();
   });
 
@@ -27,7 +32,7 @@ describe('/api/v1/platform (staff)', () => {
     await kit.close();
   });
 
-  // The "at least 2 super admins" rule counts every staff account; each test starts without any.
+  // Each test starts without staff (in this file's own database only).
   beforeEach(async () => {
     await kit.raw.staffAccount.updateMany({
       where: { status: { not: 'deactivated' } },
