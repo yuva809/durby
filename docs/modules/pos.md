@@ -147,10 +147,12 @@ Location
 
 - **Snapshots.** Name, gross unit price and VAT rate are copied from the product when the line is written; later
   menu edits never change an order. Quantity is a portion count (an integer), not money or stock.
-- **Covers** (guests at the table, `covers`, 1–100 or `null`): optional `covers` on a send sets them when it
-  opens the order and changes them when they differ; `PATCH /pos/orders/:id` sets or clears them. A change writes
-  `pos.order.updated`; the same value writes nothing. The till's "Guests" field sends them with the first items, or
-  saves a change on an open order. Reservations will pre-fill them from the seated booking (web only, R1.9).
+- **Covers** (guests at the table, `covers`, 1–100 or `null`): optional `covers` on a send counts only when that
+  send opens the order. On a table with an open order it is ignored (no error): another till may still hold a value
+  from before the table was opened. Changes go through `PATCH /pos/orders/:id` only, which sets or clears them; a
+  change writes `pos.order.updated`, the same value writes nothing. The till's "Guests" field sends them with the
+  first items, or saves a change on an open order. Reservations will pre-fill them from the seated booking (web only,
+  R1.9).
 - **Numbers.** Series `pos.order` (feature `pos`, `ORD-{YYYY}-{seq:6}`, yearly), allocated in the transaction that
   opens the order.
 - **Totals** (computed, gross): line total = unit price × quantity; the order total and the per-VAT-rate split

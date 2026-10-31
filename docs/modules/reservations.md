@@ -517,7 +517,7 @@ Staff (R1). Location-scoped keys are checked at the reservation's / table's loca
 | `GET /reservations/stream`                | `reservations.bookings.read`   |                             | `?locationId=`: SSE (RT.1, not R1)                                                                                         |
 
 pos changes (R0.4–R0.5, in pos.md): `pos_orders.covers int NULL CHECK (covers BETWEEN 1 AND 100)`;
-`POST /pos/tables/:tableId/tickets` takes `covers?` (used when it opens the order); `PATCH /pos/orders/:id { covers }`
+`POST /pos/tables/:tableId/tickets` takes `covers?` (used only when it opens the order, else ignored); `PATCH /pos/orders/:id { covers }`
 (`pos.orders.take`, `@Idempotent()`); order snapshots add `covers`.
 
 Status actions append a status change, hence `completion: 'transaction'` (rule 8). Every write audits.

@@ -427,17 +427,23 @@ describe('pos orders', () => {
       ]);
     });
 
-    it('changes on a later send that brings other covers, audited; the same covers change nothing', async () => {
+    // A till that tapped the stepper while the table was still free must not overwrite the covers
+    // of the order another waiter opened meanwhile: only the opening send sets them, PATCH changes them.
+    it('ignores covers on a send to an open order (stale stepper), without an error or audit row', async () => {
       const r = await restaurant();
-      const first = await sent(r.owner, r.table, [{ productId: r.soup, quantity: 1 }], 2);
-      await sent(r.owner, r.table, [{ productId: r.cola, quantity: 1 }], 2);
-      const third = await sent(r.owner, r.table, [{ productId: r.cola, quantity: 1 }], 3);
-      expect(third.order.id).toBe(first.order.id);
+      // Session 1 opens the table with 3 guests.
+      const opened = await sent(r.owner, r.table, [{ productId: r.soup, quantity: 1 }], 3);
+      expect(opened.order.covers).toBe(3);
+      // Session 2 set 2 on its stepper while the table was free, and now sends.
+      const waiter = await memberToken(r.org, 'waiter');
+      const second = await sent(waiter, r.table, [{ productId: r.cola, quantity: 1 }], 2);
+      expect(second.order.id).toBe(opened.order.id);
+      expect(second.order.covers).toBe(3);
+      expect(second.order.tickets).toHaveLength(2);
+      const third = await sent(r.owner, r.table, [{ productId: r.cola, quantity: 1 }]);
       expect(third.order.covers).toBe(3);
-      const updates = (await coversAudit(r.org.id)).filter((x) => x.action === 'pos.order.updated');
-      expect(updates.map((x) => [x.before, x.after])).toEqual([
-        [expect.objectContaining({ covers: 2 }), expect.objectContaining({ covers: 3 })],
-      ]);
+      const rows = await coversAudit(r.org.id);
+      expect(rows.filter((x) => x.action === 'pos.order.updated')).toEqual([]);
     });
 
     it('PATCH sets, changes and clears them; a no-op writes no audit row', async () => {

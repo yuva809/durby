@@ -27,7 +27,7 @@ export const sendTicketRequestSchema = z.strictObject({
     )
     .min(1)
     .max(TICKET_MAX_LINES),
-  /** Guests at the table: set when this send opens the order, changed when it differs. */
+  /** Guests at the table, used only when this send opens the order (else ignored; see PATCH). */
   covers: covers.optional(),
 });
 

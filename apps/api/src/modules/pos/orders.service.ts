@@ -183,9 +183,9 @@ export class OrdersService {
           body.lines.map((l) => l.productId),
         );
         let orderId = await this.lockOpenOrder(tx, tableId);
-        if (orderId && body.covers !== undefined) {
-          await this.setCovers(tx, orderId, body.covers, userId);
-        }
+        // `covers` counts only when this send opens the order. On an open order it is ignored: a
+        // till may hold a value from before another waiter opened the table, and changes go
+        // through PATCH /pos/orders/:id only.
         if (!orderId) {
           // As late as possible: the counter row stays locked until commit (ADR 0012).
           const { number } = await this.numbering.next('pos.order', tx);
