@@ -15,6 +15,7 @@ import type {
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
 import { NumberingService } from '../../platform/numbering';
+import { OutboxService } from '../../platform/outbox';
 import { AccessService } from '../../platform/rbac';
 import {
   TENANT_PRISMA,
@@ -95,6 +96,7 @@ export class OrdersService {
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
     private readonly numbering: NumberingService,
+    private readonly outbox: OutboxService,
   ) {}
 
   async floor(query: FloorQuery): Promise<FloorTable[]> {
@@ -285,6 +287,11 @@ export class OrdersService {
           entityId: orderId,
           before: orderSnapshot(before),
           after: orderSnapshot(after),
+        });
+        // The table is free: consumers (reservations) react through the outbox (ADR 0019 §7).
+        await this.outbox.add(tx, {
+          type: 'pos.order.closed',
+          payload: { orderId, locationId: after.locationId, tableId: after.tableId },
         });
       }
       return this.load(tx, orderId);

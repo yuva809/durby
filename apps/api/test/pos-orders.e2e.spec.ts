@@ -289,7 +289,51 @@ describe('pos orders', () => {
     });
   });
 
+  const closedEvents = (orgId: string) =>
+    seed.as(orgId, (db) =>
+      db.outboxEvent.findMany({
+        where: { type: 'pos.order.closed' },
+        select: { version: true, payload: true },
+        orderBy: { id: 'asc' },
+      }),
+    );
+
   describe('closing', () => {
+    // docs/modules/reservations.md → R0.4: consumers (reservations) learn that a table is free.
+    it('writes one pos.order.closed event per close, with ids only; repeats, sends and voids none', async () => {
+      const r = await restaurant();
+      const { order } = await sent(r.owner, r.table, [{ productId: r.soup, quantity: 2 }]);
+      await post(r.owner, `/pos/orders/${order.id}/voids`, {
+        lines: [{ lineId: order.tickets[0]!.lines[0]!.id, quantity: 1 }],
+      }).expect(201);
+      expect(await closedEvents(r.org.id)).toEqual([]);
+
+      await post(r.owner, `/pos/orders/${order.id}/close`).expect(201);
+      await post(r.owner, `/pos/orders/${order.id}/close`).expect(201);
+      expect(await closedEvents(r.org.id)).toEqual([
+        {
+          version: 1,
+          payload: { orderId: order.id, locationId: r.org.locations[0], tableId: r.table },
+        },
+      ]);
+
+      const next = await sent(r.owner, r.table, [{ productId: r.cola, quantity: 1 }]);
+      await post(r.owner, `/pos/orders/${next.order.id}/close`).expect(201);
+      expect((await closedEvents(r.org.id)).map((e) => e.payload)).toEqual([
+        expect.objectContaining({ orderId: order.id }),
+        expect.objectContaining({ orderId: next.order.id }),
+      ]);
+    });
+
+    it('writes no event when the close is refused', async () => {
+      const r = await restaurant();
+      const { order } = await sent(r.owner, r.table, [{ productId: r.soup, quantity: 1 }]);
+      // Staff hold no pos.orders.close: the guard refuses before the order is touched.
+      const staff = await memberToken(r.org, 'staff');
+      await post(staff, `/pos/orders/${order.id}/close`).expect(403);
+      expect(await closedEvents(r.org.id)).toEqual([]);
+    });
+
     it('frees the table; the next send opens a new order; a closed order takes no voids', async () => {
       const r = await restaurant();
       const { order } = await sent(r.owner, r.table, [{ productId: r.soup, quantity: 1 }]);

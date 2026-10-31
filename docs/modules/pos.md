@@ -199,7 +199,17 @@ Products must exist, not be archived, and not be in an archived category; the ta
 | `pos.order.closed`           | `pos_order`      | same                                                          |
 | `pos.kitchen_ticket.created` | `kitchen_ticket` | `id`, `orderId`, `sequence`, `kind`, `lineCount`              |
 
-Notes are free text and stay out of snapshots. No outbox events yet (no consumer; a kitchen display would add one).
+Notes are free text and stay out of snapshots.
+
+### Events
+
+| Type               | Version | Payload                            | Written when                                                        |
+| ------------------ | ------- | ---------------------------------- | ------------------------------------------------------------------- |
+| `pos.order.closed` | 1       | `{ orderId, locationId, tableId }` | `POST /pos/orders/:id/close` closes an open order (not on a repeat) |
+
+Written in the close's transaction (ADR 0013), ids only. First consumer: reservations finishes the seated booking on
+that table ([reservations.md](reservations.md), ADR 0019 §7). Sends and voids write no events yet; a kitchen display
+would add them.
 
 ### Web
 
