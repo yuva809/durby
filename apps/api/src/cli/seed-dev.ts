@@ -1,10 +1,12 @@
 import type { INestApplicationContext } from '@nestjs/common';
 import { CatalogService } from '../modules/catalog';
 import { AreasService, TablesService } from '../modules/pos';
-import { auditActor } from '../platform/audit';
+import { auditActor, AuditService, snapshot } from '../platform/audit';
 import { ProvisioningService } from '../platform/provisioning';
 import { APP_CONFIG, type AppConfig } from '../platform/config';
+import { SystemRoles } from '../platform/rbac';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../platform/tenancy';
+import type { SystemRole } from '@durby/shared';
 import { DEFAULT_PARTNER } from './create-admin';
 import { runCommand } from './run-command';
 
@@ -97,12 +99,14 @@ export async function seedDev(app: INestApplicationContext): Promise<void> {
       verified: true,
     });
     for (const org of seed.organizations) {
-      await provisioning.ensureMembership(
-        orgIds.get(org) ?? '',
+      const orgId = orgIds.get(org) ?? '';
+      const membership = await provisioning.ensureMembership(
+        orgId,
         user.id,
         seed.role,
         'cli.seed_dev',
       );
+      if (!membership.created) await alignRole(app, orgId, user.id, seed.role);
     }
   }
   const owner = await provisioning.ensureUser(DEV_SEED.users[0].email, {
@@ -113,6 +117,52 @@ export async function seedDev(app: INestApplicationContext): Promise<void> {
     if (org.plan !== 'full') continue;
     await seedTableService(app, orgIds.get(org.name) ?? '', owner.id);
   }
+}
+
+/**
+ * Puts an existing membership of a seeded user back on its declared role, audited. Local data can
+ * drift: the RBAC migration (2026-10-22) made every membership of that time an Owner. Only here, not
+ * in ProvisioningService.ensureMembership: create-admin and onboarding must never change a role.
+ * Memberships the seed doesn't declare are left alone.
+ */
+async function alignRole(
+  app: INestApplicationContext,
+  tenantId: string,
+  userId: string,
+  role: SystemRole,
+): Promise<void> {
+  const db = app.get<TenantPrismaClient>(TENANT_PRISMA);
+  await app.get(TenantContext).run({ tenantId, userId }, () =>
+    db.$transaction(async (tx) => {
+      const roleId = (await app.get(SystemRoles).ids(tx))[role];
+      const where = { tenantId_userId: { tenantId, userId } };
+      const select = {
+        id: true,
+        roleId: true,
+        allLocations: true,
+        locations: { select: { locationId: true } },
+      } as const;
+      const before = await tx.membership.findUniqueOrThrow({ where, select });
+      if (before.roleId === roleId) return;
+      const after = await tx.membership.update({ where, data: { roleId }, select });
+      const view = (m: typeof before) =>
+        snapshot('membership', {
+          id: m.id,
+          userId,
+          roleId: m.roleId,
+          allLocations: m.allLocations,
+          locationIds: m.locations.map((l) => l.locationId).sort(),
+        });
+      // The last-Owner trigger (deferred) still refuses to demote an organization's only Owner.
+      await app.get(AuditService).record(tx, {
+        action: 'platform.membership.updated',
+        actor: auditActor.system('cli.seed_dev'),
+        entityId: after.id,
+        before: view(before),
+        after: view(after),
+      });
+    }),
+  );
 }
 
 /** Idempotent: an organization that already has categories is left as it is. */
