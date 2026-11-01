@@ -1,7 +1,7 @@
 import { staffMemberSchema } from '@durby/shared';
 import request from 'supertest';
 import { v7 as uuidv7 } from 'uuid';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../src/platform/database';
 import { type AuthTestKit, startAuthApp } from './support/auth-app';
 import { withIdempotencyKey } from './support/idempotency';
@@ -9,6 +9,9 @@ import { RbacSeed, type SeededOrg } from './support/rbac';
 import { signedInStaff, staffEmail } from './support/staff';
 
 /** What nodemailer throws when the relay can't be reached (the staging incident). */
+/** How long to wait for a log line written after the response. */
+const LOG_WAIT = { timeout: 5_000, interval: 25 };
+
 const timeout = () =>
   Object.assign(new Error('Connection timeout while mailing to person@example.test'), {
     code: 'ETIMEDOUT',
@@ -68,7 +71,11 @@ describe('a failing or unreachable mail server never fails or stalls the request
         .get(PrismaService)
         .staffAccount.findUnique({ where: { email: invitee } });
       expect(stored?.status).toBe('invited');
-      await kit.settle();
+      // The failure is logged after the response: wait for it, not a fixed pause (slow under load).
+      await vi.waitFor(
+        () => expect(logged('staff.invitation_mail_failed')).toHaveLength(1),
+        LOG_WAIT,
+      );
       const [line] = logged('staff.invitation_mail_failed');
       expect(line?.err).toEqual({ type: 'Error', code: 'ETIMEDOUT', command: 'CONN' });
       expect(logs.join('')).not.toContain(invitee);
@@ -115,7 +122,10 @@ describe('a failing or unreachable mail server never fails or stalls the request
       const created = await onboard(browser, owner);
 
       expect(created.body).toMatchObject({ owner: { email: owner, status: 'invited' } });
-      await kit.settle();
+      await vi.waitFor(
+        () => expect(logged('staff.customer.owner_mail_failed')).toHaveLength(1),
+        LOG_WAIT,
+      );
       const [line] = logged('staff.customer.owner_mail_failed');
       expect(line?.err).toEqual({ type: 'Error', code: 'ETIMEDOUT', command: 'CONN' });
       expect(logs.join('')).not.toContain(owner);
@@ -151,7 +161,7 @@ describe('a failing or unreachable mail server never fails or stalls the request
         .send({ email: invitee, roleId: org.roles.staff })
         .expect(201);
 
-      await kit.settle();
+      await vi.waitFor(() => expect(logged('invitation mail failed')).toHaveLength(1), LOG_WAIT);
       const failures = logged('invitation mail failed');
       expect(failures).toHaveLength(1);
       expect(failures[0]?.err).toEqual({ type: 'Error', code: 'ETIMEDOUT', command: 'CONN' });
