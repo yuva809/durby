@@ -2,6 +2,12 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from 
 import {
   type CreateReservationRequest,
   createReservationRequestSchema,
+  type CreateWalkInRequest,
+  createWalkInRequestSchema,
+  type SeatReservationRequest,
+  seatReservationRequestSchema,
+  type UndoReservationRequest,
+  undoReservationRequestSchema,
   type Reservation,
   type ReservationDetail,
   type ReservationsListQuery,
@@ -16,6 +22,10 @@ import { Idempotent } from '../../../platform/idempotency';
 import { RequirePermission } from '../../../platform/rbac';
 import { reservationErrors } from '../reservations-errors';
 import { BookingsService } from './bookings.service';
+import { BookingStatusService } from './status.service';
+
+const reservationId = () =>
+  new ParseUUIDPipe({ exceptionFactory: reservationErrors.reservationNotFound });
 
 /**
  * Staff bookings (docs/modules/reservations.md → R1.6 bookings API). The guard checks the key at
@@ -24,7 +34,10 @@ import { BookingsService } from './bookings.service';
 @RequireFeature('reservations')
 @Controller('reservations')
 export class BookingsController {
-  constructor(private readonly bookings: BookingsService) {}
+  constructor(
+    private readonly bookings: BookingsService,
+    private readonly status: BookingStatusService,
+  ) {}
 
   @RequirePermission('reservations.bookings.read')
   @Get()
@@ -61,5 +74,64 @@ export class BookingsController {
     @Body(new ZodBody(updateReservationRequestSchema)) body: UpdateReservationRequest,
   ): Promise<Reservation> {
     return this.bookings.update(id, body);
+  }
+
+  // Status actions (R1.6c): each appends a status change.
+
+  @RequirePermission('reservations.bookings.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post('walk-ins')
+  walkIn(
+    @Body(new ZodBody(createWalkInRequestSchema)) body: CreateWalkInRequest,
+  ): Promise<Reservation> {
+    return this.status.walkIn(body);
+  }
+
+  @RequirePermission('reservations.bookings.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/arrive')
+  arrive(@Param('id', reservationId()) id: string): Promise<Reservation> {
+    return this.status.act(id, 'arrive');
+  }
+
+  @RequirePermission('reservations.bookings.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/seat')
+  seat(
+    @Param('id', reservationId()) id: string,
+    @Body(new ZodBody(seatReservationRequestSchema)) body: SeatReservationRequest,
+  ): Promise<Reservation> {
+    return this.status.act(id, 'seat', body);
+  }
+
+  @RequirePermission('reservations.bookings.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/finish')
+  finish(@Param('id', reservationId()) id: string): Promise<Reservation> {
+    return this.status.act(id, 'finish');
+  }
+
+  @RequirePermission('reservations.bookings.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/no-show')
+  noShow(@Param('id', reservationId()) id: string): Promise<Reservation> {
+    return this.status.act(id, 'no_show');
+  }
+
+  @RequirePermission('reservations.bookings.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/cancel')
+  cancel(@Param('id', reservationId()) id: string): Promise<Reservation> {
+    return this.status.act(id, 'cancel');
+  }
+
+  @RequirePermission('reservations.bookings.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/undo')
+  undo(
+    @Param('id', reservationId()) id: string,
+    @Body(new ZodBody(undoReservationRequestSchema)) body: UndoReservationRequest,
+  ): Promise<Reservation> {
+    return this.status.undo(id, body.changeId);
   }
 }

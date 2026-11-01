@@ -37,6 +37,8 @@ const MANAGE = 'reservations.bookings.manage';
 const READ = 'reservations.bookings.read';
 /** How far back a booking may start (Q4): parties already here are walk-ins. */
 const PAST_GRACE_MS = 15 * 60_000;
+/** Blocking statuses hold their tables (exclusion constraint, covers). */
+export const BLOCKING_STATUSES = ['pending', 'booked', 'arrived', 'seated'] as const;
 const EDITABLE = ['pending', 'booked', 'arrived', 'seated'] as const;
 
 const RESERVATION_SELECT = {
@@ -53,9 +55,12 @@ const RESERVATION_SELECT = {
   createdAt: true,
   guest: { select: { id: true, name: true, email: true, phone: true, locale: true } },
   tables: { select: { tableId: true }, orderBy: { tableId: 'asc' } },
+  // The latest change: what an undo would revert.
+  // Ids are UUID v7: newest id = newest change.
+  changes: { select: { id: true }, orderBy: { id: 'desc' }, take: 1 },
 } as const;
 
-type ReservationRow = {
+export type ReservationRow = {
   id: string;
   number: string;
   locationId: string;
@@ -69,6 +74,7 @@ type ReservationRow = {
   createdAt: Date;
   guest: Reservation['guest'];
   tables: { tableId: string }[];
+  changes: { id: string }[];
 };
 
 /**
@@ -258,27 +264,22 @@ export class BookingsService {
 
   async get(id: string): Promise<ReservationDetail> {
     await this.readable(id);
-    const row = await this.db.reservation.findUnique({
-      where: { id },
-      select: {
-        ...RESERVATION_SELECT,
-        changes: {
-          select: {
-            id: true,
-            fromStatus: true,
-            toStatus: true,
-            undoesId: true,
-            actorKind: true,
-            createdAt: true,
-          },
-          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-        },
-      },
-    });
+    const row = await this.db.reservation.findUnique({ where: { id }, select: RESERVATION_SELECT });
     if (!row) throw reservationErrors.reservationNotFound();
-    const { changes, ...reservation } = row;
+    const changes = await this.db.reservationStatusChange.findMany({
+      where: { reservationId: id },
+      select: {
+        id: true,
+        fromStatus: true,
+        toStatus: true,
+        undoesId: true,
+        actorKind: true,
+        createdAt: true,
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
     return {
-      ...toResponse(reservation),
+      ...toResponse(row),
       history: changes.map((c) => ({
         id: c.id,
         fromStatus: c.fromStatus,
@@ -314,7 +315,7 @@ export class BookingsService {
   }
 
   /** The engine's input for the local date of `start`, read in `tx`. */
-  private async load(
+  async load(
     tx: TenantTransactionClient,
     locationId: string,
     start: Date,
@@ -352,7 +353,7 @@ export class BookingsService {
   }
 
   /** The booking, if the caller reads bookings at its location (else 404). */
-  private async readable(id: string) {
+  async readable(id: string) {
     const found = await this.db.reservation.findUnique({
       where: { id },
       select: { locationId: true },
@@ -364,7 +365,7 @@ export class BookingsService {
   }
 
   /** …and manages them there (else 403). */
-  private async manageable(id: string) {
+  async manageable(id: string) {
     const found = await this.readable(id);
     await this.access.assert(MANAGE, { locationId: found.locationId });
     return found;
@@ -382,8 +383,9 @@ function breachesAllowed(breaches: RuleBreach[], force: boolean | undefined): Ru
   return breaches;
 }
 
-function problemError(
+export function problemError(
   problem: Exclude<ReturnType<typeof evaluateBooking>, { ok: true }>['problem'],
+  nextStartsAt?: string,
 ) {
   switch (problem) {
     case 'table_not_found':
@@ -395,12 +397,12 @@ function problemError(
     case 'table_occupied':
       return reservationErrors.tableOccupied();
     case 'table_unavailable':
-      return reservationErrors.tableUnavailable();
+      return reservationErrors.tableUnavailable(nextStartsAt ? { nextStartsAt } : undefined);
   }
 }
 
 /** The guest as typed, with the phone in E.164 for the location's country (422 when invalid). */
-function guestDetails(
+export function guestDetails(
   guest: ReservationGuestInput,
   settings: ReadonlyMap<string, { value: unknown }>,
 ): Partial<GuestDetails> {
@@ -420,7 +422,7 @@ function guestDetails(
 }
 
 /** The table rows; `period` and `blocking` match the reservation (its trigger checks). */
-async function insertTables(
+export async function insertTables(
   tx: TenantTransactionClient,
   tenantId: string,
   reservationId: string,
@@ -441,7 +443,7 @@ async function insertTables(
 }
 
 /** Runs `fn`; the exclusion constraint's violation (another booking won the race) → 409. */
-async function exclusive<T>(fn: () => Promise<T>): Promise<T> {
+export async function exclusive<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (error) {
@@ -455,7 +457,7 @@ function isExclusionViolation(error: unknown): boolean {
   return text.includes('23P01') || text.includes('reservation_tables_no_overlap');
 }
 
-async function read(tx: TenantTransactionClient, id: string): Promise<ReservationRow> {
+export async function read(tx: TenantTransactionClient, id: string): Promise<ReservationRow> {
   const row = await tx.reservation.findUnique({ where: { id }, select: RESERVATION_SELECT });
   if (!row) throw reservationErrors.reservationNotFound();
   return row;
@@ -475,17 +477,17 @@ function reservationFields(row: ReservationRow) {
   };
 }
 
-const reservationSnapshot = (row: ReservationRow) =>
+export const reservationSnapshot = (row: ReservationRow) =>
   snapshot('reservation', reservationFields(row));
 
-const payloadOf = (row: ReservationRow) => ({
+export const payloadOf = (row: ReservationRow) => ({
   reservationId: row.id,
   locationId: row.locationId,
   status: row.status,
   startsAt: row.startsAt.toISOString(),
 });
 
-function toResponse(row: ReservationRow): Reservation {
+export function toResponse(row: ReservationRow): Reservation {
   return {
     id: row.id,
     number: row.number,
@@ -500,5 +502,6 @@ function toResponse(row: ReservationRow): Reservation {
     guestNote: row.guestNote,
     staffNote: row.staffNote,
     createdAt: row.createdAt.toISOString(),
+    lastChangeId: row.changes[0]!.id,
   };
 }

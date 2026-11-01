@@ -53,6 +53,12 @@ export const reservationErrors = {
       'Not a valid phone number.',
       { field },
     ),
+  undoExpired: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'reservations.undo_expired',
+      'Only the latest change can be undone, within 5 minutes.',
+    ),
   invalidTransition: (details: { from: string; to?: string }) =>
     new ApiError(
       HttpStatus.CONFLICT,
