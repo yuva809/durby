@@ -29,6 +29,13 @@ describe('GET /reservations/availability', () => {
   let entitlements: EntitlementsAdmin;
   /** Every Prisma operation the api runs, counted below the tenant client (also inside transactions). */
   const operations: string[] = [];
+  /** The SQL of a raw operation (a tagged template's strings, or Prisma's Sql object). */
+  const sqlOf = (args: unknown): string => {
+    const first: unknown = Array.isArray(args) ? args[0] : args;
+    if (Array.isArray(first)) return first.join('?').trim();
+    const strings = (first as { strings?: unknown } | null)?.strings;
+    return Array.isArray(strings) ? strings.join('?').trim() : String(first);
+  };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -40,7 +47,7 @@ describe('GET /reservations/availability', () => {
             prisma.$extends({
               query: {
                 $allOperations({ model, operation, args, query }) {
-                  operations.push(`${model ?? 'raw'}.${operation}`);
+                  operations.push(model ? `${model}.${operation}` : `raw: ${sqlOf(args)}`);
                   return query(args);
                 },
               },
@@ -228,17 +235,15 @@ describe('GET /reservations/availability', () => {
     const loader = app.get(AvailabilityLoader);
     const count = async () => {
       operations.length = 0;
-      await app
-        .get(TenantContext)
-        .run({ tenantId: r.org.id, userId: uuidv7() }, () =>
-          loader.load({
-            locationId: r.here,
-            date: SAT,
-            partySize: 2,
-            channel: 'staff',
-            now: new Date(),
-          }),
-        );
+      await app.get(TenantContext).run({ tenantId: r.org.id, userId: uuidv7() }, () =>
+        loader.load({
+          locationId: r.here,
+          date: SAT,
+          partySize: 2,
+          channel: 'staff',
+          now: new Date(),
+        }),
+      );
       return [...operations];
     };
     const empty = await count();
@@ -253,24 +258,24 @@ describe('GET /reservations/availability', () => {
     }
     const busy = await count();
     expect(busy).toEqual(empty);
-    // Settings: the location (one transaction), then the stored values (another). Then tables, table
-    // rules, combinations, bookings and open orders, each in its own. Every transaction first sets
-    // app.tenant_id (raw.$executeRaw).
-    expect(empty.filter((op) => !op.startsWith('raw.')).sort()).toEqual(
-      [
-        'Location.findUnique',
-        'Organization.findUnique',
-        'PartnerSettingValue.findMany',
-        'SettingValue.findMany',
-        'DiningTable.findMany',
-        'ReservationTableRule.findMany',
-        'ReservationCombination.findMany',
-        'Reservation.findMany',
-        'PosOrder.findMany',
-      ].sort(),
-    );
-    expect(empty.filter((op) => op === 'raw.$executeRaw')).toHaveLength(7);
-    expect(empty).toHaveLength(16);
+    // One read-only REPEATABLE READ transaction: the tenant client sets app.tenant_id once (one
+    // set_config = one transaction), the loader makes it read-only, then 9 queries: settings (the
+    // location, then the stored values), tables, table rules, combinations, bookings, open orders.
+    expect(empty.slice(0, 2)).toEqual([
+      "raw: SELECT set_config('app.tenant_id', ?, true)",
+      'raw: SET TRANSACTION READ ONLY',
+    ]);
+    expect(empty.slice(2)).toEqual([
+      'Location.findUnique',
+      'Organization.findUnique',
+      'PartnerSettingValue.findMany',
+      'SettingValue.findMany',
+      'DiningTable.findMany',
+      'ReservationTableRule.findMany',
+      'ReservationCombination.findMany',
+      'Reservation.findMany',
+      'PosOrder.findMany',
+    ]);
   });
 
   describe('access and validation', () => {

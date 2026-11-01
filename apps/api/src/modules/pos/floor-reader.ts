@@ -1,7 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { TableColor, TableShape } from '@durby/shared';
 import { z } from 'zod';
-import { TENANT_PRISMA, type TenantPrismaClient } from '../../platform/tenancy';
+import {
+  TENANT_PRISMA,
+  type TenantPrismaClient,
+  type TenantTransactionClient,
+} from '../../platform/tenancy';
 
 /** A dining table as other modules see it (docs/modules/reservations.md → R0.3). */
 export interface FloorTable {
@@ -54,10 +58,13 @@ const uuid = z.uuid();
 export class PosFloorReader {
   constructor(@Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient) {}
 
-  /** The location's tables in service (not archived), in floor order. */
-  async tablesAt(locationId: string): Promise<FloorTable[]> {
+  /**
+   * The location's tables in service (not archived), in floor order. Pass the caller's `tx` to read
+   * in its transaction (one snapshot with the caller's other reads).
+   */
+  async tablesAt(locationId: string, tx?: TenantTransactionClient): Promise<FloorTable[]> {
     if (!uuid.safeParse(locationId).success) return [];
-    const rows = await this.db.diningTable.findMany({
+    const rows = await (tx ?? this.db).diningTable.findMany({
       where: { locationId, archivedAt: null },
       select: TABLE_SELECT,
       orderBy: [...FLOOR_ORDER],
@@ -72,10 +79,10 @@ export class PosFloorReader {
     return row ? toFloorTable(row) : null;
   }
 
-  /** The location's open orders, one per table at most, in floor order of their tables. */
-  async openOrders(locationId: string): Promise<OpenOrderRef[]> {
+  /** The location's open orders, one per table at most, in floor order of their tables; `tx` as above. */
+  async openOrders(locationId: string, tx?: TenantTransactionClient): Promise<OpenOrderRef[]> {
     if (!uuid.safeParse(locationId).success) return [];
-    const rows = await this.db.posOrder.findMany({
+    const rows = await (tx ?? this.db).posOrder.findMany({
       where: { locationId, status: 'open' },
       select: { id: true, tableId: true, openedAt: true, covers: true },
       orderBy: [{ table: { sortOrder: 'asc' } }, { table: { name: 'asc' } }, { tableId: 'asc' }],

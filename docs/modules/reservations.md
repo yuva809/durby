@@ -399,10 +399,11 @@ takes plain data and returns slots; no database, no clock (`now` is an input), s
 fast unit tests. A loader (`AvailabilityLoader`, `availability/loader.ts`) reads one location and one local day in
 **one fixed batch of queries**, independent of how many bookings or slots there are: the location's settings
 (`SettingsService.all`: the location, then the stored values; an unknown or foreign location is
-`404 reservations.location_not_found`), then in parallel the tables and open pos orders (`PosFloorReader`), table
+`404 reservations.location_not_found`), then the tables and open pos orders (`PosFloorReader`), table
 rules, combinations (not archived, with their tables) and the blocking bookings that can touch a slot of the day
 (`starts_at < end of the local day + the party's turn time`, and `ends_at > start of the day` or `seated`, for
-overrun). That is 9 queries in 7 transactions (each sets `app.tenant_id`); `reservations-availability.e2e.spec.ts`
+overrun). All 9 queries run in **one read-only `REPEATABLE READ` transaction** (one pooled connection per call, one
+consistent snapshot; `PosFloorReader` and `SettingsService.all` take the caller's `tx`); `reservations-availability.e2e.spec.ts`
 pins the operations and shows the count doesn't grow with bookings. No query per slot or per booking.
 `GET /reservations/availability` (staff channel, `now` from `Clock`) checks `reservations.bookings.read` at the
 location first; `excludeReservationId` (moving a booking) comes with the bookings API in R1.6.
