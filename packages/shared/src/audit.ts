@@ -29,6 +29,7 @@ export const AUDIT_ENTITY_TYPES = [
   'location',
   'reservation_table_rule',
   'reservation_combination',
+  'reservation',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -205,6 +206,19 @@ export const AUDIT_ACTIONS = {
     entityType: 'reservation_combination',
     label: 'reservations.audit.actions.combinationUpdated',
   },
+  'reservations.reservation.created': {
+    entityType: 'reservation',
+    label: 'reservations.audit.actions.reservationCreated',
+  },
+  'reservations.reservation.updated': {
+    entityType: 'reservation',
+    label: 'reservations.audit.actions.reservationUpdated',
+  },
+  /** Staff `force`: booked past pacing or outside the reservation hours (`overriddenRules`). */
+  'reservations.reservation.rules_overridden': {
+    entityType: 'reservation',
+    label: 'reservations.audit.actions.reservationRulesOverridden',
+  },
 } as const satisfies Record<string, AuditActionDefinition>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -306,5 +320,18 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'maxParty',
     'onlineBookable',
     'archivedAt',
+  ],
+  /** Never guest data or notes (free text). */
+  reservation: [
+    'id',
+    'number',
+    'locationId',
+    'partySize',
+    'startsAt',
+    'endsAt',
+    'status',
+    'source',
+    'tableIds',
+    'overriddenRules',
   ],
 } as const satisfies Record<AuditEntityType, readonly string[]>;
