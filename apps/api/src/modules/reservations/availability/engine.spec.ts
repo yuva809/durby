@@ -293,6 +293,20 @@ describe('table choice', () => {
     expect(tableOf(slotAt(result, '19:00'))).toBe('T6');
   });
 
+  it("keeps 2 guests off a 6-top whose rule says min party 4, even when it's the only free table", () => {
+    const sixMin4 = table('T6', 6, { minParty: 4 });
+    const result = availability(
+      input({
+        tables: [T2A, T2B, sixMin4],
+        bookings: [booking(['T2a'], '19:00', '21:00'), booking(['T2b'], '19:00', '21:00')],
+      }),
+    );
+    expect(slotAt(result, '19:30')).toMatchObject({ status: 'full', reason: 'no_table' });
+    // 4 guests may have it.
+    const four = availability(input({ partySize: 4, tables: [T2A, T2B, sixMin4] }));
+    expect(tableOf(slotAt(four, '19:30'))).toBe('T6');
+  });
+
   it('never books a walk-in-only table, nor a combination containing one', () => {
     const tables = [T4, WALK];
     const combos = [combination('T4+W4', ['T4', 'W4'], 5, 8)];
