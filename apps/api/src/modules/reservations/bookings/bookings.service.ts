@@ -274,6 +274,7 @@ export class BookingsService {
         toStatus: true,
         undoesId: true,
         actorKind: true,
+        sourceOrderId: true,
         createdAt: true,
       },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
@@ -286,6 +287,7 @@ export class BookingsService {
         toStatus: c.toStatus,
         undoesId: c.undoesId,
         actorKind: c.actorKind as 'user' | 'guest' | 'system',
+        sourceOrderId: c.sourceOrderId,
         createdAt: c.createdAt.toISOString(),
       })),
     };

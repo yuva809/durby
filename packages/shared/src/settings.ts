@@ -176,6 +176,16 @@ export const SETTINGS = {
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
+  // How far a till order's opening may be from a booking's start to belong to that party (R1.7):
+  // auto-seat, manual seat over an open order, and finish on close all use it.
+  'reservations.orderMatchWindowMinutes': define({
+    label: 'platform.settings.reservationsOrderMatchWindowMinutes.name',
+    description: 'platform.settings.reservationsOrderMatchWindowMinutes.description',
+    schema: z.int().min(5).max(120),
+    default: 30,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
   'reservations.autoConfirm': define({
     label: 'platform.settings.reservationsAutoConfirm.name',
     description: 'platform.settings.reservationsAutoConfirm.description',

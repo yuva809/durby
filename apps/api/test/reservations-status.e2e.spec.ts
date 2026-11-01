@@ -237,7 +237,8 @@ describe('reservations: status actions, undo, walk-ins', () => {
 
     it('re-checks the tables: an open pos order or a party too big refuses', async () => {
       const r = await restaurant();
-      const b = await book(r, { startsAt: fromNow(5), tableIds: [r.t4] });
+      // 45 min ahead: an order opening now is someone else's (outside ±30, R1.7).
+      const b = await book(r, { startsAt: fromNow(45), tableIds: [r.t4] });
       await openOrderOn(r, r.t4);
       // Without new tables: its own table is occupied now.
       const own = await act(r.owner, b.id, 'seat').expect(409);
@@ -298,7 +299,9 @@ describe('reservations: status actions, undo, walk-ins', () => {
         409,
       );
       expect(stale.body).toMatchObject({ code: 'reservations.undo_expired' });
-      clock.advance(5 * 60_000 + 1_000);
+      // From the change's own time: under load it is written seconds after the test started.
+      const change = (await detail(r.owner, b.id)).history.at(-1)!;
+      clock.set(new Date(Date.parse(change.createdAt) + 5 * 60_000 + 1_000));
       await act(r.owner, b.id, 'undo', { changeId: seated.lastChangeId }).expect(409);
     });
 

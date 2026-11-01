@@ -41,6 +41,7 @@ describe('settings registry', () => {
       'reservations.maxCoversPerSlot',
       'reservations.lastBookingOffsetMinutes',
       'reservations.online.instantMaxParty',
+      'reservations.orderMatchWindowMinutes',
       'reservations.autoConfirm',
       'reservations.holdMinutes',
       'inventory.valuationMethod',

@@ -4,6 +4,7 @@ import { AvailabilityController } from './availability/availability.controller';
 import { AvailabilityLoader } from './availability/loader';
 import { BookingsController } from './bookings/bookings.controller';
 import { BookingsService } from './bookings/bookings.service';
+import { PosEventsHandler } from './bookings/pos-events.handler';
 import { BookingStatusService } from './bookings/status.service';
 import { FloorController } from './floor.controller';
 import { FloorService } from './floor.service';
@@ -34,6 +35,7 @@ import { TableRulesService } from './setup/table-rules.service';
     LocationSettingsService,
     BookingsService,
     BookingStatusService,
+    PosEventsHandler,
   ],
 })
 export class ReservationsModule {}

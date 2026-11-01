@@ -1223,6 +1223,9 @@ model ReservationStatusChange {
   previousStartsAt DateTime?          @map("previous_starts_at") @db.Timestamptz(6)
   previousEndsAt   DateTime?          @map("previous_ends_at") @db.Timestamptz(6)
   previousTableIds String[]           @map("previous_table_ids") @db.Uuid
+  /// The till order behind a system change (auto-seat on pos.order.opened, finish on pos.order.closed); no FK:
+  /// pos's table, referenced by id only (R1.7).
+  sourceOrderId    String?            @map("source_order_id") @db.Uuid
   createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   organization     Organization       @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   reservation      Reservation        @relation(fields: [tenantId, reservationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)

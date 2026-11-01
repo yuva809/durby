@@ -1013,5 +1013,8 @@
   "reservations.errors.undoExpired": "Das lässt sich nicht mehr rückgängig machen.",
   "reservations.audit.actions.reservationStatusChanged": "Reservierungsstatus geändert",
   "reservations.audit.actions.reservationStatusUndone": "Statusänderung der Reservierung rückgängig gemacht",
-  "reservations.errors.tableNotInService": "Ein Tisch dieser Reservierung ist nicht mehr in Betrieb. Die Reservierung an einen anderen Tisch verlegen."
+  "reservations.errors.tableNotInService": "Ein Tisch dieser Reservierung ist nicht mehr in Betrieb. Die Reservierung an einen anderen Tisch verlegen.",
+  "platform.settings.reservationsOrderMatchWindowMinutes.name": "Zuordnungsfenster für Bestellungen (Minuten)",
+  "platform.settings.reservationsOrderMatchWindowMinutes.description": "Wie weit die Eröffnung einer Kassenbestellung vom Beginn einer Reservierung entfernt sein darf, um dazuzugehören: Die Reservierung wird beim Öffnen platziert und beim Schließen beendet.",
+  "platform.audit.fields.sourceOrderId": "Kassenbestellung"
 }

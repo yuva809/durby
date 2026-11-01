@@ -56,3 +56,12 @@ export function undoable(
     now.getTime() - latest.createdAt.getTime() <= UNDO_WINDOW_MS
   );
 }
+
+/**
+ * Whether a till order belongs to the party of a booking starting at `startsAt`: opened within
+ * ±`windowMinutes` (setting `reservations.orderMatchWindowMinutes`). An older order is the previous
+ * party's, a much later one a walk-in's (docs/modules/reservations.md → R1.7).
+ */
+export function isPartyOrder(openedAt: Date, startsAt: Date, windowMinutes: number): boolean {
+  return Math.abs(openedAt.getTime() - startsAt.getTime()) <= windowMinutes * 60_000;
+}

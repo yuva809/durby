@@ -24,6 +24,7 @@ describe('event registry', () => {
       'config.labels.changed',
       'config.number_series.changed',
       'config.entitlements.changed',
+      'pos.order.opened',
       'pos.order.closed',
       'reservations.reservation.created',
       'reservations.reservation.updated',
