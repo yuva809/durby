@@ -36,7 +36,9 @@ export function WeeklyHoursEditor({
     onChange({ ...value, [day]: windows });
 
   return (
-    <ul className="flex w-full flex-col gap-2" aria-describedby={describedBy}>
+    // A container: the "add window" text shows only where the editor itself is wide enough
+    // (a German label wrapped onto its own line on a tablet).
+    <ul className="@container flex w-full flex-col gap-2" aria-describedby={describedBy}>
       {WEEKDAYS.map((day) => {
         const windows = value[day];
         const last = windows.at(-1);
@@ -101,7 +103,9 @@ export function WeeklyHoursEditor({
               {!disabled && windows.length < MAX_WINDOWS && (
                 <Button
                   variant="outline"
-
+                  aria-label={t('platform.settingsPage.addWindow')}
+                  title={t('platform.settingsPage.addWindow')}
+                  className="px-3 @2xl:px-4"
                   onClick={() => {
                     // Starts where the last window ends, so it never overlaps by default.
                     const from = last?.to ?? '12:00';
@@ -109,7 +113,7 @@ export function WeeklyHoursEditor({
                   }}
                 >
                   <Plus aria-hidden className="size-4" />
-                  {t('platform.settingsPage.addWindow')}
+                  <span className="hidden @2xl:inline">{t('platform.settingsPage.addWindow')}</span>
                 </Button>
               )}
             </div>

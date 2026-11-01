@@ -674,6 +674,19 @@ organization id like invitation tokens (`issueInvitationToken`), and its hash is
 - Audit `reservations.table_rule.updated` and `reservations.combination.created` / `.updated` in the change's
   transaction (allow-listed fields, see Audit). No outbox events: nothing consumes setup changes.
 
+### R1.5c location settings API (ADR 0020)
+
+- **`GET /reservations/settings?locationId=`** (`reservations.setup.manage` at the location): every registered
+  `reservations.*` key that allows location scope, resolved there with its source (`location` when set here, else the
+  level it inherits from), plus the location's resolved `openingHours` (read-only, to explain service hours).
+- **`PUT /reservations/settings/:key?locationId=`** `{ value }` and **`DELETE`** (inherit), both
+  `reservations.setup.manage` at the location, `@Idempotent()`. `:key` must be one of those keys (else 400);
+  `openingHours`, `closedDates`, `timezone` and every other key stay on `platform.settings.manage`. Writes go through
+  `SettingsAdmin` with the delegated key: same validation (`422 settings.invalid_value`), audit
+  (`platform.setting_value.*`) and `config.settings.changed` as the settings api.
+- **Service hours wider than opening hours** are saved (the engine intersects, so the extra part is never offered); the
+  tab shows which parts fall outside per weekday (`windowsOutside` in `packages/shared/src/time`).
+
 ## Errors
 
 | Code                                   | Status | When                                                                                         |

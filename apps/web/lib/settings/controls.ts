@@ -133,6 +133,11 @@ export function codeDefaults(): ResolvedSetting[] {
   }));
 }
 
-/** "Set here" for an organization value; anything else is inherited (partner or default). */
-export const isSetHere = (setting: Pick<ResolvedSetting, 'source'>): boolean =>
-  setting.source === 'organization';
+/**
+ * "Set here" for a value stored at the page's own level (`scope`: the organization on the General
+ * tab, a location on Settings → Reservations); anything else is inherited.
+ */
+export const isSetHere = (
+  setting: Pick<ResolvedSetting, 'source'>,
+  scope: 'organization' | 'location' = 'organization',
+): boolean => setting.source === scope;

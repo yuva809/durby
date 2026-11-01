@@ -984,5 +984,9 @@
   "reservations.combinationsCard.archiveDescription": "Sie wird für neue Buchungen nicht mehr angeboten. Bestehende Buchungen behalten ihre Tische.",
   "reservations.combinationsCard.showArchived": "Archivierte anzeigen",
   "reservations.combinationsCard.hideArchived": "Archivierte ausblenden",
-  "reservations.combinationsCard.unknownTable": "Tisch nicht mehr in Betrieb"
+  "reservations.combinationsCard.unknownTable": "Tisch nicht mehr in Betrieb",
+  "reservations.locationSettings.title": "Reservierungseinstellungen für diesen Standort",
+  "reservations.locationSettings.intro": "Hier gesetzte Werte gelten nur für {location}; alles andere wird von der Organisation übernommen (Einstellungen → Allgemein). Öffnungszeiten und Schließtage stehen unter „Allgemein“.",
+  "reservations.locationSettings.outsideIntro": "Reservierungszeiten können die Öffnungszeiten nur einschränken. Diese Zeiten liegen außerhalb der Öffnungszeiten und werden nicht angeboten:",
+  "reservations.locationSettings.outside": "{day} {from}–{to}"
 }

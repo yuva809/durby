@@ -5,6 +5,7 @@ import {
   serviceWindowsOn,
   type WeeklyHours,
   weeklyHoursSchema,
+  windowsOutside,
 } from './opening-hours';
 import { addDays } from './zoned';
 
@@ -140,6 +141,55 @@ describe('serviceWindowsOn', () => {
     ]);
     expect(serviceWindowsOn('2026-10-24', late, [], BERLIN).map(iso)).toEqual([
       ['2026-10-24T21:00:00.000Z', '2026-10-25T01:30:00.000Z'],
+    ]);
+  });
+});
+
+describe('windowsOutside', () => {
+  const open = week({
+    mon: [{ from: '11:00', to: '23:00' }],
+    fri: [{ from: '17:00', to: '02:00' }],
+    sat: [
+      { from: '11:00', to: '14:00' },
+      { from: '17:00', to: '23:00' },
+    ],
+  });
+
+  it('is empty when the service hours lie inside the opening hours', () => {
+    expect(windowsOutside(open, open)).toEqual([]);
+    expect(
+      windowsOutside(
+        week({ mon: [{ from: '12:00', to: '22:00' }], fri: [{ from: '18:00', to: '01:00' }] }),
+        open,
+      ),
+    ).toEqual([]);
+  });
+
+  it('lists the parts outside, per weekday, past midnight and across a gap', () => {
+    expect(
+      windowsOutside(
+        week({
+          mon: [{ from: '10:00', to: '23:30' }],
+          tue: [{ from: '12:00', to: '14:00' }], // closed on Tuesdays
+          fri: [{ from: '18:00', to: '03:00' }],
+          sat: [{ from: '12:00', to: '20:00' }], // runs through the afternoon gap
+        }),
+        open,
+      ),
+    ).toEqual([
+      { day: 'mon', from: '10:00', to: '11:00' },
+      { day: 'mon', from: '23:00', to: '23:30' },
+      { day: 'tue', from: '12:00', to: '14:00' },
+      { day: 'fri', from: '02:00', to: '03:00' },
+      { day: 'sat', from: '14:00', to: '17:00' },
+    ]);
+  });
+
+  it("compares each day with that day's opening hours only, like the engine", () => {
+    // Friday's opening runs to 02:00 Saturday, but a Saturday 00:30 window starts on Saturday,
+    // whose own opening hours start at 11:00: it is outside (the engine never offers it).
+    expect(windowsOutside(week({ sat: [{ from: '00:30', to: '01:30' }] }), open)).toEqual([
+      { day: 'sat', from: '00:30', to: '01:30' },
     ]);
   });
 });

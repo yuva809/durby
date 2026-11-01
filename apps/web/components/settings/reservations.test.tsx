@@ -85,8 +85,40 @@ function api(answers: Record<string, (query: URLSearchParams) => Response>) {
   return { writes, reads };
 }
 
+const OPEN_SAT = {
+  mon: [{ from: '11:00', to: '23:00' }],
+  tue: [{ from: '11:00', to: '23:00' }],
+  wed: [{ from: '11:00', to: '23:00' }],
+  thu: [{ from: '11:00', to: '23:00' }],
+  fri: [{ from: '11:00', to: '23:00' }],
+  sat: [{ from: '11:00', to: '23:00' }],
+  sun: [{ from: '11:00', to: '23:00' }],
+};
+const setting = (key: string, value: unknown, source = 'default') => ({
+  key,
+  value,
+  source,
+  dataBound: false,
+});
+const LOCATION_SETTINGS = {
+  data: [
+    setting(
+      'reservations.serviceHours',
+      {
+        ...OPEN_SAT,
+        sat: [{ from: '10:00', to: '23:30' }],
+      },
+      'location',
+    ),
+    setting('reservations.slotIntervalMinutes', 15, 'organization'),
+    setting('reservations.holdMinutes', 5),
+  ],
+  openingHours: OPEN_SAT,
+};
+
 const answers = {
   'GET /api/v1/locations': () => Response.json({ data: [MAIN, HARBOUR] }),
+  'GET /api/v1/reservations/settings': () => Response.json(LOCATION_SETTINGS),
   'GET /api/v1/reservations/tables': (q: URLSearchParams) =>
     Response.json({ data: q.get('locationId') === HARBOUR.id ? [PIER] : [T2, T4, T6] }),
   'GET /api/v1/reservations/combinations': (q: URLSearchParams) =>
@@ -289,6 +321,85 @@ describe('ReservationsSetupPage: combinations', () => {
         method: 'PATCH',
         path: `/api/v1/reservations/combinations/${COMBO.id}`,
         body: { archived: true },
+      },
+    ]);
+  });
+});
+
+describe('ReservationsSetupPage: location settings', () => {
+  const settingRow = (key: string) =>
+    screen.getAllByTestId('setting').find((r) => r.dataset.key === key)!;
+
+  it("shows the location's reservations settings with where each comes from", async () => {
+    signedInAs('manager');
+    const { reads } = api(answers);
+    render(<ReservationsSetupPage />);
+    await screen.findAllByTestId('setting');
+    expect(screen.getAllByTestId('setting').map((r) => r.dataset.key)).toEqual([
+      'reservations.serviceHours',
+      'reservations.slotIntervalMinutes',
+      'reservations.holdMinutes',
+    ]);
+    expect(
+      within(settingRow('reservations.serviceHours')).getByTestId('setting-source').textContent,
+    ).toBe('Set here');
+    expect(
+      within(settingRow('reservations.slotIntervalMinutes')).getByTestId('setting-source')
+        .textContent,
+    ).toBe('Inherited');
+    expect(reads.some((r) => r === `/api/v1/reservations/settings?locationId=${MAIN.id}`)).toBe(
+      true,
+    );
+    // Never platform keys here.
+    expect(screen.queryAllByTestId('setting').some((r) => r.dataset.key === 'openingHours')).toBe(
+      false,
+    );
+  });
+
+  it('explains the parts of the service hours outside the opening hours', async () => {
+    signedInAs('manager');
+    api(answers);
+    render(<ReservationsSetupPage />);
+    await screen.findAllByTestId('setting');
+    const outside = within(settingRow('reservations.serviceHours')).getByTestId('service-outside');
+    expect(outside.textContent).toContain('Saturday 10:00–11:00');
+    expect(outside.textContent).toContain('Saturday 23:00–23:30');
+  });
+
+  it('sets a value at the location and inherits it again', async () => {
+    signedInAs('manager');
+    const { writes } = api({
+      ...answers,
+      'PUT /api/v1/reservations/settings/reservations.slotIntervalMinutes': () =>
+        Response.json(setting('reservations.slotIntervalMinutes', 30, 'location')),
+      'DELETE /api/v1/reservations/settings/reservations.serviceHours': () =>
+        new Response(null, { status: 204 }),
+    });
+    render(<ReservationsSetupPage />);
+    await screen.findAllByTestId('setting');
+    const slot = settingRow('reservations.slotIntervalMinutes');
+    await userEvent.selectOptions(within(slot).getByTestId('setting-value'), '30');
+    await userEvent.click(within(slot).getByTestId('setting-save'));
+    await waitFor(() =>
+      expect(
+        within(settingRow('reservations.slotIntervalMinutes')).getByTestId('setting-source')
+          .textContent,
+      ).toBe('Set here'),
+    );
+    await userEvent.click(
+      within(settingRow('reservations.serviceHours')).getByTestId('setting-inherit'),
+    );
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes).toEqual([
+      {
+        method: 'PUT',
+        path: '/api/v1/reservations/settings/reservations.slotIntervalMinutes',
+        body: { value: 30 },
+      },
+      {
+        method: 'DELETE',
+        path: '/api/v1/reservations/settings/reservations.serviceHours',
+        body: null,
       },
     ]);
   });

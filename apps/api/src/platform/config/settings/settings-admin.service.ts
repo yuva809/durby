@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   isSettingKey,
   type NewEvent,
+  type PermissionKey,
   SETTINGS,
   type SettingKey,
   settingAllowsScope,
@@ -24,6 +25,14 @@ import { settingsErrors } from './settings-errors';
 import { type SettingsAt, SettingsService, targetOf } from './settings.service';
 
 const MANAGE = 'platform.settings.manage';
+
+/**
+ * A module's own permission key that may stand in for platform.settings.manage (ADR 0020): only for
+ * that module's own `module.*` keys, and only at a location.
+ */
+export interface DelegatedSettingsWrite {
+  permission: PermissionKey;
+}
 
 interface StoredRow {
   id: string;
@@ -52,7 +61,12 @@ export class SettingsAdmin {
   ) {}
 
   /** Sets `value` at exactly `at`; returns the key resolved there. */
-  async set(rawKey: string, at: SettingsAt, value: unknown): Promise<ResolvedSettingValue> {
+  async set(
+    rawKey: string,
+    at: SettingsAt,
+    value: unknown,
+    delegated?: DelegatedSettingsWrite,
+  ): Promise<ResolvedSettingValue> {
     const key = requireKey(rawKey);
     const scope = scopeOf(at);
     if (!settingAllowsScope(key, scope.type)) {
@@ -60,7 +74,7 @@ export class SettingsAdmin {
     }
     const parsed = SETTINGS[key].schema.safeParse(value);
     if (!parsed.success) throw settingsErrors.invalidValue(key, issuesOf(parsed.error));
-    await this.assertMayManage(at);
+    await this.assertMayManage(key, at, delegated);
 
     const { tenantId, userId } = this.tenantContext.require();
     const write = () =>
@@ -101,11 +115,11 @@ export class SettingsAdmin {
   }
 
   /** Removes the value at exactly `at`, so the scope inherits again. No value: nothing happens. */
-  async remove(rawKey: string, at: SettingsAt): Promise<void> {
+  async remove(rawKey: string, at: SettingsAt, delegated?: DelegatedSettingsWrite): Promise<void> {
     const key = requireKey(rawKey);
     const scope = scopeOf(at);
     // No scope check: a value left at a scope the key no longer allows can still be cleaned up.
-    await this.assertMayManage(at);
+    await this.assertMayManage(key, at, delegated);
     const { tenantId, userId } = this.tenantContext.require();
     await this.db.$transaction(async (tx) => {
       await targetOf(tx, at);
@@ -124,8 +138,23 @@ export class SettingsAdmin {
     this.settings.forget();
   }
 
-  /** Location values: the key at that location. Organization and brand: for all locations. */
-  private assertMayManage(at: SettingsAt): Promise<void> {
+  /**
+   * Location values: the key at that location. Organization and brand: for all locations. A
+   * delegated write checks the module's key at the location instead (ADR 0020); asking for anything
+   * else is a programming error.
+   */
+  private assertMayManage(
+    key: SettingKey,
+    at: SettingsAt,
+    delegated?: DelegatedSettingsWrite,
+  ): Promise<void> {
+    if (delegated) {
+      const module = delegated.permission.split('.')[0];
+      if (at.locationId === undefined || !key.startsWith(`${module}.`)) {
+        throw new Error(`${delegated.permission} can't write ${key} at this scope (ADR 0020)`);
+      }
+      return this.access.assert(delegated.permission, { locationId: at.locationId });
+    }
     return at.locationId !== undefined
       ? this.access.assert(MANAGE, { locationId: at.locationId })
       : this.access.assert(MANAGE);

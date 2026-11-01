@@ -116,6 +116,6 @@ describe('setting controls from the registry', () => {
       source: 'default',
       dataBound: true,
     });
-    expect(defaults.some(isSetHere)).toBe(false);
+    expect(defaults.some((s) => isSetHere(s))).toBe(false);
   });
 });

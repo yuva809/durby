@@ -19,6 +19,6 @@ import { SettingsService } from './settings.service';
     SettingInUseChecks,
     { provide: INVITATION_SETTINGS, useExisting: SettingsService },
   ],
-  exports: [SettingsService, SettingInUseChecks, INVITATION_SETTINGS],
+  exports: [SettingsService, SettingsAdmin, SettingInUseChecks, INVITATION_SETTINGS],
 })
 export class SettingsModule {}
