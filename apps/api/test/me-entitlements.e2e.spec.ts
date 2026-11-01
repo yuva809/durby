@@ -64,7 +64,10 @@ describe('GET /me/entitlements and activeFeatures', () => {
 
     const body = await entitlements(token);
     expect(body.plan).toEqual({ key: 'full' });
-    const enabled = FEATURE_KEYS.filter((key) => key !== 'pos' && key !== 'pos.fiscal');
+    // pos off also turns off what depends on it: pos.fiscal, reservations and, through
+    // reservations, reservations.online (dependsOn, ADR 0009).
+    const offWithPos = ['pos', 'pos.fiscal', 'reservations', 'reservations.online'];
+    const enabled = FEATURE_KEYS.filter((key) => !offWithPos.includes(key));
     expect(body.features.map((f) => f.key)).toEqual(enabled);
     expect(body.features.find((f) => f.key === 'inventory')?.limits).toEqual({
       maxLocations: null,

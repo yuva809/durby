@@ -40,7 +40,8 @@ function prisma(args: string[], migrationUrl: string): void {
 
 /**
  * docs/platform/entitlements.md → Seeded plans, after every migration: the 1.5 seed plus `catalog`
- * (added to every plan by the catalog_and_tables migration, ADR 0016).
+ * (added to every plan by the catalog_and_tables migration, ADR 0016) and `reservations`,
+ * `reservations.online` (added to `full` only by the reservations_features migration).
  */
 const SEEDED = {
   inventory: ['catalog', 'inventory', 'inventory.counts', 'inventory.purchasing', 'reports'],
@@ -64,9 +65,13 @@ const SEEDED = {
     'pos',
     'pos.fiscal',
     'reports',
+    'reservations',
+    'reservations.online',
     'whitelabel',
   ],
 };
+
+const RESERVATIONS = ['reservations', 'reservations.online'];
 
 /**
  * The entitlements migration on a database with existing organizations, as on staging (ADR 0004).
@@ -161,20 +166,26 @@ describe('entitlements migration', () => {
         })),
       );
 
-      // catalog_and_tables: one plan-contents row per organization on a changed plan (ADR 0009).
-      const fullBefore = SEEDED.full.filter((key) => key !== 'catalog');
+      // One plan-contents row per organization on a changed plan and migration (ADR 0009):
+      // catalog_and_tables (catalog), then reservations_features (reservations, reservations.online).
+      const withoutReservations = SEEDED.full.filter((key) => !RESERVATIONS.includes(key));
+      const beforeCatalog = withoutReservations.filter((key) => key !== 'catalog');
       const changed = await db.query(`
         SELECT tenant_id, actor_system, entity_type, entity_id, before, after
-        FROM audit_logs WHERE action = 'platform.plan.features_changed' ORDER BY tenant_id`);
+        FROM audit_logs WHERE action = 'platform.plan.features_changed' ORDER BY tenant_id, id`);
+      const row = (id: string, before: string[], after: string[]) => ({
+        tenant_id: id,
+        actor_system: 'migration',
+        entity_type: 'plan',
+        entity_id: fullId,
+        before: { id: fullId, key: 'full', features: before },
+        after: { id: fullId, key: 'full', features: after },
+      });
       expect(changed.rows).toEqual(
-        orgs.map((id) => ({
-          tenant_id: id,
-          actor_system: 'migration',
-          entity_type: 'plan',
-          entity_id: fullId,
-          before: { id: fullId, key: 'full', features: fullBefore },
-          after: { id: fullId, key: 'full', features: SEEDED.full },
-        })),
+        orgs.flatMap((id) => [
+          row(id, beforeCatalog, withoutReservations),
+          row(id, withoutReservations, SEEDED.full),
+        ]),
       );
     } finally {
       await db.end();

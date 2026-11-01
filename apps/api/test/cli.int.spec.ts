@@ -144,6 +144,7 @@ describe('bootstrap commands', () => {
         'staff',
         'waiter',
         'cashier',
+        'host',
       ]);
       expect(await roleOf(first.user.id, first.organization.id)).toBe('owner');
       // Audited once with the command as actor; the second run changed nothing and wrote nothing.
