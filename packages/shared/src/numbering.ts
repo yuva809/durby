@@ -61,6 +61,15 @@ export const NUMBER_SERIES = {
     pattern: '{prefix}-{YYYY}-{seq:6}',
     resetPolicy: 'yearly',
   },
+  // docs/modules/reservations.md → Number series: the guest-facing booking reference.
+  'reservations.booking': {
+    label: 'platform.numbering.series.reservationsBooking.name',
+    description: 'platform.numbering.series.reservationsBooking.description',
+    feature: 'reservations',
+    prefix: 'RES',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
 } as const satisfies Record<string, NumberSeriesDefinition>;
 
 export type NumberSeriesKey = keyof typeof NUMBER_SERIES;

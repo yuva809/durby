@@ -597,6 +597,8 @@
   "platform.audit.fields.lineCount": "Items",
   "platform.numbering.series.posOrder.name": "Table orders",
   "platform.numbering.series.posOrder.description": "Numbers of table service orders.",
+  "platform.numbering.series.reservationsBooking.name": "Reservations",
+  "platform.numbering.series.reservationsBooking.description": "Booking references given to guests.",
   "pos.permissions.ordersRead": "View orders",
   "pos.permissions.ordersTake": "Take orders",
   "pos.permissions.ordersVoid": "Void sent items",
