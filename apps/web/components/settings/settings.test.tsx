@@ -84,6 +84,142 @@ const CLOSED_DATES = {
 const settingCard = async (key: string) =>
   (await screen.findAllByTestId('setting')).find((c) => c.dataset.key === key)!;
 
+describe('SettingsPage: reservations', () => {
+  const reservation = (key: string, value: unknown) => ({
+    key: `reservations.${key}`,
+    value,
+    source: 'default',
+    dataBound: false,
+  });
+  const TURN_TIMES = [
+    { fromParty: 1, toParty: 2, minutes: 90 },
+    { fromParty: 3, toParty: 4, minutes: 120 },
+    { fromParty: 5, toParty: null, minutes: 150 },
+  ];
+  const DATA = [
+    ...SETTINGS,
+    OPENING_HOURS,
+    reservation('serviceHours', 'openingHours'),
+    reservation('slotIntervalMinutes', 15),
+    reservation('turnTimes', TURN_TIMES),
+    reservation('maxCoversPerSlot', 'off'),
+    reservation('holdMinutes', 5),
+  ];
+  const answers = () => {
+    const echo = (key: string) => (init?: RequestInit) =>
+      Response.json({
+        key,
+        value: (JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as { value: unknown })
+          .value,
+        source: 'organization',
+        dataBound: false,
+      });
+    return {
+      'GET /api/v1/settings': () => Response.json({ data: DATA }),
+      ...Object.fromEntries(
+        DATA.map((d) => [`PUT /api/v1/settings/${d.key}`, echo(d.key)] as const),
+      ),
+    };
+  };
+
+  it('sends the slot interval and hold time as numbers, and refuses out-of-range minutes', async () => {
+    signedInAs('admin');
+    api(answers());
+    render(<SettingsPage />);
+    const slots = await settingCard('reservations.slotIntervalMinutes');
+    await userEvent.selectOptions(within(slots).getByTestId('setting-value'), '30');
+    await userEvent.click(within(slots).getByTestId('setting-save'));
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0]?.body).toEqual({ value: 30 });
+
+    const hold = await settingCard('reservations.holdMinutes');
+    const input = within(hold).getByTestId('setting-value');
+    await userEvent.clear(input);
+    await userEvent.type(input, '20');
+    expect(within(hold).getByRole('alert')).toBeTruthy();
+    expect(within(hold).getByTestId<HTMLButtonElement>('setting-save').disabled).toBe(true);
+    await userEvent.clear(input);
+    await userEvent.type(input, '10');
+    await userEvent.click(within(hold).getByTestId('setting-save'));
+    await waitFor(() => expect(writes()).toHaveLength(2));
+    expect(writes()[1]?.body).toEqual({ value: 10 });
+  });
+
+  it('switches the guests-per-slot limit on and off', async () => {
+    signedInAs('admin');
+    api(answers());
+    render(<SettingsPage />);
+    const card = await settingCard('reservations.maxCoversPerSlot');
+    const off = within(card).getByRole('checkbox', { name: 'No limit' });
+    expect(off.getAttribute('aria-checked')).toBe('true');
+    expect(within(card).queryByTestId('setting-value')).toBeNull();
+    await userEvent.click(off);
+    const input = within(card).getByTestId('setting-value');
+    await userEvent.clear(input);
+    await userEvent.type(input, '40');
+    await userEvent.click(within(card).getByTestId('setting-save'));
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0]?.body).toEqual({ value: 40 });
+  });
+
+  it('follows the opening hours until narrower reservation hours are set', async () => {
+    signedInAs('admin');
+    api(answers());
+    render(<SettingsPage />);
+    const card = await settingCard('reservations.serviceHours');
+    const same = within(card).getByRole('checkbox', { name: 'Same as the opening hours' });
+    expect(same.getAttribute('aria-checked')).toBe('true');
+    expect(within(card).queryByTestId('hours-day-mon')).toBeNull();
+    await userEvent.click(same);
+    // Starts from the opening hours, to narrow them.
+    const monday = within(card).getByTestId('hours-day-mon');
+    await userEvent.click(within(monday).getByRole('button', { name: 'Remove window' }));
+    await userEvent.click(within(card).getByTestId('setting-save'));
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0]?.body).toEqual({ value: { ...OPENING_HOURS.value, mon: [] } });
+  });
+
+  it('edits turn times per party size and keeps the bands contiguous', async () => {
+    signedInAs('admin');
+    api(answers());
+    render(<SettingsPage />);
+    const card = await settingCard('reservations.turnTimes');
+    const rows = () => within(card).getAllByTestId('turn-time');
+    expect(rows().map((r) => r.dataset.label)).toEqual(['1–2 guests', '3–4 guests', '5+ guests']);
+    // Middle band up to 6 guests: the last band now starts at 7.
+    await userEvent.clear(within(rows()[1]!).getByLabelText('Up to'));
+    await userEvent.type(within(rows()[1]!).getByLabelText('Up to'), '6');
+    await userEvent.clear(within(rows()[0]!).getByLabelText('Minutes'));
+    await userEvent.type(within(rows()[0]!).getByLabelText('Minutes'), '75');
+    expect(rows().map((r) => r.dataset.label)).toEqual(['1–2 guests', '3–6 guests', '7+ guests']);
+    await userEvent.click(within(card).getByTestId('setting-save'));
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0]?.body).toEqual({
+      value: [
+        { fromParty: 1, toParty: 2, minutes: 75 },
+        { fromParty: 3, toParty: 6, minutes: 120 },
+        { fromParty: 7, toParty: null, minutes: 150 },
+      ],
+    });
+  });
+
+  it('adds and removes a party size, the last band always open', async () => {
+    signedInAs('admin');
+    api(answers());
+    render(<SettingsPage />);
+    const card = await settingCard('reservations.turnTimes');
+    const labels = () =>
+      within(card)
+        .getAllByTestId('turn-time')
+        .map((r) => r.dataset.label);
+    await userEvent.click(within(card).getByRole('button', { name: 'Add a party size' }));
+    expect(labels()).toEqual(['1–2 guests', '3–4 guests', '5 guests', '6+ guests']);
+    const removes = within(card).getAllByRole('button', { name: 'Remove party size' });
+    await userEvent.click(removes[removes.length - 1]!);
+    expect(labels()).toEqual(['1–2 guests', '3–4 guests', '5+ guests']);
+  });
+});
+
 describe('SettingsPage: opening hours and closed days', () => {
   const answers = () => ({
     'GET /api/v1/settings': () =>

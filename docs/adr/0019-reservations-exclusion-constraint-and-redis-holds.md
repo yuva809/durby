@@ -20,7 +20,8 @@ block the table for a 17:00 walk-in. Whether a table is reserved is a function o
 1. **The database is the arbiter.** `reservation_tables` has one row per (reservation, table) with
    `period tstzrange '[)'` and `blocking boolean`, and
    `EXCLUDE USING gist (tenant_id WITH =, table_id WITH =, period WITH &&) WHERE (blocking)`.
-   `btree_gist` provides `=` on uuid inside GiST. Blocking statuses are `requested`, `booked`, `arrived`, `seated`.
+   `btree_gist` provides `=` on uuid inside GiST. Blocking statuses are `pending`, `booked`, `arrived`, `seated` (amended 2026-11-01: `pending` blocks,
+   `requested` doesn't).
    Table combinations insert one row per member table, so a combination conflicts with each of its tables.
    SQLSTATE `23P01` maps to `409 reservations.table_unavailable`. The constraint includes `tenant_id`, so tenants
    can never affect each other, even in theory.
@@ -97,3 +98,19 @@ starts_at)` plus the GiST index cover it. If it gets slow, cache per (location, 
    `IF NOT EXISTS` makes it a no-op.
 2. Trigger logic is invisible from TypeScript: covered by integration tests (spec → Test plan) and comments in the
    migration.
+
+## Amendment (2026-11-01): pending blocks, requested doesn't
+
+Two kinds of online booking wait for the host, and they hold tables differently:
+
+- **`pending`**: within `reservations.online.instantMaxParty` while `reservations.autoConfirm` is off. Made like a
+  confirmed booking: tables allocated, **blocking** in the constraint and counted as covers for pacing, so a slot full
+  of pending bookings is never offered again. The host confirms (`pending → booked`) or declines; unconfirmed ones
+  expire after `reservations.online.pendingExpiryMinutes` (default 120) through a delayed outbox event, which
+  releases the tables (the status leaves the blocking set, the sync trigger clears `blocking`) and mails the guest.
+- **`requested`**: a party above `instantMaxParty`. A question to the host, not a seat: no `reservation_tables` rows
+  until the host accepts, so it **blocks no table**. Accepting allocates tables like any booking and the constraint
+  decides; if nothing fits anymore, the host gets 409 and picks another time or declines.
+
+Capacity still limits what the widget offers in both cases: only slots where a table or combination fits the party.
+See the spec → Requests and pending bookings.

@@ -1,6 +1,12 @@
 'use client';
 
-import type { ResolvedSetting, SettingKey, WeeklyHours } from '@durby/shared';
+import {
+  DEFAULT_OPENING_HOURS,
+  type ResolvedSetting,
+  type SettingKey,
+  type TurnTimes,
+  type WeeklyHours,
+} from '@durby/shared';
 import { TriangleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
@@ -32,6 +38,7 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
 import { DateListEditor, WeeklyHoursEditor } from './hours-editor';
+import { LimitField, ScheduleOrField, TurnTimesEditor } from './reservation-editors';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
@@ -76,12 +83,16 @@ export function SettingsPage() {
           {ORGANIZATION_SETTING_KEYS.map((key) => {
             const setting = saved[key] ?? byKey.get(key);
             const control = controlOf(key);
+            // Reservation hours narrow the opening hours: an own schedule starts from them.
+            const openingHours = ((saved.openingHours ?? byKey.get('openingHours'))?.value ??
+              DEFAULT_OPENING_HOURS) as WeeklyHours;
             if (!setting || !control) return null;
             return (
               <li key={key}>
                 <SettingRow
                   setting={setting}
                   control={control}
+                  openingHours={openingHours}
                   editable={canManage && !fallback}
                   onSaved={(next) => setSaved((current) => ({ ...current, [key]: next }))}
                 />
@@ -103,19 +114,23 @@ export function SettingsPage() {
 }
 
 /**
- * The value in the form's representation: text for selects and inputs, a boolean for checkboxes,
- * the value itself for structured settings (opening hours, closed days).
+ * The value in the form's representation: text for text inputs, a number for number fields and
+ * numeric selects ('' while empty), a boolean for checkboxes, the value itself for structured
+ * settings (opening hours, closed days, turn times).
  */
-type Draft = string | boolean | WeeklyHours | string[];
+type Draft = string | number | boolean | WeeklyHours | string[] | TurnTimes;
 
 const draftOf = (value: unknown): Draft => {
-  if (typeof value === 'boolean' || typeof value === 'string') return value;
+  if (typeof value === 'boolean' || typeof value === 'string' || typeof value === 'number') {
+    return value;
+  }
   if (typeof value === 'object' && value !== null) return value as Draft;
   return JSON.stringify(value);
 };
 
 /** The text of a select or input draft. */
-const textOf = (draft: Draft) => (typeof draft === 'string' ? draft : '');
+const textOf = (draft: Draft) =>
+  typeof draft === 'string' || typeof draft === 'number' ? String(draft) : '';
 
 /** Drafts are plain JSON values: equal when their JSON is. */
 const sameDraft = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b);
@@ -123,11 +138,13 @@ const sameDraft = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b
 function SettingRow({
   setting,
   control,
+  openingHours,
   editable,
   onSaved,
 }: {
   setting: ResolvedSetting;
   control: SettingControl;
+  openingHours: WeeklyHours;
   editable: boolean;
   onSaved: (setting: ResolvedSetting) => void;
 }) {
@@ -236,6 +253,47 @@ function SettingRow({
             describedBy={invalid ? `${id}-problem` : `${id}-description`}
             onChange={setDraft}
           />
+        ) : control.kind === 'turnTimes' ? (
+          <TurnTimesEditor
+            value={draft as TurnTimes}
+            disabled={!canEdit}
+            describedBy={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={setDraft}
+          />
+        ) : control.kind === 'limit' ? (
+          <LimitField
+            value={draft}
+            off={control.off}
+            min={control.min}
+            max={control.max}
+            disabled={!canEdit}
+            describedBy={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={(next) => setDraft(next as Draft)}
+          />
+        ) : control.kind === 'scheduleOr' ? (
+          <ScheduleOrField
+            value={draft}
+            inherit={control.inherit}
+            inherited={openingHours}
+            disabled={!canEdit}
+            describedBy={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={(next) => setDraft(next as Draft)}
+          />
+        ) : control.kind === 'number' ? (
+          <Input
+            id={`${id}-value`}
+            type="number"
+            min={control.min}
+            max={control.max}
+            step={1}
+            data-testid="setting-value"
+            className="w-28"
+            value={textOf(draft)}
+            disabled={!canEdit}
+            aria-invalid={invalid || undefined}
+            aria-describedby={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={(e) => setDraft(e.target.value.trim() === '' ? '' : Number(e.target.value))}
+          />
         ) : control.kind === 'select' ? (
           <Select
             id={`${id}-value`}
@@ -244,7 +302,7 @@ function SettingRow({
             value={textOf(draft)}
             disabled={!canEdit}
             aria-describedby={`${id}-description`}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => setDraft(control.numeric ? Number(e.target.value) : e.target.value)}
           >
             {control.options.map((option) => (
               <option key={option.value} value={option.value}>

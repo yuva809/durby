@@ -1,6 +1,11 @@
 import { type INestApplication, Injectable, type OnModuleInit } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { DEFAULT_OPENING_HOURS, type ResolvedSetting, type SettingsResponse } from '@durby/shared';
+import {
+  DEFAULT_OPENING_HOURS,
+  DEFAULT_TURN_TIMES,
+  type ResolvedSetting,
+  type SettingsResponse,
+} from '@durby/shared';
 import { Client } from 'pg';
 import request from 'supertest';
 import type { App } from 'supertest/types';
@@ -117,6 +122,16 @@ describe('/api/v1/settings', () => {
         { key: 'timezone', value: 'Europe/Berlin', source: 'default', dataBound: false },
         { key: 'openingHours', value: DEFAULT_OPENING_HOURS, source: 'default', dataBound: false },
         { key: 'closedDates', value: [], source: 'default', dataBound: false },
+        ...[
+          ['reservations.serviceHours', 'openingHours'],
+          ['reservations.slotIntervalMinutes', 15],
+          ['reservations.turnTimes', DEFAULT_TURN_TIMES],
+          ['reservations.maxCoversPerSlot', 'off'],
+          ['reservations.lastBookingOffsetMinutes', 60],
+          ['reservations.online.instantMaxParty', 10],
+          ['reservations.autoConfirm', true],
+          ['reservations.holdMinutes', 5],
+        ].map(([key, value]) => ({ key, value, source: 'default', dataBound: false })),
         {
           key: 'inventory.valuationMethod',
           value: 'weighted_average',
@@ -207,6 +222,81 @@ describe('/api/v1/settings', () => {
         ['closedDates', ['2026-12-24', '2026-12-24']],
       ] as const) {
         const res = await put(token, key, value, { locationId: there }).expect(422);
+        expect(res.body).toMatchObject({ code: 'settings.invalid_value', details: { key } });
+      }
+    });
+
+    // docs/modules/reservations.md → Settings: validated on the server, whatever the client sends.
+    it('validates the reservations settings on the server', async () => {
+      const { org, token } = await orgWith('owner');
+      const [here] = org.locations;
+      const bands = [
+        { fromParty: 1, toParty: 4, minutes: 100 },
+        { fromParty: 5, toParty: null, minutes: 140 },
+      ];
+      await put(token, 'reservations.turnTimes', bands, { locationId: here }).expect(200);
+      await put(token, 'reservations.slotIntervalMinutes', 30, { locationId: here }).expect(200);
+      // An organization limit, switched off again at one location ("off" is a value, not null).
+      await put(token, 'reservations.maxCoversPerSlot', 40).expect(200);
+      await put(token, 'reservations.maxCoversPerSlot', 'off', { locationId: here }).expect(200);
+      expect(
+        valueOf((await list(token, { locationId: here })).body, 'reservations.maxCoversPerSlot'),
+      ).toMatchObject({ value: 'off', source: 'location' });
+      // Instant online booking: the organization caps it at 6, one location takes every size.
+      await put(token, 'reservations.online.instantMaxParty', 6).expect(200);
+      await put(token, 'reservations.online.instantMaxParty', 'off', { locationId: here }).expect(
+        200,
+      );
+      const at = (await list(token, { locationId: here })).body as unknown;
+      expect(valueOf(at, 'reservations.online.instantMaxParty')).toMatchObject({
+        value: 'off',
+        source: 'location',
+      });
+      expect(
+        valueOf((await list(token)).body, 'reservations.online.instantMaxParty'),
+      ).toMatchObject({ value: 6, source: 'organization' });
+      expect(
+        valueOf((await list(token, { locationId: here })).body, 'reservations.turnTimes'),
+      ).toMatchObject({ value: bands, source: 'location' });
+
+      for (const [key, value] of [
+        // turn times: unsorted, overlapping, a gap, closed at the end, zero minutes
+        [
+          'reservations.turnTimes',
+          [
+            { fromParty: 5, toParty: null, minutes: 140 },
+            { fromParty: 1, toParty: 4, minutes: 100 },
+          ],
+        ],
+        [
+          'reservations.turnTimes',
+          [
+            { fromParty: 1, toParty: 4, minutes: 100 },
+            { fromParty: 3, toParty: null, minutes: 140 },
+          ],
+        ],
+        [
+          'reservations.turnTimes',
+          [
+            { fromParty: 1, toParty: 2, minutes: 100 },
+            { fromParty: 4, toParty: null, minutes: 140 },
+          ],
+        ],
+        ['reservations.turnTimes', [{ fromParty: 1, toParty: 8, minutes: 100 }]],
+        ['reservations.turnTimes', [{ fromParty: 1, toParty: null, minutes: 0 }]],
+        ['reservations.slotIntervalMinutes', 20],
+        ['reservations.slotIntervalMinutes', '15'],
+        ['reservations.lastBookingOffsetMinutes', 0],
+        ['reservations.holdMinutes', -1],
+        ['reservations.online.instantMaxParty', 2.5],
+        ['reservations.online.instantMaxParty', 0],
+        ['reservations.online.instantMaxParty', null],
+        ['reservations.maxCoversPerSlot', 0],
+        ['reservations.maxCoversPerSlot', null],
+        ['reservations.serviceHours', null],
+        ['reservations.serviceHours', { mon: [] }],
+      ] as const) {
+        const res = await put(token, key, value, { locationId: here }).expect(422);
         expect(res.body).toMatchObject({ code: 'settings.invalid_value', details: { key } });
       }
     });
