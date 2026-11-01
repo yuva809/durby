@@ -348,7 +348,7 @@ the booking is made; the handler does nothing if the booking is no longer pendin
 **Requested** (above the threshold):
 
 - **Capacity stays separate.** Whatever this setting says, the widget offers only slots where some table or
-  combination that may be booked online fits the party at that time (engine step 5). A request is for a slot that
+  combination that may be booked online fits the party at that time (engine → Candidates and table choice). A request is for a slot that
   could seat the party when it was made.
 - **Host screen.** Requests show in their own list on `/host` and on the timeline (marked, no table). **Accept**
   (`POST /reservations/:id/accept`) runs allocation then: the engine's best fit, or tables the host picks, checked by
@@ -387,50 +387,81 @@ moves it. Why this is not racy: overrun can only be ended concurrently (finish),
   the tables: 409 if someone booked them meanwhile). Appends a change with `undoes_id`; audited as
   `reservations.reservation.status_undone`. Undoing `seated` emits nothing to pos: the open order (if any) stays.
 
-## Availability engine
+## Availability engine (R1.4)
 
-Pure function in `apps/api/src/modules/reservations/availability/` (tests first), no I/O:
+**Pure core, separate loader.** `availability(input)` in `apps/api/src/modules/reservations/availability/engine.ts`
+takes plain data and returns slots; no database, no clock (`now` is an input), so DST days, overruns and pacing are
+fast unit tests. A loader (`AvailabilityLoader`) reads one location and one local day in **one fixed batch of
+queries** (settings, the location's tables and rules, combinations, blocking bookings overlapping the day, open pos
+orders through `PosFloorReader`); a test pins the query count. No query per slot.
 
 ```
 availability({
-  date: '2026-11-14', timeZone: 'Europe/Berlin', now,
+  date: '2026-11-14', timeZone: 'Europe/Berlin', now, channel: 'staff' | 'online', partySize,
   settings: { openingHours, closedDates, serviceHours, slotIntervalMinutes, turnTimes, maxCoversPerSlot,
-              lastBookingOffsetMinutes, minLeadMinutes, maxAdvanceDays, instantMaxParty },
-  channel: 'staff' | 'online', partySize,
-  tables: [{ id, seats, sortOrder, rule: { bookingMode, minParty, maxParty } }],
-  combinations: [{ id, tableIds, minParty, maxParty, onlineBookable }],
-  blocked: [{ tableId, start, end }],          // reservation_tables where blocking, overlapping the day
-  seated:  [{ tableId, start, end }],          // seated reservations (for overrun, G2)
-  openOrders: [{ tableId, openedAt }],         // PosFloorReader: open pos orders without a seated reservation (G1)
-  held:    [{ tableId, start, end }],          // Redis holds (online only; staff sees them as warnings)
-  coversByStart: [{ start, partySize }],       // blocking reservations, for pacing
-}) → [{ start, end, available, reason?, allocation?: { tableIds, combinationId? } }]
+              lastBookingOffsetMinutes, instantMaxParty },
+  tables:       [{ id, name, seats, sortOrder, bookingMode, minParty, maxParty | null }],    // not archived
+  combinations: [{ id, name, tableIds, minParty, maxParty, onlineBookable }],              // not archived
+  bookings:     [{ id, status, partySize, start, end, tableIds }],   // pending/booked/arrived/seated only
+  openOrders:   [{ tableId, openedAt, covers | null }],              // PosFloorReader, now
+}) → { date, turnMinutes, closed, slots: [{ start, end, status: 'available' | 'request' | 'full',
+                                           reason?: 'no_table' | 'pacing', allocation?: Allocation }] }
+// Allocation = { kind: 'table', tableId } | { kind: 'combination', combinationId, tableIds }
 ```
 
-0. **Occupancy** — per table, the busy intervals are: `blocked`; for `seated` past their end,
-   `[start, overrunEnd)` ([Overrun](#overrun)); for `openOrders`,
-   `[now, max(openedAt + turn(table.seats), ceilToSlot(now) + slotIntervalMinutes))`, rolling the same way while
-   the order stays open; `held` (online only).
-1. **Slots** — the day is skipped if it is in `closedDates`. Windows are `openingHours` of the local weekday,
-   intersected with `reservations.serviceHours` unless it is `'openingHours'`. For each window, local wall-clock times from `from` every
-   `slotIntervalMinutes` up to `to − lastBookingOffsetMinutes`, converted to instants in `timeZone`. A wall time that
-   doesn't exist (spring forward, 02:00–02:59 on 2026-03-29) is skipped; one that exists twice (fall back,
-   02:00–02:59 on 2026-10-25) is offered once, at the earlier instant. Windows crossing midnight belong to the day
-   they start.
-2. **Turn time** — the `turnTimes` band containing the party size (`turnTimeFor`; bands cover every size).
-3. **Channel filters** — online: start ≥ now + `minLeadMinutes`, date ≤ today +
-   `maxAdvanceDays`, tables with `bookingMode = all`, combinations with `onlineBookable`. Staff: `all` and
-   `staff_only`. `walk_in_only` is never allocated by a booking (only by Seat walk-in). Online, the party size
-   never removes slots: a party above `instantMaxParty` sees the same slots (those where a table or combination fits,
-   step 5) and the result marks them `request: true` (a Requested booking, [Requests](#requests-r2)).
-4. **Pacing** — covers of blocking reservations whose start falls in `[slot, slot + interval)` plus `partySize` must
-   be ≤ `maxCoversPerSlot` (`'off'` = no pacing). Staff may override with `force: true` (audited); online may not.
-5. **Allocation** (best fit, deterministic) — candidates: single tables with `minParty ≤ party ≤ (maxParty ?? seats)`,
-   then combinations with `minParty ≤ party ≤ maxParty`. A candidate is free when none of its tables has a busy
-   interval (step 0) overlapping `[start, start + turn)`. Pick the smallest capacity, then fewest tables, then
-   `sortOrder`, then id. Staff can pick tables explicitly instead; the same check runs.
+### Slots
 
-The service then writes in one transaction; the exclusion constraint is the arbiter if two writers raced past step 5.
+1. **Closed date:** `date` in `closedDates` → `closed: true`, no slots.
+2. **Windows:** the opening-hours windows of the date's weekday (`serviceWindowsOn`, R0.2), as instants. If
+   `serviceHours` isn't `'openingHours'`, each is intersected with the reservation-hours windows of the same date (it
+   can only narrow). Windows past midnight belong to the day they start.
+3. **Grid, on the wall clock:** per window, local times `from`, `from + interval`, `from + 2·interval`, … (crossing
+   midnight into the next date when needed), each converted with `zonedInstant`: a time skipped by spring forward has
+   no slot; a time repeated by fall back has one slot, at the earlier instant. Duplicates are dropped.
+4. **Last booking:** a slot starts no later than window end − `lastBookingOffsetMinutes` (elapsed minutes). A
+   booking may run past closing; the offset decides how late it may start.
+5. **Not in the past:** slots starting before `now` are left out.
+6. **Duration:** `turnMinutes = turnTimeFor(partySize, turnTimes)`; a slot's booking is `[start, start + turn)`.
+
+### Busy intervals per table (computed once per call, not per slot)
+
+- **Bookings** (`pending`, `booked`, `arrived`, `seated`): `[start, end)` on each of their tables.
+- **Seated overrun:** a `seated` booking whose `end ≤ now` occupies `[start, overrunEnd)` instead, with
+  `overrunEnd = ceilToGrid(now) + interval`. `ceilToGrid` rounds `now` up to the next multiple of the slot interval
+  on the local wall clock, counted from local midnight (21:05 → 21:15 with 15-minute slots). The window moves forward
+  with `now` until the party is finished: at 21:05 the 19:00–21:00 party blocks 21:15 and frees 21:30.
+- **Open pos orders** (walk-ins seated at the till, no booking on that table now):
+  `[now, max(openedAt + turnTimeFor(covers ?? seats), overrunEnd))`. Rolling the same way while the order stays
+  open; a table with both a seated booking and an open order counts once (the booking).
+
+### Candidates and table choice
+
+- **Channel:** staff may book `all` and `staff_only` tables; online only `all` tables and combinations with
+  `onlineBookable`. `walk_in_only` tables are never candidates, and neither is a combination that contains one.
+- **Fit:** a single table fits when `minParty ≤ party ≤ (maxParty ?? seats)`; a combination when
+  `minParty ≤ party ≤ maxParty`.
+- **Free:** no busy interval of the table (every member, for a combination) overlaps `[start, start + turn)`.
+  Intervals are half-open: 18:00–20:00 then 20:00–22:00 is fine.
+- **Choice, deterministic:**
+  1. **Single tables first.** Among free, fitting tables: smallest capacity (`maxParty ?? seats`), then fewest
+     seats, then `sortOrder`, then name, then id. So 2 guests get a 2-top before a 4-top, never a 6-top while a
+     smaller table is free.
+  2. **Combinations only when no single table is free and fits.** Among free, fitting combinations: smallest
+     `maxParty`, then fewest tables, then name, then id. A combination's own `minParty` keeps small parties off big
+     combinations.
+
+### Status per slot
+
+1. **Pacing:** if `maxCoversPerSlot` is a number and the party sizes of bookings starting in
+   `[slot, slot + interval)` plus this party exceed it → `full`, `reason: 'pacing'` (staff may override with
+   `force`, R1.6; online may not).
+2. **No candidate** → `full`, `reason: 'no_table'`.
+3. **Online above `instantMaxParty`** (not `'off'`) → `request`, with the allocation as a hint only (a request
+   holds no table). Size never removes a slot; capacity does: a slot no table or combination fits stays `full`.
+4. Otherwise `available`, with the allocation.
+
+`full` slots stay in the list (with their reason), so the host sees the shape of the evening; the online widget
+shows only `available` and `request`.
 
 ## Derived floor state (never stored)
 
