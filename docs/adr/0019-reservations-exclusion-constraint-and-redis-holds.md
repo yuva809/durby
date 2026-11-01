@@ -20,7 +20,7 @@ block the table for a 17:00 walk-in. Whether a table is reserved is a function o
 1. **The database is the arbiter.** `reservation_tables` has one row per (reservation, table) with
    `period tstzrange '[)'` and `blocking boolean`, and
    `EXCLUDE USING gist (tenant_id WITH =, table_id WITH =, period WITH &&) WHERE (blocking)`.
-   `btree_gist` provides `=` on uuid inside GiST. Blocking statuses are `requested`, `booked`, `arrived`, `seated`.
+   `btree_gist` provides `=` on uuid inside GiST. Blocking statuses are `booked`, `arrived`, `seated` (amended 2026-11-01: `requested` blocks no table).
    Table combinations insert one row per member table, so a combination conflicts with each of its tables.
    SQLSTATE `23P01` maps to `409 reservations.table_unavailable`. The constraint includes `tenant_id`, so tenants
    can never affect each other, even in theory.
@@ -97,3 +97,11 @@ starts_at)` plus the GiST index cover it. If it gets slow, cache per (location, 
    `IF NOT EXISTS` makes it a no-op.
 2. Trigger logic is invisible from TypeScript: covered by integration tests (spec → Test plan) and comments in the
    migration.
+
+## Amendment (2026-11-01): requests block no table
+
+A `requested` booking (an online party above `reservations.online.instantMaxParty`, or any online booking while
+`reservations.autoConfirm` is off) is a question to the host, not a seat: its `reservation_tables` rows don't exist
+until the host accepts, so it never blocks a table in the constraint. Accepting allocates tables like any booking and
+the constraint decides; if nothing fits anymore, the host gets 409 and picks another time or declines. Capacity still
+limits what the widget offers: only slots where a table or combination fits the party. See the spec → Requests.

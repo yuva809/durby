@@ -70,13 +70,14 @@ tables; the precedent is `pos_order_lines → products` (catalog). The module **
 
 ```prisma
 enum ReservationStatus {
-  requested   // online, waiting for staff confirmation (reservations.autoConfirm = false)
+  requested   // online, waiting for the host to accept or decline (Requests, R2); blocks no table
   booked
   arrived
   seated
   finished
   no_show
   cancelled
+  declined    // a request the host declined
   @@map("reservation_status")
 }
 
@@ -190,7 +191,7 @@ model ReservationTable {
   tableId       String  @map("table_id") @db.Uuid
   /// tstzrange(starts_at, ends_at, '[)'); kept equal to the reservation by trigger. Unsupported in Prisma.
   period        Unsupported("tstzrange")
-  /// status in (requested, booked, arrived, seated); kept by trigger.
+  /// status in (booked, arrived, seated); kept by trigger.
   blocking      Boolean
   @@id([tenantId, reservationId, tableId])
   @@map("reservation_tables")
@@ -263,7 +264,7 @@ BEGIN
      OR NEW.status IS DISTINCT FROM OLD.status THEN
     UPDATE reservation_tables
        SET period   = tstzrange(NEW.starts_at, NEW.ends_at, '[)'),
-           blocking = NEW.status IN ('requested', 'booked', 'arrived', 'seated')
+           blocking = NEW.status IN ('booked', 'arrived', 'seated')
      WHERE tenant_id = NEW.tenant_id AND reservation_id = NEW.id;
   END IF;
   RETURN NEW;
@@ -279,7 +280,7 @@ DECLARE r reservations%ROWTYPE;
 BEGIN
   SELECT * INTO r FROM reservations WHERE tenant_id = NEW.tenant_id AND id = NEW.reservation_id;
   IF NEW.period <> tstzrange(r.starts_at, r.ends_at, '[)')
-     OR NEW.blocking <> (r.status IN ('requested', 'booked', 'arrived', 'seated'))
+     OR NEW.blocking <> (r.status IN ('booked', 'arrived', 'seated'))
      OR NEW.location_id <> r.location_id THEN
     RAISE EXCEPTION 'reservation_tables row does not match its reservation' USING ERRCODE = 'check_violation';
   END IF;
@@ -311,14 +312,38 @@ check for its tables inside its transaction (`reservations.table_occupied`, 409)
 ## Status flow
 
 ```
-            (online, autoConfirm=false)
- requested ──confirm──▶ booked ──arrive──▶ arrived ──seat──▶ seated ──finish──▶ finished
-     │                    │  └─────────────seat─────────────▶  │        ▲ pos.order.closed
-     └──────cancel────────┴──cancel──▶ cancelled               │
-                          └──no-show──▶ no_show           (walk-in: created as seated)
+  (online: party > instantMaxParty,
+   or autoConfirm = false)
+ requested ──accept──▶ booked ──arrive──▶ arrived ──seat──▶ seated ──finish──▶ finished
+     │                   │  └─────────────seat─────────────▶  │        ▲ pos.order.closed
+     ├──decline──▶ declined                                   │
+     └──cancel───────────┴──cancel──▶ cancelled                │
+                         └──no-show──▶ no_show           (walk-in: created as seated)
 ```
 
-- **Blocking** statuses (hold the table in the constraint): `requested`, `booked`, `arrived`, `seated`.
+- **Blocking** statuses (hold the table in the constraint): `booked`, `arrived`, `seated`. A `requested` booking
+  blocks **no** table: it is a question to the host, not a seat.
+
+### Requests (R2)
+
+`reservations.online.instantMaxParty` is a **threshold for instant booking, not a block**. Online, a party up to that
+size (or any size with `'off'`) is booked at once, with tables, as `booked`. A larger party is never turned away by
+the widget: it gets a booking with status **Requested** for the slot it chose, with no table and no hold, and the
+page says the restaurant will confirm. Online bookings when `reservations.autoConfirm` is off become Requested the
+same way.
+
+- **Capacity stays separate.** Whatever this setting says, the widget offers only slots where some table or
+  combination that may be booked online fits the party at that time (engine step 5). A request is for a slot that
+  could seat the party when it was made.
+- **Host screen.** Requests show in their own list on `/host` and on the timeline (marked, no table). **Accept**
+  (`POST /reservations/:id/accept`) runs allocation then: the engine's best fit, or tables the host picks, checked by
+  the exclusion constraint like any booking; `requested → booked`. If nothing fits anymore it answers 409
+  `reservations.table_unavailable` and the host picks another time or declines. **Decline**
+  (`POST /reservations/:id/decline`, optional reason key): `requested → declined`.
+- **Mail.** Making a request sends "request received"; accept sends the confirmation (with `.ics`), decline sends
+  the decline mail, all in the guest's locale (R2.4). Requests don't expire on their own in the MVP; the list shows
+  their age.
+- **KPIs** (R3) count requests, accepted and declined separately; requested and declined bookings are never covers.
 - **Finish** sets `ends_at = max(now, starts_at + 1 min)`, which frees the rest of the period at once.
 - **Seat** may change tables (re-check constraint) and moves `starts_at` to now if the party is seated early; a late
   seat keeps the end: a booking cannot silently push into the next one. **Extend** (PATCH `endsAt`) re-checks.
@@ -352,7 +377,7 @@ Pure function in `apps/api/src/modules/reservations/availability/` (tests first)
 availability({
   date: '2026-11-14', timeZone: 'Europe/Berlin', now,
   settings: { openingHours, closedDates, serviceHours, slotIntervalMinutes, turnTimes, maxCoversPerSlot,
-              lastBookingOffsetMinutes, minLeadMinutes, maxAdvanceDays, onlineMaxPartySize },
+              lastBookingOffsetMinutes, minLeadMinutes, maxAdvanceDays, instantMaxParty },
   channel: 'staff' | 'online', partySize,
   tables: [{ id, seats, sortOrder, rule: { bookingMode, minParty, maxParty } }],
   combinations: [{ id, tableIds, minParty, maxParty, onlineBookable }],
@@ -369,17 +394,19 @@ availability({
    `[now, max(openedAt + turn(table.seats), ceilToSlot(now) + slotIntervalMinutes))`, rolling the same way while
    the order stays open; `held` (online only).
 1. **Slots** — the day is skipped if it is in `closedDates`. Windows are `openingHours` of the local weekday,
-   intersected with `reservations.serviceHours` when that is set. For each window, local wall-clock times from `from` every
+   intersected with `reservations.serviceHours` unless it is `'openingHours'`. For each window, local wall-clock times from `from` every
    `slotIntervalMinutes` up to `to − lastBookingOffsetMinutes`, converted to instants in `timeZone`. A wall time that
    doesn't exist (spring forward, 02:00–02:59 on 2026-03-29) is skipped; one that exists twice (fall back,
    02:00–02:59 on 2026-10-25) is offered once, at the earlier instant. Windows crossing midnight belong to the day
    they start.
-2. **Turn time** — first `turnTimes.byPartySize` entry with `maxParty ≥ partySize`, else `turnTimes.default`.
-3. **Channel filters** — online: party ≤ `onlineMaxPartySize`, start ≥ now + `minLeadMinutes`, date ≤ today +
+2. **Turn time** — the `turnTimes` band containing the party size (`turnTimeFor`; bands cover every size).
+3. **Channel filters** — online: start ≥ now + `minLeadMinutes`, date ≤ today +
    `maxAdvanceDays`, tables with `bookingMode = all`, combinations with `onlineBookable`. Staff: `all` and
-   `staff_only`. `walk_in_only` is never allocated by a booking (only by Seat walk-in).
+   `staff_only`. `walk_in_only` is never allocated by a booking (only by Seat walk-in). Online, the party size
+   never removes slots: a party above `instantMaxParty` sees the same slots (those where a table or combination fits,
+   step 5) and the result marks them `request: true` (a Requested booking, [Requests](#requests-r2)).
 4. **Pacing** — covers of blocking reservations whose start falls in `[slot, slot + interval)` plus `partySize` must
-   be ≤ `maxCoversPerSlot` (null = no pacing). Staff may override with `force: true` (audited); online may not.
+   be ≤ `maxCoversPerSlot` (`'off'` = no pacing). Staff may override with `force: true` (audited); online may not.
 5. **Allocation** (best fit, deterministic) — candidates: single tables with `minParty ≤ party ≤ (maxParty ?? seats)`,
    then combinations with `minParty ≤ party ≤ maxParty`. A candidate is free when none of its tables has a busy
    interval (step 0) overlapping `[start, start + turn)`. Pick the smallest capacity, then fewest tables, then
@@ -458,25 +485,34 @@ organizations get them through the `entitlements` CLI override until a plan cove
 
 ## Settings (ADR 0010; scopes partner, organization, brand, location unless noted; none data-bound)
 
-| Key                                     | Schema                                                                                                   | Default                                                          |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `openingHours` (platform, R0)           | strict `{ mon … sun: [{ from: 'HH:mm', to: 'HH:mm' }] }`, ≤ 4 windows/day, `to` ≤ `from` = past midnight | every day `11:00–23:00`                                          |
-| `closedDates` (platform, R0)            | ≤ 366 ISO dates `YYYY-MM-DD`, unique                                                                     | `[]`                                                             |
-| `reservations.serviceHours`             | same shape as `openingHours`, or `null` (= opening hours); narrows them, never widens                    | `null`                                                           |
-| `reservations.slotIntervalMinutes`      | `15 \| 30 \| 60`                                                                                         | `15`                                                             |
-| `reservations.turnTimes`                | strict `{ defaultMinutes: 30–480, byPartySize: [{ maxParty, minutes }] }` ascending                      | `{ defaultMinutes: 150, byPartySize: [{2,90},{4,105},{6,120}] }` |
-| `reservations.maxCoversPerSlot`         | int 1–1000 or `null`                                                                                     | `null`                                                           |
-| `reservations.lastBookingOffsetMinutes` | int 0–480                                                                                                | `90`                                                             |
-| `reservations.onlineMaxPartySize`       | int 1–100                                                                                                | `8`                                                              |
-| `reservations.autoConfirm`              | boolean                                                                                                  | `true`                                                           |
-| `reservations.holdMinutes`              | int 1–15                                                                                                 | `5`                                                              |
-| `reservations.minLeadMinutes`           | int 0–10080                                                                                              | `60`                                                             |
-| `reservations.maxAdvanceDays`           | int 1–365                                                                                                | `60`                                                             |
-| `reservations.noShowGraceMinutes`       | int 0–120                                                                                                | `15`                                                             |
-| `reservations.floorHorizonMinutes`      | int 15–240                                                                                               | `60`                                                             |
-| `reservations.reminderLeadHours`        | int 0–168 (0 = off) (R2)                                                                                 | `24`                                                             |
-| `reservations.selfCancelCutoffMinutes`  | int 0–10080 (R2)                                                                                         | `120`                                                            |
-| `reservations.guestRetentionMonths`     | int 1–120; scopes partner, organization (R2, Q8)                                                         | `12`                                                             |
+| Key                                     | Schema                                                                                                         | Default                    |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| `openingHours` (platform, R0)           | strict `{ mon … sun: [{ from: 'HH:mm', to: 'HH:mm' }] }`, ≤ 4 windows/day, `to` ≤ `from` = past midnight       | every day `11:00–23:00`    |
+| `closedDates` (platform, R0)            | ≤ 366 ISO dates `YYYY-MM-DD`, unique                                                                           | `[]`                       |
+| `reservations.serviceHours`             | `'openingHours'` or the shape of `openingHours`; a schedule only narrows the opening hours (engine intersects) | `'openingHours'`           |
+| `reservations.slotIntervalMinutes`      | `15 \| 30 \| 60`                                                                                               | `15`                       |
+| `reservations.turnTimes`                | `[{ fromParty, toParty \| null, minutes 1–720 }]`, 1–10 bands, contiguous from 1, last open (`null`)           | 1–2: 90, 3–4: 120, 5+: 150 |
+| `reservations.maxCoversPerSlot`         | `'off'` or int 1–1000                                                                                          | `'off'`                    |
+| `reservations.lastBookingOffsetMinutes` | int 1–480 (minutes before closing)                                                                             | `60`                       |
+| `reservations.online.instantMaxParty`   | `'off'` or int 1–100: instant online booking up to this party size; larger ones become requests (R2)           | `10`                       |
+| `reservations.autoConfirm`              | boolean                                                                                                        | `true`                     |
+| `reservations.holdMinutes`              | int 1–15                                                                                                       | `5`                        |
+
+Registered in R1.2 with these defaults, so a new location takes bookings without setup. **No `null` values:** a stored
+setting is never JSON `null` (ADR 0010: deleting the row inherits), so "no limit" and "the opening hours" are the
+values `'off'` and `'openingHours'`; a location can set them under an organization that set something else.
+
+Added by the steps that first use them (same rules, no migration needed):
+
+| Key                                    | Schema                                       | Default | Step |
+| -------------------------------------- | -------------------------------------------- | ------- | ---- |
+| `reservations.minLeadMinutes`          | int 0–10080                                  | `60`    | R2   |
+| `reservations.maxAdvanceDays`          | int 1–365                                    | `60`    | R2   |
+| `reservations.noShowGraceMinutes`      | int 0–120                                    | `15`    | R1.9 |
+| `reservations.floorHorizonMinutes`     | int 15–240                                   | `60`    | R1.8 |
+| `reservations.reminderLeadHours`       | int 0–168 (0 = off)                          | `24`    | R2.5 |
+| `reservations.selfCancelCutoffMinutes` | int 0–10080                                  | `120`   | R2.3 |
+| `reservations.guestRetentionMonths`    | int 1–120; scopes partner, organization (Q8) | `12`    | R2.5 |
 
 Read at the reservation's location (`SettingsService.all({ locationId })`), so Location → Brand → Organization →
 Partner → default applies. `timezone` (existing key, all scopes) is read at the location too. Labels:
@@ -504,7 +540,8 @@ Staff (R1). Location-scoped keys are checked at the reservation's / table's loca
 | `GET /reservations/:id`                   | `reservations.bookings.read`   |                             | includes status history                                                                                                                      |
 | `POST /reservations`                      | `reservations.bookings.manage` | `completion: 'transaction'` | `{ locationId, startsAt, partySize, tableIds?, guest: { name, email?, phone?, locale? }, guestNote?, staffNote?, force? }`                   |
 | `PATCH /reservations/:id`                 | `reservations.bookings.manage` | response                    | `{ startsAt?, endsAt?, partySize?, tableIds?, guest?, guestNote?, staffNote? }`                                                              |
-| `POST /reservations/:id/confirm`          | `reservations.bookings.manage` | `completion: 'transaction'` | requested → booked                                                                                                                           |
+| `POST /reservations/:id/accept`           | `reservations.bookings.manage` | `completion: 'transaction'` | requested → booked: allocates tables (or `tableIds`), mails the confirmation (R2)                                                            |
+| `POST /reservations/:id/decline`          | `reservations.bookings.manage` | `completion: 'transaction'` | requested → declined, mails the decline (R2)                                                                                                 |
 | `POST /reservations/:id/arrive`           | `reservations.bookings.manage` | `completion: 'transaction'` |                                                                                                                                              |
 | `POST /reservations/:id/seat`             | `reservations.bookings.manage` | `completion: 'transaction'` | `{ tableIds? }`                                                                                                                              |
 | `POST /reservations/:id/finish`           | `reservations.bookings.manage` | `completion: 'transaction'` |                                                                                                                                              |
@@ -700,30 +737,30 @@ finishes it.
 
 ## Build order (one PR each; tests listed are written first)
 
-| #    | Step                                                                                                                                                                                                                                                                | Tests first                                                                                | Done when                                                                                            |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| R0.1 | `packages/shared/src/time/zoned.ts`: wall-clock ↔ instant in an IANA zone (`zonedInstant`, `zonedParts`, `zonedDayBounds`, `calendarMonthIn`), DST-safe, `Intl` only; numbering and web audit filters use it                                                        | DST unit tests (both 2026 switches, 23/25 h days, missing/duplicate wall times)            | numbering + web audit filters use it; lint, typecheck, test green                                    |
-| R0.2 | Platform settings `openingHours`, `closedDates` (+ labels, schema), and `serviceWindowsOn(date, hours, closedDates, tz)` in shared time                                                                                                                             | schema tests (overlaps, past midnight, ≤ 4 windows), window expansion across DST           | api stores them per location; settings page edits them at organization scope (location picker: R1.5) |
-| R0.3 | pos read port `PosFloorReader` in `pos/index.ts` (`tablesAt(locationId)`, `table(id)`, `openOrders(locationId)` → `{ tableId, orderId, openedAt, covers }`); no migration: the composite-FK target index already exists (pos_orders migration)                      | unit/e2e: port respects RLS, location access and archived tables                           | consumer test compiles against `index.ts` only; boundaries lint green                                |
-| R0.4 | `pos.order.closed` v1 event (`orderId`, `locationId`, `tableId`) written in `OrdersService.close`; pos.md + events registry                                                                                                                                         | e2e: closing writes exactly one event; closing twice writes none                           | outbox e2e green                                                                                     |
-| R0.5 | `pos_orders.covers` (nullable, expand-only) + `covers?` on first send + `PATCH /pos/orders/:id`; till field                                                                                                                                                         | e2e: covers stored, range-checked, audited; replay-safe                                    | waiter sets covers on the till                                                                       |
-| R1.1 | Features `reservations`, `reservations.online` (+ migration adding both to `full`), permission keys, Host system role (2 migrations), labels, ADR 0007 amendment; first `GET /reservations/floor` (occupancy from `PosFloorReader`, so Host needs no pos order key) | registry tests, rbac migration int test, route-marker snapshot                             | Host role exists in every org; `/me` shows the keys                                                  |
-| R1.2 | Reservations settings keys (table above) with labels                                                                                                                                                                                                                | settings registry test, schema tests for `serviceHours`/`turnTimes`                        | settings page lists them; values resolve per location                                                |
-| R1.3 | First: run the `btree_gist` check on staging (G4). Schema: rules, combinations, reservations, guests, `reservation_tables` (raw SQL above), status changes; number series                                                                                           | **constraint int tests, race test, trigger tests**, RLS coverage, append-only catalog      | migration SQL reviewed; `pnpm test` green on Testcontainers                                          |
-| R1.4 | Availability engine (pure)                                                                                                                                                                                                                                          | engine unit tests (spec → Test plan)                                                       | 100 % branch coverage on the engine                                                                  |
-| R1.5 | Table rules + combinations API and Settings → Reservations UI                                                                                                                                                                                                       | e2e incl. cross-tenant isolation, location-limited access                                  | manager configures a location in the browser                                                         |
-| R1.6 | Bookings API: create/patch/list/get/availability, status actions + undo, walk-ins; audit; `reservations.*` events                                                                                                                                                   | state-machine unit tests, e2e per route, **cross-tenant isolation e2e**, idempotent replay | all routes in snapshot; replaying an Idempotency-Key returns the same booking                        |
-| R1.7 | pos integration: `reservations.finishOnOrderClosed` handler (sets `last_visit_at`)                                                                                                                                                                                  | handler int tests: redelivery, out-of-order, feature disabled                              | closing the order on the till finishes the booking                                                   |
-| R1.8 | Derived floor endpoint                                                                                                                                                                                                                                              | unit tests for state derivation incl. overrun and open orders; e2e                         | floor matches table above for fixtures                                                               |
-| R1.9 | `/reservations` list + booking dialog; `/host` screen (timeline, floor, actions, undo toast) on 30 s polling; `/service` floor badges + covers pre-fill (web only)                                                                                                  | component tests (Vitest), Playwright smoke                                                 | smoke passes: book → arrive → seat → undo → close order → finished                                   |
-| RT.1 | Realtime ADR + `platform/realtime`: SSE over fetch streaming, Redis pub/sub per tenant+location fed by an outbox handler, heartbeat, Caddy `flush_interval -1`; `/host` and `/service` switch, polling as fallback                                                  | e2e: tenant B's stream never receives A's events; permission checked on connect; heartbeat | staging shows a change on a second tablet in < 2 s                                                   |
-| R2.0 | Outbox delayed events: `OutboxService.add(tx, event, { availableAt })`; lag reporter measures from `available_at` (ADR 0013 amendment)                                                                                                                              | int: event not claimed before `available_at`; lag ignores future events                    | outbox tests green                                                                                   |
-| R2.1 | ADR: public tenant resolution (amends hard rule 1, CLAUDE.md) + `guest` audit actor; platform `public_booking_pages`, public guard, rate limits, honeypot                                                                                                           | e2e: unknown/disabled page 404, client org ids ignored, other tenant unreachable, limits   | ADR accepted; public GET availability works on staging partner domain                                |
-| R2.2 | Redis holds (Lua) + public hold routes                                                                                                                                                                                                                              | int tests with Redis container: contention, TTL, replace, Redis down                       | two browsers can't hold the same slot                                                                |
-| R2.3 | Public booking + manage token + self-cancel; marketing consent table                                                                                                                                                                                                | e2e: hold required, consent stored separately, cut-off, token in fragment only             | guest books and cancels on staging                                                                   |
-| R2.4 | Mail: `MailMessage.html` + `attachments`; confirmation/cancel mails with `.ics`; labels en/de                                                                                                                                                                       | `.ics` snapshot tests (UTC, UID, SEQUENCE, CANCEL), SmtpMailer int test with attachment    | Mailpit shows mail + valid `.ics` (imports in Apple/Google Calendar)                                 |
-| R2.5 | Reminder (delayed event) + retention anonymisation (delayed event) + manual anonymise                                                                                                                                                                               | handler int tests: rescheduled/cancelled bookings skip, setting change reschedules         | anonymised guest has no PII; KPIs unchanged                                                          |
-| R2.6 | Public web page `/(public)/b/[slug]` and `/b/manage`                                                                                                                                                                                                                | component tests, Playwright: full online flow                                              | lint, typecheck, test green; a11y check passes                                                       |
+| #    | Step                                                                                                                                                                                                                                                                | Tests first                                                                                                                                         | Done when                                                                                            |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| R0.1 | `packages/shared/src/time/zoned.ts`: wall-clock ↔ instant in an IANA zone (`zonedInstant`, `zonedParts`, `zonedDayBounds`, `calendarMonthIn`), DST-safe, `Intl` only; numbering and web audit filters use it                                                        | DST unit tests (both 2026 switches, 23/25 h days, missing/duplicate wall times)                                                                     | numbering + web audit filters use it; lint, typecheck, test green                                    |
+| R0.2 | Platform settings `openingHours`, `closedDates` (+ labels, schema), and `serviceWindowsOn(date, hours, closedDates, tz)` in shared time                                                                                                                             | schema tests (overlaps, past midnight, ≤ 4 windows), window expansion across DST                                                                    | api stores them per location; settings page edits them at organization scope (location picker: R1.5) |
+| R0.3 | pos read port `PosFloorReader` in `pos/index.ts` (`tablesAt(locationId)`, `table(id)`, `openOrders(locationId)` → `{ tableId, orderId, openedAt, covers }`); no migration: the composite-FK target index already exists (pos_orders migration)                      | unit/e2e: port respects RLS, location access and archived tables                                                                                    | consumer test compiles against `index.ts` only; boundaries lint green                                |
+| R0.4 | `pos.order.closed` v1 event (`orderId`, `locationId`, `tableId`) written in `OrdersService.close`; pos.md + events registry                                                                                                                                         | e2e: closing writes exactly one event; closing twice writes none                                                                                    | outbox e2e green                                                                                     |
+| R0.5 | `pos_orders.covers` (nullable, expand-only) + `covers?` on first send + `PATCH /pos/orders/:id`; till field                                                                                                                                                         | e2e: covers stored, range-checked, audited; replay-safe                                                                                             | waiter sets covers on the till                                                                       |
+| R1.1 | Features `reservations`, `reservations.online` (+ migration adding both to `full`), permission keys, Host system role (2 migrations), labels, ADR 0007 amendment; first `GET /reservations/floor` (occupancy from `PosFloorReader`, so Host needs no pos order key) | registry tests, rbac migration int test, route-marker snapshot                                                                                      | Host role exists in every org; `/me` shows the keys                                                  |
+| R1.2 | Reservations settings keys (table above) with labels                                                                                                                                                                                                                | settings registry test, schema tests for `serviceHours`/`turnTimes`                                                                                 | settings page lists them; values resolve per location                                                |
+| R1.3 | First: run the `btree_gist` check on staging (G4). Schema: rules, combinations, reservations, guests, `reservation_tables` (raw SQL above), status changes; number series                                                                                           | **constraint int tests, race test, trigger tests**, RLS coverage, append-only catalog                                                               | migration SQL reviewed; `pnpm test` green on Testcontainers                                          |
+| R1.4 | Availability engine (pure)                                                                                                                                                                                                                                          | engine unit tests (spec → Test plan)                                                                                                                | 100 % branch coverage on the engine                                                                  |
+| R1.5 | Table rules + combinations API and Settings → Reservations UI                                                                                                                                                                                                       | e2e incl. cross-tenant isolation, location-limited access                                                                                           | manager configures a location in the browser                                                         |
+| R1.6 | Bookings API: create/patch/list/get/availability, status actions + undo, walk-ins; audit; `reservations.*` events                                                                                                                                                   | state-machine unit tests, e2e per route, **cross-tenant isolation e2e**, idempotent replay                                                          | all routes in snapshot; replaying an Idempotency-Key returns the same booking                        |
+| R1.7 | pos integration: `reservations.finishOnOrderClosed` handler (sets `last_visit_at`)                                                                                                                                                                                  | handler int tests: redelivery, out-of-order, feature disabled                                                                                       | closing the order on the till finishes the booking                                                   |
+| R1.8 | Derived floor endpoint                                                                                                                                                                                                                                              | unit tests for state derivation incl. overrun and open orders; e2e                                                                                  | floor matches table above for fixtures                                                               |
+| R1.9 | `/reservations` list + booking dialog; `/host` screen (timeline, floor, actions, undo toast) on 30 s polling; `/service` floor badges + covers pre-fill (web only)                                                                                                  | component tests (Vitest), Playwright smoke                                                                                                          | smoke passes: book → arrive → seat → undo → close order → finished                                   |
+| RT.1 | Realtime ADR + `platform/realtime`: SSE over fetch streaming, Redis pub/sub per tenant+location fed by an outbox handler, heartbeat, Caddy `flush_interval -1`; `/host` and `/service` switch, polling as fallback                                                  | e2e: tenant B's stream never receives A's events; permission checked on connect; heartbeat                                                          | staging shows a change on a second tablet in < 2 s                                                   |
+| R2.0 | Outbox delayed events: `OutboxService.add(tx, event, { availableAt })`; lag reporter measures from `available_at` (ADR 0013 amendment)                                                                                                                              | int: event not claimed before `available_at`; lag ignores future events                                                                             | outbox tests green                                                                                   |
+| R2.1 | ADR: public tenant resolution (amends hard rule 1, CLAUDE.md) + `guest` audit actor; platform `public_booking_pages`, public guard, rate limits, honeypot                                                                                                           | e2e: unknown/disabled page 404, client org ids ignored, other tenant unreachable, limits                                                            | ADR accepted; public GET availability works on staging partner domain                                |
+| R2.2 | Redis holds (Lua) + public hold routes                                                                                                                                                                                                                              | int tests with Redis container: contention, TTL, replace, Redis down                                                                                | two browsers can't hold the same slot                                                                |
+| R2.3 | Public booking + manage token + self-cancel; marketing consent table; Requests: parties above `instantMaxParty` (or `autoConfirm` off) become `requested` (no table), accept/decline endpoints, `declined` status, requests on `/host`                              | e2e: hold required, consent stored separately, cut-off, token in fragment only; a request blocks no table, accept re-checks capacity (409), decline | guest books and cancels on staging                                                                   |
+| R2.4 | Mail: `MailMessage.html` + `attachments`; confirmation/cancel mails with `.ics`; request received / accepted / declined mails; labels en/de                                                                                                                         | `.ics` snapshot tests (UTC, UID, SEQUENCE, CANCEL), SmtpMailer int test with attachment                                                             | Mailpit shows mail + valid `.ics` (imports in Apple/Google Calendar)                                 |
+| R2.5 | Reminder (delayed event) + retention anonymisation (delayed event) + manual anonymise                                                                                                                                                                               | handler int tests: rescheduled/cancelled bookings skip, setting change reschedules                                                                  | anonymised guest has no PII; KPIs unchanged                                                          |
+| R2.6 | Public web page `/(public)/b/[slug]` and `/b/manage`                                                                                                                                                                                                                | component tests, Playwright: full online flow                                                                                                       | lint, typecheck, test green; a11y check passes                                                       |
 
 R3 (waitlist, KPIs) gets its own plan after R2.
 

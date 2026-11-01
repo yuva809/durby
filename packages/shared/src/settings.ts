@@ -1,6 +1,12 @@
 import { LOCALES } from '@durby/i18n';
 import { z } from 'zod';
 import { CURRENCY_CODES } from './currencies';
+import {
+  DEFAULT_TURN_TIMES,
+  MAX_PARTY_SIZE,
+  SLOT_INTERVALS,
+  turnTimesSchema,
+} from './reservation-settings';
 import { closedDatesSchema, DEFAULT_OPENING_HOURS, weeklyHoursSchema } from './time/opening-hours';
 
 /**
@@ -101,6 +107,78 @@ export const SETTINGS = {
     description: 'platform.settings.closedDates.description',
     schema: closedDatesSchema,
     default: [],
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  // Reservations (docs/modules/reservations.md → Settings): defaults that let a new location take
+  // bookings without setup. Read at the booking's location.
+  'reservations.serviceHours': define({
+    label: 'platform.settings.reservationsServiceHours.name',
+    description: 'platform.settings.reservationsServiceHours.description',
+    // 'openingHours' = the opening hours; a schedule only narrows them (the engine intersects). Not
+    // null: a stored setting is never JSON null (ADR 0010), and a location must be able to say this.
+    schema: z.union([z.literal('openingHours'), weeklyHoursSchema]),
+    default: 'openingHours',
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  'reservations.slotIntervalMinutes': define({
+    label: 'platform.settings.reservationsSlotIntervalMinutes.name',
+    description: 'platform.settings.reservationsSlotIntervalMinutes.description',
+    schema: z.literal(SLOT_INTERVALS),
+    default: 15,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  'reservations.turnTimes': define({
+    label: 'platform.settings.reservationsTurnTimes.name',
+    description: 'platform.settings.reservationsTurnTimes.description',
+    schema: turnTimesSchema,
+    default: DEFAULT_TURN_TIMES,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  'reservations.maxCoversPerSlot': define({
+    label: 'platform.settings.reservationsMaxCoversPerSlot.name',
+    description: 'platform.settings.reservationsMaxCoversPerSlot.description',
+    // 'off' = no pacing limit (a value, not null: a location can switch off its organization's limit).
+    schema: z.union([z.literal('off'), z.int().min(1).max(1000)]),
+    default: 'off',
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  'reservations.lastBookingOffsetMinutes': define({
+    label: 'platform.settings.reservationsLastBookingOffsetMinutes.name',
+    description: 'platform.settings.reservationsLastBookingOffsetMinutes.description',
+    schema: z.int().min(1).max(480),
+    default: 60,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  'reservations.online.instantMaxParty': define({
+    label: 'platform.settings.reservationsOnlineInstantMaxParty.name',
+    description: 'platform.settings.reservationsOnlineInstantMaxParty.description',
+    // A threshold, not a block: larger online parties become a Requested booking the host accepts
+    // or declines (R2). 'off' = every size books instantly. Capacity is separate: slots no table
+    // or combination fits are never offered.
+    schema: z.union([z.literal('off'), z.int().min(1).max(MAX_PARTY_SIZE)]),
+    default: 10,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  'reservations.autoConfirm': define({
+    label: 'platform.settings.reservationsAutoConfirm.name',
+    description: 'platform.settings.reservationsAutoConfirm.description',
+    schema: z.boolean(),
+    default: true,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  'reservations.holdMinutes': define({
+    label: 'platform.settings.reservationsHoldMinutes.name',
+    description: 'platform.settings.reservationsHoldMinutes.description',
+    schema: z.int().min(1).max(15),
+    default: 5,
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
