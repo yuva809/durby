@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { MAX_PARTY_SIZE } from '../reservation-settings';
+import { SETTING_KEYS, type SettingKey, settingAllowsScope } from '../settings';
+import { weeklyHoursSchema } from '../time/opening-hours';
+import { resolvedSettingSchema } from './settings';
 import { isLocalDate } from '../time/zoned';
 import { TABLE_COLORS, TABLE_SHAPES } from './pos-tables';
 
@@ -183,6 +186,32 @@ export type ReservationCombination = z.infer<typeof reservationCombinationSchema
 export type ReservationCombinationsResponse = z.infer<typeof reservationCombinationsResponseSchema>;
 export type CreateCombinationRequest = z.infer<typeof createCombinationRequestSchema>;
 export type UpdateCombinationRequest = z.infer<typeof updateCombinationRequestSchema>;
+
+// --- The location's reservation settings (R1.5c, ADR 0020) ---
+
+/**
+ * The settings `reservations.setup.manage` may set at a location: the module's own keys that allow
+ * location scope. Platform-wide keys (openingHours, closedDates, timezone, …) are never among them.
+ */
+export const RESERVATION_LOCATION_SETTING_KEYS = SETTING_KEYS.filter(
+  (key) => key.startsWith('reservations.') && settingAllowsScope(key, 'location'),
+) as readonly SettingKey[];
+
+export const reservationSettingsQuerySchema = z.object({ locationId: z.uuid() });
+
+export const reservationSettingKeySchema = z.enum(
+  RESERVATION_LOCATION_SETTING_KEYS as [SettingKey, ...SettingKey[]],
+);
+
+export const reservationSettingsResponseSchema = z.object({
+  /** RESERVATION_LOCATION_SETTING_KEYS resolved at the location, in registry order. */
+  data: z.array(resolvedSettingSchema),
+  /** The location's opening hours (read-only here), to explain service hours. */
+  openingHours: weeklyHoursSchema,
+});
+
+export type ReservationSettingsQuery = z.infer<typeof reservationSettingsQuerySchema>;
+export type ReservationSettingsResponse = z.infer<typeof reservationSettingsResponseSchema>;
 
 /** Stable error codes of the reservations endpoints; the web app shows the matching label. */
 export const RESERVATION_ERROR_CODES = [

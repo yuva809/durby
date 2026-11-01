@@ -150,6 +150,7 @@ describe('route markers', () => {
       'DELETE /api/v1/locations/:id',
       'DELETE /api/v1/members/:id',
       'DELETE /api/v1/pos/areas/:id',
+      'DELETE /api/v1/reservations/settings/:key',
       'DELETE /api/v1/roles/:id',
       'DELETE /api/v1/settings/:key',
       'PATCH /api/v1/catalog/categories/:id',
@@ -176,6 +177,7 @@ describe('route markers', () => {
       'POST /api/v1/roles',
       'PUT /api/v1/label-overrides/:locale/:key',
       'PUT /api/v1/number-series/:key/counter',
+      'PUT /api/v1/reservations/settings/:key',
       'PUT /api/v1/reservations/tables/:tableId/rule',
       'PUT /api/v1/settings/:key',
     ]);

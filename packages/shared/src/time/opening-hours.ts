@@ -81,6 +81,46 @@ export function serviceWindowsOn(
 
 const minutes = (time: LocalTime) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
 
+/** A part of a day's window, as wall-clock times; `to` ≤ `from` runs past midnight. */
+export interface DayWindow {
+  day: Weekday;
+  from: LocalTime;
+  to: LocalTime;
+}
+
+/**
+ * The parts of `service`'s windows that lie outside `opening`, per weekday (docs/modules/reservations.md
+ * → R1.5c). Like the availability engine, each day's service windows are compared with that same
+ * day's opening windows only (a window past midnight belongs to the day it starts), so whatever is
+ * listed here is never offered as a slot.
+ */
+export function windowsOutside(service: WeeklyHours, opening: WeeklyHours): DayWindow[] {
+  const span = (w: HoursWindow) => {
+    const start = minutes(w.from);
+    const end = minutes(w.to) > start ? minutes(w.to) : minutes(w.to) + DAY_MINUTES;
+    return { start, end };
+  };
+  return WEEKDAYS.flatMap((day) => {
+    const open = opening[day].map(span).sort((a, b) => a.start - b.start);
+    return service[day].map(span).flatMap((s) => {
+      const parts: { start: number; end: number }[] = [];
+      let at = s.start;
+      for (const o of open) {
+        if (o.end <= at || o.start >= s.end) continue;
+        if (o.start > at) parts.push({ start: at, end: o.start });
+        at = Math.max(at, o.end);
+      }
+      if (at < s.end) parts.push({ start: at, end: s.end });
+      return parts.map((p) => ({ day, from: clock(p.start), to: clock(p.end) }));
+    });
+  });
+}
+
+const clock = (minute: number): LocalTime => {
+  const m = minute % DAY_MINUTES;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+};
+
 /** Whether any two windows of the week overlap, as minutes of a week that wraps Sunday → Monday. */
 function windowsOverlap(week: Readonly<Record<Weekday, readonly HoursWindow[]>>): boolean {
   const spans = WEEKDAYS.flatMap((day, i) =>
