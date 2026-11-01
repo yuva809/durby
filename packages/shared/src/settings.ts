@@ -7,6 +7,7 @@ import {
   SLOT_INTERVALS,
   turnTimesSchema,
 } from './reservation-settings';
+import { countryCodeSchema } from './phone';
 import { closedDatesSchema, DEFAULT_OPENING_HOURS, weeklyHoursSchema } from './time/opening-hours';
 
 /**
@@ -91,6 +92,15 @@ export const SETTINGS = {
     description: 'platform.settings.timezone.description',
     schema: timeZone,
     default: 'Europe/Berlin',
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  // Reads local phone numbers of the location's guests (docs/modules/reservations.md → GDPR).
+  country: define({
+    label: 'platform.settings.country.name',
+    description: 'platform.settings.country.description',
+    schema: countryCodeSchema,
+    default: 'DE',
     scopes: ALL_SCOPES,
     dataBound: false,
   }),

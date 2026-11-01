@@ -316,6 +316,29 @@ describe('reservations schema', () => {
       await guest('ada@example.test', true);
     });
 
+    it('lets guests share a phone number, with a partial index for matching live guests', async () => {
+      const v = await venue();
+      const guest = (phone: string) =>
+        asTenant(v.org.id, (db) =>
+          db.query(
+            `INSERT INTO reservation_guests (tenant_id, phone, locale, updated_at)
+             VALUES ($1, $2, 'en', now())`,
+            [v.org.id, phone],
+          ),
+        );
+      await guest('+4917612345678');
+      await guest('+4917612345678'); // a family: not unique
+      expect(await sqlState(guest('0176 12345678'))).toBe('23514'); // E.164 only
+      const index = await asTenant(v.org.id, (db) =>
+        db.query<{ indexdef: string }>(
+          `SELECT indexdef FROM pg_indexes WHERE indexname = 'reservation_guests_live_phone_idx'`,
+        ),
+      );
+      expect(index.rows[0]?.indexdef).toBe(
+        'CREATE INDEX reservation_guests_live_phone_idx ON public.reservation_guests USING btree (tenant_id, phone) WHERE (anonymised_at IS NULL)',
+      );
+    });
+
     it("shows no organization another's reservations, tables or guests", async () => {
       const a = await venue();
       const b = await venue();
