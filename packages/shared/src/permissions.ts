@@ -38,6 +38,20 @@ export const PERMISSIONS = {
   'pos.orders.close': { scope: 'location', label: 'pos.permissions.ordersClose' },
   // The bill with prices; waiters print the order only (docs/modules/pos.md → Printing).
   'pos.bills.print': { scope: 'location', label: 'pos.permissions.billsPrint' },
+  // Reservations (docs/modules/reservations.md → Permissions), checked at the booking's location.
+  'reservations.bookings.read': {
+    scope: 'location',
+    label: 'reservations.permissions.bookingsRead',
+  },
+  'reservations.bookings.manage': {
+    scope: 'location',
+    label: 'reservations.permissions.bookingsManage',
+  },
+  'reservations.waitlist.manage': {
+    scope: 'location',
+    label: 'reservations.permissions.waitlistManage',
+  },
+  'reservations.setup.manage': { scope: 'location', label: 'reservations.permissions.setupManage' },
 } as const satisfies Record<string, PermissionDefinition>;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -49,7 +63,15 @@ export function isPermissionKey(value: string): value is PermissionKey {
 }
 
 /** System roles, created in every organization. Display names are `platform.roles.<key>` labels. */
-export const SYSTEM_ROLES = ['owner', 'admin', 'manager', 'staff', 'waiter', 'cashier'] as const;
+export const SYSTEM_ROLES = [
+  'owner',
+  'admin',
+  'manager',
+  'staff',
+  'waiter',
+  'cashier',
+  'host',
+] as const;
 
 export type SystemRole = (typeof SYSTEM_ROLES)[number];
 
@@ -80,6 +102,10 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.void': 'grant',
     'pos.orders.close': 'grant',
     'pos.bills.print': 'grant',
+    'reservations.bookings.read': 'grant',
+    'reservations.bookings.manage': 'grant',
+    'reservations.waitlist.manage': 'grant',
+    'reservations.setup.manage': 'grant',
   },
   manager: {
     'platform.org.manage': 'deny',
@@ -101,6 +127,10 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.void': 'grant',
     'pos.orders.close': 'grant',
     'pos.bills.print': 'grant',
+    'reservations.bookings.read': 'grant',
+    'reservations.bookings.manage': 'grant',
+    'reservations.waitlist.manage': 'grant',
+    'reservations.setup.manage': 'grant',
   },
   staff: {
     'platform.org.manage': 'deny',
@@ -122,9 +152,14 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.void': 'deny',
     'pos.orders.close': 'deny',
     'pos.bills.print': 'deny',
+    'reservations.bookings.read': 'deny',
+    'reservations.bookings.manage': 'deny',
+    'reservations.waitlist.manage': 'deny',
+    'reservations.setup.manage': 'deny',
   },
   // Table service (ADR 0016): takes orders at the tables of their locations, and, like the cashier,
-  // prints the bill and checks out.
+  // prints the bill and checks out. Reservations: books and seats guests and runs the waitlist too
+  // (small restaurants have no host); setup stays with managers.
   waiter: {
     'platform.org.manage': 'deny',
     'platform.users.read': 'deny',
@@ -145,6 +180,10 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.void': 'deny',
     'pos.orders.close': 'grant',
     'pos.bills.print': 'grant',
+    'reservations.bookings.read': 'grant',
+    'reservations.bookings.manage': 'grant',
+    'reservations.waitlist.manage': 'grant',
+    'reservations.setup.manage': 'deny',
   },
   // Table service (ADR 0016): the billing counter.
   cashier: {
@@ -167,6 +206,37 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'pos.orders.void': 'deny',
     'pos.orders.close': 'grant',
     'pos.bills.print': 'grant',
+    'reservations.bookings.read': 'deny',
+    'reservations.bookings.manage': 'deny',
+    'reservations.waitlist.manage': 'deny',
+    'reservations.setup.manage': 'deny',
+  },
+  // Reservations (docs/modules/reservations.md → Permissions): the door. Bookings, walk-ins and the
+  // waitlist, and which tables exist; no orders, menu, setup or people.
+  host: {
+    'platform.org.manage': 'deny',
+    'platform.users.read': 'deny',
+    'platform.users.invite': 'deny',
+    'platform.users.manage': 'deny',
+    'platform.roles.read': 'deny',
+    'platform.roles.manage': 'deny',
+    'platform.settings.read': 'grant',
+    'platform.settings.manage': 'deny',
+    'platform.labels.manage': 'deny',
+    'platform.audit.read': 'deny',
+    'catalog.products.read': 'deny',
+    'catalog.products.manage': 'deny',
+    'pos.tables.read': 'grant',
+    'pos.tables.manage': 'deny',
+    'pos.orders.read': 'deny',
+    'pos.orders.take': 'deny',
+    'pos.orders.void': 'deny',
+    'pos.orders.close': 'deny',
+    'pos.bills.print': 'deny',
+    'reservations.bookings.read': 'grant',
+    'reservations.bookings.manage': 'grant',
+    'reservations.waitlist.manage': 'grant',
+    'reservations.setup.manage': 'deny',
   },
 };
 

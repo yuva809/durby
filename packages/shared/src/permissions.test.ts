@@ -6,6 +6,7 @@ import {
   SYSTEM_ROLE_GRANTS,
   SYSTEM_ROLES,
   systemRolePermissions,
+  type PermissionKey,
 } from './permissions';
 
 describe('permission registry', () => {
@@ -56,6 +57,10 @@ describe('system roles', () => {
       'pos.orders.void',
       'pos.tables.manage',
       'pos.tables.read',
+      'reservations.bookings.manage',
+      'reservations.bookings.read',
+      'reservations.setup.manage',
+      'reservations.waitlist.manage',
     ]);
     expect([...systemRolePermissions('staff')].sort()).toEqual([
       'catalog.products.read',
@@ -74,6 +79,9 @@ describe('system roles', () => {
       'pos.orders.read',
       'pos.orders.take',
       'pos.tables.read',
+      'reservations.bookings.manage',
+      'reservations.bookings.read',
+      'reservations.waitlist.manage',
     ]);
     expect([...systemRolePermissions('cashier')].sort()).toEqual([
       'catalog.products.read',
@@ -82,6 +90,57 @@ describe('system roles', () => {
       'pos.orders.close',
       'pos.orders.read',
       'pos.tables.read',
+    ]);
+  });
+
+  // docs/modules/reservations.md → Permissions: every reservations key is location-scoped.
+  it('scopes the reservations keys per location', () => {
+    for (const key of PERMISSION_KEYS.filter((k) => k.startsWith('reservations.'))) {
+      expect(PERMISSIONS[key].scope).toBe('location');
+    }
+    expect(PERMISSION_KEYS.filter((k) => k.startsWith('reservations.')).sort()).toEqual([
+      'reservations.bookings.manage',
+      'reservations.bookings.read',
+      'reservations.setup.manage',
+      'reservations.waitlist.manage',
+    ]);
+  });
+
+  it('grants the reservations keys per role as the spec decides', () => {
+    const holders = (key: PermissionKey) =>
+      SYSTEM_ROLES.filter((role) => systemRolePermissions(role).has(key));
+    expect(holders('reservations.bookings.read')).toEqual([
+      'owner',
+      'admin',
+      'manager',
+      'waiter',
+      'host',
+    ]);
+    expect(holders('reservations.bookings.manage')).toEqual([
+      'owner',
+      'admin',
+      'manager',
+      'waiter',
+      'host',
+    ]);
+    expect(holders('reservations.waitlist.manage')).toEqual([
+      'owner',
+      'admin',
+      'manager',
+      'waiter',
+      'host',
+    ]);
+    expect(holders('reservations.setup.manage')).toEqual(['owner', 'admin', 'manager']);
+  });
+
+  // The door: bookings, walk-ins and the waitlist, and which tables exist; no orders, menu or setup.
+  it('gives the host the bookings, the waitlist and the tables, nothing else', () => {
+    expect([...systemRolePermissions('host')].sort()).toEqual([
+      'platform.settings.read',
+      'pos.tables.read',
+      'reservations.bookings.manage',
+      'reservations.bookings.read',
+      'reservations.waitlist.manage',
     ]);
   });
 });

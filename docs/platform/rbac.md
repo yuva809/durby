@@ -38,27 +38,31 @@ location, even if the service had a bug.
 
 Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a **scope** and a label key.
 
-| Key                        | Scope        | Grants                                                                |
-| -------------------------- | ------------ | --------------------------------------------------------------------- |
-| `platform.org.manage`      | organization | organization name and locations (create, rename, delete): owner only  |
-| `platform.users.read`      | organization | list members and open invitations                                     |
-| `platform.users.invite`    | organization | invite by email, revoke invitations                                   |
-| `platform.users.manage`    | organization | change a member's role or locations, remove a member                  |
-| `platform.roles.read`      | organization | list roles (needed by the invite dialog)                              |
-| `platform.roles.manage`    | organization | create, edit, delete custom roles                                     |
-| `platform.settings.read`   | location     | read resolved settings (1.6, ADR 0010)                                |
-| `platform.settings.manage` | location     | set and remove setting values (1.6, ADR 0010)                         |
-| `platform.labels.manage`   | organization | label overrides (1.7)                                                 |
-| `platform.audit.read`      | organization | audit log (1.4)                                                       |
-| `catalog.products.read`    | location     | list categories and products ([catalog](../modules/catalog.md))       |
-| `catalog.products.manage`  | organization | create, edit, archive categories and products                         |
-| `pos.tables.read`          | location     | list a location's tables ([pos](../modules/pos.md))                   |
-| `pos.tables.manage`        | location     | create, edit, archive a location's tables                             |
-| `pos.orders.read`          | location     | floor, orders, kitchen tickets ([pos](../modules/pos.md))             |
-| `pos.orders.take`          | location     | send items to the kitchen (opens a table's order)                     |
-| `pos.orders.void`          | location     | void sent items                                                       |
-| `pos.orders.close`         | location     | close an order (frees the table)                                      |
-| `pos.bills.print`          | location     | print the bill with prices; without it the till prints the order only |
+| Key                            | Scope        | Grants                                                                               |
+| ------------------------------ | ------------ | ------------------------------------------------------------------------------------ |
+| `platform.org.manage`          | organization | organization name and locations (create, rename, delete): owner only                 |
+| `platform.users.read`          | organization | list members and open invitations                                                    |
+| `platform.users.invite`        | organization | invite by email, revoke invitations                                                  |
+| `platform.users.manage`        | organization | change a member's role or locations, remove a member                                 |
+| `platform.roles.read`          | organization | list roles (needed by the invite dialog)                                             |
+| `platform.roles.manage`        | organization | create, edit, delete custom roles                                                    |
+| `platform.settings.read`       | location     | read resolved settings (1.6, ADR 0010)                                               |
+| `platform.settings.manage`     | location     | set and remove setting values (1.6, ADR 0010)                                        |
+| `platform.labels.manage`       | organization | label overrides (1.7)                                                                |
+| `platform.audit.read`          | organization | audit log (1.4)                                                                      |
+| `catalog.products.read`        | location     | list categories and products ([catalog](../modules/catalog.md))                      |
+| `catalog.products.manage`      | organization | create, edit, archive categories and products                                        |
+| `pos.tables.read`              | location     | list a location's tables ([pos](../modules/pos.md))                                  |
+| `pos.tables.manage`            | location     | create, edit, archive a location's tables                                            |
+| `pos.orders.read`              | location     | floor, orders, kitchen tickets ([pos](../modules/pos.md))                            |
+| `pos.orders.take`              | location     | send items to the kitchen (opens a table's order)                                    |
+| `pos.orders.void`              | location     | void sent items                                                                      |
+| `pos.orders.close`             | location     | close an order (frees the table)                                                     |
+| `pos.bills.print`              | location     | print the bill with prices; without it the till prints the order only                |
+| `reservations.bookings.read`   | location     | see reservations and table availability ([reservations](../modules/reservations.md)) |
+| `reservations.bookings.manage` | location     | book, seat, cancel; walk-ins                                                         |
+| `reservations.waitlist.manage` | location     | the waitlist                                                                         |
+| `reservations.setup.manage`    | location     | reservable tables, combinations, booking page                                        |
 
 - **organization** scope: only memberships with `all_locations = true` can hold it.
 - **location** scope (later module keys, e.g. inventory): held per location. A location-limited membership holds only
@@ -69,18 +73,19 @@ Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a 
 Created for every organization (`SystemRoles.ensureFor`, called by provisioning and backfilled by the migration).
 Their permissions are **defined in code** (`SYSTEM_ROLE_PERMISSIONS`), the same for every organization:
 
-| Role    | Permissions                                                                                                                                                            |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner   | every registered key, including future ones                                                                                                                            |
-| Admin   | everything except `platform.org.manage`                                                                                                                                |
-| Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read`, `platform.settings.read`, product and table reads, `pos.tables.manage`, all `pos.orders.*` keys |
-| Staff   | `platform.settings.read`, `catalog.products.read`, `pos.tables.read`                                                                                                   |
-| Waiter  | as Staff, plus `pos.orders.read`, `.take`, `.close`, `pos.bills.print` ([pos](../modules/pos.md)); added by ADR 0016                                                   |
-| Cashier | as Staff, plus `pos.orders.read`, `.close`, `pos.bills.print`; the billing counter, added by ADR 0016                                                                  |
+| Role    | Permissions                                                                                                                                                                                                                              |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Owner   | every registered key, including future ones                                                                                                                                                                                              |
+| Admin   | everything except `platform.org.manage`                                                                                                                                                                                                  |
+| Manager | `platform.users.read`, `platform.users.invite`, `platform.roles.read`, `platform.settings.read`, product and table reads, `pos.tables.manage`, all `pos.orders.*` keys                                                                   |
+| Staff   | `platform.settings.read`, `catalog.products.read`, `pos.tables.read`                                                                                                                                                                     |
+| Waiter  | as Staff, plus `pos.orders.read`, `.take`, `.close`, `pos.bills.print` ([pos](../modules/pos.md)); added by ADR 0016. Reservations: `reservations.bookings.read`, `.bookings.manage`, `.waitlist.manage` (ADR 0007 amendment 2026-11-01) |
+| Cashier | as Staff, plus `pos.orders.read`, `.close`, `pos.bills.print`; the billing counter, added by ADR 0016                                                                                                                                    |
+| Host    | `platform.settings.read`, `pos.tables.read`, `reservations.bookings.read`, `.bookings.manage`, `.waitlist.manage`; the door, added by the ADR 0007 amendment of 2026-11-01                                                               |
 
 Every role but Owner lists **every** key as `grant` or `deny`; a new key that isn't listed fails the typecheck and a
 unit test, so each new key is a conscious decision per role. System roles cannot be edited or deleted. Display names
-are labels: `platform.roles.owner`, `.admin`, `.manager`, `.staff`, `.waiter`, `.cashier`. Organizations that need something else create
+are labels: `platform.roles.owner`, `.admin`, `.manager`, `.staff`, `.waiter`, `.cashier`, `.host`. Organizations that need something else create
 custom roles.
 
 ## Resolving access

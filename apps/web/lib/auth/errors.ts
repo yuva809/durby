@@ -10,6 +10,7 @@ import type {
   NumberingErrorCode,
   PosErrorCode,
   RbacErrorCode,
+  ReservationErrorCode,
   SettingErrorCode,
   StaffErrorCode,
 } from '@durby/shared';
@@ -29,6 +30,7 @@ export type ApiErrorCode =
   | CatalogErrorCode
   | LocationErrorCode
   | PosErrorCode
+  | ReservationErrorCode
   | StaffErrorCode;
 
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
@@ -104,6 +106,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'pos.area_not_found': 'pos.errors.areaNotFound',
   'pos.area_name_taken': 'pos.errors.areaNameTaken',
   'pos.area_not_empty': 'pos.errors.areaNotEmpty',
+  'reservations.location_not_found': 'reservations.errors.locationNotFound',
   'staff.unauthenticated': 'staff.errors.unauthenticated',
   'staff.invalid_credentials': 'staff.errors.invalidCredentials',
   'staff.reauth_required': 'staff.errors.reauthRequired',

@@ -261,6 +261,7 @@ enum SystemRole {
   staff
   waiter
   cashier
+  host
 
   @@map("system_role")
 }
