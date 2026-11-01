@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { type Api, read, WRITE_TIMEOUT_MS, type Schema, write } from './api-call';
+import {
+  type Api,
+  BUSY_RETRY_MAX_MS,
+  read,
+  WRITE_TIMEOUT_MS,
+  type Schema,
+  write,
+} from './api-call';
 import { ActionKey } from './idempotency';
 
 const schema: Schema<{ ok: boolean }> = {
@@ -59,5 +66,82 @@ describe('write timeout', () => {
     const timeout = vi.spyOn(AbortSignal, 'timeout');
     await read({ apiFetch: () => Promise.resolve(Response.json({ ok: true })) }, '/x', schema);
     expect(timeout).not.toHaveBeenCalled();
+  });
+});
+
+describe('busy answers (503 with Retry-After, ADR 0021)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  const busy = (retryAfter: string | null = '2') =>
+    Response.json(
+      { code: 'platform.busy', message: 'busy' },
+      { status: 503, headers: retryAfter === null ? {} : { 'Retry-After': retryAfter } },
+    );
+
+  /** An apiFetch answering from `answers` in turn, recording each request. */
+  function answering(...answers: (() => Response)[]) {
+    const seen: { input: string; init: RequestInit | undefined }[] = [];
+    const store: Api = {
+      apiFetch: (input, init) => {
+        seen.push({ input, init });
+        return Promise.resolve(answers[seen.length - 1]!());
+      },
+    };
+    return { store, seen };
+  }
+
+  it('retries a read once after Retry-After', async () => {
+    vi.useFakeTimers();
+    const { store, seen } = answering(
+      () => busy('2'),
+      () => Response.json({ ok: true }),
+    );
+    const pending = read(store, '/api/v1/reservations', schema);
+    await vi.advanceTimersByTimeAsync(1_999);
+    expect(seen).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await pending).toEqual({ ok: true, data: { ok: true } });
+    expect(seen).toHaveLength(2);
+  });
+
+  it('retries a write once with the same Idempotency-Key', async () => {
+    vi.useFakeTimers();
+    const { store, seen } = answering(
+      () => busy('1'),
+      () => Response.json({ ok: true }, { status: 201 }),
+    );
+    const pending = write(store, new ActionKey(), '/api/v1/reservations', 'POST', { a: 1 }, schema);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(await pending).toEqual({ ok: true, data: { ok: true } });
+    const keys = seen.map((s) => new Headers(s.init?.headers).get('Idempotency-Key'));
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  it('shows the error after a second busy answer, and caps the wait', async () => {
+    vi.useFakeTimers();
+    const { store, seen } = answering(
+      () => busy('120'),
+      () => busy('120'),
+    );
+    const pending = write(store, new ActionKey(), '/api/v1/reservations', 'POST', { a: 1 }, schema);
+    await vi.advanceTimersByTimeAsync(BUSY_RETRY_MAX_MS);
+    expect(await pending).toEqual({ ok: false, code: 'platform.busy' });
+    expect(seen).toHaveLength(2);
+  });
+
+  it('does not retry a 503 without Retry-After, or any other error', async () => {
+    const plain = answering(() => busy(null));
+    expect(await read(plain.store, '/api/v1/x', schema)).toMatchObject({ ok: false });
+    expect(plain.seen).toHaveLength(1);
+    const failed = answering(() =>
+      Response.json({ code: 'internal.error', message: 'x' }, { status: 500 }),
+    );
+    expect(await read(failed.store, '/api/v1/x', schema)).toMatchObject({ ok: false });
+    expect(failed.seen).toHaveLength(1);
   });
 });
