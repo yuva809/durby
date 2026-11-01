@@ -604,22 +604,23 @@ organization id like invitation tokens (`issueInvitationToken`), and its hash is
 
 ## Errors
 
-| Code                                   | Status | When                                                                  |
-| -------------------------------------- | ------ | --------------------------------------------------------------------- |
-| `reservations.reservation_not_found`   | 404    | unknown, another tenant's, a location the caller can't read           |
-| `reservations.table_not_found`         | 404    | a table not at the location / archived / unreadable                   |
-| `reservations.combination_not_found`   | 404    |                                                                       |
-| `reservations.table_unavailable`       | 409    | exclusion violation or engine found no free table; `details.tableIds` |
-| `reservations.table_occupied`          | 409    | an open pos order or an overrunning seated party holds the table now  |
-| `reservations.table_walk_in_only`      | 409    | booking a `walk_in_only` table                                        |
-| `reservations.party_size_out_of_range` | 409    | table/combination can't take the party (staff may not `force` this)   |
-| `reservations.pacing_exceeded`         | 409    | covers per slot reached (staff: retry with `force`)                   |
-| `reservations.outside_service_hours`   | 409    |                                                                       |
-| `reservations.invalid_transition`      | 409    | e.g. seat a cancelled booking; `details.from`, `details.to`           |
-| `reservations.undo_expired`            | 409    | older than 5 min, or not the latest change                            |
-| `reservations.hold_not_found`          | 409    | expired / unknown / other page (R2)                                   |
-| `reservations.holds_unavailable`       | 503    | Redis down (R2): online booking pauses, staff booking unaffected      |
-| `reservations.self_cancel_closed`      | 409    | past the cut-off (R2)                                                 |
+| Code                                   | Status | When                                                                                         |
+| -------------------------------------- | ------ | -------------------------------------------------------------------------------------------- |
+| `reservations.reservation_not_found`   | 404    | unknown, another tenant's, a location the caller can't read                                  |
+| `reservations.table_not_found`         | 404    | a table not at the location / archived / unreadable                                          |
+| `reservations.combination_not_found`   | 404    |                                                                                              |
+| `reservations.table_unavailable`       | 409    | exclusion violation or engine found no free table; `details.tableIds`                        |
+| `reservations.table_occupied`          | 409    | an open pos order or an overrunning seated party holds the table now                         |
+| `reservations.table_walk_in_only`      | 409    | booking a `walk_in_only` table                                                               |
+| `reservations.party_size_out_of_range` | 409    | table/combination can't take the party (staff may not `force` this)                          |
+| `reservations.pacing_exceeded`         | 409    | covers per slot reached (staff: retry with `force`)                                          |
+| `reservations.phone_invalid`           | 422    | a guest phone number that isn't a valid number for the location's country (or international) |
+| `reservations.outside_service_hours`   | 409    |                                                                                              |
+| `reservations.invalid_transition`      | 409    | e.g. seat a cancelled booking; `details.from`, `details.to`                                  |
+| `reservations.undo_expired`            | 409    | older than 5 min, or not the latest change                                                   |
+| `reservations.hold_not_found`          | 409    | expired / unknown / other page (R2)                                                          |
+| `reservations.holds_unavailable`       | 503    | Redis down (R2): online booking pauses, staff booking unaffected                             |
+| `reservations.self_cancel_closed`      | 409    | past the cut-off (R2)                                                                        |
 
 Labels `reservations.errors.<camelCase>`.
 
@@ -643,6 +644,12 @@ Guest name, email, phone and notes never enter snapshots. Online and self-servic
 
 - **Minimal fields:** name (online required, staff optional), email (online required for confirmation), phone
   optional, locale. No birthday, address, allergies-as-profile. Notes are per booking and erased with the guest.
+- **Phone numbers** are stored in E.164 (`+493012345670`, CHECK on `reservation_guests.phone`). The api accepts
+  what people type: local numbers ("030 1234567", "0176 12345678") are read with the country of the booking's
+  location, international ones ("+44 20 …", "0044 …") as they are. Parsed and validated with `libphonenumber-js`
+  (MIT, no dependencies, `min` metadata), in `packages/shared` so the web can check before sending too. A number
+  it can't make valid E.164 of is `422 reservations.phone_invalid` (`details.field`), never stored as typed. The
+  country is a new platform setting `country` (ISO 3166-1 alpha-2, every scope, default `DE`), added in R1.6.
 - **Marketing opt-in** is never bundled with booking: a separate unchecked box; stored as an append-only
   `guest_marketing_consents (guest_id, granted boolean, wording_key, wording_version, source, created_at)`. No
   marketing feature consumes it yet.
@@ -770,7 +777,7 @@ finishes it.
 | R1.3 | First: run the `btree_gist` check on staging (G4). Schema: rules, combinations, reservations, guests, `reservation_tables` (raw SQL above), status changes; number series                                                                                                                                                                              | **constraint int tests, race test, trigger tests**, RLS coverage, append-only catalog                                                                                                                                                               | migration SQL reviewed; `pnpm test` green on Testcontainers                                          |
 | R1.4 | Availability engine (pure)                                                                                                                                                                                                                                                                                                                             | engine unit tests (spec → Test plan)                                                                                                                                                                                                                | 100 % branch coverage on the engine                                                                  |
 | R1.5 | Table rules + combinations API and Settings → Reservations UI                                                                                                                                                                                                                                                                                          | e2e incl. cross-tenant isolation, location-limited access                                                                                                                                                                                           | manager configures a location in the browser                                                         |
-| R1.6 | Bookings API: create/patch/list/get/availability, status actions + undo, walk-ins; audit; `reservations.*` events                                                                                                                                                                                                                                      | state-machine unit tests, e2e per route, **cross-tenant isolation e2e**, idempotent replay                                                                                                                                                          | all routes in snapshot; replaying an Idempotency-Key returns the same booking                        |
+| R1.6 | Bookings API: create/patch/list/get/availability, status actions + undo, walk-ins; audit; phone normalisation (`libphonenumber-js`, `country` setting, default DE); `reservations.*` events                                                                                                                                                            | state-machine unit tests, phone normalisation (DE landline and mobile, +/00 international, other location country, invalid → 422), e2e per route, **cross-tenant isolation e2e**, idempotent replay                                                 | all routes in snapshot; replaying an Idempotency-Key returns the same booking                        |
 | R1.7 | pos integration: `reservations.finishOnOrderClosed` handler (sets `last_visit_at`)                                                                                                                                                                                                                                                                     | handler int tests: redelivery, out-of-order, feature disabled                                                                                                                                                                                       | closing the order on the till finishes the booking                                                   |
 | R1.8 | Derived floor endpoint                                                                                                                                                                                                                                                                                                                                 | unit tests for state derivation incl. overrun and open orders; e2e                                                                                                                                                                                  | floor matches table above for fixtures                                                               |
 | R1.9 | `/reservations` list + booking dialog; `/host` screen (timeline, floor, actions, undo toast) on 30 s polling; `/service` floor badges + covers pre-fill (web only)                                                                                                                                                                                     | component tests (Vitest), Playwright smoke                                                                                                                                                                                                          | smoke passes: book → arrive → seat → undo → close order → finished                                   |
