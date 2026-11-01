@@ -15,7 +15,13 @@ import {
 } from '../../../platform/tenancy';
 import { PosFloorReader } from '../../pos';
 import { reservationErrors } from '../reservations-errors';
-import { availability, type AvailabilityResult, type Channel, type EngineSettings } from './engine';
+import {
+  availability,
+  type AvailabilityInput,
+  type AvailabilityResult,
+  type Channel,
+  type EngineSettings,
+} from './engine';
 
 export interface AvailabilityRequest {
   locationId: string;
@@ -23,6 +29,16 @@ export interface AvailabilityRequest {
   partySize: number;
   channel: Channel;
   now: Date;
+  /** Moving a booking: leave it out, so it doesn't block itself. */
+  excludeReservationId?: string;
+  /** Also load bookings up to here (a write's own end, when it runs past the day). */
+  until?: Date;
+}
+
+/** The engine's input and the location's settings (bookings read country, locale, turn times). */
+export interface LoadedInput {
+  input: AvailabilityInput;
+  settings: ResolvedSettings;
 }
 
 const BLOCKING = ['pending', 'booked', 'arrived', 'seated'] as const;
@@ -49,16 +65,17 @@ export class AvailabilityLoader {
     return this.db.$transaction(
       async (tx) => {
         await tx.$executeRaw`SET TRANSACTION READ ONLY`;
-        return this.loadIn(tx, request);
+        return availability((await this.inputIn(tx, request)).input);
       },
       { isolationLevel: 'RepeatableRead' },
     );
   }
 
-  private async loadIn(
-    tx: TenantTransactionClient,
-    request: AvailabilityRequest,
-  ): Promise<AvailabilityResult> {
+  /**
+   * The engine's input for `request`, read in the caller's transaction: a booking write checks
+   * against what its own transaction sees (docs/modules/reservations.md → R1.6 write-time checks).
+   */
+  async inputIn(tx: TenantTransactionClient, request: AvailabilityRequest): Promise<LoadedInput> {
     const { locationId, date, partySize } = request;
     const resolved = await this.settingsAt(locationId, tx);
     const timeZone = setting(resolved, 'timezone');
@@ -77,7 +94,8 @@ export class AvailabilityLoader {
     // belongs to the day it starts) and last one turn time. Seated parties count until finished
     // (overrun), wherever their planned end lies.
     const day = zonedDayBounds(date, timeZone);
-    const until = new Date(day.end.getTime() + turnTimeFor(partySize, settings.turnTimes) * 60_000);
+    const dayEnd = day.end.getTime() + turnTimeFor(partySize, settings.turnTimes) * 60_000;
+    const until = new Date(Math.max(dayEnd, request.until?.getTime() ?? 0));
     const [tables, rules, combinations, bookings, openOrders] = [
       await this.pos.tablesAt(locationId, tx),
       await tx.reservationTableRule.findMany({
@@ -98,6 +116,7 @@ export class AvailabilityLoader {
       await tx.reservation.findMany({
         where: {
           locationId,
+          ...(request.excludeReservationId && { id: { not: request.excludeReservationId } }),
           status: { in: [...BLOCKING] },
           startsAt: { lt: until },
           OR: [{ endsAt: { gt: day.start } }, { status: 'seated' }],
@@ -115,7 +134,7 @@ export class AvailabilityLoader {
     ];
 
     const ruleOf = new Map(rules.map((r) => [r.tableId, r]));
-    return availability({
+    const input: AvailabilityInput = {
       date,
       timeZone,
       now: request.now,
@@ -156,7 +175,8 @@ export class AvailabilityLoader {
         openedAt: o.openedAt,
         covers: o.covers,
       })),
-    });
+    };
+    return { input, settings: resolved };
   }
 
   /** The location's settings; an unknown or foreign location is the module's 404. */

@@ -708,7 +708,13 @@ Decisions (2026-11-01). Requested/pending flows (accept, confirm, decline) stay 
   time; moving keeps the length unless `endsAt` is sent.
 - **No-show (Q5)** only once `starts_at` has passed (`409 reservations.invalid_transition` before).
 - **Walk-ins:** guest name and phone optional (no guest data → a guest row with no name, email or phone).
-- **Guests:** see GDPR → guests are reused (email first, then phone).
+- **Several chosen tables:** exactly a defined (not archived) combination uses its own party range; any other set
+  of tables takes up to their capacities added up.
+- **Guests:** see GDPR → guests are reused (email first, then phone). **PATCH `guest`** corrects the booking's guest:
+  an email that belongs to another live guest links the booking to that guest (filling its blanks); otherwise the
+  given fields replace the current guest's. A phone never relinks (families share numbers).
+- **PATCH** works on `pending`, `booked`, `arrived` and `seated` bookings (else `409 reservations.invalid_transition`)
+  and re-runs the checks only when time, tables or party size change; `force` applies to those changes.
 - **Phone:** `normalisePhone(input, country)` in `packages/shared` (libphonenumber-js, `min` metadata) with the
   location's `country` setting; invalid → `422 reservations.phone_invalid` (`details.field`).
 
