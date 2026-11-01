@@ -4,7 +4,12 @@ import {
   type ReservationCombination,
   reservationCombinationSchema,
   reservationCombinationsResponseSchema,
+  type ReservationSettingsResponse,
+  reservationSettingsResponseSchema,
   type ReservationTable,
+  type ResolvedSetting,
+  resolvedSettingSchema,
+  type SettingKey,
   reservationTableSchema,
   reservationTablesResponseSchema,
   type UpdateCombinationRequest,
@@ -77,4 +82,45 @@ export const updateCombination = (
     'PATCH',
     body,
     reservationCombinationSchema,
+  );
+
+/** The location's reservations settings (R1.5c, ADR 0020). */
+
+export const loadLocationSettings = (
+  store: Api,
+  locationId: string,
+): Promise<Result<ReservationSettingsResponse>> =>
+  read(
+    store,
+    `/api/v1/reservations/settings?locationId=${encodeURIComponent(locationId)}`,
+    reservationSettingsResponseSchema,
+  );
+
+export const putLocationSetting = (
+  store: Api,
+  action: ActionKey,
+  locationId: string,
+  key: SettingKey,
+  value: unknown,
+): Promise<Result<ResolvedSetting | null>> =>
+  write(
+    store,
+    action,
+    `/api/v1/reservations/settings/${key}?locationId=${encodeURIComponent(locationId)}`,
+    'PUT',
+    { value },
+    resolvedSettingSchema,
+  );
+
+export const deleteLocationSetting = (
+  store: Api,
+  action: ActionKey,
+  locationId: string,
+  key: SettingKey,
+): Promise<Result<null>> =>
+  write(
+    store,
+    action,
+    `/api/v1/reservations/settings/${key}?locationId=${encodeURIComponent(locationId)}`,
+    'DELETE',
   );

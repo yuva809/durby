@@ -8,9 +8,13 @@ import {
   MAX_PARTY_SIZE,
   type ReservationCombination,
   type ReservationTable,
+  type ResolvedSetting,
+  type SettingKey,
   TABLE_BOOKING_MODES,
   type TableBookingMode,
   type UpdateCombinationRequest,
+  type WeeklyHours,
+  windowsOutside,
 } from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
 import { Eye, EyeOff, Pencil } from 'lucide-react';
@@ -21,11 +25,15 @@ import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import {
   createCombination,
+  deleteLocationSetting,
   loadCombinations,
+  loadLocationSettings,
   loadRuleTables,
+  putLocationSetting,
   putTableRule,
   updateCombination,
 } from '../../lib/reservations/api';
+import { controlOf } from '../../lib/settings/controls';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
@@ -39,6 +47,7 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Loaded, NoAccess } from '../users/common';
 import { NoLocations } from './locations-page';
+import { SettingRow, type SettingWrites } from './settings-page';
 
 /** Name, booking mode, min, max, save: one grid for the header row and every table row. */
 const RULE_GRID =
@@ -215,6 +224,11 @@ function Setup({ locations }: { locations: LocationSummary[] }) {
                   }
                 </Loaded>
               </Card>
+
+              <LocationSettings
+                locationId={locationId}
+                locationName={locations.find((l) => l.id === locationId)?.name ?? ''}
+              />
             </>
           )}
         </Loaded>
@@ -646,5 +660,109 @@ function CombinationDialog({
         </Label>
       </div>
     </FormDialog>
+  );
+}
+
+/**
+ * The location's own reservations.* settings (R1.5c, ADR 0020): set here or inherited from the
+ * organization. Opening hours and closed days stay on the General tab (platform.settings.manage).
+ */
+function LocationSettings({
+  locationId,
+  locationName,
+}: {
+  locationId: string;
+  locationName: string;
+}) {
+  const t = useT();
+  const { store } = useAuth();
+  const [resource, reload] = useResource(locationId, () => loadLocationSettings(store, locationId));
+  // Saved rows replace their loaded value until the location changes.
+  const [saved, setSaved] = useState<{
+    locationId: string;
+    rows: Partial<Record<SettingKey, ResolvedSetting>>;
+  }>({ locationId, rows: {} });
+  const rows = saved.locationId === locationId ? saved.rows : {};
+  const writes: SettingWrites = {
+    scope: 'location',
+    put: (action, key, value) => putLocationSetting(store, action, locationId, key, value),
+    remove: (action, key) => deleteLocationSetting(store, action, locationId, key),
+    reload: async (key) => {
+      const reloaded = await loadLocationSettings(store, locationId);
+      return reloaded.ok ? reloaded.data.data.find((x) => x.key === key) : undefined;
+    },
+  };
+
+  return (
+    <Card className="flex flex-col gap-4 p-4 sm:p-6" data-testid="location-settings">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-lg font-semibold">{t('reservations.locationSettings.title')}</h2>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          {t('reservations.locationSettings.intro', { location: locationName })}
+        </p>
+      </div>
+      <Loaded resource={resource} reload={reload}>
+        {({ data, openingHours }) => (
+          <ul className="flex flex-col gap-3">
+            {data.map((loaded) => {
+              const setting = rows[loaded.key] ?? loaded;
+              const control = controlOf(setting.key);
+              if (!control) return null;
+              return (
+                <li key={`${locationId}:${setting.key}`}>
+                  <SettingRow
+                    setting={setting}
+                    control={control}
+                    openingHours={openingHours}
+                    writes={writes}
+                    editable
+                    onSaved={(next) =>
+                      setSaved({ locationId, rows: { ...rows, [next.key]: next } })
+                    }
+                    below={
+                      setting.key === 'reservations.serviceHours'
+                        ? (draft) => (
+                            <OutsideOpeningHours draft={draft} openingHours={openingHours} />
+                          )
+                        : undefined
+                    }
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Loaded>
+    </Card>
+  );
+}
+
+/** Which parts of a service-hours schedule fall outside the opening hours (saved, never offered). */
+function OutsideOpeningHours({
+  draft,
+  openingHours,
+}: {
+  draft: unknown;
+  openingHours: WeeklyHours;
+}) {
+  const t = useT();
+  if (typeof draft !== 'object' || draft === null) return null;
+  const outside = windowsOutside(draft as WeeklyHours, openingHours);
+  if (outside.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1 text-sm" data-testid="service-outside">
+      <p className="font-medium">{t('reservations.locationSettings.outsideIntro')}</p>
+      <ul className="list-disc pl-5 text-muted-foreground">
+        {outside.map((w) => (
+          <li key={`${w.day}-${w.from}`}>
+            {t('reservations.locationSettings.outside', {
+              day: t(`platform.settingsPage.weekdays.${w.day}`),
+              from: w.from,
+              to: w.to,
+            })}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

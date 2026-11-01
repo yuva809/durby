@@ -8,11 +8,13 @@ import {
   type WeeklyHours,
 } from '@durby/shared';
 import { TriangleAlert } from 'lucide-react';
-import { useId, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
+import type { Result } from '../../lib/api-call';
 import { errorLabel } from '../../lib/auth/errors';
+import type { ActionKey } from '../../lib/idempotency';
 import { deleteSetting, loadSettings, putSetting } from '../../lib/settings/api';
 import {
   codeDefaults,
@@ -93,6 +95,7 @@ export function SettingsPage() {
                   setting={setting}
                   control={control}
                   openingHours={openingHours}
+                  writes={organizationWrites(store)}
                   editable={canManage && !fallback}
                   onSaved={(next) => setSaved((current) => ({ ...current, [key]: next }))}
                 />
@@ -135,21 +138,51 @@ const textOf = (draft: Draft) =>
 /** Drafts are plain JSON values: equal when their JSON is. */
 const sameDraft = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b);
 
-function SettingRow({
+/** Where a SettingRow writes: the organization (settings api) or a location (a module's api). */
+export interface SettingWrites {
+  scope: 'organization' | 'location';
+  put: (
+    action: ActionKey,
+    key: SettingKey,
+    value: unknown,
+  ) => Promise<Result<ResolvedSetting | null>>;
+  remove: (action: ActionKey, key: SettingKey) => Promise<Result<unknown>>;
+  /** The key's value after inheriting again (the api resolves it). */
+  reload: (key: SettingKey) => Promise<ResolvedSetting | undefined>;
+}
+
+const organizationWrites = (store: Parameters<typeof loadSettings>[0]): SettingWrites => ({
+  scope: 'organization',
+  put: (action, key, value) => putSetting(store, action, key, value),
+  remove: (action, key) => deleteSetting(store, action, key),
+  reload: async (key) => {
+    const reloaded = await loadSettings(store);
+    return reloaded.ok ? reloaded.data.find((s) => s.key === key) : undefined;
+  },
+});
+
+/**
+ * One setting: its control, save and "use inherited". `below` renders under the control from the
+ * current draft (e.g. why a schedule won't be fully offered).
+ */
+export function SettingRow({
   setting,
   control,
   openingHours,
+  writes,
   editable,
   onSaved,
+  below,
 }: {
   setting: ResolvedSetting;
   control: SettingControl;
   openingHours: WeeklyHours;
+  writes: SettingWrites;
   editable: boolean;
   onSaved: (setting: ResolvedSetting) => void;
+  below?: (draft: unknown) => ReactNode;
 }) {
   const t = useT();
-  const { store } = useAuth();
   const id = useId();
   const saveAction = useActionKey();
   const inheritAction = useActionKey();
@@ -169,7 +202,7 @@ function SettingRow({
     setConfirming(false);
     setBusy(true);
     setError(null);
-    const result = await putSetting(store, saveAction, setting.key, draft);
+    const result = await writes.put(saveAction, setting.key, draft);
     setBusy(false);
     if (result.ok && result.data) onSaved(result.data);
     else if (!result.ok) fail(result.code);
@@ -178,16 +211,15 @@ function SettingRow({
   async function inherit() {
     setBusy(true);
     setError(null);
-    const removed = await deleteSetting(store, inheritAction, setting.key);
+    const removed = await writes.remove(inheritAction, setting.key);
     if (!removed.ok) {
       setBusy(false);
       fail(removed.code);
       return;
     }
     // The inherited value is resolved by the api: read it back.
-    const reloaded = await loadSettings(store);
+    const next = await writes.reload(setting.key);
     setBusy(false);
-    const next = reloaded.ok ? reloaded.data.find((s) => s.key === setting.key) : undefined;
     if (next) {
       onSaved(next);
       setDraft(draftOf(next.value));
@@ -211,7 +243,7 @@ function SettingRow({
           </p>
         </div>
         <Badge data-testid="setting-source">
-          {isSetHere(setting)
+          {isSetHere(setting, writes.scope)
             ? t('platform.settingsPage.setHere')
             : t('platform.settingsPage.inherited')}
         </Badge>
@@ -331,7 +363,7 @@ function SettingRow({
             >
               {t('platform.common.save')}
             </Button>
-            {isSetHere(setting) && (
+            {isSetHere(setting, writes.scope) && (
               <Button
                 variant="outline"
                 data-testid="setting-inherit"
@@ -345,6 +377,7 @@ function SettingRow({
         )}
       </div>
 
+      {below?.(draft)}
       {invalid && (
         <p id={`${id}-problem`} role="alert" className="text-sm text-destructive">
           {t('platform.errors.settingsInvalidValue')}

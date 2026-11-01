@@ -984,5 +984,9 @@
   "reservations.combinationsCard.archiveDescription": "It is no longer offered for new bookings. Existing bookings keep their tables.",
   "reservations.combinationsCard.showArchived": "Show archived",
   "reservations.combinationsCard.hideArchived": "Hide archived",
-  "reservations.combinationsCard.unknownTable": "Table no longer in service"
+  "reservations.combinationsCard.unknownTable": "Table no longer in service",
+  "reservations.locationSettings.title": "Reservation settings for this location",
+  "reservations.locationSettings.intro": "Values set here apply only to {location}; everything else is inherited from the organization (Settings → General). Opening hours and closed days are on the General tab.",
+  "reservations.locationSettings.outsideIntro": "Reservation hours can only narrow the opening hours. These times are outside the opening hours and won't be offered:",
+  "reservations.locationSettings.outside": "{day} {from}–{to}"
 }
