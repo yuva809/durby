@@ -740,6 +740,18 @@ Decisions (2026-11-01). Requested/pending flows (accept, confirm, decline) stay 
 - **Phone:** `normalisePhone(input, country)` in `packages/shared` (libphonenumber-js, `min` metadata) with the
   location's `country` setting; invalid → `422 reservations.phone_invalid` (`details.field`).
 
+### Under load (R1.6 follow-up)
+
+- A booking write claims its tables first and allocates its number only after the table rows are in (a temporary
+  `~…` number until then, in the same transaction): concurrent losers of a table (`23P01`) never queue on the
+  per-tenant number series counter.
+- Booking write transactions set `lock_timeout = 3s`, shorter than Prisma's 5 s transaction timeout.
+- Overload on the bookings routes — no pooled connection in time or an expired transaction (Prisma `P2028`), a lock
+  timeout (`55P03`), a deadlock Postgres resolved (`40P01`) — answers `503 reservations.busy` with `Retry-After: 2`.
+  5xx answers aren't stored by the idempotency layer, so retrying with the same key books once.
+- Not covered yet: the same timeouts inside guards and global interceptors (before the bookings code runs) still
+  answer 500 (platform-wide mapping, open).
+
 ### R1.7 the till seats and finishes bookings
 
 Restaurants without a host: the waiter opens the order at the till and nobody presses Seat. pos emits

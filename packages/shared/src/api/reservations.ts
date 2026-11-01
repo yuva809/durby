@@ -408,6 +408,7 @@ export const RESERVATION_ERROR_CODES = [
   'reservations.invalid_transition',
   'reservations.undo_expired',
   'reservations.table_not_in_service',
+  'reservations.busy',
 ] as const;
 
 export type ReservationErrorCode = (typeof RESERVATION_ERROR_CODES)[number];

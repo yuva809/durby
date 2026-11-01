@@ -1043,5 +1043,6 @@
   "pos.ticket.orderTicket": "# {number} · Bon {sequence}",
   "pos.bill.tableGuests": "Tisch {table}, Gäste: {guests}",
   "pos.bill.thanks": "Vielen Dank für Ihren Besuch!",
-  "pos.bill.vatShort": "MwSt. {rate} % (netto + MwSt.)"
+  "pos.bill.vatShort": "MwSt. {rate} % (netto + MwSt.)",
+  "reservations.errors.busy": "Gerade sehr viel los. Bitte gleich noch einmal versuchen."
 }
