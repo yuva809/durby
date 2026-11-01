@@ -1012,5 +1012,6 @@
   "platform.audit.fields.overriddenRules": "Übergangene Regeln",
   "reservations.errors.undoExpired": "Das lässt sich nicht mehr rückgängig machen.",
   "reservations.audit.actions.reservationStatusChanged": "Reservierungsstatus geändert",
-  "reservations.audit.actions.reservationStatusUndone": "Statusänderung der Reservierung rückgängig gemacht"
+  "reservations.audit.actions.reservationStatusUndone": "Statusänderung der Reservierung rückgängig gemacht",
+  "reservations.errors.tableNotInService": "Ein Tisch dieser Reservierung ist nicht mehr in Betrieb. Die Reservierung an einen anderen Tisch verlegen."
 }

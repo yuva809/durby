@@ -1012,5 +1012,6 @@
   "platform.audit.fields.overriddenRules": "Rules overridden",
   "reservations.errors.undoExpired": "This can no longer be undone.",
   "reservations.audit.actions.reservationStatusChanged": "Reservation status changed",
-  "reservations.audit.actions.reservationStatusUndone": "Reservation status change undone"
+  "reservations.audit.actions.reservationStatusUndone": "Reservation status change undone",
+  "reservations.errors.tableNotInService": "A table of this booking is no longer in service. Move the booking to another table."
 }

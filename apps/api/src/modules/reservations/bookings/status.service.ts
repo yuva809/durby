@@ -99,7 +99,9 @@ export class BookingStatusService {
           start = now;
         }
         tableIds = body.tableIds ? [...body.tableIds].sort() : currentTables;
-        await this.checkTables(tx, current, found.locationId, start, end, tableIds, now);
+        await this.checkTables(tx, current, found.locationId, start, end, tableIds, now, {
+          ownTables: !body.tableIds,
+        });
       }
       if (action === 'finish') {
         // Frees the rest of the period at once.
@@ -154,7 +156,9 @@ export class BookingStatusService {
         : currentTables;
       // Back to holding tables: they may have been taken or occupied meanwhile.
       if (isBlocking(to)) {
-        await this.checkTables(tx, current, found.locationId, start, end, tableIds, now);
+        await this.checkTables(tx, current, found.locationId, start, end, tableIds, now, {
+          ownTables: true,
+        });
       }
       const undoneStamp = STAMP[current.status];
       await exclusive(() =>
@@ -265,7 +269,8 @@ export class BookingStatusService {
 
   /**
    * The table checks for `tableIds` at `[start, end)` without the booking itself: fit, open pos
-   * order, overrunning party, other bookings. Never the rules: the party is here.
+   * order, overrunning party, other bookings. Never the rules: the party is here. `ownTables`: the
+   * booking's own (not the caller's choice), so one pos archived since is a 409, not a 404.
    */
   private async checkTables(
     tx: TenantTransactionClient,
@@ -275,6 +280,7 @@ export class BookingStatusService {
     end: Date,
     tableIds: string[],
     now: Date,
+    opts: { ownTables: boolean },
   ): Promise<void> {
     const { input } = await this.bookings.load(
       tx,
@@ -291,7 +297,13 @@ export class BookingStatusService {
       tableIds,
       walkIn: current.source === 'walk_in',
     });
-    if (!verdict.ok) throw problemError(verdict.problem);
+    if (!verdict.ok) {
+      if (verdict.problem === 'table_not_found' && opts.ownTables) {
+        const inService = new Set(input.tables.map((t) => t.id));
+        throw reservationErrors.tableNotInService(tableIds.filter((t) => !inService.has(t)));
+      }
+      throw problemError(verdict.problem);
+    }
   }
 
   /** Audit, event and the idempotent answer of a status change. */

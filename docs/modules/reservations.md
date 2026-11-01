@@ -756,6 +756,7 @@ Decisions (2026-11-01). Requested/pending flows (accept, confirm, decline) stay 
 | `reservations.outside_service_hours`   | 409    | outside the reservation hours or after the last booking time (staff: retry with `force`)     |
 | `reservations.invalid_transition`      | 409    | e.g. seat a cancelled booking; `details.from`, `details.to`                                  |
 | `reservations.undo_expired`            | 409    | older than 5 min, or not the latest change                                                   |
+| `reservations.table_not_in_service`    | 409    | seat or undo onto the booking's own table that pos archived since; `details.tableIds`        |
 | `reservations.hold_not_found`          | 409    | expired / unknown / other page (R2)                                                          |
 | `reservations.holds_unavailable`       | 503    | Redis down (R2): online booking pauses, staff booking unaffected                             |
 | `reservations.self_cancel_closed`      | 409    | past the cut-off (R2)                                                                        |

@@ -302,6 +302,43 @@ describe('reservations: status actions, undo, walk-ins', () => {
       await act(r.owner, b.id, 'undo', { changeId: seated.lastChangeId }).expect(409);
     });
 
+    it('refuses to restore a table archived since: 409, the booking stays as it was', async () => {
+      const r = await restaurant();
+      const b = await book(r, { tableIds: [r.t2] });
+      const seated = await acted(r.owner, b.id, 'seat', { tableIds: [r.t4] });
+      await request(server)
+        .patch(`/api/v1/pos/tables/${r.t2}`)
+        .set('Idempotency-Key', uuidv7())
+        .auth(r.owner, { type: 'bearer' })
+        .send({ archived: true })
+        .expect(200);
+      const res = await act(r.owner, b.id, 'undo', { changeId: seated.lastChangeId }).expect(409);
+      expect(res.body).toMatchObject({
+        code: 'reservations.table_not_in_service',
+        details: { tableIds: [r.t2] },
+      });
+      expect(await detail(r.owner, b.id)).toMatchObject({
+        status: 'seated',
+        tableIds: [r.t4],
+        lastChangeId: seated.lastChangeId,
+      });
+    });
+
+    it("refuses to seat at the booking's own table once it is archived", async () => {
+      const r = await restaurant();
+      const b = await book(r, { tableIds: [r.t2] });
+      await request(server)
+        .patch(`/api/v1/pos/tables/${r.t2}`)
+        .set('Idempotency-Key', uuidv7())
+        .auth(r.owner, { type: 'bearer' })
+        .send({ archived: true })
+        .expect(200);
+      const res = await act(r.owner, b.id, 'seat').expect(409);
+      expect(res.body).toMatchObject({ code: 'reservations.table_not_in_service' });
+      // Moving it to a table in service works.
+      await act(r.owner, b.id, 'seat', { tableIds: [r.t4] }).expect(201);
+    });
+
     it('refuses to re-block a table taken meanwhile', async () => {
       const r = await restaurant();
       const a = await book(r, { tableIds: [r.t4] });

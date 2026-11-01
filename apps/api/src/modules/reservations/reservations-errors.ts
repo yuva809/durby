@@ -53,6 +53,14 @@ export const reservationErrors = {
       'Not a valid phone number.',
       { field },
     ),
+  /** The booking's own table was archived (pos): it must move (docs → R1.8 note). */
+  tableNotInService: (tableIds: string[]) =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'reservations.table_not_in_service',
+      'A table of the booking is no longer in service.',
+      { tableIds },
+    ),
   undoExpired: () =>
     new ApiError(
       HttpStatus.CONFLICT,
