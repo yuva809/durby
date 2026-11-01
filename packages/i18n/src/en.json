@@ -925,5 +925,18 @@
   "platform.settingsTabs.labels": "Labels",
   "platform.settingsTabs.plan": "Plan",
   "platform.settingsTabs.audit": "Audit log",
-  "platform.settingsTabs.label": "Settings sections"
+  "platform.settingsTabs.label": "Settings sections",
+  "reservations.errors.tableNotFound": "Table not found.",
+  "reservations.errors.combinationNotFound": "Table combination not found.",
+  "reservations.errors.partyRangeInvalid": "Check the party sizes: the minimum can't be larger than the maximum or than what the table seats.",
+  "reservations.audit.actions.tableRuleUpdated": "Table booking rule changed",
+  "reservations.audit.actions.combinationCreated": "Table combination created",
+  "reservations.audit.actions.combinationUpdated": "Table combination changed",
+  "platform.audit.entities.reservationTableRule": "Table booking rule",
+  "platform.audit.entities.reservationCombination": "Table combination",
+  "platform.audit.fields.bookingMode": "Bookable by",
+  "platform.audit.fields.minParty": "Min. party",
+  "platform.audit.fields.maxParty": "Max. party",
+  "platform.audit.fields.tableIds": "Tables",
+  "platform.audit.fields.onlineBookable": "Bookable online"
 }

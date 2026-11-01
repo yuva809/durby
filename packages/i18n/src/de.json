@@ -925,5 +925,18 @@
   "platform.settingsTabs.labels": "Bezeichnungen",
   "platform.settingsTabs.plan": "Tarif",
   "platform.settingsTabs.audit": "Protokoll",
-  "platform.settingsTabs.label": "Bereiche der Einstellungen"
+  "platform.settingsTabs.label": "Bereiche der Einstellungen",
+  "reservations.errors.tableNotFound": "Tisch nicht gefunden.",
+  "reservations.errors.combinationNotFound": "Tischkombination nicht gefunden.",
+  "reservations.errors.partyRangeInvalid": "Bitte die Personenzahl prüfen: Das Minimum darf nicht größer sein als das Maximum oder als die Plätze am Tisch.",
+  "reservations.audit.actions.tableRuleUpdated": "Buchungsregel des Tisches geändert",
+  "reservations.audit.actions.combinationCreated": "Tischkombination angelegt",
+  "reservations.audit.actions.combinationUpdated": "Tischkombination geändert",
+  "platform.audit.entities.reservationTableRule": "Buchungsregel des Tisches",
+  "platform.audit.entities.reservationCombination": "Tischkombination",
+  "platform.audit.fields.bookingMode": "Buchbar durch",
+  "platform.audit.fields.minParty": "Min. Personen",
+  "platform.audit.fields.maxParty": "Max. Personen",
+  "platform.audit.fields.tableIds": "Tische",
+  "platform.audit.fields.onlineBookable": "Online buchbar"
 }

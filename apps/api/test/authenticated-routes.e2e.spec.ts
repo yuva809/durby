@@ -161,6 +161,7 @@ describe('route markers', () => {
       'PATCH /api/v1/pos/areas/:id',
       'PATCH /api/v1/pos/orders/:id',
       'PATCH /api/v1/pos/tables/:id',
+      'PATCH /api/v1/reservations/combinations/:id',
       'PATCH /api/v1/roles/:id',
       'POST /api/v1/catalog/categories',
       'POST /api/v1/catalog/products',
@@ -171,9 +172,11 @@ describe('route markers', () => {
       'POST /api/v1/pos/orders/:id/voids',
       'POST /api/v1/pos/tables',
       'POST /api/v1/pos/tables/:tableId/tickets',
+      'POST /api/v1/reservations/combinations',
       'POST /api/v1/roles',
       'PUT /api/v1/label-overrides/:locale/:key',
       'PUT /api/v1/number-series/:key/counter',
+      'PUT /api/v1/reservations/tables/:tableId/rule',
       'PUT /api/v1/settings/:key',
     ]);
   });
