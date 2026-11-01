@@ -52,6 +52,9 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 - Small steps. One feature per session. Commit after each green step.
 - Before saying "done": `pnpm lint && pnpm typecheck && pnpm test` must pass. Report what you ran.
 - Prisma migrations: generate, show me the SQL, never run against anything but local/test DBs.
+- Hand-written SQL objects Prisma can model (unique indexes, foreign keys) are declared in `schema.prisma` with
+  `map: "<existing name>"`, so generated migrations never drop them; `test/migration-drift.int.spec.ts` fails on any
+  drift between the migrations and the schema.
 - Migrations must stay backward compatible with the previous release (expand/contract): rollbacks redeploy older
   images without reverting the schema (ADR 0004). Drop or rename columns/tables only once no deployed code uses them.
 - DB roles (ADR 0002): the app connects only as `durby_app`; migrations run only as `durby_migrator`. Never grant the app role BYPASSRLS, ownership or CREATE.

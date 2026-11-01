@@ -758,6 +758,7 @@ model DiningTable {
   location                Location                      @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   diningArea              DiningArea?                   @relation(fields: [tenantId, locationId, areaId], references: [tenantId, locationId, id], onDelete: Restrict, onUpdate: Restrict)
   orders                  PosOrder[]
+  ordersAtLocation        PosOrder[]                    @relation("PosOrderTableAtLocation")
   reservationRules        ReservationTableRule[]
   reservationCombinations ReservationCombinationTable[]
   reservationTables       ReservationTable[]
@@ -787,25 +788,27 @@ enum PosKitchenTicketKind {
 /// A table's order (docs/modules/pos.md → Step 3). At most one open order per table: a partial unique index in the
 /// migration. User ids have no foreign key: users are platform rows private to platform/auth.
 model PosOrder {
-  id             String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId       String             @map("tenant_id") @db.Uuid
-  locationId     String             @map("location_id") @db.Uuid
-  tableId        String             @map("table_id") @db.Uuid
-  number         String
-  status         PosOrderStatus     @default(open)
+  id              String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String             @map("tenant_id") @db.Uuid
+  locationId      String             @map("location_id") @db.Uuid
+  tableId         String             @map("table_id") @db.Uuid
+  number          String
+  status          PosOrderStatus     @default(open)
   /// Guests at the table, 1–100 (pos_orders_covers_check); null when not recorded.
-  covers         Int?
-  openedByUserId String             @map("opened_by_user_id") @db.Uuid
-  openedAt       DateTime           @default(now()) @map("opened_at") @db.Timestamptz(6)
-  closedByUserId String?            @map("closed_by_user_id") @db.Uuid
-  closedAt       DateTime?          @map("closed_at") @db.Timestamptz(6)
-  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization   Organization       @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  location       Location           @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  table          DiningTable        @relation(fields: [tenantId, tableId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  tickets        PosKitchenTicket[]
-  lines          PosOrderLine[]
+  covers          Int?
+  openedByUserId  String             @map("opened_by_user_id") @db.Uuid
+  openedAt        DateTime           @default(now()) @map("opened_at") @db.Timestamptz(6)
+  closedByUserId  String?            @map("closed_by_user_id") @db.Uuid
+  closedAt        DateTime?          @map("closed_at") @db.Timestamptz(6)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization       @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location        Location           @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  table           DiningTable        @relation(fields: [tenantId, tableId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  /// Hand-written FK (pos_orders migration): the table is at the order's location. Declared so migrate diff keeps it; read `table`.
+  tableAtLocation DiningTable        @relation("PosOrderTableAtLocation", fields: [tenantId, tableId, locationId], references: [tenantId, id, locationId], onDelete: Restrict, onUpdate: Restrict, map: "pos_orders_table_location_fkey")
+  tickets         PosKitchenTicket[]
+  lines           PosOrderLine[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, number])
@@ -826,8 +829,11 @@ model PosKitchenTicket {
   organization    Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   order           PosOrder             @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   lines           PosOrderLine[]
+  linesOfOrder    PosOrderLine[]       @relation("PosOrderLineTicketOfOrder")
 
   @@unique([tenantId, id])
+  /// Hand-written in the pos_orders migration; target of pos_order_lines_ticket_order_fkey.
+  @@unique([tenantId, orderId, id], map: "pos_kitchen_tickets_tenant_id_order_id_id_key")
   @@unique([tenantId, orderId, sequence])
   @@map("pos_kitchen_tickets")
 }
@@ -835,27 +841,34 @@ model PosKitchenTicket {
 /// A sent item (quantity > 0) or a void of one (quantity < 0, voidsLineId set). Append-only; name, gross unit price
 /// and VAT rate are snapshots of the product at the time.
 model PosOrderLine {
-  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId        String           @map("tenant_id") @db.Uuid
-  orderId         String           @map("order_id") @db.Uuid
-  ticketId        String           @map("ticket_id") @db.Uuid
-  productId       String           @map("product_id") @db.Uuid
-  productName     String           @map("product_name")
-  unitPrice       Decimal          @map("unit_price") @db.Decimal(12, 2)
-  taxRate         Decimal          @map("tax_rate") @db.Decimal(5, 2)
-  quantity        Int
-  note            String?
-  voidsLineId     String?          @map("voids_line_id") @db.Uuid
-  createdByUserId String           @map("created_by_user_id") @db.Uuid
-  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  organization    Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  order           PosOrder         @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  ticket          PosKitchenTicket @relation(fields: [tenantId, ticketId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  product         Product          @relation(fields: [tenantId, productId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  voidsLine       PosOrderLine?    @relation("PosOrderLineVoids", fields: [tenantId, voidsLineId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  voidedBy        PosOrderLine[]   @relation("PosOrderLineVoids")
+  id               String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String           @map("tenant_id") @db.Uuid
+  orderId          String           @map("order_id") @db.Uuid
+  ticketId         String           @map("ticket_id") @db.Uuid
+  productId        String           @map("product_id") @db.Uuid
+  productName      String           @map("product_name")
+  unitPrice        Decimal          @map("unit_price") @db.Decimal(12, 2)
+  taxRate          Decimal          @map("tax_rate") @db.Decimal(5, 2)
+  quantity         Int
+  note             String?
+  voidsLineId      String?          @map("voids_line_id") @db.Uuid
+  createdByUserId  String           @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization     Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  order            PosOrder         @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  ticket           PosKitchenTicket @relation(fields: [tenantId, ticketId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  product          Product          @relation(fields: [tenantId, productId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  voidsLine        PosOrderLine?    @relation("PosOrderLineVoids", fields: [tenantId, voidsLineId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  voidedBy         PosOrderLine[]   @relation("PosOrderLineVoids")
+  /// Hand-written FKs (pos_orders migration): the ticket and the voided line belong to the line's order.
+  /// Declared so migrate diff keeps them; read `ticket` and `voidsLine`.
+  ticketOfOrder    PosKitchenTicket @relation("PosOrderLineTicketOfOrder", fields: [tenantId, orderId, ticketId], references: [tenantId, orderId, id], onDelete: Restrict, onUpdate: Restrict, map: "pos_order_lines_ticket_order_fkey")
+  voidsLineOfOrder PosOrderLine?    @relation("PosOrderLineVoidsSameOrder", fields: [tenantId, orderId, voidsLineId], references: [tenantId, orderId, id], onDelete: Restrict, onUpdate: Restrict, map: "pos_order_lines_voids_same_order_fkey")
+  voidedByOfOrder  PosOrderLine[]   @relation("PosOrderLineVoidsSameOrder")
 
   @@unique([tenantId, id])
+  /// Hand-written in the pos_orders migration; target of pos_order_lines_voids_same_order_fkey.
+  @@unique([tenantId, orderId, id], map: "pos_order_lines_tenant_id_order_id_id_key")
   @@index([tenantId, orderId])
   @@index([tenantId, ticketId])
   @@index([tenantId, voidsLineId])
