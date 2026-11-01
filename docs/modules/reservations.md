@@ -350,6 +350,11 @@ the booking is made; the handler does nothing if the booking is no longer pendin
 - **Capacity stays separate.** Whatever this setting says, the widget offers only slots where some table or
   combination that may be booked online fits the party at that time (engine → Candidates and table choice). A request is for a slot that
   could seat the party when it was made.
+- **Larger than every table and combination.** When no table or combination of the location (that may be booked
+  online) can take the party at all, every slot is `full (no_table)`. The widget then doesn't show an empty list: it
+  offers **"Large group? Send a request"**, a Requested booking for the date and a time the guest names, with no slot
+  and no table (the host arranges it, e.g. by joining tables ad hoc). The engine doesn't change; the widget reads
+  the all-`no_table` day plus the party size (R2.3, R2.6).
 - **Host screen.** Requests show in their own list on `/host` and on the timeline (marked, no table). **Accept**
   (`POST /reservations/:id/accept`) runs allocation then: the engine's best fit, or tables the host picks, checked by
   the exclusion constraint like any booking; `requested → booked`. If nothing fits anymore it answers 409
@@ -391,9 +396,16 @@ moves it. Why this is not racy: overrun can only be ended concurrently (finish),
 
 **Pure core, separate loader.** `availability(input)` in `apps/api/src/modules/reservations/availability/engine.ts`
 takes plain data and returns slots; no database, no clock (`now` is an input), so DST days, overruns and pacing are
-fast unit tests. A loader (`AvailabilityLoader`) reads one location and one local day in **one fixed batch of
-queries** (settings, the location's tables and rules, combinations, blocking bookings overlapping the day, open pos
-orders through `PosFloorReader`); a test pins the query count. No query per slot.
+fast unit tests. A loader (`AvailabilityLoader`, `availability/loader.ts`) reads one location and one local day in
+**one fixed batch of queries**, independent of how many bookings or slots there are: the location's settings
+(`SettingsService.all`: the location, then the stored values; an unknown or foreign location is
+`404 reservations.location_not_found`), then in parallel the tables and open pos orders (`PosFloorReader`), table
+rules, combinations (not archived, with their tables) and the blocking bookings that can touch a slot of the day
+(`starts_at < end of the local day + the party's turn time`, and `ends_at > start of the day` or `seated`, for
+overrun). That is 9 queries in 7 transactions (each sets `app.tenant_id`); `reservations-availability.e2e.spec.ts`
+pins the operations and shows the count doesn't grow with bookings. No query per slot or per booking.
+`GET /reservations/availability` (staff channel, `now` from `Clock`) checks `reservations.bookings.read` at the
+location first; `excludeReservationId` (moving a booking) comes with the bookings API in R1.6.
 
 ```
 availability({
@@ -554,16 +566,16 @@ values `'off'` and `'openingHours'`; a location can set them under an organizati
 
 Added by the steps that first use them (same rules, no migration needed):
 
-| Key                                        | Schema                                                      | Default | Step |
-| ------------------------------------------ | ----------------------------------------------------------- | ------- | ---- |
-| `reservations.minLeadMinutes`              | int 0–10080                                                 | `60`    | R2   |
-| `reservations.maxAdvanceDays`              | int 1–365                                                   | `60`    | R2   |
-| `reservations.noShowGraceMinutes`          | int 0–120                                                   | `15`    | R1.9 |
-| `reservations.floorHorizonMinutes`         | int 15–240                                                  | `60`    | R1.8 |
-| `reservations.reminderLeadHours`           | int 0–168 (0 = off)                                         | `24`    | R2.5 |
-| `reservations.selfCancelCutoffMinutes`     | int 0–10080                                                 | `120`   | R2.3 |
-| `reservations.guestRetentionMonths`        | int 1–120; scopes partner, organization (Q8)                | `12`    | R2.5 |
-| `reservations.online.pendingExpiryMinutes` | int 5–10080: unconfirmed pending bookings expire after this | `120`   | R2.3 |
+| Key                                        | Schema                                                                                     | Default | Step                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------ | ------- | --------------------------- |
+| `reservations.minLeadMinutes`              | int 0–10080: online slots start at least this long after now (engine, online channel only) | `60`    | R2.2, **before the widget** |
+| `reservations.maxAdvanceDays`              | int 1–365: online bookings at most this many days ahead                                    | `60`    | R2.2, before the widget     |
+| `reservations.noShowGraceMinutes`          | int 0–120                                                                                  | `15`    | R1.9                        |
+| `reservations.floorHorizonMinutes`         | int 15–240                                                                                 | `60`    | R1.8                        |
+| `reservations.reminderLeadHours`           | int 0–168 (0 = off)                                                                        | `24`    | R2.5                        |
+| `reservations.selfCancelCutoffMinutes`     | int 0–10080                                                                                | `120`   | R2.3                        |
+| `reservations.guestRetentionMonths`        | int 1–120; scopes partner, organization (Q8)                                               | `12`    | R2.5                        |
+| `reservations.online.pendingExpiryMinutes` | int 5–10080: unconfirmed pending bookings expire after this                                | `120`   | R2.3                        |
 
 Read at the reservation's location (`SettingsService.all({ locationId })`), so Location → Brand → Organization →
 Partner → default applies. `timezone` (existing key, all scopes) is read at the location too. Labels:
@@ -815,7 +827,7 @@ finishes it.
 | RT.1 | Realtime ADR + `platform/realtime`: SSE over fetch streaming, Redis pub/sub per tenant+location fed by an outbox handler, heartbeat, Caddy `flush_interval -1`; `/host` and `/service` switch, polling as fallback                                                                                                                                     | e2e: tenant B's stream never receives A's events; permission checked on connect; heartbeat                                                                                                                                                          | staging shows a change on a second tablet in < 2 s                                                   |
 | R2.0 | Outbox delayed events: `OutboxService.add(tx, event, { availableAt })`; lag reporter measures from `available_at` (ADR 0013 amendment)                                                                                                                                                                                                                 | int: event not claimed before `available_at`; lag ignores future events                                                                                                                                                                             | outbox tests green                                                                                   |
 | R2.1 | ADR: public tenant resolution (amends hard rule 1, CLAUDE.md) + `guest` audit actor; platform `public_booking_pages`, public guard, rate limits, honeypot                                                                                                                                                                                              | e2e: unknown/disabled page 404, client org ids ignored, other tenant unreachable, limits                                                                                                                                                            | ADR accepted; public GET availability works on staging partner domain                                |
-| R2.2 | Redis holds (Lua) + public hold routes                                                                                                                                                                                                                                                                                                                 | int tests with Redis container: contention, TTL, replace, Redis down                                                                                                                                                                                | two browsers can't hold the same slot                                                                |
+| R2.2 | Redis holds (Lua) + public hold routes; settings `minLeadMinutes` and `maxAdvanceDays`, applied by the engine to the online channel (must land before the widget, R2.3/R2.6)                                                                                                                                                                           | int tests with Redis container: contention, TTL, replace, Redis down                                                                                                                                                                                | two browsers can't hold the same slot                                                                |
 | R2.3 | Public booking + manage token + self-cancel; marketing consent table; Requests: parties above `instantMaxParty` become `requested` (no table), accept/decline; pending: within it while `autoConfirm` is off (tables blocking), confirm/decline, expiry (`online.pendingExpiryMinutes`, delayed event); `declined`/`expired` statuses; both on `/host` | e2e: hold required, consent stored separately, cut-off, token in fragment only; a request blocks no table, a pending booking blocks and counts as covers, expiry releases tables and skips confirmed ones, accept re-checks capacity (409), decline | guest books and cancels on staging                                                                   |
 | R2.4 | Mail: `MailMessage.html` + `attachments`; confirmation/cancel mails with `.ics`; request received / accepted / declined, pending received / confirmed / declined / expired mails; labels en/de                                                                                                                                                         | `.ics` snapshot tests (UTC, UID, SEQUENCE, CANCEL), SmtpMailer int test with attachment                                                                                                                                                             | Mailpit shows mail + valid `.ics` (imports in Apple/Google Calendar)                                 |
 | R2.5 | Reminder (delayed event) + retention anonymisation (delayed event) + manual anonymise                                                                                                                                                                                                                                                                  | handler int tests: rescheduled/cancelled bookings skip, setting change reschedules                                                                                                                                                                  | anonymised guest has no PII; KPIs unchanged                                                          |
