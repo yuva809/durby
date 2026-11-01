@@ -27,6 +27,8 @@ export const AUDIT_ENTITY_TYPES = [
   'kitchen_ticket',
   'dining_area',
   'location',
+  'reservation_table_rule',
+  'reservation_combination',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -190,6 +192,19 @@ export const AUDIT_ACTIONS = {
     entityType: 'dining_area',
     label: 'pos.audit.actions.diningAreaDeleted',
   },
+  /** entityId: the table's id (a rule is keyed by its table). */
+  'reservations.table_rule.updated': {
+    entityType: 'reservation_table_rule',
+    label: 'reservations.audit.actions.tableRuleUpdated',
+  },
+  'reservations.combination.created': {
+    entityType: 'reservation_combination',
+    label: 'reservations.audit.actions.combinationCreated',
+  },
+  'reservations.combination.updated': {
+    entityType: 'reservation_combination',
+    label: 'reservations.audit.actions.combinationUpdated',
+  },
 } as const satisfies Record<string, AuditActionDefinition>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -281,4 +296,15 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
   location: ['id', 'brandId', 'name'],
+  reservation_table_rule: ['tableId', 'bookingMode', 'minParty', 'maxParty'],
+  reservation_combination: [
+    'id',
+    'locationId',
+    'name',
+    'tableIds',
+    'minParty',
+    'maxParty',
+    'onlineBookable',
+    'archivedAt',
+  ],
 } as const satisfies Record<AuditEntityType, readonly string[]>;

@@ -657,16 +657,16 @@ organization id like invitation tokens (`issueInvitationToken`), and its hash is
   `PosFloorReader.tablesAt`, each merged with its rule; a table without a rule shows the defaults
   (`bookingMode: 'all'`, `minParty: 1`, `maxParty: null` = seats).
 - **`PUT /reservations/tables/:tableId/rule`** (`reservations.setup.manage` at the table's location, `@Idempotent()`):
-  creates or replaces `{ bookingMode, minParty, maxParty | null }`. Unknown, archived or another tenant's table, or a
-  location the caller can't manage → `404 reservations.table_not_found`.
+  creates or replaces `{ bookingMode, minParty, maxParty | null }`. Unknown, archived or another tenant's table, or one at a
+  location where the caller can't read bookings → `404 reservations.table_not_found`; reads but can't manage → 403.
 - **`GET /reservations/combinations?locationId=&includeArchived=`** (`reservations.bookings.read`): with their tables
   (ids in a stable order).
 - **`POST /reservations/combinations`** (`reservations.setup.manage`, `completion: 'transaction'`):
   `{ locationId, name (1–60, trimmed), tableIds (2–8, distinct), minParty, maxParty, onlineBookable? (true) }`; every
   table at that location and in service, else `404 reservations.table_not_found`.
 - **`PATCH /reservations/combinations/:id`** (`reservations.setup.manage`, `@Idempotent()`): the same fields, all
-  optional, plus `archived: boolean` (sets or clears `archived_at`). New `tableIds` replace the table list. Unknown /
-  another tenant's / unmanageable location → `404 reservations.combination_not_found`.
+  optional, plus `archived: boolean` (sets or clears `archived_at`). New `tableIds` replace the table list. Unknown / another
+  tenant's / at a location the caller can't read → `404 reservations.combination_not_found`; reads but can't manage → 403.
 - **Ranges:** party sizes 1–100 (`MAX_PARTY_SIZE`), `minParty ≤ maxParty`; a rule's `minParty` may not exceed the
   table's capacity (`maxParty`, or seats when null). Otherwise `422 reservations.party_range_invalid`. A max party may
   exceed seats (an extra chair) and a combination isn't capped by its tables' seats; the UI warns.
