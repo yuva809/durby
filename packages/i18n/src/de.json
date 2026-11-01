@@ -597,6 +597,8 @@
   "platform.audit.fields.lineCount": "Positionen",
   "platform.numbering.series.posOrder.name": "Tischbestellungen",
   "platform.numbering.series.posOrder.description": "Nummern der Bestellungen im Tischservice.",
+  "platform.numbering.series.reservationsBooking.name": "Reservierungen",
+  "platform.numbering.series.reservationsBooking.description": "Buchungsnummern, die Gäste erhalten.",
   "pos.permissions.ordersRead": "Bestellungen ansehen",
   "pos.permissions.ordersTake": "Bestellungen aufnehmen",
   "pos.permissions.ordersVoid": "Gesendete Positionen stornieren",
