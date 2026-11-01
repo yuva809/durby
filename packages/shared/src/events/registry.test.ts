@@ -27,6 +27,7 @@ describe('event registry', () => {
       'pos.order.closed',
       'reservations.reservation.created',
       'reservations.reservation.updated',
+      'reservations.reservation.status_changed',
     ]);
   });
 
@@ -40,6 +41,7 @@ describe('event registry', () => {
     for (const type of [
       'reservations.reservation.created',
       'reservations.reservation.updated',
+      'reservations.reservation.status_changed',
     ] as const) {
       const v1 = EVENTS[type].versions[1];
       expect(v1.safeParse(payload).success).toBe(true);

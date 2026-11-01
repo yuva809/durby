@@ -1009,5 +1009,8 @@
   "platform.audit.fields.startsAt": "Starts",
   "platform.audit.fields.endsAt": "Ends",
   "platform.audit.fields.source": "Source",
-  "platform.audit.fields.overriddenRules": "Rules overridden"
+  "platform.audit.fields.overriddenRules": "Rules overridden",
+  "reservations.errors.undoExpired": "This can no longer be undone.",
+  "reservations.audit.actions.reservationStatusChanged": "Reservation status changed",
+  "reservations.audit.actions.reservationStatusUndone": "Reservation status change undone"
 }

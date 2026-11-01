@@ -120,6 +120,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'reservations.starts_in_past': 'reservations.errors.startsInPast',
   'reservations.phone_invalid': 'reservations.errors.phoneInvalid',
   'reservations.invalid_transition': 'reservations.errors.invalidTransition',
+  'reservations.undo_expired': 'reservations.errors.undoExpired',
   'staff.unauthenticated': 'staff.errors.unauthenticated',
   'staff.invalid_credentials': 'staff.errors.invalidCredentials',
   'staff.reauth_required': 'staff.errors.reauthRequired',

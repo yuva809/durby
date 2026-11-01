@@ -553,6 +553,21 @@ describe('evaluateBooking: one booking at an exact time (R1.6 write-time checks)
     });
   });
 
+  it("names the next booking's start when a later booking is in the way (walk-ins)", () => {
+    const later = input({ bookings: [booking(['T4'], '20:00', '22:00')] });
+    expect(evaluateBooking(later, req('19:00', '20:30', { tableIds: ['T4'] }))).toEqual({
+      ok: false,
+      problem: 'table_unavailable',
+      nextStartsAt: at(SAT, '20:00').toISOString(),
+    });
+    // A booking already running isn't "next": no time to seat until.
+    const running = input({ bookings: [booking(['T4'], '18:30', '20:00')] });
+    expect(evaluateBooking(running, req('19:00', '20:30', { tableIds: ['T4'] }))).toEqual({
+      ok: false,
+      problem: 'table_unavailable',
+    });
+  });
+
   it('reports pacing and reservation hours as breaches, not refusals', () => {
     const paced = input({
       settings: { maxCoversPerSlot: 4 } as never,

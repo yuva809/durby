@@ -14,3 +14,5 @@ const reservationV1 = z.strictObject({
 
 export const reservationsReservationCreatedV1 = reservationV1;
 export const reservationsReservationUpdatedV1 = reservationV1;
+/** A status action or an undo; `status` is the new one. */
+export const reservationsReservationStatusChangedV1 = reservationV1;

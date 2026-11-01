@@ -1009,5 +1009,8 @@
   "platform.audit.fields.startsAt": "Beginn",
   "platform.audit.fields.endsAt": "Ende",
   "platform.audit.fields.source": "Herkunft",
-  "platform.audit.fields.overriddenRules": "Übergangene Regeln"
+  "platform.audit.fields.overriddenRules": "Übergangene Regeln",
+  "reservations.errors.undoExpired": "Das lässt sich nicht mehr rückgängig machen.",
+  "reservations.audit.actions.reservationStatusChanged": "Reservierungsstatus geändert",
+  "reservations.audit.actions.reservationStatusUndone": "Statusänderung der Reservierung rückgängig gemacht"
 }

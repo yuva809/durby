@@ -346,7 +346,32 @@ export const reservationSchema = z.object({
   guestNote: z.string().nullable(),
   staffNote: z.string().nullable(),
   createdAt: z.iso.datetime(),
+  /** The latest status change: what an undo would revert (R1.6c). */
+  lastChangeId: z.uuid(),
 });
+
+/** POST /reservations/:id/seat: optionally at other tables. */
+export const seatReservationRequestSchema = z.strictObject({ tableIds: tableIdList.optional() });
+
+/** POST /reservations/:id/undo: the change the client saw (409 if it isn't the latest). */
+export const undoReservationRequestSchema = z.strictObject({ changeId: z.uuid() });
+
+/** The shortest walk-in when the host seats someone until the next booking. */
+export const MIN_WALK_IN_MINUTES = 15;
+
+export const createWalkInRequestSchema = z.strictObject({
+  locationId: z.uuid(),
+  partySize: z.int().min(1).max(MAX_PARTY_SIZE),
+  tableIds: tableIdList,
+  name: optionalText(100).optional(),
+  phone: z.string().trim().min(1).max(40).optional(),
+  /** Default: now + the party's turn time. */
+  endsAt: z.iso.datetime({ offset: true }).optional(),
+});
+
+export type SeatReservationRequest = z.infer<typeof seatReservationRequestSchema>;
+export type UndoReservationRequest = z.infer<typeof undoReservationRequestSchema>;
+export type CreateWalkInRequest = z.infer<typeof createWalkInRequestSchema>;
 
 export const reservationDetailSchema = reservationSchema.extend({
   /** Oldest first. */
@@ -379,6 +404,7 @@ export const RESERVATION_ERROR_CODES = [
   'reservations.starts_in_past',
   'reservations.phone_invalid',
   'reservations.invalid_transition',
+  'reservations.undo_expired',
 ] as const;
 
 export type ReservationErrorCode = (typeof RESERVATION_ERROR_CODES)[number];

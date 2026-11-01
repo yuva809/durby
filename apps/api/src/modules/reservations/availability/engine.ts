@@ -348,7 +348,8 @@ export type BookingProblem =
 export type RuleBreach = 'pacing' | 'serviceHours';
 
 export type BookingVerdict =
-  | { ok: false; problem: BookingProblem }
+  /** `nextStartsAt`: a later booking is in the way; the party could stay until then (walk-ins). */
+  | { ok: false; problem: BookingProblem; nextStartsAt?: string }
   | { ok: true; tableIds: string[]; combinationId?: string; breaches: RuleBreach[] };
 
 /**
@@ -366,7 +367,13 @@ export function evaluateBooking(input: AvailabilityInput, request: BookingReques
     if (problem) return { ok: false, problem };
     const hit = conflicts(request.tableIds, booking, busy);
     if (hit.some((b) => b.kind === 'occupied')) return { ok: false, problem: 'table_occupied' };
-    if (hit.length > 0) return { ok: false, problem: 'table_unavailable' };
+    if (hit.length > 0) {
+      const running = hit.some((b) => b.start <= booking.start);
+      const next = Math.min(...hit.map((b) => b.start));
+      return running
+        ? { ok: false, problem: 'table_unavailable' }
+        : { ok: false, problem: 'table_unavailable', nextStartsAt: new Date(next).toISOString() };
+    }
     chosen = { tableIds: [...request.tableIds] };
   } else {
     const singles = candidateTables(input);

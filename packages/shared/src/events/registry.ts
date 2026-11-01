@@ -6,7 +6,11 @@ import {
   configSettingsChangedV1,
 } from './config';
 import { posOrderClosedV1 } from './pos';
-import { reservationsReservationCreatedV1, reservationsReservationUpdatedV1 } from './reservations';
+import {
+  reservationsReservationCreatedV1,
+  reservationsReservationStatusChangedV1,
+  reservationsReservationUpdatedV1,
+} from './reservations';
 
 /**
  * Outbox event registry (docs/platform/outbox.md, ADR 0013 §2).
@@ -37,6 +41,10 @@ export const EVENTS = {
   'reservations.reservation.updated': {
     current: 1,
     versions: { 1: reservationsReservationUpdatedV1 },
+  },
+  'reservations.reservation.status_changed': {
+    current: 1,
+    versions: { 1: reservationsReservationStatusChangedV1 },
   },
 } as const satisfies Record<string, EventDefinition>;
 

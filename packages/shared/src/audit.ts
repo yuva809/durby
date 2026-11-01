@@ -214,6 +214,14 @@ export const AUDIT_ACTIONS = {
     entityType: 'reservation',
     label: 'reservations.audit.actions.reservationUpdated',
   },
+  'reservations.reservation.status_changed': {
+    entityType: 'reservation',
+    label: 'reservations.audit.actions.reservationStatusChanged',
+  },
+  'reservations.reservation.status_undone': {
+    entityType: 'reservation',
+    label: 'reservations.audit.actions.reservationStatusUndone',
+  },
   /** Staff `force`: booked past pacing or outside the reservation hours (`overriddenRules`). */
   'reservations.reservation.rules_overridden': {
     entityType: 'reservation',
