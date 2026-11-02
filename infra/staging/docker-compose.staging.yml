@@ -21,6 +21,10 @@ x-api-env: &api-env
   LOG_LEVEL: ${LOG_LEVEL:-info}
   # durby_app only: no BYPASSRLS, no ownership (ADR 0002). The migrator URL never reaches the api.
   DATABASE_URL: postgresql://durby_app:${DURBY_APP_PASSWORD}@postgres:5432/durby
+  # Pool and transaction limits per process (ADR 0021, docs/ops/deploy.md → Database pool and overload).
+  DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-10}
+  PRISMA_TX_MAX_WAIT_MS: ${PRISMA_TX_MAX_WAIT_MS:-2000}
+  PRISMA_TX_TIMEOUT_MS: ${PRISMA_TX_TIMEOUT_MS:-5000}
   REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
   # Auth (docs/platform/auth.md). Web and api share the origin behind Caddy, on both demo domains
   # (ADR 0015 §10); email links use the first one.
