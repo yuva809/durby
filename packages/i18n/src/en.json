@@ -1016,5 +1016,6 @@
   "reservations.errors.tableNotInService": "A table of this booking is no longer in service. Move the booking to another table.",
   "platform.settings.reservationsOrderMatchWindowMinutes.name": "Order match window (minutes)",
   "platform.settings.reservationsOrderMatchWindowMinutes.description": "How far a till order's opening time may be from a booking's start to belong to it: the booking is seated when the order opens and finished when it closes.",
-  "platform.audit.fields.sourceOrderId": "Till order"
+  "platform.audit.fields.sourceOrderId": "Till order",
+  "catalog.errors.importInvalid": "Some rows of the file have problems. Nothing was imported."
 }

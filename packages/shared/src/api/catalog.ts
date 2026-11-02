@@ -107,6 +107,89 @@ export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;
 export type ProductCategoryListResponse = z.infer<typeof productCategoryListResponseSchema>;
 export type ProductListResponse = z.infer<typeof productListResponseSchema>;
 
+/**
+ * Import (docs/modules/catalog.md → Import): rows read from a CSV file in the browser. The request
+ * takes raw strings; `checkImportRows` applies the same rules as a single product, so the web
+ * preview and the api agree on every problem.
+ */
+export const CATALOG_IMPORT_MAX_ROWS = 1000;
+export const IMPORT_FIELDS = ['category', 'name', 'price', 'taxRate', 'description'] as const;
+export const IMPORT_ROW_PROBLEMS = ['required', 'too_long', 'invalid', 'duplicate'] as const;
+
+const raw = z.string().max(2000);
+
+export const importProductRowSchema = z.strictObject({
+  category: raw,
+  name: raw,
+  price: raw,
+  taxRate: raw,
+  description: raw.optional(),
+});
+
+export const importProductsRequestSchema = z.strictObject({
+  rows: z.array(importProductRowSchema).min(1).max(CATALOG_IMPORT_MAX_ROWS),
+});
+
+export const importRowProblemSchema = z.object({
+  /** 1-based data row (the header is not counted). */
+  row: z.int().min(1),
+  field: z.enum(IMPORT_FIELDS),
+  problem: z.enum(IMPORT_ROW_PROBLEMS),
+});
+
+export const importProductsResponseSchema = z.object({
+  created: z.int(),
+  updated: z.int(),
+  unchanged: z.int(),
+  categoriesCreated: z.int(),
+  rows: z.array(
+    z.object({
+      row: z.int(),
+      status: z.enum(['created', 'updated', 'unchanged']),
+      productId: z.uuid(),
+    }),
+  ),
+});
+
+export type ImportProductRow = z.infer<typeof importProductRowSchema>;
+export type ImportProductsRequest = z.infer<typeof importProductsRequestSchema>;
+export type ImportRowProblem = z.infer<typeof importRowProblemSchema>;
+export type ImportProductsResponse = z.infer<typeof importProductsResponseSchema>;
+
+/** The key two rows collide on: category + name, trimmed, case-insensitive. */
+export function importRowKey(row: Pick<ImportProductRow, 'category' | 'name'>): string {
+  return `${row.category.trim().toLowerCase()}\u0000${row.name.trim().toLowerCase()}`;
+}
+
+/** Every problem of every row (empty when the import may run). */
+export function checkImportRows(rows: readonly ImportProductRow[]): ImportRowProblem[] {
+  const problems: ImportRowProblem[] = [];
+  const seen = new Set<string>();
+  rows.forEach((r, index) => {
+    const row = index + 1;
+    const add = (field: ImportRowProblem['field'], problem: ImportRowProblem['problem']) =>
+      problems.push({ row, field, problem });
+    for (const field of ['category', 'name'] as const) {
+      const value = r[field].trim();
+      if (!value) add(field, 'required');
+      else if (value.length > CATALOG_NAME_MAX_LENGTH) add(field, 'too_long');
+    }
+    if (!r.price.trim()) add('price', 'required');
+    else if (!priceSchema.safeParse(r.price.trim()).success) add('price', 'invalid');
+    if (!r.taxRate.trim()) add('taxRate', 'required');
+    else if (!taxRateSchema.safeParse(r.taxRate.trim()).success) add('taxRate', 'invalid');
+    if ((r.description ?? '').trim().length > PRODUCT_DESCRIPTION_MAX_LENGTH) {
+      add('description', 'too_long');
+    }
+    if (r.category.trim() && r.name.trim()) {
+      const key = importRowKey(r);
+      if (seen.has(key)) add('name', 'duplicate');
+      seen.add(key);
+    }
+  });
+  return problems;
+}
+
 /** Stable error codes of the catalog endpoints; the web app shows the matching label. */
 export const CATALOG_ERROR_CODES = [
   'catalog.category_not_found',
@@ -114,6 +197,7 @@ export const CATALOG_ERROR_CODES = [
   'catalog.category_name_taken',
   'catalog.product_name_taken',
   'catalog.category_archived',
+  'catalog.import_invalid',
 ] as const;
 
 export type CatalogErrorCode = (typeof CATALOG_ERROR_CODES)[number];

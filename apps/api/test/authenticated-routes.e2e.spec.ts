@@ -167,6 +167,7 @@ describe('route markers', () => {
       'PATCH /api/v1/roles/:id',
       'POST /api/v1/catalog/categories',
       'POST /api/v1/catalog/products',
+      'POST /api/v1/catalog/products/import',
       'POST /api/v1/invitations',
       'POST /api/v1/locations',
       'POST /api/v1/pos/areas',

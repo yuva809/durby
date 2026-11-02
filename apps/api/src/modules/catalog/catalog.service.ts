@@ -1,14 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type {
-  AuditActor,
-  CreateProductCategoryRequest,
-  CreateProductRequest,
-  ListProductCategoriesQuery,
-  ListProductsQuery,
-  Product,
-  ProductCategory,
-  UpdateProductCategoryRequest,
-  UpdateProductRequest,
+import {
+  type AuditActor,
+  checkImportRows,
+  type CreateProductCategoryRequest,
+  type CreateProductRequest,
+  type ImportProductsRequest,
+  type ImportProductsResponse,
+  type ListProductCategoriesQuery,
+  type ListProductsQuery,
+  type Product,
+  type ProductCategory,
+  type UpdateProductCategoryRequest,
+  type UpdateProductRequest,
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
@@ -218,6 +221,129 @@ export class CatalogService {
     );
   }
 
+  /**
+   * The CSV import (docs/modules/catalog.md → Import): all rows checked first, then one transaction
+   * that creates missing categories, creates new products and updates changed ones. Matching is by
+   * name among non-archived rows, case-insensitive; products missing from the file are untouched.
+   */
+  async importProducts(body: ImportProductsRequest): Promise<ImportProductsResponse> {
+    const problems = checkImportRows(body.rows);
+    if (problems.length > 0) throw catalogErrors.importInvalid(problems);
+    const { tenantId, userId } = this.tenantContext.require();
+    const actor = auditActor.user(userId);
+    return this.unique(catalogErrors.productNameTaken, () =>
+      this.db.$transaction(
+        async (tx) => {
+          const categories = new Map(
+            (
+              await tx.productCategory.findMany({
+                where: { archivedAt: null },
+                select: CATEGORY_SELECT,
+              })
+            ).map((c) => [c.name.toLowerCase(), c]),
+          );
+          const products = new Map(
+            (
+              await tx.product.findMany({ where: { archivedAt: null }, select: PRODUCT_SELECT })
+            ).map((p) => [productKey(p.categoryId, p.name), p]),
+          );
+          const response: ImportProductsResponse = {
+            created: 0,
+            updated: 0,
+            unchanged: 0,
+            categoriesCreated: 0,
+            rows: [],
+          };
+
+          for (const [index, input] of body.rows.entries()) {
+            const categoryName = input.category.trim();
+            let category = categories.get(categoryName.toLowerCase());
+            if (!category) {
+              category = await tx.productCategory.create({
+                data: { tenantId, name: categoryName, sortOrder: 0 },
+                select: CATEGORY_SELECT,
+              });
+              await this.audit.record(tx, {
+                action: 'catalog.product_category.created',
+                actor,
+                entityId: category.id,
+                after: categorySnapshot(category),
+              });
+              categories.set(categoryName.toLowerCase(), category);
+              response.categoriesCreated += 1;
+            }
+
+            const name = input.name.trim();
+            const price = fixed2(input.price.trim());
+            const taxRate = fixed2(input.taxRate.trim());
+            const key = productKey(category.id, name);
+            const current = products.get(key);
+            if (!current) {
+              const row = await tx.product.create({
+                data: {
+                  tenantId,
+                  categoryId: category.id,
+                  name,
+                  description: input.description?.trim() || null,
+                  price,
+                  taxRate,
+                  sortOrder: 0,
+                },
+                select: PRODUCT_SELECT,
+              });
+              await this.audit.record(tx, {
+                action: 'catalog.product.created',
+                actor,
+                entityId: row.id,
+                after: productSnapshot(row),
+              });
+              products.set(key, row);
+              response.created += 1;
+              response.rows.push({ row: index + 1, status: 'created', productId: row.id });
+              continue;
+            }
+
+            const before = productResponse(current);
+            // No description column in the file: the product keeps its description.
+            const description =
+              input.description === undefined
+                ? before.description
+                : input.description.trim() || null;
+            if (
+              before.price === price &&
+              before.taxRate === taxRate &&
+              before.description === description
+            ) {
+              response.unchanged += 1;
+              response.rows.push({ row: index + 1, status: 'unchanged', productId: current.id });
+              continue;
+            }
+            const row = await tx.product.update({
+              where: { id: current.id },
+              data: { price, taxRate, description },
+              select: PRODUCT_SELECT,
+            });
+            await this.audit.record(tx, {
+              action: 'catalog.product.updated',
+              actor,
+              entityId: row.id,
+              before: productSnapshot(current),
+              after: productSnapshot(row),
+            });
+            products.set(key, row);
+            response.updated += 1;
+            response.rows.push({ row: index + 1, status: 'updated', productId: row.id });
+          }
+
+          await this.idempotency.completeInTransaction(tx, response);
+          return response;
+        },
+        // Up to CATALOG_IMPORT_MAX_ROWS rows, each with its audit row: more than the 5 s default.
+        { maxWait: 10_000, timeout: 60_000 },
+      ),
+    );
+  }
+
   /** The category exists in this tenant (RLS) and isn't archived. */
   private async openCategory(tx: TenantTransactionClient, id: string): Promise<void> {
     const category = await tx.productCategory.findUnique({
@@ -243,6 +369,11 @@ function archivedAt(current: Date | null, archived: boolean | undefined): Date |
   if (archived === undefined) return current;
   if (!archived) return null;
   return current ?? new Date();
+}
+
+/** A product's identity for the import: its category and its name, case-insensitive. */
+function productKey(categoryId: string, name: string): string {
+  return `${categoryId}:${name.toLowerCase()}`;
 }
 
 function categoryResponse(row: CategoryRow): ProductCategory {

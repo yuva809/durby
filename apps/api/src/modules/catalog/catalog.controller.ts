@@ -1,5 +1,19 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import {
+  type ImportProductsRequest,
+  importProductsRequestSchema,
+  type ImportProductsResponse,
   createProductCategoryRequestSchema,
   type CreateProductCategoryRequest,
   createProductRequestSchema,
@@ -78,6 +92,17 @@ export class CatalogController {
     @Body(new ZodBody(createProductRequestSchema)) body: CreateProductRequest,
   ): Promise<Product> {
     return this.catalog.createProduct(body);
+  }
+
+  /** Appends products and categories: the result is stored with the key (rule 8). */
+  @RequirePermission('catalog.products.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post('products/import')
+  @HttpCode(HttpStatus.OK)
+  importProducts(
+    @Body(new ZodBody(importProductsRequestSchema)) body: ImportProductsRequest,
+  ): Promise<ImportProductsResponse> {
+    return this.catalog.importProducts(body);
   }
 
   @RequirePermission('catalog.products.manage')
