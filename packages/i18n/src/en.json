@@ -1134,5 +1134,4 @@
   "catalog.scan.errors.tooSmall": "This picture is only {width} × {height} px, too small to read the menu text. Use the original photo or the full-size image (at least 1000 px wide).",
   "catalog.scan.smallWarning": "The picture is only {width} × {height} px, so this result is likely incomplete or wrong. For a good scan use the original photo or the full-size image (at least 1000 px wide).",
   "reservations.errors.busy": "Very busy right now. Please try again in a moment."
-
 }
