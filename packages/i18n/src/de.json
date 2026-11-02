@@ -1051,7 +1051,7 @@
   "catalog.scan.drop": "Fotos oder PDF der Speisekarte hier ablegen",
   "catalog.scan.choose": "Dateien wählen",
   "catalog.scan.camera": "Foto aufnehmen",
-  "catalog.scan.formats": "JPG, PNG, WebP oder PDF · bis zu {max} Seiten",
+  "catalog.scan.formats": "Jedes Foto (JPG, PNG, WebP, HEIC…) oder PDF · bis zu {max} Seiten · oder mit Strg+V einfügen",
   "catalog.scan.remove": "{name} entfernen",
   "catalog.scan.start": "Speisekarte lesen",
   "catalog.scan.preparing": "Seiten werden vorbereitet…",
@@ -1059,7 +1059,7 @@
   "catalog.scan.firstUse": "Der erste Scan lädt einmalig die Texterkennungsdaten (etwa 10 MB).",
   "catalog.scan.cancel": "Abbrechen",
   "catalog.scan.errors.heic": "HEIC-Fotos können hier nicht gelesen werden. Exportieren Sie sie als JPG (iPhone: Einstellungen › Kamera › Formate › Maximale Kompatibilität).",
-  "catalog.scan.errors.unsupported": "Nur JPG-, PNG-, WebP- oder PDF-Dateien.",
+  "catalog.scan.errors.unsupported": "Nur Fotos (Bilder) oder PDF-Dateien.",
   "catalog.scan.errors.tooManyPages": "Höchstens {max} Seiten pro Scan.",
   "catalog.scan.errors.unreadable": "Eine Datei konnte nicht gelesen werden.",
   "catalog.scan.errors.ocr": "Die Texterkennung ist fehlgeschlagen. Prüfen Sie die Verbindung (der erste Scan lädt Daten) und versuchen Sie es erneut.",
@@ -1129,5 +1129,7 @@
   "catalog.scan.dnd.dropped": "{name} wurde auf {target} abgelegt.",
   "catalog.scan.dnd.cancelled": "Verschieben von {name} abgebrochen.",
   "catalog.scan.ready": "{count} Datei(en) bereit. Klicken Sie auf „Speisekarte lesen“.",
-  "catalog.scan.addMore": "Weitere hinzufügen"
+  "catalog.scan.addMore": "Weitere hinzufügen",
+  "catalog.scan.errors.tooSmall": "Dieses Bild hat nur {width} × {height} px, zu klein, um den Text der Speisekarte zu lesen. Verwenden Sie das Originalfoto oder das Bild in voller Größe (mindestens 1000 px breit).",
+  "catalog.scan.smallWarning": "Das Bild hat nur {width} × {height} px, das Ergebnis ist daher wahrscheinlich unvollständig oder falsch. Für einen guten Scan verwenden Sie das Originalfoto oder das Bild in voller Größe (mindestens 1000 px breit)."
 }

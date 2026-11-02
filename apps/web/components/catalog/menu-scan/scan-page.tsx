@@ -34,7 +34,7 @@ import { ReviewBoard } from './review-board';
 
 /** Germany's restaurant rates as a starting point; staff change them on the board. */
 const DEFAULT_RATES = { food: '7', drinks: '19' };
-const ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf';
+const ACCEPT = 'image/*,application/pdf,.pdf,.jfif,.heic,.heif';
 
 /** /catalog/scan (docs/modules/catalog.md → Menu scan). Needs `catalog.products.manage`. */
 export function ScanPage() {
@@ -79,6 +79,7 @@ function Scan({ organizationId }: { organizationId: string | null }) {
     draft ? { ...EMPTY, present: draft } : EMPTY,
   );
   const [restored, setRestored] = useState(draft !== null);
+  const [smallWarning, setSmallWarning] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
@@ -96,8 +97,10 @@ function Scan({ organizationId }: { organizationId: string | null }) {
   useEffect(() => () => abort.current?.abort(), []);
 
   function addFiles(list: FileList | null) {
-    if (!list) return;
-    setFiles((current) => [...current, ...Array.from(list)]);
+    // Copy now: a FileList is live and empties when the input is cleared right after.
+    const added = list ? Array.from(list) : [];
+    if (added.length === 0) return;
+    setFiles((current) => [...current, ...added]);
     setStep({ kind: 'upload', error: null });
   }
 
@@ -124,7 +127,16 @@ function Scan({ organizationId }: { organizationId: string | null }) {
       if (controller.signal.aborted) return;
       const parsed = parseMenu(lines);
       if (parsed.length === 0) {
-        setStep({ kind: 'upload', error: t('catalog.scan.errors.nothing') });
+        const small = scanPages.find((p) => p.small);
+        setStep({
+          kind: 'upload',
+          error: small
+            ? t('catalog.scan.errors.tooSmall', {
+                width: String(small.sourceWidth),
+                height: String(small.sourceHeight),
+              })
+            : t('catalog.scan.errors.nothing'),
+        });
         return;
       }
       const board = boardFromParsed(parsed, {
@@ -134,6 +146,15 @@ function Scan({ organizationId }: { organizationId: string | null }) {
       });
       dispatch({ type: 'reset', board });
       setRestored(false);
+      const small = scanPages.find((p) => p.small);
+      setSmallWarning(
+        small
+          ? t('catalog.scan.smallWarning', {
+              width: String(small.sourceWidth),
+              height: String(small.sourceHeight),
+            })
+          : null,
+      );
       setStep({ kind: 'review' });
     } catch (error) {
       if (controller.signal.aborted) return;
@@ -166,6 +187,7 @@ function Scan({ organizationId }: { organizationId: string | null }) {
     setFiles([]);
     setPages([]);
     setRestored(false);
+    setSmallWarning(null);
     setImportError(null);
     setStep({ kind: 'upload', error: null });
   }
@@ -215,6 +237,15 @@ function Scan({ organizationId }: { organizationId: string | null }) {
 
       {step.kind === 'review' && (
         <>
+          {smallWarning && (
+            <p
+              role="alert"
+              className="rounded-md border border-[var(--table-amber)] bg-[var(--table-amber-soft)] px-3 py-2 text-sm"
+              data-testid="scan-small"
+            >
+              {smallWarning}
+            </p>
+          )}
           {restored && (
             <p role="status" className="rounded-md bg-accent px-3 py-2 text-sm">
               {t('catalog.scan.restored')}
@@ -290,6 +321,19 @@ function UploadStep({
   };
 
   const hasFiles = files.length > 0;
+  // A menu image copied from a website, chat or screenshot tool: paste it with Ctrl+V.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest('input:not([type=file]), textarea, [contenteditable]')) return;
+      if (e.clipboardData && e.clipboardData.files.length > 0) {
+        e.preventDefault();
+        onAdd(e.clipboardData.files);
+      }
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [onAdd]);
   const startButton = useRef<HTMLButtonElement>(null);
   // Files just chosen: bring "Read menu" into view and focus it, so the next step is obvious.
   useEffect(() => {

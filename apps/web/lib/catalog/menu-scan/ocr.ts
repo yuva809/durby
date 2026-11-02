@@ -9,6 +9,10 @@ import { type OcrLine, orderColumns, segmentLine } from './parse';
 export const MAX_SCAN_PAGES = 10;
 /** Long edge after scaling: enough for menu text, quick to read. */
 const MAX_EDGE = 2400;
+/** Smaller images are enlarged to this long edge: OCR needs text at least ~20 px high. */
+const MIN_EDGE = 1800;
+/** Below this long edge the original is likely too small to read (a thumbnail or chat preview). */
+const SMALL_EDGE = 1000;
 const LANGUAGES = ['eng', 'deu'];
 const PDF_SCALE = 2;
 const PDFJS_WORKER = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.4.299/build/pdf.worker.min.mjs';
@@ -29,19 +33,24 @@ export interface ScanPage {
   name: string;
   width: number;
   height: number;
+  /** The original is so small that menu text is likely only a few pixels high. */
+  small: boolean;
+  sourceWidth: number;
+  sourceHeight: number;
   canvas: HTMLCanvasElement;
   previewUrl: string;
 }
 
 const isPdf = (file: File) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
 const isHeic = (file: File) => /hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
+/** Any image the browser can decode: the type when it is set, else a known extension. */
 const isImage = (file: File) =>
-  /^image\/(jpeg|png|webp)$/.test(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name);
+  file.type.startsWith('image/') ||
+  /\.(jpe?g|jfif|pjpe?g|png|webp|gif|bmp|avif|tiff?|hei[cf])$/i.test(file.name);
 
 /** Validates the files and turns them (PDF pages included) into pages ready for OCR. */
 export async function preparePages(files: readonly File[]): Promise<ScanPage[]> {
   for (const file of files) {
-    if (isHeic(file)) throw new ScanError('heic');
     if (!isPdf(file) && !isImage(file)) throw new ScanError('unsupported');
   }
   const pages: ScanPage[] = [];
@@ -55,6 +64,9 @@ export async function preparePages(files: readonly File[]): Promise<ScanPage[]> 
         name: sources.length > 1 ? `${file.name} (${i + 1})` : file.name,
         width: canvas.width,
         height: canvas.height,
+        small: Math.max(source.width, source.height) < SMALL_EDGE,
+        sourceWidth: source.width,
+        sourceHeight: source.height,
         canvas,
         previewUrl: canvas.toDataURL('image/jpeg', 0.85),
       });
@@ -69,7 +81,18 @@ async function imageSource(
   try {
     return await createImageBitmap(file);
   } catch {
-    throw new ScanError('unreadable');
+    // Some formats decode only through an <img> (and HEIC only in Safari).
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      return Object.assign(img, { width: img.naturalWidth, height: img.naturalHeight });
+    } catch {
+      throw new ScanError(isHeic(file) ? 'heic' : 'unreadable');
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 }
 
@@ -96,14 +119,19 @@ async function pdfPages(file: File): Promise<HTMLCanvasElement[]> {
   }
 }
 
-/** Scaled to at most MAX_EDGE, greyscale with a little contrast: faster and cleaner OCR. */
+/**
+ * Scaled to between MIN_EDGE and MAX_EDGE, greyscale with a little contrast: faster and cleaner
+ * OCR. Enlarging (smoothed) helps small photos and screenshots.
+ */
 function toScanCanvas(source: CanvasImageSource & { width: number; height: number }) {
-  const scale = Math.min(1, MAX_EDGE / Math.max(source.width, source.height));
+  const edge = Math.max(source.width, source.height);
+  const scale = edge > MAX_EDGE ? MAX_EDGE / edge : edge < MIN_EDGE ? MIN_EDGE / edge : 1;
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(source.width * scale);
   canvas.height = Math.round(source.height * scale);
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new ScanError('unreadable');
+  ctx.imageSmoothingQuality = 'high';
   ctx.filter = 'grayscale(1) contrast(1.25)';
   ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
   return canvas;

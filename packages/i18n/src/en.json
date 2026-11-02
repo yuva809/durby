@@ -1051,7 +1051,7 @@
   "catalog.scan.drop": "Drop menu photos or a PDF here",
   "catalog.scan.choose": "Choose files",
   "catalog.scan.camera": "Take photo",
-  "catalog.scan.formats": "JPG, PNG, WebP or PDF · up to {max} pages",
+  "catalog.scan.formats": "Any photo (JPG, PNG, WebP, HEIC…) or PDF · up to {max} pages · or paste with Ctrl+V",
   "catalog.scan.remove": "Remove {name}",
   "catalog.scan.start": "Read menu",
   "catalog.scan.preparing": "Preparing pages…",
@@ -1059,7 +1059,7 @@
   "catalog.scan.firstUse": "The first scan downloads the text recognition data (about 10 MB) once.",
   "catalog.scan.cancel": "Cancel",
   "catalog.scan.errors.heic": "HEIC photos can't be read here. Export them as JPG (iPhone: Settings › Camera › Formats › Most Compatible).",
-  "catalog.scan.errors.unsupported": "Only JPG, PNG, WebP or PDF files.",
+  "catalog.scan.errors.unsupported": "Only photos (images) or PDF files.",
   "catalog.scan.errors.tooManyPages": "At most {max} pages per scan.",
   "catalog.scan.errors.unreadable": "A file could not be read.",
   "catalog.scan.errors.ocr": "Text recognition failed. Check your connection (the first scan downloads data) and try again.",
@@ -1129,5 +1129,7 @@
   "catalog.scan.dnd.dropped": "{name} was dropped on {target}.",
   "catalog.scan.dnd.cancelled": "Moving {name} was cancelled.",
   "catalog.scan.ready": "{count} file(s) ready. Click “Read menu” to start.",
-  "catalog.scan.addMore": "Add more"
+  "catalog.scan.addMore": "Add more",
+  "catalog.scan.errors.tooSmall": "This picture is only {width} × {height} px, too small to read the menu text. Use the original photo or the full-size image (at least 1000 px wide).",
+  "catalog.scan.smallWarning": "The picture is only {width} × {height} px, so this result is likely incomplete or wrong. For a good scan use the original photo or the full-size image (at least 1000 px wide)."
 }

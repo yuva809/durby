@@ -152,6 +152,29 @@ describe('ScanPage', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('HEIC');
   });
 
+  it('names a too-small picture instead of "nothing found", and warns on a small scan', async () => {
+    api();
+    const small = {
+      number: 1,
+      width: 1800,
+      height: 1800,
+      small: true,
+      sourceWidth: 168,
+      sourceHeight: 168,
+      previewUrl: '',
+    };
+    ocr.prepare.mockResolvedValue([small]);
+    ocr.recognize.mockResolvedValue([line('WELCOME', 10)]);
+    render(<ScanPage />);
+    await userEvent.upload(screen.getByTestId('scan-files'), photo());
+    await userEvent.click(screen.getByTestId('scan-start'));
+    expect((await screen.findByRole('alert')).textContent).toContain('168 × 168 px');
+
+    ocr.recognize.mockResolvedValue(MENU);
+    await userEvent.click(screen.getByTestId('scan-start'));
+    expect((await screen.findByTestId('scan-small')).textContent).toContain('168 × 168 px');
+  });
+
   it('says so when no priced lines were found', async () => {
     api();
     ocr.recognize.mockResolvedValue([line('WELCOME', 10)]);
