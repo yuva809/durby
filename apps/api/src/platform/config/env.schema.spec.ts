@@ -17,6 +17,37 @@ const without = (key: keyof typeof validEnv): Record<string, string> =>
   Object.fromEntries(Object.entries(validEnv).filter(([k]) => k !== key));
 
 describe('appEnvSchema', () => {
+  describe('database pool and transactions (ADR 0021)', () => {
+    it("defaults to the libraries' own values", () => {
+      const env = appEnvSchema.parse(validEnv);
+      expect([env.DATABASE_POOL_SIZE, env.PRISMA_TX_MAX_WAIT_MS, env.PRISMA_TX_TIMEOUT_MS]).toEqual(
+        [10, 2000, 5000],
+      );
+    });
+
+    it('reads and bounds them', () => {
+      const env = appEnvSchema.parse({
+        ...validEnv,
+        DATABASE_POOL_SIZE: '20',
+        PRISMA_TX_MAX_WAIT_MS: '3000',
+        PRISMA_TX_TIMEOUT_MS: '8000',
+      });
+      expect([env.DATABASE_POOL_SIZE, env.PRISMA_TX_MAX_WAIT_MS, env.PRISMA_TX_TIMEOUT_MS]).toEqual(
+        [20, 3000, 8000],
+      );
+      for (const bad of [
+        { DATABASE_POOL_SIZE: '0' },
+        { DATABASE_POOL_SIZE: '201' },
+        { PRISMA_TX_MAX_WAIT_MS: '50' },
+        { PRISMA_TX_TIMEOUT_MS: '500' },
+      ]) {
+        expect(appEnvSchema.safeParse({ ...validEnv, ...bad }).success, JSON.stringify(bad)).toBe(
+          false,
+        );
+      }
+    });
+  });
+
   describe('staff settings (ADR 0017)', () => {
     it('reads the email domains as a lower-case list and needs at least one', () => {
       expect(
@@ -49,6 +80,9 @@ describe('appEnvSchema', () => {
       PORT: 4000,
       APP_VERSION: '0.0.0-dev',
       LOG_LEVEL: 'info',
+      DATABASE_POOL_SIZE: 10,
+      PRISMA_TX_MAX_WAIT_MS: 2000,
+      PRISMA_TX_TIMEOUT_MS: 5000,
       JWT_ACCESS_TTL_SECONDS: 600,
       JWT_ISSUER: 'durby-api',
       JWT_AUDIENCE: 'durby-web',

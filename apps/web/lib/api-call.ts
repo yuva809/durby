@@ -35,9 +35,37 @@ async function parsed<T>(res: Response, schema: Schema<T>): Promise<Result<T>> {
   }
 }
 
+/** The longest wait before the one retry of a busy answer (ADR 0021). */
+export const BUSY_RETRY_MAX_MS = 5_000;
+
+/** How long a 503 with Retry-After asks to wait (ms, capped); null for any other answer. */
+function busyDelay(res: Response): number | null {
+  if (res.status !== 503) return null;
+  const header = res.headers.get('Retry-After');
+  const seconds = header === null || header.trim() === '' ? NaN : Number(header);
+  if (!Number.isFinite(seconds) || seconds < 0) return null;
+  return Math.min(seconds * 1000, BUSY_RETRY_MAX_MS);
+}
+
+/**
+ * Sends once more, after the Retry-After, when the api answers 503 busy (database overload, ADR
+ * 0021); a second busy answer is final. A write's retry carries the same Idempotency-Key: sendAction
+ * keeps the key after a 5xx, and the api never stores 5xx answers, so the write runs once.
+ */
+async function retryOnceIfBusy(send: () => Promise<Response>): Promise<Response> {
+  const res = await send();
+  const delay = busyDelay(res);
+  if (delay === null) return res;
+  await new Promise((resolve) => setTimeout(resolve, delay));
+  return send();
+}
+
 export async function read<T>(store: Api, path: string, schema: Schema<T>): Promise<Result<T>> {
   try {
-    return await parsed(await store.apiFetch(path, { cache: 'no-store' }), schema);
+    return await parsed(
+      await retryOnceIfBusy(() => store.apiFetch(path, { cache: 'no-store' })),
+      schema,
+    );
   } catch {
     return { ok: false, code: 'unknown' };
   }
@@ -53,14 +81,18 @@ export async function write<T = null>(
   schema?: Schema<T>,
 ): Promise<Result<T | null>> {
   try {
-    const res = await sendAction(store, action, path, {
-      method,
-      cache: 'no-store',
-      signal: AbortSignal.timeout(WRITE_TIMEOUT_MS),
-      ...(body === undefined
-        ? {}
-        : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
-    });
+    // One deadline for both tries.
+    const signal = AbortSignal.timeout(WRITE_TIMEOUT_MS);
+    const res = await retryOnceIfBusy(() =>
+      sendAction(store, action, path, {
+        method,
+        cache: 'no-store',
+        signal,
+        ...(body === undefined
+          ? {}
+          : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+      }),
+    );
     if (!schema)
       return res.ok ? { ok: true, data: null } : { ok: false, code: await errorCode(res) };
     return await parsed(res, schema);

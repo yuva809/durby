@@ -2,7 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { PutTableRuleRequest, ReservationTable, TableBookingMode } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../../platform/audit';
 import { AccessService } from '../../../platform/rbac';
-import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../../../platform/tenancy';
+import {
+  TENANT_PRISMA,
+  TenantContext,
+  type TenantPrismaClient,
+  type TenantTransactionClient,
+} from '../../../platform/tenancy';
 import { type FloorTable, PosFloorReader } from '../../pos';
 import { reservationErrors } from '../reservations-errors';
 
@@ -91,10 +96,11 @@ export class TableRulesService {
 
 /**
  * The location, if it exists in this tenant and the caller reads bookings there; otherwise it
- * doesn't exist for them (404, like unknown ids).
+ * doesn't exist for them (404, like unknown ids). Writes pass their own `tx` (ADR 0021: no extra
+ * transaction per request).
  */
 export async function readableLocation(
-  db: TenantPrismaClient,
+  db: TenantPrismaClient | TenantTransactionClient,
   access: AccessService,
   locationId: string,
 ): Promise<void> {

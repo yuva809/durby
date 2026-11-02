@@ -74,10 +74,15 @@ export class AvailabilityLoader {
   /**
    * The engine's input for `request`, read in the caller's transaction: a booking write checks
    * against what its own transaction sees (docs/modules/reservations.md → R1.6 write-time checks).
+   * A caller that already resolved the location's settings in `tx` passes them (resolved once).
    */
-  async inputIn(tx: TenantTransactionClient, request: AvailabilityRequest): Promise<LoadedInput> {
+  async inputIn(
+    tx: TenantTransactionClient,
+    request: AvailabilityRequest,
+    resolvedSettings?: ResolvedSettings,
+  ): Promise<LoadedInput> {
     const { locationId, date, partySize } = request;
-    const resolved = await this.settingsAt(locationId, tx);
+    const resolved = resolvedSettings ?? (await this.settingsAt(locationId, tx));
     const timeZone = setting(resolved, 'timezone');
     const settings: EngineSettings = {
       openingHours: setting(resolved, 'openingHours'),

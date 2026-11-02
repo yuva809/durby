@@ -13,7 +13,8 @@ import {
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { v7 as uuidv7 } from 'uuid';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Client } from 'pg';
+import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { EntitlementsAdmin } from '../src/platform/config/entitlements';
@@ -286,6 +287,31 @@ describe('reservations: bookings', () => {
           },
         },
       ]);
+    });
+  });
+
+  describe('under load', () => {
+    it('answers 503 reservations.busy with Retry-After when a lock wait runs out, and a retry works', async () => {
+      const r = await restaurant();
+      await created(r.owner, booking(r, { startsAt: at('12:00') })); // the series counter exists
+      // Another transaction holds the tenant's counter row (as a long booking would).
+      const other = new Client({ connectionString: inject('superuserDatabaseUrl') });
+      await other.connect();
+      try {
+        await other.query('BEGIN');
+        await other.query('SELECT 1 FROM number_series_counters WHERE tenant_id = $1 FOR UPDATE', [
+          r.org.id,
+        ]);
+        const key = uuidv7();
+        const busy = await create(r.owner, booking(r), key).expect(503);
+        expect(busy.body).toMatchObject({ code: 'reservations.busy' });
+        expect(busy.headers['retry-after']).toBe('2');
+        await other.query('ROLLBACK');
+        // 5xx isn't stored: the same key runs the booking again.
+        await create(r.owner, booking(r), key).expect(201);
+      } finally {
+        await other.end();
+      }
     });
   });
 

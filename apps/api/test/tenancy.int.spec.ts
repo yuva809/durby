@@ -277,6 +277,20 @@ describe('tenant isolation', () => {
     });
   });
 
+  it('every tenant transaction waits at most 4 s for a lock (ADR 0021), and only that transaction', async () => {
+    const [a] = await twoTenants();
+    const show = (client: TenantPrismaClient | PrismaService) =>
+      client.$queryRaw<{ lock_timeout: string }[]>`SHOW lock_timeout`;
+    const [single] = await context.run(a.ctx, () => show(tenantDb));
+    const [interactive] = await context.run(a.ctx, () =>
+      tenantDb.$transaction((tx) => tx.$queryRaw<{ lock_timeout: string }[]>`SHOW lock_timeout`),
+    );
+    expect(single?.lock_timeout).toBe('4s');
+    expect(interactive?.lock_timeout).toBe('4s');
+    const after = await Promise.all(Array.from({ length: 20 }, () => show(raw)));
+    for (const [row] of after) expect(row?.lock_timeout).toBe('0');
+  });
+
   it('the tenant setting does not leak back into the connection pool', async () => {
     const [a, b] = await twoTenants();
     await Promise.all(

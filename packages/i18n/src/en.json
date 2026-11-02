@@ -776,6 +776,7 @@
   "platform.locationsPage.addFirst": "Add a location",
   "platform.errors.locationsNameTaken": "The organization already has a location with this name.",
   "platform.errors.locationsInUse": "This location is still in use (members, settings, tables, areas or orders), so it can't be deleted.",
+  "platform.errors.busy": "Very busy right now. Please try again in a moment.",
   "platform.audit.entities.location": "Location",
   "platform.audit.actions.locationCreated": "Location created",
   "platform.audit.actions.locationUpdated": "Location renamed",
@@ -1131,5 +1132,7 @@
   "catalog.scan.ready": "{count} file(s) ready. Click “Read menu” to start.",
   "catalog.scan.addMore": "Add more",
   "catalog.scan.errors.tooSmall": "This picture is only {width} × {height} px, too small to read the menu text. Use the original photo or the full-size image (at least 1000 px wide).",
-  "catalog.scan.smallWarning": "The picture is only {width} × {height} px, so this result is likely incomplete or wrong. For a good scan use the original photo or the full-size image (at least 1000 px wide)."
+  "catalog.scan.smallWarning": "The picture is only {width} × {height} px, so this result is likely incomplete or wrong. For a good scan use the original photo or the full-size image (at least 1000 px wide).",
+  "reservations.errors.busy": "Very busy right now. Please try again in a moment."
+
 }

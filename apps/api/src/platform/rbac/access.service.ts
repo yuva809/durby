@@ -1,7 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PermissionKey } from '@durby/shared';
 import { ClsService } from 'nestjs-cls';
-import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../tenancy';
+import {
+  TENANT_PRISMA,
+  TenantContext,
+  type TenantPrismaClient,
+  type TenantTransactionClient,
+} from '../tenancy';
 import { holds, holdsAnywhere, type ResolvedAccess, resolveAccess } from './access';
 import { PERMISSION_REGISTRY, type PermissionRegistry } from './permission-registry';
 import { rbacErrors } from './rbac-errors';
@@ -28,13 +33,16 @@ export class AccessService {
     @Inject(PERMISSION_REGISTRY) private readonly registry: PermissionRegistry,
   ) {}
 
-  /** The resolved access of the current user in the current tenant. */
-  current(): Promise<ResolvedAccess> {
+  /**
+   * The resolved access of the current user in the current tenant. Pass `tx` to load it inside the
+   * caller's transaction (the guard loads it together with the entitlements): no second connection.
+   */
+  current(tx?: TenantTransactionClient): Promise<ResolvedAccess> {
     const { tenantId, userId } = this.tenantContext.require();
     const active = this.cls.isActive();
     const cached = active ? this.cls.get<Cached | undefined>(CLS_KEY) : undefined;
     if (cached && cached.tenantId === tenantId && cached.userId === userId) return cached.access;
-    const access = this.load(tenantId, userId);
+    const access = this.load(tenantId, userId, tx);
     if (active) this.cls.set<Cached>(CLS_KEY, { tenantId, userId, access });
     return access;
   }
@@ -67,8 +75,12 @@ export class AccessService {
     return holdsAnywhere(await this.current(), key);
   }
 
-  private async load(tenantId: string, userId: string): Promise<ResolvedAccess> {
-    const row = await this.db.membership.findUnique({
+  private async load(
+    tenantId: string,
+    userId: string,
+    tx?: TenantTransactionClient,
+  ): Promise<ResolvedAccess> {
+    const row = await (tx ?? this.db).membership.findUnique({
       where: { tenantId_userId: { tenantId, userId } },
       select: {
         id: true,

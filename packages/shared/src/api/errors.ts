@@ -12,3 +12,11 @@ export const apiErrorBodySchema = z.object({
 });
 
 export type ApiErrorBody = z.infer<typeof apiErrorBodySchema>;
+
+/**
+ * Codes any route may answer. `platform.busy` (503, Retry-After): the database was overloaded
+ * (ADR 0021); the same request may be retried with the same Idempotency-Key.
+ */
+export const PLATFORM_ERROR_CODES = ['platform.busy'] as const;
+
+export type PlatformErrorCode = (typeof PLATFORM_ERROR_CODES)[number];

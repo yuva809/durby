@@ -2,7 +2,7 @@ import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@ne
 import { Reflector } from '@nestjs/core';
 import { AuthContext, Authenticator } from '../auth';
 import { EntitlementService, featuresOf } from '../config/entitlements';
-import { TenantContextMissingError } from '../tenancy';
+import { TENANT_PRISMA, TenantContextMissingError, type TenantPrismaClient } from '../tenancy';
 import { AccessService } from './access.service';
 import { rbacErrors } from './rbac-errors';
 import { markerOf } from './route-markers';
@@ -14,7 +14,7 @@ import { STAFF_AUTHENTICATOR, type StaffAuthenticatorPort } from './staff-port';
  * (StaffAuthenticator, ADR 0017; a customer token never counts); otherwise the access token is
  * verified (Authenticator), then @Authenticated() → done;
  * @RequirePermission(key) → active organization, then every @RequireFeature key enabled for it
- * (ADR 0009), then the permission key, both resolved from the database.
+ * (ADR 0009), then the permission key, both loaded from the database in one transaction (ADR 0021).
  * A route without exactly one marker is denied (and fails the startup check).
  */
 @Injectable()
@@ -26,6 +26,7 @@ export class AccessGuard implements CanActivate {
     private readonly access: AccessService,
     private readonly entitlements: EntitlementService,
     @Inject(STAFF_AUTHENTICATOR) private readonly staff: StaffAuthenticatorPort,
+    @Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -41,22 +42,23 @@ export class AccessGuard implements CanActivate {
     switch (marker.kind) {
       case 'authenticated':
         return true;
-      case 'permission':
+      case 'permission': {
         if (this.authContext.require().organizationId === null) {
           throw new TenantContextMissingError();
         }
+        const features = featuresOf(this.reflector, context.getHandler(), context.getClass());
+        // One pooled connection for both loads; the checks below read the request's cache.
+        await this.db.$transaction(async (tx) => {
+          if (features.length > 0) await this.entitlements.current(tx);
+          await this.access.current(tx);
+        });
         // Before the permission: "not in your plan" whatever the caller's role.
-        for (const feature of featuresOf(
-          this.reflector,
-          context.getHandler(),
-          context.getClass(),
-        )) {
-          await this.entitlements.assertEnabled(feature);
-        }
+        for (const feature of features) await this.entitlements.assertEnabled(feature);
         if (!(await this.access.holdsAnywhere(marker.key))) {
           throw rbacErrors.permissionDenied(marker.key);
         }
         return true;
+      }
     }
   }
 }

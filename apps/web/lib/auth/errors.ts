@@ -8,6 +8,7 @@ import type {
   LabelErrorCode,
   LocationErrorCode,
   NumberingErrorCode,
+  PlatformErrorCode,
   PosErrorCode,
   RbacErrorCode,
   ReservationErrorCode,
@@ -31,10 +32,12 @@ export type ApiErrorCode =
   | LocationErrorCode
   | PosErrorCode
   | ReservationErrorCode
-  | StaffErrorCode;
+  | StaffErrorCode
+  | PlatformErrorCode;
 
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
 const LABELS: Record<ApiErrorCode, LabelKey> = {
+  'platform.busy': 'platform.errors.busy',
   'auth.unauthenticated': 'auth.errors.unauthenticated',
   'auth.invalid_credentials': 'auth.errors.invalidCredentials',
   'auth.email_not_verified': 'auth.errors.emailNotVerified',
@@ -123,6 +126,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'reservations.invalid_transition': 'reservations.errors.invalidTransition',
   'reservations.undo_expired': 'reservations.errors.undoExpired',
   'reservations.table_not_in_service': 'reservations.errors.tableNotInService',
+  'reservations.busy': 'reservations.errors.busy',
   'staff.unauthenticated': 'staff.errors.unauthenticated',
   'staff.invalid_credentials': 'staff.errors.invalidCredentials',
   'staff.reauth_required': 'staff.errors.reauthRequired',
