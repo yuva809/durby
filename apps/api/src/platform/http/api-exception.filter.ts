@@ -9,6 +9,7 @@ import {
 import type { Response } from 'express';
 import { TenantContextMissingError } from '../tenancy';
 import { ApiError, type ApiErrorBody } from './api-error';
+import { BUSY_RETRY_AFTER_SECONDS, overloadKind } from './overload';
 
 /** Stable codes for errors raised by Nest itself (unknown route, wrong method, …). */
 const STATUS_CODES: Readonly<Record<number, string>> = {
@@ -40,7 +41,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
   private toResponse(exception: unknown): ErrorResponse {
     const known = knownErrorResponse(exception);
-    if (known) return known;
+    if (known) {
+      // Overload is expected under load, not a bug: a warning with its kind, never the message.
+      const kind = overloadKind(exception);
+      if (kind) this.logger.warn({ kind }, 'database overload: answered 503 platform.busy');
+      return known;
+    }
     // Log the type and stack frames only: messages of driver errors can contain query values, and
     // the first line of `stack` repeats the message.
     const error = exception instanceof Error ? exception : new Error('non-Error thrown');
@@ -74,6 +80,14 @@ export function knownErrorResponse(exception: unknown): ErrorResponse | null {
       status: HttpStatus.FORBIDDEN,
       body: { code: exception.code, message: 'No active organization for this request.' },
       headers: {},
+    };
+  }
+  // Waiting too long for the database (ADR 0021): retryable, with the same key.
+  if (overloadKind(exception)) {
+    return {
+      status: HttpStatus.SERVICE_UNAVAILABLE,
+      body: { code: 'platform.busy', message: 'The service is busy. Retry shortly.' },
+      headers: { 'Retry-After': String(BUSY_RETRY_AFTER_SECONDS) },
     };
   }
   if (exception instanceof HttpException) {
