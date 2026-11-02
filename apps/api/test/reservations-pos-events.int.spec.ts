@@ -210,12 +210,24 @@ describe('reservations: pos order events', () => {
         actorKind: 'system',
         sourceOrderId: orderId,
       });
+      // The host screen's "auto-seated from till" badge reads the latest change (R1.8a).
+      expect(seated.lastChange).toMatchObject({
+        id: seated.lastChangeId,
+        toStatus: 'seated',
+        actorKind: 'system',
+        sourceOrderId: orderId,
+      });
 
       await closeOrder(r, orderId);
       expect(await deliver(r.org.id, 'pos.order.closed')).toEqual(['applied']);
       const finished = await detail(r, b.id);
       expect(finished.status).toBe('finished');
       expect(finished.history.at(-1)).toMatchObject({
+        toStatus: 'finished',
+        actorKind: 'system',
+        sourceOrderId: orderId,
+      });
+      expect(finished.lastChange).toMatchObject({
         toStatus: 'finished',
         actorKind: 'system',
         sourceOrderId: orderId,

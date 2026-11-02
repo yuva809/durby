@@ -42,6 +42,7 @@ describe('settings registry', () => {
       'reservations.lastBookingOffsetMinutes',
       'reservations.online.instantMaxParty',
       'reservations.orderMatchWindowMinutes',
+      'reservations.floorHorizonMinutes',
       'reservations.autoConfirm',
       'reservations.holdMinutes',
       'inventory.valuationMethod',

@@ -6,6 +6,7 @@ import {
   productSchema,
   reservationDetailSchema,
   reservationSchema,
+  reservationsListResponseSchema,
   type SystemRole,
 } from '@durby/shared';
 import request from 'supertest';
@@ -340,6 +341,47 @@ describe('reservations: status actions, undo, walk-ins', () => {
       expect(res.body).toMatchObject({ code: 'reservations.table_not_in_service' });
       // Moving it to a table in service works.
       await act(r.owner, b.id, 'seat', { tableIds: [r.t4] }).expect(201);
+    });
+
+    it('flags a booking whose table pos archived since, until it moves (R1.8a)', async () => {
+      const r = await restaurant();
+      const b = await book(r, { tableIds: [r.t2] });
+      const other = await book(r, { tableIds: [r.t2], startsAt: at('21:00') });
+      const gone = await book(r, { tableIds: [r.t2], startsAt: at('12:00') });
+      await acted(r.owner, gone.id, 'cancel');
+      expect(b.tablesNotInService).toEqual([]);
+      await request(server)
+        .patch(`/api/v1/pos/tables/${r.t2}`)
+        .set('Idempotency-Key', uuidv7())
+        .auth(r.owner, { type: 'bearer' })
+        .send({ archived: true })
+        .expect(200);
+
+      expect((await detail(r.owner, b.id)).tablesNotInService).toEqual([r.t2]);
+      const list = reservationsListResponseSchema.parse(
+        (await get(r.owner, `/reservations?locationId=${r.here}&date=${SAT}`).expect(200)).body,
+      );
+      // A cancelled booking blocks nothing: nothing to move.
+      expect(list.data.map((x) => [x.id, x.tablesNotInService])).toEqual([
+        [gone.id, []],
+        [b.id, [r.t2]],
+        [other.id, [r.t2]],
+      ]);
+      // Write responses carry it too; moving the booking clears it.
+      const arrived = await acted(r.owner, b.id, 'arrive');
+      expect(arrived.tablesNotInService).toEqual([r.t2]);
+      const moved = reservationSchema.parse(
+        (
+          await request(server)
+            .patch(`/api/v1/reservations/${b.id}`)
+            .set('Idempotency-Key', uuidv7())
+            .auth(r.owner, { type: 'bearer' })
+            .send({ tableIds: [r.t4] })
+            .expect(200)
+        ).body,
+      );
+      expect(moved.tablesNotInService).toEqual([]);
+      expect(moved.lastChange).toMatchObject({ toStatus: 'arrived', actorKind: 'user' });
     });
 
     it('refuses to re-block a table taken meanwhile', async () => {

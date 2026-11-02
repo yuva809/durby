@@ -186,6 +186,15 @@ export const SETTINGS = {
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
+  // How far ahead the host floor marks a table "reserved soon" (R1.8a).
+  'reservations.floorHorizonMinutes': define({
+    label: 'platform.settings.reservationsFloorHorizonMinutes.name',
+    description: 'platform.settings.reservationsFloorHorizonMinutes.description',
+    schema: z.int().min(15).max(240),
+    default: 60,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
   'reservations.autoConfirm': define({
     label: 'platform.settings.reservationsAutoConfirm.name',
     description: 'platform.settings.reservationsAutoConfirm.description',

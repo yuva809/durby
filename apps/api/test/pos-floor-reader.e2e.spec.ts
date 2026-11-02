@@ -138,6 +138,19 @@ describe('PosFloorReader', () => {
     expect(await as(r.org, () => reader.table('not-a-uuid'))).toBeNull();
   });
 
+  it('finds several tables by id, archived ones too, leaving unknown ids out', async () => {
+    const r = await restaurant();
+    const found = await as(r.org, () => reader.tables([r.old.id, r.t2.id, uuidv7(), 'not-a-uuid']));
+    expect(found.map((t) => [t.id, t.archivedAt === null])).toEqual(
+      expect.arrayContaining([
+        [r.t2.id, true],
+        [r.old.id, false],
+      ]),
+    );
+    expect(found).toHaveLength(2);
+    expect(await as(r.org, () => reader.tables([]))).toEqual([]);
+  });
+
   it('lists the open orders of a location by table; closing one removes it', async () => {
     const r = await restaurant();
     expect(await as(r.org, () => reader.openOrders(r.here))).toEqual([]);
@@ -174,6 +187,7 @@ describe('PosFloorReader', () => {
     // Tenant B asking for tenant A's location, table and orders gets nothing (RLS).
     expect(await as(b.org, () => reader.tablesAt(a.here))).toEqual([]);
     expect(await as(b.org, () => reader.table(a.t1.id))).toBeNull();
+    expect(await as(b.org, () => reader.tables([a.t1.id]))).toEqual([]);
     expect(await as(b.org, () => reader.openOrders(a.here))).toEqual([]);
     // And A still sees its own.
     expect(await as(a.org, () => reader.openOrders(a.here))).toHaveLength(1);
