@@ -437,6 +437,13 @@ describe('OrderPage (till)', () => {
     const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
     expect(within(printed).getByText('This is not a receipt.')).toBeTruthy();
     expect(within(printed).getByTestId('order-total').textContent).toBe('€13.80');
+    // Laid out like a till receipt: table, order number, item total then quantity × price,
+    // thanks; no VAT breakdown and no TSE data.
+    expect(within(printed).getByTestId('bill-table').textContent).toMatch(/^Table T1/);
+    expect(within(printed).getByText('Thank you for your visit!')).toBeTruthy();
+    expect(within(printed).getAllByTestId('bill-line')[0]!.textContent).toMatch(/×/);
+    expect(printed.textContent).not.toMatch(/VAT|TSE/);
+    expect(within(printed).getByTestId('bill-footer').textContent).toContain(ORDER.number);
   });
 
   it('focuses the menu search with "/"', async () => {

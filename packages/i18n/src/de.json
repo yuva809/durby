@@ -706,10 +706,6 @@
   "pos.order.printBill": "Rechnung drucken",
   "pos.order.remove": "Entfernen",
   "pos.bill.slipTitle": "Zwischenrechnung",
-  "pos.bill.date": "Datum",
-  "pos.bill.table": "Tisch",
-  "pos.bill.order": "Bestellung",
-  "pos.bill.vatShort": "MwSt. {rate} % (netto + MwSt.)",
   "pos.bill.sent": "Gesendet",
   "pos.bill.toSend": "Zu senden",
   "pos.bill.total": "SUMME",
@@ -1044,5 +1040,8 @@
   "pos.ticket.dineIn": "Vor Ort",
   "pos.ticket.header": "{organization} : {time}",
   "pos.ticket.new": "Neu",
-  "pos.ticket.orderTicket": "# {number} · Bon {sequence}"
+  "pos.ticket.orderTicket": "# {number} · Bon {sequence}",
+  "pos.bill.tableGuests": "Tisch {table}, Gäste: {guests}",
+  "pos.bill.thanks": "Vielen Dank für Ihren Besuch!",
+  "pos.bill.vatShort": "MwSt. {rate} % (netto + MwSt.)"
 }

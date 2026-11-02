@@ -706,10 +706,6 @@
   "pos.order.printBill": "Print bill",
   "pos.order.remove": "Remove",
   "pos.bill.slipTitle": "Guest check",
-  "pos.bill.date": "Date",
-  "pos.bill.table": "Table",
-  "pos.bill.order": "Order",
-  "pos.bill.vatShort": "VAT {rate} % (net + VAT)",
   "pos.bill.sent": "Sent",
   "pos.bill.toSend": "To send",
   "pos.bill.total": "TOTAL",
@@ -1044,5 +1040,8 @@
   "pos.ticket.dineIn": "Dine in",
   "pos.ticket.header": "{organization} : {time}",
   "pos.ticket.new": "New",
-  "pos.ticket.orderTicket": "# {number} · Ticket {sequence}"
+  "pos.ticket.orderTicket": "# {number} · Ticket {sequence}",
+  "pos.bill.tableGuests": "Table {table}, Guests: {guests}",
+  "pos.bill.thanks": "Thank you for your visit!",
+  "pos.bill.vatShort": "VAT {rate} % (net + VAT)"
 }
