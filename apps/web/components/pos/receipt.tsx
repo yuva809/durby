@@ -140,9 +140,13 @@ export function Receipt({
       <div className="flex flex-col gap-0.5 border-t border-dashed border-border px-2 pt-2">
         {order &&
           order.totals.byTaxRate.map((r) => (
-            <p key={r.taxRate} className="flex justify-between gap-2 text-muted-foreground">
+            // On an 80 mm slip the amounts move under the label, right-aligned, instead of breaking.
+            <p
+              key={r.taxRate}
+              className="flex flex-wrap justify-between gap-x-2 text-muted-foreground"
+            >
               <span>{t('pos.bill.vatShort', { rate: rate(r.taxRate) })}</span>
-              <span>
+              <span className="ml-auto whitespace-nowrap tabular-nums">
                 {money(r.net)} + {money(r.tax)}
               </span>
             </p>
