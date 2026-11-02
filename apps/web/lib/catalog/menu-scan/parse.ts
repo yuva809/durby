@@ -37,6 +37,76 @@ export interface ParsedCategory {
   products: ParsedProduct[];
 }
 
+/** One word as the OCR engine read it, with its own box. */
+export interface OcrWord {
+  text: string;
+  confidence: number;
+  box: Box;
+}
+
+/** A gap wider than this many word heights separates two columns on one OCR line. */
+const COLUMN_GAP = 1.5;
+/** Segments whose left edges are this close (share of the page width) are one column. */
+const COLUMN_TOLERANCE = 0.08;
+/** A column has at least this many segments; fewer join the column to their left. */
+const MIN_COLUMN_SEGMENTS = 3;
+
+/**
+ * One OCR line → one line per menu column. OCR engines often read across columns
+ * (`Soup 650.00 ⟶ Prawns 1,950.00`); a wide gap splits the line, except in front of a price, so a
+ * name and its far-right price stay together.
+ */
+export function segmentLine(words: readonly OcrWord[], page: number): OcrLine[] {
+  const segments: OcrWord[][] = [];
+  let current: OcrWord[] = [];
+  words.forEach((word, index) => {
+    const previous = words[index - 1];
+    if (previous && current.length > 0) {
+      const height = Math.max(word.box.y1 - word.box.y0, previous.box.y1 - previous.box.y0, 1);
+      const gap = word.box.x0 - previous.box.x1;
+      const priceNext = normalizePrice(word.text) !== null || CURRENCY_ONLY.test(word.text);
+      if (gap > COLUMN_GAP * height && !priceNext) {
+        segments.push(current);
+        current = [];
+      }
+    }
+    current.push(word);
+  });
+  if (current.length > 0) segments.push(current);
+  return segments.map((ws) => ({
+    text: ws.map((w) => w.text).join(' '),
+    confidence: Math.min(...ws.map((w) => w.confidence)),
+    page,
+    box: {
+      x0: Math.min(...ws.map((w) => w.box.x0)),
+      y0: Math.min(...ws.map((w) => w.box.y0)),
+      x1: Math.max(...ws.map((w) => w.box.x1)),
+      y1: Math.max(...ws.map((w) => w.box.y1)),
+    },
+  }));
+}
+
+/**
+ * One page's segments in reading order: column by column (left to right), top to bottom in each.
+ * Columns are found by left edges; a lone title or note joins the column to its left.
+ */
+export function orderColumns(lines: readonly OcrLine[], pageWidth: number): OcrLine[] {
+  const tolerance = COLUMN_TOLERANCE * pageWidth;
+  const clusters: { x0: number; lines: OcrLine[] }[] = [];
+  for (const line of [...lines].sort((a, b) => a.box.x0 - b.box.x0)) {
+    const last = clusters[clusters.length - 1];
+    if (last && line.box.x0 - last.x0 <= tolerance) last.lines.push(line);
+    else clusters.push({ x0: line.box.x0, lines: [line] });
+  }
+  const columns: OcrLine[][] = [];
+  for (const cluster of clusters) {
+    const last = columns[columns.length - 1];
+    if (cluster.lines.length >= MIN_COLUMN_SEGMENTS || !last) columns.push([...cluster.lines]);
+    else last.push(...cluster.lines);
+  }
+  return columns.flatMap((column) => column.sort((a, b) => a.box.y0 - b.box.y0));
+}
+
 /** A menu's price can't be millions: longer digit runs are phone numbers, dates or codes. */
 const MAX_PRICE_DIGITS = 7;
 const MAX_HEADING_LENGTH = 40;

@@ -13,6 +13,8 @@ allowBuilds:
   ssh2: false
   # Optional native speedup of msgpackr (BullMQ, ADR 0013); msgpackr falls back to plain JS.
   msgpackr-extract: false
+  # Its postinstall only prints a donation message (opencollective-postinstall); OCR needs no build.
+  tesseract.js: false
 minimumReleaseAgeExclude:
   - nodemailer@10.2.0
 # Security fixes for transitive dependencies (docs/reviews/phase-1.md → R4, R5). Remove an entry once

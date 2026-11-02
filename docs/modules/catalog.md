@@ -125,7 +125,9 @@ Builds products from the menu a restaurant already has — photos or a PDF — a
 2. **Read** with Tesseract (English and German) in a web worker; PDF pages are rendered with pdf.js. Images are
    scaled and greyscaled first. **Images never leave the device**; the OCR engine and its language data load from
    jsDelivr on first use and are cached by the browser.
-3. **Parse** (`lib/catalog/menu-scan/parse.ts`, pure): a line ending in a price is a product (dot leaders, item
+3. **Parse** (`lib/catalog/menu-scan/parse.ts`, pure): OCR lines that run across menu columns are split at wide
+   word gaps (never in front of a price, so a name keeps its far-right price) and read column by column, top to
+   bottom; then a line ending in a price is a product (dot leaders, item
    numbers and currency marks such as `€`, `Rs`, `LKR` removed; `1,500.00`, `1.500,00`, `12,50`, `12` become
    decimal text without number math, rule 6); a short unpriced line before priced ones is a category heading;
    other unpriced lines under a product are its description; a second price on a line is kept in the description.
