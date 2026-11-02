@@ -26,43 +26,60 @@ export function PrintRoot({ children }: { children: ReactNode }) {
 }
 
 /**
- * The kitchen ticket (docs/modules/pos.md → Step 3): table, order and ticket number, time, items
- * with notes, no prices. A void ticket says so in large letters.
+ * The kitchen ticket (docs/modules/pos.md → Step 3, Printing): laid out like a kitchen printer's slip
+ * on the 80 mm roll: "Dine in", the organization and time, the table and order in large type, then
+ * the new items with their quantity in a column. No prices; tickets don't name the waiter (ADR 0016).
+ * A void ticket says so in large letters.
  */
 export function KitchenTicketView({
   ticket,
   tableName,
   orderNumber,
+  organizationName,
 }: {
   ticket: KitchenTicket;
   tableName: string;
   orderNumber: string;
+  organizationName: string;
 }) {
   const t = useT();
   const time = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(
     new Date(ticket.createdAt),
   );
   return (
-    <article className="flex flex-col gap-2 p-2 text-foreground" data-testid="kitchen-ticket">
-      <header className="flex flex-col gap-1 border-b border-border pb-2">
-        <p className="text-sm">{t('pos.ticket.title')}</p>
-        {ticket.kind === 'void' && <p className="text-3xl font-bold">{t('pos.ticket.void')}</p>}
-        <p className="text-2xl font-bold">{t('pos.ticket.table', { table: tableName })}</p>
+    <article
+      className="flex flex-col gap-3 p-2 font-sans text-foreground"
+      data-testid="kitchen-ticket"
+    >
+      <header className="flex flex-col items-center gap-1 text-center">
+        <p className="text-xl font-bold">{t('pos.ticket.dineIn')}</p>
         <p className="text-sm">
-          {t('pos.ticket.order', { number: orderNumber })} ·{' '}
-          {t('pos.ticket.number', { sequence: String(ticket.sequence) })} · {time}
+          {t('pos.ticket.header', { organization: organizationName, time })}
+        </p>
+        <p className="mt-1 text-2xl font-bold" data-testid="kitchen-ticket-table">
+          {t('pos.ticket.table', { table: tableName })}
+        </p>
+        {/* Order numbers are long ("ORD-2026-000505"): their own line, so the table stays on one. */}
+        <p className="text-base font-semibold">
+          {t('pos.ticket.orderTicket', {
+            number: orderNumber,
+            sequence: String(ticket.sequence),
+          })}
         </p>
       </header>
+      <div className="border-t border-dashed border-border pt-2 text-center">
+        {ticket.kind === 'void' ? (
+          <p className="text-3xl font-bold">{t('pos.ticket.void')}</p>
+        ) : (
+          <p className="text-xl font-bold">{t('pos.ticket.new')}</p>
+        )}
+      </div>
       <ul className="flex flex-col gap-2">
         {ticket.lines.map((line) => (
-          <li key={line.id}>
-            <p className="text-lg font-semibold">
-              {t('pos.order.lineQuantity', {
-                quantity: String(Math.abs(line.quantity)),
-                name: line.productName,
-              })}
-            </p>
-            {line.note && <p className="text-base">{line.note}</p>}
+          <li key={line.id} className="grid grid-cols-[2.5ch_1fr] gap-x-2 text-xl">
+            <span className="font-semibold tabular-nums">{Math.abs(line.quantity)}</span>
+            <span>{line.productName}</span>
+            {line.note && <span className="col-start-2 text-base italic">{line.note}</span>}
           </li>
         ))}
       </ul>

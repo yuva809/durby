@@ -50,6 +50,34 @@ catalog itself is organization-wide.
 
 Lists are ordered by `sort_order`, then name, then id. Responses carry `archivedAt` (ISO or `null`).
 
+### Import (`POST /catalog/products/import`)
+
+`catalog.products.manage`, `completion: 'transaction'` (it appends). The web app reads a CSV file in the browser
+and sends its rows; the api never sees the file.
+
+- **Body** `{ rows: [{ category, name, price, taxRate, description? }] }`, 1–1000 rows, strings as in the file
+  (`price`/`taxRate` with a dot; the web app turns `4,50` into `4.50`).
+- **All or nothing.** Every row is checked first: category and name trimmed 1–100, price and VAT rate as for a
+  single product, description ≤ 500, no category + name twice in the file (case-insensitive). Any problem → 400
+  `catalog.import_invalid`, `details.rows: [{ row, field, problem }]` (`row` = 1-based data row; `problem` one of
+  `required`, `too_long`, `invalid`, `duplicate`). Nothing is written.
+- **One transaction:** a category is matched by name among non-archived categories, case-insensitive, and created
+  when missing; a product is matched by category + name among the category's non-archived products. A match whose
+  price, VAT rate or description differ is **updated**; otherwise **unchanged**; no match is **created**.
+  Products missing from the file and archived products are never touched.
+- **Response** `{ created, updated, unchanged, categoriesCreated, rows: [{ row, status, productId }] }`
+  (`status`: `created`, `updated`, `unchanged`), stored with the idempotency key (a replay returns it).
+- Audit: the usual `catalog.product_category.created`, `catalog.product.created` and `catalog.product.updated`
+  rows, one per change, in the same transaction.
+
+**File formats** (web app): **CSV** or **Excel `.xlsx`** (the sheet named `products`, else the first sheet; read
+in the browser with `read-excel-file`, loaded only for `.xlsx`; numbers taken as Excel stored them, float noise
+rounded away by text, a VAT cell in percent format such as `0.07` read as `7`). Both have a header row with `category`, `name`, `price`, `tax_rate` and optionally `description`
+(any order, any case; `vat` is accepted for `tax_rate`), comma- or semicolon-separated (German Excel uses
+semicolons), quotes per RFC 4180, UTF-8 with or without BOM. The import dialog offers this header as a template. Samples with example rows: [`docs/samples/products-import-template.xlsx`](../samples/products-import-template.xlsx)
+(fill in, then _Save As → CSV UTF-8_) and [`docs/samples/products-import-sample.csv`](../samples/products-import-sample.csv)
+(ready to import).
+
 ### Errors
 
 | Code                          | Status | When                                                         |
@@ -59,6 +87,7 @@ Lists are ordered by `sort_order`, then name, then id. Responses carry `archived
 | `catalog.category_name_taken` | 409    | a non-archived category already has this name                |
 | `catalog.product_name_taken`  | 409    | a non-archived product of the category already has this name |
 | `catalog.category_archived`   | 409    | create or move a product into an archived category           |
+| `catalog.import_invalid`      | 400    | an import row is invalid (`details.rows`)                    |
 
 Labels: `catalog.errors.<camelCase>`.
 
@@ -78,6 +107,9 @@ Labels: `catalog.errors.<camelCase>`.
 None yet: no other module consumes catalog changes. Inventory (later) adds `catalog.product.*` events when it needs them.
 
 ## Web
+
+**Import CSV** (with `catalog.products.manage`): download the template, choose a file, check the preview (rows
+and problems by row number), import, read the summary (created / updated / unchanged / new categories).
 
 `/catalog` (nav: Modules → Products, feature `catalog`, permission `catalog.products.read`). Category column and
 product table; create/edit dialogs and archive/unarchive only with `catalog.products.manage`. "Show archived" toggle.

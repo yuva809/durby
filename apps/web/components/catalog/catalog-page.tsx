@@ -30,6 +30,7 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Loaded, NoAccess } from '../users/common';
 import { ArchiveToggle, Field, FormDialog } from '../form-dialog';
+import { ImportDialog } from './import-dialog';
 
 /** /catalog (docs/modules/catalog.md → Web). Editing needs `catalog.products.manage`. */
 export function CatalogPage() {
@@ -75,6 +76,7 @@ function Catalog({
         <h1 className="text-2xl font-semibold">{t('catalog.nav.title')}</h1>
         {canManage && (
           <div className="flex flex-wrap gap-2">
+            <ImportDialog onDone={reload} />
             <CategoryDialog onDone={reload} />
             {openCategories.length > 0 && (
               <ProductDialog categories={openCategories} onDone={reload} />

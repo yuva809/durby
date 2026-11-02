@@ -13,7 +13,7 @@ vi.mock('next/navigation', async () => (await import('../../test/mocks')).naviga
 
 beforeEach(() => {
   resetMocks();
-  mockState.pathname = '/settings/audit';
+  mockState.pathname = '/audit';
 });
 afterEach(cleanup);
 
@@ -151,11 +151,9 @@ describe('AuditPage', () => {
     await screen.findByTestId('audit-entry');
     await userEvent.selectOptions(screen.getByTestId('filter-entity'), 'setting_value');
     await userEvent.click(screen.getByTestId('filter-apply'));
-    expect(mockState.router.replace).toHaveBeenCalledWith(
-      '/settings/audit?entityType=setting_value',
-    );
+    expect(mockState.router.replace).toHaveBeenCalledWith('/audit?entityType=setting_value');
     await userEvent.click(screen.getByTestId('audit-only-actor'));
-    expect(mockState.router.replace).toHaveBeenLastCalledWith(`/settings/audit?actor=${USER}`);
+    expect(mockState.router.replace).toHaveBeenLastCalledWith(`/audit?actor=${USER}`);
   });
 
   it('loads more with the cursor and appends', async () => {

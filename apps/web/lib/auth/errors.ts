@@ -95,6 +95,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'catalog.category_name_taken': 'catalog.errors.categoryNameTaken',
   'catalog.product_name_taken': 'catalog.errors.productNameTaken',
   'catalog.category_archived': 'catalog.errors.categoryArchived',
+  'catalog.import_invalid': 'catalog.errors.importInvalid',
   'pos.table_not_found': 'pos.errors.tableNotFound',
   'pos.location_not_found': 'pos.errors.locationNotFound',
   'pos.table_name_taken': 'pos.errors.tableNameTaken',

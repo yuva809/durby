@@ -269,8 +269,13 @@ describe('OrderPage (till)', () => {
     expect(await screen.findByText('Sent to the kitchen: ticket 1.')).toBeTruthy();
     // The ticket is in the print-only root: items and notes, no prices.
     const ticket = within(document.getElementById('print-root')!).getByTestId('kitchen-ticket');
-    expect(within(ticket).getByText('Table T1')).toBeTruthy();
-    expect(within(ticket).getByText('2 × Soup')).toBeTruthy();
+    // Like a kitchen printer's slip: dine in, organization and time, table, # order, "New" items.
+    expect(within(ticket).getByText('Dine in')).toBeTruthy();
+    expect(within(ticket).getByText(/^Demo Bistro : /)).toBeTruthy();
+    expect(within(ticket).getByTestId('kitchen-ticket-table').textContent).toBe('Table T1');
+    expect(within(ticket).getByText(/^# .+ · Ticket 1$/)).toBeTruthy();
+    expect(within(ticket).getByText('New')).toBeTruthy();
+    expect(within(ticket).getByText('Soup').closest('li')!.textContent).toBe('2Soup');
     expect(within(ticket).getByText('no ice')).toBeTruthy();
     expect(within(ticket).queryByText(/13\.80/)).toBeNull();
   });
@@ -406,8 +411,14 @@ describe('OrderPage (till)', () => {
     render(<OrderPage tableId={TABLE.id} />);
     await screen.findAllByTestId('bill-line');
     expect(screen.queryByTestId('print-order')).toBeNull();
+    // While printing, the document is titled with the organization (any browser header names it).
+    document.title = 'App';
+    const titles: string[] = [];
+    print.mockImplementationOnce(() => titles.push(document.title));
     await userEvent.click(screen.getByTestId('print-bill'));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    expect(titles).toEqual(['Demo Bistro']);
+    expect(document.title).toBe('App');
     const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
     expect(within(printed).getByTestId('order-total').textContent).toBe('€13.80');
     expect(screen.getByTestId('close-order')).toBeTruthy();
@@ -464,7 +475,7 @@ describe('OrderPage (till)', () => {
     const dialog = await screen.findByRole('dialog');
     await userEvent.click(within(dialog).getByTestId('form-save'));
     expect(within(dialog).getByText('Choose at least one item.')).toBeTruthy();
-    await userEvent.type(within(dialog).getByLabelText('Void how many Soup'), '1');
+    await userEvent.type(within(dialog).getByLabelText('Cancel how many Soup'), '1');
     await userEvent.click(within(dialog).getByTestId('form-save'));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     expect(writes).toEqual([
@@ -475,6 +486,6 @@ describe('OrderPage (till)', () => {
       },
     ]);
     const ticket = within(document.getElementById('print-root')!).getByTestId('kitchen-ticket');
-    expect(within(ticket).getByText('VOID')).toBeTruthy();
+    expect(within(ticket).getByText('CANCELLED')).toBeTruthy();
   });
 });

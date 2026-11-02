@@ -127,7 +127,7 @@ the unique index `dining_tables (tenant_id, id, location_id)` that pins orders t
 
 **One open order per table.** A waiter picks a table, builds a cart in the browser and **sends it to the kitchen**:
 that writes one kitchen ticket and its lines, opening the table's order (with a number) if it has none. Sending
-again adds ticket 2, 3, …. Nothing is edited afterwards: a correction is a **void ticket** whose lines have negative
+again adds ticket 2, 3, …. Nothing is edited afterwards: a correction is a **void ticket** (shown to users as "Cancelled") whose lines have negative
 quantities and point at the voided line (CLAUDE.md rule 7). Closing the order frees the table; step 4 ties closing
 to the guest check.
 
@@ -225,11 +225,18 @@ would add them.
   number, item count and total. A table opens the order screen.
 - `/service/[tableId]`: menu by category, cart (quantity, note), **Send to kitchen** → the kitchen ticket print
   view (`window.print()`); the order so far with voided items struck through, totals, **Reprint** per ticket,
-  **Void** (with `pos.orders.void`), **Close order** (with `pos.orders.close`).
+  **Cancel items** (a void, with `pos.orders.void`), **Close order** (with `pos.orders.close`).
 - **Printing.** Holders of `pos.bills.print` (waiter, cashier, manager, admin, owner) print the **bill** with
   prices, VAT and total, marked "not a receipt". A role without it (a custom role) prints the **order slip**: table,
   order number, time, the order's items (combined) with quantities and notes, item count; no prices, VAT or totals.
   Waiters got `pos.bills.print` on 2026-10-29 (ADR 0016 §8 note): they bill and check out like the cashier. For now the key gates the web
   print; step 4's guest-check endpoints will require it in the api.
-- Kitchen ticket: table, order number, ticket number, time, items with quantity and note; no prices; "VOID" for void
-  tickets. Printed through a print-only element (`#print-root`); everything else is hidden in print.
+- **Paper:** everything printed from the till (bill, order slip, kitchen ticket) is laid out for an **80 mm
+  thermal roll**: `@page { size: 80mm 297mm; margin: 0 }` (the drivers' "roll paper 80 x 297 mm", cut after the
+  content), 72 mm printed width, black on white, monospace (`app/globals.css`). Zero margins leave no room for the
+  browser's header and footer; while printing, the document title is the organization's name (`lib/pos/print.ts`),
+  so nothing printed names the product. The organization's name heads every slip.
+- Kitchen ticket, laid out like a kitchen printer's slip: "Dine in"; the organization and time; the table in large
+  type; "# order number · Ticket n"; a dashed rule; "New" (or "CANCELLED" in large letters); then each item as quantity
+  and name in large type with its note under it. No prices, and it doesn't name the waiter (ADR 0016). Printed
+  through a print-only element (`#print-root`); everything else is hidden in print.

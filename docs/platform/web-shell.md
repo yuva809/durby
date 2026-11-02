@@ -198,12 +198,12 @@ interface NavItem {
   **UI hints**: the api checks `@RequireFeature` and `@RequirePermission` on every request.
 - Keys are typed against `FEATURES` and `PERMISSIONS`; a unit test fails on an unknown key or a label missing in
   `en` or `de`.
-- The menu (2026-10-29): Home, Products, Service, Tables, **Settings**. Inventory, Billing, POS and Reports are
+- The menu (2026-10-30): Home, Products, Service, Tables, **Settings**, **Audit log** (its own item, `/audit`). Inventory, Billing, POS and Reports are
   `planned`: hidden whatever the plan, their placeholder pages still open by URL; remove the flag when a module
   ships. A group with no visible items is not rendered.
 - **Settings is one item** (`/settings`) whose pages are tabs (`lib/nav/settings-tabs.ts`, rendered by
   `app/(app)/settings/layout.tsx`): Company (`/settings/organization`), Locations, Members, Roles, General, Number
-  series, Labels, Plan, Audit log, each with its former permission rule; `/settings` opens the first tab the user may
+  series, Labels, Plan, each with its former permission rule; `/settings` opens the first tab the user may
   see.
 - Labels via `useT()`, so organization and partner overrides apply (e.g. "Stock" instead of "Inventory").
 
@@ -469,7 +469,7 @@ New keys under `platform.nav.*`, `platform.organizationPage.*`, `platform.settin
 
 ## Audit log viewer (PR d)
 
-Route `/settings/audit`, nav item `platform.nav.audit` (group `settings`, last), page and nav need
+Route `/audit` (`/settings/audit` redirects there, filters kept), nav item `platform.nav.audit` (after Settings), page and nav need
 `platform.audit.read` (Owner, Admin). Without it: no nav item, and a direct visit shows "no access".
 
 ### List

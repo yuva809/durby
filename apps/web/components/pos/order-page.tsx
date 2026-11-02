@@ -31,6 +31,7 @@ import {
   times,
 } from '../../lib/pos/format';
 import { useNow } from '../../lib/pos/use-now';
+import { printAs } from '../../lib/pos/print';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
@@ -112,8 +113,8 @@ function TableOrder({
   const [pendingCovers, setPendingCovers] = useState<number | null>(null);
 
   useEffect(() => {
-    if (print) window.print();
-  }, [print]);
+    if (print) printAs(organizationName);
+  }, [print, organizationName]);
 
   const printTicket = (order: Order, ticketId: string) => {
     const ticket = order.tickets.find((x) => x.id === ticketId);
@@ -335,6 +336,7 @@ function TableOrder({
                 {print.kind === 'ticket' ? (
                   <KitchenTicketView
                     key={print.seq}
+                    organizationName={organizationName}
                     ticket={print.ticket}
                     tableName={table.name}
                     orderNumber={print.orderNumber}

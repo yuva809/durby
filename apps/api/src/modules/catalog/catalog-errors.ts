@@ -1,4 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
+import type { ImportRowProblem } from '@durby/shared';
 import { ApiError } from '../../platform/http';
 
 /** Error codes of the catalog module (docs/modules/catalog.md → Errors). */
@@ -21,6 +22,15 @@ export const catalogErrors = {
     ),
   categoryArchived: () =>
     new ApiError(HttpStatus.CONFLICT, 'catalog.category_archived', 'The category is archived.'),
+  importInvalid: (rows: ImportRowProblem[]) =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'catalog.import_invalid',
+      'Some import rows are invalid.',
+      {
+        rows,
+      },
+    ),
 };
 
 /** Prisma's unique violation (here: the partial name indexes of the migration). */

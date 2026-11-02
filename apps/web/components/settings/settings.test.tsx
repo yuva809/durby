@@ -700,7 +700,6 @@ describe('SettingsTabs', () => {
       'numbering',
       'labels',
       'plan',
-      'audit',
     ]);
     expect(screen.getByTestId('settings-tab-locations').getAttribute('aria-current')).toBe('page');
     expect(screen.getByTestId('settings-tab-organization').textContent).toBe('Company');

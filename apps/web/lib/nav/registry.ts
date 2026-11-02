@@ -1,6 +1,7 @@
 import type { LabelKey } from '@durby/i18n';
 import type { FeatureKey, PermissionKey } from '@durby/shared';
 import {
+  ClipboardList,
   ConciergeBell,
   ChartLine,
   CreditCard,
@@ -121,6 +122,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: SlidersHorizontal,
     group: 'settings',
     children: SETTINGS_TABS,
+  },
+  {
+    // Its own item, not a Settings tab (docs/platform/web-shell.md → Audit log viewer).
+    id: 'audit',
+    href: '/audit',
+    label: 'platform.nav.audit',
+    icon: ClipboardList,
+    group: 'settings',
+    permission: 'platform.audit.read',
   },
 ];
 

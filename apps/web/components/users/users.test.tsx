@@ -101,7 +101,6 @@ describe('nav for Owner, Manager and Staff', () => {
       'numbering',
       'labels',
       'plan',
-      'audit',
     ]);
     expect(settingsItems('manager')).toEqual([
       'organization',
