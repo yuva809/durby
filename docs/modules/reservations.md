@@ -506,6 +506,7 @@ pos occupancy through the read port.
 
 | Event                                                           | Producer     | Payload (v1)                                              | Consumer                                                                                                              |
 | --------------------------------------------------------------- | ------------ | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `pos.order.opened` (R1.7)                                       | pos          | `orderId`, `locationId`, `tableId`, `openedAt`            | reservations `reservations.seatOnOrderOpened`: seats the booking expected at that table (restaurants without a host)  |
 | `pos.order.closed`                                              | pos (R0)     | `orderId`, `locationId`, `tableId`                        | reservations `reservations.finishOnOrderClosed`: finishes the `seated` reservation holding that table at `occurredAt` |
 | `reservations.reservation.created`/`.status_changed`/`.updated` | reservations | `reservationId`, `locationId`, `status`, `startsAt` (ISO) | none in R1; realtime fan-out in RT.1; later CRM/KPIs                                                                  |
 | `reservations.reminder.due` (R2)                                | reservations | `reservationId`                                           | reservations `reservations.sendReminder` (delayed via `available_at`, R2.0)                                           |
@@ -574,6 +575,7 @@ Added by the steps that first use them (same rules, no migration needed):
 
 | Key                                        | Schema                                                                                     | Default | Step                        |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------ | ------- | --------------------------- |
+| `reservations.orderMatchWindowMinutes`     | int 5–120: a till order belongs to a booking when opened within ±this of its start         | `30`    | R1.7                        |
 | `reservations.minLeadMinutes`              | int 0–10080: online slots start at least this long after now (engine, online channel only) | `60`    | R2.2, **before the widget** |
 | `reservations.maxAdvanceDays`              | int 1–365: online bookings at most this many days ahead                                    | `60`    | R2.2, before the widget     |
 | `reservations.noShowGraceMinutes`          | int 0–120                                                                                  | `15`    | R1.9                        |
@@ -737,6 +739,33 @@ Decisions (2026-11-01). Requested/pending flows (accept, confirm, decline) stay 
 - Every response carries `lastChangeId` (the change an undo would revert).
 - **Phone:** `normalisePhone(input, country)` in `packages/shared` (libphonenumber-js, `min` metadata) with the
   location's `country` setting; invalid → `422 reservations.phone_invalid` (`details.field`).
+
+### R1.7 the till seats and finishes bookings
+
+Restaurants without a host: the waiter opens the order at the till and nobody presses Seat. pos emits
+`pos.order.opened` (when a send opens an order) and `pos.order.closed`; reservations reacts in two outbox handlers,
+as the system (`job.outbox`), with the till order on the status change (`source_order_id`) and in the audit snapshot
+(`sourceOrderId`). pos never imports reservations.
+
+- **Party order:** a till order belongs to a booking when it opened within ±`reservations.orderMatchWindowMinutes`
+  (default 30) of the booking's start (before an early seat moved it). An older order is the previous party's, a
+  much later one a walk-in's.
+- **`reservations.seatOnOrderOpened`:** the one `booked`/`arrived` booking holding that table whose start is within
+  the window of `openedAt` is seated (an early party starts at `openedAt`, keeping its length), if its tables are
+  free apart from its own order. None or several → nothing.
+- **`reservations.finishOnOrderClosed`:** the one `seated` booking holding that table is finished at the close (end
+  `max(closedAt, start + 1 min)`, the guest's `last_visit_at`) when the closed order is its party's and none of its
+  tables still has an open order (separate bills: the last close finishes it). Several seated → nothing and a warning.
+  An order moved to another table (pos can't yet) would finish the booking on the table it closed on.
+- **Manual seat and undo** don't count the party's own open order as occupying its table; any other open order still
+  `409 reservations.table_occupied` (e.g. a walk-in's order 75 min after a no-show's start).
+- **Duplicates and late events:** `processed_events` applies an event once per handler; on top of that a handler
+  ignores an event when the booking has a status change made after it (an undo, a host action; compared by UUID v7 id, both from the database clock, not by app-set timestamps), so an auto-seat or
+  auto-finish the host undid stays undone. Both are undoable like any change.
+- **Feature off** for the organization → the handlers do nothing.
+- **R1.8 `/host`:** a booking seated or finished by the system shows an "auto-seated from till" / "finished at the
+  till" badge (from the latest change's `actorKind = system` and `sourceOrderId`) with its undo while possible.
+- **Covers pre-fill** stays web-only in R1.9.
 
 ## Errors
 

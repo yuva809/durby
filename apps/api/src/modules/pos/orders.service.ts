@@ -207,6 +207,16 @@ export class OrdersService {
             entityId: order.id,
             after: orderSnapshot(order),
           });
+          // A party sits at the table: consumers (reservations) react through the outbox.
+          await this.outbox.add(tx, {
+            type: 'pos.order.opened',
+            payload: {
+              orderId: order.id,
+              locationId: table.locationId,
+              tableId,
+              openedAt: order.openedAt.toISOString(),
+            },
+          });
         }
         const ticketId = await this.writeTicket(
           tx,

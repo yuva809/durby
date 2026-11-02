@@ -341,5 +341,6 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'source',
     'tableIds',
     'overriddenRules',
+    'sourceOrderId',
   ],
 } as const satisfies Record<AuditEntityType, readonly string[]>;

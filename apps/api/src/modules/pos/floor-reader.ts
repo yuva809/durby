@@ -22,6 +22,16 @@ export interface FloorTable {
   archivedAt: Date | null;
 }
 
+/** An order as other modules see it: where and when, never its lines or totals. */
+export interface OrderRef {
+  orderId: string;
+  tableId: string;
+  locationId: string;
+  open: boolean;
+  openedAt: Date;
+  closedAt: Date | null;
+}
+
 /** An open order holding a table. */
 export interface OpenOrderRef {
   tableId: string;
@@ -77,6 +87,32 @@ export class PosFloorReader {
     if (!uuid.safeParse(id).success) return null;
     const row = await this.db.diningTable.findUnique({ where: { id }, select: TABLE_SELECT });
     return row ? toFloorTable(row) : null;
+  }
+
+  /** One order, open or closed; null if it doesn't exist in this tenant. `tx` as above. */
+  async order(orderId: string, tx?: TenantTransactionClient): Promise<OrderRef | null> {
+    if (!uuid.safeParse(orderId).success) return null;
+    const row = await (tx ?? this.db).posOrder.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        tableId: true,
+        locationId: true,
+        status: true,
+        openedAt: true,
+        closedAt: true,
+      },
+    });
+    return row
+      ? {
+          orderId: row.id,
+          tableId: row.tableId,
+          locationId: row.locationId,
+          open: row.status === 'open',
+          openedAt: row.openedAt,
+          closedAt: row.closedAt,
+        }
+      : null;
   }
 
   /** The location's open orders, one per table at most, in floor order of their tables; `tx` as above. */

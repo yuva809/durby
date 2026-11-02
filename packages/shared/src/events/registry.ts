@@ -5,7 +5,7 @@ import {
   configNumberSeriesChangedV1,
   configSettingsChangedV1,
 } from './config';
-import { posOrderClosedV1 } from './pos';
+import { posOrderClosedV1, posOrderOpenedV1 } from './pos';
 import {
   reservationsReservationCreatedV1,
   reservationsReservationStatusChangedV1,
@@ -33,6 +33,7 @@ export const EVENTS = {
   'config.labels.changed': { current: 1, versions: { 1: configLabelsChangedV1 } },
   'config.number_series.changed': { current: 1, versions: { 1: configNumberSeriesChangedV1 } },
   'config.entitlements.changed': { current: 1, versions: { 1: configEntitlementsChangedV1 } },
+  'pos.order.opened': { current: 1, versions: { 1: posOrderOpenedV1 } },
   'pos.order.closed': { current: 1, versions: { 1: posOrderClosedV1 } },
   'reservations.reservation.created': {
     current: 1,

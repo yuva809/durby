@@ -328,6 +328,8 @@ export const reservationStatusChangeSchema = z.object({
   toStatus: z.enum(RESERVATION_STATUSES),
   undoesId: z.uuid().nullable(),
   actorKind: z.enum(['user', 'guest', 'system']),
+  /** The till order behind a system change (auto-seat, finish on close); null otherwise. */
+  sourceOrderId: z.uuid().nullable(),
   createdAt: z.iso.datetime(),
 });
 

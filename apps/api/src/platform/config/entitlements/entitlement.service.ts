@@ -1,7 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { FeatureKey, FeatureLimitName } from '@durby/shared';
 import { ClsService } from 'nestjs-cls';
-import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../../tenancy';
+import {
+  TENANT_PRISMA,
+  TenantContext,
+  type TenantPrismaClient,
+  type TenantTransactionClient,
+} from '../../tenancy';
 import { entitlementsErrors } from './entitlements-errors';
 import { type ResolvedEntitlements, resolveEntitlements } from './resolve';
 
@@ -28,13 +33,16 @@ export class EntitlementService {
     @Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient,
   ) {}
 
-  /** The resolved entitlements of the current tenant. */
-  current(): Promise<ResolvedEntitlements> {
+  /**
+   * The resolved entitlements of the current tenant. Pass the caller's `tx` inside a transaction
+   * (outbox handlers use only theirs): no second pooled connection.
+   */
+  current(tx?: TenantTransactionClient): Promise<ResolvedEntitlements> {
     const { tenantId } = this.tenantContext.require();
     const active = this.cls.isActive();
     const cached = active ? this.cls.get<Cached | undefined>(CLS_KEY) : undefined;
     if (cached && cached.tenantId === tenantId) return cached.entitlements;
-    const entitlements = this.load(tenantId);
+    const entitlements = tx ? loadIn(tx, tenantId, this.logger) : this.load(tenantId);
     if (active) this.cls.set<Cached>(CLS_KEY, { tenantId, entitlements });
     return entitlements;
   }
@@ -44,9 +52,9 @@ export class EntitlementService {
     if (this.cls.isActive()) this.cls.set(CLS_KEY, undefined);
   }
 
-  /** Takes unregistered keys too (false), for the guard. */
-  async isEnabled(key: string): Promise<boolean> {
-    return (await this.current()).features.has(key as FeatureKey);
+  /** Takes unregistered keys too (false), for the guard. `tx` as for current(). */
+  async isEnabled(key: string, tx?: TenantTransactionClient): Promise<boolean> {
+    return (await this.current(tx)).features.has(key as FeatureKey);
   }
 
   /** Throws 403 entitlements.feature_disabled unless `key` is enabled. */
@@ -61,21 +69,27 @@ export class EntitlementService {
     return limits[name] ?? null;
   }
 
-  private async load(tenantId: string): Promise<ResolvedEntitlements> {
-    const [organization, overrides] = await this.db.$transaction(async (tx) => [
-      await tx.organization.findUnique({
-        where: { id: tenantId },
-        select: {
-          plan: { select: { key: true, features: { select: { featureKey: true, limits: true } } } },
-        },
-      }),
-      await tx.tenantFeatureOverride.findMany({
-        where: { tenantId },
-        select: { featureKey: true, enabled: true, limits: true },
-      }),
-    ]);
-    return resolveEntitlements({ plan: organization?.plan ?? null, overrides }, (problem) =>
-      this.logger.warn({ tenantId, problem }, 'Ignored stored entitlement'),
-    );
+  private load(tenantId: string): Promise<ResolvedEntitlements> {
+    return this.db.$transaction((tx) => loadIn(tx, tenantId, this.logger));
   }
+}
+
+async function loadIn(
+  tx: TenantTransactionClient,
+  tenantId: string,
+  logger: Logger,
+): Promise<ResolvedEntitlements> {
+  const organization = await tx.organization.findUnique({
+    where: { id: tenantId },
+    select: {
+      plan: { select: { key: true, features: { select: { featureKey: true, limits: true } } } },
+    },
+  });
+  const overrides = await tx.tenantFeatureOverride.findMany({
+    where: { tenantId },
+    select: { featureKey: true, enabled: true, limits: true },
+  });
+  return resolveEntitlements({ plan: organization?.plan ?? null, overrides }, (problem) =>
+    logger.warn({ tenantId, problem }, 'Ignored stored entitlement'),
+  );
 }

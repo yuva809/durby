@@ -38,10 +38,10 @@ import {
   toResponse,
 } from './bookings.service';
 import { resolveGuest } from './guests';
-import { type StatusAction, transition, undoable } from './status';
+import { isPartyOrder, type StatusAction, transition, undoable } from './status';
 
 /** The timestamp each status sets, cleared again when that status is undone. */
-const STAMP: Partial<
+export const STAMP: Partial<
   Record<ReservationStatus, 'arrivedAt' | 'seatedAt' | 'finishedAt' | 'noShowAt' | 'cancelledAt'>
 > = {
   arrived: 'arrivedAt',
@@ -101,6 +101,7 @@ export class BookingStatusService {
         tableIds = body.tableIds ? [...body.tableIds].sort() : currentTables;
         await this.checkTables(tx, current, found.locationId, start, end, tableIds, now, {
           ownTables: !body.tableIds,
+          partyStart: current.startsAt,
         });
       }
       if (action === 'finish') {
@@ -127,7 +128,7 @@ export class BookingStatusService {
           data: { lastVisitAt: now },
         });
       }
-      await appendChange(tx, tenantId, userId, current, step.to, null);
+      await appendChange(tx, tenantId, { userId }, current, step.to, null);
       return this.finish(tx, userId, current, 'reservations.reservation.status_changed');
     });
   }
@@ -158,6 +159,7 @@ export class BookingStatusService {
       if (isBlocking(to)) {
         await this.checkTables(tx, current, found.locationId, start, end, tableIds, now, {
           ownTables: true,
+          partyStart: start,
         });
       }
       const undoneStamp = STAMP[current.status];
@@ -173,7 +175,7 @@ export class BookingStatusService {
         }),
       );
       await replaceTables(tx, tenantId, id, found.locationId, currentTables, tableIds, start, end);
-      await appendChange(tx, tenantId, userId, current, to, latest.id);
+      await appendChange(tx, tenantId, { userId }, current, to, latest.id);
       return this.finish(tx, userId, current, 'reservations.reservation.status_undone');
     });
   }
@@ -271,6 +273,7 @@ export class BookingStatusService {
    * The table checks for `tableIds` at `[start, end)` without the booking itself: fit, open pos
    * order, overrunning party, other bookings. Never the rules: the party is here. `ownTables`: the
    * booking's own (not the caller's choice), so one pos archived since is a 409, not a 404.
+   * `partyStart`: the booking's start that its own till order is matched against.
    */
   private async checkTables(
     tx: TenantTransactionClient,
@@ -280,9 +283,9 @@ export class BookingStatusService {
     end: Date,
     tableIds: string[],
     now: Date,
-    opts: { ownTables: boolean },
+    opts: { ownTables: boolean; partyStart: Date },
   ): Promise<void> {
-    const { input } = await this.bookings.load(
+    const { input: loaded, settings } = await this.bookings.load(
       tx,
       locationId,
       start,
@@ -291,6 +294,14 @@ export class BookingStatusService {
       current.id,
       end,
     );
+    // The party's own till order (opened within ±window of its start) doesn't occupy its table.
+    const window = settings.get('reservations.orderMatchWindowMinutes')?.value as number;
+    const input = {
+      ...loaded,
+      openOrders: loaded.openOrders.filter(
+        (o) => !(tableIds.includes(o.tableId) && isPartyOrder(o.openedAt, opts.partyStart, window)),
+      ),
+    };
     const verdict = evaluateBooking(input, {
       start,
       end,
@@ -332,15 +343,18 @@ export class BookingStatusService {
 }
 
 /** One writer per booking at a time. */
-async function lock(tx: TenantTransactionClient, id: string): Promise<void> {
+export async function lock(tx: TenantTransactionClient, id: string): Promise<void> {
   await tx.$executeRaw`SELECT 1 FROM reservations WHERE id = ${id}::uuid FOR UPDATE`;
 }
 
-/** Appends a status change recording what it replaced (for undo). */
-async function appendChange(
+/**
+ * Appends a status change recording what it replaced (for undo). `actor`: a user, or the system
+ * with the till order that caused it (auto-seat, finish on close).
+ */
+export async function appendChange(
   tx: TenantTransactionClient,
   tenantId: string,
-  userId: string,
+  actor: { userId: string } | { sourceOrderId: string },
   before: ReservationRow,
   to: ReservationStatus,
   undoesId: string | null,
@@ -352,8 +366,9 @@ async function appendChange(
       fromStatus: before.status,
       toStatus: to,
       undoesId,
-      actorUserId: userId,
-      actorKind: 'user',
+      ...('userId' in actor
+        ? { actorUserId: actor.userId, actorKind: 'user' }
+        : { actorKind: 'system', sourceOrderId: actor.sourceOrderId }),
       previousStartsAt: before.startsAt,
       previousEndsAt: before.endsAt,
       previousTableIds: before.tables.map((t) => t.tableId),

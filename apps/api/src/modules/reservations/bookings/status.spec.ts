@@ -1,6 +1,6 @@
 import { RESERVATION_STATUSES } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
-import { type StatusAction, transition, UNDO_WINDOW_MS, undoable } from './status';
+import { isPartyOrder, type StatusAction, transition, UNDO_WINDOW_MS, undoable } from './status';
 
 /** docs/modules/reservations.md → Status flow, R1.6c: pure rules, no database, no clock. */
 
@@ -71,5 +71,20 @@ describe('undoable', () => {
     expect(undoable(change(), 'c1', NOW)).toBe(false);
     expect(undoable(change({ undoesId: 'c1' }), 'c2', NOW)).toBe(false);
     expect(undoable(change({ fromStatus: null }), 'c2', NOW)).toBe(false);
+  });
+});
+
+describe('isPartyOrder', () => {
+  const start = new Date('2027-03-06T19:00:00Z');
+  const opened = (minutes: number) => new Date(start.getTime() + minutes * 60_000);
+
+  it("takes an order opened within ±window of the booking's start as the party's", () => {
+    for (const m of [-30, -5, 0, 10, 30])
+      expect(isPartyOrder(opened(m), start, 30), String(m)).toBe(true);
+  });
+
+  it('leaves older and much later orders to someone else (previous party, a walk-in)', () => {
+    for (const m of [-31, -90, 31, 75])
+      expect(isPartyOrder(opened(m), start, 30), String(m)).toBe(false);
   });
 });
