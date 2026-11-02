@@ -1134,5 +1134,4 @@
   "catalog.scan.errors.tooSmall": "Dieses Bild hat nur {width} × {height} px, zu klein, um den Text der Speisekarte zu lesen. Verwenden Sie das Originalfoto oder das Bild in voller Größe (mindestens 1000 px breit).",
   "catalog.scan.smallWarning": "Das Bild hat nur {width} × {height} px, das Ergebnis ist daher wahrscheinlich unvollständig oder falsch. Für einen guten Scan verwenden Sie das Originalfoto oder das Bild in voller Größe (mindestens 1000 px breit).",
   "reservations.errors.busy": "Gerade sehr viel los. Bitte gleich noch einmal versuchen."
-
 }
