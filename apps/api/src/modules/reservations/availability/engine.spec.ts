@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   availability,
   type AvailabilityInput,
+  evaluateBooking,
   type EngineBooking,
   type EngineCombination,
   type EngineTable,
@@ -443,5 +444,164 @@ describe('pacing and the instant-booking threshold', () => {
     // Capacity still decides: no fitting table, no request.
     const tooBig = availability(input({ partySize: 14, combinations: combos, channel: 'online' }));
     expect(tooBig.slots.every((s) => s.status === 'full' && s.reason === 'no_table')).toBe(true);
+  });
+});
+
+describe('evaluateBooking: one booking at an exact time (R1.6 write-time checks)', () => {
+  const req = (
+    from: string,
+    to: string,
+    extra: { tableIds?: string[]; walkIn?: boolean } = {},
+  ) => ({
+    start: at(SAT, from),
+    end: at(SAT, to),
+    ...extra,
+  });
+
+  it('picks the smallest free table at any minute, like the slot grid', () => {
+    expect(evaluateBooking(input(), req('19:10', '20:40'))).toEqual({
+      ok: true,
+      tableIds: ['T2a'],
+      breaches: [],
+    });
+    expect(
+      evaluateBooking(
+        input({ bookings: [booking(['T2a'], '19:00', '20:30')] }),
+        req('19:10', '20:40'),
+      ),
+    ).toMatchObject({ ok: true, tableIds: ['T2b'] });
+  });
+
+  it('falls back to a combination, and says why when nothing is left', () => {
+    const big = input({
+      partySize: 8,
+      combinations: [combination('C46', ['T4', 'T6'], 7, 10)],
+    });
+    expect(evaluateBooking(big, req('19:00', '21:30'))).toEqual({
+      ok: true,
+      tableIds: ['T4', 'T6'],
+      combinationId: 'C46',
+      breaches: [],
+    });
+    expect(
+      evaluateBooking(
+        { ...big, bookings: [booking(['T6'], '20:00', '22:00')] },
+        req('19:00', '21:30'),
+      ),
+    ).toEqual({ ok: false, problem: 'table_unavailable' });
+    expect(evaluateBooking(input({ partySize: 12 }), req('19:00', '21:30'))).toEqual({
+      ok: false,
+      problem: 'party_size_out_of_range',
+    });
+  });
+
+  it('checks chosen tables: known, bookable, big enough', () => {
+    const ins = input({ tables: [T2A, T4, T6, WALK] });
+    expect(evaluateBooking(ins, req('19:00', '20:30', { tableIds: ['nope'] }))).toEqual({
+      ok: false,
+      problem: 'table_not_found',
+    });
+    expect(evaluateBooking(ins, req('19:00', '20:30', { tableIds: ['W4'] }))).toEqual({
+      ok: false,
+      problem: 'table_walk_in_only',
+    });
+    expect(
+      evaluateBooking(ins, req('19:00', '20:30', { tableIds: ['W4'], walkIn: true })),
+    ).toMatchObject({ ok: true, tableIds: ['W4'] });
+    expect(
+      evaluateBooking({ ...ins, partySize: 5 }, req('19:00', '20:30', { tableIds: ['T4'] })),
+    ).toEqual({ ok: false, problem: 'party_size_out_of_range' });
+    // Several tables that aren't a combination: their capacities add up.
+    expect(
+      evaluateBooking({ ...ins, partySize: 6 }, req('19:00', '20:30', { tableIds: ['T2a', 'T4'] })),
+    ).toMatchObject({ ok: true, tableIds: ['T2a', 'T4'] });
+    expect(
+      evaluateBooking({ ...ins, partySize: 7 }, req('19:00', '20:30', { tableIds: ['T2a', 'T4'] })),
+    ).toEqual({ ok: false, problem: 'party_size_out_of_range' });
+  });
+
+  it("applies a defined combination's own range to exactly its tables", () => {
+    const ins = input({ partySize: 4, combinations: [combination('C46', ['T4', 'T6'], 7, 10)] });
+    expect(evaluateBooking(ins, req('19:00', '21:00', { tableIds: ['T6', 'T4'] }))).toEqual({
+      ok: false,
+      problem: 'party_size_out_of_range',
+    });
+  });
+
+  it('tells occupied tables (open order, overrunning party) from booked ones', () => {
+    const now = at(SAT, '19:05');
+    const order = input({
+      now,
+      openOrders: [{ tableId: 'T4', openedAt: at(SAT, '18:30'), covers: 4 }],
+    });
+    expect(evaluateBooking(order, req('19:30', '21:00', { tableIds: ['T4'] }))).toEqual({
+      ok: false,
+      problem: 'table_occupied',
+    });
+    const overrun = input({
+      now: at(SAT, '21:05'),
+      bookings: [booking(['T4'], '19:00', '21:00', { status: 'seated' })],
+    });
+    expect(evaluateBooking(overrun, req('21:00', '22:30', { tableIds: ['T4'] }))).toEqual({
+      ok: false,
+      problem: 'table_occupied',
+    });
+    const booked = input({ bookings: [booking(['T4'], '19:00', '21:00')] });
+    expect(evaluateBooking(booked, req('20:00', '21:30', { tableIds: ['T4'] }))).toEqual({
+      ok: false,
+      problem: 'table_unavailable',
+    });
+  });
+
+  it("names the next booking's start when a later booking is in the way (walk-ins)", () => {
+    const later = input({ bookings: [booking(['T4'], '20:00', '22:00')] });
+    expect(evaluateBooking(later, req('19:00', '20:30', { tableIds: ['T4'] }))).toEqual({
+      ok: false,
+      problem: 'table_unavailable',
+      nextStartsAt: at(SAT, '20:00').toISOString(),
+    });
+    // A booking already running isn't "next": no time to seat until.
+    const running = input({ bookings: [booking(['T4'], '18:30', '20:00')] });
+    expect(evaluateBooking(running, req('19:00', '20:30', { tableIds: ['T4'] }))).toEqual({
+      ok: false,
+      problem: 'table_unavailable',
+    });
+  });
+
+  it('reports pacing and reservation hours as breaches, not refusals', () => {
+    const paced = input({
+      settings: { maxCoversPerSlot: 4 } as never,
+      bookings: [booking(['T4'], '19:00', '21:00', { partySize: 4 })],
+    });
+    // 19:10 counts in the 19:00–19:15 slot.
+    expect(evaluateBooking(paced, req('19:10', '20:40'))).toMatchObject({
+      ok: true,
+      breaches: ['pacing'],
+    });
+    // Opening 17:00–23:00, last booking 22:00.
+    expect(evaluateBooking(input(), req('22:10', '23:40'))).toMatchObject({
+      ok: true,
+      breaches: ['serviceHours'],
+    });
+    expect(evaluateBooking(input(), req('16:00', '17:30'))).toMatchObject({
+      ok: true,
+      breaches: ['serviceHours'],
+    });
+    expect(
+      evaluateBooking(input({ settings: { closedDates: [SAT] } as never }), req('19:00', '20:30')),
+    ).toMatchObject({ ok: true, breaches: ['serviceHours'] });
+  });
+
+  it('counts a window past midnight for the day it starts', () => {
+    const late = input({
+      settings: { openingHours: every([{ from: '18:00', to: '02:00' }]) } as never,
+    });
+    // Sunday 00:30 belongs to Saturday's window (last booking 01:00).
+    expect(
+      evaluateBooking(late, { start: at('2026-11-15', '00:30'), end: at('2026-11-15', '02:00') }),
+    ).toMatchObject({
+      ok: true,
+      breaches: [],
+    });
   });
 });

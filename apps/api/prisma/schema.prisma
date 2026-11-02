@@ -1208,20 +1208,24 @@ model ReservationTable {
 
 /// Append-only history of status changes; an undo appends a change pointing at the one it reverts.
 model ReservationStatusChange {
-  id            String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId      String             @map("tenant_id") @db.Uuid
-  reservationId String             @map("reservation_id") @db.Uuid
+  id               String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String             @map("tenant_id") @db.Uuid
+  reservationId    String             @map("reservation_id") @db.Uuid
   /// null on creation.
-  fromStatus    ReservationStatus? @map("from_status")
-  toStatus      ReservationStatus  @map("to_status")
-  undoesId      String?            @map("undoes_id") @db.Uuid
+  fromStatus       ReservationStatus? @map("from_status")
+  toStatus         ReservationStatus  @map("to_status")
+  undoesId         String?            @map("undoes_id") @db.Uuid
   /// null for guest and system actors.
-  actorUserId   String?            @map("actor_user_id") @db.Uuid
+  actorUserId      String?            @map("actor_user_id") @db.Uuid
   /// user | guest | system
-  actorKind     String             @map("actor_kind")
-  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  organization  Organization       @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  reservation   Reservation        @relation(fields: [tenantId, reservationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  actorKind        String             @map("actor_kind")
+  /// What the change replaced, so an undo restores it (R1.6c); null on creation.
+  previousStartsAt DateTime?          @map("previous_starts_at") @db.Timestamptz(6)
+  previousEndsAt   DateTime?          @map("previous_ends_at") @db.Timestamptz(6)
+  previousTableIds String[]           @map("previous_table_ids") @db.Uuid
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization     Organization       @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reservation      Reservation        @relation(fields: [tenantId, reservationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([tenantId, id])
   @@index([tenantId, reservationId, createdAt])

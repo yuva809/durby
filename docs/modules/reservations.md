@@ -708,7 +708,33 @@ Decisions (2026-11-01). Requested/pending flows (accept, confirm, decline) stay 
   time; moving keeps the length unless `endsAt` is sent.
 - **No-show (Q5)** only once `starts_at` has passed (`409 reservations.invalid_transition` before).
 - **Walk-ins:** guest name and phone optional (no guest data → a guest row with no name, email or phone).
-- **Guests:** see GDPR → guests are reused (email first, then phone).
+- **Several chosen tables:** exactly a defined (not archived) combination uses its own party range; any other set
+  of tables takes up to their capacities added up.
+- **Guests:** see GDPR → guests are reused (email first, then phone). **PATCH `guest`** corrects the booking's guest:
+  an email that belongs to another live guest links the booking to that guest (filling its blanks); otherwise the
+  given fields replace the current guest's. A phone never relinks (families share numbers).
+- **PATCH** works on `pending`, `booked`, `arrived` and `seated` bookings (else `409 reservations.invalid_transition`)
+  and re-runs the checks only when time, tables or party size change; `force` applies to those changes.
+- **Status actions (R1.6c)**, `POST /reservations/:id/{arrive,seat,finish,no-show,cancel}`, each
+  `completion: 'transaction'`, appending a status change, auditing `reservations.reservation.status_changed` and
+  writing `reservations.reservation.status_changed`: `arrive` booked → arrived; `seat` booked/arrived → seated (optional
+  `tableIds`); `finish` seated → finished (`ends_at = max(now, starts_at + 1 min)`, the guest's `last_visit_at = now`);
+  `no-show` booked/arrived → no_show, only once `starts_at` has passed (Q5); `cancel` pending/booked/arrived →
+  cancelled. Anything else → `409 reservations.invalid_transition` (`details.from`, `details.to`).
+- **Seat** re-runs the table checks (fit, open pos order, overrunning party, booked) with or without new `tableIds`,
+  never the rules (the party is here). An **early** seat shifts the booking to start now and keeps its length; a late
+  seat keeps start and end.
+- **Undo** (`POST /reservations/:id/undo { changeId }`): `changeId` must be the latest change, made ≤ 5 min ago
+  (`UNDO_WINDOW_MS`), not itself an undo and not the creation, else `409 reservations.undo_expired`. It restores the
+  previous status, times and tables, which each status change records (`previous_starts_at`, `previous_ends_at`,
+  `previous_table_ids`); back to a blocking status re-runs the table checks (409 when the table was taken meanwhile).
+  Appends a change with `undoes_id`, audited as `reservations.reservation.status_undone`.
+- **Walk-ins** (`POST /reservations/walk-ins { locationId, partySize, tableIds, name?, phone?, endsAt? }`): `seated`,
+  source `walk_in`, `[now, endsAt ?? now + turn)`; `walk_in_only` tables allowed; guest name and phone optional (the
+  same guest matching). A collision with the table's next booking → `409 reservations.table_unavailable` with
+  `details.nextStartsAt`; the host may send `endsAt` (≥ now + 15 min, ≤ 12 h) to seat them until then. Rules don't
+  apply (they are here).
+- Every response carries `lastChangeId` (the change an undo would revert).
 - **Phone:** `normalisePhone(input, country)` in `packages/shared` (libphonenumber-js, `min` metadata) with the
   location's `country` setting; invalid → `422 reservations.phone_invalid` (`details.field`).
 
@@ -730,6 +756,7 @@ Decisions (2026-11-01). Requested/pending flows (accept, confirm, decline) stay 
 | `reservations.outside_service_hours`   | 409    | outside the reservation hours or after the last booking time (staff: retry with `force`)     |
 | `reservations.invalid_transition`      | 409    | e.g. seat a cancelled booking; `details.from`, `details.to`                                  |
 | `reservations.undo_expired`            | 409    | older than 5 min, or not the latest change                                                   |
+| `reservations.table_not_in_service`    | 409    | seat or undo onto the booking's own table that pos archived since; `details.tableIds`        |
 | `reservations.hold_not_found`          | 409    | expired / unknown / other page (R2)                                                          |
 | `reservations.holds_unavailable`       | 503    | Redis down (R2): online booking pauses, staff booking unaffected                             |
 | `reservations.self_cancel_closed`      | 409    | past the cut-off (R2)                                                                        |
