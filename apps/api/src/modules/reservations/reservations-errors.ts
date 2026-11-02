@@ -61,6 +61,15 @@ export const reservationErrors = {
       'A table of the booking is no longer in service.',
       { tableIds },
     ),
+  /** Overload (pool, transaction or lock timeout): retry the same request (same key) shortly. */
+  busy: () =>
+    new ApiError(
+      HttpStatus.SERVICE_UNAVAILABLE,
+      'reservations.busy',
+      'Busy, please retry.',
+      undefined,
+      { 'Retry-After': '2' },
+    ),
   undoExpired: () =>
     new ApiError(
       HttpStatus.CONFLICT,

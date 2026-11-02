@@ -23,8 +23,10 @@ import {
 } from '../../../platform/tenancy';
 import { evaluateBooking } from '../availability/engine';
 import { reservationErrors } from '../reservations-errors';
+import { shortLockWaits } from './busy';
 import { readableLocation } from '../setup/table-rules.service';
 import {
+  assignNumber,
   BLOCKING_STATUSES,
   BookingsService,
   exclusive,
@@ -35,6 +37,7 @@ import {
   read,
   type ReservationRow,
   reservationSnapshot,
+  temporaryNumber,
   toResponse,
 } from './bookings.service';
 import { resolveGuest } from './guests';
@@ -83,6 +86,7 @@ export class BookingStatusService {
     const now = this.clock.now();
 
     return this.db.$transaction(async (tx) => {
+      await shortLockWaits(tx);
       await lock(tx, id);
       const current = await read(tx, id);
       const step = transition(action, current, now);
@@ -139,6 +143,7 @@ export class BookingStatusService {
     const now = this.clock.now();
 
     return this.db.$transaction(async (tx) => {
+      await shortLockWaits(tx);
       await lock(tx, id);
       const current = await read(tx, id);
       const latest = await tx.reservationStatusChange.findFirst({
@@ -201,6 +206,7 @@ export class BookingStatusService {
     }
 
     return this.db.$transaction(async (tx) => {
+      await shortLockWaits(tx);
       const { input, settings } = await this.bookings.load(
         tx,
         body.locationId,
@@ -224,12 +230,11 @@ export class BookingStatusService {
         ...guest,
         locale: settings.get('locale')?.value as string,
       });
-      const { number } = await this.numbering.next('reservations.booking', tx);
       const { id } = await tx.reservation.create({
         data: {
           tenantId,
           locationId: body.locationId,
-          number,
+          number: temporaryNumber(),
           guestId,
           partySize: body.partySize,
           startsAt: start,
@@ -242,6 +247,7 @@ export class BookingStatusService {
         select: { id: true },
       });
       await insertTables(tx, tenantId, id, body.locationId, verdict.tableIds, start, end);
+      await assignNumber(tx, this.numbering, id);
       await tx.reservationStatusChange.create({
         data: {
           tenantId,

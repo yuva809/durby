@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
   asCountryCode,
@@ -30,6 +31,7 @@ import {
 import { evaluateBooking, type RuleBreach } from '../availability/engine';
 import { AvailabilityLoader } from '../availability/loader';
 import { reservationErrors } from '../reservations-errors';
+import { shortLockWaits } from './busy';
 import { readableLocation } from '../setup/table-rules.service';
 import { correctGuest, type GuestDetails, resolveGuest } from './guests';
 
@@ -106,6 +108,7 @@ export class BookingsService {
     if (start.getTime() < now.getTime() - PAST_GRACE_MS) throw reservationErrors.startsInPast();
 
     return this.db.$transaction(async (tx) => {
+      await shortLockWaits(tx);
       const { input, settings } = await this.load(tx, body.locationId, start, body.partySize, now);
       const end = body.endsAt
         ? new Date(body.endsAt)
@@ -121,13 +124,11 @@ export class BookingsService {
         ...guest,
         locale: guest.locale ?? (settings.get('locale')?.value as string),
       });
-      // As late as possible: the counter row stays locked until commit (ADR 0012).
-      const { number } = await this.numbering.next('reservations.booking', tx);
       const { id } = await tx.reservation.create({
         data: {
           tenantId,
           locationId: body.locationId,
-          number,
+          number: temporaryNumber(),
           guestId,
           partySize: body.partySize,
           startsAt: start,
@@ -141,6 +142,9 @@ export class BookingsService {
         select: { id: true },
       });
       await insertTables(tx, tenantId, id, body.locationId, verdict.tableIds, start, end);
+      // Only once the tables are ours: concurrent losers (23P01) never queue on the counter lock,
+      // which stays held until commit (ADR 0012: as late as possible).
+      await assignNumber(tx, this.numbering, id);
       await tx.reservationStatusChange.create({
         data: {
           tenantId,
@@ -175,6 +179,7 @@ export class BookingsService {
     const now = this.clock.now();
 
     return this.db.$transaction(async (tx) => {
+      await shortLockWaits(tx);
       // One writer per booking at a time: no lost updates between two hosts.
       await tx.$executeRaw`SELECT 1 FROM reservations WHERE id = ${id}::uuid FOR UPDATE`;
       const current = await read(tx, id);
@@ -372,6 +377,22 @@ export class BookingsService {
     await this.access.assert(MANAGE, { locationId: found.locationId });
     return found;
   }
+}
+
+/**
+ * A placeholder until the tables are claimed (unique, never shown: replaced in the same
+ * transaction). `~` + 31 hex digits fits the 32-character number CHECK.
+ */
+export const temporaryNumber = () => `~${randomUUID().replace(/-/g, '').slice(0, 31)}`;
+
+/** The booking's real number from its series, after the table rows are in. */
+export async function assignNumber(
+  tx: TenantTransactionClient,
+  numbering: NumberingService,
+  id: string,
+): Promise<void> {
+  const { number } = await numbering.next('reservations.booking', tx);
+  await tx.reservation.update({ where: { id }, data: { number } });
 }
 
 /** The breaches `force` overrides; without it the first one refuses (pacing before hours). */

@@ -1043,5 +1043,6 @@
   "pos.ticket.orderTicket": "# {number} · Ticket {sequence}",
   "pos.bill.tableGuests": "Table {table}, Guests: {guests}",
   "pos.bill.thanks": "Thank you for your visit!",
-  "pos.bill.vatShort": "VAT {rate} % (net + VAT)"
+  "pos.bill.vatShort": "VAT {rate} % (net + VAT)",
+  "reservations.errors.busy": "Very busy right now. Please try again in a moment."
 }

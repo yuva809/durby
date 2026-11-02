@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseInterceptors,
+} from '@nestjs/common';
 import {
   type CreateReservationRequest,
   createReservationRequestSchema,
@@ -22,6 +32,7 @@ import { Idempotent } from '../../../platform/idempotency';
 import { RequirePermission } from '../../../platform/rbac';
 import { reservationErrors } from '../reservations-errors';
 import { BookingsService } from './bookings.service';
+import { ReservationsBusyInterceptor } from './busy';
 import { BookingStatusService } from './status.service';
 
 const reservationId = () =>
@@ -32,6 +43,7 @@ const reservationId = () =>
  * any location; the service checks it at the booking's location.
  */
 @RequireFeature('reservations')
+@UseInterceptors(ReservationsBusyInterceptor)
 @Controller('reservations')
 export class BookingsController {
   constructor(
