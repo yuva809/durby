@@ -475,7 +475,7 @@ describe('OrderPage (till)', () => {
     const dialog = await screen.findByRole('dialog');
     await userEvent.click(within(dialog).getByTestId('form-save'));
     expect(within(dialog).getByText('Choose at least one item.')).toBeTruthy();
-    await userEvent.type(within(dialog).getByLabelText('Void how many Soup'), '1');
+    await userEvent.type(within(dialog).getByLabelText('Cancel how many Soup'), '1');
     await userEvent.click(within(dialog).getByTestId('form-save'));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     expect(writes).toEqual([
@@ -486,6 +486,6 @@ describe('OrderPage (till)', () => {
       },
     ]);
     const ticket = within(document.getElementById('print-root')!).getByTestId('kitchen-ticket');
-    expect(within(ticket).getByText('VOID')).toBeTruthy();
+    expect(within(ticket).getByText('CANCELLED')).toBeTruthy();
   });
 });
