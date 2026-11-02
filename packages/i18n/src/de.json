@@ -1127,5 +1127,7 @@
   "catalog.scan.dnd.picked": "{name} aufgenommen.",
   "catalog.scan.dnd.over": "{name} ist über {target}.",
   "catalog.scan.dnd.dropped": "{name} wurde auf {target} abgelegt.",
-  "catalog.scan.dnd.cancelled": "Verschieben von {name} abgebrochen."
+  "catalog.scan.dnd.cancelled": "Verschieben von {name} abgebrochen.",
+  "catalog.scan.ready": "{count} Datei(en) bereit. Klicken Sie auf „Speisekarte lesen“.",
+  "catalog.scan.addMore": "Weitere hinzufügen"
 }

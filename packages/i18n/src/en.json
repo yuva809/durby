@@ -1127,5 +1127,7 @@
   "catalog.scan.dnd.picked": "Picked up {name}.",
   "catalog.scan.dnd.over": "{name} is over {target}.",
   "catalog.scan.dnd.dropped": "{name} was dropped on {target}.",
-  "catalog.scan.dnd.cancelled": "Moving {name} was cancelled."
+  "catalog.scan.dnd.cancelled": "Moving {name} was cancelled.",
+  "catalog.scan.ready": "{count} file(s) ready. Click “Read menu” to start.",
+  "catalog.scan.addMore": "Add more"
 }

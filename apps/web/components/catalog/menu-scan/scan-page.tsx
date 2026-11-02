@@ -289,67 +289,72 @@ function UploadStep({
     onAdd(e.dataTransfer.files);
   };
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setOver(true);
-        }}
-        onDragLeave={() => setOver(false)}
-        onDrop={onDrop}
-        className={cn(
-          'flex flex-col items-center gap-4 rounded-xl border-2 border-dashed bg-card px-6 py-12 text-center transition-colors',
-          over && 'border-primary bg-accent',
-        )}
-        data-testid="scan-drop"
-      >
-        <div className="flex size-14 items-center justify-center rounded-full bg-muted">
-          <ScanText aria-hidden className="size-7 text-primary" />
-        </div>
-        <p className="text-lg font-medium">{t('catalog.scan.drop')}</p>
-        <p className="text-sm text-muted-foreground">
-          {t('catalog.scan.formats', { max: String(MAX_SCAN_PAGES) })}
-        </p>
-        <div className="flex flex-wrap justify-center gap-2">
-          <Button variant="outline" onClick={() => picker.current?.click()}>
-            <FileUp aria-hidden />
-            {t('catalog.scan.choose')}
-          </Button>
-          <Button variant="outline" className="md:hidden" onClick={() => camera.current?.click()}>
-            <Camera aria-hidden />
-            {t('catalog.scan.camera')}
-          </Button>
-        </div>
-        <input
-          ref={picker}
-          type="file"
-          multiple
-          accept={ACCEPT}
-          className="sr-only"
-          tabIndex={-1}
-          aria-label={t('catalog.scan.choose')}
-          onChange={(e) => {
-            onAdd(e.target.files);
-            e.target.value = '';
-          }}
-          data-testid="scan-files"
-        />
-        <input
-          ref={camera}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          tabIndex={-1}
-          aria-label={t('catalog.scan.camera')}
-          onChange={(e) => {
-            onAdd(e.target.files);
-            e.target.value = '';
-          }}
-        />
-      </div>
+  const hasFiles = files.length > 0;
+  const startButton = useRef<HTMLButtonElement>(null);
+  // Files just chosen: bring "Read menu" into view and focus it, so the next step is obvious.
+  useEffect(() => {
+    if (files.length === 0) return;
+    startButton.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+    startButton.current?.focus({ preventScroll: true });
+  }, [files.length]);
 
+  const inputs = (
+    <>
+      <input
+        ref={picker}
+        type="file"
+        multiple
+        accept={ACCEPT}
+        className="sr-only"
+        tabIndex={-1}
+        aria-label={t('catalog.scan.choose')}
+        onChange={(e) => {
+          onAdd(e.target.files);
+          e.target.value = '';
+        }}
+        data-testid="scan-files"
+      />
+      <input
+        ref={camera}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        tabIndex={-1}
+        aria-label={t('catalog.scan.camera')}
+        onChange={(e) => {
+          onAdd(e.target.files);
+          e.target.value = '';
+        }}
+      />
+    </>
+  );
+  const pickButtons = (
+    <div className="flex flex-wrap justify-center gap-2">
+      <Button variant="outline" onClick={() => picker.current?.click()}>
+        <FileUp aria-hidden />
+        {t(hasFiles ? 'catalog.scan.addMore' : 'catalog.scan.choose')}
+      </Button>
+      <Button variant="outline" className="md:hidden" onClick={() => camera.current?.click()}>
+        <Camera aria-hidden />
+        {t('catalog.scan.camera')}
+      </Button>
+    </div>
+  );
+
+  return (
+    <div
+      className="flex flex-col gap-4"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false);
+      }}
+      onDrop={onDrop}
+    >
+      {inputs}
       {error && (
         <p
           role="alert"
@@ -359,9 +364,28 @@ function UploadStep({
         </p>
       )}
 
-      {files.length > 0 && (
-        <>
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {hasFiles ? (
+        <div
+          className={cn(
+            'flex flex-col gap-4 rounded-xl border bg-card p-4 transition-colors',
+            over && 'border-primary bg-accent',
+          )}
+          data-testid="scan-drop"
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <p className="font-medium" role="status">
+                {t('catalog.scan.ready', { count: String(files.length) })}
+              </p>
+              <p className="text-xs text-muted-foreground">{t('catalog.scan.firstUse')}</p>
+            </div>
+            {pickButtons}
+            <Button ref={startButton} onClick={onStart} data-testid="scan-start">
+              <ScanText aria-hidden />
+              {t('catalog.scan.start')}
+            </Button>
+          </div>
+          <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
             {files.map((file, index) => (
               <li
                 key={`${file.name}-${index}`}
@@ -371,7 +395,7 @@ function UploadStep({
                   {previews[index] ? (
                     // A local object URL: next/image adds nothing.
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={previews[index]} alt="" className="size-full object-cover" />
+                    <img src={previews[index]} alt="" className="size-full object-contain" />
                   ) : (
                     <FileText aria-hidden className="size-10 text-muted-foreground" />
                   )}
@@ -391,14 +415,24 @@ function UploadStep({
               </li>
             ))}
           </ul>
-          <div className="flex flex-col items-start gap-2">
-            <Button onClick={onStart} data-testid="scan-start">
-              <ScanText aria-hidden />
-              {t('catalog.scan.start')}
-            </Button>
-            <p className="text-xs text-muted-foreground">{t('catalog.scan.firstUse')}</p>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            'flex flex-col items-center gap-4 rounded-xl border-2 border-dashed bg-card px-6 py-12 text-center transition-colors',
+            over && 'border-primary bg-accent',
+          )}
+          data-testid="scan-drop"
+        >
+          <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+            <ScanText aria-hidden className="size-7 text-primary" />
           </div>
-        </>
+          <p className="text-lg font-medium">{t('catalog.scan.drop')}</p>
+          <p className="text-sm text-muted-foreground">
+            {t('catalog.scan.formats', { max: String(MAX_SCAN_PAGES) })}
+          </p>
+          {pickButtons}
+        </div>
       )}
     </div>
   );
