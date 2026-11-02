@@ -231,5 +231,10 @@ would add them.
   order number, time, the order's items (combined) with quantities and notes, item count; no prices, VAT or totals.
   Waiters got `pos.bills.print` on 2026-10-29 (ADR 0016 §8 note): they bill and check out like the cashier. For now the key gates the web
   print; step 4's guest-check endpoints will require it in the api.
+- **Paper:** everything printed from the till (bill, order slip, kitchen ticket) is laid out for an **80 mm
+  thermal roll**: `@page { size: 80mm 297mm; margin: 0 }` (the drivers' "roll paper 80 x 297 mm", cut after the
+  content), 72 mm printed width, black on white, monospace (`app/globals.css`). Zero margins leave no room for the
+  browser's header and footer; while printing, the document title is the organization's name (`lib/pos/print.ts`),
+  so nothing printed names the product. The organization's name heads every slip.
 - Kitchen ticket: table, order number, ticket number, time, items with quantity and note; no prices; "VOID" for void
   tickets. Printed through a print-only element (`#print-root`); everything else is hidden in print.

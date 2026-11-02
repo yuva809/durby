@@ -119,9 +119,9 @@ export function Receipt({
   };
 
   return (
-    <div className="font-mono text-xs leading-relaxed" data-testid="receipt">
+    <div className="font-mono text-xs leading-relaxed print:text-sm" data-testid="receipt">
       <div className="flex flex-col items-center gap-0.5 pb-2 text-center">
-        <p className="text-sm font-bold">{organizationName}</p>
+        <p className="text-sm font-bold print:text-base">{organizationName}</p>
         <p className="text-muted-foreground">{t('pos.bill.slipTitle')}</p>
       </div>
       <div className="border-y border-dashed border-border px-2 py-2">

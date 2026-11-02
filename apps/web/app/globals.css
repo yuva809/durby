@@ -90,15 +90,48 @@
   }
 }
 
-/* Kitchen tickets (docs/modules/pos.md → Step 3): components/pos/print-root.tsx portals the ticket into
-   #print-root. On screen it is hidden; in print it is the only thing on the page. */
+/* Till printing (docs/modules/pos.md → Printing): components/pos/kitchen-ticket.tsx (PrintRoot)
+   portals the bill, order slip or kitchen ticket into #print-root. On screen it is hidden; in print it
+   is the only thing on the page, sized for an 80 mm thermal roll (72 mm printed width). Zero page
+   margins leave no room for the browser's own header and footer (title, URL, date). */
 @media screen {
   #print-root {
     display: none;
   }
 }
+/* 80 x 297 mm is the thermal drivers' roll paper ("Roll Paper 80 x 297 mm"): they feed and cut after the
+   content. CSS has no "auto" length here; a single length would mean a square page. */
+@page {
+  size: 80mm 297mm;
+  margin: 0;
+}
 @media print {
+  html,
+  body {
+    width: 80mm;
+    margin: 0;
+    background: white !important;
+  }
   body > :not(#print-root) {
     display: none !important;
+  }
+  #print-root {
+    box-sizing: border-box;
+    width: 80mm;
+    padding: 3mm 4mm 8mm;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    line-height: 1.35;
+  }
+  /* Thermal printers have one ink: black text and lines on white, nothing greyed or filled. */
+  #print-root,
+  #print-root * {
+    color: black !important;
+    background: transparent !important;
+    border-color: black !important;
+    box-shadow: none !important;
+  }
+  #print-root li,
+  #print-root p {
+    break-inside: avoid;
   }
 }

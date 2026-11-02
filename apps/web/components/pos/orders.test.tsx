@@ -406,8 +406,14 @@ describe('OrderPage (till)', () => {
     render(<OrderPage tableId={TABLE.id} />);
     await screen.findAllByTestId('bill-line');
     expect(screen.queryByTestId('print-order')).toBeNull();
+    // While printing, the document is titled with the organization (any browser header names it).
+    document.title = 'App';
+    const titles: string[] = [];
+    print.mockImplementationOnce(() => titles.push(document.title));
     await userEvent.click(screen.getByTestId('print-bill'));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    expect(titles).toEqual(['Demo Bistro']);
+    expect(document.title).toBe('App');
     const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
     expect(within(printed).getByTestId('order-total').textContent).toBe('€13.80');
     expect(screen.getByTestId('close-order')).toBeTruthy();
