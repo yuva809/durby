@@ -27,7 +27,7 @@ function api(importAnswer: () => Response) {
   const posts: unknown[] = [];
   mockState.store.apiFetch.mockImplementation((input: string, init?: RequestInit) => {
     if (input === '/api/v1/catalog/products/import' && init?.method === 'POST') {
-      posts.push(JSON.parse(String(init.body)));
+      posts.push(typeof init.body === 'string' ? (JSON.parse(init.body) as unknown) : null);
       return Promise.resolve(importAnswer());
     }
     return Promise.resolve(Response.json({ data: [] }));
