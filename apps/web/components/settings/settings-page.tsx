@@ -1,12 +1,20 @@
 'use client';
 
-import type { ResolvedSetting, SettingKey } from '@durby/shared';
+import {
+  DEFAULT_OPENING_HOURS,
+  type ResolvedSetting,
+  type SettingKey,
+  type TurnTimes,
+  type WeeklyHours,
+} from '@durby/shared';
 import { TriangleAlert } from 'lucide-react';
-import { useId, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
+import type { Result } from '../../lib/api-call';
 import { errorLabel } from '../../lib/auth/errors';
+import type { ActionKey } from '../../lib/idempotency';
 import { deleteSetting, loadSettings, putSetting } from '../../lib/settings/api';
 import {
   codeDefaults,
@@ -31,6 +39,8 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
+import { DateListEditor, WeeklyHoursEditor } from './hours-editor';
+import { LimitField, ScheduleOrField, TurnTimesEditor } from './reservation-editors';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
@@ -75,12 +85,17 @@ export function SettingsPage() {
           {ORGANIZATION_SETTING_KEYS.map((key) => {
             const setting = saved[key] ?? byKey.get(key);
             const control = controlOf(key);
+            // Reservation hours narrow the opening hours: an own schedule starts from them.
+            const openingHours = ((saved.openingHours ?? byKey.get('openingHours'))?.value ??
+              DEFAULT_OPENING_HOURS) as WeeklyHours;
             if (!setting || !control) return null;
             return (
               <li key={key}>
                 <SettingRow
                   setting={setting}
                   control={control}
+                  openingHours={openingHours}
+                  writes={organizationWrites(store)}
                   editable={canManage && !fallback}
                   onSaved={(next) => setSaved((current) => ({ ...current, [key]: next }))}
                 />
@@ -101,24 +116,73 @@ export function SettingsPage() {
   );
 }
 
-/** The value in the form's representation: text for selects and inputs, a boolean for checkboxes. */
-type Draft = string | boolean;
+/**
+ * The value in the form's representation: text for text inputs, a number for number fields and
+ * numeric selects ('' while empty), a boolean for checkboxes, the value itself for structured
+ * settings (opening hours, closed days, turn times).
+ */
+type Draft = string | number | boolean | WeeklyHours | string[] | TurnTimes;
 
-const draftOf = (value: unknown): Draft => (typeof value === 'boolean' ? value : String(value));
+const draftOf = (value: unknown): Draft => {
+  if (typeof value === 'boolean' || typeof value === 'string' || typeof value === 'number') {
+    return value;
+  }
+  if (typeof value === 'object' && value !== null) return value as Draft;
+  return JSON.stringify(value);
+};
 
-function SettingRow({
+/** The text of a select or input draft. */
+const textOf = (draft: Draft) =>
+  typeof draft === 'string' || typeof draft === 'number' ? String(draft) : '';
+
+/** Drafts are plain JSON values: equal when their JSON is. */
+const sameDraft = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b);
+
+/** Where a SettingRow writes: the organization (settings api) or a location (a module's api). */
+export interface SettingWrites {
+  scope: 'organization' | 'location';
+  put: (
+    action: ActionKey,
+    key: SettingKey,
+    value: unknown,
+  ) => Promise<Result<ResolvedSetting | null>>;
+  remove: (action: ActionKey, key: SettingKey) => Promise<Result<unknown>>;
+  /** The key's value after inheriting again (the api resolves it). */
+  reload: (key: SettingKey) => Promise<ResolvedSetting | undefined>;
+}
+
+const organizationWrites = (store: Parameters<typeof loadSettings>[0]): SettingWrites => ({
+  scope: 'organization',
+  put: (action, key, value) => putSetting(store, action, key, value),
+  remove: (action, key) => deleteSetting(store, action, key),
+  reload: async (key) => {
+    const reloaded = await loadSettings(store);
+    return reloaded.ok ? reloaded.data.find((s) => s.key === key) : undefined;
+  },
+});
+
+/**
+ * One setting: its control, save and "use inherited". `below` renders under the control from the
+ * current draft (e.g. why a schedule won't be fully offered).
+ */
+export function SettingRow({
   setting,
   control,
+  openingHours,
+  writes,
   editable,
   onSaved,
+  below,
 }: {
   setting: ResolvedSetting;
   control: SettingControl;
+  openingHours: WeeklyHours;
+  writes: SettingWrites;
   editable: boolean;
   onSaved: (setting: ResolvedSetting) => void;
+  below?: (draft: unknown) => ReactNode;
 }) {
   const t = useT();
-  const { store } = useAuth();
   const id = useId();
   const saveAction = useActionKey();
   const inheritAction = useActionKey();
@@ -130,7 +194,7 @@ function SettingRow({
   // 409 settings.in_use: data already depends on the value; it can't change any more.
   const [locked, setLocked] = useState(false);
 
-  const changed = draftOf(setting.value) !== draft;
+  const changed = !sameDraft(draftOf(setting.value), draft);
   const invalid = changed && !isValidSettingValue(setting.key, draft);
   const canEdit = editable && !locked;
 
@@ -138,7 +202,7 @@ function SettingRow({
     setConfirming(false);
     setBusy(true);
     setError(null);
-    const result = await putSetting(store, saveAction, setting.key, draft);
+    const result = await writes.put(saveAction, setting.key, draft);
     setBusy(false);
     if (result.ok && result.data) onSaved(result.data);
     else if (!result.ok) fail(result.code);
@@ -147,16 +211,15 @@ function SettingRow({
   async function inherit() {
     setBusy(true);
     setError(null);
-    const removed = await deleteSetting(store, inheritAction, setting.key);
+    const removed = await writes.remove(inheritAction, setting.key);
     if (!removed.ok) {
       setBusy(false);
       fail(removed.code);
       return;
     }
     // The inherited value is resolved by the api: read it back.
-    const reloaded = await loadSettings(store);
+    const next = await writes.reload(setting.key);
     setBusy(false);
-    const next = reloaded.ok ? reloaded.data.find((s) => s.key === setting.key) : undefined;
     if (next) {
       onSaved(next);
       setDraft(draftOf(next.value));
@@ -180,7 +243,7 @@ function SettingRow({
           </p>
         </div>
         <Badge data-testid="setting-source">
-          {isSetHere(setting)
+          {isSetHere(setting, writes.scope)
             ? t('platform.settingsPage.setHere')
             : t('platform.settingsPage.inherited')}
         </Badge>
@@ -208,15 +271,70 @@ function SettingRow({
               {draft === true ? t('platform.settingsPage.on') : t('platform.settingsPage.off')}
             </span>
           </div>
+        ) : control.kind === 'weeklyHours' ? (
+          <WeeklyHoursEditor
+            value={draft as WeeklyHours}
+            disabled={!canEdit}
+            describedBy={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={setDraft}
+          />
+        ) : control.kind === 'dateList' ? (
+          <DateListEditor
+            value={draft as string[]}
+            disabled={!canEdit}
+            describedBy={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={setDraft}
+          />
+        ) : control.kind === 'turnTimes' ? (
+          <TurnTimesEditor
+            value={draft as TurnTimes}
+            disabled={!canEdit}
+            describedBy={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={setDraft}
+          />
+        ) : control.kind === 'limit' ? (
+          <LimitField
+            value={draft}
+            off={control.off}
+            min={control.min}
+            max={control.max}
+            disabled={!canEdit}
+            describedBy={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={(next) => setDraft(next as Draft)}
+          />
+        ) : control.kind === 'scheduleOr' ? (
+          <ScheduleOrField
+            value={draft}
+            inherit={control.inherit}
+            inherited={openingHours}
+            disabled={!canEdit}
+            describedBy={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={(next) => setDraft(next as Draft)}
+          />
+        ) : control.kind === 'number' ? (
+          <Input
+            id={`${id}-value`}
+            type="number"
+            min={control.min}
+            max={control.max}
+            step={1}
+            data-testid="setting-value"
+            className="w-28"
+            value={textOf(draft)}
+            disabled={!canEdit}
+            aria-invalid={invalid || undefined}
+            aria-describedby={invalid ? `${id}-problem` : `${id}-description`}
+            onChange={(e) => setDraft(e.target.value.trim() === '' ? '' : Number(e.target.value))}
+          />
         ) : control.kind === 'select' ? (
           <Select
             id={`${id}-value`}
             data-testid="setting-value"
             className="max-w-xs"
-            value={String(draft)}
+            value={textOf(draft)}
             disabled={!canEdit}
             aria-describedby={`${id}-description`}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => setDraft(control.numeric ? Number(e.target.value) : e.target.value)}
           >
             {control.options.map((option) => (
               <option key={option.value} value={option.value}>
@@ -229,7 +347,7 @@ function SettingRow({
             id={`${id}-value`}
             data-testid="setting-value"
             className="max-w-xs"
-            value={String(draft)}
+            value={textOf(draft)}
             disabled={!canEdit}
             aria-invalid={invalid || undefined}
             aria-describedby={invalid ? `${id}-problem` : `${id}-description`}
@@ -245,7 +363,7 @@ function SettingRow({
             >
               {t('platform.common.save')}
             </Button>
-            {isSetHere(setting) && (
+            {isSetHere(setting, writes.scope) && (
               <Button
                 variant="outline"
                 data-testid="setting-inherit"
@@ -259,6 +377,7 @@ function SettingRow({
         )}
       </div>
 
+      {below?.(draft)}
       {invalid && (
         <p id={`${id}-problem`} role="alert" className="text-sm text-destructive">
           {t('platform.errors.settingsInvalidValue')}

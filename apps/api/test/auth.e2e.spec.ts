@@ -1,6 +1,6 @@
 import { FEATURE_KEYS, sessionResponseSchema, type SessionResponse } from '@durby/shared';
 import { v7 as uuidv7 } from 'uuid';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type AuthTestKit,
   cookie,
@@ -512,9 +512,15 @@ describe('auth', () => {
       await kit.client().post('/password/forgot').send({ email: user.email }).expect(202);
       const older = await kit.tokenFromMail(user.email, 'reset-password');
       await kit.client().post('/password/forgot').send({ email: user.email }).expect(202);
-      await kit.settle();
-      const newer = await kit.tokenFromMail(user.email, 'reset-password');
-      expect(newer).not.toBe(older);
+      // 202 answers before the mail is sent: wait for the second mail, not a fixed pause.
+      const newer = await vi.waitFor(
+        async () => {
+          const token = await kit.tokenFromMail(user.email, 'reset-password');
+          expect(token).not.toBe(older);
+          return token;
+        },
+        { timeout: 5_000, interval: 25 },
+      );
 
       await kit
         .client()

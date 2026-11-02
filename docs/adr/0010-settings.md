@@ -3,6 +3,8 @@
 - Status: accepted
 - Date: 2026-10-23
 - Step: Phase 1.6 (inherited settings)
+- Amended by: [ADR 0020](0020-module-delegated-location-settings.md) (a module's own key may edit its own
+  settings at a location, §6)
 
 ## Context
 

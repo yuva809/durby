@@ -19,19 +19,21 @@ Feature keys are `module.capability`. Each entry has a name and a description la
 schema for its limits. Feature keys and limit shapes are never free-form: the api and the CLI reject unregistered keys
 and limits that don't match the feature's schema.
 
-| Key                    | Depends on  | Limits                                 |
-| ---------------------- | ----------- | -------------------------------------- |
-| `inventory`            |             | `maxLocations` (positive integer)      |
-| `inventory.counts`     | `inventory` |                                        |
-| `inventory.purchasing` | `inventory` |                                        |
-| `billing`              |             |                                        |
-| `billing.einvoice`     | `billing`   |                                        |
-| `pos`                  |             |                                        |
-| `pos.fiscal`           | `pos`       |                                        |
-| `reports`              |             |                                        |
-| `api.public`           |             | `requestsPerMinute` (positive integer) |
-| `whitelabel`           |             |                                        |
-| `catalog`              |             |                                        |
+| Key                    | Depends on     | Limits                                 |
+| ---------------------- | -------------- | -------------------------------------- |
+| `inventory`            |                | `maxLocations` (positive integer)      |
+| `inventory.counts`     | `inventory`    |                                        |
+| `inventory.purchasing` | `inventory`    |                                        |
+| `billing`              |                |                                        |
+| `billing.einvoice`     | `billing`      |                                        |
+| `pos`                  |                |                                        |
+| `pos.fiscal`           | `pos`          |                                        |
+| `reports`              |                |                                        |
+| `api.public`           |                | `requestsPerMinute` (positive integer) |
+| `whitelabel`           |                |                                        |
+| `catalog`              |                |                                        |
+| `reservations`         | `pos`          |                                        |
+| `reservations.online`  | `reservations` |                                        |
 
 - A limit that is absent means unlimited. Limits are integers (counts and rates, not money or stock: rule 6 doesn't
   apply), so JSON numbers.
@@ -190,12 +192,13 @@ System actor: `cli.entitlements`.
 
 ## Seeded plans
 
-| Feature                                                            | `inventory` | `inventory_billing` | `full` |
-| ------------------------------------------------------------------ | ----------- | ------------------- | ------ |
-| `inventory`, `inventory.counts`, `inventory.purchasing`, `reports` | ✓           | ✓                   | ✓      |
-| `billing`, `billing.einvoice`                                      |             | ✓                   | ✓      |
-| `pos`, `pos.fiscal`, `api.public`, `whitelabel`                    |             |                     | ✓      |
-| `catalog` (added by `…_catalog_and_tables`, ADR 0016)              | ✓           | ✓                   | ✓      |
+| Feature                                                                                                                | `inventory` | `inventory_billing` | `full` |
+| ---------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------- | ------ |
+| `inventory`, `inventory.counts`, `inventory.purchasing`, `reports`                                                     | ✓           | ✓                   | ✓      |
+| `billing`, `billing.einvoice`                                                                                          |             | ✓                   | ✓      |
+| `pos`, `pos.fiscal`, `api.public`, `whitelabel`                                                                        |             |                     | ✓      |
+| `catalog` (added by `…_catalog_and_tables`, ADR 0016)                                                                  | ✓           | ✓                   | ✓      |
+| `reservations`, `reservations.online` (added by `…_reservations_features`; [reservations](../modules/reservations.md)) |             |                     | ✓      |
 
 No limits are seeded. Names: "Inventory", "Inventory + Billing", "Full". `whitelabel` stays in Full for now;
 partner-level white-label is revisited in 1.10.

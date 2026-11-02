@@ -157,7 +157,7 @@ describe('/locations', () => {
       expect(await names(owner)).toEqual(['L1', 'L2']);
     });
 
-    it.each(['admin', 'manager', 'staff', 'waiter', 'cashier'] as const)(
+    it.each(['admin', 'manager', 'staff', 'waiter', 'cashier', 'host'] as const)(
       'refuses %s (platform.org.manage is owner only)',
       async (role) => {
         const org = await seed.org();

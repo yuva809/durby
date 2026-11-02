@@ -1,4 +1,5 @@
 import { type FeatureKey, isFeatureKey } from './features';
+import { zonedParts } from './time/zoned';
 
 /**
  * Number series registry (`module.camelCaseName`). See docs/platform/numbering.md and ADR 0012.
@@ -57,6 +58,15 @@ export const NUMBER_SERIES = {
     description: 'platform.numbering.series.posOrder.description',
     feature: 'pos',
     prefix: 'ORD',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
+  // docs/modules/reservations.md → Number series: the guest-facing booking reference.
+  'reservations.booking': {
+    label: 'platform.numbering.series.reservationsBooking.name',
+    description: 'platform.numbering.series.reservationsBooking.description',
+    feature: 'reservations',
+    prefix: 'RES',
     pattern: '{prefix}-{YYYY}-{seq:6}',
     resetPolicy: 'yearly',
   },
@@ -231,13 +241,8 @@ function renderParts(parts: readonly PatternPart[], values: NumberValues): strin
 
 /** Calendar year and month of `at` in `timeZone` (an IANA name, e.g. the `timezone` setting). */
 export function calendarMonthIn(at: Date, timeZone: string): { year: number; month: number } {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: 'numeric',
-  }).formatToParts(at);
-  const value = (type: 'year' | 'month') => Number(parts.find((p) => p.type === type)?.value);
-  return { year: value('year'), month: value('month') };
+  const { year, month } = zonedParts(at, timeZone);
+  return { year, month };
 }
 
 /** The counter period: the calendar year for `yearly`, `all` for `never`. */

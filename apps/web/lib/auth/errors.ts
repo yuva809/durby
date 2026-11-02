@@ -10,6 +10,7 @@ import type {
   NumberingErrorCode,
   PosErrorCode,
   RbacErrorCode,
+  ReservationErrorCode,
   SettingErrorCode,
   StaffErrorCode,
 } from '@durby/shared';
@@ -29,6 +30,7 @@ export type ApiErrorCode =
   | CatalogErrorCode
   | LocationErrorCode
   | PosErrorCode
+  | ReservationErrorCode
   | StaffErrorCode;
 
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
@@ -104,6 +106,22 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'pos.area_not_found': 'pos.errors.areaNotFound',
   'pos.area_name_taken': 'pos.errors.areaNameTaken',
   'pos.area_not_empty': 'pos.errors.areaNotEmpty',
+  'reservations.location_not_found': 'reservations.errors.locationNotFound',
+  'reservations.table_not_found': 'reservations.errors.tableNotFound',
+  'reservations.combination_not_found': 'reservations.errors.combinationNotFound',
+  'reservations.party_range_invalid': 'reservations.errors.partyRangeInvalid',
+  'reservations.reservation_not_found': 'reservations.errors.reservationNotFound',
+  'reservations.table_walk_in_only': 'reservations.errors.tableWalkInOnly',
+  'reservations.party_size_out_of_range': 'reservations.errors.partySizeOutOfRange',
+  'reservations.table_occupied': 'reservations.errors.tableOccupied',
+  'reservations.table_unavailable': 'reservations.errors.tableUnavailable',
+  'reservations.pacing_exceeded': 'reservations.errors.pacingExceeded',
+  'reservations.outside_service_hours': 'reservations.errors.outsideServiceHours',
+  'reservations.starts_in_past': 'reservations.errors.startsInPast',
+  'reservations.phone_invalid': 'reservations.errors.phoneInvalid',
+  'reservations.invalid_transition': 'reservations.errors.invalidTransition',
+  'reservations.undo_expired': 'reservations.errors.undoExpired',
+  'reservations.table_not_in_service': 'reservations.errors.tableNotInService',
   'staff.unauthenticated': 'staff.errors.unauthenticated',
   'staff.invalid_credentials': 'staff.errors.invalidCredentials',
   'staff.reauth_required': 'staff.errors.reauthRequired',

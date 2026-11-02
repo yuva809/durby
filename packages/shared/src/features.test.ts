@@ -33,7 +33,17 @@ describe('feature registry', () => {
       'api.public',
       'whitelabel',
       'catalog',
+      'reservations',
+      'reservations.online',
     ]);
+  });
+
+  // docs/modules/reservations.md → Features: reservations needs pos tables, the widget needs reservations.
+  it('makes reservations depend on pos and the online widget on reservations', () => {
+    expect(FEATURES.reservations.dependsOn).toEqual(['pos']);
+    expect(FEATURES['reservations.online'].dependsOn).toEqual(['reservations']);
+    expect(featureLimitNames('reservations')).toEqual([]);
+    expect(featureLimitNames('reservations.online')).toEqual([]);
   });
 
   it('gives every key a name and description label key', () => {

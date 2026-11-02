@@ -11,7 +11,7 @@ GitHub: push to main ─► CI (lint, typecheck, test, build, images) ─► Dep
 Server /opt/durby (project "durby-staging"):
   Internet ─► :80/:443 Caddy ─┬─ /api/*  ─► api:4000 ─┐      (network "edge")
                               └─ else    ─► web:3000  │
-                                 (basic auth)         ├─► postgres:5432, redis:6379   (network "db", internal)
+                                                      ├─► postgres:5432, redis:6379   (network "db", internal)
                                        migrate (release step) ─┘
 ```
 
@@ -109,8 +109,7 @@ The script:
   (docker group, no sudo, no password, key restricted: no forwarding, no pty);
 - **SSH**: no root login, no passwords, `AllowUsers <you> deploy`;
 - **ufw**: deny incoming except 22/tcp, 80/tcp, 443/tcp+udp;
-- writes `/opt/durby/.env` with generated secrets and **prints the staging basic-auth password once**
-  (save it in your password manager);
+- writes `/opt/durby/.env` with generated secrets;
 - creates an SSH key for the Storage Box (`~deploy/.ssh/storagebox`) and enables the nightly backup timer.
 
 It is safe to re-run; an existing `.env` is never overwritten.
@@ -170,7 +169,7 @@ the passwords from `.env`. Then:
 
 ```bash
 curl -fsS https://staging.durby.tech/api/v1/health      # {"status":"ok",...,"checks":{"database":"up","redis":"up"}}
-open https://staging.durby.tech                          # basic auth: durby / <printed password>
+open https://staging.durby.tech                          # Durby sign-in page (no basic auth, ADR 0018)
 ```
 
 Then run a backup by hand and a restore check (see [Backups](#backups)).
@@ -203,6 +202,11 @@ Caddy requests the second certificate on the next deploy; `WEB_ORIGINS` then lis
 
 **Admin portal 1a (staff accounts, ADR 0017)** needs no new secret. Optional: `STAFF_EMAIL_DOMAINS` (default
 `durby.tech`), the domains that can be invited as staff. After the deploy, create the first two super admins (see "First staff" below).
+
+**No basic auth (ADR 0018)** needs nothing on the server. **Keep** `BASIC_AUTH_USER` and `BASIC_AUTH_HASH` in
+`.env`: releases from before ADR 0018 still require them, so a rollback to one would otherwise stop at the preflight
+check. A server set up after ADR 0018 has neither line; before rolling it back past ADR 0018, append both (hash:
+`docker run --rm caddy:2-alpine caddy hash-password`).
 
 Nothing else is manual. On every deploy, `bin/deploy.sh` applies `postgres-init/02-rls-definer.sh` as the Postgres
 superuser before migrations (it creates the `durby_rls_definer` role, ADR 0006; init scripts never re-run on an
@@ -256,6 +260,15 @@ open http://localhost:8025
 ```
 
 Messages live in memory: a Mailpit restart (or deploy that recreates it) drops them; the newest 500 are kept.
+
+**Sending real mail.** By default `SMTP_URL` is `smtp://mailpit:1025`. To deliver to real inboxes, add `SMTP_URL`
+(and `MAIL_FROM`, on a domain verified at the provider) to `/opt/durby/.env`, then recreate the api and worker
+(`bin/dc up -d api worker`; both read the same `x-api-env`, only the api sends mail). Removing the line restores
+Mailpit. Staging's host blocks outbound port 465: use 2465 (`smtps://`) or 587 (`smtp://`). The api gives up on an unreachable relay
+after 10-15 s (`SmtpMailer` timeouts); a staff or owner mail that fails is logged as `staff.invitation_mail_failed` /
+`staff.customer.owner_mail_failed` (error `code`, `responseCode`, `command` only) while the request still succeeds, so resend
+the invitation from the portal once the relay works. Postgres, Redis and their volumes are not part of that recreate. The api and worker log a failed send by
+error type only (`invitation mail failed`); check `bin/dc logs api` and the provider's dashboard.
 
 ---
 
@@ -438,5 +451,8 @@ password manager) so the role passwords match, deploy the last release, then do 
 - `deploy` is in the `docker` group, which is root-equivalent on this host. Its SSH key is restricted and stored
   only in GitHub environment secrets. Rotate it by replacing the line in `~deploy/.ssh/authorized_keys` and the
   `STAGING_SSH_KEY` secret.
-- `/api/*` is not behind basic auth (it would clash with Bearer tokens from step 1.2). The only public endpoints today
-  are the health checks.
+- No basic auth since [ADR 0018](../adr/0018-staging-without-basic-auth.md): both staging domains are public and the
+  app's own sign-in is the only gate, so **staging must not hold real customer or personal data**. Every response
+  carries `X-Robots-Tag: noindex, nofollow`. `/opt/durby/.env` keeps `BASIC_AUTH_USER`/`BASIC_AUTH_HASH`
+  (unused now) so a rollback to a release from before ADR 0018 still deploys; that rollback turns basic auth back on
+  until the next deploy.

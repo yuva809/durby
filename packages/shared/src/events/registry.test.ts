@@ -18,13 +18,48 @@ describe('event registry', () => {
     expect(eventRegistryProblems(EVENTS)).toEqual([]);
   });
 
-  it('starts with the config events', () => {
+  it('has the config, pos and reservations events', () => {
     expect(EVENT_TYPES).toEqual([
       'config.settings.changed',
       'config.labels.changed',
       'config.number_series.changed',
       'config.entitlements.changed',
+      'pos.order.opened',
+      'pos.order.closed',
+      'reservations.reservation.created',
+      'reservations.reservation.updated',
+      'reservations.reservation.status_changed',
     ]);
+  });
+
+  it('reservations events carry ids, a status and the start only', () => {
+    const payload = {
+      reservationId: '0190a000-0000-7000-8000-000000000001',
+      locationId: '0190a000-0000-7000-8000-000000000002',
+      status: 'booked',
+      startsAt: '2027-03-06T18:00:00.000Z',
+    };
+    for (const type of [
+      'reservations.reservation.created',
+      'reservations.reservation.updated',
+      'reservations.reservation.status_changed',
+    ] as const) {
+      const v1 = EVENTS[type].versions[1];
+      expect(v1.safeParse(payload).success).toBe(true);
+      expect(v1.safeParse({ ...payload, guestName: 'Ada' }).success).toBe(false);
+    }
+  });
+
+  it('pos.order.closed carries ids only', () => {
+    const v1 = EVENTS['pos.order.closed'].versions[1];
+    const ids = {
+      orderId: '0190a000-0000-7000-8000-000000000001',
+      locationId: '0190a000-0000-7000-8000-000000000002',
+      tableId: '0190a000-0000-7000-8000-000000000003',
+    };
+    expect(v1.safeParse(ids).success).toBe(true);
+    expect(v1.safeParse({ ...ids, number: 'ORD-2026-000001' }).success).toBe(false);
+    expect(v1.safeParse({ ...ids, tableId: 'T1' }).success).toBe(false);
   });
 
   it('recognizes registered types and versions only', () => {

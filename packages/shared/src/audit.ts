@@ -27,6 +27,9 @@ export const AUDIT_ENTITY_TYPES = [
   'kitchen_ticket',
   'dining_area',
   'location',
+  'reservation_table_rule',
+  'reservation_combination',
+  'reservation',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -173,6 +176,7 @@ export const AUDIT_ACTIONS = {
   },
   'pos.order.opened': { entityType: 'pos_order', label: 'pos.audit.actions.orderOpened' },
   'pos.order.closed': { entityType: 'pos_order', label: 'pos.audit.actions.orderClosed' },
+  'pos.order.updated': { entityType: 'pos_order', label: 'pos.audit.actions.orderUpdated' },
   'pos.kitchen_ticket.created': {
     entityType: 'kitchen_ticket',
     label: 'pos.audit.actions.kitchenTicketCreated',
@@ -188,6 +192,40 @@ export const AUDIT_ACTIONS = {
   'pos.dining_area.deleted': {
     entityType: 'dining_area',
     label: 'pos.audit.actions.diningAreaDeleted',
+  },
+  /** entityId: the table's id (a rule is keyed by its table). */
+  'reservations.table_rule.updated': {
+    entityType: 'reservation_table_rule',
+    label: 'reservations.audit.actions.tableRuleUpdated',
+  },
+  'reservations.combination.created': {
+    entityType: 'reservation_combination',
+    label: 'reservations.audit.actions.combinationCreated',
+  },
+  'reservations.combination.updated': {
+    entityType: 'reservation_combination',
+    label: 'reservations.audit.actions.combinationUpdated',
+  },
+  'reservations.reservation.created': {
+    entityType: 'reservation',
+    label: 'reservations.audit.actions.reservationCreated',
+  },
+  'reservations.reservation.updated': {
+    entityType: 'reservation',
+    label: 'reservations.audit.actions.reservationUpdated',
+  },
+  'reservations.reservation.status_changed': {
+    entityType: 'reservation',
+    label: 'reservations.audit.actions.reservationStatusChanged',
+  },
+  'reservations.reservation.status_undone': {
+    entityType: 'reservation',
+    label: 'reservations.audit.actions.reservationStatusUndone',
+  },
+  /** Staff `force`: booked past pacing or outside the reservation hours (`overriddenRules`). */
+  'reservations.reservation.rules_overridden': {
+    entityType: 'reservation',
+    label: 'reservations.audit.actions.reservationRulesOverridden',
   },
 } as const satisfies Record<string, AuditActionDefinition>;
 
@@ -275,9 +313,34 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'sortOrder',
     'archivedAt',
   ],
-  pos_order: ['id', 'number', 'tableId', 'locationId', 'status', 'closedAt'],
+  pos_order: ['id', 'number', 'tableId', 'locationId', 'status', 'covers', 'closedAt'],
   /** Never line notes (free text). */
   kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
   location: ['id', 'brandId', 'name'],
+  reservation_table_rule: ['tableId', 'bookingMode', 'minParty', 'maxParty'],
+  reservation_combination: [
+    'id',
+    'locationId',
+    'name',
+    'tableIds',
+    'minParty',
+    'maxParty',
+    'onlineBookable',
+    'archivedAt',
+  ],
+  /** Never guest data or notes (free text). */
+  reservation: [
+    'id',
+    'number',
+    'locationId',
+    'partySize',
+    'startsAt',
+    'endsAt',
+    'status',
+    'source',
+    'tableIds',
+    'overriddenRules',
+    'sourceOrderId',
+  ],
 } as const satisfies Record<AuditEntityType, readonly string[]>;

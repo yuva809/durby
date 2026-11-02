@@ -82,6 +82,10 @@ describe('roles API', () => {
       'pos.orders.void',
       'pos.orders.close',
       'pos.bills.print',
+      'reservations.bookings.read',
+      'reservations.bookings.manage',
+      'reservations.waitlist.manage',
+      'reservations.setup.manage',
     ]);
     expect(data[3]?.permissions).toEqual([
       'platform.settings.read',

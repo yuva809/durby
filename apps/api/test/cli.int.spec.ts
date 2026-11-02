@@ -144,6 +144,7 @@ describe('bootstrap commands', () => {
         'staff',
         'waiter',
         'cashier',
+        'host',
       ]);
       expect(await roleOf(first.user.id, first.organization.id)).toBe('owner');
       // Audited once with the command as actor; the second run changed nothing and wrote nothing.
@@ -288,6 +289,49 @@ describe('bootstrap commands', () => {
           .map((r) => r.actor);
         expect(new Set(actors)).toEqual(new Set(['cli.seed_dev']));
       }
+    });
+
+    it('puts a seeded user back on its declared role and leaves other memberships alone', async () => {
+      await seedDev(app);
+      const staff = await raw.user.findUniqueOrThrow({ where: { email: 'staff@durby.local' } });
+      const org = (name: string) => platformDb.organization.findFirstOrThrow({ where: { name } });
+      const bistro = await org('Demo Bistro');
+      const cafe = await org('Demo Café');
+      // Like the 2026-10-22 RBAC backfill, which made every existing membership an Owner.
+      await tenantAs(bistro.id, async (db) => {
+        const ownerRole = await db.role.findFirstOrThrow({ where: { systemKey: 'owner' } });
+        await db.membership.update({
+          where: { tenantId_userId: { tenantId: bistro.id, userId: staff.id } },
+          data: { roleId: ownerRole.id },
+        });
+      });
+      // A membership the seed doesn't declare (made by hand while testing).
+      await tenantAs(cafe.id, async (db) => {
+        const manager = await db.role.findFirstOrThrow({ where: { systemKey: 'manager' } });
+        await db.membership.upsert({
+          where: { tenantId_userId: { tenantId: cafe.id, userId: staff.id } },
+          create: { tenantId: cafe.id, userId: staff.id, roleId: manager.id },
+          update: { roleId: manager.id },
+        });
+      });
+      expect(await roleOf(staff.id, bistro.id)).toBe('owner');
+
+      await seedDev(app);
+      await seedDev(app);
+
+      expect(await roleOf(staff.id, bistro.id)).toBe('staff');
+      expect(await roleOf(staff.id, cafe.id)).toBe('manager');
+      const staffRoleId = await tenantAs(
+        bistro.id,
+        async (db) => (await db.role.findFirstOrThrow({ where: { systemKey: 'staff' } })).id,
+      );
+      const aligned = (await auditOf(bistro.id)).filter(
+        (r) =>
+          r.action === 'platform.membership.updated' &&
+          (r.after as { roleId?: string } | null)?.roleId === staffRoleId,
+      );
+      // Once: the second run finds the role already right.
+      expect(aligned.map((r) => r.actor)).toEqual(['cli.seed_dev']);
     });
 
     it('refuses to run in production', async () => {

@@ -9,6 +9,7 @@ import {
   NUMBERING_ERROR_CODES,
   POS_ERROR_CODES,
   RBAC_ERROR_CODES,
+  RESERVATION_ERROR_CODES,
   SETTING_ERROR_CODES,
 } from '@durby/shared';
 import { dictionaries, LOCALES } from '@durby/i18n';
@@ -27,6 +28,7 @@ const CODES = [
   ...AUDIT_ERROR_CODES,
   ...CATALOG_ERROR_CODES,
   ...POS_ERROR_CODES,
+  ...RESERVATION_ERROR_CODES,
 ];
 
 describe('errorLabel', () => {

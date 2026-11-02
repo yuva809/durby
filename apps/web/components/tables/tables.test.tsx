@@ -60,6 +60,7 @@ const ORDER = {
   status: 'open',
   openedAt: new Date(Date.now() - (18 * 60 + 11) * 60_000).toISOString(),
   closedAt: null,
+  covers: null,
   itemCount: 6,
   gross: '56.00',
 };

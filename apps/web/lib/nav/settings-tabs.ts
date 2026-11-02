@@ -1,5 +1,5 @@
 import type { LabelKey } from '@durby/i18n';
-import type { PermissionKey } from '@durby/shared';
+import type { FeatureKey, PermissionKey } from '@durby/shared';
 import { SlidersHorizontal } from 'lucide-react';
 import type { NavItem } from './registry';
 
@@ -8,13 +8,19 @@ import type { NavItem } from './registry';
  * and the same permission rules as the former settings items. Order is display order; /settings
  * opens the first one the user may see.
  */
-const tab = (id: string, label: LabelKey, permission?: PermissionKey): NavItem => ({
+const tab = (
+  id: string,
+  label: LabelKey,
+  permission?: PermissionKey,
+  feature?: FeatureKey,
+): NavItem => ({
   id,
   href: `/settings/${id}`,
   label,
   icon: SlidersHorizontal,
   group: 'settings',
   ...(permission && { permission }),
+  ...(feature && { feature }),
 });
 
 export const SETTINGS_TABS: readonly NavItem[] = [
@@ -24,6 +30,8 @@ export const SETTINGS_TABS: readonly NavItem[] = [
   tab('members', 'platform.settingsTabs.members', 'platform.users.read'),
   tab('roles', 'platform.settingsTabs.roles', 'platform.roles.read'),
   tab('general', 'platform.settingsTabs.general', 'platform.settings.read'),
+  // Tables, combinations (R1.5b) and the location's reservation settings (R1.5c).
+  tab('reservations', 'reservations.settingsPage.tab', 'reservations.setup.manage', 'reservations'),
   tab('numbering', 'platform.settingsTabs.numbering', 'platform.settings.read'),
   tab('labels', 'platform.settingsTabs.labels', 'platform.labels.manage'),
   tab('plan', 'platform.settingsTabs.plan'),

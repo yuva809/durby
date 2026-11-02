@@ -26,6 +26,7 @@ import {
   type TenantTransactionClient,
 } from '../tenancy';
 import { canGrantRole } from './granting';
+import { mailErrorFields } from '../mail';
 import { InvitationMailer } from './invitation-mailer';
 import { INVITATION_SETTINGS, type InvitationSettings } from './invitation-ports';
 import { issueInvitationToken, parseInvitationToken } from './invitation-token';
@@ -387,10 +388,8 @@ export class InvitationsService {
   private inBackground(what: string, fn: () => Promise<void>): void {
     setImmediate(() => {
       fn().catch((error: unknown) => {
-        this.logger.error(
-          { err: { type: error instanceof Error ? error.name : 'unknown' } },
-          `${what} failed`,
-        );
+        // Safe fields only (type, code, responseCode, command): never the message or the link.
+        this.logger.error({ err: mailErrorFields(error) }, `${what} failed`);
       });
     });
   }

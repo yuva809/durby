@@ -19,6 +19,42 @@ describe('setting controls from the registry', () => {
     }
   });
 
+  // docs/modules/reservations.md → Settings: every value shape has its control.
+  it('maps the reservations value shapes to their controls', () => {
+    expect(controlOf('reservations.slotIntervalMinutes')).toEqual({
+      kind: 'select',
+      numeric: true,
+      options: [15, 30, 60].map((n) => ({
+        value: String(n),
+        label: `platform.settings.reservationsSlotIntervalMinutes.options.v${n}`,
+      })),
+    });
+    expect(controlOf('reservations.holdMinutes')).toEqual({ kind: 'number', min: 1, max: 15 });
+    expect(controlOf('reservations.lastBookingOffsetMinutes')).toEqual({
+      kind: 'number',
+      min: 1,
+      max: 480,
+    });
+    expect(controlOf('reservations.online.instantMaxParty')).toEqual({
+      kind: 'limit',
+      off: 'off',
+      min: 1,
+      max: 100,
+    });
+    expect(controlOf('reservations.maxCoversPerSlot')).toEqual({
+      kind: 'limit',
+      off: 'off',
+      min: 1,
+      max: 1000,
+    });
+    expect(controlOf('reservations.serviceHours')).toEqual({
+      kind: 'scheduleOr',
+      inherit: 'openingHours',
+    });
+    expect(controlOf('reservations.turnTimes')).toEqual({ kind: 'turnTimes' });
+    expect(controlOf('reservations.autoConfirm')).toEqual({ kind: 'boolean' });
+  });
+
   it('maps enums to selects with option labels where they exist, booleans and strings', () => {
     expect(controlOf('inventory.valuationMethod')).toEqual({
       kind: 'select',
@@ -42,6 +78,8 @@ describe('setting controls from the registry', () => {
     });
     expect(controlOf('inventory.allowNegativeStock')).toEqual({ kind: 'boolean' });
     expect(controlOf('timezone')).toEqual({ kind: 'text' });
+    expect(controlOf('openingHours')).toEqual({ kind: 'weeklyHours' });
+    expect(controlOf('closedDates')).toEqual({ kind: 'dateList' });
   });
 
   it('labels every option label it names in en and de', () => {
@@ -78,6 +116,6 @@ describe('setting controls from the registry', () => {
       source: 'default',
       dataBound: true,
     });
-    expect(defaults.some(isSetHere)).toBe(false);
+    expect(defaults.some((s) => isSetHere(s))).toBe(false);
   });
 });

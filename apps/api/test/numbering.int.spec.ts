@@ -31,13 +31,20 @@ describe('NumberingService.next', () => {
     await app.close();
   });
 
-  /** One allocation in its own transaction of `orgId`, like a business write. */
+  /**
+   * One allocation in its own transaction of `orgId`, like a business write. The parallel tests
+   * queue 50 transactions on the pool and serialize them on the counter row: they check numbering
+   * under contention, not pool latency, so a slow (loaded) database may take longer than Prisma's
+   * default 2 s to hand out a connection.
+   */
   const allocate = (
     orgId: string,
     key: NumberSeriesKey = 'billing.invoice',
     opts: { at?: Date } = {},
   ): Promise<AllocatedNumber> =>
-    seed.as(orgId, (db) => db.$transaction((tx) => numbering.next(key, tx, opts)));
+    seed.as(orgId, (db) =>
+      db.$transaction((tx) => numbering.next(key, tx, opts), { maxWait: 15_000, timeout: 15_000 }),
+    );
 
   const parallel = (orgId: string, n: number) =>
     Promise.all(Array.from({ length: n }, () => allocate(orgId)));

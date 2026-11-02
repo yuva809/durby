@@ -88,6 +88,20 @@ export const FEATURES = {
     dependsOn: [],
     limits: noLimits,
   },
+  // docs/modules/reservations.md → Features: bookings, the host stand and setup need pos tables.
+  reservations: {
+    label: 'platform.features.reservations.name',
+    description: 'platform.features.reservations.description',
+    dependsOn: ['pos'],
+    limits: noLimits,
+  },
+  // The public booking page, holds, guest mails and self-cancel (R2).
+  'reservations.online': {
+    label: 'platform.features.reservationsOnline.name',
+    description: 'platform.features.reservationsOnline.description',
+    dependsOn: ['reservations'],
+    limits: noLimits,
+  },
 } as const satisfies Record<string, FeatureDefinition>;
 
 export type FeatureKey = keyof typeof FEATURES;
