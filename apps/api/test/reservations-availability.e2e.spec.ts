@@ -258,11 +258,12 @@ describe('GET /reservations/availability', () => {
     }
     const busy = await count();
     expect(busy).toEqual(empty);
-    // One read-only REPEATABLE READ transaction: the tenant client sets app.tenant_id once (one
-    // set_config = one transaction), the loader makes it read-only, then 9 queries: settings (the
+    // One read-only REPEATABLE READ transaction: the tenant client sets app.tenant_id and the lock
+    // timeout once (one set_config = one transaction), the loader makes it read-only, then 9
+    // queries: settings (the
     // location, then the stored values), tables, table rules, combinations, bookings, open orders.
     expect(empty.slice(0, 2)).toEqual([
-      "raw: SELECT set_config('app.tenant_id', ?, true)",
+      "raw: SELECT set_config('app.tenant_id', ?, true), set_config('lock_timeout', ?, true)",
       'raw: SET TRANSACTION READ ONLY',
     ]);
     expect(empty.slice(2)).toEqual([

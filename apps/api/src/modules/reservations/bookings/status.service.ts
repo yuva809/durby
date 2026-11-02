@@ -82,11 +82,11 @@ export class BookingStatusService {
     body: SeatReservationRequest = {},
   ): Promise<Reservation> {
     const { tenantId, userId } = this.tenantContext.require();
-    const found = await this.bookings.manageable(id);
     const now = this.clock.now();
 
     return this.db.$transaction(async (tx) => {
       await shortLockWaits(tx);
+      const found = await this.bookings.manageable(id, tx);
       await lock(tx, id);
       const current = await read(tx, id);
       const step = transition(action, current, now);
@@ -139,11 +139,11 @@ export class BookingStatusService {
 
   async undo(id: string, changeId: string): Promise<Reservation> {
     const { tenantId, userId } = this.tenantContext.require();
-    const found = await this.bookings.manageable(id);
     const now = this.clock.now();
 
     return this.db.$transaction(async (tx) => {
       await shortLockWaits(tx);
+      const found = await this.bookings.manageable(id, tx);
       await lock(tx, id);
       const current = await read(tx, id);
       const latest = await tx.reservationStatusChange.findFirst({
@@ -187,26 +187,26 @@ export class BookingStatusService {
 
   async walkIn(body: CreateWalkInRequest): Promise<Reservation> {
     const { tenantId, userId } = this.tenantContext.require();
-    await readableLocation(this.db, this.access, body.locationId);
-    await this.access.assert('reservations.bookings.manage', { locationId: body.locationId });
     const now = this.clock.now();
-    if (body.endsAt) {
-      const minutes = (Date.parse(body.endsAt) - now.getTime()) / 60_000;
-      if (minutes < MIN_WALK_IN_MINUTES || minutes > MAX_BOOKING_MINUTES) {
-        throw new ApiError(HttpStatus.BAD_REQUEST, 'validation.failed', 'Invalid walk-in end.', {
-          issues: [
-            {
-              path: ['endsAt'],
-              code: 'custom',
-              message: `endsAt must be ${MIN_WALK_IN_MINUTES} min to ${MAX_BOOKING_MINUTES} min from now`,
-            },
-          ],
-        });
-      }
-    }
 
     return this.db.$transaction(async (tx) => {
       await shortLockWaits(tx);
+      await readableLocation(tx, this.access, body.locationId);
+      await this.access.assert('reservations.bookings.manage', { locationId: body.locationId });
+      if (body.endsAt) {
+        const minutes = (Date.parse(body.endsAt) - now.getTime()) / 60_000;
+        if (minutes < MIN_WALK_IN_MINUTES || minutes > MAX_BOOKING_MINUTES) {
+          throw new ApiError(HttpStatus.BAD_REQUEST, 'validation.failed', 'Invalid walk-in end.', {
+            issues: [
+              {
+                path: ['endsAt'],
+                code: 'custom',
+                message: `endsAt must be ${MIN_WALK_IN_MINUTES} min to ${MAX_BOOKING_MINUTES} min from now`,
+              },
+            ],
+          });
+        }
+      }
       const { input, settings } = await this.bookings.load(
         tx,
         body.locationId,

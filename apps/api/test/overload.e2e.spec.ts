@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { diningTableSchema, productCategorySchema, productSchema } from '@durby/shared';
+import { Client } from 'pg';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { v7 as uuidv7 } from 'uuid';
@@ -82,5 +83,48 @@ describe('database overload on any route', () => {
     await Promise.all(sleepers);
     // 5xx isn't stored: the same key runs the write.
     await post(`/pos/tables/${t2}/tickets`, ticket, key).expect(201);
+  }, 30_000);
+
+  it('answers 503 platform.busy when a row lock is held past the 4 s lock_timeout', async () => {
+    const seed = new RbacSeed(app);
+    const org = await seed.org();
+    await app.get(EntitlementsAdmin).setPlan(org.id, 'full', 'cli.entitlements');
+    const userId = await seed.user();
+    await seed.member(org.id, userId, org.roles.owner);
+    const token = await seed.token(userId, org.id);
+    const send = (method: 'post' | 'patch', path: string, body: object, key = uuidv7()) =>
+      request(server)
+        [method](`/api/v1${path}`)
+        .set('Idempotency-Key', key)
+        .auth(token, { type: 'bearer' })
+        .send(body);
+    const table = diningTableSchema.parse(
+      (
+        await send('post', '/pos/tables', {
+          locationId: org.locations[0],
+          name: 'T1',
+          seats: 4,
+        }).expect(201)
+      ).body,
+    );
+
+    // Another connection holds the table's row lock for longer than the api waits.
+    const holder = new Client({ connectionString: process.env.DATABASE_URL });
+    await holder.connect();
+    try {
+      await holder.query('BEGIN');
+      await holder.query(`SELECT set_config('app.tenant_id', $1, true)`, [org.id]);
+      await holder.query('SELECT id FROM dining_tables WHERE id = $1 FOR UPDATE', [table.id]);
+      const key = uuidv7();
+      const started = Date.now();
+      const busy = await send('patch', `/pos/tables/${table.id}`, { name: 'T1a' }, key).expect(503);
+      expect(Date.now() - started).toBeGreaterThanOrEqual(3_500);
+      expect(busy.body).toMatchObject({ code: 'platform.busy' });
+      expect(busy.headers['retry-after']).toBe('2');
+      await holder.query('ROLLBACK');
+      await send('patch', `/pos/tables/${table.id}`, { name: 'T1a' }, key).expect(200);
+    } finally {
+      await holder.end();
+    }
   }, 30_000);
 });

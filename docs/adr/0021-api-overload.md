@@ -1,6 +1,6 @@
 # ADR 0021: Database overload answers 503 busy, retried once
 
-- Status: accepted (2026-11-01)
+- Status: accepted (2026-11-01); amended 2026-11-02 (reservations R1.7b: decisions 4 and 5)
 - Date: 2026-11-01
 - Step: reservations R1.6 follow-up (booking-create 500 under load). There was no error-handling ADR yet; this is the
   first decision about errors beyond the `{ code, message, details? }` shape (CLAUDE.md → API).
@@ -28,6 +28,18 @@ the next statement), so without `lock_timeout` such a request waits as long as t
    `PRISMA_TX_TIMEOUT_MS`), defaulting to today's values (10, 2000, 5000); pool wait time and active connections are
    logged. Values change only after measuring in staging.
 
+4. **Lock timeout 4 s, platform-wide.** Every tenant transaction sets `lock_timeout = 4s` in the same statement as
+   `app.tenant_id` (`set_config(…, true)`: local to the transaction, never leaks to the next pool user, no extra
+   round trip). A wait past it fails with `55P03`, so decision 1 answers 503. 4 s stays below
+   `PRISMA_TX_TIMEOUT_MS` (5 s), which doesn't interrupt a lock wait. A module may set a shorter one for its own
+   writes (bookings keep 3 s, `reservations/bookings/busy.ts`).
+5. **Fewer transactions per request.** The access guard loads the entitlements and the caller's membership in one
+   transaction (the checks then read the request's cache). Module checks that read the database (the location, the
+   booking being changed) run inside the write's own transaction, with settings resolved once there. A booking
+   write (create, walk-in, status actions) takes **3 transactions**: guards, idempotency claim, the write; pinned in
+   `test/reservations-transactions.e2e.spec.ts`. Writes with plain `@Idempotent()` (PATCH) take a fourth to store
+   the response, until the idempotency change below.
+
 _Rejected:_ retrying inside the api: the request already held a slot for seconds; the client knows whether the user
 still waits. _Rejected:_ a larger pool as the fix: Postgres connections are the scarce resource; fewer checkouts per
 request come first.
@@ -35,6 +47,6 @@ request come first.
 ## Consequences
 
 - A booking under overload is a short wait and one automatic retry for the user, never a "something went wrong".
-- Open (proposals, not decided): fewer checkouts per request (guards' entitlements and membership in one
-  transaction; module checks inside the business transaction; idempotency claim inside `completion: 'transaction'`
-  writes), and a platform-wide `lock_timeout` in the tenant client's transactions.
+- Before decision 5 a booking took 5 transactions; now 3.
+- Deferred (ADR 0014): claiming the Idempotency-Key inside the business transaction of `completion: 'transaction'`
+  writes, which would save one more.

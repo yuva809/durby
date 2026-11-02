@@ -10,8 +10,9 @@ import { reservationErrors } from '../reservations-errors';
 
 /**
  * How long a booking write waits for a row lock (a concurrent booking of the same table, the
- * number series counter) before it gives up with `503 reservations.busy`: shorter than Prisma's 5 s
- * transaction timeout, so the wait ends cleanly (docs/modules/reservations.md → R1.6, load).
+ * number series counter) before it gives up with `503 reservations.busy`: shorter than the platform's
+ * 4 s (TENANT_LOCK_TIMEOUT, ADR 0021), so a booking leaves time for its remaining statements within
+ * Prisma's 5 s transaction timeout (docs/modules/reservations.md → R1.6, load).
  */
 export const BOOKING_LOCK_TIMEOUT = '3s';
 
