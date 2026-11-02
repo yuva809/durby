@@ -70,7 +70,9 @@ and sends its rows; the api never sees the file.
 - Audit: the usual `catalog.product_category.created`, `catalog.product.created` and `catalog.product.updated`
   rows, one per change, in the same transaction.
 
-**CSV format** (web app): a header row with `category`, `name`, `price`, `tax_rate` and optionally `description`
+**File formats** (web app): **CSV** or **Excel `.xlsx`** (the sheet named `products`, else the first sheet; read
+in the browser with `read-excel-file`, loaded only for `.xlsx`; numbers taken as Excel stored them, float noise
+rounded away by text, a VAT cell in percent format such as `0.07` read as `7`). Both have a header row with `category`, `name`, `price`, `tax_rate` and optionally `description`
 (any order, any case; `vat` is accepted for `tax_rate`), comma- or semicolon-separated (German Excel uses
 semicolons), quotes per RFC 4180, UTF-8 with or without BOM. The import dialog offers this header as a template. Samples with example rows: [`docs/samples/products-import-template.xlsx`](../samples/products-import-template.xlsx)
 (fill in, then _Save As → CSV UTF-8_) and [`docs/samples/products-import-sample.csv`](../samples/products-import-sample.csv)

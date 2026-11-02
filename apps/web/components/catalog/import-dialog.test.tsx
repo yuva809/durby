@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { systemRolePermissions } from '@durby/shared';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -74,6 +76,45 @@ describe('ImportDialog', () => {
       },
     ]);
     expect(onDone).toHaveBeenCalled();
+  });
+
+  it('reads an Excel workbook directly (the docs sample)', async () => {
+    const posts = api(() =>
+      Response.json({ created: 12, updated: 0, unchanged: 0, categoriesCreated: 5, rows: [] }),
+    );
+    render(<ImportDialog onDone={vi.fn()} />);
+    // Vitest runs from apps/web.
+    const bytes = readFileSync(resolve('../../docs/samples/products-import-template.xlsx'));
+    await userEvent.click(screen.getByTestId('import-open'));
+    await userEvent.upload(
+      await screen.findByTestId('import-file'),
+      new File([bytes], 'menu.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }),
+    );
+    expect((await screen.findByTestId('import-ready')).textContent).toBe(
+      '12 rows ready to import.',
+    );
+    await userEvent.click(screen.getByTestId('import-submit'));
+    await screen.findByTestId('import-summary');
+    expect((posts[0] as { rows: unknown[] }).rows[3]).toEqual({
+      category: 'BBQ',
+      name: 'So-Galbi',
+      price: '24.9',
+      taxRate: '7',
+      description: 'Marinated beef short rib',
+    });
+  });
+
+  it('explains a file that is no workbook', async () => {
+    api(() => Response.json({}));
+    render(<ImportDialog onDone={vi.fn()} />);
+    await userEvent.click(screen.getByTestId('import-open'));
+    await userEvent.upload(
+      await screen.findByTestId('import-file'),
+      new File(['not a zip'], 'menu.xlsx'),
+    );
+    expect((await screen.findByRole('alert')).textContent).toContain('could not be read');
   });
 
   it('lists row problems and sends nothing', async () => {

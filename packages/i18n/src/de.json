@@ -1019,10 +1019,10 @@
   "platform.audit.fields.sourceOrderId": "Kassenbestellung",
   "catalog.errors.importInvalid": "Einige Zeilen der Datei sind fehlerhaft. Es wurde nichts importiert.",
   "catalog.import.open": "CSV importieren",
-  "catalog.import.title": "Produkte aus einer CSV-Datei importieren",
+  "catalog.import.title": "Produkte aus einer CSV- oder Excel-Datei importieren",
   "catalog.import.intro": "Eine Zeile pro Produkt mit den Spalten category, name, price, tax_rate (MwSt. %) und optional description. Produkte mit gleicher Kategorie und gleichem Namen erhalten den neuen Preis, die MwSt. und die Beschreibung; fehlende Kategorien werden angelegt.",
   "catalog.import.template": "Vorlage herunterladen",
-  "catalog.import.file": "CSV-Datei",
+  "catalog.import.file": "CSV- oder Excel-Datei (.csv, .xlsx)",
   "catalog.import.rows": "{count} Zeilen bereit zum Import.",
   "catalog.import.more": "… und {count} weitere Zeilen.",
   "catalog.import.problemsTitle": "Korrigieren Sie diese Zeilen in der Datei und wählen Sie sie erneut:",
@@ -1040,5 +1040,6 @@
   "catalog.import.missingColumns": "Fehlende Spalten: {columns}.",
   "catalog.import.tooManyRows": "Höchstens {max} Zeilen pro Import.",
   "catalog.import.submit": "{count} Produkte importieren",
-  "catalog.import.done": "Fertig: {created} angelegt · {updated} geändert · {unchanged} unverändert · {categories} neue Kategorien."
+  "catalog.import.done": "Fertig: {created} angelegt · {updated} geändert · {unchanged} unverändert · {categories} neue Kategorien.",
+  "catalog.import.unreadable": "Diese Datei lässt sich nicht als Excel-Arbeitsmappe (.xlsx) lesen. Speichern Sie sie erneut aus Excel oder als CSV."
 }

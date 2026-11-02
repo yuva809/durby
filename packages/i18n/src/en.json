@@ -1019,10 +1019,10 @@
   "platform.audit.fields.sourceOrderId": "Till order",
   "catalog.errors.importInvalid": "Some rows of the file have problems. Nothing was imported.",
   "catalog.import.open": "Import CSV",
-  "catalog.import.title": "Import products from a CSV file",
+  "catalog.import.title": "Import products from a CSV or Excel file",
   "catalog.import.intro": "One row per product with the columns category, name, price, tax_rate (VAT %) and optionally description. Products with the same category and name get the new price, VAT and description; missing categories are created.",
   "catalog.import.template": "Download template",
-  "catalog.import.file": "CSV file",
+  "catalog.import.file": "CSV or Excel file (.csv, .xlsx)",
   "catalog.import.rows": "{count} rows ready to import.",
   "catalog.import.more": "… and {count} more rows.",
   "catalog.import.problemsTitle": "Fix these rows in the file, then choose it again:",
@@ -1040,5 +1040,6 @@
   "catalog.import.missingColumns": "Columns missing: {columns}.",
   "catalog.import.tooManyRows": "At most {max} rows per import.",
   "catalog.import.submit": "Import {count} products",
-  "catalog.import.done": "Done: {created} created · {updated} updated · {unchanged} unchanged · {categories} new categories."
+  "catalog.import.done": "Done: {created} created · {updated} updated · {unchanged} unchanged · {categories} new categories.",
+  "catalog.import.unreadable": "This file could not be read as an Excel workbook (.xlsx). Save it again from Excel, or as CSV."
 }

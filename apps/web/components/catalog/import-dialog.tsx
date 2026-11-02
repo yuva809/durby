@@ -14,7 +14,12 @@ import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { importProducts } from '../../lib/catalog/api';
-import { type CsvProblem, parseProductsCsv, PRODUCTS_CSV_TEMPLATE } from '../../lib/catalog/csv';
+import {
+  type CsvProblem,
+  parseProductsCsv,
+  parseProductsXlsx,
+  PRODUCTS_CSV_TEMPLATE,
+} from '../../lib/catalog/import-file';
 import { useActionKey } from '../../lib/use-action-key';
 import { Button } from '../ui/button';
 import {
@@ -75,7 +80,10 @@ export function ImportDialog({ onDone }: { onDone: () => void }) {
     const file = event.target.files?.[0];
     setError(null);
     if (!file) return;
-    const parsed = parseProductsCsv(await file.text());
+    // Excel by its extension (browsers don't always set a type); everything else is read as CSV.
+    const parsed = /\.xlsx$/i.test(file.name)
+      ? await parseProductsXlsx(file)
+      : parseProductsCsv(await file.text());
     setState(
       parsed.ok
         ? { step: 'preview', rows: parsed.rows, problems: checkImportRows(parsed.rows) }
@@ -98,6 +106,8 @@ export function ImportDialog({ onDone }: { onDone: () => void }) {
 
   const fileProblem = (problem: CsvProblem) => {
     switch (problem.kind) {
+      case 'unreadable':
+        return t('catalog.import.unreadable');
       case 'empty':
         return t('catalog.import.empty');
       case 'tooManyRows':
@@ -157,7 +167,7 @@ export function ImportDialog({ onDone }: { onDone: () => void }) {
               <Input
                 id={`${id}-file`}
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 onChange={(e) => void onFile(e)}
                 data-testid="import-file"
               />

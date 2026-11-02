@@ -1,9 +1,10 @@
 import { CATALOG_IMPORT_MAX_ROWS, type ImportProductRow } from '@durby/shared';
 
 /**
- * Reads a products CSV in the browser (docs/modules/catalog.md → Import): the api only gets rows.
- * RFC 4180 quoting, comma or semicolon separated (German Excel writes semicolons), UTF-8 with or
- * without BOM. No dependency: the format is small and fixed.
+ * Reads a products file in the browser (docs/modules/catalog.md → Import): the api only gets rows.
+ * CSV: RFC 4180 quoting, comma or semicolon separated (German Excel writes semicolons), UTF-8 with
+ * or without BOM, no dependency. Excel (.xlsx): `read-excel-file`, loaded only when needed. Both
+ * end in `rowsFromTable`, so headers, aliases and limits are the same.
  */
 
 /** The template's header row, also the canonical column names. */
@@ -24,6 +25,7 @@ const REQUIRED: readonly Column[] = ['category', 'name', 'price', 'taxRate'];
 
 export type CsvProblem =
   | { kind: 'empty' }
+  | { kind: 'unreadable' }
   | { kind: 'missingColumns'; columns: Column[] }
   | { kind: 'tooManyRows'; max: number };
 
@@ -85,7 +87,15 @@ function decimal(value: string): string {
 
 export function parseProductsCsv(input: string): ParsedProductsCsv {
   const text = input.replace(/^\uFEFF/, '');
-  const records = splitCsv(text, separatorOf(text)).filter((r) => r.some((f) => f.trim() !== ''));
+  return rowsFromTable(splitCsv(text, separatorOf(text)));
+}
+
+/**
+ * The first row names the columns, the rest are products (blank rows skipped): the part both file
+ * formats share.
+ */
+export function rowsFromTable(table: string[][]): ParsedProductsCsv {
+  const records = table.filter((r) => r.some((f) => f.trim() !== ''));
   const [header, ...data] = records;
   if (!header || data.length === 0) return { ok: false, problem: { kind: 'empty' } };
 
@@ -119,4 +129,71 @@ export function parseProductsCsv(input: string): ParsedProductsCsv {
       ...(hasDescription && { description: cell(record, 'description').trim() }),
     })),
   };
+}
+
+/** The sheet `products` if the workbook has one (the template's), else its first sheet. */
+const SHEET = 'products';
+
+/**
+ * An Excel workbook's products. Numbers arrive as the text Excel stored (`parseNumber`), never as
+ * JS numbers (rule 6): float noise from Excel (`7.9000000000000004`) is rounded away by text, a
+ * VAT rate formatted as a percentage (stored `0.07`) becomes `7`.
+ */
+export async function parseProductsXlsx(file: Blob): Promise<ParsedProductsCsv> {
+  let sheets: { sheet: string; data: unknown[][] }[];
+  try {
+    const { default: readXlsxFile } = await import('read-excel-file/browser');
+    sheets = await readXlsxFile(file, { parseNumber: (text: string) => ({ number: text }) });
+  } catch {
+    return { ok: false, problem: { kind: 'unreadable' } };
+  }
+  const sheet = sheets.find((s) => s.sheet.trim().toLowerCase() === SHEET) ?? sheets[0];
+  if (!sheet) return { ok: false, problem: { kind: 'empty' } };
+  const parsed = rowsFromTable(sheet.data.map((row) => row.map(cellText)));
+  if (!parsed.ok) return parsed;
+  return {
+    ok: true,
+    rows: parsed.rows.map((row) => ({ ...row, taxRate: percentFraction(row.taxRate) })),
+  };
+}
+
+/** One cell as text: numbers by their stored text (tidied), dates as ISO dates, the rest as is. */
+export function cellText(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'object' && 'number' in value) {
+    return typeof value.number === 'string' ? tidyNumber(value.number) : '';
+  }
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === 'string') return value;
+  return typeof value === 'boolean' ? String(value) : '';
+}
+
+const DECIMAL = /^(\d+)(?:\.(\d+))?$/;
+
+/**
+ * `7.9000000000000004` → `7.9`: rounds a stored number to 10 decimals by text (BigInt), then drops
+ * trailing zeros. Real extra decimals (`4.555`) stay and fail the price check, as they should.
+ */
+export function tidyNumber(text: string): string {
+  const match = DECIMAL.exec(text.trim());
+  if (!match) return text.trim();
+  const [, whole = '0', fraction = ''] = match;
+  if (fraction.length <= 10) return stripZeros(whole, fraction);
+  const scaled = BigInt(whole + fraction.slice(0, 10)) + (Number(fraction[10]) >= 5 ? 1n : 0n);
+  const digits = scaled.toString().padStart(11, '0');
+  return stripZeros(digits.slice(0, -10), digits.slice(-10));
+}
+
+/** A VAT rate stored as a fraction (Excel percent format: `0.07` for 7 %) becomes percent text. */
+export function percentFraction(text: string): string {
+  const match = DECIMAL.exec(text);
+  if (!match || match[1] !== '0' || !match[2] || /^0+$/.test(match[2])) return text;
+  const fraction = match[2].padEnd(2, '0');
+  return stripZeros(fraction.slice(0, 2).replace(/^0(?=\d)/, ''), fraction.slice(2));
+}
+
+function stripZeros(whole: string, fraction: string): string {
+  const f = fraction.replace(/0+$/, '');
+  const w = whole.replace(/^0+(?=\d)/, '') || '0';
+  return f ? `${w}.${f}` : w;
 }
