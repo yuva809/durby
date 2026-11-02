@@ -113,3 +113,28 @@ and problems by row number), import, read the summary (created / updated / uncha
 
 `/catalog` (nav: Modules → Products, feature `catalog`, permission `catalog.products.read`). Category column and
 product table; create/edit dialogs and archive/unarchive only with `catalog.products.manage`. "Show archived" toggle.
+
+### Menu scan (`/catalog/scan`)
+
+Builds products from the menu a restaurant already has — photos or a PDF — and imports them through the same
+`POST /catalog/products/import` (all or nothing, update-or-create, audit). Only with `catalog.products.manage`.
+**No api of its own:** reading and review happen in the browser.
+
+1. **Upload** JPG, PNG, WebP or PDF (camera on phones and tablets), up to 10 pages per scan. HEIC is refused with a
+   hint to export JPG (only Safari decodes it).
+2. **Read** with Tesseract (English and German) in a web worker; PDF pages are rendered with pdf.js. Images are
+   scaled and greyscaled first. **Images never leave the device**; the OCR engine and its language data load from
+   jsDelivr on first use and are cached by the browser.
+3. **Parse** (`lib/catalog/menu-scan/parse.ts`, pure): OCR lines that run across menu columns are split at wide
+   word gaps (never in front of a price, so a name keeps its far-right price) and read column by column, top to
+   bottom; then a line ending in a price is a product (dot leaders, item
+   numbers and currency marks such as `€`, `Rs`, `LKR` removed; `1,500.00`, `1.500,00`, `12,50`, `12` become
+   decimal text without number math, rule 6); a short unpriced line before priced ones is a category heading;
+   other unpriced lines under a product are its description; a second price on a line is kept in the description.
+4. **Review board:** the page image with the OCR boxes beside a board of category columns. Drag products between
+   categories and within one, drag categories to reorder (pointer, touch and keyboard); rename, merge, swap and
+   delete categories (products of a deleted one go to "Uncategorized"); VAT per category, pre-filled from two
+   defaults (drink-like category names get the drinks rate); edit, add, delete and bulk-move products; undo/redo;
+   low OCR confidence is highlighted; each product shows **New** or **Updates** (same matching as the import);
+   problems from `checkImportRows` block the import. The draft survives a reload (this browser only).
+5. **Import** → the usual summary.

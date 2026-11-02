@@ -8,6 +8,8 @@ import {
   CATALOG_NAME_MAX_LENGTH,
   PRODUCT_DESCRIPTION_MAX_LENGTH,
 } from '@durby/shared';
+import { ScanText } from 'lucide-react';
+import Link from 'next/link';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -76,6 +78,12 @@ function Catalog({
         <h1 className="text-2xl font-semibold">{t('catalog.nav.title')}</h1>
         {canManage && (
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/catalog/scan" data-testid="scan-open">
+                <ScanText aria-hidden />
+                {t('catalog.scan.open')}
+              </Link>
+            </Button>
             <ImportDialog onDone={reload} />
             <CategoryDialog onDone={reload} />
             {openCategories.length > 0 && (
