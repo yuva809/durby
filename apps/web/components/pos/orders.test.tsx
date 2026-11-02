@@ -269,8 +269,13 @@ describe('OrderPage (till)', () => {
     expect(await screen.findByText('Sent to the kitchen: ticket 1.')).toBeTruthy();
     // The ticket is in the print-only root: items and notes, no prices.
     const ticket = within(document.getElementById('print-root')!).getByTestId('kitchen-ticket');
-    expect(within(ticket).getByText('Table T1')).toBeTruthy();
-    expect(within(ticket).getByText('2 × Soup')).toBeTruthy();
+    // Like a kitchen printer's slip: dine in, organization and time, table, # order, "New" items.
+    expect(within(ticket).getByText('Dine in')).toBeTruthy();
+    expect(within(ticket).getByText(/^Demo Bistro : /)).toBeTruthy();
+    expect(within(ticket).getByTestId('kitchen-ticket-table').textContent).toBe('Table T1');
+    expect(within(ticket).getByText(/^# .+ · Ticket 1$/)).toBeTruthy();
+    expect(within(ticket).getByText('New')).toBeTruthy();
+    expect(within(ticket).getByText('Soup').closest('li')!.textContent).toBe('2Soup');
     expect(within(ticket).getByText('no ice')).toBeTruthy();
     expect(within(ticket).queryByText(/13\.80/)).toBeNull();
   });

@@ -653,7 +653,6 @@
   "pos.ticket.void": "VOID",
   "pos.ticket.table": "Table {table}",
   "pos.ticket.order": "Order {number}",
-  "pos.ticket.number": "Ticket {sequence}",
   "pos.order.lineQuantity": "{quantity} × {name}",
   "pos.floor.summary": "{open} open · {free} free",
   "pos.floor.filter": "Show tables",
@@ -1018,7 +1017,7 @@
   "platform.settings.reservationsOrderMatchWindowMinutes.description": "How far a till order's opening time may be from a booking's start to belong to it: the booking is seated when the order opens and finished when it closes.",
   "platform.audit.fields.sourceOrderId": "Till order",
   "catalog.errors.importInvalid": "Some rows of the file have problems. Nothing was imported.",
-  "catalog.import.open": "Import CSV",
+  "catalog.import.open": "Import CSV or Excel",
   "catalog.import.title": "Import products from a CSV or Excel file",
   "catalog.import.intro": "One row per product with the columns category, name, price, tax_rate (VAT %) and optionally description. Products with the same category and name get the new price, VAT and description; missing categories are created.",
   "catalog.import.template": "Download template",
@@ -1041,5 +1040,9 @@
   "catalog.import.tooManyRows": "At most {max} rows per import.",
   "catalog.import.submit": "Import {count} products",
   "catalog.import.done": "Done: {created} created · {updated} updated · {unchanged} unchanged · {categories} new categories.",
-  "catalog.import.unreadable": "This file could not be read as an Excel workbook (.xlsx). Save it again from Excel, or as CSV."
+  "catalog.import.unreadable": "This file could not be read as an Excel workbook (.xlsx). Save it again from Excel, or as CSV.",
+  "pos.ticket.dineIn": "Dine in",
+  "pos.ticket.header": "{organization} : {time}",
+  "pos.ticket.new": "New",
+  "pos.ticket.orderTicket": "# {number} · Ticket {sequence}"
 }

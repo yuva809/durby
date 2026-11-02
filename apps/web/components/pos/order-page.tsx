@@ -336,6 +336,7 @@ function TableOrder({
                 {print.kind === 'ticket' ? (
                   <KitchenTicketView
                     key={print.seq}
+                    organizationName={organizationName}
                     ticket={print.ticket}
                     tableName={table.name}
                     orderNumber={print.orderNumber}

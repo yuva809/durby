@@ -236,5 +236,7 @@ would add them.
   content), 72 mm printed width, black on white, monospace (`app/globals.css`). Zero margins leave no room for the
   browser's header and footer; while printing, the document title is the organization's name (`lib/pos/print.ts`),
   so nothing printed names the product. The organization's name heads every slip.
-- Kitchen ticket: table, order number, ticket number, time, items with quantity and note; no prices; "VOID" for void
-  tickets. Printed through a print-only element (`#print-root`); everything else is hidden in print.
+- Kitchen ticket, laid out like a kitchen printer's slip: "Dine in"; the organization and time; the table in large
+  type; "# order number · Ticket n"; a dashed rule; "New" (or "VOID" in large letters); then each item as quantity
+  and name in large type with its note under it. No prices, and it doesn't name the waiter (ADR 0016). Printed
+  through a print-only element (`#print-root`); everything else is hidden in print.
