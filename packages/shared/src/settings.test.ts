@@ -32,6 +32,7 @@ describe('settings registry', () => {
       'locale',
       'currency',
       'timezone',
+      'country',
       'openingHours',
       'closedDates',
       'reservations.serviceHours',

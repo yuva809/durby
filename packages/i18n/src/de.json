@@ -988,5 +988,7 @@
   "reservations.locationSettings.title": "Reservierungseinstellungen für diesen Standort",
   "reservations.locationSettings.intro": "Hier gesetzte Werte gelten nur für {location}; alles andere wird von der Organisation übernommen (Einstellungen → Allgemein). Öffnungszeiten und Schließtage stehen unter „Allgemein“.",
   "reservations.locationSettings.outsideIntro": "Reservierungszeiten können die Öffnungszeiten nur einschränken. Diese Zeiten liegen außerhalb der Öffnungszeiten und werden nicht angeboten:",
-  "reservations.locationSettings.outside": "{day} {from}–{to}"
+  "reservations.locationSettings.outside": "{day} {from}–{to}",
+  "platform.settings.country.name": "Land",
+  "platform.settings.country.description": "Land des Standorts, um lokale Telefonnummern zu lesen (z. B. DE, AT, CH)."
 }

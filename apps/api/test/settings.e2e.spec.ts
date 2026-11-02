@@ -120,6 +120,7 @@ describe('/api/v1/settings', () => {
         { key: 'locale', value: 'en', source: 'default', dataBound: false },
         { key: 'currency', value: 'EUR', source: 'default', dataBound: true },
         { key: 'timezone', value: 'Europe/Berlin', source: 'default', dataBound: false },
+        { key: 'country', value: 'DE', source: 'default', dataBound: false },
         { key: 'openingHours', value: DEFAULT_OPENING_HOURS, source: 'default', dataBound: false },
         { key: 'closedDates', value: [], source: 'default', dataBound: false },
         ...[

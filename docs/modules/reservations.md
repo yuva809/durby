@@ -687,6 +687,31 @@ organization id like invitation tokens (`issueInvitationToken`), and its hash is
 - **Service hours wider than opening hours** are saved (the engine intersects, so the extra part is never offered); the
   tab shows which parts fall outside per weekday (`windowsOutside` in `packages/shared/src/time`).
 
+### R1.6 bookings API (staff)
+
+Decisions (2026-11-01). Requested/pending flows (accept, confirm, decline) stay in R2.
+
+- **Write-time checks** (create, move, seat, walk-in), in the booking's own transaction, in this order: tables at the
+  location and in service (staff may book `all` and `staff_only` tables; `walk_in_only` only for walk-ins) →
+  `404 reservations.table_not_found` / `409 reservations.table_walk_in_only`; the party fits the table rules or the
+  combination → `409 reservations.party_size_out_of_range`; no open pos order and no overrunning seated party on
+  those tables → `409 reservations.table_occupied`; pacing → `409 reservations.pacing_exceeded`; reservation hours
+  and last booking time → `409 reservations.outside_service_hours`; finally the exclusion constraint (`23P01` →
+  `409 reservations.table_unavailable`). **Seat** re-runs the occupancy checks too, with or without new `tableIds`.
+- **`force` (Q2):** staff may override pacing and reservation hours only, audited as
+  `reservations.reservation.rules_overridden` naming the rules. Table conflicts, occupancy and party size are never
+  forced.
+- **No bookings in the past (Q4):** create or move to a start more than 15 min before now →
+  `409 reservations.starts_in_past`. Parties already in the restaurant are walk-ins.
+- **Any minute (Q6):** staff may start a booking at any minute (19:10); the slot grid only decides what is offered
+  online. Without `tableIds` the engine's table choice runs at that exact start. `endsAt` defaults to start + turn
+  time; moving keeps the length unless `endsAt` is sent.
+- **No-show (Q5)** only once `starts_at` has passed (`409 reservations.invalid_transition` before).
+- **Walk-ins:** guest name and phone optional (no guest data → a guest row with no name, email or phone).
+- **Guests:** see GDPR → guests are reused (email first, then phone).
+- **Phone:** `normalisePhone(input, country)` in `packages/shared` (libphonenumber-js, `min` metadata) with the
+  location's `country` setting; invalid → `422 reservations.phone_invalid` (`details.field`).
+
 ## Errors
 
 | Code                                   | Status | When                                                                                         |
@@ -700,8 +725,9 @@ organization id like invitation tokens (`issueInvitationToken`), and its hash is
 | `reservations.party_size_out_of_range` | 409    | table/combination can't take the party (staff may not `force` this)                          |
 | `reservations.party_range_invalid`     | 422    | a rule or combination with min > max, or a rule whose min party exceeds the table's capacity |
 | `reservations.pacing_exceeded`         | 409    | covers per slot reached (staff: retry with `force`)                                          |
+| `reservations.starts_in_past`          | 409    | create or move to a start more than 15 min ago (parties already here are walk-ins)           |
 | `reservations.phone_invalid`           | 422    | a guest phone number that isn't a valid number for the location's country (or international) |
-| `reservations.outside_service_hours`   | 409    |                                                                                              |
+| `reservations.outside_service_hours`   | 409    | outside the reservation hours or after the last booking time (staff: retry with `force`)     |
 | `reservations.invalid_transition`      | 409    | e.g. seat a cancelled booking; `details.from`, `details.to`                                  |
 | `reservations.undo_expired`            | 409    | older than 5 min, or not the latest change                                                   |
 | `reservations.hold_not_found`          | 409    | expired / unknown / other page (R2)                                                          |
@@ -712,16 +738,16 @@ Labels `reservations.errors.<camelCase>`.
 
 ## Audit (actions in `AUDIT_ACTIONS`)
 
-| Action                                       | Entity                    | Snapshot fields (allow-list)                                                                    |
-| -------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------- |
-| `reservations.reservation.created`           | `reservation`             | `id`, `number`, `locationId`, `partySize`, `startsAt`, `endsAt`, `status`, `source`, `tableIds` |
-| `reservations.reservation.updated`           | `reservation`             | same                                                                                            |
-| `reservations.reservation.status_changed`    | `reservation`             | same                                                                                            |
-| `reservations.reservation.status_undone`     | `reservation`             | same                                                                                            |
-| `reservations.reservation.pacing_overridden` | `reservation`             | same                                                                                            |
-| `reservations.guest.anonymised`              | `reservation_guest`       | `id` only                                                                                       |
-| `reservations.table_rule.updated`            | `reservation_table_rule`  | `tableId`, `bookingMode`, `minParty`, `maxParty`                                                |
-| `reservations.combination.created/updated`   | `reservation_combination` | `id`, `locationId`, `name`, `tableIds`, `minParty`, `maxParty`, `onlineBookable`, `archivedAt`  |
+| Action                                      | Entity                    | Snapshot fields (allow-list)                                                                    |
+| ------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------- |
+| `reservations.reservation.created`          | `reservation`             | `id`, `number`, `locationId`, `partySize`, `startsAt`, `endsAt`, `status`, `source`, `tableIds` |
+| `reservations.reservation.updated`          | `reservation`             | same                                                                                            |
+| `reservations.reservation.status_changed`   | `reservation`             | same                                                                                            |
+| `reservations.reservation.status_undone`    | `reservation`             | same                                                                                            |
+| `reservations.reservation.rules_overridden` | `reservation`             | same, plus `overriddenRules` (`pacing`, `serviceHours`): staff `force` (R1.6, Q2)               |
+| `reservations.guest.anonymised`             | `reservation_guest`       | `id` only                                                                                       |
+| `reservations.table_rule.updated`           | `reservation_table_rule`  | `tableId`, `bookingMode`, `minParty`, `maxParty`                                                |
+| `reservations.combination.created/updated`  | `reservation_combination` | `id`, `locationId`, `name`, `tableIds`, `minParty`, `maxParty`, `onlineBookable`, `archivedAt`  |
 
 Guest name, email, phone and notes never enter snapshots. Online and self-service actions are recorded with a new
 `guest` actor kind (Q2; `auditActor.guest()`, no id stored, ADR 0008 amendment in R2.1); handlers use `system`.
@@ -739,8 +765,12 @@ Guest name, email, phone and notes never enter snapshots. Online and self-servic
 - **Marketing opt-in** is never bundled with booking: a separate unchecked box; stored as an append-only
   `guest_marketing_consents (guest_id, granted boolean, wording_key, wording_version, source, created_at)`. No
   marketing feature consumes it yet.
-- **Guests are reused per email** within the organization, so their history (and retention clock) spans visits.
-  `last_visit_at` is set when one of their reservations finishes.
+- **Guests are reused** within the organization, so their history (and retention clock) spans visits (R1.6): a
+  booking's guest matches a live (not anonymised) guest by **email** (case-insensitive; at most one per email) first,
+  else by **phone** (normalised E.164; phone is not unique, families share a number: the most recently seen guest
+  wins, `coalesce(last_visit_at, created_at)` newest first). A match only fills fields it doesn't have yet (name,
+  email, phone), never overwrites. Neither matches → a new guest. `last_visit_at` is set when one of their
+  reservations finishes.
 - **Retention (Q8):** `reservations.guest.retention_due` is scheduled at
   `coalesce(last_visit_at, latest reservation end, created_at) + guestRetentionMonths` whenever that moves. The
   handler recomputes the date (a later visit or a longer setting reschedules and stops), skips guests with a
@@ -873,7 +903,9 @@ finishes it.
 | R1.5a | Table rules + combinations API (below: R1.5 setup API)                                                                                                                                                                                                                                                                                                 | e2e: rules and combinations end to end incl. defaults, validation 400/422, 404s, location-limited 404, staff/cashier 403, feature off 403, idempotent replay, audit rows, **cross-tenant isolation**                                                | all routes in snapshot                                                                               |
 | R1.5b | Settings → Reservations tab: tables (rules) and combinations per location                                                                                                                                                                                                                                                                              | component tests (visibility, save rule, combination dialog, error labels)                                                                                                                                                                           | manager configures a location in the browser                                                         |
 | R1.5c | The same tab edits the location's `reservations.*` settings (inherit / set here) under `reservations.setup.manage`; service hours wider than opening hours explained                                                                                                                                                                                   | e2e: manager sets and inherits at a location, can't set `openingHours`/`closedDates` or another location; component tests                                                                                                                           | a manager sets different hours per branch                                                            |
-| R1.6  | Bookings API: create/patch/list/get/availability, status actions + undo, walk-ins; audit; phone normalisation (`libphonenumber-js`, `country` setting, default DE); `reservations.*` events                                                                                                                                                            | state-machine unit tests, phone normalisation (DE landline and mobile, +/00 international, other location country, invalid → 422), e2e per route, **cross-tenant isolation e2e**, idempotent replay                                                 | all routes in snapshot; replaying an Idempotency-Key returns the same booking                        |
+| R1.6a | Phone normalisation (`libphonenumber-js` in shared), platform setting `country` (default DE); index `reservation_guests (tenant_id, phone) WHERE anonymised_at IS NULL` for guest matching                                                                                                                                                             | unit tests: DE landline and mobile, +/00 international, another country, invalid; settings registry; migration drift test                                                                                                                           | `normalisePhone` used by web and api                                                                 |
+| R1.6b | Bookings API: create, list, get, PATCH (move/extend/tables/party/guest/notes), availability `excludeReservationId`; write-time checks; guest matching; audit; `reservations.reservation.created/updated` events                                                                                                                                        | e2e per route, write-time occupancy, 20-way race → one 201, guest matching (phone-only twice → same guest, email beats phone), idempotent replay, **cross-tenant isolation**                                                                        | routes in snapshot; replay returns the same booking                                                  |
+| R1.6c | Status actions (arrive, seat, finish, no-show, cancel) + undo, walk-ins; `status_changed` events                                                                                                                                                                                                                                                       | state-machine unit tests incl. undo window 4:59/5:01, e2e per route, seat re-checks occupancy, **cross-tenant isolation**                                                                                                                           | routes in snapshot                                                                                   |
 | R1.7  | pos integration: `reservations.finishOnOrderClosed` handler (sets `last_visit_at`)                                                                                                                                                                                                                                                                     | handler int tests: redelivery, out-of-order, feature disabled                                                                                                                                                                                       | closing the order on the till finishes the booking                                                   |
 | R1.8  | Derived floor endpoint                                                                                                                                                                                                                                                                                                                                 | unit tests for state derivation incl. overrun and open orders; e2e                                                                                                                                                                                  | floor matches table above for fixtures                                                               |
 | R1.9  | `/reservations` list + booking dialog; `/host` screen (timeline, floor, actions, undo toast) on 30 s polling; `/service` floor badges + covers pre-fill (web only)                                                                                                                                                                                     | component tests (Vitest), Playwright smoke                                                                                                                                                                                                          | smoke passes: book → arrive → seat → undo → close order → finished                                   |
