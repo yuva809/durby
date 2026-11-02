@@ -1,3 +1,4 @@
+import { LOCALES } from '@durby/i18n';
 import { z } from 'zod';
 import { MAX_PARTY_SIZE } from '../reservation-settings';
 import { SETTING_KEYS, type SettingKey, settingAllowsScope } from '../settings';
@@ -46,6 +47,8 @@ export const reservationAvailabilityQuerySchema = z.object({
   locationId: z.uuid(),
   date: z.string().refine(isLocalDate, { message: 'Expected a date YYYY-MM-DD' }),
   partySize: z.coerce.number().int().min(1).max(MAX_PARTY_SIZE),
+  /** Moving a booking: it doesn't block itself (R1.6b). */
+  excludeReservationId: z.uuid().optional(),
 });
 
 export const reservationAllocationSchema = z.discriminatedUnion('kind', [
@@ -213,12 +216,169 @@ export const reservationSettingsResponseSchema = z.object({
 export type ReservationSettingsQuery = z.infer<typeof reservationSettingsQuerySchema>;
 export type ReservationSettingsResponse = z.infer<typeof reservationSettingsResponseSchema>;
 
+// --- Bookings (R1.6b, docs/modules/reservations.md → R1.6 bookings API) ---
+
+export const RESERVATION_STATUSES = [
+  'requested',
+  'pending',
+  'booked',
+  'arrived',
+  'seated',
+  'finished',
+  'no_show',
+  'cancelled',
+  'declined',
+  'expired',
+] as const;
+export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
+
+export const RESERVATION_SOURCES = ['staff', 'online', 'walk_in'] as const;
+
+/** The longest booking (and the longest list range, in days). */
+export const MAX_BOOKING_MINUTES = 720;
+export const MAX_LIST_DAYS = 31;
+
+const optionalText = (max: number) => z.string().trim().min(1).max(max);
+const guestEmail = z.string().trim().toLowerCase().max(254).pipe(z.email());
+
+/** Guest details as staff type them; the api normalises the phone with the location's country. */
+export const reservationGuestInputSchema = z.strictObject({
+  name: optionalText(100).optional(),
+  email: guestEmail.optional(),
+  phone: z.string().trim().min(1).max(40).optional(),
+  locale: z.enum(LOCALES).optional(),
+});
+
+const tableIdList = z
+  .array(z.uuid())
+  .min(1)
+  .max(COMBINATION_MAX_TABLES)
+  .refine((ids) => new Set(ids).size === ids.length, { message: 'Tables repeat' });
+
+export const createReservationRequestSchema = z
+  .strictObject({
+    locationId: z.uuid(),
+    startsAt: z.iso.datetime({ offset: true }),
+    /** Default: start + the party's turn time. */
+    endsAt: z.iso.datetime({ offset: true }).optional(),
+    partySize: z.int().min(1).max(MAX_PARTY_SIZE),
+    /** Default: the engine's table choice at that exact start. */
+    tableIds: tableIdList.optional(),
+    guest: reservationGuestInputSchema,
+    guestNote: optionalText(500).optional(),
+    staffNote: optionalText(500).optional(),
+    /** Book past the pacing limit or outside the reservation hours (audited). */
+    force: z.boolean().optional(),
+  })
+  .refine((b) => b.endsAt === undefined || bookingLengthOk(b.startsAt, b.endsAt), {
+    message: `endsAt must be after startsAt, at most ${MAX_BOOKING_MINUTES} minutes`,
+    path: ['endsAt'],
+  });
+
+export const updateReservationRequestSchema = z
+  .strictObject({
+    startsAt: z.iso.datetime({ offset: true }).optional(),
+    endsAt: z.iso.datetime({ offset: true }).optional(),
+    partySize: z.int().min(1).max(MAX_PARTY_SIZE).optional(),
+    tableIds: tableIdList.optional(),
+    guest: reservationGuestInputSchema.optional(),
+    guestNote: optionalText(500).nullable().optional(),
+    staffNote: optionalText(500).nullable().optional(),
+    force: z.boolean().optional(),
+  })
+  .refine((b) => Object.keys(b).some((k) => k !== 'force'), { message: 'Nothing to update' });
+
+function bookingLengthOk(startsAt: string, endsAt: string): boolean {
+  const minutes = (Date.parse(endsAt) - Date.parse(startsAt)) / 60_000;
+  return minutes > 0 && minutes <= MAX_BOOKING_MINUTES;
+}
+
+export const reservationsListQuerySchema = z
+  .object({
+    locationId: z.uuid(),
+    /** A local day at the location… */
+    date: z.string().refine(isLocalDate, { message: 'Expected a date YYYY-MM-DD' }).optional(),
+    /** …or an instant range of at most MAX_LIST_DAYS days. */
+    from: z.iso.datetime({ offset: true }).optional(),
+    to: z.iso.datetime({ offset: true }).optional(),
+    status: z.enum(RESERVATION_STATUSES).optional(),
+  })
+  .refine(
+    (q) =>
+      q.date !== undefined
+        ? q.from === undefined && q.to === undefined
+        : q.from !== undefined &&
+          q.to !== undefined &&
+          Date.parse(q.to) > Date.parse(q.from) &&
+          Date.parse(q.to) - Date.parse(q.from) <= MAX_LIST_DAYS * 86_400_000,
+    { message: `Pass date, or from and to at most ${MAX_LIST_DAYS} days apart` },
+  );
+
+export const reservationGuestSchema = z.object({
+  id: z.uuid(),
+  name: z.string().nullable(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  locale: z.string(),
+});
+
+export const reservationStatusChangeSchema = z.object({
+  id: z.uuid(),
+  fromStatus: z.enum(RESERVATION_STATUSES).nullable(),
+  toStatus: z.enum(RESERVATION_STATUSES),
+  undoesId: z.uuid().nullable(),
+  actorKind: z.enum(['user', 'guest', 'system']),
+  createdAt: z.iso.datetime(),
+});
+
+export const reservationSchema = z.object({
+  id: z.uuid(),
+  number: z.string(),
+  locationId: z.uuid(),
+  status: z.enum(RESERVATION_STATUSES),
+  source: z.enum(RESERVATION_SOURCES),
+  partySize: z.int(),
+  startsAt: z.iso.datetime(),
+  endsAt: z.iso.datetime(),
+  /** Sorted by id. */
+  tableIds: z.array(z.uuid()),
+  guest: reservationGuestSchema,
+  guestNote: z.string().nullable(),
+  staffNote: z.string().nullable(),
+  createdAt: z.iso.datetime(),
+});
+
+export const reservationDetailSchema = reservationSchema.extend({
+  /** Oldest first. */
+  history: z.array(reservationStatusChangeSchema),
+});
+
+export const reservationsListResponseSchema = z.object({ data: z.array(reservationSchema) });
+
+export type ReservationGuestInput = z.infer<typeof reservationGuestInputSchema>;
+export type CreateReservationRequest = z.infer<typeof createReservationRequestSchema>;
+export type UpdateReservationRequest = z.infer<typeof updateReservationRequestSchema>;
+export type ReservationsListQuery = z.infer<typeof reservationsListQuerySchema>;
+export type Reservation = z.infer<typeof reservationSchema>;
+export type ReservationDetail = z.infer<typeof reservationDetailSchema>;
+export type ReservationsListResponse = z.infer<typeof reservationsListResponseSchema>;
+
 /** Stable error codes of the reservations endpoints; the web app shows the matching label. */
 export const RESERVATION_ERROR_CODES = [
   'reservations.location_not_found',
   'reservations.table_not_found',
   'reservations.combination_not_found',
   'reservations.party_range_invalid',
+  'reservations.reservation_not_found',
+  'reservations.table_walk_in_only',
+  'reservations.party_size_out_of_range',
+  'reservations.table_occupied',
+  'reservations.table_unavailable',
+  'reservations.pacing_exceeded',
+  'reservations.outside_service_hours',
+  'reservations.starts_in_past',
+  'reservations.phone_invalid',
+  'reservations.invalid_transition',
 ] as const;
 
 export type ReservationErrorCode = (typeof RESERVATION_ERROR_CODES)[number];
