@@ -72,7 +72,9 @@ and sends its rows; the api never sees the file.
 
 **CSV format** (web app): a header row with `category`, `name`, `price`, `tax_rate` and optionally `description`
 (any order, any case; `vat` is accepted for `tax_rate`), comma- or semicolon-separated (German Excel uses
-semicolons), quotes per RFC 4180, UTF-8 with or without BOM. The import dialog offers this header as a template.
+semicolons), quotes per RFC 4180, UTF-8 with or without BOM. The import dialog offers this header as a template. Samples with example rows: [`docs/samples/products-import-template.xlsx`](../samples/products-import-template.xlsx)
+(fill in, then _Save As → CSV UTF-8_) and [`docs/samples/products-import-sample.csv`](../samples/products-import-sample.csv)
+(ready to import).
 
 ### Errors
 

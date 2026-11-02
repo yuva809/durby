@@ -1,0 +1,13 @@
+category,name,price,tax_rate,description
+Starters,Kimchi,4.50,7,"House-made, fermented 3 weeks"
+Starters,Japchae,7.90,7,Glass noodles with vegetables
+Starters,Mandu (6 pcs),6.50,7,"Pork dumplings, pan-fried"
+BBQ,So-Galbi,24.90,7,Marinated beef short rib
+BBQ,Samgyeopsal,18.90,7,"Pork belly, grilled at the table"
+BBQ,Spicy Boneless Chicken,16.90,7,Gochujang dakgalbi
+Mains,Bibimbap,13.50,7,Rice bowl with egg and vegetables
+Mains,Kimchi Jjigae,12.90,7,
+Sides,Steamed Rice,2.50,7,
+Drinks,Soju 360 ml,7.00,19,
+Drinks,Korean Beer 0.5 l,5.50,19,
+Drinks,Sparkling Water 0.75 l,4.90,19,
