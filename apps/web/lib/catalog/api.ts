@@ -1,6 +1,9 @@
 import {
   type CreateProductCategoryRequest,
   type CreateProductRequest,
+  type ImportProductRow,
+  type ImportProductsResponse,
+  importProductsResponseSchema,
   type Product,
   type ProductCategory,
   productCategoryListResponseSchema,
@@ -63,3 +66,18 @@ export const updateProduct = (
   body: UpdateProductRequest,
 ): Promise<Result<Product | null>> =>
   write(store, action, `/api/v1/catalog/products/${id}`, 'PATCH', body, productSchema);
+
+/** The CSV import: rows read in the browser (docs/modules/catalog.md → Import). */
+export const importProducts = (
+  store: Api,
+  action: ActionKey,
+  rows: ImportProductRow[],
+): Promise<Result<ImportProductsResponse | null>> =>
+  write(
+    store,
+    action,
+    '/api/v1/catalog/products/import',
+    'POST',
+    { rows },
+    importProductsResponseSchema,
+  );
