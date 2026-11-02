@@ -366,6 +366,27 @@ bin/dc logs api | grep '"level":50'              # errors
 
 Container logs rotate at 10 MB × 5 files per container.
 
+## Database pool and overload
+
+Each process (api, worker) has its own Postgres pool (ADR 0021). When a request can't get a connection in time, or
+waits too long on a lock, the api answers `503 platform.busy` (bookings: `503 reservations.busy`) with
+`Retry-After: 2`; the web app retries once with the same Idempotency-Key.
+
+| Variable                | Default | Meaning                                                                                   |
+| ----------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `DATABASE_POOL_SIZE`    | 10      | connections per process; api + worker together must stay below Postgres `max_connections` |
+| `PRISMA_TX_MAX_WAIT_MS` | 2000    | how long a transaction waits for a pooled connection before 503                           |
+| `PRISMA_TX_TIMEOUT_MS`  | 5000    | how long an interactive transaction may run before it is rolled back                      |
+
+Change them only after looking at the pool log, in `/opt/durby/.env`, then `bin/dc up -d api worker`:
+
+```bash
+cd /opt/durby
+bin/dc logs api | grep '"db.pool"'                # every 30 s: total, idle, waiting, checkouts, waitMsAvg, waitMsMax
+bin/dc logs api | grep '"db.pool"' | grep '"level":40'   # warnings: requests queueing, or waits ≥ half of maxWait
+bin/dc logs api | grep 'database overload'        # each 503 platform.busy with its kind
+```
+
 ## Outbox worker
 
 The `worker` service publishes committed outbox events and runs their handlers ([outbox.md](../platform/outbox.md)).

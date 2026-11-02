@@ -75,6 +75,14 @@ export const appEnvSchema = z
       .default('info'),
     /** Connects as durby_app (no BYPASSRLS). */
     DATABASE_URL: postgresUrl,
+    // Database pool and Prisma interactive transactions (ADR 0021). Defaults are the libraries'
+    // own (pg: 10, Prisma: 2000 / 5000 ms); change only after measuring (db.pool log).
+    /** Connections per process (api and worker each have their own pool). */
+    DATABASE_POOL_SIZE: z.coerce.number().int().min(1).max(200).default(10),
+    /** How long a transaction waits for a pooled connection before 503 platform.busy. */
+    PRISMA_TX_MAX_WAIT_MS: z.coerce.number().int().min(100).max(60_000).default(2000),
+    /** How long an interactive transaction may run before it is rolled back (503 platform.busy). */
+    PRISMA_TX_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(5000),
     REDIS_URL: redisUrl,
 
     // Auth (docs/platform/auth.md). HS256 secret: `openssl rand -hex 32`.
