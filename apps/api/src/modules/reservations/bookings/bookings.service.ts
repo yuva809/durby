@@ -16,7 +16,7 @@ import {
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../../platform/audit';
 import { Clock } from '../../../platform/auth';
-import { SettingsService } from '../../../platform/config/settings';
+import { type ResolvedSettings, SettingsService } from '../../../platform/config/settings';
 import { ApiError } from '../../../platform/http';
 import { IdempotencyService } from '../../../platform/idempotency';
 import { NumberingService } from '../../../platform/numbering';
@@ -101,14 +101,14 @@ export class BookingsService {
 
   async create(body: CreateReservationRequest): Promise<Reservation> {
     const { tenantId, userId } = this.tenantContext.require();
-    await readableLocation(this.db, this.access, body.locationId);
-    await this.access.assert(MANAGE, { locationId: body.locationId });
     const now = this.clock.now();
     const start = new Date(body.startsAt);
-    if (start.getTime() < now.getTime() - PAST_GRACE_MS) throw reservationErrors.startsInPast();
 
     return this.db.$transaction(async (tx) => {
       await shortLockWaits(tx);
+      await readableLocation(tx, this.access, body.locationId);
+      await this.access.assert(MANAGE, { locationId: body.locationId });
+      if (start.getTime() < now.getTime() - PAST_GRACE_MS) throw reservationErrors.startsInPast();
       const { input, settings } = await this.load(tx, body.locationId, start, body.partySize, now);
       const end = body.endsAt
         ? new Date(body.endsAt)
@@ -175,11 +175,11 @@ export class BookingsService {
 
   async update(id: string, body: UpdateReservationRequest): Promise<Reservation> {
     const { tenantId, userId } = this.tenantContext.require();
-    const found = await this.manageable(id);
     const now = this.clock.now();
 
     return this.db.$transaction(async (tx) => {
       await shortLockWaits(tx);
+      const found = await this.manageable(id, tx);
       // One writer per booking at a time: no lost updates between two hosts.
       await tx.$executeRaw`SELECT 1 FROM reservations WHERE id = ${id}::uuid FOR UPDATE`;
       const current = await read(tx, id);
@@ -210,8 +210,11 @@ export class BookingsService {
       const partyChanged = partySize !== current.partySize;
 
       let overridden: RuleBreach[] = [];
+      let settings: ResolvedSettings | undefined;
       if (timingChanged || tablesChanged || partyChanged) {
-        const { input } = await this.load(tx, found.locationId, start, partySize, now, id, end);
+        const loaded = await this.load(tx, found.locationId, start, partySize, now, id, end);
+        const { input } = loaded;
+        settings = loaded.settings;
         const verdict = evaluateBooking(input, {
           start,
           end,
@@ -225,7 +228,7 @@ export class BookingsService {
 
       let guestId = current.guest.id;
       if (body.guest) {
-        const settings = await this.settings.all({ locationId: found.locationId }, tx);
+        settings ??= await this.settings.all({ locationId: found.locationId }, tx);
         guestId = await correctGuest(tx, current.guest.id, guestDetails(body.guest, settings));
       }
 
@@ -331,16 +334,22 @@ export class BookingsService {
     excludeReservationId?: string,
     end?: Date,
   ) {
-    const timeZone = await this.settings.get('timezone', { locationId }, tx);
-    const loaded = await this.loader.inputIn(tx, {
-      locationId,
-      date: zonedParts(start, timeZone).date,
-      partySize,
-      channel: 'staff',
-      now,
-      ...(excludeReservationId && { excludeReservationId }),
-      until: end ?? new Date(start.getTime() + MAX_BOOKING_MINUTES * 60_000),
-    });
+    // Resolved once for the local date and the engine (the location is known to exist).
+    const resolved = await this.settings.all({ locationId }, tx);
+    const timeZone = resolved.get('timezone')?.value as string;
+    const loaded = await this.loader.inputIn(
+      tx,
+      {
+        locationId,
+        date: zonedParts(start, timeZone).date,
+        partySize,
+        channel: 'staff',
+        now,
+        ...(excludeReservationId && { excludeReservationId }),
+        until: end ?? new Date(start.getTime() + MAX_BOOKING_MINUTES * 60_000),
+      },
+      resolved,
+    );
     return { input: { ...loaded.input, partySize }, settings: loaded.settings };
   }
 
@@ -359,9 +368,9 @@ export class BookingsService {
     });
   }
 
-  /** The booking, if the caller reads bookings at its location (else 404). */
-  async readable(id: string) {
-    const found = await this.db.reservation.findUnique({
+  /** The booking, if the caller reads bookings at its location (else 404). Writes pass their `tx`. */
+  async readable(id: string, tx?: TenantTransactionClient) {
+    const found = await (tx ?? this.db).reservation.findUnique({
       where: { id },
       select: { locationId: true },
     });
@@ -372,8 +381,8 @@ export class BookingsService {
   }
 
   /** …and manages them there (else 403). */
-  async manageable(id: string) {
-    const found = await this.readable(id);
+  async manageable(id: string, tx?: TenantTransactionClient) {
+    const found = await this.readable(id, tx);
     await this.access.assert(MANAGE, { locationId: found.locationId });
     return found;
   }

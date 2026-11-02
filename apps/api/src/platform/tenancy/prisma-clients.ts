@@ -36,12 +36,22 @@ export class StaffPrivateModelOnPlatformClientError extends Error {
   }
 }
 
-/** `is_local = true`: the setting ends with the transaction, so it never leaks to the next pool user. */
+/**
+ * The longest a tenant transaction waits for a row lock (ADR 0021): past it Postgres fails the
+ * statement (55P03) and the api answers 503 platform.busy. Below PRISMA_TX_TIMEOUT_MS, which
+ * doesn't interrupt a lock wait. A module may set a shorter one for its own writes.
+ */
+export const TENANT_LOCK_TIMEOUT = '4s';
+
+/**
+ * Sets the tenant and the lock timeout in one statement. `is_local = true`: both end with the
+ * transaction, so they never leak to the next pool user.
+ */
 function setTenant(
   client: PrismaClient | TenantTransactionClient,
   tenantId: string,
 ): Prisma.PrismaPromise<number> {
-  return client.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+  return client.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true), set_config('lock_timeout', ${TENANT_LOCK_TIMEOUT}, true)`;
 }
 
 /**
