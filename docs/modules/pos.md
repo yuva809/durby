@@ -226,8 +226,11 @@ would add them.
 - `/service/[tableId]`: menu by category, cart (quantity, note), **Send to kitchen** → the kitchen ticket print
   view (`window.print()`); the order so far with voided items struck through, totals, **Reprint** per ticket,
   **Cancel items** (a void, with `pos.orders.void`), **Close order** (with `pos.orders.close`).
-- **Printing.** Holders of `pos.bills.print` (waiter, cashier, manager, admin, owner) print the **bill** with
-  prices, VAT and total, marked "not a receipt". A role without it (a custom role) prints the **order slip**: table,
+- **Printing.** Holders of `pos.bills.print` (waiter, cashier, manager, admin, owner) print the **bill**, laid out
+  like a till receipt: organization, "Guest check", "Table n, Guests: g" (guests when recorded), the order number,
+  each item with its line total and "quantity × price" (notes below), the TOTAL, "Thank you for your visit!",
+  "This is not a receipt.", and the order number and print time at the bottom. **No VAT breakdown and no TSE
+  data** (decision 2026-11-02; the till's own screen still shows VAT per rate). It doesn't name the waiter. A role without it (a custom role) prints the **order slip**: table,
   order number, time, the order's items (combined) with quantities and notes, item count; no prices, VAT or totals.
   Waiters got `pos.bills.print` on 2026-10-29 (ADR 0016 §8 note): they bill and check out like the cashier. For now the key gates the web
   print; step 4's guest-check endpoints will require it in the api.
