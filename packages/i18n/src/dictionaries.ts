@@ -1,7 +1,10 @@
-import de from './de.json';
-import en from './en.json';
+import de from './de';
+import en from './en';
 
-/** Label keys (`module.area.item`); `en` is the source of truth for the key set. */
+/**
+ * Label keys (`module.area.item`); `en` is the source of truth for the key set. Each key lives in
+ * `src/<locale>/<first segment>.json` (ADR 0022).
+ */
 export type LabelKey = keyof typeof en;
 
 export type Dictionary = Record<LabelKey, string>;
