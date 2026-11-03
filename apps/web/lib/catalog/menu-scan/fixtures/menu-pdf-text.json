@@ -1,0 +1,3001 @@
+{
+  "source": "Text items (pdf.js getTextContent) of a 26-page digital restaurant menu PDF, pages 2–26; the restaurant name is replaced by \"House\".",
+  "pages": [
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Thakkali Rasam",
+          "x": 131,
+          "y": 577.2,
+          "width": 130,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "(Mittel-Scharf, Vegan)",
+          "x": 131,
+          "y": 599.7,
+          "width": 195.9,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Tomaten, Kräutern, gemahlenen Gewürzen und",
+          "x": 131,
+          "y": 615.3,
+          "width": 277.8,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Curryblättern.",
+          "x": 131,
+          "y": 632.5,
+          "width": 91.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "6,90 €", "x": 518.7, "y": 615.3, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Paruppu Rasam (Mild, Vegan)",
+          "x": 131,
+          "y": 671.8,
+          "width": 248.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Mungbohnen, Linsen, Knoblauch und gemahlenen",
+          "x": 131,
+          "y": 690.6,
+          "width": 290,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "Gewürzen.", "x": 131, "y": 707.9, "width": 62.5, "size": 15, "rotated": false },
+        { "text": "6,90 €", "x": 516.4, "y": 690.6, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Kozhi Rasam (Mittel-scharf)",
+          "x": 131,
+          "y": 747.2,
+          "width": 243.7,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Hahnchen Suppe, gewürzt mit gerösteten Gewürzen.",
+          "x": 131,
+          "y": 766,
+          "width": 310.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "6,90 €", "x": 518.7, "y": 766, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Suppe", "x": 76.5, "y": 776, "width": 205.8, "size": 93, "rotated": true },
+        { "text": "01.", "x": 105.4, "y": 576, "width": 20, "size": 16, "rotated": false },
+        { "text": "02.", "x": 105.4, "y": 670.7, "width": 20, "size": 16, "rotated": false },
+        { "text": "03.", "x": 105.4, "y": 746.1, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Chicken Varuthathu (Mittel-scharf)",
+          "x": 131,
+          "y": 610,
+          "width": 307.9,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Gebratenes Hähnchen und Gemüse mit Chettinad-Masala",
+          "x": 131,
+          "y": 626.1,
+          "width": 332.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "10,90 €", "x": 509.2, "y": 626.1, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Beef Pepper Fry (Scharf)",
+          "x": 131,
+          "y": 744,
+          "width": 216.3,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Würziges Rindfleischcurry mit Pfeffer, aromatisch und",
+          "x": 131,
+          "y": 760.1,
+          "width": 334.5,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "herzhaft.", "x": 131, "y": 777.3, "width": 56.7, "size": 15, "rotated": false },
+        { "text": "13,90 €", "x": 509.2, "y": 760.4, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Eral Varuthathu (Mittel-scharf)",
+          "x": 131,
+          "y": 496.3,
+          "width": 281.1,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Gebratene Garnelen und Gemüse mit Chettinad-Masala",
+          "x": 131,
+          "y": 510.8,
+          "width": 324.5,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "11,90 €", "x": 508.9, "y": 510.8, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "04.", "x": 107, "y": 495.1, "width": 20, "size": 16, "rotated": false },
+        {
+          "text": "Chicken 65 (Mittel-scharf)",
+          "x": 131,
+          "y": 553.1,
+          "width": 230.9,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Hühnerbrust mariniert mit Gewürzen, Joghurt frittiert",
+          "x": 131,
+          "y": 567.7,
+          "width": 335.4,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "10,90 €", "x": 508.9, "y": 567.7, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "05.", "x": 107, "y": 552, "width": 20, "size": 16, "rotated": false },
+        { "text": "06.", "x": 107, "y": 608.9, "width": 20, "size": 16, "rotated": false },
+        {
+          "text": "Mutton Sukka (Mittel-scharf)",
+          "x": 131,
+          "y": 668.4,
+          "width": 255.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Trocken gekochtes Lammfleisch, gewürzt mit",
+          "x": 131,
+          "y": 684.2,
+          "width": 269.1,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "kräftigen Gewürzen",
+          "x": 131,
+          "y": 701.5,
+          "width": 119.5,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "12,90 €", "x": 508.9, "y": 687.4, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "07.", "x": 107, "y": 667.3, "width": 20, "size": 16, "rotated": false },
+        { "text": "08.", "x": 107, "y": 743.1, "width": 20, "size": 16, "rotated": false },
+        {
+          "text": "Vorspeisen-FLEISH",
+          "x": 77.6,
+          "y": 786.2,
+          "width": 652.8,
+          "size": 93,
+          "rotated": true
+        }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Blumenkohl-Pakora (Mild, Vegan)",
+          "x": 131,
+          "y": 455.7,
+          "width": 288.7,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Knusprige Blumenkohlküchlein in mild gewürztem",
+          "x": 131,
+          "y": 471.5,
+          "width": 299.7,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Kichererbsenteig.",
+          "x": 131,
+          "y": 488.7,
+          "width": 107.9,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "6,90 €", "x": 512.9, "y": 471.5, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Zwiebel-Pakora (Mild, Vegan)",
+          "x": 131,
+          "y": 528.2,
+          "width": 253.7,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Knusprige Zwiebel in mild gewürztem",
+          "x": 131,
+          "y": 544.6,
+          "width": 223.9,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Kichererbsenteig",
+          "x": 131,
+          "y": 561.8,
+          "width": 104.3,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "6,50 €", "x": 513.1, "y": 544.6, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Gemüse-Samosa",
+          "x": 131,
+          "y": 741.5,
+          "width": 131.8,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Knusprige Teigtasche mit würziger Kartoffel-Zweibel-",
+          "x": 131,
+          "y": 757.6,
+          "width": 327.1,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Erbsen-Füllung",
+          "x": 131,
+          "y": 774.8,
+          "width": 94.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "6,90 €", "x": 512.6, "y": 757.6, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Vorspeisen-VEG",
+          "x": 79.8,
+          "y": 779.7,
+          "width": 547.5,
+          "size": 93,
+          "rotated": true
+        },
+        {
+          "text": "Medhu Vadai (Mild, Vegan)",
+          "x": 131,
+          "y": 312.3,
+          "width": 226.3,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Linsen-Fritter, serviert mit zwei Arten von",
+          "x": 131,
+          "y": 326.9,
+          "width": 258.5,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Chutney von Tamilnadu",
+          "x": 131,
+          "y": 344.1,
+          "width": 137.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "7,50 €", "x": 512.6, "y": 326.9, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Aloo Paratha (Mild, Vegan)",
+          "x": 131,
+          "y": 383.9,
+          "width": 233.3,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Gefülltes Fladenbrot mit würziger",
+          "x": 131,
+          "y": 398.4,
+          "width": 210.5,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Kartoffelfüllung.",
+          "x": 131,
+          "y": 415.7,
+          "width": 108,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "6,90 €", "x": 512.6, "y": 398.4, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Paneer-Pakora (Mild, Vegan)",
+          "x": 131,
+          "y": 601.3,
+          "width": 246.6,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Knusprige Indischer Frischkäse im gewürzten",
+          "x": 131,
+          "y": 617.6,
+          "width": 272.7,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Kichererbsenteig",
+          "x": 131,
+          "y": 634.9,
+          "width": 104.3,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "7,90 €", "x": 512.9, "y": 617.6, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Gemüse-Pakora (Mild, Vegan)",
+          "x": 131,
+          "y": 674.3,
+          "width": 250.2,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Knusprig frittierte Gemüse in würzigem Kichererbsenteig,",
+          "x": 131,
+          "y": 690.7,
+          "width": 350.7,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "goldbraun gebacken",
+          "x": 131,
+          "y": 708,
+          "width": 121.9,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "8,90 €", "x": 513.1, "y": 690.7, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "09.", "x": 107.4, "y": 311.2, "width": 20, "size": 16, "rotated": false },
+        { "text": "10.", "x": 104.5, "y": 381.1, "width": 20, "size": 16, "rotated": false },
+        { "text": "11.", "x": 107.4, "y": 454.6, "width": 20, "size": 16, "rotated": false },
+        { "text": "12.", "x": 107.4, "y": 527.1, "width": 20, "size": 16, "rotated": false },
+        { "text": "13.", "x": 104.5, "y": 600.1, "width": 20, "size": 16, "rotated": false },
+        { "text": "14.", "x": 107.4, "y": 673.2, "width": 20, "size": 16, "rotated": false },
+        { "text": "15.", "x": 107.4, "y": 740.3, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Chicken & Egg Salat",
+          "x": 131,
+          "y": 740.7,
+          "width": 169.7,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "mit saftigem Tandoor-Hähnchen, gekochten Eiern,",
+          "x": 131,
+          "y": 756.5,
+          "width": 297.9,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Gemüse und Dressing",
+          "x": 131,
+          "y": 773.7,
+          "width": 127.2,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "12,90 €", "x": 509.2, "y": 756.5, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "Salat", "x": 77.6, "y": 779.7, "width": 190.3, "size": 93, "rotated": true },
+        {
+          "text": "Beilage Salat",
+          "x": 131,
+          "y": 597.3,
+          "width": 114.9,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "mit Blattsalat, Tomaten und Gurken, mit hausgemachtem",
+          "x": 131,
+          "y": 611.8,
+          "width": 336.2,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "Dressing", "x": 131, "y": 629.1, "width": 53.9, "size": 15, "rotated": false },
+        { "text": "6,90 €", "x": 512.6, "y": 611.8, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Aloo Channa Chat",
+          "x": 131,
+          "y": 668.8,
+          "width": 149.3,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "aus Kartoffeln und Kichererbsen, verfeinert mit",
+          "x": 131,
+          "y": 683.4,
+          "width": 292.1,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Zwiebeln und Gewürzen",
+          "x": 131,
+          "y": 700.7,
+          "width": 141.9,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "6,90 €", "x": 512.6, "y": 683.4, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "16.", "x": 107.4, "y": 596.1, "width": 20, "size": 16, "rotated": false },
+        { "text": "17.", "x": 107.4, "y": 667.7, "width": 20, "size": 16, "rotated": false },
+        { "text": "18.", "x": 107.4, "y": 739.6, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Plain Dosai",
+          "x": 131,
+          "y": 510.5,
+          "width": 96.2,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Knuspriger südindischer Crêpe aus Reis- und Linsenmehl",
+          "x": 131,
+          "y": 527.1,
+          "width": 341,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "12,50 €", "x": 509.2, "y": 527.1, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Masala Dosai",
+          "x": 131,
+          "y": 557.7,
+          "width": 111.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Knuspriger Dosai gefüllt mit würziger Kartoffel-Erbsen-",
+          "x": 131,
+          "y": 572.9,
+          "width": 346.3,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "Mischung", "x": 131, "y": 590.2, "width": 56.4, "size": 15, "rotated": false },
+        { "text": "13,90 €", "x": 509.5, "y": 571.2, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Onion Uthappam",
+          "x": 131,
+          "y": 741.4,
+          "width": 134.7,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Weicher Uthappam mit frischen Zwiebeln und Gewürzen",
+          "x": 131,
+          "y": 757.6,
+          "width": 331.5,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "belegt", "x": 131, "y": 774.8, "width": 39.2, "size": 15, "rotated": false },
+        { "text": "13,90 €", "x": 508.9, "y": 757.6, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "Dosai", "x": 76.5, "y": 779.7, "width": 195.6, "size": 93, "rotated": true },
+        {
+          "text": "Kari Dosai (Lamb/Chicken)",
+          "x": 131,
+          "y": 619,
+          "width": 222.8,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Fluffiges Dosai gefüllt mit würzigem",
+          "x": 131,
+          "y": 635.4,
+          "width": 222.1,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Lammcurry/Hanchencurry",
+          "x": 131,
+          "y": 652.6,
+          "width": 155.1,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "15,50 €", "x": 509.2, "y": 634.9, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Egg Podi Dosai",
+          "x": 131,
+          "y": 688.9,
+          "width": 126,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Knuspriger Dosai mit Ei und würzigem Podi bestreut",
+          "x": 131,
+          "y": 705.1,
+          "width": 313.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "13,90 €", "x": 509.5, "y": 704.7, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "19.", "x": 104.4, "y": 509.3, "width": 20, "size": 16, "rotated": false },
+        { "text": "20.", "x": 104.4, "y": 555.6, "width": 20, "size": 16, "rotated": false },
+        { "text": "21.", "x": 104.4, "y": 617.6, "width": 20, "size": 16, "rotated": false },
+        { "text": "22.", "x": 104.4, "y": 687.4, "width": 20, "size": 16, "rotated": false },
+        { "text": "23.", "x": 104.4, "y": 740.3, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Aloo Palak (Mittel-scharf)",
+          "x": 133.8,
+          "y": 487.7,
+          "width": 230.9,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Curry aus Kartoffeln und Spinat, gewürzt mit",
+          "x": 133.8,
+          "y": 503.9,
+          "width": 274.6,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Bockshornkleeblättern",
+          "x": 133.8,
+          "y": 521.1,
+          "width": 141.9,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "15,90 €", "x": 509.2, "y": 503.9, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Aloo Gobi Mutter Masala (Mild)",
+          "x": 133.8,
+          "y": 558.2,
+          "width": 274.1,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Kartoffeln, grüne Erbsen und Blumenkohl,",
+          "x": 133.8,
+          "y": 573.2,
+          "width": 258.2,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Tomatensoße",
+          "x": 133.8,
+          "y": 590.5,
+          "width": 83.4,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "16,90 €", "x": 509.5, "y": 575.3, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Paneer Dal (Mild)",
+          "x": 133.8,
+          "y": 752.9,
+          "width": 154,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Hüttenkäse,",
+          "x": 133.8,
+          "y": 768.8,
+          "width": 70.5,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "mit Mungbohnen, roten Linsen und Gewürzen",
+          "x": 211.4,
+          "y": 768.8,
+          "width": 268.9,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "16,90 €", "x": 508.9, "y": 768.8, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "HAUPTGERICHT - vegetarisch",
+          "x": 59.5,
+          "y": 779.7,
+          "width": 650.8,
+          "size": 65,
+          "rotated": true
+        },
+        {
+          "text": "(Serviert mit Reis)",
+          "x": 95.6,
+          "y": 779.7,
+          "width": 298.2,
+          "size": 45,
+          "rotated": true
+        },
+        {
+          "text": "Palak Paneer (Mild)",
+          "x": 133.8,
+          "y": 627.5,
+          "width": 171.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Indischer Hüttenkäse in Spinatsauce mit frischer Sahne",
+          "x": 133.8,
+          "y": 642.8,
+          "width": 332.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "16,90 €", "x": 509.2, "y": 642.8, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Paneer Butter Masala (Mild)",
+          "x": 133.8,
+          "y": 685.8,
+          "width": 247.8,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Süße Soße mit Paneer, Cashewnüssen, Gewürzen und",
+          "x": 133.8,
+          "y": 702,
+          "width": 323.5,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Bockshornkleeblättern",
+          "x": 133.8,
+          "y": 719.2,
+          "width": 141.9,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "16,90 €", "x": 509.5, "y": 700.8, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Kadai Paneer (Mittel-scharf)",
+          "x": 133.8,
+          "y": 417.8,
+          "width": 249.6,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Indischer Hüttenkäse und Paprika, gekocht mit",
+          "x": 133.8,
+          "y": 433,
+          "width": 278.2,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Gewürzmischung",
+          "x": 133.8,
+          "y": 450.3,
+          "width": 100.5,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "16,90 €", "x": 509.2, "y": 433, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "24.", "x": 110.2, "y": 416.6, "width": 20, "size": 16, "rotated": false },
+        { "text": "25.", "x": 110.2, "y": 486.5, "width": 20, "size": 16, "rotated": false },
+        { "text": "26.", "x": 108.7, "y": 557.1, "width": 20, "size": 16, "rotated": false },
+        { "text": "27.", "x": 107.3, "y": 625.5, "width": 20, "size": 16, "rotated": false },
+        { "text": "28.", "x": 108.7, "y": 683.5, "width": 20, "size": 16, "rotated": false },
+        { "text": "29.", "x": 108.7, "y": 748.9, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Vendaikkaai Puli Kozhambu (Sauer &",
+          "x": 136.7,
+          "y": 432.5,
+          "width": 309,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Mittel-scharf)",
+          "x": 136.7,
+          "y": 455,
+          "width": 126,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Curry-mit Okra, Tamarindenextrakt, Gewürzen und",
+          "x": 136.7,
+          "y": 469.6,
+          "width": 304.6,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Kokosmilch",
+          "x": 136.7,
+          "y": 486.9,
+          "width": 67.8,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "16,90 €", "x": 509.2, "y": 466, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Kaikari Mandi (Scharf, Vegan)",
+          "x": 136.7,
+          "y": 519.1,
+          "width": 256.6,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Chettinad-Curry-gemischtem Gemüse und",
+          "x": 136.7,
+          "y": 535.3,
+          "width": 245.3,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "aromatischem Masala",
+          "x": 136.7,
+          "y": 552.6,
+          "width": 127.6,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "16,90 €", "x": 509.5, "y": 537.4, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Gemüse-Kuruma (Mild, Vegan)",
+          "x": 136.7,
+          "y": 687.2,
+          "width": 254.8,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Curry mit Gemüse, Kokosmilchbasis mit Fenchel, Cashews",
+          "x": 136.7,
+          "y": 700.4,
+          "width": 341,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "und Gewürzen",
+          "x": 136.7,
+          "y": 717.6,
+          "width": 84.6,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "16,90 €", "x": 508.9, "y": 700.4, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "HAUPTGERICHT - Vegan",
+          "x": 59.5,
+          "y": 779.7,
+          "width": 513.3,
+          "size": 65,
+          "rotated": true
+        },
+        {
+          "text": "(Serviert mit Reis)",
+          "x": 95.6,
+          "y": 779.7,
+          "width": 298.2,
+          "size": 45,
+          "rotated": true
+        },
+        {
+          "text": "Paruppu Keerai Masiyal (Mild, Vegan)",
+          "x": 136.7,
+          "y": 587.1,
+          "width": 321.3,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Curry mit Linsen und Spinat, gewürzt mit Kokosmilch",
+          "x": 136.7,
+          "y": 600,
+          "width": 317.3,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "16,90 €", "x": 509.2, "y": 600, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Sambar (Mild, Vegan)",
+          "x": 136.7,
+          "y": 636,
+          "width": 183.7,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Saisonales Gemüse, gekocht mit Toor-Dal und Gewürzen",
+          "x": 136.7,
+          "y": 649.7,
+          "width": 335.1,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "16,90 €", "x": 509.5, "y": 648.5, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Channa Masala (Mittel-scharf, Vegan)",
+          "x": 136.7,
+          "y": 752.9,
+          "width": 325.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Kichererbsen, gekocht in einer scharfen Tomatensoße",
+          "x": 136.7,
+          "y": 766,
+          "width": 329.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "16,90 €", "x": 508.9, "y": 766, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "30.", "x": 111.4, "y": 431.4, "width": 20, "size": 16, "rotated": false },
+        { "text": "31.", "x": 111.4, "y": 517.9, "width": 20, "size": 16, "rotated": false },
+        { "text": "32.", "x": 111.4, "y": 585.9, "width": 20, "size": 16, "rotated": false },
+        { "text": "33.", "x": 111.4, "y": 634.9, "width": 20, "size": 16, "rotated": false },
+        { "text": "34.", "x": 111.4, "y": 683.7, "width": 20, "size": 16, "rotated": false },
+        { "text": "35.", "x": 111.4, "y": 751.4, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Chemmeen Moilee (Mild)",
+          "x": 131,
+          "y": 637.5,
+          "width": 207.6,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Garnelen, gekocht in einer Kokosmilch-Curry",
+          "x": 131,
+          "y": 650.6,
+          "width": 272.3,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "21,90 €", "x": 508.9, "y": 650.6, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "HAUPTGERICHT - Meeresfrüchte",
+          "x": 56.3,
+          "y": 779.7,
+          "width": 658.6,
+          "size": 59,
+          "rotated": true
+        },
+        {
+          "text": "(Serviert mit Reis)",
+          "x": 88.6,
+          "y": 779.7,
+          "width": 258.5,
+          "size": 39,
+          "rotated": true
+        },
+        {
+          "text": "Eral Milagu Masala (Scharf)",
+          "x": 131,
+          "y": 584.1,
+          "width": 246.7,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Garnelen, gekocht in einer scharfen Pfeffer-Masala",
+          "x": 131,
+          "y": 598.7,
+          "width": 312.4,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "21,90 €", "x": 509.5, "y": 597.5, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Meen Moilee (Mild)",
+          "x": 131,
+          "y": 687.5,
+          "width": 165.6,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Fisch, gekocht in einer Kokosmilch-Curry",
+          "x": 131,
+          "y": 700.6,
+          "width": 247.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "21,90 €", "x": 508.9, "y": 700.6, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Meen Puli Kozhambu (Sauer & Mittel-",
+          "x": 131,
+          "y": 740.5,
+          "width": 319,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "scharf)", "x": 131, "y": 763, "width": 65.3, "size": 21, "rotated": false },
+        {
+          "text": "Tamarinden-Fisch-Curry mit einer mittleren Kokos-Masala",
+          "x": 131,
+          "y": 776.3,
+          "width": 350,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "21,90 €", "x": 508.9, "y": 776.3, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "36.", "x": 104.3, "y": 583, "width": 20, "size": 16, "rotated": false },
+        { "text": "37.", "x": 104.3, "y": 636.3, "width": 20, "size": 16, "rotated": false },
+        { "text": "38.", "x": 104.3, "y": 686.4, "width": 20, "size": 16, "rotated": false },
+        { "text": "39.", "x": 104.3, "y": 736.8, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Gongra Kodi (Mild)",
+          "x": 130.8,
+          "y": 615.1,
+          "width": 165.7,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Hähnchencurry mit saurem spinat (Gongura) Geschmack",
+          "x": 131,
+          "y": 630.3,
+          "width": 335.2,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.4, "y": 630.3, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "HAUPTGERICHT - Hähnchen",
+          "x": 54.1,
+          "y": 779.7,
+          "width": 546.4,
+          "size": 59,
+          "rotated": true
+        },
+        {
+          "text": "(Serviert mit Reis)",
+          "x": 87.9,
+          "y": 779.7,
+          "width": 265.1,
+          "size": 40,
+          "rotated": true
+        },
+        {
+          "text": "Madras Chicken (Mittel-scharf)",
+          "x": 130.8,
+          "y": 565.8,
+          "width": 272.9,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Hähnchencurry mit aromatischen Gewürzen von Tamilnadu",
+          "x": 131,
+          "y": 583.5,
+          "width": 350.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.4, "y": 582.3, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Chicken Pepper Masala (Mild)",
+          "x": 130.8,
+          "y": 661,
+          "width": 253.6,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Hähnchencurry mit schwarzem Pfeffer, aromatisch und",
+          "x": 131,
+          "y": 675.7,
+          "width": 331.4,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "scharf", "x": 131, "y": 693, "width": 40.1, "size": 15, "rotated": false },
+        { "text": "18,90 €", "x": 508.4, "y": 675.7, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Goa Mango Chicken (Mild)",
+          "x": 130.8,
+          "y": 720.7,
+          "width": 222.2,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Saftiges Hähnchen in Mango-Goa-Soße",
+          "x": 131,
+          "y": 735.7,
+          "width": 233.5,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.4, "y": 735.7, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Chettinad Chicken Masala (Mittel-scharf)",
+          "x": 130.8,
+          "y": 421.3,
+          "width": 357.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Scharfes Hähnchen-Curry mit geröstetem Masala",
+          "x": 130.5,
+          "y": 436.3,
+          "width": 294.9,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.4, "y": 440, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Kozhi Kuruma (Mild)",
+          "x": 130.8,
+          "y": 358.9,
+          "width": 176.1,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Hähnchen-Curry mit frisch gemahlenen Gewürzen und",
+          "x": 130.5,
+          "y": 376.5,
+          "width": 323,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Kokosnuss",
+          "x": 130.5,
+          "y": 393.8,
+          "width": 62.9,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.4, "y": 375.3, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Chicken Vindaloo (Mittel-scharf)",
+          "x": 130.8,
+          "y": 467.6,
+          "width": 285.7,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Hähnchen mit Kartoffeln in einer aromatischen Masala",
+          "x": 130.5,
+          "y": 484.8,
+          "width": 328,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.4, "y": 484.8, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Butter Chicken (Mild)",
+          "x": 130.8,
+          "y": 515.5,
+          "width": 189,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Geröstetes Hähnchen in cremigen Tomaten - Buttersoße",
+          "x": 131.5,
+          "y": 531.6,
+          "width": 340.5,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.4, "y": 529.8, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Chicken Tikka Masala(Mild)",
+          "x": 130.8,
+          "y": 768.9,
+          "width": 234.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Hähnchen in cremiger, würziger Tomaten-Masala-Soße",
+          "x": 130.5,
+          "y": 784.5,
+          "width": 332,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.4, "y": 784.5, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "40.", "x": 104.3, "y": 357.7, "width": 20, "size": 16, "rotated": false },
+        { "text": "41.", "x": 104.3, "y": 420.2, "width": 20, "size": 16, "rotated": false },
+        { "text": "42.", "x": 103.9, "y": 466.5, "width": 20, "size": 16, "rotated": false },
+        { "text": "43.", "x": 104.3, "y": 512.5, "width": 20, "size": 16, "rotated": false },
+        { "text": "44.", "x": 103.9, "y": 561.8, "width": 20, "size": 16, "rotated": false },
+        { "text": "45.", "x": 103.9, "y": 614, "width": 20, "size": 16, "rotated": false },
+        { "text": "46.", "x": 104.3, "y": 660.6, "width": 20, "size": 16, "rotated": false },
+        { "text": "47.", "x": 104.3, "y": 719.5, "width": 20, "size": 16, "rotated": false },
+        { "text": "48.", "x": 104.3, "y": 765.4, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Mutton Vindaloo (Mild)",
+          "x": 130.8,
+          "y": 601.7,
+          "width": 203,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "20,90 €", "x": 508.9, "y": 616.9, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "HAUPTGERICHT - Lamm",
+          "x": 53.9,
+          "y": 779.7,
+          "width": 425.7,
+          "size": 55,
+          "rotated": true
+        },
+        {
+          "text": "(Serviert mit Reis)",
+          "x": 83.2,
+          "y": 779.7,
+          "width": 231.9,
+          "size": 35,
+          "rotated": true
+        },
+        {
+          "text": "Mutton Kuruma (Mild)",
+          "x": 130.8,
+          "y": 552.4,
+          "width": 191.3,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "20,90 €", "x": 509.5, "y": 568.8, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Madras Mutton Curry (Mild)",
+          "x": 130.8,
+          "y": 647.6,
+          "width": 246.7,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "20,90 €", "x": 508.9, "y": 662.2, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Beef Kuruma (Mild)",
+          "x": 130.8,
+          "y": 692.2,
+          "width": 168,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Mildes Rindfleischcurry, sanft gewürzt und aromatisch",
+          "x": 131,
+          "y": 707.3,
+          "width": 336.2,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "22,90 €", "x": 508.9, "y": 707.3, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Chettinad Lamm-Curry (Mittel-scharf)",
+          "x": 130.8,
+          "y": 407.9,
+          "width": 330,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "20,90 €", "x": 508.4, "y": 426.5, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Mutton Milagu Masala (Scharf)",
+          "x": 130.8,
+          "y": 454.1,
+          "width": 270,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "20,90 €", "x": 508.4, "y": 471.3, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Gongra Mutton (Mittelscharf und sauer)",
+          "x": 130.8,
+          "y": 502,
+          "width": 353.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Aromatisches Lammcurry mit",
+          "x": 131,
+          "y": 616.9,
+          "width": 172.8,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Gewürzen und Essignote",
+          "x": 310.8,
+          "y": 616.9,
+          "width": 146.8,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Sanft gewürztes Lammcurry, mild und aromatisch.",
+          "x": 131,
+          "y": 570,
+          "width": 301.6,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Mildes Lammcurry mit aromatischen Madras-Gewürzen",
+          "x": 131,
+          "y": 662.2,
+          "width": 327.6,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Lamm-Curry mit geröstetem Chettinadu Masala",
+          "x": 130.5,
+          "y": 422.8,
+          "width": 280.2,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Lamm-Curry mit intensivem Pfeffergeschmack",
+          "x": 130.5,
+          "y": 471.3,
+          "width": 272.4,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Lammcurry mit saurem spinat (Gongura) Geschmack",
+          "x": 131.5,
+          "y": 518.2,
+          "width": 309.1,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "20,90 €", "x": 508.4, "y": 516.3, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Beef Milagu Masala (Mild)",
+          "x": 130.8,
+          "y": 737.4,
+          "width": 226.9,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Rindfleischcurry mit schwarzem Pfeffer und aromatischen",
+          "x": 130.5,
+          "y": 753.8,
+          "width": 353.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "Gewürzen", "x": 130.5, "y": 771, "width": 58.9, "size": 15, "rotated": false },
+        { "text": "22,90 €", "x": 508.4, "y": 753.8, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "49.", "x": 104.1, "y": 405.5, "width": 20, "size": 16, "rotated": false },
+        { "text": "50.", "x": 104.1, "y": 453, "width": 20, "size": 16, "rotated": false },
+        { "text": "51.", "x": 104.1, "y": 499, "width": 20, "size": 16, "rotated": false },
+        { "text": "52.", "x": 104.1, "y": 552.7, "width": 20, "size": 16, "rotated": false },
+        { "text": "53.", "x": 104.1, "y": 600.5, "width": 20, "size": 16, "rotated": false },
+        { "text": "54.", "x": 104.1, "y": 646.4, "width": 20, "size": 16, "rotated": false },
+        { "text": "55.", "x": 104.1, "y": 689.9, "width": 20, "size": 16, "rotated": false },
+        { "text": "56.", "x": 104.1, "y": 733.6, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        { "text": "BIRYANI", "x": 61, "y": 779.7, "width": 183.8, "size": 66, "rotated": true },
+        {
+          "text": "(SERVIERT mit Raita)",
+          "x": 89.5,
+          "y": 779.7,
+          "width": 231.3,
+          "size": 32,
+          "rotated": true
+        },
+        {
+          "text": "Gemüse-Biryani",
+          "x": 130.8,
+          "y": 596.2,
+          "width": 132.9,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Aromatischer Basmati-Reis mit gemischtem Gemüse und",
+          "x": 131,
+          "y": 613.5,
+          "width": 329.4,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "würzigen Gewürzen",
+          "x": 131,
+          "y": 630.8,
+          "width": 117.9,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "17,90 €", "x": 508.9, "y": 613.5, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Hähnchen-Biryani",
+          "x": 130.8,
+          "y": 668.2,
+          "width": 151.6,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Zarter Hähnchenreis mit aromatischen Gewürzen, Kräutern",
+          "x": 131,
+          "y": 685,
+          "width": 357.5,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "und Safrannote.",
+          "x": 131,
+          "y": 702.3,
+          "width": 97,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.9, "y": 685, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Lamm-Biryani",
+          "x": 130.8,
+          "y": 740.3,
+          "width": 114.3,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Zartes Lammfleisch mit gewürztem Basmati-Reis und",
+          "x": 130.5,
+          "y": 756.5,
+          "width": 313.8,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "aromatischen Gewürzen",
+          "x": 130.5,
+          "y": 773.7,
+          "width": 143.1,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "20,90 €", "x": 508.4, "y": 756.5, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "59.", "x": 102.7, "y": 739.1, "width": 20, "size": 16, "rotated": false },
+        { "text": "57.", "x": 102.7, "y": 596.2, "width": 20, "size": 16, "rotated": false },
+        { "text": "58.", "x": 102.7, "y": 667.1, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "TANDOORI-SPEZIALITÄTEN",
+          "x": 54.1,
+          "y": 779.7,
+          "width": 497.3,
+          "size": 56,
+          "rotated": true
+        },
+        {
+          "text": "(Serviert mit Soße & Reis)",
+          "x": 84.1,
+          "y": 779.7,
+          "width": 344.5,
+          "size": 36,
+          "rotated": true
+        },
+        {
+          "text": "Murgh Malai Kebab (Hähnchen)",
+          "x": 130.8,
+          "y": 625.1,
+          "width": 266.5,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Zarte Hähnchenstücke in cremiger Cashew-Sahne-Marinade,",
+          "x": 131,
+          "y": 642.4,
+          "width": 357,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "mild gewürzt und saftig gegrillt",
+          "x": 131,
+          "y": 659.6,
+          "width": 197.8,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.9, "y": 642.4, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Tandoori Platte",
+          "x": 130.8,
+          "y": 696.7,
+          "width": 137,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Gemischte Tandoori-Platte mit Paneer, Huhn, Lamm Tikka",
+          "x": 131,
+          "y": 713.1,
+          "width": 338.5,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "24,90 €", "x": 508.9, "y": 713.1, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Mutton Tikka",
+          "x": 130.8,
+          "y": 749.8,
+          "width": 111.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Würzig marinierte Lammstücke, saftig im Tandoor gegrillt",
+          "x": 130.5,
+          "y": 768.8,
+          "width": 351.9,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "21,90 €", "x": 508.4, "y": 768.8, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Paneer Tikka",
+          "x": 130.8,
+          "y": 421.9,
+          "width": 109,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Gegrillter Paneer mit Joghurt-Marinade und würzigen",
+          "x": 131,
+          "y": 439.2,
+          "width": 328.6,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "indischen Gewürzen",
+          "x": 131,
+          "y": 456.5,
+          "width": 119.5,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "20,90 €", "x": 508.9, "y": 439.2, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Tandoori-Garnelen",
+          "x": 130.8,
+          "y": 488.2,
+          "width": 164.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Würzig marinierte Riesengarnelen, saftig im Tandoor",
+          "x": 131,
+          "y": 505.2,
+          "width": 322.3,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "gegrillt, mit feiner Rauchnote",
+          "x": 131,
+          "y": 522.5,
+          "width": 183.1,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "22,90 €", "x": 508.9, "y": 505.2, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Tandoori-Hähnchen",
+          "x": 130.8,
+          "y": 559.3,
+          "width": 166.8,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Zartes Hähnchen in Joghurt-Gewürzmarinade, knusprig im",
+          "x": 130.5,
+          "y": 576,
+          "width": 348.5,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Tandoor gegrillt",
+          "x": 130.5,
+          "y": 593.2,
+          "width": 104,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.4, "y": 576, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "60.", "x": 100.7, "y": 420.8, "width": 20, "size": 16, "rotated": false },
+        { "text": "61.", "x": 100.7, "y": 487.1, "width": 20, "size": 16, "rotated": false },
+        { "text": "62.", "x": 100.7, "y": 558.2, "width": 20, "size": 16, "rotated": false },
+        { "text": "63.", "x": 100.7, "y": 623.9, "width": 20, "size": 16, "rotated": false },
+        { "text": "64.", "x": 100.7, "y": 695.3, "width": 20, "size": 16, "rotated": false },
+        { "text": "65.", "x": 100.7, "y": 748.6, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        { "text": "BROT", "x": 80.2, "y": 779.7, "width": 178.6, "size": 93, "rotated": true },
+        {
+          "text": "Parotta (2 Stuck)",
+          "x": 130.8,
+          "y": 626.7,
+          "width": 151.6,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Blättriges, weiches südindisches Fladenbrot aus",
+          "x": 131,
+          "y": 642.4,
+          "width": 293.3,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "Weizenmehl", "x": 131, "y": 659.6, "width": 70.3, "size": 15, "rotated": false },
+        { "text": "6,50 €", "x": 512.6, "y": 642.4, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Poori (3 Stuck)",
+          "x": 130.8,
+          "y": 698.2,
+          "width": 133,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Frittiertes, weiches indisches Fladenbrot aus Weizenmehl",
+          "x": 131,
+          "y": 713.1,
+          "width": 348.2,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "7,50 €", "x": 512.6, "y": 713.1, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Chapathi (2 Stuck)",
+          "x": 130.8,
+          "y": 751.7,
+          "width": 158.6,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Weiches, ungesäuertes Vollkornfladenbrot, leicht geröstet",
+          "x": 130.5,
+          "y": 768.8,
+          "width": 361.4,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "6,50 €", "x": 512.1, "y": 768.8, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "NAAN", "x": 130.8, "y": 441.8, "width": 44.3, "size": 21, "rotated": false },
+        {
+          "text": "Weiches, im Tandoor gebackenes indisches Fladenbrot",
+          "x": 131,
+          "y": 456.5,
+          "width": 324.8,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "3,90 €", "x": 512.6, "y": 456.5, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Garlic Naan",
+          "x": 130.8,
+          "y": 489.1,
+          "width": 100.9,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Weiches Tandoor-Fladenbrot mit frischem Knoblauch und",
+          "x": 131,
+          "y": 505.2,
+          "width": 345.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "Butter", "x": 131, "y": 522.5, "width": 40.9, "size": 15, "rotated": false },
+        { "text": "4,50 €", "x": 512.6, "y": 505.2, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Onion Chilly Naan",
+          "x": 130.8,
+          "y": 561,
+          "width": 152.8,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Weiches Tandoor-Fladenbrot mit Zwiebeln, Chili und",
+          "x": 130.5,
+          "y": 576,
+          "width": 315.8,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "Gewürzen", "x": 130.5, "y": 593.2, "width": 58.9, "size": 15, "rotated": false },
+        { "text": "4,50 €", "x": 512.1, "y": 576, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "66.", "x": 101.4, "y": 439.2, "width": 20, "size": 16, "rotated": false },
+        { "text": "67.", "x": 101.4, "y": 487.9, "width": 20, "size": 16, "rotated": false },
+        { "text": "68.", "x": 101.4, "y": 559.8, "width": 20, "size": 16, "rotated": false },
+        { "text": "69.", "x": 101.4, "y": 625.5, "width": 20, "size": 16, "rotated": false },
+        { "text": "70.", "x": 101.4, "y": 697.1, "width": 20, "size": 16, "rotated": false },
+        { "text": "71.", "x": 101.4, "y": 750.6, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        { "text": "DESSERTS", "x": 80.2, "y": 779.7, "width": 335.7, "size": 93, "rotated": true },
+        {
+          "text": "Karotten-Halwa",
+          "x": 130.8,
+          "y": 676.1,
+          "width": 135.3,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Langsam gekochte geraspelte Karotten mit Milch und",
+          "x": 131,
+          "y": 693.4,
+          "width": 318.3,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Zucker, garniert mit Nüssen",
+          "x": 131,
+          "y": 710.7,
+          "width": 169.3,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "5,90 €", "x": 512.6, "y": 693.4, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Paal Payasam",
+          "x": 130.8,
+          "y": 747.2,
+          "width": 112.5,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Milchpudding mit Vermicelli, Zucker und Kardamom",
+          "x": 131,
+          "y": 764.2,
+          "width": 307.8,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "5,90 €", "x": 512.6, "y": 764.2, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Kesari", "x": 130.8, "y": 556.6, "width": 54.8, "size": 21, "rotated": false },
+        {
+          "text": "Süßer Griespudding mit Nüssen und Ananas",
+          "x": 131,
+          "y": 573.5,
+          "width": 264.4,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "5,90 €", "x": 512.6, "y": 573.5, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Gulab Jamun",
+          "x": 130.8,
+          "y": 605.4,
+          "width": 106.7,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Frittierte Milchkugeln, getränkt in Rosen-Kardamom-",
+          "x": 130.5,
+          "y": 627,
+          "width": 321.9,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Zuckersirup",
+          "x": 130.5,
+          "y": 644.3,
+          "width": 73.4,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "5,90 €", "x": 512.1, "y": 627, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "72.", "x": 104, "y": 555.5, "width": 20, "size": 16, "rotated": false },
+        { "text": "71.", "x": 285.9, "y": 187.8, "width": 20, "size": 16, "rotated": false },
+        { "text": "73.", "x": 104, "y": 604.2, "width": 20, "size": 16, "rotated": false },
+        { "text": "74.", "x": 104, "y": 675, "width": 20, "size": 16, "rotated": false },
+        { "text": "75.", "x": 104, "y": 745.6, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "WOCHENEND-SPEZIAL",
+          "x": 53.9,
+          "y": 779.7,
+          "width": 408.3,
+          "size": 55,
+          "rotated": true
+        },
+        {
+          "text": "(FREITAG, SAMSTAG & SONNTAG)",
+          "x": 83.2,
+          "y": 779.7,
+          "width": 392.7,
+          "size": 35,
+          "rotated": true
+        },
+        {
+          "text": "House Chicken Dum Biriyani (mit",
+          "x": 130.8,
+          "y": 444.2,
+          "width": 291.6,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "Knochen)", "x": 130.8, "y": 466.7, "width": 79.3, "size": 21, "rotated": false },
+        {
+          "text": "Aromatischer Reis mit zartem Hähnchen, Gewürzen und",
+          "x": 131,
+          "y": 483.2,
+          "width": 330.2,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Kräutern, langsam gedämpft",
+          "x": 131,
+          "y": 500.4,
+          "width": 169.9,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "21,90 €", "x": 508.9, "y": 485, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "House Lamb Dum Biriyani (mit Knochen)",
+          "x": 130.8,
+          "y": 535.6,
+          "width": 352.8,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Aromatischer Reis mit zartem Lamm, Gewürzen und",
+          "x": 131,
+          "y": 552.2,
+          "width": 304.2,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Kräutern, langsam gedämpft.",
+          "x": 131,
+          "y": 569.4,
+          "width": 173.5,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "23,90 €", "x": 508.9, "y": 552.2, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Chicken Kothu Parotta",
+          "x": 130.8,
+          "y": 604.6,
+          "width": 192.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Zerhacktes Parotta mit Huhn, Eiern, Gewürzen und",
+          "x": 130.5,
+          "y": 618.2,
+          "width": 304.4,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Kräutern.",
+          "x": 130.5,
+          "y": 635.5,
+          "width": 59.2,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "19,90 €", "x": 508.4, "y": 623.7, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "South Indian Vegetarian Meals",
+          "x": 130.8,
+          "y": 305.9,
+          "width": 261.8,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Vegetarisches Gericht mit Brot, Reis, Sambar, Rasam,",
+          "x": 131,
+          "y": 320.3,
+          "width": 319.7,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "Gemüse und verschiedenen aromatischen Beilagen",
+          "x": 131,
+          "y": 337.5,
+          "width": 299.7,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "18,90 €", "x": 508.9, "y": 320.3, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "South Indian Non Vegetarian Meals",
+          "x": 130.8,
+          "y": 372.7,
+          "width": 299.7,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Fleischgerichte mit Brot, Reis, Fisch/Huhn/Lamm, Gemüse",
+          "x": 130.5,
+          "y": 391.8,
+          "width": 340,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "und verschiedenen aromatischen Beilagen",
+          "x": 130.5,
+          "y": 409,
+          "width": 252,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "20,90 €", "x": 508.4, "y": 391.8, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Lamb Kothu Parotta",
+          "x": 131.3,
+          "y": 670.6,
+          "width": 169.1,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Zerhacktes Parotta mit Lamm, Eiern, Gewürzen und",
+          "x": 131.5,
+          "y": 685,
+          "width": 305.2,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "Kräutern", "x": 131.5, "y": 702.2, "width": 55.6, "size": 15, "rotated": false },
+        { "text": "20,90 €", "x": 509.5, "y": 685, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Idly (3 Stuck)",
+          "x": 131.3,
+          "y": 737.4,
+          "width": 119,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Fluffig-weiche, dampfende Reisküchlein und linsen – zart,",
+          "x": 131,
+          "y": 753.8,
+          "width": 348,
+          "size": 15,
+          "rotated": false
+        },
+        {
+          "text": "leicht und perfekt gewürzt",
+          "x": 131,
+          "y": 771.1,
+          "width": 163.2,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "11,50 €", "x": 508.9, "y": 756.5, "width": 44.1, "size": 15, "rotated": false },
+        { "text": "76.", "x": 101.3, "y": 307.9, "width": 20, "size": 16, "rotated": false },
+        { "text": "77.", "x": 101.3, "y": 374.6, "width": 20, "size": 16, "rotated": false },
+        { "text": "78.", "x": 101.3, "y": 446.1, "width": 20, "size": 16, "rotated": false },
+        { "text": "79.", "x": 101.3, "y": 534.7, "width": 20, "size": 16, "rotated": false },
+        { "text": "80.", "x": 101.3, "y": 603.7, "width": 20, "size": 16, "rotated": false },
+        { "text": "81.", "x": 101.3, "y": 669.7, "width": 20, "size": 16, "rotated": false },
+        { "text": "82.", "x": 101.5, "y": 736.5, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Alkoholfreie",
+          "x": 56.4,
+          "y": 779.7,
+          "width": 283.6,
+          "size": 62,
+          "rotated": true
+        },
+        {
+          "text": "(Indisches Special)",
+          "x": 90.9,
+          "y": 779.7,
+          "width": 279.4,
+          "size": 42,
+          "rotated": true
+        },
+        { "text": "4,90 €", "x": 420.4, "y": 662.6, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "5,70 €", "x": 420.4, "y": 695.5, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Milch mit Rosenextrakt-Sirup",
+          "x": 131,
+          "y": 768.8,
+          "width": 177.5,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "5,90 €", "x": 420.4, "y": 750.5, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "4,90 €", "x": 420.4, "y": 580.2, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "5,80 €", "x": 420.4, "y": 629.7, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Moru", "x": 131, "y": 582, "width": 45.5, "size": 21, "rotated": false },
+        {
+          "text": "Butter Milch Mit Ingwer, Koriander, Salz",
+          "x": 131.3,
+          "y": 599,
+          "width": 247.8,
+          "size": 15,
+          "rotated": false
+        },
+        { "text": "C", "x": 180.2, "y": 575.5, "width": 5.5, "size": 8, "rotated": false },
+        {
+          "text": "Mango Lassie",
+          "x": 131.1,
+          "y": 631.5,
+          "width": 112.5,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "C", "x": 248.2, "y": 624, "width": 5.5, "size": 8, "rotated": false },
+        {
+          "text": "Lassi (Salz / Süß)",
+          "x": 131.1,
+          "y": 664.4,
+          "width": 158,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "C", "x": 291.8, "y": 657.9, "width": 5.5, "size": 8, "rotated": false },
+        {
+          "text": "Hausgemachte Frisch",
+          "x": 131,
+          "y": 697.3,
+          "width": 180.1,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Zitrone Saft",
+          "x": 131,
+          "y": 719.8,
+          "width": 106.7,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "E", "x": 242.5, "y": 711.4, "width": 4.8, "size": 8, "rotated": false },
+        {
+          "text": "Rose Milk (Suß)",
+          "x": 131.1,
+          "y": 752.4,
+          "width": 144.6,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "C", "x": 278, "y": 745.9, "width": 5.5, "size": 8, "rotated": false },
+        { "text": "83.", "x": 104.4, "y": 580.9, "width": 20, "size": 16, "rotated": false },
+        { "text": "84.", "x": 104.4, "y": 630.4, "width": 20, "size": 16, "rotated": false },
+        { "text": "85.", "x": 104.4, "y": 663.4, "width": 20, "size": 16, "rotated": false },
+        { "text": "86.", "x": 104.4, "y": 696.3, "width": 20, "size": 16, "rotated": false },
+        { "text": "87.", "x": 104.4, "y": 751.3, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Softgetränke",
+          "x": 80.2,
+          "y": 779.7,
+          "width": 440.9,
+          "size": 93,
+          "rotated": true
+        },
+        { "text": "3,90 €", "x": 415.7, "y": 415.9, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Coca-Cola",
+          "x": 131.3,
+          "y": 416.1,
+          "width": 85.1,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,4,7", "x": 223.3, "y": 409.6, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 360.7, "y": 415.6, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "3,90 €", "x": 415.7, "y": 450.8, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Cola Light", "x": 131.3, "y": 451, "width": 88.1, "size": 21, "rotated": false },
+        { "text": "1,3,4,5,7", "x": 223.3, "y": 444.5, "width": 25.8, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 360.7, "y": 450.5, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "3,90 €", "x": 415.7, "y": 485.9, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Mezzo Mix",
+          "x": 131.3,
+          "y": 486.1,
+          "width": 86.9,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,7", "x": 223.3, "y": 479.6, "width": 8.3, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 360.7, "y": 485.6, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "3,90 €", "x": 415.7, "y": 521, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Fanta", "x": 131.3, "y": 521.2, "width": 46.6, "size": 21, "rotated": false },
+        { "text": "1,2,7", "x": 223.3, "y": 514.7, "width": 13, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 360.7, "y": 520.7, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "3,90 €", "x": 415.7, "y": 556.1, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Sprite", "x": 131.3, "y": 556.3, "width": 53.6, "size": 21, "rotated": false },
+        { "text": "A,B", "x": 223.3, "y": 549.8, "width": 11.1, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 360.7, "y": 555.8, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "3,10 €", "x": 415.7, "y": 591.2, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Wasser", "x": 131.3, "y": 591.5, "width": 62.9, "size": 21, "rotated": false },
+        {
+          "text": "Still/Medium",
+          "x": 131.3,
+          "y": 614,
+          "width": 109.7,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "0,25l", "x": 355.4, "y": 591, "width": 24.6, "size": 12, "rotated": false },
+        { "text": "5,80 €", "x": 415.8, "y": 643.9, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Flasche Wasser",
+          "x": 131.4,
+          "y": 644.1,
+          "width": 133.5,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Still/Medium",
+          "x": 131.4,
+          "y": 666.6,
+          "width": 109.7,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "0,75l", "x": 355.4, "y": 643.6, "width": 24.3, "size": 12, "rotated": false },
+        { "text": "4,80 €", "x": 415.8, "y": 696.6, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Hausgemacht Limonade",
+          "x": 131.4,
+          "y": 696.8,
+          "width": 194.2,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "0,4l", "x": 360.7, "y": 696.3, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "4,20 €", "x": 415.8, "y": 731.7, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Eistee Zitrone",
+          "x": 131.4,
+          "y": 731.9,
+          "width": 123,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "0,4l", "x": 360.7, "y": 731.4, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "E", "x": 257.2, "y": 725.4, "width": 4.8, "size": 8, "rotated": false },
+        { "text": "E", "x": 330.5, "y": 690.3, "width": 4.8, "size": 8, "rotated": false },
+        { "text": "4,20 €", "x": 415.8, "y": 766.8, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Eistee Wassermelone",
+          "x": 131.4,
+          "y": 767,
+          "width": 181.3,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "0,4l", "x": 360.7, "y": 764.2, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "E", "x": 322.1, "y": 760.5, "width": 4.8, "size": 8, "rotated": false },
+        { "text": "88.", "x": 104.8, "y": 415, "width": 20, "size": 16, "rotated": false },
+        { "text": "89.", "x": 104.8, "y": 449.9, "width": 20, "size": 16, "rotated": false },
+        { "text": "90.", "x": 104.8, "y": 485, "width": 20, "size": 16, "rotated": false },
+        { "text": "91.", "x": 104.8, "y": 520.1, "width": 20, "size": 16, "rotated": false },
+        { "text": "92.", "x": 104.8, "y": 555.2, "width": 20, "size": 16, "rotated": false },
+        { "text": "93.", "x": 104.8, "y": 590.6, "width": 20, "size": 16, "rotated": false },
+        { "text": "94.", "x": 104.8, "y": 642.5, "width": 20, "size": 16, "rotated": false },
+        { "text": "95.", "x": 104.8, "y": 695.7, "width": 20, "size": 16, "rotated": false },
+        { "text": "96.", "x": 104.8, "y": 730.8, "width": 20, "size": 16, "rotated": false },
+        { "text": "97.", "x": 104.8, "y": 765.9, "width": 20, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Saft & Schorle",
+          "x": 80.2,
+          "y": 779.7,
+          "width": 485.9,
+          "size": 93,
+          "rotated": true
+        },
+        { "text": "3,90 €", "x": 409.5, "y": 197.7, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Apfel", "x": 131.3, "y": 197.9, "width": 45.5, "size": 21, "rotated": false },
+        { "text": "1,4,7", "x": 180.7, "y": 188.5, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,2l", "x": 346.7, "y": 197.4, "width": 18.1, "size": 12, "rotated": false },
+        { "text": "3,90 €", "x": 409.5, "y": 229.8, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Lychee", "x": 131.3, "y": 230, "width": 57.1, "size": 21, "rotated": false },
+        { "text": "1,4,7", "x": 195.5, "y": 220.6, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,2l", "x": 346.7, "y": 229.5, "width": 18.1, "size": 12, "rotated": false },
+        { "text": "3,90 €", "x": 409.6, "y": 261.9, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Mango", "x": 131.4, "y": 262.1, "width": 54.8, "size": 21, "rotated": false },
+        { "text": "1,4,7", "x": 192.9, "y": 253.3, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,2l", "x": 346.9, "y": 261.6, "width": 18.1, "size": 12, "rotated": false },
+        { "text": "3,90 €", "x": 409.5, "y": 294, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Cranberry", "x": 131.3, "y": 294.3, "width": 91, "size": 21, "rotated": false },
+        { "text": "1,4,7", "x": 227.9, "y": 285.4, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,2l", "x": 346.7, "y": 293.8, "width": 18.1, "size": 12, "rotated": false },
+        { "text": "3,90 €", "x": 409.6, "y": 445, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Guaven", "x": 131.4, "y": 445.2, "width": 60.6, "size": 21, "rotated": false },
+        { "text": "1,4,7", "x": 195.7, "y": 435.7, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,2l", "x": 346.9, "y": 444.7, "width": 18.1, "size": 12, "rotated": false },
+        { "text": "3,90 €", "x": 409.6, "y": 412.9, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Orangen", "x": 131.4, "y": 413.1, "width": 72.3, "size": 21, "rotated": false },
+        { "text": "1,4,7", "x": 208.2, "y": 404.3, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,2l", "x": 346.9, "y": 412.6, "width": 18.1, "size": 12, "rotated": false },
+        { "text": "3,90 €", "x": 409.6, "y": 380.7, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Maracuja", "x": 131.4, "y": 381, "width": 79.3, "size": 21, "rotated": false },
+        { "text": "1,4,7", "x": 215.6, "y": 371.5, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,2l", "x": 346.9, "y": 380.5, "width": 18.1, "size": 12, "rotated": false },
+        { "text": "3,90 €", "x": 409.5, "y": 326.1, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Schwarzer",
+          "x": 131.3,
+          "y": 326.4,
+          "width": 92.1,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Johannisbier",
+          "x": 131.3,
+          "y": 348.9,
+          "width": 110.8,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,4,7", "x": 239.5, "y": 319.9, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,2l", "x": 346.7, "y": 325.9, "width": 18.1, "size": 12, "rotated": false },
+        { "text": "4,20 €", "x": 409.5, "y": 524.4, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Apfel Schorle",
+          "x": 131.3,
+          "y": 524.6,
+          "width": 119.5,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,4,7", "x": 259.8, "y": 518.1, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 346.7, "y": 524.1, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "4,20 €", "x": 409.5, "y": 556.5, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Lychee Schorle",
+          "x": 131.3,
+          "y": 556.8,
+          "width": 131.2,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,4,7", "x": 271, "y": 550.2, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 346.7, "y": 556.2, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "4,20 €", "x": 409.6, "y": 588.6, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Mango Schorle",
+          "x": 131.4,
+          "y": 588.9,
+          "width": 128.9,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,4,7", "x": 265.3, "y": 582.4, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 346.9, "y": 588.4, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "4,20 €", "x": 409.6, "y": 620.7, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Cranberry Schorle",
+          "x": 131.4,
+          "y": 621,
+          "width": 165,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,4,7", "x": 301.4, "y": 616.1, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 346.9, "y": 620.5, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "4,20 €", "x": 409.6, "y": 652.8, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Schw. Johannesbier",
+          "x": 131.4,
+          "y": 653.1,
+          "width": 167.9,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "Schorle", "x": 131.4, "y": 675.6, "width": 68.8, "size": 21, "rotated": false },
+        { "text": "1,4,7", "x": 301.4, "y": 648.9, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 346.9, "y": 652.6, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "4,20 €", "x": 409.5, "y": 707.5, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Maracuja Schorle",
+          "x": 131.3,
+          "y": 707.7,
+          "width": 153.3,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,4,7", "x": 288.4, "y": 701.2, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 346.7, "y": 707.2, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "4,20 €", "x": 409.6, "y": 739.6, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Orangen Schorle",
+          "x": 131.4,
+          "y": 739.8,
+          "width": 146.4,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,4,7", "x": 281.9, "y": 733.3, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 346.9, "y": 739.3, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "4,20 €", "x": 409.5, "y": 766.8, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Guaven Schorle",
+          "x": 131.3,
+          "y": 767,
+          "width": 134.7,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,4,7", "x": 271, "y": 760.5, "width": 14.3, "size": 8, "rotated": false },
+        { "text": "0,4l", "x": 346.7, "y": 766.5, "width": 18.5, "size": 12, "rotated": false },
+        { "text": "98.", "x": 101.9, "y": 195.8, "width": 20, "size": 16, "rotated": false },
+        { "text": "99.", "x": 101.9, "y": 228.1, "width": 20, "size": 16, "rotated": false },
+        { "text": "100.", "x": 96.1, "y": 260.3, "width": 28, "size": 16, "rotated": false },
+        { "text": "101.", "x": 96.1, "y": 292.7, "width": 28, "size": 16, "rotated": false },
+        { "text": "102.", "x": 96.1, "y": 325.1, "width": 28, "size": 16, "rotated": false },
+        { "text": "103.", "x": 96.1, "y": 379.1, "width": 28, "size": 16, "rotated": false },
+        { "text": "104.", "x": 96.1, "y": 411.5, "width": 28, "size": 16, "rotated": false },
+        { "text": "105.", "x": 96.1, "y": 443.9, "width": 28, "size": 16, "rotated": false },
+        { "text": "106.", "x": 96.1, "y": 524.7, "width": 28, "size": 16, "rotated": false },
+        { "text": "107.", "x": 96.1, "y": 557.1, "width": 28, "size": 16, "rotated": false },
+        { "text": "108.", "x": 96.1, "y": 589.4, "width": 28, "size": 16, "rotated": false },
+        { "text": "109.", "x": 96.1, "y": 621.8, "width": 28, "size": 16, "rotated": false },
+        { "text": "110.", "x": 96.1, "y": 652.6, "width": 28, "size": 16, "rotated": false },
+        { "text": "111.", "x": 96.1, "y": 707, "width": 28, "size": 16, "rotated": false },
+        { "text": "112.", "x": 96.1, "y": 739.4, "width": 28, "size": 16, "rotated": false },
+        { "text": "113.", "x": 96.1, "y": 768.8, "width": 28, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        { "text": "Aperitifs", "x": 78.6, "y": 779.7, "width": 293.4, "size": 93, "rotated": true },
+        { "text": "3,80 €", "x": 409.4, "y": 538.1, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Martini Weiss",
+          "x": 131.2,
+          "y": 538.3,
+          "width": 118.4,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "8", "x": 259.7, "y": 531.8, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "4cl", "x": 346.6, "y": 537.8, "width": 15.2, "size": 12, "rotated": false },
+        { "text": "5,00 €", "x": 409.5, "y": 572.4, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Campari Mit Soda",
+          "x": 131.4,
+          "y": 572.7,
+          "width": 147,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "8", "x": 279.8, "y": 566.2, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "4cl", "x": 346.8, "y": 572.2, "width": 15.2, "size": 12, "rotated": false },
+        { "text": "5,50 €", "x": 409.5, "y": 606.8, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Campari Mit",
+          "x": 131.4,
+          "y": 607.1,
+          "width": 100.9,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Orangensaft",
+          "x": 131.4,
+          "y": 629.6,
+          "width": 107.3,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "8", "x": 244.8, "y": 621.1, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "4cl", "x": 346.8, "y": 606.5, "width": 15.2, "size": 12, "rotated": false },
+        { "text": "13,00 €", "x": 405.9, "y": 663.7, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Gin-Tonic",
+          "x": 131.4,
+          "y": 663.9,
+          "width": 81.7,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "6", "x": 219.3, "y": 659.1, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "4cl", "x": 346.8, "y": 663.4, "width": 15.2, "size": 12, "rotated": false },
+        { "text": "13,00 €", "x": 405.9, "y": 698.1, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Gin-Bitter Lemon",
+          "x": 131.4,
+          "y": 698.3,
+          "width": 146.4,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "6", "x": 284.5, "y": 694.1, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "4cl", "x": 346.8, "y": 697.8, "width": 15.2, "size": 12, "rotated": false },
+        { "text": "13,00 €", "x": 405.9, "y": 732.4, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Bacardi Cola",
+          "x": 131.4,
+          "y": 732.7,
+          "width": 110.2,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "6", "x": 245.5, "y": 727.8, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "4cl", "x": 346.8, "y": 732.2, "width": 15.2, "size": 12, "rotated": false },
+        { "text": "13,00 €", "x": 405.9, "y": 766.8, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Wodka - Orange",
+          "x": 131.4,
+          "y": 767,
+          "width": 134.1,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "6", "x": 271.7, "y": 762.2, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "4cl", "x": 346.8, "y": 766.5, "width": 15.2, "size": 12, "rotated": false },
+        { "text": "114.", "x": 96.2, "y": 537.2, "width": 28, "size": 16, "rotated": false },
+        { "text": "115.", "x": 96.2, "y": 571.6, "width": 28, "size": 16, "rotated": false },
+        { "text": "116.", "x": 96.2, "y": 609.1, "width": 28, "size": 16, "rotated": false },
+        { "text": "117.", "x": 96.2, "y": 662.8, "width": 28, "size": 16, "rotated": false },
+        { "text": "118.", "x": 96.2, "y": 700, "width": 28, "size": 16, "rotated": false },
+        { "text": "119.", "x": 96.2, "y": 734.4, "width": 28, "size": 16, "rotated": false },
+        { "text": "120.", "x": 96.2, "y": 765.9, "width": 28, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        { "text": "Biere", "x": 80.2, "y": 779.7, "width": 182.9, "size": 93, "rotated": true },
+        { "text": "4,50€", "x": 411.2, "y": 567.1, "width": 33.1, "size": 15, "rotated": false },
+        { "text": "Pils", "x": 131.2, "y": 572.7, "width": 33.8, "size": 21, "rotated": false },
+        { "text": "F", "x": 169.4, "y": 566.2, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "4,50 €", "x": 409.6, "y": 601.5, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Radler", "x": 131.4, "y": 607.1, "width": 59.5, "size": 21, "rotated": false },
+        { "text": "F", "x": 194.9, "y": 600.6, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "0,33l", "x": 340, "y": 535.6, "width": 29.8, "size": 13, "rotated": false },
+        { "text": "0,5l", "x": 416.8, "y": 535.2, "width": 22.2, "size": 13, "rotated": false },
+        { "text": "4,50 €", "x": 409.5, "y": 641.2, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Cola-WeizenBier",
+          "x": 131.4,
+          "y": 641.4,
+          "width": 142.3,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,4", "x": 278.9, "y": 632.8, "width": 8.8, "size": 8, "rotated": false },
+        { "text": "4,50 €", "x": 409.5, "y": 675.5, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Weizenbier Alkoholfrei",
+          "x": 131.4,
+          "y": 675.8,
+          "width": 202.3,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "F", "x": 337, "y": 669.3, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "4,50 €", "x": 409.4, "y": 709.9, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Weizenbier Kristall/Hefe",
+          "x": 131.2,
+          "y": 710.2,
+          "width": 215.2,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "Hell/Dunkle",
+          "x": 131.2,
+          "y": 732.7,
+          "width": 102.7,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "F", "x": 242.7, "y": 724.2, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "4,50 €", "x": 409.6, "y": 766.8, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Indian Bier - King Fisher",
+          "x": 131.4,
+          "y": 767,
+          "width": 209.9,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1,4", "x": 349.8, "y": 758.4, "width": 8.8, "size": 8, "rotated": false },
+        { "text": "3,80 €", "x": 338.7, "y": 567.1, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "3,80 €", "x": 338.9, "y": 601.5, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "121.", "x": 95.6, "y": 571.6, "width": 28, "size": 16, "rotated": false },
+        { "text": "122.", "x": 95.6, "y": 605.9, "width": 28, "size": 16, "rotated": false },
+        { "text": "123.", "x": 95.6, "y": 637.4, "width": 28, "size": 16, "rotated": false },
+        { "text": "124.", "x": 95.6, "y": 674.8, "width": 28, "size": 16, "rotated": false },
+        { "text": "125.", "x": 95.6, "y": 706.4, "width": 28, "size": 16, "rotated": false },
+        { "text": "126.", "x": 95.6, "y": 765.9, "width": 28, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Spirituosen",
+          "x": 80.2,
+          "y": 779.7,
+          "width": 384.9,
+          "size": 93,
+          "rotated": true
+        },
+        { "text": "4,50 €", "x": 409.4, "y": 528.3, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Bacardi", "x": 131.2, "y": 528.5, "width": 66.5, "size": 21, "rotated": false },
+        { "text": "2cl", "x": 346.6, "y": 528, "width": 14.8, "size": 12, "rotated": false },
+        { "text": "4,50 €", "x": 409.5, "y": 562.7, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Gordon'S Gin",
+          "x": 131.4,
+          "y": 562.9,
+          "width": 112.6,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "2cl", "x": 346.8, "y": 562.4, "width": 14.8, "size": 12, "rotated": false },
+        { "text": "5,50 €", "x": 409.5, "y": 597, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Hennessy Cognac",
+          "x": 131.4,
+          "y": 597.3,
+          "width": 145.2,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "2cl", "x": 346.8, "y": 596.8, "width": 14.8, "size": 12, "rotated": false },
+        { "text": "6,50 €", "x": 409.5, "y": 631.4, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Remy Martin VSOP",
+          "x": 131.4,
+          "y": 631.6,
+          "width": 155.1,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "2cl", "x": 346.8, "y": 631.1, "width": 14.8, "size": 12, "rotated": false },
+        { "text": "3,50 €", "x": 409.4, "y": 665.8, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Williams Birne",
+          "x": 131.2,
+          "y": 666,
+          "width": 127.7,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "2cl", "x": 346.6, "y": 665.5, "width": 14.8, "size": 12, "rotated": false },
+        { "text": "3,50 €", "x": 409.4, "y": 700.1, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Jägermeister",
+          "x": 131.2,
+          "y": 700.4,
+          "width": 113.1,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "2cl", "x": 346.6, "y": 699.9, "width": 14.8, "size": 12, "rotated": false },
+        { "text": "3,50 €", "x": 409.4, "y": 734.5, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Ramazzoti",
+          "x": 131.2,
+          "y": 734.7,
+          "width": 86.3,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "2cl", "x": 346.6, "y": 734.2, "width": 14.8, "size": 12, "rotated": false },
+        { "text": "4,80 €", "x": 409.4, "y": 768.9, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Indian Rum",
+          "x": 131.2,
+          "y": 769.1,
+          "width": 92.7,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "1", "x": 226.6, "y": 761.4, "width": 2.8, "size": 8, "rotated": false },
+        { "text": "2cl", "x": 346.6, "y": 768.6, "width": 14.8, "size": 12, "rotated": false },
+        { "text": "127.", "x": 96.1, "y": 527.4, "width": 28, "size": 16, "rotated": false },
+        { "text": "128.", "x": 96.1, "y": 561.8, "width": 28, "size": 16, "rotated": false },
+        { "text": "129.", "x": 96.2, "y": 596.1, "width": 28, "size": 16, "rotated": false },
+        { "text": "130.", "x": 96.2, "y": 630.5, "width": 28, "size": 16, "rotated": false },
+        { "text": "131.", "x": 96.2, "y": 664.9, "width": 28, "size": 16, "rotated": false },
+        { "text": "132.", "x": 96.1, "y": 699.5, "width": 28, "size": 16, "rotated": false },
+        { "text": "133.", "x": 96.2, "y": 733.6, "width": 28, "size": 16, "rotated": false },
+        { "text": "134.", "x": 96.2, "y": 767.3, "width": 28, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        { "text": "Weißwein", "x": 82.3, "y": 779.7, "width": 340.7, "size": 93, "rotated": true },
+        { "text": "12,00€", "x": 487.7, "y": 538.7, "width": 40.5, "size": 15, "rotated": false },
+        {
+          "text": "Indien Sula Weiß Wein",
+          "x": 131.2,
+          "y": 544.2,
+          "width": 196.5,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "F", "x": 205.9, "y": 576.4, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "0,2l", "x": 423.6, "y": 495.4, "width": 22, "size": 13, "rotated": false },
+        { "text": "0,4l", "x": 493, "y": 495.4, "width": 22.5, "size": 13, "rotated": false },
+        { "text": "9,60 €", "x": 489.6, "y": 626.1, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Wolfenweiler Müller -",
+          "x": 131.4,
+          "y": 631.6,
+          "width": 195.9,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "Thurgau", "x": 131.4, "y": 654.1, "width": 72.3, "size": 21, "rotated": false },
+        { "text": "6,00 €", "x": 421.1, "y": 538.7, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "4,20 €", "x": 489.6, "y": 571.1, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Indien Sula. Weiß Wein",
+          "x": 131.4,
+          "y": 576.7,
+          "width": 201.8,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "Schorle", "x": 131.4, "y": 599.2, "width": 68.8, "size": 21, "rotated": false },
+        { "text": "9,60 €", "x": 489.6, "y": 681, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Winklerberg Silvaner,",
+          "x": 131.4,
+          "y": 686.6,
+          "width": 193.6,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "Trocken", "x": 131.4, "y": 709.1, "width": 70, "size": 21, "rotated": false },
+        { "text": "9,60 €", "x": 489.6, "y": 739.6, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Oberrotweiler Käsleberg",
+          "x": 131.4,
+          "y": 741.5,
+          "width": 219.8,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "Ruländer", "x": 131.4, "y": 764, "width": 80.5, "size": 21, "rotated": false },
+        { "text": "4,80 €", "x": 421.1, "y": 626.1, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "4,80 €", "x": 421.1, "y": 681, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "4,80 €", "x": 421.1, "y": 739.6, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "135.", "x": 96.1, "y": 543.1, "width": 28, "size": 16, "rotated": false },
+        { "text": "136.", "x": 97.1, "y": 574.3, "width": 28, "size": 16, "rotated": false },
+        { "text": "137.", "x": 97.1, "y": 630.3, "width": 28, "size": 16, "rotated": false },
+        { "text": "138.", "x": 97.1, "y": 684.5, "width": 28, "size": 16, "rotated": false },
+        { "text": "139.", "x": 97.1, "y": 740.4, "width": 28, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        { "text": "Rotwein", "x": 83, "y": 779.7, "width": 269.2, "size": 93, "rotated": true },
+        { "text": "12,00€", "x": 487.7, "y": 543.6, "width": 40.5, "size": 15, "rotated": false },
+        {
+          "text": "Indien Sula Rot Wein",
+          "x": 130.3,
+          "y": 549.1,
+          "width": 177.9,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "F", "x": 206.2, "y": 599.2, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "0,2l", "x": 423.6, "y": 508.6, "width": 22, "size": 13, "rotated": false },
+        { "text": "0,4l", "x": 493, "y": 508.6, "width": 22.5, "size": 13, "rotated": false },
+        { "text": "9,60 €", "x": 488.5, "y": 630, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Französischer Rotwein Cote",
+          "x": 130.3,
+          "y": 635.6,
+          "width": 241.4,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "Du Rhone", "x": 130.3, "y": 658.1, "width": 79.9, "size": 21, "rotated": false },
+        { "text": "6,00 €", "x": 421.1, "y": 543.6, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "4,20 €", "x": 489.6, "y": 575.5, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Indien Sula. Rot Wein",
+          "x": 130.3,
+          "y": 581.1,
+          "width": 183.1,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "Schorle", "x": 130.3, "y": 603.6, "width": 68.8, "size": 21, "rotated": false },
+        { "text": "11,60 €", "x": 484.9, "y": 684.5, "width": 44.1, "size": 15, "rotated": false },
+        {
+          "text": "Ihringer Spatburgunder,",
+          "x": 130.3,
+          "y": 690,
+          "width": 214.6,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "Trocken", "x": 130.3, "y": 712.5, "width": 70, "size": 21, "rotated": false },
+        { "text": "9,60 €", "x": 488.5, "y": 739, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Heilbornner Trollinger",
+          "x": 130.3,
+          "y": 744.5,
+          "width": 207,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "Rotwein", "x": 130.3, "y": 767, "width": 68.8, "size": 21, "rotated": false },
+        { "text": "8", "x": 206.2, "y": 758.6, "width": 4.6, "size": 8, "rotated": false },
+        { "text": "4,80 €", "x": 421.1, "y": 630, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "4,80 €", "x": 421.1, "y": 684.5, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "4,80 €", "x": 421.1, "y": 739, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "140.", "x": 95.2, "y": 548, "width": 28, "size": 16, "rotated": false },
+        { "text": "141.", "x": 95.2, "y": 581.8, "width": 28, "size": 16, "rotated": false },
+        { "text": "142.", "x": 95.2, "y": 633.9, "width": 28, "size": 16, "rotated": false },
+        { "text": "143.", "x": 95.2, "y": 689.2, "width": 28, "size": 16, "rotated": false },
+        { "text": "144.", "x": 95.2, "y": 742.9, "width": 28, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Tee & Cafe",
+          "x": 80.2,
+          "y": 779.7,
+          "width": 333.9,
+          "size": 93,
+          "rotated": true
+        },
+        { "text": "4,20 €", "x": 485.9, "y": 619.5, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Indian Masala Tea",
+          "x": 127.6,
+          "y": 625.1,
+          "width": 151.6,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "C", "x": 282.9, "y": 618.6, "width": 5.5, "size": 8, "rotated": false },
+        { "text": "4,20 €", "x": 485.9, "y": 652.2, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Indian Filter Coffee",
+          "x": 127.6,
+          "y": 657.8,
+          "width": 170.3,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "C", "x": 304.8, "y": 651.3, "width": 5.5, "size": 8, "rotated": false },
+        { "text": "2,50 €", "x": 485.9, "y": 685.1, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Espresso", "x": 127.6, "y": 690.7, "width": 78.1, "size": 21, "rotated": false },
+        { "text": "3,80 €", "x": 485.9, "y": 718, "width": 36.7, "size": 15, "rotated": false },
+        {
+          "text": "Cappucino",
+          "x": 127.6,
+          "y": 723.5,
+          "width": 85.1,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "C", "x": 217.4, "y": 717, "width": 5.5, "size": 8, "rotated": false },
+        { "text": "3,50 €", "x": 485.9, "y": 750.8, "width": 36.7, "size": 15, "rotated": false },
+        { "text": "Kaffee", "x": 127.6, "y": 756.4, "width": 54.8, "size": 21, "rotated": false },
+        { "text": "145.", "x": 92.5, "y": 624, "width": 28, "size": 16, "rotated": false },
+        { "text": "146.", "x": 92.5, "y": 656.8, "width": 28, "size": 16, "rotated": false },
+        { "text": "147.", "x": 92.5, "y": 689.1, "width": 28, "size": 16, "rotated": false },
+        { "text": "148.", "x": 92.5, "y": 722.6, "width": 28, "size": 16, "rotated": false },
+        { "text": "149.", "x": 92.5, "y": 754.6, "width": 28, "size": 16, "rotated": false }
+      ]
+    },
+    {
+      "width": 596,
+      "height": 842,
+      "items": [
+        {
+          "text": "Zusatzstoffe &",
+          "x": 66.7,
+          "y": 779.7,
+          "width": 337.7,
+          "size": 65,
+          "rotated": true
+        },
+        {
+          "text": "Allergene",
+          "x": 115.4,
+          "y": 779.7,
+          "width": 233.9,
+          "size": 65,
+          "rotated": true
+        },
+        {
+          "text": "¹ Mit Farbstoff",
+          "x": 145.5,
+          "y": 446.1,
+          "width": 128.8,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "C", "x": 217.4, "y": 717, "width": 5.5, "size": 8, "rotated": false },
+        {
+          "text": "² Mit Konservierungsstoff",
+          "x": 145.5,
+          "y": 470.7,
+          "width": 225.6,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "³ Mit Antioxidationsmittel",
+          "x": 145.5,
+          "y": 495.3,
+          "width": 222.1,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "⁴", "x": 145.5, "y": 519.9, "width": 8, "size": 21, "rotated": false },
+        {
+          "text": "Mit Phosphat",
+          "x": 158.7,
+          "y": 519.9,
+          "width": 111.4,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "⁵", "x": 145.5, "y": 544.5, "width": 8, "size": 21, "rotated": false },
+        {
+          "text": "Mit Süßungsmittel",
+          "x": 158.7,
+          "y": 544.5,
+          "width": 166.2,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "⁶", "x": 145.5, "y": 569.1, "width": 8, "size": 21, "rotated": false },
+        {
+          "text": "Chininhaltig",
+          "x": 158.7,
+          "y": 569.1,
+          "width": 106.2,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "⁷", "x": 145.5, "y": 593.8, "width": 8, "size": 21, "rotated": false },
+        {
+          "text": "Koffeinhaltig",
+          "x": 158.7,
+          "y": 593.8,
+          "width": 115.5,
+          "size": 21,
+          "rotated": false
+        },
+        { "text": "⁸", "x": 145.5, "y": 618.4, "width": 8, "size": 21, "rotated": false },
+        {
+          "text": "Enthält Sulfite",
+          "x": 158.7,
+          "y": 618.4,
+          "width": 131.2,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "A Mit Süßungsmitteln",
+          "x": 145.5,
+          "y": 640.7,
+          "width": 192.5,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "B Mit Antioxidationsmitteln",
+          "x": 145.5,
+          "y": 667,
+          "width": 238,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "C Milch (Lactose)",
+          "x": 145.5,
+          "y": 693.3,
+          "width": 150.4,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "D Glutenhaltiges Getreide",
+          "x": 145.5,
+          "y": 719.6,
+          "width": 226.3,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "E Kann Spuren von Zitrusfrüchten enthalten",
+          "x": 145.5,
+          "y": 745.8,
+          "width": 384.3,
+          "size": 21,
+          "rotated": false
+        },
+        {
+          "text": "F Enthält Gluten",
+          "x": 145.5,
+          "y": 771.9,
+          "width": 143.5,
+          "size": 21,
+          "rotated": false
+        }
+      ]
+    }
+  ]
+}

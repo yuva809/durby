@@ -5,14 +5,25 @@ import type { LabelKey } from '@durby/i18n';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { AlertTriangle, GripVertical, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  GripVertical,
+  MoreHorizontal,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useId, useState } from 'react';
 import { useT } from '../../../app/labels-provider';
-import type {
-  BoardAction,
-  BoardCategory,
-  BoardProduct,
+import {
+  type BoardAction,
+  type BoardCategory,
+  type BoardProduct,
+  needsCheck,
 } from '../../../lib/catalog/menu-scan/board';
+import type { Suggestion } from '../../../lib/catalog/menu-scan/suggest';
 import { cn } from '../../../lib/utils';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
@@ -26,9 +37,6 @@ import {
 } from '../../ui/dropdown-menu';
 import { Input } from '../../ui/input';
 import { useMoney } from '../../pos/money';
-
-/** OCR confidence below this is shown as "to check". */
-export const LOW_CONFIDENCE = 70;
 
 export const productDndId = (id: string) => `prod:${id}`;
 export const categoryDndId = (id: string) => `cat:${id}`;
@@ -48,6 +56,71 @@ const PROBLEM_LABEL: Record<ImportRowProblem['problem'], LabelKey> = {
   duplicate: 'catalog.import.problems.duplicate',
 };
 
+/** One suggestion: what it would change, Apply and Dismiss. */
+export function SuggestionChip({
+  suggestion,
+  onApply,
+  onDismiss,
+}: {
+  suggestion: Suggestion;
+  onApply: () => void;
+  onDismiss: () => void;
+}) {
+  const t = useT();
+  const money = useMoney();
+  const text = (() => {
+    switch (suggestion.kind) {
+      case 'name':
+        return suggestion.fromCatalog
+          ? t('catalog.scan.suggest.existing', { name: suggestion.name })
+          : t('catalog.scan.suggest.name', { name: suggestion.name });
+      case 'price':
+        return t('catalog.scan.suggest.price', { price: money(suggestion.price) });
+      case 'move':
+        return t('catalog.scan.suggest.move', { category: suggestion.categoryName });
+      case 'rename':
+        return t('catalog.scan.suggest.rename', { name: suggestion.name });
+    }
+  })();
+  return (
+    <div
+      className="flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 py-0.5 pr-0.5 pl-2 text-xs"
+      data-testid="scan-suggestion"
+      data-kind={suggestion.kind}
+    >
+      <Sparkles aria-hidden className="size-3.5 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1 break-words">{text}</span>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-8 shrink-0"
+        aria-label={t('catalog.scan.apply')}
+        title={t('catalog.scan.apply')}
+        onClick={(e) => {
+          e.stopPropagation();
+          onApply();
+        }}
+        data-testid="scan-suggestion-apply"
+      >
+        <Check aria-hidden className="size-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-8 shrink-0"
+        aria-label={t('catalog.scan.suggest.dismiss')}
+        title={t('catalog.scan.suggest.dismiss')}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDismiss();
+        }}
+      >
+        <X aria-hidden className="size-4" />
+      </Button>
+    </div>
+  );
+}
+
 /** How the product relates to the current catalog (the import's matching rule). */
 export type Existing = { kind: 'new' } | { kind: 'update'; price: string } | { kind: 'same' };
 
@@ -61,6 +134,9 @@ export function ProductCard({
   dispatch,
   onToggle,
   onFocus,
+  suggestions = [],
+  onApply,
+  onDismiss,
   overlay = false,
 }: {
   product: BoardProduct;
@@ -72,6 +148,9 @@ export function ProductCard({
   dispatch: (action: BoardAction) => void;
   onToggle: () => void;
   onFocus: () => void;
+  suggestions?: Suggestion[];
+  onApply?: (suggestion: Suggestion) => void;
+  onDismiss?: (suggestion: Suggestion) => void;
   overlay?: boolean;
 }) {
   const t = useT();
@@ -81,7 +160,7 @@ export function ProductCard({
     id: productDndId(product.id),
     disabled: overlay,
   });
-  const low = product.confidence < LOW_CONFIDENCE;
+  const low = needsCheck(product);
   const update = (patch: Partial<Omit<BoardProduct, 'id'>>) =>
     dispatch({ type: 'updateProduct', productId: product.id, patch });
   const invalid = (field: ImportRowProblem['field']) => problems.some((p) => p.field === field);
@@ -172,12 +251,31 @@ export function ProductCard({
             )}
             {existing.kind === 'same' && <Badge>{t('catalog.scan.badgeSame')}</Badge>}
             {low && (
-              <span className="flex items-center gap-1" id={`${id}-low`}>
-                <AlertTriangle aria-hidden className="size-3.5" />
-                {t('catalog.scan.lowConfidence', { confidence: String(product.confidence) })}
+              <span
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--table-amber)] px-1.5 py-0.5 font-medium"
+                id={`${id}-low`}
+                title={t('catalog.scan.lowConfidence', { confidence: String(product.confidence) })}
+              >
+                <AlertTriangle aria-hidden className="size-3" />
+                {t('catalog.scan.confidence', { confidence: String(product.confidence) })}
+                <span className="sr-only">
+                  {t('catalog.scan.lowConfidence', { confidence: String(product.confidence) })}
+                </span>
               </span>
             )}
           </div>
+          {!overlay && suggestions.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {suggestions.map((suggestion) => (
+                <SuggestionChip
+                  key={suggestion.key}
+                  suggestion={suggestion}
+                  onApply={() => onApply?.(suggestion)}
+                  onDismiss={() => onDismiss?.(suggestion)}
+                />
+              ))}
+            </div>
+          )}
           {problems.length > 0 && (
             <ul className="text-xs text-destructive" role="alert">
               {problems.map((p) => (
@@ -213,6 +311,9 @@ export function CategoryColumn({
   onVat,
   onAddProduct,
   onAction,
+  suggestions = [],
+  onApply,
+  onDismiss,
   children,
 }: {
   category: BoardCategory;
@@ -221,6 +322,9 @@ export function CategoryColumn({
   onVat: (taxRate: string) => void;
   onAddProduct: () => void;
   onAction: (action: 'merge' | 'swap' | 'delete') => void;
+  suggestions?: Suggestion[];
+  onApply?: (suggestion: Suggestion) => void;
+  onDismiss?: (suggestion: Suggestion) => void;
   children: React.ReactNode;
 }) {
   const t = useT();
@@ -334,6 +438,24 @@ export function CategoryColumn({
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
+      {(category.suspect || suggestions.length > 0) && (
+        <div className="flex flex-col gap-1 border-b px-2 py-1.5">
+          {category.suspect && (
+            <p className="flex items-center gap-1 text-xs" data-testid="scan-check-heading">
+              <AlertTriangle aria-hidden className="size-3.5 shrink-0" />
+              {t('catalog.scan.checkHeading')}
+            </p>
+          )}
+          {suggestions.map((suggestion) => (
+            <SuggestionChip
+              key={suggestion.key}
+              suggestion={suggestion}
+              onApply={() => onApply?.(suggestion)}
+              onDismiss={() => onDismiss?.(suggestion)}
+            />
+          ))}
+        </div>
+      )}
       <div
         ref={setDropRef}
         className={cn('flex min-h-24 flex-1 flex-col p-2', isOver && 'bg-ring/10')}

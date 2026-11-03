@@ -16,6 +16,8 @@ export interface BoardProduct {
   taxRate: string | null;
   /** OCR confidence 0–100; 100 for products added by hand. */
   confidence: number;
+  /** Edited or a suggestion applied: someone looked at it, whatever the OCR confidence. */
+  checked?: boolean;
   source: { page: number; box: Box } | null;
 }
 
@@ -27,6 +29,8 @@ export interface BoardCategory {
   vatFromDefault: boolean;
   drinks: boolean;
   productIds: string[];
+  /** The heading as read is doubtful (cut off, very short, low confidence) until renamed. */
+  suspect?: boolean;
 }
 
 export interface Board {
@@ -48,7 +52,15 @@ export type BoardAction =
   | { type: 'setDefaults'; food: string; drinks: string }
   | { type: 'updateProduct'; productId: string; patch: Partial<Omit<BoardProduct, 'id'>> }
   | { type: 'addProduct'; categoryId: string; product: BoardProduct }
-  | { type: 'deleteProducts'; productIds: string[] };
+  | { type: 'deleteProducts'; productIds: string[] }
+  /** Several actions as one undo step ("Apply all suggestions"). */
+  | { type: 'batch'; actions: BoardAction[] };
+
+/** OCR confidence below this, on a product nobody has checked yet, is shown as "to check". */
+export const LOW_CONFIDENCE = 70;
+
+export const needsCheck = (product: BoardProduct): boolean =>
+  !product.checked && product.confidence < LOW_CONFIDENCE;
 
 /** Category names that are drinks get the drinks rate (English and German menus). */
 const DRINK_WORDS =
@@ -79,6 +91,7 @@ export function boardFromParsed(
       taxRate: drinks ? options.defaults.drinks : options.defaults.food,
       vatFromDefault: true,
       productIds,
+      suspect: c.suspect,
     };
   });
   return { categories: mergeSameNames(categories), products, defaults: options.defaults };
@@ -91,8 +104,10 @@ function mergeSameNames(categories: BoardCategory[]): BoardCategory[] {
   for (const c of categories) {
     const key = c.name.trim().toLowerCase();
     const existing = byName.get(key);
-    if (existing) existing.productIds.push(...c.productIds);
-    else {
+    if (existing) {
+      existing.productIds.push(...c.productIds);
+      existing.suspect = existing.suspect && c.suspect;
+    } else {
       byName.set(key, c);
       out.push(c);
     }
@@ -155,7 +170,7 @@ export function boardReducer(board: Board, action: BoardAction): Board {
             ? board.defaults.drinks
             : board.defaults.food
           : c.taxRate;
-        return { ...c, name: action.name, drinks, taxRate };
+        return { ...c, name: action.name, drinks, taxRate, suspect: false };
       });
     case 'mergeCategory': {
       const from = board.categories.find((c) => c.id === action.from);
@@ -229,9 +244,14 @@ export function boardReducer(board: Board, action: BoardAction): Board {
       if (!current) return board;
       return {
         ...board,
-        products: { ...board.products, [action.productId]: { ...current, ...action.patch } },
+        products: {
+          ...board.products,
+          [action.productId]: { ...current, ...action.patch, checked: true },
+        },
       };
     }
+    case 'batch':
+      return action.actions.reduce(boardReducer, board);
     case 'addProduct':
       return {
         ...board,

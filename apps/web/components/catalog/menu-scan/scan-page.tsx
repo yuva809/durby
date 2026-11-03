@@ -16,6 +16,7 @@ import {
   toImportRows,
 } from '../../../lib/catalog/menu-scan/board';
 import {
+  MAX_PDF_PAGES,
   MAX_SCAN_PAGES,
   type OcrProgress,
   preparePages,
@@ -23,6 +24,7 @@ import {
   ScanError,
 } from '../../../lib/catalog/menu-scan/ocr';
 import { parseMenu } from '../../../lib/catalog/menu-scan/parse';
+import { parseTextPages } from '../../../lib/catalog/menu-scan/pdf-text';
 import { useActionKey } from '../../../lib/use-action-key';
 import { useResource } from '../../../lib/use-resource';
 import { cn } from '../../../lib/utils';
@@ -52,7 +54,7 @@ export function ScanPage() {
 
 type Step =
   | { kind: 'upload'; error: string | null }
-  | { kind: 'reading'; progress: OcrProgress | null }
+  | { kind: 'reading'; progress: OcrProgress | null; preparing: OcrProgress | null }
   | { kind: 'review' }
   | { kind: 'done'; result: ImportProductsResponse };
 
@@ -80,6 +82,7 @@ function Scan({ organizationId }: { organizationId: string | null }) {
   );
   const [restored, setRestored] = useState(draft !== null);
   const [smallWarning, setSmallWarning] = useState<string | null>(null);
+  const [exactPdf, setExactPdf] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
@@ -107,9 +110,11 @@ function Scan({ organizationId }: { organizationId: string | null }) {
   async function read() {
     const controller = new AbortController();
     abort.current = controller;
-    setStep({ kind: 'reading', progress: null });
+    setStep({ kind: 'reading', progress: null, preparing: null });
     try {
-      const scanPages = await preparePages(files);
+      const scanPages = await preparePages(files, (preparing) =>
+        setStep({ kind: 'reading', progress: null, preparing }),
+      );
       if (controller.signal.aborted) return;
       setPages(
         scanPages.map((p) => ({
@@ -121,11 +126,16 @@ function Scan({ organizationId }: { organizationId: string | null }) {
       );
       const lines = await recognizePages(
         scanPages,
-        (progress) => setStep({ kind: 'reading', progress }),
+        (progress) => setStep({ kind: 'reading', progress, preparing: null }),
         controller.signal,
       );
       if (controller.signal.aborted) return;
-      const parsed = parseMenu(lines);
+      // PDF pages with their own text are read exactly; the rest was recognized above.
+      const fromText = parseTextPages(
+        scanPages.flatMap((p) => (p.text ? [{ number: p.number, items: p.text }] : [])),
+      );
+      const parsed = [...fromText, ...parseMenu(lines)];
+      setExactPdf(fromText.length > 0);
       if (parsed.length === 0) {
         const small = scanPages.find((p) => p.small);
         setStep({
@@ -170,7 +180,10 @@ function Scan({ organizationId }: { organizationId: string | null }) {
       case 'unsupported':
         return t('catalog.scan.errors.unsupported');
       case 'tooManyPages':
-        return t('catalog.scan.errors.tooManyPages', { max: String(MAX_SCAN_PAGES) });
+        return t('catalog.scan.errors.tooManyPages', {
+          max: String(MAX_SCAN_PAGES),
+          pdf: String(MAX_PDF_PAGES),
+        });
       case 'unreadable':
         return t('catalog.scan.errors.unreadable');
     }
@@ -188,6 +201,7 @@ function Scan({ organizationId }: { organizationId: string | null }) {
     setPages([]);
     setRestored(false);
     setSmallWarning(null);
+    setExactPdf(false);
     setImportError(null);
     setStep({ kind: 'upload', error: null });
   }
@@ -233,10 +247,21 @@ function Scan({ organizationId }: { organizationId: string | null }) {
         />
       )}
 
-      {step.kind === 'reading' && <ReadingStep progress={step.progress} onCancel={cancelReading} />}
+      {step.kind === 'reading' && (
+        <ReadingStep progress={step.progress} preparing={step.preparing} onCancel={cancelReading} />
+      )}
 
       {step.kind === 'review' && (
         <>
+          {exactPdf && (
+            <p
+              role="status"
+              className="rounded-md bg-accent px-3 py-2 text-sm"
+              data-testid="scan-exact"
+            >
+              {t('catalog.scan.exactPdf')}
+            </p>
+          )}
           {smallWarning && (
             <p
               role="alert"
@@ -374,7 +399,7 @@ function UploadStep({
     </>
   );
   const pickButtons = (
-    <div className="flex flex-wrap justify-center gap-2">
+    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center">
       <Button variant="outline" onClick={() => picker.current?.click()}>
         <FileUp aria-hidden />
         {t(hasFiles ? 'catalog.scan.addMore' : 'catalog.scan.choose')}
@@ -416,18 +441,26 @@ function UploadStep({
           )}
           data-testid="scan-drop"
         >
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex min-w-0 flex-1 flex-col">
+          {/* Phones: text, then "Read menu" full width, then the pick buttons; wider: one row. */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="flex min-w-0 flex-col md:flex-1">
               <p className="font-medium" role="status">
                 {t('catalog.scan.ready', { count: String(files.length) })}
               </p>
-              <p className="text-xs text-muted-foreground">{t('catalog.scan.firstUse')}</p>
+              {files.some((f) => !/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') && (
+                <p className="text-xs text-muted-foreground">{t('catalog.scan.firstUse')}</p>
+              )}
             </div>
-            {pickButtons}
-            <Button ref={startButton} onClick={onStart} data-testid="scan-start">
+            <Button
+              ref={startButton}
+              onClick={onStart}
+              className="w-full md:order-last md:w-auto"
+              data-testid="scan-start"
+            >
               <ScanText aria-hidden />
               {t('catalog.scan.start')}
             </Button>
+            {pickButtons}
           </div>
           <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
             {files.map((file, index) => (
@@ -473,7 +506,7 @@ function UploadStep({
           </div>
           <p className="text-lg font-medium">{t('catalog.scan.drop')}</p>
           <p className="text-sm text-muted-foreground">
-            {t('catalog.scan.formats', { max: String(MAX_SCAN_PAGES) })}
+            {t('catalog.scan.formats', { max: String(MAX_SCAN_PAGES), pdf: String(MAX_PDF_PAGES) })}
           </p>
           {pickButtons}
         </div>
@@ -484,15 +517,16 @@ function UploadStep({
 
 function ReadingStep({
   progress,
+  preparing,
   onCancel,
 }: {
   progress: OcrProgress | null;
+  preparing: OcrProgress | null;
   onCancel: () => void;
 }) {
   const t = useT();
-  const percent = progress
-    ? Math.round(((progress.page - 1 + progress.progress) / progress.pages) * 100)
-    : 0;
+  const shown = progress ?? preparing;
+  const percent = shown ? Math.round(((shown.page - 1 + shown.progress) / shown.pages) * 100) : 0;
   return (
     <div
       className="flex flex-col items-center gap-4 rounded-xl border bg-card px-6 py-12 text-center"
@@ -505,7 +539,12 @@ function ReadingStep({
               page: String(progress.page),
               pages: String(progress.pages),
             })
-          : t('catalog.scan.preparing')}
+          : preparing
+            ? t('catalog.scan.preparingPage', {
+                page: String(preparing.page),
+                pages: String(preparing.pages),
+              })
+            : t('catalog.scan.preparing')}
       </p>
       <div
         role="progressbar"
