@@ -8,6 +8,8 @@ export interface AuthContextValue {
   organizationId: string | null;
   /** Refresh token family of the session. */
   sessionId: string;
+  /** Only the password change, /auth/me and logout are open (ADR 0023 §3). */
+  passwordChangeRequired: boolean;
 }
 
 const CLS_KEY = 'durby:auth';

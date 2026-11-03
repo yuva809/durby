@@ -53,6 +53,7 @@ describe('session store', () => {
       activeRole: null,
       activePermissions: [],
       activeFeatures: [],
+      passwordChangeRequired: false,
       accessToken: 'access-1',
       expiresAt: 1_000_000 + 600_000,
     });

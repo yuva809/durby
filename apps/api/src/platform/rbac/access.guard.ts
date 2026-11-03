@@ -1,10 +1,11 @@
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthContext, Authenticator } from '../auth';
+import { AuthContext, Authenticator, authErrors } from '../auth';
 import { EntitlementService, featuresOf } from '../config/entitlements';
 import { TENANT_PRISMA, TenantContextMissingError, type TenantPrismaClient } from '../tenancy';
 import { AccessService } from './access.service';
 import { rbacErrors } from './rbac-errors';
+import { allowsDuringPasswordChange } from '../markers';
 import { markerOf } from './route-markers';
 import { STAFF_AUTHENTICATOR, type StaffAuthenticatorPort } from './staff-port';
 
@@ -12,7 +13,8 @@ import { STAFF_AUTHENTICATOR, type StaffAuthenticatorPort } from './staff-port';
  * The only global guard (ADR 0007). Applies the route's single access marker:
  * @Public() → anyone; @PlatformOnly(key) → the staff session cookie and the staff role's key
  * (StaffAuthenticator, ADR 0017; a customer token never counts); otherwise the access token is
- * verified (Authenticator), then @Authenticated() → done;
+ * verified (Authenticator) — a session that must change its temporary password first passes only
+ * @AllowDuringPasswordChange routes (ADR 0023 §3) — then @Authenticated() → done;
  * @RequirePermission(key) → active organization, then every @RequireFeature key enabled for it
  * (ADR 0009), then the permission key, both loaded from the database in one transaction (ADR 0021).
  * A route without exactly one marker is denied (and fails the startup check).
@@ -39,6 +41,13 @@ export class AccessGuard implements CanActivate {
     }
 
     await this.authenticator.authenticate(context);
+    // A temporary password (ADR 0023 §3): only the change itself, /auth/me and logout until then.
+    if (
+      this.authContext.require().passwordChangeRequired &&
+      !allowsDuringPasswordChange(this.reflector, context.getHandler())
+    ) {
+      throw authErrors.passwordChangeRequired();
+    }
     switch (marker.kind) {
       case 'authenticated':
         return true;

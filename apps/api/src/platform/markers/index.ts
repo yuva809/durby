@@ -2,6 +2,11 @@
 // folder: it imports nothing from platform, so every controller can use it without an import cycle
 // (docs/reviews/phase-1.md → R2). The guards and boot checks in auth, rbac, entitlements and
 // idempotency read these keys.
+export {
+  ALLOW_DURING_PASSWORD_CHANGE_KEY,
+  AllowDuringPasswordChange,
+  allowsDuringPasswordChange,
+} from './allow-during-password-change.decorator';
 export { Authenticated, IS_AUTHENTICATED_KEY } from './authenticated.decorator';
 export {
   IDEMPOTENCY_EXEMPT_KEY,

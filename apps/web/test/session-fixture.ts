@@ -9,6 +9,7 @@ export function sessionFixture(overrides: Partial<Session> = {}): Session {
     activeRole: null,
     activePermissions: [],
     activeFeatures: [],
+    passwordChangeRequired: false,
     accessToken: 'token',
     expiresAt: Date.now() + 600_000,
     ...overrides,

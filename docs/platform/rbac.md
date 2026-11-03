@@ -275,7 +275,8 @@ deferred trigger counts active Owner memberships only).
 
 Errors: `auth.password_change_required` (403), `auth.invalid_credentials` (current password wrong, 401), the usual
 validation error for a password outside the policy, plus the RBAC codes above. Every write is idempotent and audited
-(`platform.staff.*`, `platform.invitations.link_renewed`, `platform.auth.password_changed`).
+(`platform.staff.*`, `platform.invitations.link_renewed`); a password change is a user-level event and goes to the security log
+(`auth.password.changed`), like a password reset (ADR 0006).
 
 ## Rollout (expand/contract, ADR 0004)
 

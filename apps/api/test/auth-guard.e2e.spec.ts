@@ -143,7 +143,12 @@ describe('Authenticator (via AccessGuard)', () => {
       .auth(token, { type: 'bearer' })
       .expect(200);
     expect(res.body).toEqual({
-      auth: { userId: expect.any(String) as unknown, organizationId: orgA, sessionId },
+      auth: {
+        userId: expect.any(String) as unknown,
+        organizationId: orgA,
+        sessionId,
+        passwordChangeRequired: false,
+      },
       tenant: orgA,
       dbTenant: orgA,
     });

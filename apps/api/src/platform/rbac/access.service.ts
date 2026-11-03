@@ -85,6 +85,8 @@ export class AccessService {
       select: {
         id: true,
         allLocations: true,
+        deactivatedAt: true,
+        permissions: { select: { permissionKey: true, effect: true } },
         role: {
           select: {
             id: true,

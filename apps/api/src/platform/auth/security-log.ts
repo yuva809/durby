@@ -9,6 +9,7 @@ export type SecurityEvent =
   | 'auth.logout'
   | 'auth.password.reset_requested'
   | 'auth.password.reset'
+  | 'auth.password.changed'
   | 'auth.email.verification_requested'
   | 'auth.email.verified'
   // Durby staff (ADR 0017): the platform audit log has the successful actions too.

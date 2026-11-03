@@ -42,6 +42,8 @@ describe('route markers', () => {
       'GET /api/v1/auth/me',
       // ADR 0009 §6: reads only the token's active organization's features, for a member.
       'GET /api/v1/me/entitlements',
+      // ADR 0023 §3: the caller's own password (and the forced change of a temporary one).
+      'POST /api/v1/auth/password/change',
       'POST /api/v1/auth/switch-organization',
       // ADR 0007: writes only the caller's own membership, in the tenant the invitation proves.
       'POST /api/v1/invitations/accept-signed-in',
@@ -121,6 +123,7 @@ describe('route markers', () => {
       'PATCH /api/v1/platform/staff/:id',
       'POST /api/v1/auth/login',
       'POST /api/v1/auth/logout',
+      'POST /api/v1/auth/password/change',
       'POST /api/v1/auth/password/forgot',
       'POST /api/v1/auth/password/reset',
       'POST /api/v1/auth/refresh',

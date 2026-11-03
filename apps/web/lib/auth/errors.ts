@@ -46,6 +46,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'auth.refresh_invalid': 'auth.errors.refreshInvalid',
   'auth.refresh_reused': 'auth.errors.refreshReused',
   'auth.not_a_member': 'auth.errors.notAMember',
+  'auth.password_change_required': 'auth.errors.passwordChangeRequired',
   'auth.origin_rejected': 'auth.errors.originRejected',
   'auth.token_invalid': 'auth.errors.tokenInvalid',
   'auth.unavailable': 'auth.errors.unavailable',

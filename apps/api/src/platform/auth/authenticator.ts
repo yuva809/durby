@@ -47,6 +47,7 @@ export class Authenticator {
       userId: claims.userId,
       organizationId: claims.organizationId,
       sessionId: claims.sessionId,
+      passwordChangeRequired: claims.passwordChangeRequired === true,
     });
     if (claims.organizationId !== null) {
       this.tenantContext.set({ tenantId: claims.organizationId, userId: claims.userId });

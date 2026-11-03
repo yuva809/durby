@@ -111,3 +111,63 @@ describe('holds', () => {
     expect(holds(admin, registry, 'platform.org.manage')).toBe(false);
   });
 });
+
+describe('per-member overrides and deactivation (ADR 0023)', () => {
+  const override = (permissionKey: string, effect: 'grant' | 'deny') => ({ permissionKey, effect });
+
+  it('adds grants to the role and takes denies away', () => {
+    const access = resolveAccess(
+      registry,
+      row({
+        role: custom(['pos.orders.read', 'pos.orders.take']),
+        permissions: [override('pos.bills.print', 'grant'), override('pos.orders.take', 'deny')],
+      }),
+    );
+    expect([...access.permissions].sort()).toEqual(['pos.bills.print', 'pos.orders.read']);
+    expect([...access.roleKeys].sort()).toEqual(['pos.orders.read', 'pos.orders.take']);
+  });
+
+  it('ignores unregistered override keys (fail closed)', () => {
+    const access = resolveAccess(
+      registry,
+      row({ role: custom([]), permissions: [override('gone.key.removed', 'grant')] }),
+    );
+    expect(access.permissions.size).toBe(0);
+  });
+
+  it('never takes anything from an Owner', () => {
+    const access = resolveAccess(
+      registry,
+      row({
+        role: { id: 'r1', systemKey: 'owner', permissions: [] },
+        permissions: [override('platform.users.manage', 'deny')],
+      }),
+    );
+    expect(access.permissions.has('platform.users.manage')).toBe(true);
+  });
+
+  it('applies the location rule after the overrides', () => {
+    const access = resolveAccess(
+      registry,
+      row({
+        allLocations: false,
+        locations: [{ locationId: 'l1' }],
+        role: custom([]),
+        permissions: [
+          override('platform.users.read', 'grant'),
+          override('test.stock.adjust', 'grant'),
+        ],
+      }),
+    );
+    expect([...access.permissions]).toEqual(['test.stock.adjust']);
+  });
+
+  it('gives a deactivated member no access', () => {
+    const access = resolveAccess(
+      registry,
+      row({ role: custom(['pos.orders.read']), deactivatedAt: new Date() }),
+    );
+    expect(access.membershipId).toBeNull();
+    expect(access.permissions.size).toBe(0);
+  });
+});

@@ -66,7 +66,8 @@ effect)` with effect `grant` or `deny`. Effective keys = role keys âˆª grants âˆ
 8. **No new permission keys.** Listing uses `platform.users.read`, creating and links `platform.users.invite`,
    changes and (de)activation `platform.users.manage`. Every write is idempotent (ADR 0014) and audited (ADR 0008:
    `platform.staff.created`, `platform.staff.updated`, `platform.staff.deactivated`, `platform.staff.reactivated`,
-   `platform.invitations.link_renewed`, `platform.auth.password_changed`), with role, locations, overrides and status
+   `platform.invitations.link_renewed`); a password change is a user-level event and goes to the security log
+   (`auth.password.changed`), like a password reset (ADR 0006), with role, locations, overrides and status
    in before/after, never passwords, tokens or emails.
 
 ## Consequences

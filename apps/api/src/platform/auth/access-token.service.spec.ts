@@ -41,6 +41,7 @@ describe('AccessTokenService', () => {
     const claims = await service.verify(token, now);
     expect(claims).toEqual({
       ...subject,
+      passwordChangeRequired: false,
       issuedAt: now.getTime() / 1000,
       expiresAt: now.getTime() / 1000 + 600,
     });
