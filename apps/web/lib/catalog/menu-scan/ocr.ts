@@ -1,6 +1,7 @@
 import { findStrips, prepareForOcr } from './image';
 import { joinRows, type OcrLine, orderColumns, segmentLine } from './parse';
 import { hasText, type TextItem } from './pdf-text';
+import { readingScore } from './reading-score';
 
 /**
  * Menu photos and PDFs → text, entirely in the browser (docs/modules/catalog.md → Menu scan). A
@@ -15,8 +16,11 @@ export const MAX_SCAN_PAGES = 10;
 export const MAX_PDF_PAGES = 60;
 /** Long edge after scaling: enough for menu text, quick to read. */
 const MAX_EDGE = 2400;
-/** Smaller images are enlarged to this long edge: OCR needs text at least ~20 px high. */
-const MIN_EDGE = 1800;
+/**
+ * Smaller images are enlarged to this long edge: OCR needs text at least ~20 px high. Phone
+ * screenshots of a menu have print only ~12 px high and need the larger edge.
+ */
+const MIN_EDGE = 2400;
 /** Below this long edge the original is likely too small to read (a thumbnail or chat preview). */
 const SMALL_EDGE = 1000;
 const LANGUAGES = ['eng', 'deu'];
@@ -50,6 +54,8 @@ export interface ScanPage {
   sourceWidth: number;
   sourceHeight: number;
   canvas: HTMLCanvasElement | null;
+  /** The same page scaled but not prepared: clean screenshots read better this way (`readingScore`). */
+  plain: HTMLCanvasElement | null;
   text: TextItem[] | null;
   previewUrl: string;
 }
@@ -93,6 +99,7 @@ export async function preparePages(
           sourceWidth: source.width,
           sourceHeight: source.height,
           canvas: null,
+          plain: null,
           text: source.items,
           previewUrl: source.previewUrl,
         });
@@ -100,7 +107,7 @@ export async function preparePages(
       }
       images += 1;
       if (images > MAX_SCAN_PAGES) throw new ScanError('tooManyPages');
-      const canvas = toScanCanvas(source.image);
+      const { canvas, plain } = toScanCanvas(source.image);
       pages.push({
         number,
         name,
@@ -110,6 +117,7 @@ export async function preparePages(
         sourceWidth: source.image.width,
         sourceHeight: source.image.height,
         canvas,
+        plain,
         text: null,
         previewUrl: canvas.toDataURL('image/jpeg', 0.85),
       });
@@ -199,6 +207,7 @@ async function pdfPages(
 /**
  * Scaled to between MIN_EDGE and MAX_EDGE (enlarging, smoothed, helps small photos and
  * screenshots), then reduced to the darkest colour channel with stretched levels (`prepareForOcr`).
+ * The scaled page before that step is kept as `plain`.
  */
 function toScanCanvas(source: CanvasImageSource & { width: number; height: number }) {
   const edge = Math.max(source.width, source.height);
@@ -210,10 +219,14 @@ function toScanCanvas(source: CanvasImageSource & { width: number; height: numbe
   if (!ctx) throw new ScanError('unreadable');
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+  const plain = document.createElement('canvas');
+  plain.width = canvas.width;
+  plain.height = canvas.height;
+  plain.getContext('2d', { willReadFrequently: true })?.drawImage(canvas, 0, 0);
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
   prepareForOcr(pixels.data, canvas.width, canvas.height);
   ctx.putImageData(pixels, 0, 0);
-  return canvas;
+  return { canvas, plain };
 }
 
 export interface OcrProgress {
@@ -226,8 +239,11 @@ export interface OcrProgress {
 
 /**
  * Reads every page in one Tesseract worker. `signal` stops early (the worker is terminated).
- * The page is cut into column strips at gutters (`findStrips`) and each strip is read on its own;
- * lines are then split at wide gaps, rejoined by row and ordered column by column.
+ * Each page is read twice, prepared (`prepareForOcr`, made for photos) and plain (clean
+ * screenshots lose their small print to the preparation), and the reading with the higher
+ * `readingScore` is kept. The page is cut into column strips at gutters (`findStrips`) and each
+ * strip is read on its own; lines are then split at wide gaps, rejoined by row and ordered column
+ * by column.
  */
 export async function recognizePages(
   pages: readonly ScanPage[],
@@ -237,57 +253,71 @@ export async function recognizePages(
   // PDF pages that carry their text are read by `parseTextPages`, not here.
   const images = pages.filter((p) => p.canvas !== null);
   if (images.length === 0) return [];
-  const { createWorker } = await import('tesseract.js');
+  const { createWorker, PSM } = await import('tesseract.js');
   let current = 1;
-  let stripShare = { index: 0, count: 1 };
+  /** Which of the page's two readings, and which strip of it, is being read. */
+  let share = { variant: 0, index: 0, count: 1 };
   const worker = await createWorker(LANGUAGES, 1, {
     logger: (m: { status: string; progress: number }) => {
       if (m.status === 'recognizing text') {
-        const progress = (stripShare.index + m.progress) / stripShare.count;
-        onProgress({ page: current, pages: images.length, progress });
+        const strip = (share.index + m.progress) / share.count;
+        onProgress({ page: current, pages: images.length, progress: (share.variant + strip) / 2 });
       }
     },
   });
   const abort = () => void worker.terminate();
   signal?.addEventListener('abort', abort, { once: true });
+
+  /** One reading of a page from `canvas`. */
+  async function read(page: ScanPage, canvas: HTMLCanvasElement, variant: number) {
+    // Prepared pages are read by layout analysis; plain ones in sparse mode, which finds the small
+    // print of a screenshot that layout analysis skips.
+    await worker.setParameters({
+      tessedit_pageseg_mode: variant === 0 ? PSM.AUTO : PSM.SPARSE_TEXT,
+    });
+    // Each column strip is read on its own, so side-by-side menu columns don't mix. The gutters
+    // are found on the prepared page (ink on white), for either reading.
+    const ctx = page.canvas!.getContext('2d', { willReadFrequently: true });
+    const pixels = ctx?.getImageData(0, 0, page.width, page.height).data;
+    const strips = pixels
+      ? findStrips(pixels, page.width, page.height, 4)
+      : [{ x0: 0, x1: page.width }];
+    const segments: OcrLine[] = [];
+    for (const [index, strip] of strips.entries()) {
+      if (signal?.aborted) break;
+      share = { variant, index, count: strips.length };
+      const crop = document.createElement('canvas');
+      crop.width = strip.x1 - strip.x0;
+      crop.height = page.height;
+      crop.getContext('2d')?.drawImage(canvas, -strip.x0, 0);
+      const { data } = await worker.recognize(crop, {}, { blocks: true });
+      for (const block of data.blocks ?? []) {
+        for (const paragraph of block.paragraphs) {
+          for (const line of paragraph.lines) {
+            const words = line.words
+              .map((w) => ({
+                text: w.text.trim(),
+                confidence: w.confidence,
+                box: { ...w.bbox, x0: w.bbox.x0 + strip.x0, x1: w.bbox.x1 + strip.x0 },
+              }))
+              .filter((w) => w.text);
+            segments.push(...segmentLine(words, page.number, index));
+          }
+        }
+      }
+    }
+    return orderColumns(joinRows(segments), page.width);
+  }
+
   try {
     const lines: OcrLine[] = [];
     for (const [position, page] of images.entries()) {
       if (signal?.aborted) break;
-      const canvas = page.canvas!;
       current = position + 1;
       onProgress({ page: current, pages: images.length, progress: 0 });
-      // Each column strip is read on its own, so side-by-side menu columns don't mix.
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      const pixels = ctx?.getImageData(0, 0, page.width, page.height).data;
-      const strips = pixels
-        ? findStrips(pixels, page.width, page.height, 4)
-        : [{ x0: 0, x1: page.width }];
-      const segments: OcrLine[] = [];
-      for (const [index, strip] of strips.entries()) {
-        if (signal?.aborted) break;
-        stripShare = { index, count: strips.length };
-        const crop = document.createElement('canvas');
-        crop.width = strip.x1 - strip.x0;
-        crop.height = page.height;
-        crop.getContext('2d')?.drawImage(canvas, -strip.x0, 0);
-        const { data } = await worker.recognize(crop, {}, { blocks: true });
-        for (const block of data.blocks ?? []) {
-          for (const paragraph of block.paragraphs) {
-            for (const line of paragraph.lines) {
-              const words = line.words
-                .map((w) => ({
-                  text: w.text.trim(),
-                  confidence: w.confidence,
-                  box: { ...w.bbox, x0: w.bbox.x0 + strip.x0, x1: w.bbox.x1 + strip.x0 },
-                }))
-                .filter((w) => w.text);
-              segments.push(...segmentLine(words, page.number, index));
-            }
-          }
-        }
-      }
-      lines.push(...orderColumns(joinRows(segments), page.width));
+      const prepared = await read(page, page.canvas!, 0);
+      const plain = page.plain && !signal?.aborted ? await read(page, page.plain, 1) : null;
+      lines.push(...(plain && readingScore(plain) > readingScore(prepared) ? plain : prepared));
     }
     return lines;
   } finally {

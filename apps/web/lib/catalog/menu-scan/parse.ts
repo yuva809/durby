@@ -61,6 +61,11 @@ const ROW_SHIFT = 0.4;
 /** A strip in which at least this share of lines are prices alone is a price column. */
 const PRICE_STRIP = 0.6;
 
+/** A name line is at least this much taller than the description line under it. */
+const NAME_RATIO = 1.25;
+/** A price with no line on its row joins the line above if its centre is this many line heights away. */
+const ABOVE_REACH = 2;
+
 const height = (item: { box: Box }) => item.box.y1 - item.box.y0;
 const centre = (item: { box: Box }) => (item.box.y0 + item.box.y1) / 2;
 
@@ -203,8 +208,71 @@ export function joinRows(lines: readonly OcrLine[]): OcrLine[] {
         bestDistance = distance;
       }
     });
+    // Menus that set a price between a name and its smaller description: it belongs to the name.
+    const nameAbove = (i: number) => {
+      const row = out[i]!;
+      return out.findIndex(
+        (above, j) =>
+          j !== i &&
+          !removed.has(j) &&
+          above.page === row.page &&
+          (above.strip ?? 0) === (row.strip ?? 0) &&
+          splitPrices(above.text).prices.length === 0 &&
+          height(above) >= NAME_RATIO * height(row) &&
+          Math.abs(above.box.x0 - row.box.x0) <= 1.5 * height(above) &&
+          row.box.y0 - above.box.y1 <= 0.8 * height(above) &&
+          row.box.y0 >= above.box.y0,
+      );
+    };
+    if (best >= 0) {
+      const above = nameAbove(best);
+      if (above >= 0) best = above;
+    } else if (/[.,]\d{2}(?!\d)|€/.test(piece.text)) {
+      // Nothing on its row: the nearest line above and to its left (a price set level with the
+      // description under the name).
+      let nearest = Infinity;
+      out.forEach((other, i) => {
+        if (i === index || removed.has(i) || other.page !== piece.page) return;
+        const strip = piece.strip ?? 0;
+        const otherStrip = other.strip ?? 0;
+        if (otherStrip !== strip && !(priceStrips.has(strip) && otherStrip === strip - 1)) return;
+        if (other.box.x1 > piece.box.x0 + 2) return;
+        if (splitPrices(other.text).prices.length > 0 || letters(other.text).length < 3) return;
+        const gap = centre(piece) - centre(other);
+        if (gap < 0 || gap > ABOVE_REACH * height(other) || gap >= nearest) return;
+        nearest = gap;
+        best = i;
+      });
+    }
     if (best < 0) return;
     const target = out[best]!;
+    // A name that wraps ("Meen Puli Kozhambu (Sauer & Mittel-" / "scharf)  21,90"): the price came
+    // with the last line, so the line above it with an open bracket or a trailing dash is the start.
+    const first = out.findIndex(
+      (above, j) =>
+        j !== best &&
+        !removed.has(j) &&
+        above.page === target.page &&
+        (above.strip ?? 0) === (target.strip ?? 0) &&
+        splitPrices(above.text).prices.length === 0 &&
+        /(?:\([^)]*|[-&])$/.test(above.text.trim()) &&
+        Math.abs(above.box.x0 - target.box.x0) <= 1.5 * height(above) &&
+        target.box.y0 - above.box.y1 <= height(above) &&
+        target.box.y0 >= above.box.y0,
+    );
+    if (first >= 0) {
+      const above = out[first]!;
+      const glue = /-$/.test(above.text.trim()) ? '' : ' ';
+      target.text = `${above.text.trim()}${glue}${target.text}`;
+      target.confidence = Math.min(target.confidence, above.confidence);
+      target.box = {
+        x0: Math.min(target.box.x0, above.box.x0),
+        y0: Math.min(target.box.y0, above.box.y0),
+        x1: Math.max(target.box.x1, above.box.x1),
+        y1: Math.max(target.box.y1, above.box.y1),
+      };
+      removed.add(first);
+    }
     target.text = `${target.text} ${piece.text}`;
     target.confidence = Math.min(target.confidence, piece.confidence);
     target.box = {
@@ -302,7 +370,7 @@ export function cleanName(text: string): string {
       // Item numbers: `12 Soup`, `12. Soup`, `67.Naan`, `67Naan`, `7 2.Poori`, `¢7 Naan`, `(8 Naan`;
       // a lone digit glued to a word stays (`1dly` is a misread `Idly`).
       .replace(/^\s*[#(¢$§]?\s?(?:\d{2,3}|\d(?=[\s.,):-]))(?:\s?[\d¢$§])?[.,):-]?\s*(?=\p{L})/u, '')
-      .replace(/^\s*[•*·-]\s+/, '')
+      .replace(/^[\s.,:;|•*·-]+(?=[\p{L}\d(])/u, '')
       .replace(/[.·…_]{2,}/g, ' ')
       .replace(/[\s:;,|–—-]+$/, '')
       .replace(/\s{2,}/g, ' ')
@@ -328,7 +396,12 @@ const SUSPECT_CONFIDENCE = 50;
 /** A menu where at least this share of prices has cents is priced with cents. */
 const CENTS_MENU = 0.8;
 
+/** Screenshot chrome around a menu, not menu: "Menu Page 3", "Main Menu", a clock, a web address. */
+const CHROME =
+  /^(?:menu\s+pa\S*(?:\s*\d+)?|page\s*\d+|main\s+menu|\d{1,2}:\d{2}(?:\s?[ap]m)?|(?:https?:\/\/)?(?:www\.)?[\w-]+(?:\.[\w-]+)*\.(?:com|de|eu|org|net|io|at|ch|uk)(?:\/\S*)?)$/i;
+
 function isNoise(line: OcrLine): boolean {
+  if (CHROME.test(line.text.trim())) return true;
   const count = letters(line.text).length;
   if (count < 2) return true;
   if (splitPrices(line.text).prices.length > 0) return false;
@@ -414,12 +487,16 @@ export function parseMenu(lines: readonly OcrLine[]): ParsedCategory[] {
     }
   });
   // Specks read as products: no real word, or a whole-number price on a menu priced with cents.
-  const all = categories.flatMap((c) => c.products);
-  const cents = all.filter((p) => !p.price.endsWith('.00')).length >= CENTS_MENU * all.length;
+  const longest = (name: string) => Math.max(...name.split(/\s+/).map((w) => letters(w).length));
+  // Judged by the products with a real word: specks must not tip a menu priced with cents.
+  const real = categories.flatMap((c) => c.products).filter((p) => longest(p.name) >= 4);
+  const cents = real.filter((p) => !p.price.endsWith('.00')).length >= CENTS_MENU * real.length;
   for (const c of categories) {
     c.products = c.products.filter((p) => {
+      const longestWord = longest(p.name);
+      // "Menu Page 3" read as `age 3`: a whole price on a menu with cents and no real word.
+      if (cents && p.price.endsWith('.00') && longestWord < 4) return false;
       if (p.confidence >= SUSPECT_CONFIDENCE) return true;
-      const longestWord = Math.max(...p.name.split(/\s+/).map((w) => letters(w).length));
       return longestWord >= 3 && !(cents && p.price.endsWith('.00'));
     });
   }

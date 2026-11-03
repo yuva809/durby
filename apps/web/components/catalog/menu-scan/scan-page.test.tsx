@@ -182,6 +182,7 @@ describe('ScanPage', () => {
         sourceWidth: 900,
         sourceHeight: 1260,
         canvas: null,
+        plain: null,
         previewUrl: '',
         text: [
           text('BROT', 80, 1100, 90, true),
