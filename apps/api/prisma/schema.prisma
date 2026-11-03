@@ -86,6 +86,9 @@ model Organization {
   roles                        Role[]
   rolePermissions              RolePermission[]
   membershipLocations          MembershipLocation[]
+  membershipPermissions        MembershipPermission[]
+  invitationPermissions        InvitationPermission[]
+  vouchedUsers                 User[]                        @relation("UserVouchedBy")
   invitations                  Invitation[]
   invitationLocations          InvitationLocation[]
   auditLogs                    AuditLog[]
@@ -162,23 +165,30 @@ model Location {
 
 /// A back-office user, once across all organizations. Email is stored normalized (trimmed, lower-case).
 model User {
-  id                  String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  email               String           @unique
+  id                      String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  email                   String           @unique
   /// argon2id. Null until the first password reset (bootstrap admins, invites).
-  passwordHash        String?          @map("password_hash")
-  emailVerifiedAt     DateTime?        @map("email_verified_at") @db.Timestamptz(6)
-  locale              String           @default("en")
-  lastOrganizationId  String?          @map("last_organization_id") @db.Uuid
-  passwordChangedAt   DateTime?        @map("password_changed_at") @db.Timestamptz(6)
-  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
-  lastOrganization    Organization?    @relation(fields: [lastOrganizationId], references: [id], onDelete: SetNull, onUpdate: Restrict)
-  tokens              UserToken[]
-  refreshTokens       RefreshToken[]
-  memberships         Membership[]
-  invitationsSent     Invitation[]     @relation("InvitationInvitedBy")
-  invitationsAccepted Invitation[]     @relation("InvitationAcceptedBy")
-  idempotencyKeys     IdempotencyKey[]
+  passwordHash            String?          @map("password_hash")
+  emailVerifiedAt         DateTime?        @map("email_verified_at") @db.Timestamptz(6)
+  locale                  String           @default("en")
+  lastOrganizationId      String?          @map("last_organization_id") @db.Uuid
+  passwordChangedAt       DateTime?        @map("password_changed_at") @db.Timestamptz(6)
+  /// Set when an organization created the account with a temporary password (ADR 0023 §3): every session
+  /// is limited to changing it until it is changed.
+  mustChangePassword      Boolean          @default(false) @map("must_change_password")
+  /// The organization that created the account with a temporary password: it may sign in before the email
+  /// is verified (ADR 0023 §3). Nothing else treats the email as verified.
+  vouchedByOrganizationId String?          @map("vouched_by_organization_id") @db.Uuid
+  createdAt               DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastOrganization        Organization?    @relation(fields: [lastOrganizationId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  vouchedBy               Organization?    @relation("UserVouchedBy", fields: [vouchedByOrganizationId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  tokens                  UserToken[]
+  refreshTokens           RefreshToken[]
+  memberships             Membership[]
+  invitationsSent         Invitation[]     @relation("InvitationInvitedBy")
+  invitationsAccepted     Invitation[]     @relation("InvitationAcceptedBy")
+  idempotencyKeys         IdempotencyKey[]
 
   @@map("users")
 }
@@ -237,19 +247,25 @@ model RefreshToken {
 
 /// User ↔ organization with a role and optional location scope. Tenant table (RLS).
 model Membership {
-  id           String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String               @map("tenant_id") @db.Uuid
-  userId       String               @map("user_id") @db.Uuid
+  id            String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String                 @map("tenant_id") @db.Uuid
+  userId        String                 @map("user_id") @db.Uuid
   /// NOT NULL since step 1.11 (contract step, ADR 0004/0007).
-  roleId       String               @map("role_id") @db.Uuid
+  roleId        String                 @map("role_id") @db.Uuid
   /// false: limited to the membership_locations rows (none = no locations).
-  allLocations Boolean              @default(true) @map("all_locations")
-  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  user         User                 @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  role         Role                 @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  locations    MembershipLocation[]
+  allLocations  Boolean                @default(true) @map("all_locations")
+  /// The person's name and phone in this organization (ADR 0023 §7).
+  displayName   String?                @map("display_name")
+  phone         String?
+  /// Set while the member is switched off: no access, the membership stays (ADR 0023 §6).
+  deactivatedAt DateTime?              @map("deactivated_at") @db.Timestamptz(6)
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization  Organization           @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  role          Role                   @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  locations     MembershipLocation[]
+  permissions   MembershipPermission[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, userId])
@@ -326,27 +342,55 @@ model MembershipLocation {
   @@map("membership_locations")
 }
 
+/// grant: on top of the role; deny: taken away from the role (ADR 0023 §1).
+enum PermissionEffect {
+  grant
+  deny
+
+  @@map("permission_effect")
+}
+
+/// Per-member changes to the role's permissions (ADR 0023 §1).
+model MembershipPermission {
+  id            String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String           @map("tenant_id") @db.Uuid
+  membershipId  String           @map("membership_id") @db.Uuid
+  permissionKey String           @map("permission_key")
+  effect        PermissionEffect
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization  Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  membership    Membership       @relation(fields: [tenantId, membershipId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, membershipId, permissionKey])
+  @@map("membership_permissions")
+}
+
 /// An invitation by email. Token: `<orgId>.<secret>`, stored as sha256(secret), single-use, 7 days.
 model Invitation {
-  id               String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId         String               @map("tenant_id") @db.Uuid
+  id               String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String                 @map("tenant_id") @db.Uuid
   /// Normalized (trimmed, lower-case).
   email            String
-  roleId           String               @map("role_id") @db.Uuid
-  allLocations     Boolean              @default(true) @map("all_locations")
-  invitedByUserId  String               @map("invited_by_user_id") @db.Uuid
-  tokenHash        String               @unique @map("token_hash")
-  expiresAt        DateTime             @map("expires_at") @db.Timestamptz(6)
-  acceptedAt       DateTime?            @map("accepted_at") @db.Timestamptz(6)
-  acceptedByUserId String?              @map("accepted_by_user_id") @db.Uuid
-  revokedAt        DateTime?            @map("revoked_at") @db.Timestamptz(6)
-  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization     Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  role             Role                 @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  invitedBy        User                 @relation("InvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  acceptedBy       User?                @relation("InvitationAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  roleId           String                 @map("role_id") @db.Uuid
+  allLocations     Boolean                @default(true) @map("all_locations")
+  invitedByUserId  String                 @map("invited_by_user_id") @db.Uuid
+  tokenHash        String                 @unique @map("token_hash")
+  expiresAt        DateTime               @map("expires_at") @db.Timestamptz(6)
+  acceptedAt       DateTime?              @map("accepted_at") @db.Timestamptz(6)
+  acceptedByUserId String?                @map("accepted_by_user_id") @db.Uuid
+  revokedAt        DateTime?              @map("revoked_at") @db.Timestamptz(6)
+  /// Applied to the membership on accept (ADR 0023 §7).
+  displayName      String?                @map("display_name")
+  phone            String?
+  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization     Organization           @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  role             Role                   @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  invitedBy        User                   @relation("InvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  acceptedBy       User?                  @relation("InvitationAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   locations        InvitationLocation[]
+  permissions      InvitationPermission[]
 
   @@unique([tenantId, id])
   @@index([tenantId, email])
@@ -367,6 +411,22 @@ model InvitationLocation {
   @@unique([tenantId, id])
   @@unique([tenantId, invitationId, locationId])
   @@map("invitation_locations")
+}
+
+/// The per-member changes an invitation applies on accept (ADR 0023 §7).
+model InvitationPermission {
+  id            String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String           @map("tenant_id") @db.Uuid
+  invitationId  String           @map("invitation_id") @db.Uuid
+  permissionKey String           @map("permission_key")
+  effect        PermissionEffect
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization  Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invitation    Invitation       @relation(fields: [tenantId, invitationId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, invitationId, permissionKey])
+  @@map("invitation_permissions")
 }
 
 // ---------------------------------------------------------------------------
