@@ -53,24 +53,26 @@ export async function invitationLink(request: APIRequestContext, email: string):
 
 const NEW_PASSWORD = 'e2e-invitee-password';
 
-/** As the signed-in Owner: invites `email` as `role` from the Invitations tab. */
+/** As the signed-in Owner: invites `email` as `role` from Settings → Staff, sending the email. */
 export async function invite(
   page: Page,
   origin: string,
   email: string,
   role: string,
 ): Promise<void> {
-  await page.goto(`${origin}/settings/members`);
-  await page.getByTestId('tab-invitations').click();
-  await page.getByTestId('invite-open').click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Email').fill(email);
-  await dialog.getByTestId('role-select').selectOption({ label: role });
-  await dialog.getByTestId('invite-send').click();
-  await expect(page.getByRole('status')).toHaveText(
-    `Invitation created for ${email}. The email is on its way.`,
+  await page.goto(`${origin}/settings/staff`);
+  await page.getByTestId('team-add').click();
+  const dialog = page.getByTestId('team-dialog');
+  await dialog.getByTestId('team-name').fill('E2E Person');
+  await dialog.getByTestId('team-email').fill(email);
+  await dialog.getByTestId('team-send-email').click();
+  await dialog.getByTestId('team-role').filter({ hasText: role }).click();
+  await dialog.getByTestId('team-save').click();
+  await expect(page.getByTestId('team-result')).toBeVisible();
+  await page.getByTestId('team-done').click();
+  await expect(page.getByTestId('team-invitation-row').filter({ hasText: email })).toContainText(
+    role,
   );
-  await expect(page.getByTestId('invitation-row').filter({ hasText: email })).toContainText(role);
 }
 
 /**
