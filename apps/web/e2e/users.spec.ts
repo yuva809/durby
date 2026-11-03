@@ -50,7 +50,7 @@ test.describe('invitations', () => {
 test.describe('access', () => {
   // A Staff member made by the test itself: independent of what local dev data says about the
   // seeded users' roles.
-  test("Staff sees neither Staff nor Roles and can't open the pages", async ({
+  test("Staff sees neither Manage Staff nor Roles and can't open the pages", async ({
     page,
     browser,
     request,
@@ -63,13 +63,16 @@ test.describe('access', () => {
     const nav = staff.getByRole('navigation', { name: 'Main navigation' });
     await expect(nav.getByTestId('nav-home')).toBeVisible();
     await expect(nav.getByTestId('nav-settings')).toBeVisible();
+    // Manage Staff is its own menu item, and Staff may not open it.
+    await expect(nav.getByTestId('nav-staff')).toHaveCount(0);
 
     const origin = new URL(staff.url()).origin;
     await staff.goto(`${origin}/settings/organization`);
     await expect(staff.getByTestId('settings-tab-general')).toBeVisible();
-    await expect(staff.getByTestId('settings-tab-staff')).toHaveCount(0);
     await expect(staff.getByTestId('settings-tab-roles')).toHaveCount(0);
-    // The old Members address redirects to Staff.
+    await staff.goto(`${origin}/staff`);
+    await expect(staff.getByTestId('no-access')).toBeVisible();
+    // The old addresses redirect to Manage Staff.
     await staff.goto(`${origin}/settings/members`);
     await expect(staff.getByTestId('no-access')).toBeVisible();
     await staff.goto(`${origin}/settings/roles`);

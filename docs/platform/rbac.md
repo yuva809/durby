@@ -227,7 +227,7 @@ Ids of another tenant are invisible under RLS and answer 404.
 
 ## Manage Staff (ADR 0023)
 
-One page for the team (`/settings/staff`, replaces Members): who works where, with which role and exactly what each
+One page for the team (`/staff`, its own menu item **Manage Staff**; replaces Members): who works where, with which role and exactly what each
 person may do.
 
 **Model.** `memberships` gains `display_name`, `phone` and `deactivated_at`; `membership_permissions (tenant_id,
@@ -279,7 +279,7 @@ validation error for a password outside the policy, plus the RBAC codes above. E
 (`platform.membership.*` incl. `deactivated`/`reactivated`, `platform.invitation.*` incl. `link_renewed`); a password change is a user-level event and goes to the security log
 (`auth.password.changed`), like a password reset (ADR 0006).
 
-**Web.** Settings → Staff (`/settings/staff`, `/settings/members` redirects): stats, search, role and status filters,
+**Web.** Manage Staff, its own menu item (`/staff`; `/settings/staff` and `/settings/members` redirect): stats, search, role and status filters,
 a table (cards on phones) with permission chips ("Role defaults (N)" or the person's changes) and row actions (edit,
 share invite link, deactivate/reactivate, remove, cancel invitation). The Add/Edit dialog has the details, an
 optional temporary password (generate; empty = invitation), role chips (a new person starts with the

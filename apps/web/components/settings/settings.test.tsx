@@ -694,7 +694,6 @@ describe('SettingsTabs', () => {
     expect(tabIds()).toEqual([
       'organization',
       'locations',
-      'staff',
       'roles',
       'general',
       'numbering',

@@ -1,5 +1,6 @@
-import { TeamPage } from '../../../../components/team/team-page';
+import { redirect } from 'next/navigation';
 
+/** Manage Staff has its own menu item (docs/platform/rbac.md → Manage Staff). */
 export default function Page() {
-  return <TeamPage />;
+  redirect('/staff');
 }

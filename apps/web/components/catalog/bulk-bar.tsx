@@ -56,7 +56,7 @@ export function BulkBar({
   if (count === 0) return null;
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 flex flex-col gap-2 border-t border-border bg-background p-3 shadow-lg md:static md:rounded-md md:border md:shadow-none"
+      className="fixed inset-x-0 bottom-0 z-40 flex flex-col gap-2 border-t border-border bg-background p-3 shadow-lg lg:sticky lg:inset-x-auto lg:top-2 lg:bottom-auto lg:rounded-md lg:border lg:shadow-md"
       data-testid="bulk-bar"
     >
       <div className="flex items-center justify-between gap-2">

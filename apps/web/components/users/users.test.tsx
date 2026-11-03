@@ -3,7 +3,7 @@ import { type Role, type SystemRole, systemRolePermissions } from '@durby/shared
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { visibleNav } from '../../lib/nav/registry';
+import { NAV_ITEMS, visibleNav } from '../../lib/nav/registry';
 import { SETTINGS_TABS } from '../../lib/nav/settings-tabs';
 import { mockState, resetMocks } from '../../test/mocks';
 import { sessionFixture } from '../../test/session-fixture';
@@ -95,7 +95,6 @@ describe('nav for Owner, Manager and Staff', () => {
     expect(settingsItems('owner')).toEqual([
       'organization',
       'locations',
-      'staff',
       'roles',
       'general',
       'numbering',
@@ -105,7 +104,6 @@ describe('nav for Owner, Manager and Staff', () => {
     expect(settingsItems('manager')).toEqual([
       'organization',
       'locations',
-      'staff',
       'roles',
       'general',
       'numbering',
@@ -119,6 +117,19 @@ describe('nav for Owner, Manager and Staff', () => {
       'plan',
     ]);
     expect(settingsItems('waiter')).toEqual(settingsItems('staff'));
+  });
+
+  it('shows Manage Staff as its own menu item, not a Settings tab', () => {
+    const top = (key: SystemRole) =>
+      visibleNav(NAV_ITEMS, {
+        activeFeatures: [],
+        activePermissions: [...systemRolePermissions(key)],
+      }).map((i) => i.id);
+    expect(top('owner')).toContain('staff');
+    expect(top('manager')).toContain('staff');
+    expect(top('staff')).not.toContain('staff');
+    expect(top('waiter')).not.toContain('staff');
+    expect(settingsItems('owner')).not.toContain('staff');
   });
 });
 

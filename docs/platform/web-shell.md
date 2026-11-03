@@ -198,7 +198,7 @@ interface NavItem {
   **UI hints**: the api checks `@RequireFeature` and `@RequirePermission` on every request.
 - Keys are typed against `FEATURES` and `PERMISSIONS`; a unit test fails on an unknown key or a label missing in
   `en` or `de`.
-- The menu (2026-10-30): Home, Products, Service, Tables, **Settings**, **Audit log** (its own item, `/audit`). Inventory, Billing, POS and Reports are
+- The menu (2026-11-03): Home, Products, Service, Tables, **Manage Staff** (its own item, `/staff`, `platform.users.read`), **Settings**, **Audit log** (its own item, `/audit`). Inventory, Billing, POS and Reports are
   `planned`: hidden whatever the plan, their placeholder pages still open by URL; remove the flag when a module
   ships. A group with no visible items is not rendered.
 - **Settings is one item** (`/settings`) whose pages are tabs (`lib/nav/settings-tabs.ts`, rendered by
@@ -371,15 +371,15 @@ New keys under `platform.nav.*` (members, roles), `platform.members.*`, `platfor
 
 ### Routes and navigation (Settings tabs, see Nav registry; originally one nav item each)
 
-| Route                    | Nav label                   | Page needs (UI hint)     | Writes need                |
-| ------------------------ | --------------------------- | ------------------------ | -------------------------- |
-| `/settings/organization` | `platform.nav.organization` | (any member)             | `platform.org.manage`      |
-| `/settings/general`      | `platform.nav.settings`     | `platform.settings.read` | `platform.settings.manage` |
-| `/settings/members`      | `platform.nav.members`      | `platform.users.read`    | (PR b)                     |
-| `/settings/roles`        | `platform.nav.roles`        | `platform.roles.read`    | (PR b)                     |
-| `/settings/labels`       | `platform.nav.labels`       | `platform.labels.manage` | `platform.labels.manage`   |
-| `/settings/numbering`    | `platform.nav.numbering`    | `platform.settings.read` | `platform.settings.manage` |
-| `/settings/plan`         | `platform.nav.plan`         | (any member)             | none (read-only)           |
+| Route                              | Nav label                                  | Page needs (UI hint)     | Writes need                |
+| ---------------------------------- | ------------------------------------------ | ------------------------ | -------------------------- |
+| `/settings/organization`           | `platform.nav.organization`                | (any member)             | `platform.org.manage`      |
+| `/settings/general`                | `platform.nav.settings`                    | `platform.settings.read` | `platform.settings.manage` |
+| `/staff` (was `/settings/members`) | `platform.nav.staff` (own item, not a tab) | `platform.users.read`    | (PR b)                     |
+| `/settings/roles`                  | `platform.nav.roles`                       | `platform.roles.read`    | (PR b)                     |
+| `/settings/labels`                 | `platform.nav.labels`                      | `platform.labels.manage` | `platform.labels.manage`   |
+| `/settings/numbering`              | `platform.nav.numbering`                   | `platform.settings.read` | `platform.settings.manage` |
+| `/settings/plan`                   | `platform.nav.plan`                        | (any member)             | none (read-only)           |
 
 Without the write permission a page is read-only (no edit controls). As in (b), permissions are UI hints and every
 write goes through `sendAction` with one `ActionKey` per form.

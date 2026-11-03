@@ -171,52 +171,56 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
                     {t('platform.team.empty')}
                   </p>
                 ) : (
-                  <table className="w-full text-left text-sm" data-testid="team-table">
-                    <thead className="max-lg:sr-only">
-                      <tr className="border-b text-xs tracking-wide text-muted-foreground uppercase">
-                        <th className={head}>{t('platform.team.columns.staff')}</th>
-                        <th className={head}>{t('platform.team.columns.contact')}</th>
-                        <th className={head}>{t('platform.team.columns.role')}</th>
-                        <th className={head}>{t('platform.team.columns.worksIn')}</th>
-                        <th className={head}>{t('platform.team.columns.permissions')}</th>
-                        <th className={head}>{t('platform.team.columns.status')}</th>
-                        <th className={head}>{t('platform.team.columns.lastActive')}</th>
-                        <th className={cn(head, 'text-right')}>
-                          <span className="sr-only">{t('platform.team.columns.actions')}</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row) =>
-                        row.kind === 'member' ? (
-                          <MemberRow
-                            key={row.member.membershipId}
-                            member={row.member}
-                            access={access}
-                            locations={locationList}
-                            dateFormat={dateFormat}
-                            onEdit={() => setEditing(row.member)}
-                            onConfirm={setConfirm}
-                          />
-                        ) : (
-                          <InvitationRow
-                            key={row.invitation.invitationId}
-                            invitation={row.invitation}
-                            canRevoke={canRevokeInvitation(
-                              access,
-                              { ...row.invitation, id: row.invitation.invitationId },
-                              roleList,
-                            )}
-                            canShare={access.canInvite}
-                            locations={locationList}
-                            dateFormat={dateFormat}
-                            onShare={() => setSharing(row.invitation)}
-                            onConfirm={setConfirm}
-                          />
-                        ),
-                      )}
-                    </tbody>
-                  </table>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm" data-testid="team-table">
+                      <thead className="max-lg:sr-only">
+                        <tr className="border-b text-xs tracking-wide text-muted-foreground uppercase">
+                          <th className={head}>{t('platform.team.columns.staff')}</th>
+                          <th className={head}>{t('platform.team.columns.contact')}</th>
+                          <th className={head}>{t('platform.team.columns.role')}</th>
+                          <th className={cn(head, rare)}>{t('platform.team.columns.worksIn')}</th>
+                          <th className={head}>{t('platform.team.columns.permissions')}</th>
+                          <th className={head}>{t('platform.team.columns.status')}</th>
+                          <th className={cn(head, rare)}>
+                            {t('platform.team.columns.lastActive')}
+                          </th>
+                          <th className={cn(head, 'text-right')}>
+                            <span className="sr-only">{t('platform.team.columns.actions')}</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((row) =>
+                          row.kind === 'member' ? (
+                            <MemberRow
+                              key={row.member.membershipId}
+                              member={row.member}
+                              access={access}
+                              locations={locationList}
+                              dateFormat={dateFormat}
+                              onEdit={() => setEditing(row.member)}
+                              onConfirm={setConfirm}
+                            />
+                          ) : (
+                            <InvitationRow
+                              key={row.invitation.invitationId}
+                              invitation={row.invitation}
+                              canRevoke={canRevokeInvitation(
+                                access,
+                                { ...row.invitation, id: row.invitation.invitationId },
+                                roleList,
+                              )}
+                              canShare={access.canInvite}
+                              locations={locationList}
+                              dateFormat={dateFormat}
+                              onShare={() => setSharing(row.invitation)}
+                              onConfirm={setConfirm}
+                            />
+                          ),
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </Card>
             </>
@@ -259,6 +263,8 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
 }
 
 const head = 'px-4 py-3 font-medium';
+/** Columns left out between lg and xl, where the table has no room for all eight (cards below lg). */
+const rare = 'lg:max-xl:hidden';
 const cell = 'px-4 py-3 align-middle max-lg:py-1';
 const rowClass =
   'border-b last:border-b-0 max-lg:flex max-lg:flex-col max-lg:gap-1 max-lg:py-3 max-lg:relative';
@@ -333,7 +339,7 @@ function Person({ name, email, tag }: { name: string | null; email: string; tag?
 
 function Contact({ email, phone }: { email: string; phone: string | null }) {
   return (
-    <div className="flex min-w-0 flex-col">
+    <div className="flex max-w-56 min-w-0 flex-col">
       <span className="truncate">{email}</span>
       {phone && <span className="text-xs text-muted-foreground tabular-nums">{phone}</span>}
     </div>
@@ -442,7 +448,7 @@ function MemberRow({
         <Contact email={member.email} phone={member.phone} />
       </td>
       <td className={cell}>{member.role ? roleName(member.role, t) : '—'}</td>
-      <td className={cn(cell, 'max-w-56 truncate')}>{scopeText(t, member, locations)}</td>
+      <td className={cn(cell, rare, 'max-w-56 truncate')}>{scopeText(t, member, locations)}</td>
       <td className={cell}>
         <PermissionChips
           grants={member.grants}
@@ -453,7 +459,7 @@ function MemberRow({
       <td className={cell}>
         <StatusBadge status={member.status} />
       </td>
-      <td className={cell}>
+      <td className={cn(cell, rare)}>
         <div className="flex flex-col">
           <span>
             {member.lastActiveAt
@@ -531,14 +537,14 @@ function InvitationRow({
         <Contact email={invitation.email} phone={invitation.phone} />
       </td>
       <td className={cell}>{roleName(invitation.role, t)}</td>
-      <td className={cn(cell, 'max-w-56 truncate')}>{scopeText(t, invitation, locations)}</td>
+      <td className={cn(cell, rare, 'max-w-56 truncate')}>{scopeText(t, invitation, locations)}</td>
       <td className={cell}>
         <PermissionChips grants={invitation.grants} denies={invitation.denies} count={0} />
       </td>
       <td className={cell}>
         <StatusBadge status="invited" />
       </td>
-      <td className={cn(cell, 'text-xs text-muted-foreground')}>
+      <td className={cn(cell, rare, 'text-xs text-muted-foreground')}>
         {t('platform.team.expires', { date: dateFormat.format(new Date(invitation.expiresAt)) })}
       </td>
       <td className={cn(cell, 'text-right max-lg:absolute max-lg:top-2 max-lg:right-0')}>

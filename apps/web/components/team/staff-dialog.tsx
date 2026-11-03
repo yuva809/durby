@@ -275,7 +275,10 @@ function StaffForm({
 
       <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto px-6 py-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
         {/* Details, role, locations */}
-        <section className="flex flex-col gap-4" aria-labelledby={`${id}-details`}>
+        <section
+          className="flex flex-col gap-4 md:sticky md:top-0 md:self-start"
+          aria-labelledby={`${id}-details`}
+        >
           <h3
             id={`${id}-details`}
             className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
