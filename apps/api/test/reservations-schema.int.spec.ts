@@ -188,8 +188,16 @@ describe('reservations schema', () => {
           sqlState(book(v, { tables: [v.t1], start: at('19:00'), end: at('21:00') })),
         ),
       );
+      // Every loser is refused: by the constraint (23P01), or, when losers insert at the same
+      // moment and wait on each other's rows, by the deadlock detector (40P01; the api answers busy
+      // and the retry gets 23P01). The sorted codes show in the diff if anything else comes back.
+      const refused = new Set(['23P01', '40P01']);
       expect(results.filter((r) => r === null)).toHaveLength(1);
-      expect(results.filter((r) => r === '23P01')).toHaveLength(19);
+      expect(results.filter((r) => r !== null && !refused.has(r)).sort()).toEqual([]);
+      const { rows } = await asTenant(v.org.id, (db) =>
+        db.query(`SELECT 1 FROM reservation_tables WHERE table_id = $1 AND blocking`, [v.t1]),
+      );
+      expect(rows).toHaveLength(1);
     });
 
     it("never compares tenants: another organization's rows don't block", async () => {

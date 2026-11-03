@@ -184,6 +184,8 @@
   "platform.settings.reservationsLastBookingOffsetMinutes.description": "Minutes before closing after which no booking can start.",
   "platform.settings.reservationsOnlineInstantMaxParty.name": "Instant online booking up to",
   "platform.settings.reservationsOnlineInstantMaxParty.description": "Online parties up to this size are booked at once; larger ones become a request the team accepts or declines. Off: every size is booked at once.",
+  "platform.settings.reservationsFloorHorizonMinutes.name": "Floor horizon (minutes)",
+  "platform.settings.reservationsFloorHorizonMinutes.description": "How far ahead the host floor marks a table as reserved soon.",
   "platform.settings.reservationsAutoConfirm.name": "Confirm online bookings automatically",
   "platform.settings.reservationsAutoConfirm.description": "Off: staff confirm each online booking.",
   "platform.settings.reservationsHoldMinutes.name": "Hold time for online bookings",

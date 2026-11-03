@@ -30,6 +30,7 @@ import {
 } from '../../../platform/tenancy';
 import { evaluateBooking, type RuleBreach } from '../availability/engine';
 import { AvailabilityLoader } from '../availability/loader';
+import { PosFloorReader } from '../../pos';
 import { reservationErrors } from '../reservations-errors';
 import { shortLockWaits } from './busy';
 import { readableLocation } from '../setup/table-rules.service';
@@ -59,7 +60,11 @@ const RESERVATION_SELECT = {
   tables: { select: { tableId: true }, orderBy: { tableId: 'asc' } },
   // The latest change: what an undo would revert.
   // Ids are UUID v7: newest id = newest change.
-  changes: { select: { id: true }, orderBy: { id: 'desc' }, take: 1 },
+  changes: {
+    select: { id: true, toStatus: true, actorKind: true, sourceOrderId: true, createdAt: true },
+    orderBy: { id: 'desc' },
+    take: 1,
+  },
 } as const;
 
 export type ReservationRow = {
@@ -76,7 +81,13 @@ export type ReservationRow = {
   createdAt: Date;
   guest: Reservation['guest'];
   tables: { tableId: string }[];
-  changes: { id: string }[];
+  changes: {
+    id: string;
+    toStatus: Reservation['status'];
+    actorKind: string;
+    sourceOrderId: string | null;
+    createdAt: Date;
+  }[];
 };
 
 /**
@@ -97,7 +108,28 @@ export class BookingsService {
     private readonly outbox: OutboxService,
     private readonly idempotency: IdempotencyService,
     private readonly clock: Clock,
+    private readonly pos: PosFloorReader,
   ) {}
+
+  /** The response bodies of `rows`, with the tables pos archived since (one query, in `tx`). */
+  async respond(
+    tx: TenantTransactionClient,
+    rows: readonly ReservationRow[],
+  ): Promise<Reservation[]> {
+    const ids = new Set(
+      rows
+        .filter((r) => (BLOCKING_STATUSES as readonly string[]).includes(r.status))
+        .flatMap((r) => r.tables.map((t) => t.tableId)),
+    );
+    const tables = ids.size > 0 ? await this.pos.tables([...ids], tx) : [];
+    const archived = new Set(tables.filter((t) => t.archivedAt !== null).map((t) => t.id));
+    return rows.map((r) => toResponse(r, archived));
+  }
+
+  /** One response body, as above. */
+  async respondOne(tx: TenantTransactionClient, row: ReservationRow): Promise<Reservation> {
+    return (await this.respond(tx, [row]))[0]!;
+  }
 
   async create(body: CreateReservationRequest): Promise<Reservation> {
     const { tenantId, userId } = this.tenantContext.require();
@@ -167,7 +199,7 @@ export class BookingsService {
         type: 'reservations.reservation.created',
         payload: payloadOf(row),
       });
-      const response = toResponse(row);
+      const response = await this.respondOne(tx, row);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
@@ -253,7 +285,7 @@ export class BookingsService {
       const next = await read(tx, id);
       const before = reservationSnapshot(current);
       const after = reservationSnapshot(next);
-      if (JSON.stringify(before) === JSON.stringify(after)) return toResponse(next);
+      if (JSON.stringify(before) === JSON.stringify(after)) return this.respondOne(tx, next);
       await this.audit.record(tx, {
         action: 'reservations.reservation.updated',
         actor: auditActor.user(userId),
@@ -266,62 +298,68 @@ export class BookingsService {
         type: 'reservations.reservation.updated',
         payload: payloadOf(next),
       });
-      return toResponse(next);
+      return this.respondOne(tx, next);
     });
   }
 
+  /** One transaction: the access check, the booking, its history and its tables' service state. */
   async get(id: string): Promise<ReservationDetail> {
-    await this.readable(id);
-    const row = await this.db.reservation.findUnique({ where: { id }, select: RESERVATION_SELECT });
-    if (!row) throw reservationErrors.reservationNotFound();
-    const changes = await this.db.reservationStatusChange.findMany({
-      where: { reservationId: id },
-      select: {
-        id: true,
-        fromStatus: true,
-        toStatus: true,
-        undoesId: true,
-        actorKind: true,
-        sourceOrderId: true,
-        createdAt: true,
-      },
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    return this.db.$transaction(async (tx) => {
+      await this.readable(id, tx);
+      const row = await tx.reservation.findUnique({ where: { id }, select: RESERVATION_SELECT });
+      if (!row) throw reservationErrors.reservationNotFound();
+      const changes = await tx.reservationStatusChange.findMany({
+        where: { reservationId: id },
+        select: {
+          id: true,
+          fromStatus: true,
+          toStatus: true,
+          undoesId: true,
+          actorKind: true,
+          sourceOrderId: true,
+          createdAt: true,
+        },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      });
+      return {
+        ...(await this.respondOne(tx, row)),
+        history: changes.map((c) => ({
+          id: c.id,
+          fromStatus: c.fromStatus,
+          toStatus: c.toStatus,
+          undoesId: c.undoesId,
+          actorKind: c.actorKind as 'user' | 'guest' | 'system',
+          sourceOrderId: c.sourceOrderId,
+          createdAt: c.createdAt.toISOString(),
+        })),
+      };
     });
-    return {
-      ...toResponse(row),
-      history: changes.map((c) => ({
-        id: c.id,
-        fromStatus: c.fromStatus,
-        toStatus: c.toStatus,
-        undoesId: c.undoesId,
-        actorKind: c.actorKind as 'user' | 'guest' | 'system',
-        sourceOrderId: c.sourceOrderId,
-        createdAt: c.createdAt.toISOString(),
-      })),
-    };
   }
 
+  /** One transaction, like get. */
   async list(query: ReservationsListQuery): Promise<Reservation[]> {
-    await readableLocation(this.db, this.access, query.locationId);
-    let from: Date;
-    let to: Date;
-    if (query.date) {
-      const timeZone = await this.settings.get('timezone', { locationId: query.locationId });
-      ({ start: from, end: to } = zonedDayBounds(query.date, timeZone));
-    } else {
-      from = new Date(query.from!);
-      to = new Date(query.to!);
-    }
-    const rows = await this.db.reservation.findMany({
-      where: {
-        locationId: query.locationId,
-        startsAt: { gte: from, lt: to },
-        ...(query.status && { status: query.status }),
-      },
-      select: RESERVATION_SELECT,
-      orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+    return this.db.$transaction(async (tx) => {
+      await readableLocation(tx, this.access, query.locationId);
+      let from: Date;
+      let to: Date;
+      if (query.date) {
+        const timeZone = await this.settings.get('timezone', { locationId: query.locationId }, tx);
+        ({ start: from, end: to } = zonedDayBounds(query.date, timeZone));
+      } else {
+        from = new Date(query.from!);
+        to = new Date(query.to!);
+      }
+      const rows = await tx.reservation.findMany({
+        where: {
+          locationId: query.locationId,
+          startsAt: { gte: from, lt: to },
+          ...(query.status && { status: query.status }),
+        },
+        select: RESERVATION_SELECT,
+        orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+      });
+      return this.respond(tx, rows);
     });
-    return rows.map((r) => toResponse(r));
   }
 
   /** The engine's input for the local date of `start`, read in `tx`. */
@@ -519,7 +557,10 @@ export const payloadOf = (row: ReservationRow) => ({
   startsAt: row.startsAt.toISOString(),
 });
 
-export function toResponse(row: ReservationRow): Reservation {
+/** `archived`: table ids pos has archived (only a blocking booking's count as not in service). */
+export function toResponse(row: ReservationRow, archived: ReadonlySet<string>): Reservation {
+  const last = row.changes[0]!;
+  const blocking = (BLOCKING_STATUSES as readonly string[]).includes(row.status);
   return {
     id: row.id,
     number: row.number,
@@ -534,6 +575,16 @@ export function toResponse(row: ReservationRow): Reservation {
     guestNote: row.guestNote,
     staffNote: row.staffNote,
     createdAt: row.createdAt.toISOString(),
-    lastChangeId: row.changes[0]!.id,
+    lastChangeId: last.id,
+    lastChange: {
+      id: last.id,
+      toStatus: last.toStatus,
+      actorKind: last.actorKind as 'user' | 'guest' | 'system',
+      sourceOrderId: last.sourceOrderId,
+      createdAt: last.createdAt.toISOString(),
+    },
+    tablesNotInService: blocking
+      ? row.tables.map((t) => t.tableId).filter((id) => archived.has(id))
+      : [],
   };
 }

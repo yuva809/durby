@@ -89,6 +89,18 @@ export class PosFloorReader {
     return row ? toFloorTable(row) : null;
   }
 
+  /** These tables, archived or not (unknown ids are left out); `tx` as above. */
+  async tables(ids: readonly string[], tx?: TenantTransactionClient): Promise<FloorTable[]> {
+    const valid = ids.filter((id) => uuid.safeParse(id).success);
+    if (valid.length === 0) return [];
+    const rows = await (tx ?? this.db).diningTable.findMany({
+      where: { id: { in: valid } },
+      select: TABLE_SELECT,
+      orderBy: [...FLOOR_ORDER],
+    });
+    return rows.map(toFloorTable);
+  }
+
   /** One order, open or closed; null if it doesn't exist in this tenant. `tx` as above. */
   async order(orderId: string, tx?: TenantTransactionClient): Promise<OrderRef | null> {
     if (!uuid.safeParse(orderId).success) return null;

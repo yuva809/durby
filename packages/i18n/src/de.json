@@ -184,6 +184,8 @@
   "platform.settings.reservationsLastBookingOffsetMinutes.description": "Minuten vor Schließung, ab denen keine Buchung mehr beginnen kann.",
   "platform.settings.reservationsOnlineInstantMaxParty.name": "Sofort online buchbar bis",
   "platform.settings.reservationsOnlineInstantMaxParty.description": "Online-Gruppen bis zu dieser Größe werden sofort gebucht; größere werden eine Anfrage, die das Team annimmt oder ablehnt. Aus: jede Größe wird sofort gebucht.",
+  "platform.settings.reservationsFloorHorizonMinutes.name": "Vorschau auf dem Saalplan (Minuten)",
+  "platform.settings.reservationsFloorHorizonMinutes.description": "Wie weit im Voraus der Saalplan am Empfang einen Tisch als bald reserviert markiert.",
   "platform.settings.reservationsAutoConfirm.name": "Online-Buchungen automatisch bestätigen",
   "platform.settings.reservationsAutoConfirm.description": "Aus: das Team bestätigt jede Online-Buchung.",
   "platform.settings.reservationsHoldMinutes.name": "Haltezeit für Online-Buchungen",

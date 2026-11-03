@@ -38,7 +38,6 @@ import {
   type ReservationRow,
   reservationSnapshot,
   temporaryNumber,
-  toResponse,
 } from './bookings.service';
 import { resolveGuest } from './guests';
 import { isPartyOrder, type StatusAction, transition, undoable } from './status';
@@ -269,7 +268,7 @@ export class BookingStatusService {
         type: 'reservations.reservation.created',
         payload: payloadOf(row),
       });
-      const response = toResponse(row);
+      const response = await this.bookings.respondOne(tx, row);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
@@ -342,7 +341,7 @@ export class BookingStatusService {
       type: 'reservations.reservation.status_changed',
       payload: payloadOf(after),
     });
-    const response = toResponse(after);
+    const response = await this.bookings.respondOne(tx, after);
     await this.idempotency.completeInTransaction(tx, response);
     return response;
   }
