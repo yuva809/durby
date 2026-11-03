@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, useEffect } from 'react';
+import { ChoosePassword } from '../../components/auth/choose-password';
 import { AppShell } from '../../components/shell/app-shell';
 import { Skeleton } from '../../components/ui/skeleton';
 import { loginPath } from '../../lib/auth/next-path';
@@ -12,7 +13,7 @@ import { useAuth } from '../providers';
  * guard runs in the browser: a skeleton while the session restores, /login when there is none.
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const { status } = useAuth();
+  const { status, session } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -33,5 +34,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </div>
     );
   }
+  // A temporary password: nothing else until it is changed (ADR 0023 §3).
+  if (session?.passwordChangeRequired) return <ChoosePassword />;
   return <AppShell>{children}</AppShell>;
 }

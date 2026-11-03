@@ -279,6 +279,14 @@ validation error for a password outside the policy, plus the RBAC codes above. E
 (`platform.membership.*` incl. `deactivated`/`reactivated`, `platform.invitation.*` incl. `link_renewed`); a password change is a user-level event and goes to the security log
 (`auth.password.changed`), like a password reset (ADR 0006).
 
+**Web.** Settings → Staff (`/settings/staff`, `/settings/members` redirects): stats, search, role and status filters,
+a table (cards on phones) with permission chips ("Role defaults (N)" or the person's changes) and row actions (edit,
+share invite link, deactivate/reactivate, remove, cancel invitation). The Add/Edit dialog has the details, an
+optional temporary password (generate; empty = invitation), role chips (a new person starts with the
+least-privileged role you can give, never Owner), locations and a permission matrix grouped by area: ticks start
+from the role, changes are marked, keys you don't hold are locked, modules switched off for the organization are
+not listed. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
+
 ## Rollout (expand/contract, ADR 0004)
 
 `memberships.role_id` was **nullable** in release 1.3 so the previous release could still insert memberships during a

@@ -26,6 +26,7 @@ function storeMock(over: Partial<SessionStore> = {}): SessionStore {
     refresh: vi.fn().mockResolvedValue({ ok: true }),
     logout: vi.fn().mockResolvedValue(undefined),
     switchOrganization: vi.fn().mockResolvedValue({ ok: true }),
+    changePassword: vi.fn().mockResolvedValue({ ok: true }),
     apiFetch: vi.fn(),
     ...over,
   };

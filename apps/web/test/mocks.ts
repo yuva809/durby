@@ -11,6 +11,7 @@ export const mockState = {
   overrides: {} as Record<string, string>,
   store: {
     switchOrganization: vi.fn<SessionStore['switchOrganization']>(),
+    changePassword: vi.fn<SessionStore['changePassword']>(),
     logout: vi.fn<SessionStore['logout']>(),
     refresh: vi.fn<SessionStore['refresh']>(),
     apiFetch: vi.fn<SessionStore['apiFetch']>(),
