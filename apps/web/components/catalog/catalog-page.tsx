@@ -154,8 +154,8 @@ function Catalog({
       )}
       <Loaded resource={categories} reload={reloadCategories}>
         {(categoryList) => (
-          <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
-            <section className="flex flex-col gap-2" aria-labelledby={`${id}-categories`}>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[16rem_minmax(0,1fr)]">
+            <section className="flex min-w-0 flex-col gap-2" aria-labelledby={`${id}-categories`}>
               <h2 id={`${id}-categories`} className="text-lg font-medium">
                 {t('catalog.page.categories')}
               </h2>
@@ -192,7 +192,7 @@ function Catalog({
                 </ul>
               )}
             </section>
-            <section className="flex flex-col gap-2" aria-label={t('catalog.nav.title')}>
+            <section className="flex min-w-0 flex-col gap-2" aria-label={t('catalog.nav.title')}>
               <Loaded resource={products} reload={reloadProducts}>
                 {(productList) => (
                   <ProductTable
@@ -286,8 +286,9 @@ function ProductTable({
   const allPicked = products.every((p) => picked.has(p.id));
   return (
     <Card className="overflow-x-auto p-0">
-      <table className="w-full text-sm">
-        <thead className="border-b border-border text-left text-muted-foreground">
+      {/* Below md a row is a card (name, then category, price and VAT, then actions): no sideways scroll. */}
+      <table className="block w-full text-sm md:table">
+        <thead className="hidden border-b border-border text-left text-muted-foreground md:table-header-group">
           <tr>
             {canManage && (
               <th className="w-10 p-3">
@@ -311,16 +312,16 @@ function ProductTable({
             {canManage && <th className="p-3" />}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="block md:table-row-group">
           {products.map((product) => (
             <tr
               key={product.id}
-              className="border-b border-border last:border-0"
+              className="flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-border p-3 last:border-0 md:table-row md:p-0"
               data-testid="product-row"
               data-name={product.name}
             >
               {canManage && (
-                <td className="p-3">
+                <td className="md:p-3">
                   <Checkbox
                     checked={picked.has(product.id)}
                     onCheckedChange={(next) => onPick([product.id], next === true)}
@@ -329,21 +330,25 @@ function ProductTable({
                   />
                 </td>
               )}
-              <td className="p-3">
+              <td className="min-w-0 flex-1 basis-40 md:p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{product.name}</span>
                   {product.archivedAt && <Badge>{t('catalog.page.archived')}</Badge>}
                 </div>
                 {product.description && (
-                  <p className="text-muted-foreground">{product.description}</p>
+                  <p className="text-muted-foreground [overflow-wrap:anywhere]">
+                    {product.description}
+                  </p>
                 )}
               </td>
-              <td className="p-3">{categoryName.get(product.categoryId)}</td>
-              <td className="p-3 text-right tabular-nums">{product.price}</td>
-              <td className="p-3 text-right tabular-nums">{product.taxRate}</td>
+              <td className="text-muted-foreground md:p-3 md:text-foreground">
+                {categoryName.get(product.categoryId)}
+              </td>
+              <td className="tabular-nums md:p-3 md:text-right">{product.price}</td>
+              <td className="tabular-nums md:p-3 md:text-right">{product.taxRate}</td>
               {canManage && (
-                <td className="p-3">
-                  <div className="flex flex-wrap justify-end gap-2">
+                <td className="w-full md:w-auto md:p-3">
+                  <div className="flex flex-wrap gap-2 md:justify-end">
                     {open.length > 0 && (
                       <ProductDialog product={product} categories={open} onDone={onDone} />
                     )}
