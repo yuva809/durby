@@ -51,6 +51,8 @@ export interface SessionStore {
   refresh: () => Promise<AuthResult>;
   logout: () => Promise<void>;
   switchOrganization: (organizationId: string) => Promise<AuthResult>;
+  /** Your own password (and a temporary one, ADR 0023 §3); the api starts a fresh session. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>;
   /** fetch with the access token; on 401 refreshes once and retries. */
   apiFetch: (input: string, init?: RequestInit) => Promise<Response>;
 }
@@ -149,6 +151,21 @@ export function createSessionStore(deps: SessionStoreDeps): SessionStore {
           await post(
             '/switch-organization',
             { organizationId },
+            { Authorization: `Bearer ${session.accessToken}` },
+          ),
+        );
+      } catch {
+        return { ok: false, code: 'unknown' };
+      }
+    },
+
+    async changePassword(currentPassword, newPassword) {
+      if (!session) return { ok: false, code: 'auth.unauthenticated' };
+      try {
+        return await fromResponse(
+          await post(
+            '/password/change',
+            { currentPassword, newPassword },
             { Authorization: `Bearer ${session.accessToken}` },
           ),
         );

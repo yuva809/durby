@@ -95,7 +95,7 @@ describe('nav for Owner, Manager and Staff', () => {
     expect(settingsItems('owner')).toEqual([
       'organization',
       'locations',
-      'members',
+      'staff',
       'roles',
       'general',
       'numbering',
@@ -105,7 +105,7 @@ describe('nav for Owner, Manager and Staff', () => {
     expect(settingsItems('manager')).toEqual([
       'organization',
       'locations',
-      'members',
+      'staff',
       'roles',
       'general',
       'numbering',

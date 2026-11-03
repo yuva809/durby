@@ -225,6 +225,68 @@ Ids of another tenant are invisible under RLS and answer 404.
 | `invitations.email_mismatch`   | 403    | signed-in accept by a user with another email                 |
 | `auth.token_invalid`           | 400    | invitation token malformed, unknown, expired, used or revoked |
 
+## Manage Staff (ADR 0023)
+
+One page for the team (`/settings/staff`, replaces Members): who works where, with which role and exactly what each
+person may do.
+
+**Model.** `memberships` gains `display_name`, `phone` and `deactivated_at`; `membership_permissions (tenant_id,
+membership_id, permission_key, effect: grant | deny)` holds per-person changes; `invitations` gains `display_name` and
+`phone`, and `invitation_permissions` the same overrides, applied when the invitation is accepted. `users` gains
+`must_change_password` and `vouched_by_organization_id`.
+
+**Effective permissions.** Role keys ∪ grants − denies (registered keys only), then the location rule. Owners ignore
+overrides (they hold every key). A deactivated membership resolves to no access. The member is "custom" when they have
+any override. Granting: an actor may set a grant or deny only for keys they hold, and may manage a member only when
+the member's effective keys are a subset of their own (Owners only by Owners; never yourself).
+
+**Adding staff** — `POST /staff { name, email, phone?, roleId, locationIds?, grants[], denies[], temporaryPassword?,
+sendEmail }`:
+
+| Case                                     | Result                                                                                                                                                                                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No account for the email, password given | user created (`must_change_password`, `vouched_by_organization_id`: may sign in before verifying the email) + membership + overrides, in one transaction → `{ kind: 'created', membershipId }`. The owner shares the password themselves. |
+| No account, no password                  | an invitation (name, phone, overrides) → `{ kind: 'invited', invitationId }`; the email is sent only when `sendEmail`.                                                                                                                    |
+| The email already has an account         | always an invitation, whatever the password field held → `{ kind: 'invited', …, existingAccount: true }`: nobody sets another person's password. The owner learns that the account exists.                                                |
+| Already a member here                    | 409 `invitations.already_member`.                                                                                                                                                                                                         |
+
+**First sign-in.** A session whose user has `must_change_password` carries `passwordChangeRequired: true`; the guard
+allows only `POST /auth/password/change`, `GET /auth/me` and `POST /auth/logout` and answers
+`403 auth.password_change_required` to everything else. `POST /auth/password/change { currentPassword, newPassword }`
+(`@Authenticated`) checks the current password, applies the password policy, clears the flag, revokes the user's
+other sessions and returns a fresh session.
+
+**Links.** `POST /invitations/:id/link` issues a new token and returns its link; the previous link (e.g. the emailed
+one) stops working. `POST /staff` answers only the invitation id, so no token is kept with its idempotent reply; the
+link route is exempt from Idempotency-Key (a replay just issues another link). The web offers Copy and WhatsApp (`https://wa.me/?text=…`, the text from `platform.team.shareText`).
+
+**Deactivation.** `POST /staff/:id/deactivate` sets `deactivated_at` and the per-organization revocation marker;
+`POST /staff/:id/reactivate` clears it. The last active Owner can't be deactivated (409 `rbac.last_owner`; the
+deferred trigger counts active Owner memberships only).
+
+| Method | Path                    | Marker                  | Notes                                                                                                                                                                                          |
+| ------ | ----------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/staff`                | `platform.users.read`   | members (name, email, phone, role, locations, grants, denies, effective count, status, last sign-in, joined) and open invitations; stats: total, active, inactive, invited, custom permissions |
+| POST   | `/staff`                | `platform.users.invite` | see above; rate limited per organization                                                                                                                                                       |
+| PATCH  | `/staff/:id`            | `platform.users.manage` | `{ name?, phone?, roleId?, locationIds?, grants?, denies? }`                                                                                                                                   |
+| POST   | `/staff/:id/deactivate` | `platform.users.manage` | not yourself                                                                                                                                                                                   |
+| POST   | `/staff/:id/reactivate` | `platform.users.manage` |                                                                                                                                                                                                |
+| POST   | `/invitations/:id/link` | `platform.users.invite` | new link, old one stops working                                                                                                                                                                |
+| POST   | `/auth/password/change` | Authenticated           |                                                                                                                                                                                                |
+
+Errors: `auth.password_change_required` (403), `auth.invalid_credentials` (current password wrong, 401), the usual
+validation error for a password outside the policy, plus the RBAC codes above. Every write is idempotent and audited
+(`platform.membership.*` incl. `deactivated`/`reactivated`, `platform.invitation.*` incl. `link_renewed`); a password change is a user-level event and goes to the security log
+(`auth.password.changed`), like a password reset (ADR 0006).
+
+**Web.** Settings → Staff (`/settings/staff`, `/settings/members` redirects): stats, search, role and status filters,
+a table (cards on phones) with permission chips ("Role defaults (N)" or the person's changes) and row actions (edit,
+share invite link, deactivate/reactivate, remove, cancel invitation). The Add/Edit dialog has the details, an
+optional temporary password (generate; empty = invitation), role chips (a new person starts with the
+least-privileged role you can give, never Owner), locations and a permission matrix grouped by area: ticks start
+from the role, changes are marked, keys you don't hold are locked, modules switched off for the organization are
+not listed. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
+
 ## Rollout (expand/contract, ADR 0004)
 
 `memberships.role_id` was **nullable** in release 1.3 so the previous release could still insert memberships during a

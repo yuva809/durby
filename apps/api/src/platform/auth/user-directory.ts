@@ -84,6 +84,55 @@ export class UserDirectory implements AuditActorDirectory {
   }
 
   /**
+   * An account an organization creates with a temporary password (ADR 0023 §3), inside the
+   * caller's transaction: the email is not verified but vouched for by `organizationId`, and every
+   * session is limited to changing the password until it is changed. Fails on the unique email if
+   * the user exists.
+   */
+  async createWithTemporaryPassword(
+    tx: TenantTransactionClient,
+    input: { email: string; password: string; locale: string; organizationId: string },
+  ): Promise<UserProfile> {
+    const passwordHash = await this.hasher.hash(input.password);
+    return tx.user.create({
+      data: {
+        email: normalizeEmail(input.email),
+        locale: input.locale,
+        passwordHash,
+        mustChangePassword: true,
+        vouchedByOrganizationId: input.organizationId,
+      },
+      select: { id: true, email: true, locale: true },
+    });
+  }
+
+  /** Which of the given users still have to replace a temporary password. */
+  async withTemporaryPassword(ids: readonly string[]): Promise<Set<string>> {
+    if (ids.length === 0) return new Set();
+    const users = await this.db.user.findMany({
+      where: { id: { in: [...ids] }, mustChangePassword: true },
+      select: { id: true },
+    });
+    return new Set(users.map((u) => u.id));
+  }
+
+  /**
+   * When each user last started or refreshed a session in `organizationId` (the newest refresh
+   * token issued for it). Never the tokens themselves.
+   */
+  async lastActiveIn(organizationId: string, ids: readonly string[]): Promise<Map<string, Date>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.db.refreshToken.groupBy({
+      by: ['userId'],
+      where: { userId: { in: [...ids] }, organizationId },
+      _max: { createdAt: true },
+    });
+    return new Map(
+      rows.flatMap((r) => (r._max.createdAt ? [[r.userId, r._max.createdAt] as const] : [])),
+    );
+  }
+
+  /**
    * Bootstrap commands only: finds the user or creates them. A new user gets no password unless
    * one is given (bootstrap admins set theirs through the password-set mail). An existing user is
    * returned unchanged.

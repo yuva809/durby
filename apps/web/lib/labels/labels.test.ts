@@ -13,6 +13,7 @@ function storeWith(apiFetch: SessionStore['apiFetch']): SessionStore {
     refresh: vi.fn(),
     logout: vi.fn(),
     switchOrganization: vi.fn(),
+    changePassword: vi.fn(),
     apiFetch,
   };
 }

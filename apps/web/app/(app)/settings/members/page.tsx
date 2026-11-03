@@ -1,5 +1,6 @@
-import { MembersPage } from '../../../../components/users/members-page';
+import { redirect } from 'next/navigation';
 
+/** Members moved into Manage Staff (docs/platform/rbac.md → Manage Staff). */
 export default function Page() {
-  return <MembersPage />;
+  redirect('/settings/staff');
 }

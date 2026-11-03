@@ -27,6 +27,12 @@ export function authRateLimits(config: AppConfig) {
       limit: config.RATE_LIMIT_TOKEN_IP,
       windowMs: 15 * MIN,
     },
+    /** Adding staff (accounts with temporary passwords, invitations) per organization (ADR 0023). */
+    teamCreateOrg: {
+      name: 'rbac.team.create.org',
+      limit: config.RATE_LIMIT_LOGIN_IP,
+      windowMs: 15 * MIN,
+    },
   } as const satisfies Record<string, RateLimitRule>;
 }
 

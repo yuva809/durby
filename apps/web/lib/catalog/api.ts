@@ -1,10 +1,16 @@
 import {
+  type CategoryBulkRequest,
+  type CategoryBulkResponse,
+  categoryBulkResponseSchema,
   type CreateProductCategoryRequest,
   type CreateProductRequest,
   type ImportProductRow,
   type ImportProductsResponse,
   importProductsResponseSchema,
   type Product,
+  type ProductBulkRequest,
+  type ProductBulkResponse,
+  productBulkResponseSchema,
   type ProductCategory,
   productCategoryListResponseSchema,
   productCategorySchema,
@@ -81,3 +87,18 @@ export const importProducts = (
     { rows },
     importProductsResponseSchema,
   );
+
+/** Bulk actions on the selected products or categories (docs/modules/catalog.md → Bulk actions). */
+export const bulkProducts = (
+  store: Api,
+  action: ActionKey,
+  body: ProductBulkRequest,
+): Promise<Result<ProductBulkResponse | null>> =>
+  write(store, action, '/api/v1/catalog/products/bulk', 'POST', body, productBulkResponseSchema);
+
+export const bulkCategories = (
+  store: Api,
+  action: ActionKey,
+  body: CategoryBulkRequest,
+): Promise<Result<CategoryBulkResponse | null>> =>
+  write(store, action, '/api/v1/catalog/categories/bulk', 'POST', body, categoryBulkResponseSchema);

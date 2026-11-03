@@ -1,6 +1,7 @@
 export * from './api/audit';
 export * from './api/auth';
 export * from './api/catalog';
+export * from './api/catalog-bulk';
 export * from './api/entitlements';
 export * from './api/errors';
 export * from './api/health';
@@ -14,6 +15,7 @@ export * from './api/pos-areas';
 export * from './api/pos-orders';
 export * from './api/pos-tables';
 export * from './api/rbac';
+export * from './api/team';
 export * from './api/reservations';
 export * from './api/settings';
 export * from './api/staff';

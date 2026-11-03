@@ -30,6 +30,12 @@ export const resetPasswordRequestSchema = z.object({
 
 export const verifyEmailRequestSchema = z.object({ token: opaqueToken });
 
+/** Changing your own password (and the forced change of a temporary one, ADR 0023 §3). */
+export const changePasswordRequestSchema = z.object({
+  currentPassword: z.string().min(1).max(PASSWORD_MAX_LENGTH),
+  newPassword: newPasswordSchema,
+});
+
 export const authUserSchema = z.object({
   id: z.uuid(),
   email: z.string(),
@@ -55,6 +61,12 @@ export const meResponseSchema = z.object({
    * build can talk to an api from before 1.5 (rollback, ADR 0004).
    */
   activeFeatures: z.array(z.string()).default([]),
+  /**
+   * The account has a temporary password set by an organization (ADR 0023 §3): until it is changed,
+   * the api answers only the password change, /auth/me and logout. Defaults to false for an api from
+   * before it (rollback, ADR 0004).
+   */
+  passwordChangeRequired: z.boolean().default(false),
 });
 
 export const sessionResponseSchema = meResponseSchema.extend({
@@ -73,6 +85,7 @@ export const AUTH_ERROR_CODES = [
   'auth.refresh_invalid',
   'auth.refresh_reused',
   'auth.not_a_member',
+  'auth.password_change_required',
   'auth.origin_rejected',
   'auth.token_invalid',
   'auth.unavailable',
@@ -86,6 +99,7 @@ export type SwitchOrganizationRequest = z.infer<typeof switchOrganizationRequest
 export type EmailRequest = z.infer<typeof emailRequestSchema>;
 export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
 export type VerifyEmailRequest = z.infer<typeof verifyEmailRequestSchema>;
+export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type OrganizationSummary = z.infer<typeof organizationSummarySchema>;
 export type MeResponse = z.infer<typeof meResponseSchema>;

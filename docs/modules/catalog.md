@@ -20,8 +20,9 @@ Organization (tenant)
 - **Money** (rule 6): `price` is gross (VAT included, as menus show it) in the organization's currency
   (`platform.currency` setting), `numeric(12,2)`, `>= 0`. `tax_rate` is a percentage `numeric(5,2)` in `[0, 100]`
   (e.g. `7.00` food, `19.00` drinks in Germany). JSON carries both as strings: `"12.50"`, `"7.00"`.
-- **Archive, never delete.** Orders and guest checks (steps 3–4) reference products; an archived product or
-  category is hidden from ordering and from default lists but stays readable. Unarchiving checks name uniqueness again.
+- **Archive; delete only what was never sold** (ADR 0024, amends ADR 0016 §5). Orders and guest checks (steps 3–4)
+  reference products; an archived product or category is hidden from ordering and from default lists but stays
+  readable. Unarchiving checks name uniqueness again. Only the bulk delete removes rows, and only unsold ones.
 - A product can't be put into an archived category; archiving a category leaves its products as they are (the
   ordering screen hides products of archived categories).
 
@@ -78,6 +79,34 @@ semicolons), quotes per RFC 4180, UTF-8 with or without BOM. The import dialog o
 (fill in, then _Save As → CSV UTF-8_) and [`docs/samples/products-import-sample.csv`](../samples/products-import-sample.csv)
 (ready to import).
 
+### Bulk actions
+
+Many products or categories at once, with `catalog.products.manage`, up to 500 ids per request, both
+`completion: 'transaction'` (a replay returns the first result).
+
+- **`POST /catalog/products/bulk`** `{ ids, action }`, `action` one of `{ kind: 'archive' }`, `{ kind: 'restore' }`,
+  `{ kind: 'move', categoryId }`, `{ kind: 'vat', taxRate }`, `{ kind: 'price', change: { mode, value } }` or
+  `{ kind: 'delete' }` → `{ updated: ids, deleted: ids, kept: [{ id, reason: 'sold' }] }`.
+  - Edits are **all or nothing** in one transaction: an unknown id → 404 `catalog.product_not_found`
+    (`details.ids`); a missing or archived target category → 404 / 409 as for a single edit; a name that would clash
+    (move, restore) → 409 `catalog.product_name_taken`. Products already in the requested state are left alone
+    (no audit row).
+  - **Price:** `mode` `set` (the new price), `add` (± amount) or `percent` (± %, `price × (1 + p/100)`), `value` a
+    decimal string with up to two decimals (signed for `add`/`percent`). The math is exact on whole cents
+    (`newPrice` in `packages/shared`, the same in the web preview), percent rounded half up to the cent. A result
+    below 0 or beyond the price column → 400 `catalog.price_invalid` (`details.ids`), nothing changed.
+  - **Delete** removes only products **never sold**. Whether one was sold is decided by the database, not by reading
+    POS tables (rule 4): an order line references its product with `ON DELETE RESTRICT`, so deleting a sold product
+    fails. Each product is deleted in its own savepoint; a sold one is rolled back and reported in `kept` with
+    reason `sold` (archive it instead), the others are deleted. Unknown ids are skipped (already gone).
+- **`POST /catalog/categories/bulk`** `{ ids, action: 'archive' | 'restore' | 'delete' }` → `{ updated, deleted,
+  kept, productsDeleted }`. Archive and restore as for a single category (all or nothing). **Delete** removes a
+  category **with its products** (archived ones too) in one savepoint per category; if any of its products was sold,
+  that whole category is kept (`kept`, reason `sold`) and nothing of it is deleted.
+- Audit: `catalog.product.updated` / `catalog.product_category.updated` per changed row, and
+  `catalog.product.deleted` / `catalog.product_category.deleted` (before only) per deleted row, in the same
+  transaction.
+
 ### Errors
 
 | Code                          | Status | When                                                         |
@@ -88,6 +117,7 @@ semicolons), quotes per RFC 4180, UTF-8 with or without BOM. The import dialog o
 | `catalog.product_name_taken`  | 409    | a non-archived product of the category already has this name |
 | `catalog.category_archived`   | 409    | create or move a product into an archived category           |
 | `catalog.import_invalid`      | 400    | an import row is invalid (`details.rows`)                    |
+| `catalog.price_invalid`       | 400    | a bulk price change would go below 0 or too high (`details.ids`) |
 
 Labels: `catalog.errors.<camelCase>`.
 
@@ -99,6 +129,8 @@ Labels: `catalog.errors.<camelCase>`.
 | `catalog.product_category.updated` | `product_category` | same (also archive / unarchive)                                           |
 | `catalog.product.created`          | `product`          | `id`, `categoryId`, `name`, `price`, `taxRate`, `sortOrder`, `archivedAt` |
 | `catalog.product.updated`          | `product`          | same (also archive / unarchive)                                           |
+| `catalog.product.deleted`          | `product`          | same, before only (bulk delete of a product never sold)                   |
+| `catalog.product_category.deleted` | `product_category` | `id`, `name`, `sortOrder`, `archivedAt`, before only                      |
 
 `description` is free text and stays out of snapshots. A `PATCH` that changes nothing writes no audit row.
 
@@ -113,6 +145,12 @@ and problems by row number), import, read the summary (created / updated / uncha
 
 `/catalog` (nav: Modules → Products, feature `catalog`, permission `catalog.products.read`). Category column and
 product table; create/edit dialogs and archive/unarchive only with `catalog.products.manage`. "Show archived" toggle.
+
+**Bulk actions** (with `catalog.products.manage`): checkboxes on products (and "select all shown") and on
+categories. A bar shows the count and the actions: products *Move to…*, *VAT…*, *Price…* (set / ± amount / ± %,
+previewing the new prices), *Archive*, *Restore*, *Delete*; categories *Archive*, *Restore*, *Delete* (the confirm
+says how many products go with them). After a delete, products or categories kept because they were sold are named,
+with *Archive them* as the next step. On phones the bar sits at the bottom of the screen.
 
 ### Menu scan (`/catalog/scan`)
 

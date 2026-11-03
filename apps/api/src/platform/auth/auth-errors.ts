@@ -35,6 +35,12 @@ export const authErrors = {
     ),
   notAMember: () =>
     new ApiError(HttpStatus.FORBIDDEN, 'auth.not_a_member', 'Not a member of this organization.'),
+  passwordChangeRequired: () =>
+    new ApiError(
+      HttpStatus.FORBIDDEN,
+      'auth.password_change_required',
+      'Choose your own password first.',
+    ),
   originRejected: () =>
     new ApiError(HttpStatus.FORBIDDEN, 'auth.origin_rejected', 'Request origin not allowed.'),
   tokenInvalid: () =>

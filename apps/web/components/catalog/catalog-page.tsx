@@ -11,9 +11,12 @@ import {
 import { ScanText } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useState } from 'react';
+import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import {
+  bulkCategories,
+  bulkProducts,
   createCategory,
   createProduct,
   loadCategories,
@@ -21,6 +24,7 @@ import {
   updateCategory,
   updateProduct,
 } from '../../lib/catalog/api';
+import { errorLabel } from '../../lib/auth/errors';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { Badge } from '../ui/badge';
@@ -32,6 +36,7 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Loaded, NoAccess } from '../users/common';
 import { ArchiveToggle, Field, FormDialog } from '../form-dialog';
+import { BulkBar, type KeptRows } from './bulk-bar';
 import { ImportDialog } from './import-dialog';
 
 /** /catalog (docs/modules/catalog.md → Web). Editing needs `catalog.products.manage`. */
@@ -60,6 +65,9 @@ function Catalog({
   const id = useId();
   const [showArchived, setShowArchived] = useState(false);
   const [filter, setFilter] = useState<string | null>(null);
+  const [pickedProducts, setPickedProducts] = useState<ReadonlySet<string>>(new Set());
+  const [pickedCategories, setPickedCategories] = useState<ReadonlySet<string>>(new Set());
+  const [kept, setKept] = useState<KeptRows | null>(null);
   const key = organizationId === null ? null : `${organizationId}:${showArchived}`;
   const [categories, reloadCategories] = useResource(key, () =>
     loadCategories(store, showArchived),
@@ -71,9 +79,28 @@ function Catalog({
   };
   const openCategories =
     categories.status === 'ready' ? categories.data.filter((c) => c.archivedAt === null) : [];
+  // Picked ids that are gone after a reload (deleted) drop out here.
+  const selectedProducts =
+    products.status === 'ready' ? products.data.filter((p) => pickedProducts.has(p.id)) : [];
+  const selectedCategories =
+    categories.status === 'ready' ? categories.data.filter((c) => pickedCategories.has(c.id)) : [];
+  const toggle =
+    (set: ReadonlySet<string>, update: (next: ReadonlySet<string>) => void) =>
+    (ids: string[], on: boolean) => {
+      const next = new Set(set);
+      for (const id of ids) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
+      update(next);
+    };
+  const clear = () => {
+    setPickedProducts(new Set());
+    setPickedCategories(new Set());
+  };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className={`flex flex-col gap-6${canManage ? ' pb-28 md:pb-0' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t('catalog.nav.title')}</h1>
         {canManage && (
@@ -102,6 +129,29 @@ function Catalog({
           {t('catalog.page.showArchived')}
         </Label>
       </div>
+      {canManage && (
+        <BulkBar
+          products={selectedProducts}
+          categories={selectedCategories}
+          openCategories={openCategories}
+          onClear={clear}
+          onDone={(next) => {
+            setKept(next);
+            clear();
+            reload();
+          }}
+        />
+      )}
+      {kept && (
+        <KeptNotice
+          kept={kept}
+          onDismiss={() => setKept(null)}
+          onDone={() => {
+            setKept(null);
+            reload();
+          }}
+        />
+      )}
       <Loaded resource={categories} reload={reloadCategories}>
         {(categoryList) => (
           <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
@@ -132,6 +182,10 @@ function Catalog({
                       selected={filter === category.id}
                       onSelect={() => setFilter(category.id)}
                       canManage={canManage}
+                      picked={pickedCategories.has(category.id)}
+                      onPick={(on) =>
+                        toggle(pickedCategories, setPickedCategories)([category.id], on)
+                      }
                       onDone={reload}
                     />
                   ))}
@@ -145,6 +199,8 @@ function Catalog({
                     products={productList.filter((p) => filter === null || p.categoryId === filter)}
                     categories={categoryList}
                     canManage={canManage}
+                    picked={pickedProducts}
+                    onPick={toggle(pickedProducts, setPickedProducts)}
                     onDone={reload}
                   />
                 )}
@@ -162,26 +218,40 @@ function CategoryRow({
   selected,
   onSelect,
   canManage,
+  picked,
+  onPick,
   onDone,
 }: {
   category: ProductCategory;
   selected: boolean;
   onSelect: () => void;
   canManage: boolean;
+  picked: boolean;
+  onPick: (on: boolean) => void;
   onDone: () => void;
 }) {
   const t = useT();
   return (
     <li className="flex flex-col gap-1" data-testid="category-row" data-name={category.name}>
-      <Button
-        variant={selected ? 'outline' : 'ghost'}
-        className="w-full justify-start gap-2"
-        aria-pressed={selected}
-        onClick={onSelect}
-      >
-        <span className="truncate">{category.name}</span>
-        {category.archivedAt && <Badge>{t('catalog.page.archived')}</Badge>}
-      </Button>
+      <div className="flex items-center gap-1">
+        {canManage && (
+          <Checkbox
+            checked={picked}
+            onCheckedChange={(next) => onPick(next === true)}
+            aria-label={t('catalog.bulk.selectRow', { name: category.name })}
+            data-testid="category-pick"
+          />
+        )}
+        <Button
+          variant={selected ? 'outline' : 'ghost'}
+          className="min-w-0 flex-1 justify-start gap-2"
+          aria-pressed={selected}
+          onClick={onSelect}
+        >
+          <span className="truncate">{category.name}</span>
+          {category.archivedAt && <Badge>{t('catalog.page.archived')}</Badge>}
+        </Button>
+      </div>
       {canManage && selected && (
         <div className="flex flex-wrap gap-2 px-2 pb-2">
           <CategoryDialog category={category} onDone={onDone} />
@@ -196,11 +266,15 @@ function ProductTable({
   products,
   categories,
   canManage,
+  picked,
+  onPick,
   onDone,
 }: {
   products: Product[];
   categories: ProductCategory[];
   canManage: boolean;
+  picked: ReadonlySet<string>;
+  onPick: (ids: string[], on: boolean) => void;
   onDone: () => void;
 }) {
   const t = useT();
@@ -209,11 +283,27 @@ function ProductTable({
   }
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
   const open = categories.filter((c) => c.archivedAt === null);
+  const allPicked = products.every((p) => picked.has(p.id));
   return (
     <Card className="overflow-x-auto p-0">
       <table className="w-full text-sm">
         <thead className="border-b border-border text-left text-muted-foreground">
           <tr>
+            {canManage && (
+              <th className="w-10 p-3">
+                <Checkbox
+                  checked={allPicked}
+                  onCheckedChange={(next) =>
+                    onPick(
+                      products.map((p) => p.id),
+                      next === true,
+                    )
+                  }
+                  aria-label={t('catalog.bulk.selectAll')}
+                  data-testid="product-pick-all"
+                />
+              </th>
+            )}
             <th className="p-3 font-medium">{t('catalog.fields.name')}</th>
             <th className="p-3 font-medium">{t('catalog.fields.category')}</th>
             <th className="p-3 text-right font-medium">{t('catalog.fields.price')}</th>
@@ -229,6 +319,16 @@ function ProductTable({
               data-testid="product-row"
               data-name={product.name}
             >
+              {canManage && (
+                <td className="p-3">
+                  <Checkbox
+                    checked={picked.has(product.id)}
+                    onCheckedChange={(next) => onPick([product.id], next === true)}
+                    aria-label={t('catalog.bulk.selectRow', { name: product.name })}
+                    data-testid="product-pick"
+                  />
+                </td>
+              )}
               <td className="p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{product.name}</span>
@@ -468,5 +568,52 @@ function ProductDialog({
         />
       </Field>
     </FormDialog>
+  );
+}
+
+/** What a delete kept because it was sold, with archiving them as the next step. */
+function KeptNotice({
+  kept,
+  onDismiss,
+  onDone,
+}: {
+  kept: KeptRows;
+  onDismiss: () => void;
+  onDone: () => void;
+}) {
+  const t = useT();
+  const { store } = useAuth();
+  const action = useActionKey();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const ids = kept.items.map((i) => i.id);
+
+  async function archive() {
+    setBusy(true);
+    setError(null);
+    const result =
+      kept.kind === 'products'
+        ? await bulkProducts(store, action, { ids, action: { kind: 'archive' } })
+        : await bulkCategories(store, action, { ids, action: 'archive' });
+    setBusy(false);
+    if (result.ok) onDone();
+    else setError(t(errorLabel(result.code)));
+  }
+
+  return (
+    <Card className="flex flex-col gap-2 p-4" data-testid="bulk-kept">
+      <p role="status">
+        {t('catalog.bulk.keptTitle', { names: kept.items.map((i) => i.name).join(', ') })}
+      </p>
+      <Notice text={error} tone="error" />
+      <div className="flex flex-wrap gap-2">
+        <Button disabled={busy} onClick={() => void archive()} data-testid="bulk-kept-archive">
+          {t('catalog.bulk.archiveThem')}
+        </Button>
+        <Button variant="outline" onClick={onDismiss}>
+          {t('catalog.bulk.dismiss')}
+        </Button>
+      </div>
+    </Card>
   );
 }

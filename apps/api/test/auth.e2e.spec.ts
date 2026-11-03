@@ -57,6 +57,7 @@ describe('auth', () => {
         activeRole: { id: expect.any(String) as string, systemKey: 'staff', name: null },
         activePermissions: ['platform.settings.read', 'catalog.products.read', 'pos.tables.read'],
         activeFeatures: [...FEATURE_KEYS],
+        passwordChangeRequired: false,
       });
       expect(res.headers['cache-control']).toBe('no-store');
       const header = setCookieHeader(res) ?? '';
@@ -445,6 +446,7 @@ describe('auth', () => {
         activeRole: { id: expect.any(String) as string, systemKey: 'staff', name: null },
         activePermissions: ['platform.settings.read', 'catalog.products.read', 'pos.tables.read'],
         activeFeatures: [...FEATURE_KEYS],
+        passwordChangeRequired: false,
       });
     });
 

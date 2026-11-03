@@ -15,12 +15,20 @@ import { RolesController } from './roles.controller';
 import { RolesService } from './roles.service';
 import { RouteMarkerCheck } from './route-marker.check';
 import { SystemRoles } from './system-roles';
+import { InvitationLinkController, TeamController } from './team.controller';
+import { TeamService } from './team.service';
 
 /** Roles, permissions and route access (docs/platform/rbac.md). AccessGuard runs on every route. */
 @Global()
 @Module({
   imports: [DiscoveryModule],
-  controllers: [InvitationsController, MembersController, RolesController],
+  controllers: [
+    InvitationsController,
+    InvitationLinkController,
+    MembersController,
+    RolesController,
+    TeamController,
+  ],
   providers: [
     AccessService,
     InvitationMailer,
@@ -29,6 +37,7 @@ import { SystemRoles } from './system-roles';
     RolesService,
     RouteMarkerCheck,
     SystemRoles,
+    TeamService,
     { provide: PERMISSION_REGISTRY, useValue: defaultPermissionRegistry },
     ActiveAccessProvider,
     { provide: ACTIVE_ACCESS_LOOKUP, useExisting: ActiveAccessProvider },

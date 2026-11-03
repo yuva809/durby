@@ -13,6 +13,8 @@ export interface AccessTokenSubject {
   organizationId: string | null;
   /** Refresh token family = login session. */
   sessionId: string;
+  /** The password is temporary and must be changed first (ADR 0023 §3); claim `pcr`. */
+  passwordChangeRequired?: boolean;
 }
 
 export interface AccessTokenClaims extends AccessTokenSubject {
@@ -24,6 +26,7 @@ const claimsSchema = z.object({
   sub: z.uuid(),
   org: z.uuid().nullable(),
   sid: z.uuid(),
+  pcr: z.literal(true).optional(),
   iat: z.number().int(),
   exp: z.number().int(),
 });
@@ -49,7 +52,11 @@ export class AccessTokenService {
 
   async sign(subject: AccessTokenSubject, now: Date = new Date()): Promise<string> {
     const iat = Math.floor(now.getTime() / 1000);
-    return new SignJWT({ org: subject.organizationId, sid: subject.sessionId })
+    return new SignJWT({
+      org: subject.organizationId,
+      sid: subject.sessionId,
+      ...(subject.passwordChangeRequired === true && { pcr: true }),
+    })
       .setProtectedHeader({ alg: ACCESS_TOKEN_ALGORITHM, typ: ACCESS_TOKEN_TYPE })
       .setSubject(subject.userId)
       .setIssuer(this.config.JWT_ISSUER)
@@ -79,7 +86,14 @@ export class AccessTokenService {
     }
     const claims = claimsSchema.safeParse(payload);
     if (!claims.success) throw new InvalidAccessTokenError('claims');
-    const { sub, org, sid, iat, exp } = claims.data;
-    return { userId: sub, organizationId: org, sessionId: sid, issuedAt: iat, expiresAt: exp };
+    const { sub, org, sid, pcr, iat, exp } = claims.data;
+    return {
+      userId: sub,
+      organizationId: org,
+      sessionId: sid,
+      passwordChangeRequired: pcr === true,
+      issuedAt: iat,
+      expiresAt: exp,
+    };
   }
 }

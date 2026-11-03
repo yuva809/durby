@@ -10,6 +10,8 @@ export interface ResolvedAccess {
   roleName: string | null;
   /** The role's registered keys, before location scope (used to compare roles when granting). */
   roleKeys: ReadonlySet<string>;
+  /** Role keys ∪ grants − denies (ADR 0023 §1), before location scope. */
+  effectiveKeys: ReadonlySet<string>;
   /** The keys the caller holds: organization-scope keys only when allLocations. */
   permissions: ReadonlySet<string>;
   allLocations: boolean;
@@ -23,6 +25,7 @@ export const NO_ACCESS: ResolvedAccess = Object.freeze({
   systemRole: null,
   roleName: null,
   roleKeys: new Set<string>(),
+  effectiveKeys: new Set<string>(),
   permissions: new Set<string>(),
   allLocations: false,
   locationIds: new Set<string>(),
@@ -39,6 +42,30 @@ export interface MembershipAccessRow {
     permissions: readonly { permissionKey: string }[];
   } | null;
   locations: readonly { locationId: string }[];
+  /** Per-member overrides (ADR 0023 §1); absent in rows loaded before them. */
+  permissions?: readonly { permissionKey: string; effect: 'grant' | 'deny' }[];
+  /** A deactivated membership has no access (ADR 0023 §6). */
+  deactivatedAt?: Date | null;
+}
+
+/**
+ * Role keys with a member's grants added and denies taken away; only registered keys count.
+ * Owners ignore overrides: they always hold every key (ADR 0023 §1).
+ */
+export function effectiveKeysOf(
+  registry: PermissionRegistry,
+  roleKeys: ReadonlySet<string>,
+  systemKey: SystemRole | null,
+  overrides: readonly { permissionKey: string; effect: 'grant' | 'deny' }[],
+): ReadonlySet<string> {
+  if (systemKey === 'owner' || overrides.length === 0) return roleKeys;
+  const keys = new Set(roleKeys);
+  for (const { permissionKey, effect } of overrides) {
+    if (!Object.hasOwn(registry, permissionKey)) continue;
+    if (effect === 'grant') keys.add(permissionKey);
+    else keys.delete(permissionKey);
+  }
+  return keys;
 }
 
 /**
@@ -61,14 +88,14 @@ export function roleKeysOf(
 }
 
 /**
- * Resolves a membership row. No membership or no role → no permissions. A location-limited
+ * Resolves a membership row. No membership, no role or deactivated → no permissions. A location-limited
  * membership keeps only location-scope keys; with no location rows it covers no locations.
  */
 export function resolveAccess(
   registry: PermissionRegistry,
   row: MembershipAccessRow | null,
 ): ResolvedAccess {
-  if (!row) return NO_ACCESS;
+  if (!row || row.deactivatedAt) return NO_ACCESS;
   const roleKeys = row.role
     ? roleKeysOf(
         registry,
@@ -76,15 +103,19 @@ export function resolveAccess(
         row.role.permissions.map((p) => p.permissionKey),
       )
     : new Set<string>();
+  const effectiveKeys = row.role
+    ? effectiveKeysOf(registry, roleKeys, row.role.systemKey, row.permissions ?? [])
+    : roleKeys;
   const permissions = row.allLocations
-    ? roleKeys
-    : new Set([...roleKeys].filter((key) => registry[key]?.scope === 'location'));
+    ? effectiveKeys
+    : new Set([...effectiveKeys].filter((key) => registry[key]?.scope === 'location'));
   return {
     membershipId: row.id,
     roleId: row.role?.id ?? null,
     systemRole: row.role?.systemKey ?? null,
     roleName: row.role?.name ?? null,
     roleKeys,
+    effectiveKeys,
     permissions,
     allLocations: row.allLocations,
     locationIds: new Set(row.allLocations ? [] : row.locations.map((l) => l.locationId)),

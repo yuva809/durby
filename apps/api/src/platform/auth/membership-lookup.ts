@@ -30,24 +30,32 @@ export class MembershipLookup {
         SELECT organization_id FROM auth_user_organization_ids()`,
     ]);
     if (rows.length === 0) return [];
+    // Deactivated memberships don't count (ADR 0023 §6). The definer function lists every membership;
+    // each one is then checked inside its own tenant under RLS.
+    const ids = rows.map((r) => r.organization_id);
+    const active = (
+      await Promise.all(ids.map(async (id) => ((await this.isMember(userId, id)) ? id : null)))
+    ).filter((id): id is string => id !== null);
+    if (active.length === 0) return [];
     return this.platformDb.organization.findMany({
-      where: { id: { in: rows.map((r) => r.organization_id) } },
+      where: { id: { in: active } },
       select: { id: true, name: true },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
     });
   }
 
   /**
-   * Whether the user is a member of `organizationId`. Runs with the tenant set to that org: RLS
-   * shows only its rows, so a claimed org id is trusted only once this returns true.
+   * Whether the user is an active member of `organizationId` (a deactivated membership is not, ADR
+   * 0023 §6). Runs with the tenant set to that org: RLS shows only its rows, so a claimed org id is
+   * trusted only once this returns true.
    */
   async isMember(userId: string, organizationId: string): Promise<boolean> {
     const membership = await this.tenantContext.run({ tenantId: organizationId, userId }, () =>
       this.tenantDb.membership.findUnique({
         where: { tenantId_userId: { tenantId: organizationId, userId } },
-        select: { id: true },
+        select: { id: true, deactivatedAt: true },
       }),
     );
-    return membership !== null;
+    return membership !== null && membership.deactivatedAt === null;
   }
 }

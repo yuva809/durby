@@ -68,7 +68,11 @@ export class SessionService {
       throw authErrors.invalidCredentials();
     }
     await this.lockoutCall(() => this.lockout.reset(key));
-    if (user.emailVerifiedAt === null) throw authErrors.emailNotVerified();
+    // An account an organization created with a temporary password may sign in before the email is
+    // verified (ADR 0023 §3: vouched, not verified).
+    if (user.emailVerifiedAt === null && user.vouchedByOrganizationId === null) {
+      throw authErrors.emailNotVerified();
+    }
 
     const organizations = await this.memberships.organizationsOf(user.id);
     const active =
@@ -155,7 +159,53 @@ export class SessionService {
       organizations: await this.memberships.organizationsOf(user.id),
       activeOrganizationId: auth.organizationId,
       ...(await this.accessIn(auth.organizationId, user.id)),
+      passwordChangeRequired: user.mustChangePassword,
     };
+  }
+
+  /**
+   * Changes the caller's password (and a temporary one, ADR 0023 §3): checks the current password,
+   * clears `must_change_password`, ends every session of the user and starts a new one for this
+   * caller in the same organization.
+   */
+  async changePassword(
+    auth: Readonly<AuthContextValue>,
+    input: { currentPassword: string; newPassword: string },
+    ip: string,
+  ): Promise<IssuedSession> {
+    await this.limits.enforce([this.limits.rules.loginIp, ip]);
+    const user = await this.db.user.findUnique({ where: { id: auth.userId } });
+    if (!user) throw authErrors.unauthenticated();
+    if (!(await this.hasher.verify(user.passwordHash, input.currentPassword))) {
+      this.security.event('auth.login.failed', { userId: user.id, ip });
+      throw authErrors.invalidCredentials();
+    }
+    const passwordHash = await this.hasher.hash(input.newPassword);
+    const now = this.clock.now();
+    await this.db.$transaction([
+      this.db.refreshToken.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: now, revokedReason: 'password_reset' },
+      }),
+      this.db.user.update({
+        where: { id: user.id },
+        data: { passwordHash, passwordChangedAt: now, mustChangePassword: false },
+      }),
+    ]);
+    // Access tokens issued before this second stop working; the new session's token is issued now.
+    await this.revocationCall(() => this.revocations.revokeUser(user.id, now));
+    this.security.event('auth.password.changed', {
+      userId: user.id,
+      sessionId: auth.sessionId,
+      ip,
+    });
+    const organizationId =
+      auth.organizationId !== null &&
+      (await this.memberships.isMember(user.id, auth.organizationId))
+        ? auth.organizationId
+        : null;
+    const refresh = await this.refreshTokens.startFamily(user.id, organizationId);
+    return this.issue(user.id, organizationId, refresh);
   }
 
   private async afterRotation(
@@ -188,7 +238,12 @@ export class SessionService {
   ): Promise<IssuedSession> {
     const user = await this.db.user.findUniqueOrThrow({ where: { id: userId } });
     const accessToken = await this.accessTokens.sign(
-      { userId, organizationId, sessionId: refresh.familyId },
+      {
+        userId,
+        organizationId,
+        sessionId: refresh.familyId,
+        passwordChangeRequired: user.mustChangePassword,
+      },
       this.clock.now(),
     );
     return {
@@ -200,6 +255,7 @@ export class SessionService {
         organizations: organizations ?? (await this.memberships.organizationsOf(userId)),
         activeOrganizationId: organizationId,
         ...(await this.accessIn(organizationId, userId)),
+        passwordChangeRequired: user.mustChangePassword,
       },
     };
   }

@@ -1,4 +1,4 @@
-import { IdempotencyExempt } from '../markers';
+import { AllowDuringPasswordChange, IdempotencyExempt } from '../markers';
 import {
   Body,
   Controller,
@@ -12,6 +12,8 @@ import {
   Res,
 } from '@nestjs/common';
 import {
+  changePasswordRequestSchema,
+  type ChangePasswordRequest,
   emailRequestSchema,
   type EmailRequest,
   loginRequestSchema,
@@ -115,10 +117,30 @@ export class AuthController {
   }
 
   @Authenticated()
+  @AllowDuringPasswordChange()
   @Get('me')
   @Header('Cache-Control', 'no-store')
   me(): Promise<MeResponse> {
     return this.sessions.me(this.auth.require());
+  }
+
+  /** Your own password; the one route a temporary-password session may use (ADR 0023 §3). */
+  @Authenticated()
+  @AllowDuringPasswordChange()
+  @RequireOrigin()
+  @IdempotencyExempt(AUTH_EXEMPT)
+  @Post('password/change')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  async changePassword(
+    @Body(new ZodBody(changePasswordRequestSchema)) body: ChangePasswordRequest,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<SessionResponse> {
+    return this.respond(
+      res,
+      await this.sessions.changePassword(this.auth.require(), body, clientIp(req)),
+    );
   }
 
   @Public()

@@ -60,6 +60,14 @@ export const AUDIT_ACTIONS = {
     entityType: 'membership',
     label: 'platform.audit.actions.membershipRemoved',
   },
+  'platform.membership.deactivated': {
+    entityType: 'membership',
+    label: 'platform.audit.actions.membershipDeactivated',
+  },
+  'platform.membership.reactivated': {
+    entityType: 'membership',
+    label: 'platform.audit.actions.membershipReactivated',
+  },
   'platform.invitation.created': {
     entityType: 'invitation',
     label: 'platform.audit.actions.invitationCreated',
@@ -71,6 +79,10 @@ export const AUDIT_ACTIONS = {
   'platform.invitation.accepted': {
     entityType: 'invitation',
     label: 'platform.audit.actions.invitationAccepted',
+  },
+  'platform.invitation.link_renewed': {
+    entityType: 'invitation',
+    label: 'platform.audit.actions.invitationLinkRenewed',
   },
   'platform.session.organization_switched': {
     entityType: 'session',
@@ -161,6 +173,14 @@ export const AUDIT_ACTIONS = {
   'catalog.product.created': {
     entityType: 'product',
     label: 'catalog.audit.actions.productCreated',
+  },
+  'catalog.product.deleted': {
+    entityType: 'product',
+    label: 'catalog.audit.actions.productDeleted',
+  },
+  'catalog.product_category.deleted': {
+    entityType: 'product_category',
+    label: 'catalog.audit.actions.productCategoryDeleted',
   },
   'catalog.product.updated': {
     entityType: 'product',
@@ -273,12 +293,24 @@ export function auditEntityLabel(type: AuditEntityType): string {
 export const AUDIT_SNAPSHOT_FIELDS = {
   organization: ['id', 'partnerId', 'name', 'planId'],
   role: ['id', 'systemKey', 'name', 'permissions'],
-  membership: ['id', 'userId', 'roleId', 'allLocations', 'locationIds'],
+  /** grants/denies: per-member permission changes; active: false while deactivated (ADR 0023). */
+  membership: [
+    'id',
+    'userId',
+    'roleId',
+    'allLocations',
+    'locationIds',
+    'grants',
+    'denies',
+    'active',
+  ],
   invitation: [
     'id',
     'roleId',
     'allLocations',
     'locationIds',
+    'grants',
+    'denies',
     'expiresAt',
     'acceptedAt',
     'acceptedByUserId',
