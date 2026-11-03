@@ -120,21 +120,43 @@ Builds products from the menu a restaurant already has — photos or a PDF — a
 `POST /catalog/products/import` (all or nothing, update-or-create, audit). Only with `catalog.products.manage`.
 **No api of its own:** reading and review happen in the browser.
 
-1. **Upload** JPG, PNG, WebP or PDF (camera on phones and tablets), up to 10 pages per scan. HEIC is refused with a
-   hint to export JPG (only Safari decodes it).
-2. **Read** with Tesseract (English and German) in a web worker; PDF pages are rendered with pdf.js. Images are
-   scaled and greyscaled first. **Images never leave the device**; the OCR engine and its language data load from
-   jsDelivr on first use and are cached by the browser.
+1. **Upload** any image the browser decodes (JPG, PNG, WebP, GIF, AVIF…; HEIC only in Safari, elsewhere a hint to
+   export JPG) or PDF; camera on phones and tablets; paste with Ctrl+V. Up to 10 photos or image-only pages per scan
+   (each takes OCR) and PDFs up to 60 pages.
+2. **Read**, entirely in the browser:
+   - **PDFs that carry their text** (most menus exported from a design tool) are read **exactly** from the PDF
+     (`pdf-text.ts`, pure): no OCR. The layout says what each run of text is: the largest or sideways text is the
+     page's category (a page without one continues the previous), text in the size of the dish names (the type on
+     the item numbers' rows) starts an item and continues it on the next line, smaller text below is its
+     description, prices are matched to the item on their row, volumes (`0,4l`, `4cl`) become part of the name, a
+     volume header over a second price column makes a second product (`… 0,2l` / `… 0,4l`), and tiny marks
+     (allergen codes) are left out. Names, descriptions and prices are exactly as printed; no word corrections are
+     suggested for them.
+   - **Photos and image-only PDF pages** go through Tesseract (English and German) in a web worker. Each image is
+     scaled, reduced to its darkest colour channel, the paper flattened (its brightness estimated block by block and
+     divided out, so coloured panels, shadows and uneven light become white), long vertical rules erased and the
+     levels stretched (`image.ts`). The page is cut into column strips at gutters and each strip read on its own, so
+     side-by-side columns don't mix; prices read apart from their names are joined back by row.
+     **Images never leave the device**; the OCR engine and its language data load from jsDelivr on first use and are
+     cached by the browser.
 3. **Parse** (`lib/catalog/menu-scan/parse.ts`, pure): OCR lines that run across menu columns are split at wide
    word gaps (never in front of a price, so a name keeps its far-right price) and read column by column, top to
    bottom; then a line ending in a price is a product (dot leaders, item
    numbers and currency marks such as `€`, `Rs`, `LKR` removed; `1,500.00`, `1.500,00`, `12,50`, `12` become
    decimal text without number math, rule 6); a short unpriced line before priced ones is a category heading;
-   other unpriced lines under a product are its description; a second price on a line is kept in the description.
+   unpriced lines under a product that are smaller than product lines or start lowercase are its description;
+   a heading starts uppercase and is at least as tall as product lines; item numbers glued to names (`67.Naan`)
+   and junk after a price are removed; a second price on a line is kept in the description.
 4. **Review board:** the page image with the OCR boxes beside a board of category columns. Drag products between
    categories and within one, drag categories to reorder (pointer, touch and keyboard); rename, merge, swap and
    delete categories (products of a deleted one go to "Uncategorized"); VAT per category, pre-filled from two
    defaults (drink-like category names get the drinks rate); edit, add, delete and bulk-move products; undo/redo;
    low OCR confidence is highlighted; each product shows **New** or **Updates** (same matching as the import);
    problems from `checkImportRows` block the import. The draft survives a reload (this browser only).
-5. **Import** → the usual summary.
+5. **Suggestions** (`lib/catalog/menu-scan/suggest.ts`, pure, no network): misread words are corrected against a
+   built-in menu vocabulary plus the organization's own product and category names (edit distance with OCR
+   confusions such as `l/t`, `rn/m`, `U/V`); a name close to an existing product suggests that product's exact
+   name (so the import updates it); products in "Uncategorized" or under a doubtful heading get a category
+   suggestion from dish keywords (breads, desserts, drinks…). Each suggestion is a chip on the card (apply or
+   dismiss); "Apply all" is one undo step. Any edit marks a product as checked.
+6. **Import** → the usual summary.

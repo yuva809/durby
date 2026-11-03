@@ -130,7 +130,7 @@ describe('ScanPage', () => {
   it('reads the photos into a board of categories with VAT by kind and catalog badges', async () => {
     api();
     await scan();
-    expect(ocr.prepare).toHaveBeenCalledWith([expect.any(File)]);
+    expect(ocr.prepare).toHaveBeenCalledWith([expect.any(File)], expect.any(Function));
     expect(names('STARTERS')).toEqual(['Chicken Soup', 'Garlic Bread']);
     expect(names('DRINKS')).toEqual(['Lime Juice']);
     const vat = (name: string) =>
@@ -141,6 +141,79 @@ describe('ScanPage', () => {
     // "Chicken Soup" already exists in "Starters" (case-insensitive) at another price.
     await waitFor(() => expect(card('Chicken Soup').textContent).toContain('Updates'));
     expect(card('Garlic Bread').textContent).toContain('55');
+  });
+
+  it('applies a suggested correction from its chip, then all the rest as one undo step', async () => {
+    api();
+    ocr.recognize.mockResolvedValue([
+      line('DESSERTS', 10),
+      line('Gulab Jaman mil fisereme 8,20', 40, 50),
+      line('Carvel Halwa 5,20', 70, 50),
+    ]);
+    await scan();
+    const chip = within(card('Gulab Jaman mil fisereme')).getByTestId('scan-suggestion');
+    expect(chip.textContent).toContain('Gulab Jamun mit Eiscreme');
+    await userEvent.click(within(chip).getByTestId('scan-suggestion-apply'));
+    expect(names('DESSERTS')).toEqual(['Gulab Jamun mit Eiscreme', 'Carvel Halwa']);
+
+    await waitFor(() => expect(screen.getByTestId('scan-apply-all').textContent).toContain('(1)'));
+    await userEvent.click(screen.getByTestId('scan-apply-all'));
+    expect(names('DESSERTS')).toEqual(['Gulab Jamun mit Eiscreme', 'Carrot Halwa']);
+    await userEvent.click(screen.getByTestId('scan-undo'));
+    expect(names('DESSERTS')).toEqual(['Gulab Jamun mit Eiscreme', 'Carvel Halwa']);
+  });
+
+  it('reads a PDF page that carries its text exactly, without OCR', async () => {
+    api();
+    const text = (t: string, x: number, y: number, size: number, rotated = false) => ({
+      text: t,
+      x,
+      y,
+      width: t.length * size * 0.5,
+      size,
+      rotated,
+    });
+    ocr.prepare.mockResolvedValue([
+      {
+        number: 1,
+        width: 900,
+        height: 1260,
+        small: false,
+        sourceWidth: 900,
+        sourceHeight: 1260,
+        canvas: null,
+        previewUrl: '',
+        text: [
+          text('BROT', 80, 1100, 90, true),
+          text('01.', 100, 200, 16),
+          text('Garlic Naan', 130, 200, 21),
+          text('Mit frischem Knoblauch', 130, 220, 15),
+          text('4,50 €', 500, 220, 15),
+          text('02.', 100, 280, 16),
+          text('Poori (3 Stück)', 130, 280, 21),
+          text('7,50 €', 500, 295, 15),
+        ],
+      },
+    ]);
+    ocr.recognize.mockResolvedValue([]);
+    render(<ScanPage />);
+    await userEvent.upload(screen.getByTestId('scan-files'), photo());
+    await userEvent.click(screen.getByTestId('scan-start'));
+    await screen.findByTestId('scan-board');
+    expect(screen.getByTestId('scan-exact')).toBeDefined();
+    expect(names('BROT')).toEqual(['Garlic Naan', 'Poori (3 Stück)']);
+    expect(screen.queryByTestId('scan-suggestion')).toBeNull();
+  });
+
+  it('names both page limits when there are too many', async () => {
+    api();
+    ocr.prepare.mockRejectedValue(new ScanError('tooManyPages'));
+    render(<ScanPage />);
+    await userEvent.upload(screen.getByTestId('scan-files'), photo());
+    await userEvent.click(screen.getByTestId('scan-start'));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'At most 10 photos or scanned pages per scan, and PDFs up to 60 pages.',
+    );
   });
 
   it('explains HEIC photos', async () => {

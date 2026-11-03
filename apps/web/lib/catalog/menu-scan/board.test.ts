@@ -20,10 +20,10 @@ const product = (name: string, price: string, description = '') => ({
 });
 
 const PARSED: ParsedCategory[] = [
-  { name: null, products: [product('Bread', '2.00')] },
-  { name: 'Kottu', products: [product('Chicken Kottu', '1300.00', 'spicy')] },
-  { name: 'Beverages', products: [product('Ginger Beer', '350.00')] },
-  { name: 'KOTTU', products: [product('Cheese Kottu', '1500.00')] },
+  { name: null, suspect: false, products: [product('Bread', '2.00')] },
+  { name: 'Kottu', suspect: false, products: [product('Chicken Kottu', '1300.00', 'spicy')] },
+  { name: 'Beverages', suspect: false, products: [product('Ginger Beer', '350.00')] },
+  { name: 'KOTTU', suspect: true, products: [product('Cheese Kottu', '1500.00')] },
 ];
 
 function board(): Board {

@@ -26,8 +26,8 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
-import { Eye, EyeOff, Plus, Redo2, Search, Trash2, Undo2, Upload, X } from 'lucide-react';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { Eye, EyeOff, Plus, Redo2, Search, Sparkles, Trash2, Undo2, Upload, X } from 'lucide-react';
+import { useDeferredValue, useEffect, useId, useMemo, useState } from 'react';
 import { useT } from '../../../app/labels-provider';
 import {
   type Board,
@@ -35,6 +35,7 @@ import {
   type BoardCategory,
   type BoardProduct,
   type HistoryAction,
+  needsCheck,
   toImportRows,
 } from '../../../lib/catalog/menu-scan/board';
 import { cn } from '../../../lib/utils';
@@ -49,16 +50,36 @@ import {
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Select } from '../../ui/select';
+import { CategoryColumn, categoryDndId, type Existing, ProductCard } from './board-parts';
 import {
-  CategoryColumn,
-  categoryDndId,
-  type Existing,
-  LOW_CONFIDENCE,
-  ProductCard,
-} from './board-parts';
+  applyAll,
+  buildLexicon,
+  type Suggestion,
+  suggest,
+  suggestionActions,
+} from '../../../lib/catalog/menu-scan/suggest';
+import type { DishGroup } from '../../../lib/catalog/menu-scan/vocabulary';
+import type { LabelKey } from '@durby/i18n';
 import { OriginalPane, type PagePreview } from './original-pane';
 
-type Filter = 'all' | 'low' | 'problems';
+const GROUP_LABEL: Record<DishGroup, LabelKey> = {
+  breads: 'catalog.scan.groups.breads',
+  desserts: 'catalog.scan.groups.desserts',
+  drinks: 'catalog.scan.groups.drinks',
+  biryani: 'catalog.scan.groups.biryani',
+  soups: 'catalog.scan.groups.soups',
+  dosa: 'catalog.scan.groups.dosa',
+  kottu: 'catalog.scan.groups.kottu',
+  pizza: 'catalog.scan.groups.pizza',
+  pasta: 'catalog.scan.groups.pasta',
+  curries: 'catalog.scan.groups.curries',
+  tandoori: 'catalog.scan.groups.tandoori',
+  rice: 'catalog.scan.groups.rice',
+  salads: 'catalog.scan.groups.salads',
+  starters: 'catalog.scan.groups.starters',
+};
+
+type Filter = 'all' | 'low' | 'problems' | 'suggestions';
 type CategoryDialog = { kind: 'merge' | 'swap'; categoryId: string } | null;
 
 const newId = () => crypto.randomUUID();
@@ -162,16 +183,65 @@ export function ReviewBoard({
       : { kind: 'update', price: current.price };
   };
 
+  // Suggestions follow the board a moment behind typing (they compare words against a vocabulary).
+  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
+  const lexicon = useMemo(
+    () =>
+      buildLexicon(
+        catalog
+          ? [...catalog.products.map((p) => p.name), ...catalog.categories.map((c) => c.name)]
+          : [],
+      ),
+    [catalog],
+  );
+  const deferredBoard = useDeferredValue(board);
+  const uncategorized = t('catalog.scan.uncategorized');
+  const allSuggestions = useMemo(() => {
+    const categoryName = new Map(catalog?.categories.map((c) => [c.id, c.name]) ?? []);
+    return suggest(
+      deferredBoard,
+      {
+        catalogProducts:
+          catalog?.products.map((p) => ({
+            name: p.name,
+            category: categoryName.get(p.categoryId) ?? '',
+          })) ?? [],
+        catalogCategories: catalog?.categories.map((c) => c.name) ?? [],
+        uncategorized,
+        groupName: (group) => t(GROUP_LABEL[group]),
+      },
+      lexicon,
+    );
+  }, [deferredBoard, catalog, lexicon, uncategorized, t]);
+  const suggestions = allSuggestions.filter((s) => !dismissed.has(s.key));
+  const forProduct = new Map<string, Suggestion[]>();
+  const forCategory = new Map<string, Suggestion[]>();
+  for (const suggestion of suggestions) {
+    if (suggestion.kind === 'rename') {
+      forCategory.set(suggestion.categoryId, [
+        ...(forCategory.get(suggestion.categoryId) ?? []),
+        suggestion,
+      ]);
+    } else {
+      forProduct.set(suggestion.productId, [
+        ...(forProduct.get(suggestion.productId) ?? []),
+        suggestion,
+      ]);
+    }
+  }
+  const applySuggestion = (suggestion: Suggestion) =>
+    dispatch({ type: 'batch', actions: suggestionActions(suggestion, board) });
+  const dismiss = (suggestion: Suggestion) => setDismissed((d) => new Set(d).add(suggestion.key));
+
   const productCount = rows.length;
-  const lowCount = Object.values(board.products).filter(
-    (p) => p.confidence < LOW_CONFIDENCE,
-  ).length;
+  const lowCount = Object.values(board.products).filter((p) => needsCheck(p)).length;
   const needle = query.trim().toLowerCase();
   const visible = (productId: string) => {
     const p = board.products[productId];
     if (!p) return false;
     if (needle && !`${p.name} ${p.description}`.toLowerCase().includes(needle)) return false;
-    if (filter === 'low') return p.confidence < LOW_CONFIDENCE;
+    if (filter === 'low') return needsCheck(p);
+    if (filter === 'suggestions') return forProduct.has(productId);
     if (filter === 'problems') return problems.has(productId);
     return true;
   };
@@ -291,6 +361,7 @@ export function ReviewBoard({
                 ['all', 'catalog.scan.filterAll', productCount],
                 ['low', 'catalog.scan.filterLow', lowCount],
                 ['problems', 'catalog.scan.filterProblems', problems.size],
+                ['suggestions', 'catalog.scan.filterSuggestions', forProduct.size],
               ] as const
             ).map(([value, label, count]) => (
               <button
@@ -366,6 +437,16 @@ export function ReviewBoard({
               >
                 {showOriginal ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
                 {t(showOriginal ? 'catalog.scan.hideOriginal' : 'catalog.scan.showOriginal')}
+              </Button>
+            )}
+            {suggestions.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => dispatch(applyAll(suggestions, board))}
+                data-testid="scan-apply-all"
+              >
+                <Sparkles aria-hidden />
+                {t('catalog.scan.suggest.applyAll', { count: String(suggestions.length) })}
               </Button>
             )}
             <Button variant="ghost" onClick={() => setDiscardOpen(true)} data-testid="scan-discard">
@@ -510,6 +591,9 @@ export function ReviewBoard({
                     boardDispatch({ type: 'setCategoryVat', categoryId: category.id, taxRate })
                   }
                   onAddProduct={() => addProduct(category)}
+                  suggestions={forCategory.get(category.id) ?? []}
+                  onApply={applySuggestion}
+                  onDismiss={dismiss}
                   onAction={(kind) => {
                     if (kind === 'delete') {
                       boardDispatch({
@@ -532,6 +616,9 @@ export function ReviewBoard({
                       dispatch={boardDispatch}
                       onToggle={() => toggle(productId)}
                       onFocus={() => setFocusedId(productId)}
+                      suggestions={forProduct.get(productId) ?? []}
+                      onApply={applySuggestion}
+                      onDismiss={dismiss}
                     />
                   ))}
                 </CategoryColumn>

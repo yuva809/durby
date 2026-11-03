@@ -94,8 +94,9 @@ describe('parseMenu', () => {
     ]);
     const chicken = menu[0]!.products[0]!;
     expect(chicken.description).toBe('with dhal, potato and papadam');
-    // The lowest confidence of its lines; a second price is kept in the description.
-    expect(chicken.confidence).toBe(86);
+    // Its own line's confidence (a well-read description doesn't change it); a second price is
+    // kept in the description.
+    expect(chicken.confidence).toBe(87);
     expect(menu[1]!.products[0]!.description).toBe('1600.00');
   });
 
@@ -103,6 +104,7 @@ describe('parseMenu', () => {
     expect(parseMenu(lines('Espresso 2,50', 'Cappuccino 3,20'))).toEqual([
       {
         name: null,
+        suspect: false,
         products: [
           expect.objectContaining({ name: 'Espresso', price: '2.50' }),
           expect.objectContaining({ name: 'Cappuccino', price: '3.20' }),
@@ -113,7 +115,7 @@ describe('parseMenu', () => {
 
   it('skips noise and headings without products', () => {
     expect(parseMenu(lines('***', 'DESSERTS', 'MAINS', 'Steak 24.90', '12'))).toEqual([
-      { name: 'MAINS', products: [expect.objectContaining({ name: 'Steak' })] },
+      { name: 'MAINS', suspect: false, products: [expect.objectContaining({ name: 'Steak' })] },
     ]);
   });
 });
