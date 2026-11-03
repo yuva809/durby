@@ -174,6 +174,14 @@ export const AUDIT_ACTIONS = {
     entityType: 'product',
     label: 'catalog.audit.actions.productCreated',
   },
+  'catalog.product.deleted': {
+    entityType: 'product',
+    label: 'catalog.audit.actions.productDeleted',
+  },
+  'catalog.product_category.deleted': {
+    entityType: 'product_category',
+    label: 'catalog.audit.actions.productCategoryDeleted',
+  },
   'catalog.product.updated': {
     entityType: 'product',
     label: 'catalog.audit.actions.productUpdated',

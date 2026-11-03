@@ -11,6 +11,12 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  categoryBulkRequestSchema,
+  type CategoryBulkRequest,
+  type CategoryBulkResponse,
+  productBulkRequestSchema,
+  type ProductBulkRequest,
+  type ProductBulkResponse,
   type ImportProductsRequest,
   importProductsRequestSchema,
   type ImportProductsResponse,
@@ -36,6 +42,7 @@ import { ZodBody, ZodQuery } from '../../platform/http';
 import { Idempotent } from '../../platform/idempotency';
 import { RequirePermission } from '../../platform/rbac';
 import { catalogErrors } from './catalog-errors';
+import { CatalogBulkService } from './catalog-bulk.service';
 import { CatalogService } from './catalog.service';
 
 /** A malformed id is a 404 of the entity, like an unknown one. */
@@ -48,7 +55,10 @@ const uuidOr = (notFound: () => Error) => new ParseUUIDPipe({ exceptionFactory: 
 @RequireFeature('catalog')
 @Controller('catalog')
 export class CatalogController {
-  constructor(private readonly catalog: CatalogService) {}
+  constructor(
+    private readonly catalog: CatalogService,
+    private readonly bulk: CatalogBulkService,
+  ) {}
 
   @RequirePermission('catalog.products.read')
   @Get('categories')
@@ -92,6 +102,30 @@ export class CatalogController {
     @Body(new ZodBody(createProductRequestSchema)) body: CreateProductRequest,
   ): Promise<Product> {
     return this.catalog.createProduct(body);
+  }
+
+  /**
+   * Many products at once (docs/modules/catalog.md → Bulk actions). Deletes append audit rows and
+   * remove rows, so the result is stored with the key in the transaction (rule 8).
+   */
+  @RequirePermission('catalog.products.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post('products/bulk')
+  @HttpCode(HttpStatus.OK)
+  bulkProducts(
+    @Body(new ZodBody(productBulkRequestSchema)) body: ProductBulkRequest,
+  ): Promise<ProductBulkResponse> {
+    return this.bulk.products(body);
+  }
+
+  @RequirePermission('catalog.products.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post('categories/bulk')
+  @HttpCode(HttpStatus.OK)
+  bulkCategories(
+    @Body(new ZodBody(categoryBulkRequestSchema)) body: CategoryBulkRequest,
+  ): Promise<CategoryBulkResponse> {
+    return this.bulk.categories(body);
   }
 
   /** Appends products and categories: the result is stored with the key (rule 8). */
