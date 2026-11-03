@@ -100,7 +100,7 @@ Many products or categories at once, with `catalog.products.manage`, up to 500 i
     fails. Each product is deleted in its own savepoint; a sold one is rolled back and reported in `kept` with
     reason `sold` (archive it instead), the others are deleted. Unknown ids are skipped (already gone).
 - **`POST /catalog/categories/bulk`** `{ ids, action: 'archive' | 'restore' | 'delete' }` → `{ updated, deleted,
-  kept, productsDeleted }`. Archive and restore as for a single category (all or nothing). **Delete** removes a
+kept, productsDeleted }`. Archive and restore as for a single category (all or nothing). **Delete** removes a
   category **with its products** (archived ones too) in one savepoint per category; if any of its products was sold,
   that whole category is kept (`kept`, reason `sold`) and nothing of it is deleted.
 - Audit: `catalog.product.updated` / `catalog.product_category.updated` per changed row, and
@@ -109,14 +109,14 @@ Many products or categories at once, with `catalog.products.manage`, up to 500 i
 
 ### Errors
 
-| Code                          | Status | When                                                         |
-| ----------------------------- | ------ | ------------------------------------------------------------ |
-| `catalog.category_not_found`  | 404    | unknown id, another tenant's id (RLS), or a bad UUID         |
-| `catalog.product_not_found`   | 404    | same for products                                            |
-| `catalog.category_name_taken` | 409    | a non-archived category already has this name                |
-| `catalog.product_name_taken`  | 409    | a non-archived product of the category already has this name |
-| `catalog.category_archived`   | 409    | create or move a product into an archived category           |
-| `catalog.import_invalid`      | 400    | an import row is invalid (`details.rows`)                    |
+| Code                          | Status | When                                                             |
+| ----------------------------- | ------ | ---------------------------------------------------------------- |
+| `catalog.category_not_found`  | 404    | unknown id, another tenant's id (RLS), or a bad UUID             |
+| `catalog.product_not_found`   | 404    | same for products                                                |
+| `catalog.category_name_taken` | 409    | a non-archived category already has this name                    |
+| `catalog.product_name_taken`  | 409    | a non-archived product of the category already has this name     |
+| `catalog.category_archived`   | 409    | create or move a product into an archived category               |
+| `catalog.import_invalid`      | 400    | an import row is invalid (`details.rows`)                        |
 | `catalog.price_invalid`       | 400    | a bulk price change would go below 0 or too high (`details.ids`) |
 
 Labels: `catalog.errors.<camelCase>`.
@@ -147,10 +147,10 @@ and problems by row number), import, read the summary (created / updated / uncha
 product table; create/edit dialogs and archive/unarchive only with `catalog.products.manage`. "Show archived" toggle.
 
 **Bulk actions** (with `catalog.products.manage`): checkboxes on products (and "select all shown") and on
-categories. A bar shows the count and the actions: products *Move to…*, *VAT…*, *Price…* (set / ± amount / ± %,
-previewing the new prices), *Archive*, *Restore*, *Delete*; categories *Archive*, *Restore*, *Delete* (the confirm
+categories. A bar shows the count and the actions: products _Move to…_, _VAT…_, _Price…_ (set / ± amount / ± %,
+previewing the new prices), _Archive_, _Restore_, _Delete_; categories _Archive_, _Restore_, _Delete_ (the confirm
 says how many products go with them). After a delete, products or categories kept because they were sold are named,
-with *Archive them* as the next step. On phones the bar sits at the bottom of the screen.
+with _Archive them_ as the next step. On phones the bar sits at the bottom of the screen.
 
 ### Menu scan (`/catalog/scan`)
 
@@ -170,14 +170,22 @@ Builds products from the menu a restaurant already has — photos or a PDF — a
      volume header over a second price column makes a second product (`… 0,2l` / `… 0,4l`), and tiny marks
      (allergen codes) are left out. Names, descriptions and prices are exactly as printed; no word corrections are
      suggested for them.
-   - **Photos and image-only PDF pages** go through Tesseract (English and German) in a web worker. Each image is
+   - **Photos, screenshots and image-only PDF pages** go through Tesseract (English and German) in a web worker.
+     Each page is read **twice** and the reading with the higher `readingScore` (the confidence of the products it
+     yields, `reading-score.ts`) is kept: _prepared_ (below, made for photos) and _plain_ (only scaled, read in
+     sparse-text mode). Preparation erases the small print of clean screenshots (phone screenshots of a website
+     menu have ~12 px text); the plain reading gets it. Images are enlarged to a long edge of 2400 px. Each image is
      scaled, reduced to its darkest colour channel, the paper flattened (its brightness estimated block by block and
      divided out, so coloured panels, shadows and uneven light become white), long vertical rules erased and the
      levels stretched (`image.ts`). The page is cut into column strips at gutters and each strip read on its own, so
      side-by-side columns don't mix; prices read apart from their names are joined back by row.
      **Images never leave the device**; the OCR engine and its language data load from jsDelivr on first use and are
      cached by the browser.
-3. **Parse** (`lib/catalog/menu-scan/parse.ts`, pure): OCR lines that run across menu columns are split at wide
+3. **Parse** (`lib/catalog/menu-scan/parse.ts`, pure):
+   screenshot chrome (`Menu Page 3`, `Main Menu`, clock times, web addresses) is ignored; a price set level with the
+   description under a name (or in a price column of its own) belongs to the name above; a name that wraps onto two
+   lines (`… (Sauer & Mittel-` / `scharf)`) is one product; a word fragment with a whole-number price on a menu priced
+   with cents is dropped (`age 3` from "Menu Page 3"). OCR lines that run across menu columns are split at wide
    word gaps (never in front of a price, so a name keeps its far-right price) and read column by column, top to
    bottom; then a line ending in a price is a product (dot leaders, item
    numbers and currency marks such as `€`, `Rs`, `LKR` removed; `1,500.00`, `1.500,00`, `12,50`, `12` become

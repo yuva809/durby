@@ -21,11 +21,11 @@ test.describe('invitations', () => {
 
     await page.reload();
     await expect(page.getByTestId('organization')).toHaveText(organization ?? '');
-    const row = page.getByTestId('member-row').filter({ hasText: email });
-    await expect(row.getByTestId('member-role')).toHaveText('Manager');
+    // The role is the third column of the staff table.
+    const row = page.getByTestId('team-row').filter({ hasText: email });
+    await expect(row.getByRole('cell').nth(2)).toHaveText('Manager');
     // The invitation is used up.
-    await page.getByTestId('tab-invitations').click();
-    await expect(page.getByTestId('invitation-row').filter({ hasText: email })).toHaveCount(0);
+    await expect(page.getByTestId('team-invitation-row').filter({ hasText: email })).toHaveCount(0);
   });
 
   test("a demo-partner organization's invitation opens on the demo domain", async ({
@@ -42,15 +42,15 @@ test.describe('invitations', () => {
     await (await accept(browser, link)).context().close();
 
     await page.reload();
-    const row = page.getByTestId('member-row').filter({ hasText: email });
-    await expect(row.getByTestId('member-role')).toHaveText('Staff');
+    const row = page.getByTestId('team-row').filter({ hasText: email });
+    await expect(row.getByRole('cell').nth(2)).toHaveText('Staff');
   });
 });
 
 test.describe('access', () => {
   // A Staff member made by the test itself: independent of what local dev data says about the
   // seeded users' roles.
-  test("Staff sees neither Members nor Roles and can't open the pages", async ({
+  test("Staff sees neither Staff nor Roles and can't open the pages", async ({
     page,
     browser,
     request,
@@ -67,8 +67,9 @@ test.describe('access', () => {
     const origin = new URL(staff.url()).origin;
     await staff.goto(`${origin}/settings/organization`);
     await expect(staff.getByTestId('settings-tab-general')).toBeVisible();
-    await expect(staff.getByTestId('settings-tab-members')).toHaveCount(0);
+    await expect(staff.getByTestId('settings-tab-staff')).toHaveCount(0);
     await expect(staff.getByTestId('settings-tab-roles')).toHaveCount(0);
+    // The old Members address redirects to Staff.
     await staff.goto(`${origin}/settings/members`);
     await expect(staff.getByTestId('no-access')).toBeVisible();
     await staff.goto(`${origin}/settings/roles`);
