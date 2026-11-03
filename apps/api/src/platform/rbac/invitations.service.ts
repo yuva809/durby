@@ -31,13 +31,7 @@ import { InvitationMailer } from './invitation-mailer';
 import { INVITATION_SETTINGS, type InvitationSettings } from './invitation-ports';
 import { issueInvitationToken, parseInvitationToken } from './invitation-token';
 import { existingLocations } from './locations';
-import {
-  canSetOverrides,
-  fromRows,
-  NO_OVERRIDES,
-  normalizeOverrides,
-  toRows,
-} from './overrides';
+import { canSetOverrides, fromRows, NO_OVERRIDES, normalizeOverrides, toRows } from './overrides';
 import { PERMISSION_REGISTRY, type PermissionRegistry } from './permission-registry';
 import { isUniqueViolation, rbacErrors } from './rbac-errors';
 import { ROLE_SELECT, RolesService } from './roles.service';
