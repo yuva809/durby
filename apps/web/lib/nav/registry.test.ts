@@ -72,6 +72,7 @@ describe('visibleNav', () => {
       'catalog',
       'service',
       'tables',
+      'staff',
       'settings',
       'audit',
     ]);

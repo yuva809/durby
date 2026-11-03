@@ -11,6 +11,7 @@ import {
   Package,
   Receipt,
   SlidersHorizontal,
+  UsersRound,
   UtensilsCrossed,
 } from 'lucide-react';
 import { SETTINGS_TABS } from './settings-tabs';
@@ -115,7 +116,16 @@ export const NAV_ITEMS: readonly NavItem[] = [
     planned: true,
   },
   {
-    // Company, Locations, Members, Roles, … as tabs of one page (lib/nav/settings-tabs.ts).
+    // Its own item, not a Settings tab (docs/platform/rbac.md → Manage Staff).
+    id: 'staff',
+    href: '/staff',
+    label: 'platform.nav.staff',
+    icon: UsersRound,
+    group: 'settings',
+    permission: 'platform.users.read',
+  },
+  {
+    // Company, Locations, Roles, … as tabs of one page (lib/nav/settings-tabs.ts).
     id: 'settings',
     href: '/settings',
     label: 'platform.nav.settings',

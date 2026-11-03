@@ -53,14 +53,14 @@ export async function invitationLink(request: APIRequestContext, email: string):
 
 const NEW_PASSWORD = 'e2e-invitee-password';
 
-/** As the signed-in Owner: invites `email` as `role` from Settings → Staff, sending the email. */
+/** As the signed-in Owner: invites `email` as `role` from Manage Staff, sending the email. */
 export async function invite(
   page: Page,
   origin: string,
   email: string,
   role: string,
 ): Promise<void> {
-  await page.goto(`${origin}/settings/staff`);
+  await page.goto(`${origin}/staff`);
   await page.getByTestId('team-add').click();
   const dialog = page.getByTestId('team-dialog');
   await dialog.getByTestId('team-name').fill('E2E Person');

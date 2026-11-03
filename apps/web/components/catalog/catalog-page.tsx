@@ -100,7 +100,7 @@ function Catalog({
   };
 
   return (
-    <div className={`flex flex-col gap-6${canManage ? ' pb-28 md:pb-0' : ''}`}>
+    <div className={`flex flex-col gap-6${canManage ? ' pb-28 lg:pb-0' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t('catalog.nav.title')}</h1>
         {canManage && (
@@ -154,7 +154,7 @@ function Catalog({
       )}
       <Loaded resource={categories} reload={reloadCategories}>
         {(categoryList) => (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-[16rem_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
             <section className="flex min-w-0 flex-col gap-2" aria-labelledby={`${id}-categories`}>
               <h2 id={`${id}-categories`} className="text-lg font-medium">
                 {t('catalog.page.categories')}
@@ -164,8 +164,8 @@ function Catalog({
                   {t(canManage ? 'catalog.page.noCategoryHint' : 'catalog.page.emptyCategories')}
                 </p>
               ) : (
-                <ul className="flex flex-col gap-1">
-                  <li>
+                <ul className="flex flex-row items-start gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
+                  <li className="shrink-0 lg:shrink">
                     <Button
                       variant={filter === null ? 'outline' : 'ghost'}
                       className="w-full justify-start"
@@ -232,7 +232,11 @@ function CategoryRow({
 }) {
   const t = useT();
   return (
-    <li className="flex flex-col gap-1" data-testid="category-row" data-name={category.name}>
+    <li
+      className="flex shrink-0 flex-col gap-1 lg:shrink"
+      data-testid="category-row"
+      data-name={category.name}
+    >
       <div className="flex items-center gap-1">
         {canManage && (
           <Checkbox
@@ -287,8 +291,8 @@ function ProductTable({
   return (
     <Card className="overflow-x-auto p-0">
       {/* Below md a row is a card (name, then category, price and VAT, then actions): no sideways scroll. */}
-      <table className="block w-full text-sm md:table">
-        <thead className="hidden border-b border-border text-left text-muted-foreground md:table-header-group">
+      <table className="block w-full text-sm lg:table">
+        <thead className="hidden border-b border-border text-left text-muted-foreground lg:table-header-group">
           <tr>
             {canManage && (
               <th className="w-10 p-3">
@@ -312,16 +316,16 @@ function ProductTable({
             {canManage && <th className="p-3" />}
           </tr>
         </thead>
-        <tbody className="block md:table-row-group">
+        <tbody className="block lg:table-row-group">
           {products.map((product) => (
             <tr
               key={product.id}
-              className="flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-border p-3 last:border-0 md:table-row md:p-0"
+              className="flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-border p-3 last:border-0 lg:table-row lg:p-0"
               data-testid="product-row"
               data-name={product.name}
             >
               {canManage && (
-                <td className="md:p-3">
+                <td className="lg:p-3">
                   <Checkbox
                     checked={picked.has(product.id)}
                     onCheckedChange={(next) => onPick([product.id], next === true)}
@@ -330,7 +334,7 @@ function ProductTable({
                   />
                 </td>
               )}
-              <td className="min-w-0 flex-1 basis-40 md:p-3">
+              <td className="min-w-0 flex-1 basis-40 lg:p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{product.name}</span>
                   {product.archivedAt && <Badge>{t('catalog.page.archived')}</Badge>}
@@ -341,14 +345,19 @@ function ProductTable({
                   </p>
                 )}
               </td>
-              <td className="text-muted-foreground md:p-3 md:text-foreground">
+              <td className="text-muted-foreground lg:p-3 lg:text-foreground">
                 {categoryName.get(product.categoryId)}
               </td>
-              <td className="tabular-nums md:p-3 md:text-right">{product.price}</td>
-              <td className="tabular-nums md:p-3 md:text-right">{product.taxRate}</td>
+              <td className="tabular-nums lg:p-3 lg:text-right">{product.price}</td>
+              <td className="tabular-nums lg:p-3 lg:text-right">
+                <span className="text-muted-foreground lg:hidden">
+                  {t('catalog.fields.taxRate')}{' '}
+                </span>
+                {product.taxRate}
+              </td>
               {canManage && (
-                <td className="w-full md:w-auto md:p-3">
-                  <div className="flex flex-wrap gap-2 md:justify-end">
+                <td className="w-full lg:w-auto lg:p-3">
+                  <div className="flex flex-wrap gap-2 lg:justify-end">
                     {open.length > 0 && (
                       <ProductDialog product={product} categories={open} onDone={onDone} />
                     )}
