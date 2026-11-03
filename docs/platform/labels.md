@@ -11,8 +11,17 @@ override any label; an organization may override only **terminology** (navigatio
 
 ## Dictionaries (`packages/i18n`)
 
-- `en.json` (source of truth for the key set) and `de.json`, flat keys `module.area.item`. A test fails if a locale
-  misses a key, a key has the wrong shape, or a key's `{placeholders}` differ between locales.
+- One file per key prefix and locale ([ADR 0022](../adr/0022-label-files-per-module.md)):
+  `src/<locale>/<prefix>.json`, where the prefix is the key's first segment (`reservations.nav.title` →
+  `src/en/reservations.json`). Registry keys stay under `platform.*` even for a module's entry
+  (`platform.settings.reservations*`, `platform.features.pos.*`), so they are in `platform.json`. `en` is the source
+  of truth for the key set; flat keys `module.area.item`.
+- `src/<locale>/index.ts` imports the locale's files and exports their spread: `dictionaries` has the same shape as
+  before the split. Adding a key: put it in its prefix's file in **every** locale, at the same position. A new
+  prefix: a new file in every locale and its import in each `index.ts`.
+- Tests fail if a key is in the wrong file or in two files, a locale's `index.ts` misses a file of its directory, a
+  locale's files differ from en's (keys or their order), a locale misses a key, a key has the wrong shape, or a key's
+  `{placeholders}` differ between locales.
 - `createTranslator(locale, overrides?, { format? })` returns `t(key, params?)`:
   - lookup: overrides → locale dictionary → `en` → the key itself. `overrides` must already be the merged overrides
     **of that locale** (see Resolution); the translator never looks at another locale's overrides.
