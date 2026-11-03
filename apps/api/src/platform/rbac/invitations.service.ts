@@ -31,6 +31,14 @@ import { InvitationMailer } from './invitation-mailer';
 import { INVITATION_SETTINGS, type InvitationSettings } from './invitation-ports';
 import { issueInvitationToken, parseInvitationToken } from './invitation-token';
 import { existingLocations } from './locations';
+import {
+  canSetOverrides,
+  fromRows,
+  NO_OVERRIDES,
+  normalizeOverrides,
+  toRows,
+} from './overrides';
+import { PERMISSION_REGISTRY, type PermissionRegistry } from './permission-registry';
 import { isUniqueViolation, rbacErrors } from './rbac-errors';
 import { ROLE_SELECT, RolesService } from './roles.service';
 
@@ -48,9 +56,31 @@ const INVITATION_SELECT = {
   allLocations: true,
   expiresAt: true,
   createdAt: true,
+  displayName: true,
+  phone: true,
   role: { select: ROLE_SELECT },
   locations: { select: { locationId: true } },
+  permissions: { select: { permissionKey: true, effect: true } },
 } as const;
+
+/** An invitation as Manage Staff creates it (ADR 0023): with name, phone and overrides. */
+export interface InviteInput {
+  email: string;
+  roleId: string;
+  locationIds?: string[] | null;
+  name?: string | null;
+  phone?: string | null;
+  grants?: string[];
+  denies?: string[];
+}
+
+export interface InviteResult {
+  invitation: Invitation;
+  /** Shown once: only the token's hash is stored. */
+  link: string;
+  /** The email already has an account (only Manage Staff tells the inviter, ADR 0023 §4). */
+  existingAccount: boolean;
+}
 
 type InvitationRow = Prisma.InvitationGetPayload<{ select: typeof INVITATION_SELECT }>;
 
@@ -73,6 +103,7 @@ export class InvitationsService {
     @Inject(INVITATION_SETTINGS) private readonly settings: InvitationSettings,
     private readonly audit: AuditService,
     private readonly clock: Clock,
+    @Inject(PERMISSION_REGISTRY) private readonly registry: PermissionRegistry,
   ) {}
 
   /** Open invitations of the active organization, newest first. */
@@ -90,12 +121,23 @@ export class InvitationsService {
    * for the same email is revoked. The mail goes out after the response.
    */
   async create(body: CreateInvitationRequest): Promise<Invitation> {
+    return (await this.invite(body, { sendEmail: true })).invitation;
+  }
+
+  /**
+   * Creates an invitation (with Manage Staff's name, phone and overrides) and returns its link
+   * once; the mail is sent only when `sendEmail`. Granting rules apply to the role and to every
+   * override (ADR 0023 §2).
+   */
+  async invite(input: InviteInput, opts: { sendEmail: boolean }): Promise<InviteResult> {
+    const body = input;
     const actor = await this.roles.actor();
     const { tenantId } = this.tenantContext.require();
     const now = this.clock.now();
     const email = normalizeEmail(body.email);
     const allLocations = body.locationIds == null;
     const { token, hash } = issueInvitationToken(tenantId);
+    let existingAccount = false;
 
     const row = await this.db.$transaction(async (tx) => {
       const role = await tx.role.findUnique({
@@ -106,8 +148,14 @@ export class InvitationsService {
       if (!canGrantRole(actor, this.roles.viewOf(role))) throw rbacErrors.notGrantable();
       if (role.systemKey === 'owner' && !allLocations) throw rbacErrors.ownerAllLocations();
       const locationIds = body.locationIds ? await existingLocations(tx, body.locationIds) : [];
+      const overrides = normalizeOverrides(this.registry, this.roles.viewOf(role), {
+        grants: body.grants ?? [],
+        denies: body.denies ?? [],
+      });
+      if (!canSetOverrides(actor, NO_OVERRIDES, overrides)) throw rbacErrors.notGrantable();
 
       const user = await this.users.findByEmail(email);
+      existingAccount = user !== null;
       const member = await tx.membership.findUnique({
         where: { tenantId_userId: { tenantId, userId: user?.id ?? NO_USER } },
         select: { id: true },
@@ -138,6 +186,8 @@ export class InvitationsService {
           invitedByUserId: actor.userId,
           tokenHash: hash,
           expiresAt: new Date(now.getTime() + INVITATION_TTL_DAYS * DAY_MS),
+          displayName: body.name ?? null,
+          phone: body.phone ?? null,
         },
         select: { id: true },
       });
@@ -147,6 +197,9 @@ export class InvitationsService {
           invitationId: created.id,
           locationId,
         })),
+      });
+      await tx.invitationPermission.createMany({
+        data: toRows(overrides).map((o) => ({ tenantId, invitationId: created.id, ...o })),
       });
       const row = await tx.invitation.findUniqueOrThrow({
         where: { id: created.id },
@@ -161,32 +214,72 @@ export class InvitationsService {
       return row;
     });
 
-    // In the organization's tenant context: its labels and its `locale` setting. The invitee's own
-    // locale if they have an account (ADR 0011 §9).
-    this.inBackground('invitation mail', () =>
-      this.tenantContext.run({ tenantId, userId: actor.userId }, async () => {
-        const [invitee, org, orgLocale] = await Promise.all([
-          this.users.findByEmail(email),
-          this.platformDb.organization.findUniqueOrThrow({
-            where: { id: tenantId },
-            select: {
-              name: true,
-              partner: { select: { domains: { select: { hostname: true } } } },
-            },
-          }),
-          this.settings.get('locale'),
-        ]);
-        await this.mailer.send({
-          to: email,
-          locale: invitee?.locale ?? orgLocale,
-          organizationName: org.name,
-          token,
-          // The link opens on the partner's domain (web-shell.md → Invitation links).
-          partnerHostnames: org.partner.domains.map((d) => d.hostname),
-        });
-      }),
+    const org = await this.organizationOf(tenantId);
+    // The link opens on the partner's domain (web-shell.md → Invitation links).
+    const partnerHostnames = org.partner.domains.map((d) => d.hostname);
+    if (opts.sendEmail) {
+      // In the organization's tenant context: its labels and its `locale` setting. The invitee's
+      // own locale if they have an account (ADR 0011 §9).
+      this.inBackground('invitation mail', () =>
+        this.tenantContext.run({ tenantId, userId: actor.userId }, async () => {
+          const [invitee, orgLocale] = await Promise.all([
+            this.users.findByEmail(email),
+            this.settings.get('locale'),
+          ]);
+          await this.mailer.send({
+            to: email,
+            locale: invitee?.locale ?? orgLocale,
+            organizationName: org.name,
+            token,
+            partnerHostnames,
+          });
+        }),
+      );
+    }
+    return {
+      invitation: toInvitation(row),
+      link: this.mailer.linkFor(token, partnerHostnames),
+      existingAccount,
+    };
+  }
+
+  /**
+   * A new link for an open invitation (ADR 0023 §5): a new token replaces the old one, which stops
+   * working at once. Same granting check as revoking.
+   */
+  async renewLink(id: string): Promise<string> {
+    const actor = await this.roles.actor();
+    const { tenantId } = this.tenantContext.require();
+    const now = this.clock.now();
+    const { token, hash } = issueInvitationToken(tenantId);
+    await this.db.$transaction(async (tx) => {
+      const invitation = await tx.invitation.findFirst({
+        where: { id, ...openAt(now) },
+        select: INVITATION_SELECT,
+      });
+      if (!invitation) throw rbacErrors.invitationNotFound();
+      if (!canGrantRole(actor, this.roles.viewOf(invitation.role))) throw rbacErrors.notGrantable();
+      await tx.invitation.update({ where: { id }, data: { tokenHash: hash } });
+      await this.audit.record(tx, {
+        action: 'platform.invitation.link_renewed',
+        actor: auditActor.user(actor.userId),
+        entityId: id,
+        before: snapshotOf(invitation),
+        after: snapshotOf(invitation),
+      });
+    });
+    const org = await this.organizationOf(tenantId);
+    return this.mailer.linkFor(
+      token,
+      org.partner.domains.map((d) => d.hostname),
     );
-    return toInvitation(row);
+  }
+
+  private organizationOf(tenantId: string) {
+    return this.platformDb.organization.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { name: true, partner: { select: { domains: { select: { hostname: true } } } } },
+    });
   }
 
   /** Revokes an open invitation, if the actor could have granted its role. */
@@ -326,6 +419,8 @@ export class InvitationsService {
           roleId: invitation.roleId,
           allLocations: invitation.allLocations,
           locationIds: invitation.locations.map((l) => l.locationId),
+          ...fromRows(invitation.permissions),
+          active: true,
         }),
       });
     }
@@ -368,7 +463,14 @@ export class InvitationsService {
     });
     if (existing) return null;
     const membership = await tx.membership.create({
-      data: { tenantId, userId, roleId: invitation.roleId, allLocations: invitation.allLocations },
+      data: {
+        tenantId,
+        userId,
+        roleId: invitation.roleId,
+        allLocations: invitation.allLocations,
+        displayName: invitation.displayName,
+        phone: invitation.phone,
+      },
       select: { id: true },
     });
     await tx.membershipLocation.createMany({
@@ -376,6 +478,15 @@ export class InvitationsService {
         tenantId,
         membershipId: membership.id,
         locationId: l.locationId,
+      })),
+    });
+    // The per-member changes the inviter chose (ADR 0023 §7).
+    await tx.membershipPermission.createMany({
+      data: invitation.permissions.map((p) => ({
+        tenantId,
+        membershipId: membership.id,
+        permissionKey: p.permissionKey,
+        effect: p.effect,
       })),
     });
     return membership.id;
@@ -423,6 +534,7 @@ function snapshotOf(
     roleId: row.roleId,
     allLocations: row.allLocations,
     locationIds: row.locations.map((l) => l.locationId),
+    ...fromRows(row.permissions),
     expiresAt: row.expiresAt,
     acceptedAt: null,
     acceptedByUserId: null,

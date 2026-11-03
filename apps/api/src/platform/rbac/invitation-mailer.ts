@@ -20,6 +20,20 @@ export class InvitationMailer {
     @Inject(INVITATION_LABELS) private readonly labels: InvitationLabels,
   ) {}
 
+  /**
+   * The accept link of a token: on the organization's partner domain if one is an allowed web
+   * origin, else WEB_BASE_URL (web-shell.md → Invitation links). The token is in the fragment,
+   * never sent to a server or logged.
+   */
+  linkFor(token: string, partnerHostnames: readonly string[]): string {
+    const base = inviteLinkBase(
+      this.config.WEB_ORIGINS,
+      this.config.WEB_BASE_URL,
+      partnerHostnames,
+    );
+    return `${new URL('/accept-invite', base).toString()}#token=${token}`;
+  }
+
   /** `partnerHostnames`: the organization's partner domains, which pick the link's origin. */
   async send(input: {
     to: string;
@@ -29,12 +43,7 @@ export class InvitationMailer {
     partnerHostnames: readonly string[];
   }) {
     const t = await this.labels.translator(isLocale(input.locale) ? input.locale : DEFAULT_LOCALE);
-    const base = inviteLinkBase(
-      this.config.WEB_ORIGINS,
-      this.config.WEB_BASE_URL,
-      input.partnerHostnames,
-    );
-    const link = `${new URL('/accept-invite', base).toString()}#token=${input.token}`;
+    const link = this.linkFor(input.token, input.partnerHostnames);
     const params = { organization: input.organizationName, link };
     const { messageId } = await this.mailer.send({
       to: input.to,

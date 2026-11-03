@@ -170,19 +170,20 @@ export class MembersService {
    * Owners serialize and this count sees the other's committed result (the trigger takes the
    * same lock at commit).
    */
-  private async assertAnotherOwner(
+  async assertAnotherOwner(
     tx: TenantTransactionClient,
     ownerRoleId: string,
     membershipId: string,
   ): Promise<void> {
     await tx.$queryRaw`SELECT id FROM roles WHERE id = ${ownerRoleId}::uuid FOR UPDATE`;
+    // Only active Owners count (ADR 0023 §6): a deactivated Owner can't run the organization.
     const others = await tx.membership.count({
-      where: { roleId: ownerRoleId, id: { not: membershipId } },
+      where: { roleId: ownerRoleId, id: { not: membershipId }, deactivatedAt: null },
     });
     if (others === 0) throw rbacErrors.lastOwner();
   }
 
-  private async lastOwnerGuard<T>(fn: () => Promise<T>): Promise<T> {
+  async lastOwnerGuard<T>(fn: () => Promise<T>): Promise<T> {
     try {
       return await fn();
     } catch (error) {

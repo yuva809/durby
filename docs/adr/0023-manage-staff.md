@@ -47,9 +47,11 @@ effect)` with effect `grant` or `deny`. Effective keys = role keys ∪ grants �
    exception to ADR 0007 §9, so they know to share the link rather than a password. `POST /staff` is rate limited per
    organization like invitations.
 
-5. **Shareable invitation links.** Creating an invitation (by `POST /staff` or `POST /invitations`) returns its link
-   **once**, since only the token hash is stored. `POST /invitations/:id/link` revokes the token and issues a new one
-   (the old link stops working). The web offers Copy and WhatsApp; sending the email is optional. Same single-use
+5. **Shareable invitation links.** Only the token hash is stored, so a link can be shown only when a token is issued.
+   `POST /invitations/:id/link` issues a new token and returns its link (an earlier link, e.g. the emailed one, stops
+   working). `POST /staff` answers only the invitation id: it is idempotent, and its stored reply must not hold a
+   token. The link route is exempt from Idempotency-Key for the same reason; replaying it only issues yet another
+   link. The web offers Copy and WhatsApp; sending the email is optional. Same single-use
    seven-day token and accept flow as before (ADR 0007 §8).
 
 6. **Deactivation.** `memberships.deactivated_at`: a deactivated member resolves to no access (guard,
@@ -65,8 +67,8 @@ effect)` with effect `grant` or `deny`. Effective keys = role keys ∪ grants �
 
 8. **No new permission keys.** Listing uses `platform.users.read`, creating and links `platform.users.invite`,
    changes and (de)activation `platform.users.manage`. Every write is idempotent (ADR 0014) and audited (ADR 0008:
-   `platform.staff.created`, `platform.staff.updated`, `platform.staff.deactivated`, `platform.staff.reactivated`,
-   `platform.invitations.link_renewed`); a password change is a user-level event and goes to the security log
+   `platform.membership.created|updated|deactivated|reactivated`, `platform.invitation.created`,
+   `platform.invitation.link_renewed`, with grants, denies and `active` added to their snapshots); a password change is a user-level event and goes to the security log
    (`auth.password.changed`), like a password reset (ADR 0006), with role, locations, overrides and status
    in before/after, never passwords, tokens or emails.
 

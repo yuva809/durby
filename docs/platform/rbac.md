@@ -246,7 +246,7 @@ sendEmail }`:
 | Case                                     | Result                                                                                                                                                                                                                                    |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | No account for the email, password given | user created (`must_change_password`, `vouched_by_organization_id`: may sign in before verifying the email) + membership + overrides, in one transaction → `{ kind: 'created', membershipId }`. The owner shares the password themselves. |
-| No account, no password                  | an invitation (name, phone, overrides) → `{ kind: 'invited', invitationId, link }`; the email is sent only when `sendEmail`.                                                                                                              |
+| No account, no password                  | an invitation (name, phone, overrides) → `{ kind: 'invited', invitationId }`; the email is sent only when `sendEmail`.                                                                                                                    |
 | The email already has an account         | always an invitation, whatever the password field held → `{ kind: 'invited', …, existingAccount: true }`: nobody sets another person's password. The owner learns that the account exists.                                                |
 | Already a member here                    | 409 `invitations.already_member`.                                                                                                                                                                                                         |
 
@@ -256,8 +256,9 @@ allows only `POST /auth/password/change`, `GET /auth/me` and `POST /auth/logout`
 (`@Authenticated`) checks the current password, applies the password policy, clears the flag, revokes the user's
 other sessions and returns a fresh session.
 
-**Links.** Creating an invitation returns `link` once. `POST /invitations/:id/link` revokes the old token and returns a
-new link. The web offers Copy and WhatsApp (`https://wa.me/?text=…`, the text from `platform.staff.shareText`).
+**Links.** `POST /invitations/:id/link` issues a new token and returns its link; the previous link (e.g. the emailed
+one) stops working. `POST /staff` answers only the invitation id, so no token is kept with its idempotent reply; the
+link route is exempt from Idempotency-Key (a replay just issues another link). The web offers Copy and WhatsApp (`https://wa.me/?text=…`, the text from `platform.team.shareText`).
 
 **Deactivation.** `POST /staff/:id/deactivate` sets `deactivated_at` and the per-organization revocation marker;
 `POST /staff/:id/reactivate` clears it. The last active Owner can't be deactivated (409 `rbac.last_owner`; the
@@ -275,7 +276,7 @@ deferred trigger counts active Owner memberships only).
 
 Errors: `auth.password_change_required` (403), `auth.invalid_credentials` (current password wrong, 401), the usual
 validation error for a password outside the policy, plus the RBAC codes above. Every write is idempotent and audited
-(`platform.staff.*`, `platform.invitations.link_renewed`); a password change is a user-level event and goes to the security log
+(`platform.membership.*` incl. `deactivated`/`reactivated`, `platform.invitation.*` incl. `link_renewed`); a password change is a user-level event and goes to the security log
 (`auth.password.changed`), like a password reset (ADR 0006).
 
 ## Rollout (expand/contract, ADR 0004)

@@ -14,6 +14,7 @@ export * from './api/pos-areas';
 export * from './api/pos-orders';
 export * from './api/pos-tables';
 export * from './api/rbac';
+export * from './api/team';
 export * from './api/reservations';
 export * from './api/settings';
 export * from './api/staff';
