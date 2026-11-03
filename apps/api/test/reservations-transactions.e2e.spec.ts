@@ -65,7 +65,7 @@ describe('reservations: transactions per request', () => {
   }
 
   // Each write: guards (entitlements + membership) 1, idempotency claim 1, the write itself 1.
-  it('creates and cancels a booking and seats a walk-in in 3 transactions each, edits in 4', async () => {
+  it('creates, cancels and seats a walk-in in 3 transactions, edits in 4, reads in 2', async () => {
     const org = await seed.org();
     await entitlements.setPlan(org.id, 'full', 'cli.entitlements');
     const userId = await seed.user();
@@ -124,6 +124,18 @@ describe('reservations: transactions per request', () => {
         }).expect(201),
       ),
     ).toBe(3);
+
+    // Reads for /host (R1.8a): guards 1, the read itself 1.
+    const read = (path: string) =>
+      request(server).get(`/api/v1${path}`).auth(token, { type: 'bearer' }).expect(200);
+    expect(await counted(userId, () => read(`/reservations/floor?locationId=${here}`))).toBe(2);
+    expect(
+      await counted(userId, () => read(`/reservations/floor?locationId=${here}&date=2027-03-06`)),
+    ).toBe(2);
+    expect(
+      await counted(userId, () => read(`/reservations?locationId=${here}&date=2027-03-06`)),
+    ).toBe(2);
+    expect(await counted(userId, () => read(`/reservations/${id}`))).toBe(2);
   });
 });
 

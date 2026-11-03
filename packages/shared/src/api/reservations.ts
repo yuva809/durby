@@ -9,12 +9,27 @@ import { TABLE_COLORS, TABLE_SHAPES } from './pos-tables';
 
 /** Request and response bodies of the reservations endpoints (docs/modules/reservations.md → API). */
 
-export const reservationsFloorQuerySchema = z.object({ locationId: z.uuid() });
+/**
+ * GET /reservations/floor: now, an instant (`at`) or a local day (`date`: today = now, another day =
+ * the start of its first service window).
+ */
+export const reservationsFloorQuerySchema = z
+  .object({
+    locationId: z.uuid(),
+    at: z.iso.datetime({ offset: true }).optional(),
+    date: z.string().refine(isLocalDate, { message: 'Expected a date YYYY-MM-DD' }).optional(),
+  })
+  .refine((q) => q.at === undefined || q.date === undefined, {
+    message: 'Pass at or date, not both',
+  });
+
+export const FLOOR_STATES = ['occupied', 'arriving', 'reserved', 'reserved_soon', 'free'] as const;
+export type FloorState = (typeof FLOOR_STATES)[number];
 
 /**
- * A table of the host floor: the table and whether a party sits at it now. Built from pos's read
- * port (PosFloorReader); it carries no order data (id, number, items or totals), so roles without
- * pos order keys (Host) can see it.
+ * A table of the host floor at a moment (docs/modules/reservations.md → Derived floor state). Built
+ * from pos's read port (PosFloorReader) and the bookings; it carries no order data (id, number,
+ * items or totals), so roles without pos order keys (Host) can see it.
  */
 export const reservationsFloorTableSchema = z.object({
   id: z.uuid(),
@@ -26,16 +41,51 @@ export const reservationsFloorTableSchema = z.object({
   shape: z.enum(TABLE_SHAPES),
   color: z.enum(TABLE_COLORS),
   sortOrder: z.int(),
-  /** An open pos order holds the table. */
+  state: z.enum(FLOOR_STATES),
+  /** Live: a seated party is past its planned end. */
+  overrun: z.boolean(),
+  /** The table takes walk-ins only (badge). */
+  walkInOnly: z.boolean(),
+  /** What the state comes from (occupied, arriving, reserved); null otherwise. */
+  current: z
+    .object({
+      /** null for a till order without a booking. */
+      reservationId: z.uuid().nullable(),
+      partySize: z.int().nullable(),
+      guestName: z.string().nullable(),
+      since: z.iso.datetime(),
+      until: z.iso.datetime().nullable(),
+    })
+    .nullable(),
+  /** The earliest other booking on the table that hasn't ended. */
+  next: z
+    .object({
+      reservationId: z.uuid(),
+      startsAt: z.iso.datetime(),
+      partySize: z.int(),
+      guestName: z.string().nullable(),
+      /** Live: the table is still occupied past this booking's start: move the booking. */
+      tableStillOccupied: z.boolean(),
+    })
+    .nullable(),
+  /** state === 'occupied'. */
   occupied: z.boolean(),
-  /** When that order was opened; null when free. */
+  /** current.since while occupied; null otherwise. */
   occupiedSince: z.iso.datetime().nullable(),
-  /** Guests at the table (pos covers), or null when free or not recorded. */
+  /** Guests at the table while occupied (pos covers, or the seated party), or null. */
   covers: z.int().nullable(),
 });
 
 export const reservationsFloorResponseSchema = z.object({
   data: z.array(reservationsFloorTableSchema),
+  /** The moment shown. */
+  at: z.iso.datetime(),
+  /** Its local date at the location. */
+  date: z.string(),
+  /** Today at the location: open orders, overrun and arriving count. */
+  live: z.boolean(),
+  /** The date's service windows (opening hours narrowed by the reservation hours). */
+  serviceWindows: z.array(z.object({ start: z.iso.datetime(), end: z.iso.datetime() })),
 });
 
 export type ReservationsFloorQuery = z.infer<typeof reservationsFloorQuerySchema>;
@@ -350,6 +400,10 @@ export const reservationSchema = z.object({
   createdAt: z.iso.datetime(),
   /** The latest status change: what an undo would revert (R1.6c). */
   lastChangeId: z.uuid(),
+  /** That change: the host's badges ("auto-seated from till": actorKind system + sourceOrderId). */
+  lastChange: reservationStatusChangeSchema.omit({ fromStatus: true, undoesId: true }),
+  /** A blocking booking's tables that pos has archived since (move the booking); else []. */
+  tablesNotInService: z.array(z.uuid()),
 });
 
 /** POST /reservations/:id/seat: optionally at other tables. */

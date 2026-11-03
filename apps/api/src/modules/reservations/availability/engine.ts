@@ -100,7 +100,7 @@ export interface AvailabilityResult {
   slots: Slot[];
 }
 
-interface Interval {
+export interface Interval {
   start: number;
   end: number;
 }
@@ -163,9 +163,11 @@ function slotStarts(input: AvailabilityInput): number[] {
 }
 
 /** The day's opening windows, narrowed by the reservation hours (they only intersect). */
-function serviceWindows(
-  input: Pick<AvailabilityInput, 'date' | 'timeZone' | 'settings'>,
-): Interval[] {
+export function serviceWindows(input: {
+  date: LocalDate;
+  timeZone: string;
+  settings: Pick<EngineSettings, 'openingHours' | 'closedDates' | 'serviceHours'>;
+}): Interval[] {
   const { date, timeZone, settings } = input;
   const windows = serviceWindowsOn(date, settings.openingHours, settings.closedDates, timeZone).map(
     toInterval,
@@ -196,8 +198,11 @@ const clock = (minute: number) =>
  * after `now` (on the local wall clock, from midnight) plus one interval, moving forward with `now`.
  */
 function overrunEnd(input: AvailabilityInput): number {
-  const { now, timeZone, settings } = input;
-  const interval = settings.slotIntervalMinutes;
+  return rollingEnd(input.now, input.timeZone, input.settings.slotIntervalMinutes);
+}
+
+/** The rolling end of occupancy at `now` (overrunEnd); the host floor uses it too. */
+export function rollingEnd(now: Date, timeZone: string, interval: number): number {
   const local = zonedParts(now, timeZone);
   const minute =
     local.hour * 60 + local.minute + (now.getUTCSeconds() || now.getUTCMilliseconds() ? 1 : 0);

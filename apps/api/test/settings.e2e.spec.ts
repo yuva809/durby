@@ -131,6 +131,7 @@ describe('/api/v1/settings', () => {
           ['reservations.lastBookingOffsetMinutes', 60],
           ['reservations.online.instantMaxParty', 10],
           ['reservations.orderMatchWindowMinutes', 30],
+          ['reservations.floorHorizonMinutes', 60],
           ['reservations.autoConfirm', true],
           ['reservations.holdMinutes', 5],
         ].map(([key, value]) => ({ key, value, source: 'default', dataBound: false })),
