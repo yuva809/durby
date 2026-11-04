@@ -85,7 +85,7 @@
   "pos.order.search": "Search the menu",
   "pos.order.noResults": "Nothing found.",
   "pos.order.sendCount": "Send {count} to kitchen",
-  "pos.order.sent": "Sent to the kitchen: ticket {sequence}.",
+  "pos.order.sent": "Sent: ticket {sequence}.",
   "pos.order.inCart": "{count} in the cart",
   "pos.order.viewOrder": "View order",
   "pos.bill.tickets": "Kitchen tickets ({count})",

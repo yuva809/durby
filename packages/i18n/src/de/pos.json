@@ -85,7 +85,7 @@
   "pos.order.search": "Karte durchsuchen",
   "pos.order.noResults": "Nichts gefunden.",
   "pos.order.sendCount": "{count} an die Küche senden",
-  "pos.order.sent": "An die Küche gesendet: Bon {sequence}.",
+  "pos.order.sent": "Gesendet: Bon {sequence}.",
   "pos.order.inCart": "{count} im Warenkorb",
   "pos.order.viewOrder": "Bestellung ansehen",
   "pos.bill.tickets": "Küchenbons ({count})",

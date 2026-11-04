@@ -1,4 +1,6 @@
 import {
+  type BillLayout,
+  billLayoutSchema,
   type CreateDiningAreaRequest,
   type CreateDiningTableRequest,
   type DiningArea,
@@ -63,6 +65,14 @@ export const loadFloor = (store: Api, locationId: string): Promise<Result<FloorT
 
 export const loadTableOrder = (store: Api, tableId: string): Promise<Result<TableOrderResponse>> =>
   read(store, `/api/v1/pos/tables/${tableId}/order`, tableOrderResponseSchema);
+
+/** The bill's header and footer at a location (docs/modules/pos.md → Bill layout). */
+export const loadBillLayout = (store: Api, locationId: string): Promise<Result<BillLayout>> =>
+  read(
+    store,
+    `/api/v1/pos/bill-layout?locationId=${encodeURIComponent(locationId)}`,
+    billLayoutSchema,
+  );
 
 export const sendTicket = (
   store: Api,

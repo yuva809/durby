@@ -23,18 +23,39 @@ import type { ActionKey } from '../idempotency';
 
 /**
  * Calls of the settings pages (docs/platform/web-shell.md → Settings, labels, number series,
- * plan, organization). Organization scope only: no brand or location query yet.
+ * plan, organization). Settings at organization scope, or at a location with `locationId` (the
+ * bill page); no brand query yet.
  */
 
-export const loadSettings = (store: Api): Promise<Result<ResolvedSetting[]>> =>
-  read(store, '/api/v1/settings', list(settingsResponseSchema));
+const scoped = (path: string, locationId?: string) =>
+  locationId ? `${path}?locationId=${encodeURIComponent(locationId)}` : path;
 
-export const putSetting = (store: Api, action: ActionKey, key: SettingKey, value: unknown) =>
-  write(store, action, `/api/v1/settings/${key}`, 'PUT', { value }, resolvedSettingSchema);
+export const loadSettings = (store: Api, locationId?: string): Promise<Result<ResolvedSetting[]>> =>
+  read(store, scoped('/api/v1/settings', locationId), list(settingsResponseSchema));
 
-/** Removes the organization's value: the inherited one applies again. */
-export const deleteSetting = (store: Api, action: ActionKey, key: SettingKey) =>
-  write(store, action, `/api/v1/settings/${key}`, 'DELETE');
+export const putSetting = (
+  store: Api,
+  action: ActionKey,
+  key: SettingKey,
+  value: unknown,
+  locationId?: string,
+) =>
+  write(
+    store,
+    action,
+    scoped(`/api/v1/settings/${key}`, locationId),
+    'PUT',
+    { value },
+    resolvedSettingSchema,
+  );
+
+/** Removes the value at the scope: the inherited one applies again. */
+export const deleteSetting = (
+  store: Api,
+  action: ActionKey,
+  key: SettingKey,
+  locationId?: string,
+) => write(store, action, scoped(`/api/v1/settings/${key}`, locationId), 'DELETE');
 
 export const loadLabelOverrides = (store: Api): Promise<Result<LabelOverride[]>> =>
   read(store, '/api/v1/label-overrides', list(labelOverridesResponseSchema));

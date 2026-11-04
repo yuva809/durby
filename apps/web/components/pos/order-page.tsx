@@ -20,7 +20,13 @@ import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { loadCategories, loadProducts } from '../../lib/catalog/api';
-import { closeOrder, loadTableOrder, sendTicket, updateOrder } from '../../lib/pos/api';
+import {
+  closeOrder,
+  loadBillLayout,
+  loadTableOrder,
+  sendTicket,
+  updateOrder,
+} from '../../lib/pos/api';
 import {
   type BillLine,
   billLines,
@@ -32,9 +38,11 @@ import {
 } from '../../lib/pos/format';
 import { useNow } from '../../lib/pos/use-now';
 import { printAs } from '../../lib/pos/print';
+import { useBrand } from '../theme-provider';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
@@ -83,10 +91,34 @@ interface CartLine {
   note: string;
 }
 
-/** What to print; `seq` grows with every request, so a reprint prints again. */
+/**
+ * What to print; `seq` grows with every request, so a reprint prints again. A send's tickets (one
+ * per station, ADR 0025) print as one print job each, kitchen first, so each can go to its own
+ * printer.
+ */
 type PrintJob =
-  | { kind: 'ticket'; ticket: KitchenTicket; orderNumber: string; seq: number }
+  | { kind: 'tickets'; tickets: KitchenTicket[]; orderNumber: string; seq: number }
   | { kind: 'bill' | 'slip'; seq: number };
+
+/**
+ * Prints #print-root's parts (`data-print-part`) one print job at a time, hiding the others;
+ * `window.print()` blocks until each dialog closes.
+ */
+function printParts(title: string): void {
+  const parts = [...document.querySelectorAll<HTMLElement>('#print-root [data-print-part]')];
+  if (parts.length <= 1) {
+    printAs(title);
+    return;
+  }
+  try {
+    for (const part of parts) {
+      for (const other of parts) other.hidden = other !== part;
+      printAs(title);
+    }
+  } finally {
+    for (const part of parts) part.hidden = false;
+  }
+}
 
 function TableOrder({
   tableId,
@@ -99,10 +131,16 @@ function TableOrder({
 }) {
   const t = useT();
   const money = useMoney();
+  const { productName } = useBrand();
   const { store } = useAuth();
   const action = useActionKey();
   const closeAction = useActionKey();
   const [view, reload] = useResource(tableId, () => loadTableOrder(store, tableId));
+  // The bill's header and footer at the table's location (ADR 0025), for those who print bills.
+  const locationId = view.status === 'ready' ? view.data.table.locationId : null;
+  const [layout] = useResource(access.canPrintBill ? locationId : null, () =>
+    loadBillLayout(store, locationId!),
+  );
   const now = useNow(30_000);
   const [print, setPrint] = useState<PrintJob | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -113,15 +151,15 @@ function TableOrder({
   const [pendingCovers, setPendingCovers] = useState<number | null>(null);
 
   useEffect(() => {
-    if (print) printAs(organizationName);
+    if (print) printParts(organizationName);
   }, [print, organizationName]);
 
-  const printTicket = (order: Order, ticketId: string) => {
-    const ticket = order.tickets.find((x) => x.id === ticketId);
-    if (ticket) {
+  const printTickets = (order: Order, ticketIds: readonly string[]) => {
+    const tickets = order.tickets.filter((x) => ticketIds.includes(x.id));
+    if (tickets.length > 0) {
       setPrint((prev) => ({
-        kind: 'ticket',
-        ticket,
+        kind: 'tickets',
+        tickets,
         orderNumber: order.number,
         seq: (prev?.seq ?? 0) + 1,
       }));
@@ -129,7 +167,7 @@ function TableOrder({
   };
   const afterWrite = (response: SendTicketResponse) => {
     reload();
-    printTicket(response.order, response.ticketId);
+    printTickets(response.order, response.ticketIds);
   };
 
   const add = (product: Product) => {
@@ -168,10 +206,12 @@ function TableOrder({
     });
     setBusy(false);
     if (result.ok && result.data) {
-      const ticket = result.data.order.tickets.find((x) => x.id === result.data?.ticketId);
+      const sequences = result.data.order.tickets
+        .filter((x) => result.data?.ticketIds.includes(x.id))
+        .map((x) => x.sequence);
       setCart([]);
       setPendingCovers(null);
-      setSent(t('pos.order.sent', { sequence: String(ticket?.sequence ?? '') }));
+      setSent(t('pos.order.sent', { sequence: sequences.join(', ') }));
       afterWrite(result.data);
     } else if (!result.ok) {
       setError(t(errorLabel(result.code)));
@@ -305,7 +345,7 @@ function TableOrder({
                   }
                 />
                 {order && order.tickets.length > 0 && (
-                  <TicketLog order={order} onReprint={(id) => printTicket(order, id)} />
+                  <TicketLog order={order} onReprint={(id) => printTickets(order, [id])} />
                 )}
               </aside>
             </div>
@@ -333,14 +373,19 @@ function TableOrder({
             )}
             {print && (
               <PrintRoot>
-                {print.kind === 'ticket' ? (
-                  <KitchenTicketView
-                    key={print.seq}
-                    organizationName={organizationName}
-                    ticket={print.ticket}
-                    tableName={table.name}
-                    orderNumber={print.orderNumber}
-                  />
+                {print.kind === 'tickets' ? (
+                  <div key={print.seq}>
+                    {print.tickets.map((ticket) => (
+                      <div key={ticket.id} data-print-part>
+                        <KitchenTicketView
+                          organizationName={organizationName}
+                          ticket={ticket}
+                          tableName={table.name}
+                          orderNumber={print.orderNumber}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 ) : print.kind === 'slip' ? (
                   <OrderSlip
                     key={print.seq}
@@ -350,20 +395,24 @@ function TableOrder({
                     lines={bill}
                     printedAt={new Date(now)}
                   />
-                ) : (
+                ) : order ? (
                   <div key={print.seq} data-testid="printed-bill">
                     <Receipt
+                      layout={layout.status === 'ready' ? layout.data : null}
                       organizationName={organizationName}
+                      productName={productName}
                       tableName={table.name}
-                      order={order}
+                      order={{
+                        number: order.number,
+                        covers: order.covers,
+                        waiterName: order.waiterName,
+                        total: order.totals.gross,
+                      }}
                       bill={bill}
-                      pending={[]}
-                      pendingTotal="0.00"
-                      grandTotal={order?.totals.gross ?? '0.00'}
                       printedAt={new Date(now)}
                     />
                   </div>
-                )}
+                ) : null}
               </PrintRoot>
             )}
           </div>
@@ -723,10 +772,11 @@ function TicketLog({ order, onReprint }: { order: Order; onReprint: (ticketId: s
         {order.tickets.map((ticket) => (
           <section key={ticket.id} className="flex flex-col gap-1" data-testid="order-ticket">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-medium">
+              <h3 className="flex items-center gap-2 text-sm font-medium">
                 {t(ticket.kind === 'void' ? 'pos.order.voidTicket' : 'pos.order.ticket', {
                   sequence: String(ticket.sequence),
                 })}
+                <Badge data-testid="ticket-station">{t(`pos.station.${ticket.station}`)}</Badge>
               </h3>
               <Button variant="ghost" className="gap-1" onClick={() => onReprint(ticket.id)}>
                 <Printer aria-hidden className="size-4" />

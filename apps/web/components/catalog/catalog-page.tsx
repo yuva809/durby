@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  PREP_STATIONS,
+  type PrepStation,
   type Product,
   type ProductCategory,
   priceSchema,
@@ -253,6 +255,9 @@ function CategoryRow({
           onClick={onSelect}
         >
           <span className="truncate">{category.name}</span>
+          {category.station === 'bar' && (
+            <Badge data-testid="category-station">{t('catalog.stations.bar')}</Badge>
+          )}
           {category.archivedAt && <Badge>{t('catalog.page.archived')}</Badge>}
         </Button>
       </div>
@@ -418,6 +423,7 @@ function CategoryDialog({ category, onDone }: { category?: ProductCategory; onDo
   const action = useActionKey();
   const id = useId();
   const [name, setName] = useState('');
+  const [station, setStation] = useState<PrepStation>('kitchen');
   const [checked, setChecked] = useState(false);
   const nameMissing = checked && name.trim() === '';
 
@@ -429,12 +435,13 @@ function CategoryDialog({ category, onDone }: { category?: ProductCategory; onDo
       title={t(category ? 'catalog.page.editCategory' : 'catalog.page.createCategory')}
       onOpen={() => {
         setName(category?.name ?? '');
+        setStation(category?.station ?? 'kitchen');
         setChecked(false);
       }}
       submit={() => {
         setChecked(true);
         if (name.trim() === '') return null;
-        const body = { name: name.trim() };
+        const body = { name: name.trim(), station };
         return category
           ? updateCategory(store, action, category.id, body)
           : createCategory(store, action, body);
@@ -453,6 +460,25 @@ function CategoryDialog({ category, onDone }: { category?: ProductCategory; onDo
           aria-invalid={nameMissing || undefined}
           onChange={(e) => setName(e.target.value)}
         />
+      </Field>
+      {/* Where its items print: drinks on the bar ticket (ADR 0025). */}
+      <Field id={`${id}-station`} label={t('catalog.fields.station')} problem={null}>
+        <Select
+          id={`${id}-station`}
+          value={station}
+          aria-describedby={`${id}-station-hint`}
+          onChange={(e) => setStation(e.target.value as PrepStation)}
+          data-testid="category-station-select"
+        >
+          {PREP_STATIONS.map((value) => (
+            <option key={value} value={value}>
+              {t(`catalog.stations.${value}`)}
+            </option>
+          ))}
+        </Select>
+        <p id={`${id}-station-hint`} className="text-sm text-muted-foreground">
+          {t('catalog.stations.hint')}
+        </p>
       </Field>
     </FormDialog>
   );
