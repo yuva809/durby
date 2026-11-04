@@ -1,5 +1,6 @@
 import {
   addDays,
+  anonymiseGuestResponseSchema,
   type CreateReservationRequest,
   type CreateWalkInRequest,
   type LocalDate,
@@ -10,7 +11,10 @@ import {
   type ReservationsFloorResponse,
   reservationsFloorResponseSchema,
   type ReservationsFloorTable,
+  reservationAvailabilityResponseSchema,
+  type ReservationAvailabilityResponse,
   reservationsListResponseSchema,
+  type ReservationSlot,
   type UpdateReservationRequest,
   zonedInstant,
   zonedParts,
@@ -49,6 +53,110 @@ export const loadDay = (
     list(reservationsListResponseSchema),
   );
 
+/** Bookings starting in [from, to) (instants, at most MAX_LIST_DAYS apart): the /reservations list. */
+export const loadRange = (
+  store: Api,
+  locationId: string,
+  from: string,
+  to: string,
+): Promise<Result<Reservation[]>> =>
+  read(
+    store,
+    `/api/v1/reservations?${new URLSearchParams({ locationId, from, to })}`,
+    list(reservationsListResponseSchema),
+  );
+
+/** The day's slots for a party (staff channel); a booking being moved doesn't block itself. */
+export function loadAvailability(
+  store: Api,
+  locationId: string,
+  date: LocalDate,
+  partySize: number,
+  excludeReservationId?: string,
+): Promise<Result<ReservationAvailabilityResponse>> {
+  const query = new URLSearchParams({ locationId, date, partySize: String(partySize) });
+  if (excludeReservationId) query.set('excludeReservationId', excludeReservationId);
+  return read(
+    store,
+    `/api/v1/reservations/availability?${query}`,
+    reservationAvailabilityResponseSchema,
+  );
+}
+
+/** The bookable slots and the tables the engine would give each. */
+export function freeSlots(
+  slots: readonly ReservationSlot[],
+): { start: string; tableIds: string[] }[] {
+  return slots.flatMap((slot) =>
+    slot.status === 'available' && slot.allocation
+      ? [
+          {
+            start: slot.start,
+            tableIds:
+              slot.allocation.kind === 'table'
+                ? [slot.allocation.tableId]
+                : [...slot.allocation.tableIds],
+          },
+        ]
+      : [],
+  );
+}
+
+/** Erasure on request (GDPR, R1.9): irreversible. */
+export const anonymiseGuest = (store: Api, action: ActionKey, guestId: string) =>
+  write(
+    store,
+    action,
+    `/api/v1/reservations/guests/${guestId}/anonymise`,
+    'POST',
+    {},
+    anonymiseGuestResponseSchema,
+  );
+
+/**
+ * The PATCH of an edited booking: only what changed. Guest fields are sent when typed and
+ * different (the api can't blank them); notes are cleared with null.
+ */
+export function bookingChanges(
+  booking: Reservation,
+  next: {
+    startsAt: string;
+    partySize: number;
+    tableIds: readonly string[];
+    name: string;
+    phone: string;
+    email: string;
+    guestNote: string;
+    staffNote: string;
+  },
+): UpdateReservationRequest | null {
+  const typed = (value: string) => (value.trim() === '' ? undefined : value.trim());
+  const guest = {
+    ...(typed(next.name) !== undefined &&
+      typed(next.name) !== booking.guest.name && { name: typed(next.name) }),
+    ...(typed(next.phone) !== undefined &&
+      typed(next.phone) !== booking.guest.phone && { phone: typed(next.phone) }),
+    ...(typed(next.email) !== undefined &&
+      typed(next.email)?.toLowerCase() !== booking.guest.email && { email: typed(next.email) }),
+  };
+  const note = (value: string, current: string | null) =>
+    (typed(value) ?? null) === current ? undefined : (typed(value) ?? null);
+  const tables = [...next.tableIds].sort();
+  const body: UpdateReservationRequest = {
+    ...(Date.parse(next.startsAt) !== Date.parse(booking.startsAt) && { startsAt: next.startsAt }),
+    ...(next.partySize !== booking.partySize && { partySize: next.partySize }),
+    ...(tables.length > 0 && tables.join() !== booking.tableIds.join() && { tableIds: tables }),
+    ...(Object.keys(guest).length > 0 && { guest }),
+    ...(note(next.guestNote, booking.guestNote) !== undefined && {
+      guestNote: note(next.guestNote, booking.guestNote),
+    }),
+    ...(note(next.staffNote, booking.staffNote) !== undefined && {
+      staffNote: note(next.staffNote, booking.staffNote),
+    }),
+  };
+  return Object.keys(body).length > 0 ? body : null;
+}
+
 export const createBooking = (store: Api, action: ActionKey, body: CreateReservationRequest) =>
   write(store, action, '/api/v1/reservations', 'POST', body, reservationSchema);
 
@@ -77,12 +185,26 @@ export const undoChange = (store: Api, action: ActionKey, id: string, changeId: 
 
 // --- Display rules --------------------------------------------------------------------------------
 
-/** The status actions a booking offers (Status flow): no-show only once its start has passed. */
-export function actionsFor(booking: Reservation, now: number): HostAction[] {
-  const started = Date.parse(booking.startsAt) <= now;
+/**
+ * The status actions a booking offers (Status flow): no-show only once its start has passed; a
+ * booked party's Arrive and Seat only once it starts within `horizonMinutes` (the floor's arriving
+ * window, R1.9), so later rows stay uncluttered.
+ */
+export function actionsFor(
+  booking: Reservation,
+  now: number,
+  horizonMinutes = Number.POSITIVE_INFINITY,
+): HostAction[] {
+  const start = Date.parse(booking.startsAt);
+  const started = start <= now;
+  const near = start - now <= horizonMinutes * 60_000;
   switch (booking.status) {
     case 'booked':
-      return ['arrive', 'seat', ...(started ? (['no-show'] as const) : []), 'cancel'];
+      return [
+        ...(near ? (['arrive', 'seat'] as const) : []),
+        ...(started ? (['no-show'] as const) : []),
+        'cancel',
+      ];
     case 'arrived':
       return ['seat', ...(started ? (['no-show'] as const) : []), 'cancel'];
     case 'pending':

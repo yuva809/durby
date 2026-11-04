@@ -175,6 +175,7 @@ describe('GET /reservations/floor', () => {
       date: SAT,
       live: true,
       timeZone: 'Europe/Berlin',
+      horizonMinutes: 60,
     });
     expect(floor.serviceWindows).toEqual([
       { start: new Date(at('11:00')).toISOString(), end: new Date(at('23:00')).toISOString() },

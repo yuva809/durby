@@ -2,8 +2,10 @@ import type { Reservation, ReservationsFloorTable } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import {
   actionsFor,
+  bookingChanges,
   clockTime,
   dayCounts,
+  freeSlots,
   instantAt,
   localDate,
   seatUntil,
@@ -61,6 +63,17 @@ describe('actionsFor', () => {
     const arrived = booking({ status: 'arrived' });
     expect(actionsFor(arrived, ms('18:50'))).toEqual(['seat', 'cancel']);
     expect(actionsFor(arrived, ms('19:05'))).toEqual(['seat', 'no-show', 'cancel']);
+  });
+
+  it('offers Arrive and Seat only once a booked party is within the floor horizon', () => {
+    const horizon = 60;
+    expect(actionsFor(booking(), ms('17:59'), horizon)).toEqual(['cancel']);
+    expect(actionsFor(booking(), ms('18:00'), horizon)).toEqual(['arrive', 'seat', 'cancel']);
+    // Already here: Seat whenever.
+    expect(actionsFor(booking({ status: 'arrived' }), ms('17:00'), horizon)).toEqual([
+      'seat',
+      'cancel',
+    ]);
   });
 
   it('finishes seated parties, cancels pending ones, and offers nothing once done', () => {
@@ -201,5 +214,81 @@ describe('time at the location', () => {
       '18:30',
     ]);
     expect(timeOptions([], BERLIN)).toEqual([]);
+  });
+});
+
+describe('freeSlots', () => {
+  it('keeps bookable slots with the tables the engine would give', () => {
+    const start = (hhmm: string) => new Date(T(hhmm)).toISOString();
+    expect(
+      freeSlots([
+        { start: start('18:00'), end: start('19:30'), status: 'full', reason: 'no_table' },
+        {
+          start: start('18:15'),
+          end: start('19:45'),
+          status: 'available',
+          allocation: { kind: 'table', tableId: id(3) },
+        },
+        {
+          start: start('18:30'),
+          end: start('20:00'),
+          status: 'available',
+          allocation: { kind: 'combination', combinationId: id(9), tableIds: [id(6), id(7)] },
+        },
+      ]),
+    ).toEqual([
+      { start: start('18:15'), tableIds: [id(3)] },
+      { start: start('18:30'), tableIds: [id(6), id(7)] },
+    ]);
+  });
+});
+
+describe('bookingChanges', () => {
+  const b = booking({
+    guest: {
+      id: id(4),
+      name: 'Weber',
+      email: 'w@example.test',
+      phone: '+49301234567',
+      locale: 'en',
+      anonymisedAt: null,
+    },
+    guestNote: 'Window',
+  });
+  const same = {
+    startsAt: T('19:00'),
+    partySize: 2,
+    tableIds: [id(3)],
+    name: 'Weber',
+    phone: '+49301234567',
+    email: 'W@example.test',
+    guestNote: 'Window',
+    staffNote: '',
+  };
+
+  it('sends nothing when nothing changed', () => {
+    expect(bookingChanges(b, same)).toBeNull();
+  });
+
+  it('sends only what changed; a cleared note is null, a cleared guest field is not sent', () => {
+    expect(
+      bookingChanges(b, {
+        ...same,
+        startsAt: T('19:30'),
+        partySize: 4,
+        tableIds: [id(7), id(6)],
+        name: 'Weber-Klein',
+        phone: '',
+        guestNote: '',
+        staffNote: 'VIP',
+      }),
+    ).toEqual({
+      startsAt: T('19:30'),
+      partySize: 4,
+      tableIds: [id(6), id(7)],
+      guest: { name: 'Weber-Klein' },
+      guestNote: null,
+      staffNote: 'VIP',
+    });
   });
 });

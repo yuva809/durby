@@ -194,6 +194,7 @@ const FLOOR: ReservationsFloorResponse = {
   date: '2027-03-06',
   live: true,
   timeZone: 'Europe/Berlin',
+  horizonMinutes: 60,
   serviceWindows: [{ start: T('11:00'), end: T('23:00') }],
 };
 

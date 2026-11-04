@@ -408,6 +408,7 @@ function Timeline({
           tableNames={booking.tableIds.map((x) => names.get(x) ?? t('reservations.host.tableGone'))}
           timeZone={floor.timeZone}
           live={floor.live}
+          horizonMinutes={floor.horizonMinutes}
           stillOccupied={occupied.has(booking.id)}
           now={now}
           canManage={canManage}
@@ -432,6 +433,7 @@ function TimelineRow({
   tableNames,
   timeZone,
   live,
+  horizonMinutes,
   stillOccupied: tableStillOccupied,
   now,
   canManage,
@@ -442,6 +444,7 @@ function TimelineRow({
   tableNames: string[];
   timeZone: string;
   live: boolean;
+  horizonMinutes: number;
   stillOccupied: boolean;
   now: number;
   canManage: boolean;
@@ -456,7 +459,8 @@ function TimelineRow({
   const guest = booking.guest.name ?? t('reservations.host.noName');
   const badge = tillBadge(booking);
   const notInService = booking.tablesNotInService.length > 0;
-  const terminal = actionsFor(booking, now).length === 0;
+  const actions = actionsFor(booking, now, horizonMinutes);
+  const terminal = actions.length === 0;
 
   // Cancel and no-show confirm first; ConfirmAction's onDone gets no answer, so pass it on here.
   const confirmed = (what: 'cancel' | 'no-show') => async () => {
@@ -539,7 +543,7 @@ function TimelineRow({
       {canManage && (
         <div className="flex flex-wrap gap-2">
           {live &&
-            actionsFor(booking, now)
+            actions
               .filter((a) => a !== 'cancel' && a !== 'no-show')
               .map((a) => (
                 <Button
@@ -552,7 +556,7 @@ function TimelineRow({
                   {t(ACTION_LABEL[a])}
                 </Button>
               ))}
-          {live && actionsFor(booking, now).includes('no-show') && (
+          {live && actions.includes('no-show') && (
             <ConfirmAction
               trigger={t('reservations.host.actions.noShow')}
               title={t('reservations.host.confirmNoShow.title', { guest })}
@@ -563,7 +567,7 @@ function TimelineRow({
               onDone={() => undefined}
             />
           )}
-          {actionsFor(booking, now).includes('cancel') && (
+          {actions.includes('cancel') && (
             <ConfirmAction
               trigger={t('reservations.host.actions.cancel')}
               title={t('reservations.host.confirmCancel.title', { guest })}

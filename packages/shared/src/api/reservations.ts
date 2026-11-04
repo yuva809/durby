@@ -88,6 +88,8 @@ export const reservationsFloorResponseSchema = z.object({
   serviceWindows: z.array(z.object({ start: z.iso.datetime(), end: z.iso.datetime() })),
   /** The location's IANA time zone: the screen shows and enters times in it. */
   timeZone: z.string(),
+  /** reservations.floorHorizonMinutes: how soon a booking counts as arriving (and offers Arrive). */
+  horizonMinutes: z.int(),
 });
 
 export type ReservationsFloorQuery = z.infer<typeof reservationsFloorQuerySchema>;
