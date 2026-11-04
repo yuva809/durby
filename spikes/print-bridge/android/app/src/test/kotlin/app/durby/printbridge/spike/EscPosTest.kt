@@ -120,6 +120,6 @@ class EscPosTest {
         assertArrayEquals(hex(0x1D, 0x56, 66, 3), bytes.copyOfRange(bytes.size - 4, bytes.size))
         assertTrue(String(bytes, Charsets.US_ASCII).contains("10.0.0.5:9100"))
         assertTrue(String(bytes, Charsets.US_ASCII).contains("Version ${BuildConfig.VERSION_NAME} (spike)"))
-        assertEquals("0.0.2", BuildConfig.VERSION_NAME)
+        assertEquals("0.0.3", BuildConfig.VERSION_NAME)
     }
 }

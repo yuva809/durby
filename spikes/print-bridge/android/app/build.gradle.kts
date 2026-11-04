@@ -11,8 +11,8 @@ android {
         applicationId = "app.durby.printbridge.spike"
         minSdk = 28 // Android 9 (SUNMI T2s Lite)
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.0.2"
+        versionCode = 3
+        versionName = "0.0.3"
     }
 
     buildTypes {

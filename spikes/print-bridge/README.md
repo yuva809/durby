@@ -14,16 +14,16 @@ diagnostics script that runs inside the Durby page. No pairing or tokens yet.
 
 |         |                                                                                |
 | ------- | ------------------------------------------------------------------------------ |
-| File    | `spikes/print-bridge/print-bridge-spike-0.0.2.apk` (not committed)             |
-| Version | 0.0.2 (build 2), package `app.durby.printbridge.spike`, Android 9+ (minSdk 28) |
-| Size    | 2,087,049 bytes (about 2.0 MB)                                                 |
-| SHA-256 | `06271955cb4920845d02b6f5fe73ec859511b9162fc0c188fa95cf4481ddcdec`             |
+| File    | `spikes/print-bridge/print-bridge-spike-0.0.3.apk` (not committed)             |
+| Version | 0.0.3 (build 3), package `app.durby.printbridge.spike`, Android 9+ (minSdk 28) |
+| Size    | 2,089,713 bytes (about 2.0 MB)                                                 |
+| SHA-256 | `93ef7181bbea0cb9b6c556e2e8ccb7e07bdcec32ef53da8d3e172bb61894e964`             |
 | Signed  | Android debug key, APK Signature Scheme v2 (spike only; not for production)    |
 
 Check a copy before sending it, and after uploading it anywhere:
 
 ```bash
-shasum -a 256 spikes/print-bridge/print-bridge-spike-0.0.2.apk
+shasum -a 256 spikes/print-bridge/print-bridge-spike-0.0.3.apk
 ```
 
 ## Build
@@ -45,6 +45,26 @@ and on the text test receipt.
 
 ---
 
+## Developer checks (no SUNMI, no printer)
+
+`spike.js` lays the bill out again at the printer's width instead of shrinking Durby's 80 mm layout: 2 dots per
+css px, so 58 mm (384 dots) renders at 192 css px and 80 mm (576) at 288 css px, and 12 px text is 24 dots (3 mm)
+on both. It styles only its own clone (`#bridge-spike-bill`); Durby's receipt component and browser printing are
+untouched. Before printing it checks the clone: nothing wider than the paper, every price and the total flush
+right, the logo loaded (the `reflow:` lines in the panel). The logo is dithered, text is thresholded.
+
+```bash
+node --test spikes/print-bridge/test/layout.test.mjs
+```
+
+```bash
+node spikes/print-bridge/test/fake-bridge.mjs 384
+```
+
+The second one serves a stand-in bridge on `127.0.0.1:17890` and a fake Durby page with a long German bill (logo,
+umlauts, €, a 48-letter word) on `http://localhost:5199`. Run the bookmarklet code on that page, then open
+`http://127.0.0.1:17890/last` to see the 1-bit image the printer would get. Use `576` for 80 mm.
+
 ## For the restaurant owner: install and test the Print Bridge
 
 This is a **test app**. It does not change how Durby or DISH POS work today, and it does not touch your orders,
@@ -58,7 +78,7 @@ WhatsApp message). Photos taken with your phone are perfect.
 
 - The SUNMI T2s Lite terminal, switched on and connected to the internet.
 - The receipt printer, switched on, with paper in it, and its network cable plugged in as usual.
-- The download link for the app file **`print-bridge-spike-0.0.2.apk`**, which we send you.
+- The download link for the app file **`print-bridge-spike-0.0.3.apk`**, which we send you.
 - A phone to take photos.
 
 ### 1. Print the printer's self-test page
@@ -88,7 +108,7 @@ the report: that needs a network change, not this app.
 ### 3. Download and install the app
 
 1. On the T2s Lite, open the download link we sent you (in **Chrome**, or your email app).
-2. Download **`print-bridge-spike-0.0.2.apk`**. If Chrome warns that _"this type of file can harm your device"_,
+2. Download **`print-bridge-spike-0.0.3.apk`**. If Chrome warns that _"this type of file can harm your device"_,
    tap **Download anyway** (we sent this file; it is our test app).
 3. When the download finishes, tap **Open** (or open it from **Files → Downloads**).
 4. Android may say _"For your security, your phone is not allowed to install unknown apps from this source"_. Tap
@@ -104,8 +124,8 @@ The app has **one screen** that you scroll up and down. From top to bottom:
 
 | On screen                                                                                                                                                                                       | What to do                                                                                                  |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Title bar: **Print Bridge (spike) 0.0.2**                                                                                                                                                       | Nothing.                                                                                                    |
-| Large bold line: **Version 0.0.2 (build 2)**                                                                                                                                                    | Check it says exactly this. If not, you have an old file: tell us.                                          |
+| Title bar: **Print Bridge (spike) 0.0.3**                                                                                                                                                       | Nothing.                                                                                                    |
+| Large bold line: **Version 0.0.3 (build 3)**                                                                                                                                                    | Check it says exactly this. If not, you have an old file: tell us.                                          |
 | **Printer IP** (text box, empty)                                                                                                                                                                | Type the printer's IP address from the self-test page, exactly as printed (only numbers and dots).          |
 | **Port** (text box, shows `9100`)                                                                                                                                                               | Leave `9100`, unless the self-test page shows a different port number for network printing; then type that. |
 | **Printable width in dots (58 mm = 384, 80 mm = 576 or 512)** (text box, shows `576`)                                                                                                           | Measure the paper roll's width. **80 mm** (about 8 cm) → `576`. **58 mm** (about 6 cm) → `384`.             |
@@ -124,7 +144,7 @@ Tap each button **once** and wait a few seconds. After each one, look at the new
 
 1. **Test connection.** Nothing prints. The log shows a new line: the time, then `test connection:` and a result.
    Copy it into the report (for example _online_, _paper out_, _reachable, no answer to status query_ or _unreachable_).
-2. **Test print (text).** A short slip should print, starting with **PRINT BRIDGE TEST** and **Version 0.0.2
+2. **Test print (text).** A short slip should print, starting with **PRINT BRIDGE TEST** and **Version 0.0.3
    (spike)**. Take a photo of it.
 3. **Test print (raster ruler).** A slip with a **thick black bar** and **thin vertical lines** under it should
    print. Take a photo. Check that there is a vertical line at the **far left and the far right** edge.
@@ -159,6 +179,72 @@ does nothing unless someone taps its buttons. We'll schedule a short call for th
 Durby).
 
 ---
+
+## For the restaurant owner, part 2: test from the Durby website
+
+Do this **on a call with us**, outside service hours, after part 1. It prints about five short slips and one test
+bill. Note the results in part 2 of **`OWNER-REPORT-TEMPLATE.txt`**. We send you three things by message: the new
+app file **`print-bridge-spike-0.0.3.apk`**, a **test login** for the Durby test website, and a line of text for
+a bookmark.
+
+### 1. Update the app to 0.0.3
+
+1. On the T2s, open our link and download **`print-bridge-spike-0.0.3.apk`**, then tap **Open**.
+2. Android asks _"Do you want to install an update to this existing application?"_. Tap **Install**, then
+   **Open**. Your settings stay.
+3. Check the big line at the top says **Version 0.0.3 (build 3)**.
+4. Check the boxes: **Printer IP** and **Port** as before. **Printable width** must be **`384`** (your paper is
+   58 mm). **Printer has a cutter** ticked.
+5. Look at the ruler slips from part 1. If the normal ruler printed well, leave **Print images with ESC \*…**
+   empty. If only the _ESC \* fallback_ ruler printed well, tick it.
+6. Tap **Save and start bridge**.
+
+### 2. Quick check in Chrome
+
+1. Open **Chrome** and type **`127.0.0.1:17890`** in the address bar, then press Enter.
+2. Tap **Run diagnostics**. A white panel appears and **one** short slip prints, starting with _Bridge spike:
+   canvas_. Take a photo of the panel and of the slip.
+
+### 3. Create the test bookmark (once)
+
+1. In Chrome, tap **⋮** (top right), then the **☆ star**. Chrome says _Bookmarked_.
+2. Tap **⋮ → Bookmarks**, then **⋮** next to the new bookmark, then **Edit**.
+3. **Name:** type `bridgespike`. **URL:** delete what's there and paste the line of text we sent you (it starts
+   with `javascript:`). Tap back to save.
+4. Open the bookmark editor once more and check the URL still starts with `javascript:`.
+
+### 4. Run the test on the Durby test website
+
+1. Open **`https://staging.durby.tech`** and sign in with the **test login** we sent (not your real account).
+2. Tap the address bar, type **`bridgespike`** and tap the suggestion with the **star** (the bookmark). Don't
+   press Enter (that would search Google).
+3. The white panel appears and **one** slip prints. Take a photo of the panel and the slip, then tap **Close**.
+
+### 5. Print a real test bill
+
+1. In Durby, open the **test table** we tell you. Tap **Print bill**.
+2. Android's print screen opens. **Cancel** it (back arrow or ✕). Stay on the same page. **Don't reload**.
+3. Run **`bridgespike`** again (address bar → `bridgespike` → star suggestion). The first time, the panel says
+   _loading the bill converter_ and can take up to 30 seconds. Wait for **done**; don't run it again meanwhile.
+4. The panel shows lines starting with **reflow:** and then **Durby bill raster**. Two slips print: the canvas
+   slip again and the **bill**.
+5. Check the bill: can you read every line? Are the prices on the right? Is the **total** big and clear? Are the
+   logo (if any), **ä ö ü ß** and **€** right? Is it cut? Take a photo of the bill on a table, plus the panel.
+
+### 6. Printer off test
+
+1. Unplug the printer's **network cable**. Run **`bridgespike`** once. Within a few seconds the panel shows
+   **FAIL** lines (no slip). Take a photo.
+2. Plug the cable back in. Print a receipt from **DISH POS** to make sure it still works.
+
+### 7. Settings test (only together with us on the call)
+
+We'll guide you through `chrome://flags` and one more run. Afterwards we put the setting back.
+
+### 8. When we say we're finished
+
+Open **Settings → Apps → Print Bridge (spike) → Uninstall**. The test app accepts print requests from any website
+while it runs, so it shouldn't stay installed after testing.
 
 ## Full spike checklist (developer, or the owner guided by the developer on a call)
 

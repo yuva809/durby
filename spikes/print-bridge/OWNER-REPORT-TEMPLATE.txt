@@ -1,4 +1,4 @@
-PRINT BRIDGE TEST REPORT (app version 0.0.2)
+PRINT BRIDGE TEST REPORT (app version 0.0.3)
 ============================================
 Copy this into an email or message, fill in the blanks, and attach the photos.
 Write "don't know" or "didn't work" wherever that's the answer. That helps us too.
@@ -33,7 +33,7 @@ First three numbers the same as the printer's?   [ ] yes   [ ] no
 [ ] Installed without problems
 [ ] Problem (describe, attach a photo of the message):
 
-The app shows "Version 0.0.2 (build 2)":   [ ] yes   [ ] no, it shows: ________
+The app shows "Version 0.0.3 (build 3)":   [ ] yes   [ ] no, it shows: ________
 
 What I entered in the app:
   Printer IP:
@@ -91,6 +91,48 @@ Anything else you noticed:
 
 
 
+PART 2: DURBY TEST WEBSITE (on the call)
+========================================
+App updated, shows "Version 0.0.3 (build 3)":   [ ] yes   [ ] no, it shows: ________
+Printable width set to 384:   [ ] yes
+ESC * box:   [ ] empty   [ ] ticked (because only the ESC * ruler printed well)
+
+Quick check (127.0.0.1:17890 → Run diagnostics):
+  Panel all PASS:   [ ] yes   [ ] no (photo attached)
+  Slips printed:   [ ] exactly one   [ ] none   [ ] two or more
+
+Bookmark "bridgespike" created, URL starts with javascript:   [ ] yes   [ ] no
+
+On the Durby test website (bridgespike):
+  Panel appeared:   [ ] yes   [ ] no / nothing happened
+  Panel all PASS:   [ ] yes   [ ] no (photo attached)
+  Slips printed:   [ ] exactly one   [ ] none   [ ] two or more
+  Any Chrome question or permission prompt appeared:   [ ] no   [ ] yes (photo attached)
+
+Real test bill:
+  "reflow:" lines all PASS:   [ ] yes   [ ] no (photo attached)
+  Bill printed:   [ ] yes   [ ] no
+  Every line readable:   [ ] yes   [ ] partly   [ ] no
+  Prices on the right, total big and clear:   [ ] yes   [ ] no
+  ä ö ü ß and € correct:   [ ] yes   [ ] no
+  Logo printed well:   [ ] yes   [ ] no   [ ] no logo
+  Paper cut:   [ ] yes   [ ] no
+  Time shown after "html-to-image ... in" (ms): ______
+  Time shown after "Durby bill raster: 200 in" (ms): ______
+
+Printer cable unplugged: FAIL lines within a few seconds:   [ ] yes   [ ] no
+After plugging back in, DISH POS printed normally:   [ ] yes   [ ] no
+
+Chrome flags test (with us on the call):
+  "local network" flag exists:   [ ] yes   [ ] no
+  "private network" flags exist:   [ ] yes   [ ] no
+  With them enabled: still PASS and printing:   [ ] yes   [ ] no
+  Permission prompt shown:   [ ] no   [ ] yes (photo attached)
+  Flags set back to Default:   [ ] yes
+
+App uninstalled at the end:   [ ] yes   [ ] not yet
+
+
 PHOTOS CHECKLIST
 ----------------
 [ ] Printer self-test page
@@ -98,3 +140,4 @@ PHOTOS CHECKLIST
 [ ] Ruler slip(s)
 [ ] App screen showing the Log
 [ ] Chrome version
+[ ] Part 2: panels (quick check, website, bill), canvas slip, test bill, unplugged panel
