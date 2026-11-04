@@ -92,6 +92,8 @@
   "reservations.list.empty": "Keine Reservierungen in diesem Zeitraum.",
   "reservations.list.noneMatch": "Keine Reservierung passt zur Suche.",
   "reservations.list.edit": "Bearbeiten",
+  "reservations.service.fromBooking": "Aus Reservierung",
+  "reservations.service.next": "{time} \u00b7 {party}",
   "reservations.status.requested": "Angefragt",
   "reservations.status.pending": "Offen",
   "reservations.status.booked": "Gebucht",
