@@ -53,6 +53,15 @@ export const NUMBER_SERIES = {
     pattern: '{prefix}-{YYYY}-{seq:6}',
     resetPolicy: 'yearly',
   },
+  /** Stock taken by table-service sales (docs/modules/inventory.md → Consumption). */
+  'inventory.stockConsumption': {
+    label: 'platform.numbering.series.inventoryStockConsumption.name',
+    description: 'platform.numbering.series.inventoryStockConsumption.description',
+    feature: 'inventory',
+    prefix: 'CON',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
   'inventory.purchaseOrder': {
     label: 'platform.numbering.series.inventoryPurchaseOrder.name',
     description: 'platform.numbering.series.inventoryPurchaseOrder.description',

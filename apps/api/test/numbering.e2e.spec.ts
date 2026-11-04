@@ -95,6 +95,7 @@ describe('/api/v1/number-series', () => {
         'inventory.goodsReceipt',
         'inventory.stockAdjustment',
         'inventory.stockTransfer',
+        'inventory.stockConsumption',
         'inventory.purchaseOrder',
         'billing.invoice',
         'pos.order',
@@ -122,6 +123,7 @@ describe('/api/v1/number-series', () => {
         'inventory.goodsReceipt',
         'inventory.stockAdjustment',
         'inventory.stockTransfer',
+        'inventory.stockConsumption',
         'inventory.purchaseOrder',
       ]);
     });

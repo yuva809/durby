@@ -146,6 +146,12 @@ describe('/api/v1/settings', () => {
           dataBound: true,
         },
         {
+          key: 'inventory.targetFoodCostPercent',
+          value: 30,
+          source: 'default',
+          dataBound: false,
+        },
+        {
           key: 'inventory.allowNegativeStock',
           value: false,
           source: 'default',

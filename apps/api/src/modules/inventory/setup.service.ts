@@ -21,6 +21,7 @@ const WAREHOUSE_SELECT = {
   locationId: true,
   name: true,
   sortOrder: true,
+  suppliesStation: true,
   archivedAt: true,
 } as const;
 
@@ -130,8 +131,23 @@ export class InventorySetupService {
         const data = {
           name: body.name ?? current.name,
           sortOrder: body.sortOrder ?? current.sortOrder,
+          suppliesStation:
+            body.suppliesStation === undefined ? current.suppliesStation : body.suppliesStation,
           archivedAt: archivedAt(current.archivedAt, body.archived),
         };
+        // One active warehouse per location supplies each station (the partial unique index).
+        if (data.suppliesStation && data.archivedAt === null) {
+          const other = await tx.warehouse.findFirst({
+            where: {
+              locationId: current.locationId,
+              suppliesStation: data.suppliesStation,
+              archivedAt: null,
+              id: { not: id },
+            },
+            select: { id: true },
+          });
+          if (other) throw inventoryErrors.stationTaken();
+        }
         const before = snapshot('warehouse', current);
         if (
           JSON.stringify(before) === JSON.stringify(snapshot('warehouse', { ...current, ...data }))

@@ -76,8 +76,9 @@ const RESERVATIONS = ['reservations', 'reservations.online'];
 /**
  * The entitlements migration on a database with existing organizations, as on staging (ADR 0004).
  * Own database on the Testcontainers server, migrated to the release before, then deploy.
+ * `migrate deploy` runs inside the tests and grows with every migration.
  */
-describe('entitlements migration', () => {
+describe('entitlements migration', { timeout: 180_000 }, () => {
   const superuser = new Client({ connectionString: inject('superuserDatabaseUrl') });
   const migrationUrl = withDatabase(
     inject('migrationDatabaseUrl'),

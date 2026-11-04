@@ -208,6 +208,7 @@ describe('route markers', () => {
       'POST /api/v1/staff',
       'POST /api/v1/staff/:id/deactivate',
       'POST /api/v1/staff/:id/reactivate',
+      'PUT /api/v1/inventory/recipes/:productId',
       'PUT /api/v1/label-overrides/:locale/:key',
       'PUT /api/v1/number-series/:key/counter',
       'PUT /api/v1/reservations/settings/:key',

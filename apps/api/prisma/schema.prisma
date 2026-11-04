@@ -111,6 +111,7 @@ model Organization {
   stockDocuments               StockDocument[]
   stockMovements               StockMovement[]
   stockLevels                  StockLevel[]
+  recipeLines                  RecipeLine[]
   posOrderLines                PosOrderLine[]
   diningAreas                  DiningArea[]
   reservationTableRules        ReservationTableRule[]
@@ -1364,6 +1365,7 @@ enum StockDocumentKind {
   receipt
   adjustment
   transfer
+  consumption
 
   @@map("stock_document_kind")
 }
@@ -1379,20 +1381,22 @@ enum StockAdjustmentReason {
 
 /// A store at a location (main store, kitchen, bar, cold room). Archived, never deleted.
 model Warehouse {
-  id           String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String          @map("tenant_id") @db.Uuid
-  locationId   String          @map("location_id") @db.Uuid
-  name         String
-  sortOrder    Int             @default(0) @map("sort_order")
-  archivedAt   DateTime?       @map("archived_at") @db.Timestamptz(6)
-  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  location     Location        @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  documents    StockDocument[] @relation("StockDocumentWarehouse")
-  incoming     StockDocument[] @relation("StockDocumentToWarehouse")
-  movements    StockMovement[]
-  levels       StockLevel[]
+  id              String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String          @map("tenant_id") @db.Uuid
+  locationId      String          @map("location_id") @db.Uuid
+  name            String
+  sortOrder       Int             @default(0) @map("sort_order")
+  /// Sales of this station at the location take their stock from here (warehouses_supplies_station_key).
+  suppliesStation PrepStation?    @map("supplies_station")
+  archivedAt      DateTime?       @map("archived_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location        Location        @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  documents       StockDocument[] @relation("StockDocumentWarehouse")
+  incoming        StockDocument[] @relation("StockDocumentToWarehouse")
+  movements       StockMovement[]
+  levels          StockLevel[]
 
   @@unique([tenantId, id])
   @@index([tenantId, locationId])
@@ -1414,6 +1418,7 @@ model StockItem {
   organization Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   movements    StockMovement[]
   levels       StockLevel[]
+  recipeLines  RecipeLine[]
 
   @@unique([tenantId, id])
   @@map("stock_items")
@@ -1432,6 +1437,8 @@ model StockDocument {
   reason          StockAdjustmentReason?
   supplier        String?
   note            String?
+  /// The kitchen ticket a consumption was booked for (no FK: pos's table, ADR 0028).
+  sourceTicketId  String?                @map("source_ticket_id") @db.Uuid
   createdByUserId String                 @map("created_by_user_id") @db.Uuid
   createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   organization    Organization           @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -1441,6 +1448,7 @@ model StockDocument {
 
   @@unique([tenantId, id])
   @@unique([tenantId, number])
+  @@unique([tenantId, sourceTicketId])
   @@index([tenantId, warehouseId, createdAt])
   @@map("stock_documents")
 }
@@ -1481,4 +1489,21 @@ model StockLevel {
 
   @@id([tenantId, warehouseId, itemId])
   @@map("stock_levels")
+}
+
+/// One ingredient of a menu product: what one portion uses, in the item's unit (docs/modules/inventory.md → Recipes).
+/// `productId` has no FK: catalog decides "sold" by FK violations on products (ADR 0024, 0028).
+model RecipeLine {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  productId    String       @map("product_id") @db.Uuid
+  itemId       String       @map("item_id") @db.Uuid
+  quantity     Decimal      @db.Decimal(14, 3)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  item         StockItem    @relation(fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, productId, itemId])
+  @@map("recipe_lines")
 }

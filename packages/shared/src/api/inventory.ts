@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PREP_STATIONS } from './catalog';
 
 /** Request and response bodies of /api/v1/inventory (docs/modules/inventory.md, ADR 0027). */
 
@@ -10,7 +11,7 @@ export const STOCK_DOCUMENT_MAX_LINES = 200;
 export const STOCK_UNITS = ['kg', 'g', 'l', 'ml', 'pc'] as const;
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
-export const STOCK_DOCUMENT_KINDS = ['receipt', 'adjustment', 'transfer'] as const;
+export const STOCK_DOCUMENT_KINDS = ['receipt', 'adjustment', 'transfer', 'consumption'] as const;
 export type StockDocumentKind = (typeof STOCK_DOCUMENT_KINDS)[number];
 
 /** Why stock was adjusted. */
@@ -37,6 +38,8 @@ export const warehouseSchema = z.object({
   locationId: z.uuid(),
   name: z.string(),
   sortOrder: z.int(),
+  /** Sales of this station at the location take their stock from here (Step 2). */
+  suppliesStation: z.enum(PREP_STATIONS).nullable(),
   archivedAt: z.iso.datetime().nullable(),
 });
 
@@ -50,6 +53,7 @@ export const updateWarehouseRequestSchema = z
   .strictObject({
     name: name.optional(),
     sortOrder: sortOrder.optional(),
+    suppliesStation: z.enum(PREP_STATIONS).nullable().optional(),
     archived: z.boolean().optional(),
   })
   .refine((body) => Object.values(body).some((v) => v !== undefined), {
@@ -219,6 +223,51 @@ export type ListStockDocumentsQuery = z.infer<typeof listStockDocumentsQuerySche
 export type StockLevel = z.infer<typeof stockLevelSchema>;
 export type StockQuery = z.infer<typeof stockQuerySchema>;
 
+/** Recipes and dish costs (docs/modules/inventory.md → Step 2). */
+export const RECIPE_MAX_LINES = 50;
+
+export const putRecipeRequestSchema = z.strictObject({
+  lines: z
+    .array(z.strictObject({ itemId: z.uuid(), quantity: stockQuantitySchema }))
+    .max(RECIPE_MAX_LINES)
+    .refine(uniqueItems, { message: 'An item can be in a recipe only once' }),
+});
+
+export const recipeSchema = z.object({
+  productId: z.uuid(),
+  lines: z.array(
+    z.object({
+      itemId: z.uuid(),
+      itemName: z.string(),
+      unit: z.enum(STOCK_UNITS),
+      /** 3 decimals. */
+      quantity: z.string(),
+    }),
+  ),
+});
+
+export const dishCostSchema = z.object({
+  productId: z.uuid(),
+  /** Σ quantity × current cost, 2 decimals; the known part when incomplete. */
+  cost: z.string(),
+  /** Every item of the recipe has a cost. */
+  complete: z.boolean(),
+  lines: z.array(
+    z.object({
+      itemId: z.uuid(),
+      quantity: z.string(),
+      /** The item's current cost per unit, 4 decimals; null when it was never moved. */
+      unitCost: z.string().nullable(),
+    }),
+  ),
+});
+
+export const dishCostListResponseSchema = z.object({ data: z.array(dishCostSchema) });
+
+export type PutRecipeRequest = z.infer<typeof putRecipeRequestSchema>;
+export type Recipe = z.infer<typeof recipeSchema>;
+export type DishCost = z.infer<typeof dishCostSchema>;
+
 /** Stable error codes of the inventory endpoints; the web app shows the matching label. */
 export const INVENTORY_ERROR_CODES = [
   'inventory.warehouse_not_found',
@@ -231,6 +280,8 @@ export const INVENTORY_ERROR_CODES = [
   'inventory.unit_locked',
   'inventory.valuation_unsupported',
   'inventory.same_warehouse',
+  'inventory.product_not_found',
+  'inventory.station_taken',
 ] as const;
 
 export type InventoryErrorCode = (typeof INVENTORY_ERROR_CODES)[number];

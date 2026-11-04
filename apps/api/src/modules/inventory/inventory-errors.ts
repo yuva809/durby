@@ -47,6 +47,14 @@ export const inventoryErrors = {
       'inventory.valuation_unsupported',
       'FIFO valuation is not available yet.',
     ),
+  productNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'inventory.product_not_found', 'Product not found.'),
+  stationTaken: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'inventory.station_taken',
+      'Another warehouse at this location already supplies this station.',
+    ),
   sameWarehouse: () =>
     new ApiError(
       HttpStatus.BAD_REQUEST,

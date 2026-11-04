@@ -33,6 +33,7 @@ export const AUDIT_ENTITY_TYPES = [
   'warehouse',
   'stock_item',
   'stock_document',
+  'recipe',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -230,6 +231,11 @@ export const AUDIT_ACTIONS = {
     entityType: 'stock_item',
     label: 'inventory.audit.actions.stockItemUpdated',
   },
+  /** A product's recipe was replaced (docs/modules/inventory.md → Recipes). */
+  'inventory.recipe.updated': {
+    entityType: 'recipe',
+    label: 'inventory.audit.actions.recipeUpdated',
+  },
   /** A receipt, adjustment or transfer was posted (docs/modules/inventory.md → Audit). */
   'inventory.stock_document.created': {
     entityType: 'stock_document',
@@ -383,7 +389,9 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   /** Never line notes (free text). */
   kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'station', 'status', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
-  warehouse: ['id', 'locationId', 'name', 'sortOrder', 'archivedAt'],
+  warehouse: ['id', 'locationId', 'name', 'sortOrder', 'suppliesStation', 'archivedAt'],
+  /** `itemIds`: sorted, joined with commas; snapshots hold flat values only. */
+  recipe: ['productId', 'lineCount', 'itemIds'],
   /** `minQuantity`: decimal string. */
   stock_item: ['id', 'name', 'sku', 'unit', 'minQuantity', 'archivedAt'],
   /** Never `note` or `supplier` (free text). */

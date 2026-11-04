@@ -149,6 +149,16 @@ export class CatalogService {
     );
   }
 
+  /** Products by id, archived ones too, for other modules (inventory recipes, ADR 0028). */
+  async productsByIds(ids: readonly string[]): Promise<Product[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db.product.findMany({
+      where: { id: { in: [...new Set(ids)] } },
+      select: PRODUCT_SELECT,
+    });
+    return rows.map(productResponse);
+  }
+
   async listProducts(query: ListProductsQuery): Promise<Product[]> {
     const rows = await this.db.product.findMany({
       where: {

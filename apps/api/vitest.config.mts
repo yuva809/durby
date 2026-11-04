@@ -25,7 +25,8 @@ export default defineConfig({
           // One fresh Postgres (roles + migrations) and Redis per run; see test/setup/containers.global.ts.
           globalSetup: ['test/setup/containers.global.ts'],
           setupFiles: ['test/setup/env.ts'],
-          hookTimeout: 120_000,
+          // Migration tests replay every migration with one prisma process each in their setup.
+          hookTimeout: 300_000,
         },
       },
     ],

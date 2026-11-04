@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import {
   type AdjustmentRequest,
   adjustmentRequestSchema,
@@ -12,6 +22,9 @@ import {
   listStockItemsQuerySchema,
   type ListWarehousesQuery,
   listWarehousesQuerySchema,
+  type PutRecipeRequest,
+  putRecipeRequestSchema,
+  type Recipe,
   type ReceiptRequest,
   receiptRequestSchema,
   type StockDocument,
@@ -31,6 +44,7 @@ import { ZodBody, ZodQuery } from '../../platform/http';
 import { Idempotent } from '../../platform/idempotency';
 import { RequirePermission } from '../../platform/rbac';
 import { inventoryErrors } from './inventory-errors';
+import { RecipesService } from './recipes.service';
 import { InventorySetupService } from './setup.service';
 import { StockService } from './stock.service';
 
@@ -47,6 +61,7 @@ export class InventoryController {
   constructor(
     private readonly setup: InventorySetupService,
     private readonly stockService: StockService,
+    private readonly recipes: RecipesService,
   ) {}
 
   @RequirePermission('inventory.stock.read')
@@ -148,5 +163,30 @@ export class InventoryController {
     @Param('id', id(inventoryErrors.documentNotFound)) documentId: string,
   ): Promise<StockDocument> {
     return this.stockService.document(documentId);
+  }
+
+  @RequirePermission('inventory.stock.read')
+  @Get('recipes/:productId')
+  recipe(
+    @Param('productId', id(inventoryErrors.productNotFound)) productId: string,
+  ): Promise<Recipe> {
+    return this.recipes.get(productId);
+  }
+
+  /** Replaces the recipe: configuration, not history, so a replay just writes the same lines. */
+  @RequirePermission('inventory.recipes.manage')
+  @Idempotent()
+  @Put('recipes/:productId')
+  putRecipe(
+    @Param('productId', id(inventoryErrors.productNotFound)) productId: string,
+    @Body(new ZodBody(putRecipeRequestSchema)) body: PutRecipeRequest,
+  ): Promise<Recipe> {
+    return this.recipes.put(productId, body);
+  }
+
+  @RequirePermission('inventory.costs.read')
+  @Get('costs')
+  async costs() {
+    return { data: await this.recipes.costs() };
   }
 }

@@ -519,7 +519,7 @@ export class OrdersService {
       },
       select: { id: true, orderId: true, sequence: true, kind: true, station: true },
     });
-    await tx.posOrderLine.createMany({
+    const written = await tx.posOrderLine.createManyAndReturn({
       data: lines.map((line) => ({
         ...line,
         tenantId,
@@ -527,12 +527,30 @@ export class OrdersService {
         ticketId: ticket.id,
         createdByUserId: userId,
       })),
+      select: { id: true, productId: true, quantity: true },
     });
     await this.audit.record(tx, {
       action: 'pos.kitchen_ticket.created',
       actor: auditActor.user(userId),
       entityId: ticket.id,
       after: snapshot('kitchen_ticket', { ...ticket, lineCount: lines.length }),
+    });
+    // Consumers (inventory books the dishes' ingredients) react through the outbox (ADR 0028).
+    const { locationId } = await tx.posOrder.findUniqueOrThrow({
+      where: { id: orderId },
+      select: { locationId: true },
+    });
+    await this.outbox.add(tx, {
+      type: 'pos.kitchen_ticket.created',
+      payload: {
+        ticketId: ticket.id,
+        orderId,
+        locationId,
+        station,
+        kind,
+        createdByUserId: userId,
+        lines: written.map((l) => ({ lineId: l.id, productId: l.productId, quantity: l.quantity })),
+      },
     });
     return ticket.id;
   }

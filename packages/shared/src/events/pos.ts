@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { PREP_STATIONS } from '../api/catalog';
+import { KITCHEN_TICKET_KINDS } from '../api/pos-orders';
 
 /**
  * pos events (docs/modules/pos.md → Events). Written by pos in the change's transaction; pos never
@@ -27,4 +29,23 @@ export const posOrderOpenedV1 = z.strictObject({
   tableId: z.uuid(),
   /** pos_orders.opened_at, UTC. */
   openedAt: z.iso.datetime(),
+});
+
+/**
+ * A send or void wrote a kitchen or bar ticket (POST /pos/tables/:id/tickets, /pos/orders/:id/voids;
+ * one event per ticket). First consumer: inventory books the ingredients of the dishes as a
+ * consumption (docs/modules/inventory.md → Consumption, ADR 0028). Quantities are signed: negative on
+ * a void ticket.
+ */
+export const posKitchenTicketCreatedV1 = z.strictObject({
+  ticketId: z.uuid(),
+  orderId: z.uuid(),
+  locationId: z.uuid(),
+  station: z.enum(PREP_STATIONS),
+  kind: z.enum(KITCHEN_TICKET_KINDS),
+  /** Who sent it: the consumption document's creator. */
+  createdByUserId: z.uuid(),
+  lines: z
+    .array(z.strictObject({ lineId: z.uuid(), productId: z.uuid(), quantity: z.int() }))
+    .min(1),
 });

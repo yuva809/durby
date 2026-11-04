@@ -2,6 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 import type {
   AdjustmentReason,
+  AuditActor,
+  EventPayload,
   AdjustmentRequest,
   ListStockDocumentsQuery,
   NumberSeriesKey,
@@ -36,6 +38,7 @@ const SERIES: Record<StockDocumentKind, NumberSeriesKey> = {
   receipt: 'inventory.goodsReceipt',
   adjustment: 'inventory.stockAdjustment',
   transfer: 'inventory.stockTransfer',
+  consumption: 'inventory.stockConsumption',
 };
 
 const DOCUMENT_LIST_LIMIT = 200;
@@ -352,55 +355,168 @@ export class StockService {
         if (short.length > 0) throw inventoryErrors.insufficientStock(short);
       }
 
-      // As late as possible: the counter row stays locked until commit (ADR 0012).
-      const { number } = await this.numbering.next(SERIES[input.kind], tx);
-      const document = await tx.stockDocument.create({
-        data: {
-          tenantId,
-          number,
-          kind: input.kind,
-          warehouseId: from.id,
-          toWarehouseId: to?.id ?? null,
-          reason: input.header.reason ?? null,
-          supplier: input.header.supplier ?? null,
-          note: input.header.note,
-          createdByUserId: userId,
-        },
-        select: { id: true },
-      });
-      await tx.stockMovement.createMany({
-        data: movements.map((m) => ({
-          tenantId,
-          documentId: document.id,
-          warehouseId: m.warehouseId,
-          itemId: m.itemId,
-          quantity: quantityText(m.quantity),
-          unitCost: costText(m.unitCost),
-          value: valueOf(m.quantity, m.unitCost).toFixed(2),
-        })),
-      });
-      for (const [warehouseId, itemId, level] of levels.entries()) {
-        await tx.$executeRaw`
-          UPDATE stock_levels
-          SET quantity = ${quantityText(level.quantity)}::numeric,
-              average_cost = ${costText(level.averageCost)}::numeric,
-              updated_at = now()
-          WHERE warehouse_id = ${warehouseId}::uuid AND item_id = ${itemId}::uuid`;
-      }
-      const row: DocumentRow = await tx.stockDocument.findUniqueOrThrow({
-        where: { id: document.id },
-        select: DOCUMENT_SELECT,
-      });
-      const response = documentResponse(row);
-      await this.audit.record(tx, {
-        action: 'inventory.stock_document.created',
+      const response = await this.book(tx, {
+        kind: input.kind,
+        warehouseId: from.id,
+        toWarehouseId: to?.id ?? null,
+        reason: input.header.reason ?? null,
+        supplier: input.header.supplier ?? null,
+        note: input.header.note,
+        sourceTicketId: null,
+        createdByUserId: userId,
         actor: auditActor.user(userId),
-        entityId: document.id,
-        after: snapshot('stock_document', response),
+        movements,
+        levels,
       });
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
+  }
+
+  /**
+   * Books the ingredients of a kitchen or bar ticket's dishes (docs/modules/inventory.md →
+   * Consumption, ADR 0028), in the outbox's transaction: recipe × line quantity out of the
+   * warehouse that supplies the ticket's station at its location (else the location's first one);
+   * a void puts them back at the current average. Never refused for stock: the sale happened.
+   * Nothing for tickets without recipe lines, locations without warehouses, or a ticket already
+   * booked (redelivery).
+   */
+  async consumeTicket(
+    tx: TenantTransactionClient,
+    payload: EventPayload<'pos.kitchen_ticket.created'>,
+  ): Promise<'booked' | 'nothing' | 'no_warehouse'> {
+    const { tenantId } = this.tenantContext.require();
+    const booked = await tx.stockDocument.findUnique({
+      where: { tenantId_sourceTicketId: { tenantId, sourceTicketId: payload.ticketId } },
+      select: { id: true },
+    });
+    if (booked) return 'nothing';
+    const recipe = await tx.recipeLine.findMany({
+      where: { productId: { in: [...new Set(payload.lines.map((l) => l.productId))] } },
+      select: { productId: true, itemId: true, quantity: true },
+    });
+    const totals = new Map<string, Decimal>();
+    for (const line of payload.lines) {
+      for (const r of recipe.filter((x) => x.productId === line.productId)) {
+        const used = new Decimal(r.quantity.toFixed(3)).times(line.quantity);
+        totals.set(r.itemId, (totals.get(r.itemId) ?? new Decimal(0)).plus(used));
+      }
+    }
+    const itemIds = [...totals.keys()].filter((id) => !totals.get(id)!.isZero()).sort();
+    if (itemIds.length === 0) return 'nothing';
+    const warehouse =
+      (await tx.warehouse.findFirst({
+        where: {
+          locationId: payload.locationId,
+          suppliesStation: payload.station,
+          archivedAt: null,
+        },
+        select: { id: true },
+      })) ??
+      (await tx.warehouse.findFirst({
+        where: { locationId: payload.locationId, archivedAt: null },
+        select: { id: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+      }));
+    if (!warehouse) return 'no_warehouse';
+
+    const levels = await lockLevels(tx, tenantId, [warehouse.id], itemIds);
+    const movements: PlannedMovement[] = itemIds.map((itemId) => {
+      const used = totals.get(itemId)!;
+      const current = levels.get(warehouse.id, itemId);
+      const result = used.isPositive()
+        ? bookOut(current, used)
+        : bookIn(current, used.negated(), current.averageCost);
+      levels.set(warehouse.id, itemId, result.level);
+      return {
+        warehouseId: warehouse.id,
+        itemId,
+        quantity: used.negated(),
+        unitCost: result.unitCost,
+      };
+    });
+    await this.book(tx, {
+      kind: 'consumption',
+      warehouseId: warehouse.id,
+      toWarehouseId: null,
+      reason: null,
+      supplier: null,
+      note: null,
+      sourceTicketId: payload.ticketId,
+      createdByUserId: payload.createdByUserId,
+      actor: auditActor.system('job.outbox'),
+      movements,
+      levels,
+    });
+    return 'booked';
+  }
+
+  /** Numbers and writes a document, its movements and the changed levels, and audits it. */
+  private async book(
+    tx: TenantTransactionClient,
+    input: {
+      kind: StockDocumentKind;
+      warehouseId: string;
+      toWarehouseId: string | null;
+      reason: AdjustmentReason | null;
+      supplier: string | null;
+      note: string | null;
+      sourceTicketId: string | null;
+      createdByUserId: string;
+      actor: AuditActor;
+      movements: PlannedMovement[];
+      levels: Levels;
+    },
+  ): Promise<StockDocument> {
+    const { tenantId } = this.tenantContext.require();
+    // As late as possible: the counter row stays locked until commit (ADR 0012).
+    const { number } = await this.numbering.next(SERIES[input.kind], tx);
+    const document = await tx.stockDocument.create({
+      data: {
+        tenantId,
+        number,
+        kind: input.kind,
+        warehouseId: input.warehouseId,
+        toWarehouseId: input.toWarehouseId,
+        reason: input.reason,
+        supplier: input.supplier,
+        note: input.note,
+        sourceTicketId: input.sourceTicketId,
+        createdByUserId: input.createdByUserId,
+      },
+      select: { id: true },
+    });
+    await tx.stockMovement.createMany({
+      data: input.movements.map((m) => ({
+        tenantId,
+        documentId: document.id,
+        warehouseId: m.warehouseId,
+        itemId: m.itemId,
+        quantity: quantityText(m.quantity),
+        unitCost: costText(m.unitCost),
+        value: valueOf(m.quantity, m.unitCost).toFixed(2),
+      })),
+    });
+    for (const [warehouseId, itemId, level] of input.levels.entries()) {
+      await tx.$executeRaw`
+        UPDATE stock_levels
+        SET quantity = ${quantityText(level.quantity)}::numeric,
+            average_cost = ${costText(level.averageCost)}::numeric,
+            updated_at = now()
+        WHERE warehouse_id = ${warehouseId}::uuid AND item_id = ${itemId}::uuid`;
+    }
+    const row: DocumentRow = await tx.stockDocument.findUniqueOrThrow({
+      where: { id: document.id },
+      select: DOCUMENT_SELECT,
+    });
+    const response = documentResponse(row);
+    await this.audit.record(tx, {
+      action: 'inventory.stock_document.created',
+      actor: input.actor,
+      entityId: document.id,
+      after: snapshot('stock_document', response),
+    });
+    return response;
   }
 }
 

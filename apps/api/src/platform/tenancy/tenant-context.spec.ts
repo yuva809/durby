@@ -104,6 +104,7 @@ describe('TENANT_MODELS', () => {
       'ProcessedEvent',
       'Product',
       'ProductCategory',
+      'RecipeLine',
       'Reservation',
       'ReservationCombination',
       'ReservationCombinationTable',

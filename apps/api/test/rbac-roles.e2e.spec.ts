@@ -80,6 +80,8 @@ describe('roles API', () => {
       'inventory.stock.adjust',
       'inventory.stock.transfer',
       'inventory.warehouses.manage',
+      'inventory.recipes.manage',
+      'inventory.costs.read',
       'pos.tables.read',
       'pos.tables.manage',
       'pos.orders.read',

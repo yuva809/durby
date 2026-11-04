@@ -86,3 +86,40 @@ at most once per document, items not archived, warehouses not archived; a transf
 Inventory (nav, feature `inventory`): tabs **Stock** (per location and warehouse, search, low-stock filter, value
 total), **Receive**, **Adjust**, **Transfer** (line forms with item search and live totals), **Documents** (list
 and detail), **Items**, **Warehouses**.
+
+## Step 2: recipes, dish cost and sales consumption (ADR 0028)
+
+### Recipes
+
+`recipe_lines` (`product_id`, `item_id`, `quantity numeric(14,3) > 0` in the item's unit), unique per product and
+item. The product id has **no foreign key** to catalog's `products`: a recipe must never make a product look sold to
+the bulk delete (ADR 0024). Products are checked through `CatalogService`; recipes of deleted or archived products
+are ignored. Recipes are configuration: replaced as a whole, audited (`inventory.recipe.updated`).
+
+| Method + path             | Permission                 | Idempotency | Body                                       |
+| ------------------------- | -------------------------- | ----------- | ------------------------------------------ |
+| `GET /recipes/:productId` | `inventory.stock.read`     |             | → `{ productId, lines: [{ itemId, … }] }`  |
+| `PUT /recipes/:productId` | `inventory.recipes.manage` | response    | `{ lines: [{ itemId, quantity }] }` (0–50) |
+| `GET /costs`              | `inventory.costs.read`     |             | → per product with a recipe                |
+
+### Dish cost
+
+An item's **current cost** is the organization-wide weighted average over warehouses with stock on hand; with none,
+the unit cost of its last movement; an item never moved has no cost. A dish costs Σ quantity × current cost, and is
+`complete` when every item has a cost. The web shows cost, margin on the **net** price (price ÷ (1 + VAT)) and food
+cost % next to each product, and a suggested price = cost ÷ `inventory.targetFoodCostPercent` × (1 + VAT)
+(setting, organization scope, 1–100, default 30).
+
+### Consumption
+
+pos writes `pos.kitchen_ticket.created` (v1) with each ticket. The inventory handler (`inventory.consumeTicket`)
+books a **consumption** document (`CON-…`, `stock_documents.source_ticket_id`, unique) for the lines whose product
+has a recipe: recipe quantity × line quantity out of the warehouse that **supplies the ticket's station** at the
+location (`warehouses.supplies_station`, at most one per location and station; set on the Warehouses tab), else the
+location's first active warehouse; no warehouse → nothing. Sales are never blocked by negative stock. A void ticket
+puts the quantities back at the unit cost the cancelled items went out at. A redelivered event changes nothing.
+
+| Key                        | Scope        | admin | manager | others |
+| -------------------------- | ------------ | ----- | ------- | ------ |
+| `inventory.recipes.manage` | organization | ✓     | ✓       |        |
+| `inventory.costs.read`     | organization | ✓     | ✓       |        |
