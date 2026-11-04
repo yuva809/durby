@@ -645,7 +645,7 @@ function Floor({
               {area || t('reservations.host.noArea')}
             </h3>
           )}
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <ul className="grid grid-cols-2 gap-2 xl:grid-cols-3">
             {tables.map((table) => (
               <FloorTile
                 key={table.id}
@@ -699,14 +699,14 @@ function FloorTile({
 
   const body = (
     <>
-      <span className="flex items-start justify-between gap-2">
-        <span className="flex items-center gap-2">
-          <TableIcon shape={table.shape} color={table.color} className="size-7" />
-          <span className="text-xl font-semibold leading-none">{table.name}</span>
+      <span className="flex flex-wrap items-start justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2">
+          <TableIcon shape={table.shape} color={table.color} className="size-7 shrink-0" />
+          <span className="text-xl font-semibold leading-none break-words">{table.name}</span>
         </span>
         <span
           className={cn(
-            'rounded-full px-2 py-0.5 text-xs font-medium',
+            'shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium',
             table.state === 'occupied' && 'bg-primary text-primary-foreground',
             table.state === 'arriving' && 'bg-accent text-accent-foreground',
             table.state !== 'occupied' &&

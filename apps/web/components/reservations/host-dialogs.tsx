@@ -236,9 +236,16 @@ export function BookingDialog({
       }
       onSubmit={() => void submit(false)}
     >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <Field id={`${id}-date`} label={t('reservations.host.booking.date')} problem={null}>
-          <Input id={`${id}-date`} type="date" value={form.date} onChange={set('date')} required />
+          <Input
+            id={`${id}-date`}
+            type="date"
+            className="min-w-0"
+            value={form.date}
+            onChange={set('date')}
+            required
+          />
         </Field>
         <Field
           id={`${id}-time`}
@@ -247,6 +254,7 @@ export function BookingDialog({
         >
           <Input
             id={`${id}-time`}
+            className="min-w-0"
             type="time"
             step={300}
             value={form.time}

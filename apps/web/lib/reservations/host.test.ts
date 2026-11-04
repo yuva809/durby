@@ -89,6 +89,8 @@ describe('undo', () => {
   it('counts the minutes left, at least one', () => {
     expect(undoMinutesLeft(seated, ms('19:00') + 10_000)).toBe(5);
     expect(undoMinutesLeft(seated, ms('19:04') + 50_000)).toBe(1);
+    // A browser clock behind the database's: never more than the window.
+    expect(undoMinutesLeft(seated, ms('18:59') + 30_000)).toBe(5);
   });
 });
 

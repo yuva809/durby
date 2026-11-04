@@ -107,7 +107,8 @@ export function undoable(booking: Reservation, now: number): boolean {
 /** Whole minutes left to undo (at least 1 while undoable). */
 export function undoMinutesLeft(booking: Reservation, now: number): number {
   const left = RESERVATION_UNDO_WINDOW_MS - (now - Date.parse(booking.lastChange.createdAt));
-  return Math.max(1, Math.ceil(left / 60_000));
+  // The change's time is the database's clock: a browser a little behind it must not show 6 of 5.
+  return Math.min(RESERVATION_UNDO_WINDOW_MS / 60_000, Math.max(1, Math.ceil(left / 60_000)));
 }
 
 /** The till's badge, if the system seated or finished the booking from a pos order (R1.7). */
