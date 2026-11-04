@@ -213,7 +213,7 @@ describe('ScanPage', () => {
     await userEvent.upload(screen.getByTestId('scan-files'), photo());
     await userEvent.click(screen.getByTestId('scan-start'));
     expect((await screen.findByRole('alert')).textContent).toBe(
-      'At most 10 photos or scanned pages per scan, and PDFs up to 60 pages.',
+      'At most 30 photos or scanned pages per scan, and PDFs up to 60 pages.',
     );
   });
 

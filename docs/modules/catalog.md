@@ -159,7 +159,7 @@ Builds products from the menu a restaurant already has — photos or a PDF — a
 **No api of its own:** reading and review happen in the browser.
 
 1. **Upload** any image the browser decodes (JPG, PNG, WebP, GIF, AVIF…; HEIC only in Safari, elsewhere a hint to
-   export JPG) or PDF; camera on phones and tablets; paste with Ctrl+V. Up to 10 photos or image-only pages per scan
+   export JPG) or PDF; camera on phones and tablets; paste with Ctrl+V. Up to 30 photos or image-only pages per scan
    (each takes OCR) and PDFs up to 60 pages.
 2. **Read**, entirely in the browser:
    - **PDFs that carry their text** (most menus exported from a design tool) are read **exactly** from the PDF
@@ -179,6 +179,11 @@ Builds products from the menu a restaurant already has — photos or a PDF — a
      divided out, so coloured panels, shadows and uneven light become white), long vertical rules erased and the
      levels stretched (`image.ts`). The page is cut into column strips at gutters and each strip read on its own, so
      side-by-side columns don't mix; prices read apart from their names are joined back by row.
+     **Sideways category headings** (`VORSPEISEN-FLEISH` set up the left edge of a page, as on many menus): a column
+     strip that is tall and narrow (`rotated.ts`) is read from copies turned a quarter each way, and the reading with
+     more confident letters is its heading; thinner lines beside it (`(Serviert mit Reis)`) are subtitles and left
+     out, as are specks and digits. Photos are read page by page and each page's canvases are released after it, so
+     30 pages don't hold hundreds of MB (the plain copy is kept as a PNG until its turn).
      **Images never leave the device**; the OCR engine and its language data load from jsDelivr on first use and are
      cached by the browser.
 3. **Parse** (`lib/catalog/menu-scan/parse.ts`, pure):
