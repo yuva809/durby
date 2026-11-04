@@ -1,5 +1,6 @@
 'use client';
 
+import { LOCALES, type Locale } from '@durby/i18n';
 import {
   INVITATION_TTL_DAYS,
   type LocationSummary,
@@ -31,6 +32,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dia
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { PasswordInput } from '../ui/password-input';
+import { Select } from '../ui/select';
 import { ShareLink } from './share-link';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -159,6 +161,8 @@ function StaffForm({
   const [phone, setPhone] = useState(member?.phone ?? '');
   const [password, setPassword] = useState('');
   const [sendEmail, setSendEmail] = useState(false);
+  // Empty: the organization's language (the api reads the setting).
+  const [locale, setLocale] = useState<Locale | ''>('');
   // A new person starts with the least-privileged role you can give, never Owner.
   const [roleId, setRoleId] = useState(
     member?.role?.id ??
@@ -238,6 +242,7 @@ function StaffForm({
       ...overrides,
       ...(password && { temporaryPassword: password }),
       sendEmail,
+      ...(locale && { locale }),
     });
     setBusy(false);
     if (!res.ok || !res.data) return setProblem(t(errorLabel(res.ok ? 'unknown' : res.code)));
@@ -323,6 +328,28 @@ function StaffForm({
               data-testid="team-phone"
             />
           </div>
+          {!editing && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`${id}-locale`}>{t('platform.team.dialog.language')}</Label>
+              <Select
+                id={`${id}-locale`}
+                value={locale}
+                onChange={(e) => setLocale(e.target.value as Locale | '')}
+                aria-describedby={`${id}-locale-hint`}
+                data-testid="team-locale"
+              >
+                <option value="">{t('platform.team.dialog.languageOrganization')}</option>
+                {LOCALES.map((l) => (
+                  <option key={l} value={l}>
+                    {t(`platform.account.languages.${l}`)}
+                  </option>
+                ))}
+              </Select>
+              <p id={`${id}-locale-hint`} className="text-xs text-muted-foreground">
+                {t('platform.team.dialog.languageHint')}
+              </p>
+            </div>
+          )}
           {!editing && (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor={`${id}-password`}>{t('platform.team.dialog.password')}</Label>

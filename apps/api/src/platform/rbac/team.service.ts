@@ -172,6 +172,7 @@ export class TeamService {
         phone: body.phone ?? null,
         grants: body.grants,
         denies: body.denies,
+        locale: body.locale ?? null,
       },
       { sendEmail: body.sendEmail },
     );
@@ -190,7 +191,7 @@ export class TeamService {
     const actor = await this.roles.actor();
     const { tenantId } = this.tenantContext.require();
     const allLocations = body.locationIds == null;
-    const locale = await this.settings.get('locale');
+    const locale = body.locale ?? (await this.settings.get('locale'));
     const membershipId = await this.db.$transaction(async (tx) => {
       const role = await tx.role.findUnique({
         where: { tenantId_id: { tenantId, id: body.roleId } },

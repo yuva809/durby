@@ -7,12 +7,15 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  Patch,
   Post,
   Req,
   Res,
 } from '@nestjs/common';
 import {
   changePasswordRequestSchema,
+  updateMeRequestSchema,
+  type UpdateMeRequest,
   type ChangePasswordRequest,
   emailRequestSchema,
   type EmailRequest,
@@ -122,6 +125,15 @@ export class AuthController {
   @Header('Cache-Control', 'no-store')
   me(): Promise<MeResponse> {
     return this.sessions.me(this.auth.require());
+  }
+
+  /** Your own language (UI and mails); setting the same one twice changes nothing. */
+  @Authenticated()
+  @IdempotencyExempt('sets one value: replaying it changes nothing')
+  @Patch('me')
+  @Header('Cache-Control', 'no-store')
+  updateMe(@Body(new ZodBody(updateMeRequestSchema)) body: UpdateMeRequest): Promise<MeResponse> {
+    return this.sessions.updateMe(this.auth.require(), body);
   }
 
   /** Your own password; the one route a temporary-password session may use (ADR 0023 §3). */

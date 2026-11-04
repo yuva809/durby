@@ -1,3 +1,4 @@
+import { LOCALES } from '@durby/i18n';
 import { z } from 'zod';
 import { newPasswordSchema } from './auth';
 import { roleRefSchema } from './rbac';
@@ -18,6 +19,8 @@ export const createInvitationRequestSchema = z.object({
   roleId: z.uuid(),
   /** null or absent = all locations. */
   locationIds: z.array(z.uuid()).max(500).nullable().optional(),
+  /** The new staff member's language: the mail (unless they have an account) and their account. */
+  locale: z.enum(LOCALES).optional(),
 });
 
 export const invitationSchema = z.object({
@@ -46,7 +49,7 @@ export const invitationPreviewSchema = z.object({
 export const acceptInvitationRequestSchema = z.object({
   token: invitationToken,
   password: newPasswordSchema,
-  /** UI locale of the new user; unknown values fall back to `en`. */
+  /** UI locale of the new user, unless the inviter chose one; unknown values fall back to `en`. */
   locale: z.string().max(10).optional(),
 });
 

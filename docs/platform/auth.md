@@ -113,17 +113,18 @@ All under `/api/v1/auth`. Bodies validated with Zod (`packages/shared/src/api/au
 `{ code, message, details? }`. "Origin" means the request must carry an `Origin` header equal to one of
 `WEB_ORIGINS`, else 403 `auth.origin_rejected` (CSRF protection for the cookie flow).
 
-| Method | Path                   | Marker                 | Request                       | Success                                                                                                    |
-| ------ | ---------------------- | ---------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| POST   | `/login`               | Public + Origin        | `{ email, password }`         | 200 session body + cookie                                                                                  |
-| POST   | `/refresh`             | Public + Origin        | cookie                        | 200 session body + rotated cookie                                                                          |
-| POST   | `/logout`              | Public + Origin        | cookie (optional)             | 204, family revoked, cookie cleared. 204 also without a cookie, so it works after the access token expired |
-| POST   | `/switch-organization` | Authenticated + Origin | `{ organizationId }` + cookie | 200 session body + rotated cookie (same family, new org); `last_organization_id` updated                   |
-| GET    | `/me`                  | Authenticated          | –                             | 200 `{ user, organizations, activeOrganizationId, activeRole, activePermissions }`                         |
-| POST   | `/password/forgot`     | Public                 | `{ email }`                   | 202 always                                                                                                 |
-| POST   | `/password/reset`      | Public                 | `{ token, password }`         | 204                                                                                                        |
-| POST   | `/verify-email`        | Public                 | `{ token }`                   | 204                                                                                                        |
-| POST   | `/verify-email/resend` | Public                 | `{ email }`                   | 202 always                                                                                                 |
+| Method | Path                   | Marker                 | Request                       | Success                                                                                                                     |
+| ------ | ---------------------- | ---------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/login`               | Public + Origin        | `{ email, password }`         | 200 session body + cookie                                                                                                   |
+| POST   | `/refresh`             | Public + Origin        | cookie                        | 200 session body + rotated cookie                                                                                           |
+| POST   | `/logout`              | Public + Origin        | cookie (optional)             | 204, family revoked, cookie cleared. 204 also without a cookie, so it works after the access token expired                  |
+| POST   | `/switch-organization` | Authenticated + Origin | `{ organizationId }` + cookie | 200 session body + rotated cookie (same family, new org); `last_organization_id` updated                                    |
+| GET    | `/me`                  | Authenticated          | –                             | 200 `{ user, organizations, activeOrganizationId, activeRole, activePermissions }`                                          |
+| PATCH  | `/me`                  | Authenticated          | `{ locale: 'en' \| 'de' }`    | 200 as `GET /me`: the caller's own UI and mail language (users row only; security event `auth.locale.changed`, ADR 0008 §7) |
+| POST   | `/password/forgot`     | Public                 | `{ email }`                   | 202 always                                                                                                                  |
+| POST   | `/password/reset`      | Public                 | `{ token, password }`         | 204                                                                                                                         |
+| POST   | `/verify-email`        | Public                 | `{ token }`                   | 204                                                                                                                         |
+| POST   | `/verify-email/resend` | Public                 | `{ email }`                   | 202 always                                                                                                                  |
 
 Session body: `{ accessToken, expiresIn, user: { id, email, locale }, activeOrganizationId, organizations: [{ id, name }],
 activeRole, activePermissions }`. `activeRole` (`{ id, systemKey, name }` or `null`) and `activePermissions` (registered
@@ -190,6 +191,18 @@ argon2id via `@node-rs/argon2`: m = 19 MiB, t = 2, p = 1 (OWASP). Policy: 12–1
 A successful reset sets the password and `password_changed_at`, marks the email verified (the user proved access to
 the inbox), cancels other open reset tokens, revokes **all** refresh families of the user, writes
 `auth:revoked:user`, and clears the lockout. Issuing a new reset token cancels older unused ones.
+
+## Language
+
+`users.locale` (`en` | `de`, validated by the api against `LOCALES`; no database constraint, so a new language needs
+no migration) is the language of the user's screens and of every mail to them.
+
+- **Users** change their own on `/account` (account menu → Profile and language), via `PATCH /auth/me`.
+- **Manage Staff** sets it for a new person (Language select; default: the organization's `locale` setting).
+  With a temporary password the account is created in it. An invitation stores it in `invitations.locale`
+  (nullable; older invitations have none): the invitation mail goes out in the invitee's own language if they already
+  have an account, else in the stored one, else the organization's. On accept the new account takes the stored
+  language, else the accept page's, else `en`. An existing account's language is never changed by an invitation.
 
 ## Email
 
