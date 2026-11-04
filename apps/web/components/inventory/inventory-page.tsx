@@ -54,7 +54,7 @@ export function InventoryPage() {
     !session.activeFeatures.includes('inventory') ||
     !session.activePermissions.includes('inventory.stock.read')
   ) {
-    return <NoAccess title="inventory.page.title" />;
+    return <NoAccess title="inventory.nav.title" />;
   }
   return (
     <MoneyProvider>
@@ -83,7 +83,7 @@ function Inventory({ organizationId }: { organizationId: string | null }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{t('inventory.page.title')}</h1>
+      <h1 className="text-2xl font-semibold">{t('inventory.nav.title')}</h1>
       <nav aria-label={t('inventory.tabs.label')} className="-mx-4 border-b sm:-mx-8">
         <ul className="flex gap-1 overflow-x-auto px-4 sm:px-8" role="tablist">
           {tabs.map((x) => (

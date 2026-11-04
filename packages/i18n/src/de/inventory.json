@@ -63,7 +63,6 @@
   "inventory.fields.number": "Nummer",
   "inventory.fields.kind": "Art",
   "inventory.fields.date": "Datum",
-  "inventory.page.title": "Lager",
   "inventory.page.allWarehouses": "Alle Lager",
   "inventory.page.allKinds": "Alle Arten",
   "inventory.page.search": "Artikel suchen",
