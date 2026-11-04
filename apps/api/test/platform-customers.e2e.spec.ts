@@ -200,10 +200,11 @@ describe('/api/v1/platform/customers', () => {
     const created = customerDetailSchema.parse(
       (await onboard(browser, { name: orgName(), ownerEmail: ownerEmail() })).body,
     );
+    // The platform log is shared with test files running in parallel: find this onboarding's entry.
     const platform = platformAuditResponseSchema.parse(
-      (await browser.send('get', '/audit?limit=1').expect(200)).body,
+      (await browser.send('get', '/audit?limit=50').expect(200)).body,
     );
-    expect(platform.data[0]).toMatchObject({
+    expect(platform.data.find((e) => e.entityId === created.id)).toMatchObject({
       action: 'staff.customer.onboarded',
       actor: { type: 'staff', name: staffAddress },
       entityId: created.id,

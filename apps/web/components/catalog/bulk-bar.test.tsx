@@ -28,6 +28,7 @@ const product = (n: number, name: string, categoryId: string, price: string) => 
   id: id(10 + n),
   categoryId,
   name,
+  menuNumber: null,
   description: null,
   price,
   taxRate: '7.00',

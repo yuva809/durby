@@ -39,7 +39,8 @@ function prisma(args: string[], migrationUrl: string): void {
  * → Areas): each distinct (location, area) becomes an area and its tables point at it, also in an
  * organization the migration only sees with app.tenant_id set (FORCE RLS).
  */
-describe('dining areas migration', () => {
+// `migrate deploy` runs inside the tests and grows with every migration.
+describe('dining areas migration', { timeout: 180_000 }, () => {
   const superuser = new Client({ connectionString: inject('superuserDatabaseUrl') });
   const migrationUrl = withDatabase(
     inject('migrationDatabaseUrl'),

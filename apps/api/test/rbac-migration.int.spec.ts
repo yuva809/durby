@@ -35,7 +35,8 @@ function prisma(args: string[], migrationUrl: string): void {
  * organization with a membership (the bootstrap admin) and one without. Uses its own database on
  * the Testcontainers server, migrated to the release before rbac, then `prisma migrate deploy`.
  */
-describe('rbac migration backfill', () => {
+// `migrate deploy` runs inside the tests and grows with every migration.
+describe('rbac migration backfill', { timeout: 180_000 }, () => {
   const superuser = new Client({ connectionString: inject('superuserDatabaseUrl') });
   const migrationUrl = withDatabase(
     inject('migrationDatabaseUrl'),

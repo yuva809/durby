@@ -16,13 +16,19 @@ import {
   type TenantPrismaClient,
   type TenantTransactionClient,
 } from '../../platform/tenancy';
-import { catalogErrors, isForeignKeyViolation, isUniqueViolation } from './catalog-errors';
+import {
+  catalogErrors,
+  isForeignKeyViolation,
+  isUniqueViolation,
+  violates,
+} from './catalog-errors';
 import { fixed2 } from './decimal-text';
 
 const PRODUCT_SELECT = {
   id: true,
   categoryId: true,
   name: true,
+  menuNumber: true,
   price: true,
   taxRate: true,
   sortOrder: true,
@@ -40,6 +46,7 @@ type ProductRow = {
   id: string;
   categoryId: string;
   name: string;
+  menuNumber: string | null;
   price: { toFixed(digits: number): string };
   taxRate: { toFixed(digits: number): string };
   sortOrder: number;
@@ -88,7 +95,11 @@ export class CatalogBulkService {
       return await run();
     } catch (error) {
       // A moved or restored product whose name the category already has (partial unique index).
-      if (isUniqueViolation(error)) throw catalogErrors.productNameTaken();
+      if (isUniqueViolation(error)) {
+        throw violates(error, 'menu_number')
+          ? catalogErrors.menuNumberTaken()
+          : catalogErrors.productNameTaken();
+      }
       throw error;
     }
   }
@@ -332,6 +343,7 @@ function productSnapshot(row: ProductRow) {
     id: row.id,
     categoryId: row.categoryId,
     name: row.name,
+    menuNumber: row.menuNumber,
     price: row.price.toFixed(2),
     taxRate: row.taxRate.toFixed(2),
     sortOrder: row.sortOrder,

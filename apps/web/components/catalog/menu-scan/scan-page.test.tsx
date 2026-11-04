@@ -81,6 +81,7 @@ function api() {
               id: PRODUCT_ID,
               categoryId: CATEGORY_ID,
               name: 'Chicken Soup',
+              menuNumber: null,
               description: null,
               price: '400.00',
               taxRate: '7.00',
@@ -321,7 +322,13 @@ describe('ScanPage', () => {
         rows: [
           { category: 'STARTERS', name: 'Chicken Soup', price: '450.00', taxRate: '7' },
           { category: 'STARTERS', name: 'Garlic Bread', price: '1200.00', taxRate: '7' },
-          { category: 'DRINKS', name: 'Lime Juice', price: '350.00', taxRate: '19' },
+          {
+            category: 'DRINKS',
+            name: 'Lime Juice',
+            price: '350.00',
+            taxRate: '19',
+            station: 'bar',
+          },
         ],
       },
     ]);

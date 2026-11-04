@@ -36,6 +36,32 @@ export const NUMBER_SERIES = {
     pattern: '{prefix}-{YYYY}-{seq:6}',
     resetPolicy: 'yearly',
   },
+  // Stock documents (docs/modules/inventory.md): receipts use inventory.goodsReceipt.
+  'inventory.stockAdjustment': {
+    label: 'platform.numbering.series.inventoryStockAdjustment.name',
+    description: 'platform.numbering.series.inventoryStockAdjustment.description',
+    feature: 'inventory',
+    prefix: 'ADJ',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
+  'inventory.stockTransfer': {
+    label: 'platform.numbering.series.inventoryStockTransfer.name',
+    description: 'platform.numbering.series.inventoryStockTransfer.description',
+    feature: 'inventory',
+    prefix: 'TRF',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
+  /** Stock taken by table-service sales (docs/modules/inventory.md → Consumption). */
+  'inventory.stockConsumption': {
+    label: 'platform.numbering.series.inventoryStockConsumption.name',
+    description: 'platform.numbering.series.inventoryStockConsumption.description',
+    feature: 'inventory',
+    prefix: 'CON',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
   'inventory.purchaseOrder': {
     label: 'platform.numbering.series.inventoryPurchaseOrder.name',
     description: 'platform.numbering.series.inventoryPurchaseOrder.description',

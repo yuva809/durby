@@ -18,6 +18,13 @@ export type PrepStation = (typeof PREP_STATIONS)[number];
  * 10 integer digits and 2 decimals (`numeric(12,2)`). `taxRate`: a percentage in [0, 100].
  */
 export const priceSchema = z.string().regex(/^\d{1,10}(\.\d{1,2})?$/, 'Invalid amount');
+/** A dish's number on the menu (ADR 0029): `12`, `12a`, `D4`, `B-3`. */
+export const MENU_NUMBER_MAX_LENGTH = 6;
+export const menuNumberSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9.-]{0,5}$/, 'Invalid menu number');
+
 export const taxRateSchema = z
   .string()
   .regex(/^\d{1,3}(\.\d{1,2})?$/, 'Invalid rate')
@@ -35,6 +42,8 @@ export const productSchema = z.object({
   id: z.uuid(),
   categoryId: z.uuid(),
   name: z.string(),
+  /** Its number on the menu (ADR 0029); unique in the organization. */
+  menuNumber: z.string().nullable(),
   description: z.string().nullable(),
   /** Always two decimals, e.g. `"12.50"`. */
   price: z.string(),
@@ -66,6 +75,7 @@ const description = z.string().trim().max(PRODUCT_DESCRIPTION_MAX_LENGTH);
 export const createProductRequestSchema = z.strictObject({
   categoryId: z.uuid(),
   name: name(CATALOG_NAME_MAX_LENGTH),
+  menuNumber: menuNumberSchema.optional(),
   /** Empty means none. */
   description: description.optional(),
   price: priceSchema,
@@ -77,6 +87,8 @@ export const updateProductRequestSchema = z
   .strictObject({
     categoryId: z.uuid().optional(),
     name: name(CATALOG_NAME_MAX_LENGTH).optional(),
+    /** null clears it. */
+    menuNumber: menuNumberSchema.nullable().optional(),
     description: description.optional(),
     price: priceSchema.optional(),
     taxRate: taxRateSchema.optional(),
@@ -120,7 +132,14 @@ export type ProductListResponse = z.infer<typeof productListResponseSchema>;
  * preview and the api agree on every problem.
  */
 export const CATALOG_IMPORT_MAX_ROWS = 1000;
-export const IMPORT_FIELDS = ['category', 'name', 'price', 'taxRate', 'description'] as const;
+export const IMPORT_FIELDS = [
+  'category',
+  'name',
+  'price',
+  'taxRate',
+  'description',
+  'number',
+] as const;
 export const IMPORT_ROW_PROBLEMS = ['required', 'too_long', 'invalid', 'duplicate'] as const;
 
 const raw = z.string().max(2000);
@@ -131,6 +150,10 @@ export const importProductRowSchema = z.strictObject({
   price: raw,
   taxRate: raw,
   description: raw.optional(),
+  /** Menu number; empty or missing keeps the product's number (ADR 0029). */
+  number: raw.optional(),
+  /** The station of a category this row creates; existing categories keep theirs. */
+  station: z.enum(PREP_STATIONS).optional(),
 });
 
 export const importProductsRequestSchema = z.strictObject({
@@ -158,6 +181,10 @@ export const importProductsResponseSchema = z.object({
   ),
 });
 
+/** "Fill missing numbers" (ADR 0029). */
+export const numberProductsResponseSchema = z.object({ numbered: z.int() });
+export type NumberProductsResponse = z.infer<typeof numberProductsResponseSchema>;
+
 export type ImportProductRow = z.infer<typeof importProductRowSchema>;
 export type ImportProductsRequest = z.infer<typeof importProductsRequestSchema>;
 export type ImportRowProblem = z.infer<typeof importRowProblemSchema>;
@@ -172,6 +199,7 @@ export function importRowKey(row: Pick<ImportProductRow, 'category' | 'name'>): 
 export function checkImportRows(rows: readonly ImportProductRow[]): ImportRowProblem[] {
   const problems: ImportRowProblem[] = [];
   const seen = new Set<string>();
+  const numbers = new Set<string>();
   rows.forEach((r, index) => {
     const row = index + 1;
     const add = (field: ImportRowProblem['field'], problem: ImportRowProblem['problem']) =>
@@ -187,6 +215,12 @@ export function checkImportRows(rows: readonly ImportProductRow[]): ImportRowPro
     else if (!taxRateSchema.safeParse(r.taxRate.trim()).success) add('taxRate', 'invalid');
     if ((r.description ?? '').trim().length > PRODUCT_DESCRIPTION_MAX_LENGTH) {
       add('description', 'too_long');
+    }
+    const number = (r.number ?? '').trim();
+    if (number) {
+      if (!menuNumberSchema.safeParse(number).success) add('number', 'invalid');
+      else if (numbers.has(number.toLowerCase())) add('number', 'duplicate');
+      numbers.add(number.toLowerCase());
     }
     if (r.category.trim() && r.name.trim()) {
       const key = importRowKey(r);
@@ -206,6 +240,7 @@ export const CATALOG_ERROR_CODES = [
   'catalog.category_archived',
   'catalog.import_invalid',
   'catalog.price_invalid',
+  'catalog.menu_number_taken',
 ] as const;
 
 export type CatalogErrorCode = (typeof CATALOG_ERROR_CODES)[number];

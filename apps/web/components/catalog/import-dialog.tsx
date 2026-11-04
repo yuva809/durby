@@ -40,6 +40,7 @@ const FIELD_LABEL: Record<ImportRowProblem['field'], LabelKey> = {
   price: 'catalog.import.fields.price',
   taxRate: 'catalog.import.fields.taxRate',
   description: 'catalog.import.fields.description',
+  number: 'catalog.import.fields.number',
 };
 const PROBLEM_LABEL: Record<ImportRowProblem['problem'], LabelKey> = {
   required: 'catalog.import.problems.required',
@@ -180,7 +181,13 @@ export function ImportDialog({ onDone }: { onDone: () => void }) {
                 rows={state.rows}
                 problems={state.problems}
                 fieldLabel={(f) => t(FIELD_LABEL[f])}
-                problemLabel={(p) => t(PROBLEM_LABEL[p])}
+                problemLabel={(p) =>
+                  t(
+                    p.field === 'number' && p.problem === 'duplicate'
+                      ? 'catalog.import.problems.duplicateNumber'
+                      : PROBLEM_LABEL[p.problem],
+                  )
+                }
               />
             )}
             <Notice text={error} tone="error" />
@@ -215,7 +222,7 @@ function Preview({
   rows: ImportProductRow[];
   problems: ImportRowProblem[];
   fieldLabel: (field: ImportRowProblem['field']) => string;
-  problemLabel: (problem: ImportRowProblem['problem']) => string;
+  problemLabel: (problem: ImportRowProblem) => string;
 }) {
   const t = useT();
   return (
@@ -229,7 +236,7 @@ function Preview({
                 {t('catalog.import.problem', {
                   row: String(p.row),
                   field: fieldLabel(p.field),
-                  problem: problemLabel(p.problem),
+                  problem: problemLabel(p),
                 })}
               </li>
             ))}

@@ -35,6 +35,12 @@ export const catalogErrors = {
       'The price change would make some prices invalid.',
       { ids },
     ),
+  menuNumberTaken: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'catalog.menu_number_taken',
+      'Another product already has this menu number.',
+    ),
   categoryArchived: () =>
     new ApiError(HttpStatus.CONFLICT, 'catalog.category_archived', 'The category is archived.'),
   importInvalid: (rows: ImportRowProblem[]) =>
@@ -53,6 +59,13 @@ export function isUniqueViolation(error: unknown): boolean {
   return (
     typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002'
   );
+}
+
+/** The violated index or constraint names `column` (Prisma puts it in the meta or the message). */
+export function violates(error: unknown, column: string): boolean {
+  const { meta, message } = error as { meta?: unknown; message?: unknown };
+  const text = `${JSON.stringify(meta ?? {})} ${typeof message === 'string' ? message : ''}`;
+  return text.includes(column);
 }
 
 /**

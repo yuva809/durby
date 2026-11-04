@@ -131,6 +131,7 @@ describe('boardReducer', () => {
       categoryId: kottu,
       product: {
         id: 'new',
+        number: '',
         name: 'Egg Kottu',
         price: '1200.00',
         description: '',
@@ -181,7 +182,13 @@ describe('toImportRows', () => {
         description: 'spicy',
       },
       { category: 'Kottu', name: 'Cheese Kottu', price: '1500.00', taxRate: '7' },
-      { category: 'Beverages', name: 'Ginger Beer', price: '350.00', taxRate: '19' },
+      {
+        category: 'Beverages',
+        name: 'Ginger Beer',
+        price: '350.00',
+        taxRate: '19',
+        station: 'bar',
+      },
     ]);
     expect(checkImportRows(rows)).toEqual([]);
   });

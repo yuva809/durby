@@ -7,11 +7,13 @@ import {
   ORDER_LINE_MAX_QUANTITY,
   ORDER_MAX_COVERS,
   ORDER_NOTE_MAX_LENGTH,
+  type PrepStation,
   type Product,
   type ProductCategory,
   type SendTicketResponse,
   TABLE_COLORS,
 } from '@durby/shared';
+import type { LabelKey } from '@durby/i18n';
 import {
   ArrowLeft,
   Check,
@@ -47,6 +49,7 @@ import {
   sum,
   times,
 } from '../../lib/pos/format';
+import { enterTarget, searchMenu } from '../../lib/pos/menu-search';
 import { useNow } from '../../lib/pos/use-now';
 import { printAs } from '../../lib/pos/print';
 import { useBrand } from '../theme-provider';
@@ -98,8 +101,18 @@ export function OrderPage({ tableId }: { tableId: string }) {
 
 interface CartLine {
   product: Product;
+  /** Where it prints (its category's station, ADR 0025). */
+  station: PrepStation;
   quantity: number;
   note: string;
+}
+
+/** "Send to kitchen", "Send to bar" or "Send to kitchen & bar", by the stations in the cart. */
+function sendLabels(cart: readonly CartLine[]): { label: LabelKey; short: LabelKey } {
+  const stations = new Set(cart.map((l) => l.station));
+  if (stations.size > 1) return { label: 'pos.order.sendCountBoth', short: 'pos.order.sendBoth' };
+  if (stations.has('bar')) return { label: 'pos.order.sendCountBar', short: 'pos.order.sendBar' };
+  return { label: 'pos.order.sendCount', short: 'pos.order.send' };
 }
 
 /**
@@ -181,7 +194,7 @@ function TableOrder({
     printTickets(response.order, response.ticketIds);
   };
 
-  const add = (product: Product) => {
+  const add = (product: Product, station: PrepStation) => {
     setSent(null);
     setCart((lines) =>
       lines.some((l) => l.product.id === product.id)
@@ -190,7 +203,7 @@ function TableOrder({
               ? { ...l, quantity: Math.min(l.quantity + 1, ORDER_LINE_MAX_QUANTITY) }
               : l,
           )
-        : [...lines, { product, quantity: 1, note: '' }],
+        : [...lines, { product, station, quantity: 1, note: '' }],
     );
   };
   const change = (productId: string, patch: Partial<CartLine>) =>
@@ -217,9 +230,10 @@ function TableOrder({
     });
     setBusy(false);
     if (result.ok && result.data) {
+      // "Sent: ticket 4 (Kitchen), 5 (Bar)." so it's clear where each went.
       const sequences = result.data.order.tickets
         .filter((x) => result.data?.ticketIds.includes(x.id))
-        .map((x) => x.sequence);
+        .map((x) => `${x.sequence} (${t(`pos.station.${x.station}`)})`);
       setCart([]);
       setPendingCovers(null);
       setSent(t('pos.order.sent', { sequence: sequences.join(', ') }));
@@ -233,11 +247,12 @@ function TableOrder({
     <Loaded resource={view} reload={reload}>
       {({ table, order }) => {
         const bill = order ? billLines(order) : [];
+        const labels = sendLabels(cart);
         const sendAction =
           cart.length > 0 && access.canTake
             ? {
-                label: `${t('pos.order.sendCount', { count: String(cartCount) })} · ${money(cartTotal)}`,
-                short: t('pos.order.send'),
+                label: `${t(labels.label, { count: String(cartCount) })} · ${money(cartTotal)}`,
+                short: t(labels.short),
                 run: () => void send(),
                 testId: 'send-to-kitchen',
                 icon: <ChefHat aria-hidden />,
@@ -860,12 +875,13 @@ function Menu({
 }: {
   tableId: string;
   cart: CartLine[];
-  onAdd: (product: Product) => void;
+  onAdd: (product: Product, station: PrepStation) => void;
 }) {
   const t = useT();
   const { store } = useAuth();
   const id = useId();
   const search = useRef<HTMLInputElement>(null);
+  const [added, setAdded] = useState<string | null>(null);
   const [menu, reloadMenu] = useResource(tableId, async () => {
     const [categories, products] = await Promise.all([loadCategories(store), loadProducts(store)]);
     if (!categories.ok) return categories;
@@ -892,44 +908,67 @@ function Menu({
 
   return (
     <Loaded resource={menu} reload={reloadMenu}>
-      {({ categories, products }) => (
-        <div className="grid min-w-0 gap-4 lg:grid-cols-[11rem_minmax(0,1fr)]">
-          <CategoryRail
-            categories={categories}
-            products={products}
-            category={category}
-            onCategory={setCategory}
-          />
-          <section className="flex min-w-0 flex-col gap-4" aria-label={t('pos.order.menu')}>
-            <div className="relative">
-              <Search
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-              <label htmlFor={`${id}-search`} className="sr-only">
-                {t('pos.order.search')}
-              </label>
-              <Input
-                ref={search}
-                id={`${id}-search`}
-                type="search"
-                className="h-11 pl-9"
-                placeholder={t('pos.order.searchHint')}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            <ProductGrid
+      {({ categories, products }) => {
+        const stationOf = new Map(categories.map((c) => [c.id, c.station]));
+        const addProduct = (product: Product) =>
+          onAdd(product, stationOf.get(product.categoryId) ?? 'kitchen');
+        const result = searchMenu(products, query, category);
+        return (
+          <div className="grid min-w-0 gap-4 lg:grid-cols-[11rem_minmax(0,1fr)]">
+            <CategoryRail
               categories={categories}
               products={products}
               category={category}
-              query={query}
-              inCart={inCart}
-              onAdd={onAdd}
+              onCategory={setCategory}
             />
-          </section>
-        </div>
-      )}
+            <section className="flex min-w-0 flex-col gap-4" aria-label={t('pos.order.menu')}>
+              <div className="relative">
+                <Search
+                  aria-hidden
+                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <label htmlFor={`${id}-search`} className="sr-only">
+                  {t('pos.order.search')}
+                </label>
+                <Input
+                  ref={search}
+                  id={`${id}-search`}
+                  type="search"
+                  className="h-11 pl-9"
+                  placeholder={t('pos.order.searchNumberHint')}
+                  value={query}
+                  onChange={(e) => {
+                    setAdded(null);
+                    setQuery(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    // "12 ⏎ 12 ⏎ 7 ⏎": Enter adds the dish with that number (ADR 0029).
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    const target = enterTarget(result);
+                    if (!target) return;
+                    addProduct(target);
+                    setAdded(t('pos.order.added', { name: target.name }));
+                    setQuery('');
+                  }}
+                  data-testid="menu-search"
+                />
+                <p role="status" className="sr-only" data-testid="menu-added">
+                  {added}
+                </p>
+              </div>
+              <ProductGrid
+                categories={categories}
+                exact={result.exact}
+                matching={result.matching}
+                category={category}
+                inCart={inCart}
+                onAdd={addProduct}
+              />
+            </section>
+          </div>
+        );
+      }}
     </Loaded>
   );
 }
@@ -981,26 +1020,21 @@ function CategoryRail({
 
 function ProductGrid({
   categories,
-  products,
+  exact,
+  matching,
   category,
-  query,
   inCart,
   onAdd,
 }: {
   categories: ProductCategory[];
-  products: Product[];
+  /** The product whose number was typed: first, above the categories. */
+  exact: Product | null;
+  matching: Product[];
   category: string | null;
-  query: string;
   inCart: ReadonlyMap<string, number>;
   onAdd: (product: Product) => void;
 }) {
   const t = useT();
-  const needle = query.trim().toLocaleLowerCase();
-  const matching = products.filter(
-    (p) =>
-      (category === null || p.categoryId === category) &&
-      (needle === '' || p.name.toLocaleLowerCase().includes(needle)),
-  );
   // Each category gets a tile colour from the table palette, in category order.
   const colorOf = new Map(
     categories.map((c, i) => [c.id, TABLE_COLORS[(i % (TABLE_COLORS.length - 1)) + 1]!]),
@@ -1009,10 +1043,25 @@ function ProductGrid({
     .map((c) => ({ category: c, products: matching.filter((p) => p.categoryId === c.id) }))
     .filter((g) => g.products.length > 0);
 
-  if (groups.length === 0)
+  if (groups.length === 0 && !exact)
     return <p className="text-muted-foreground">{t('pos.order.noResults')}</p>;
   return (
     <div className="flex flex-col gap-5">
+      {exact && (
+        <ul
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4"
+          data-testid="menu-exact"
+        >
+          <li>
+            <ProductCard
+              product={exact}
+              count={inCart.get(exact.id) ?? 0}
+              color={colorOf.get(exact.categoryId) ?? TABLE_COLORS[1]}
+              onAdd={onAdd}
+            />
+          </li>
+        </ul>
+      )}
       {groups.map((group) => (
         <div key={group.category.id} className="flex flex-col gap-2">
           {category === null && (
@@ -1059,6 +1108,7 @@ function ProductCard({
       )}
       data-testid="menu-product"
       data-name={product.name}
+      data-number={product.menuNumber ?? undefined}
       onClick={() => onAdd(product)}
     >
       <span
@@ -1066,7 +1116,7 @@ function ProductCard({
         className="flex h-16 items-center justify-center text-2xl font-semibold"
         style={{ backgroundColor: fill, color: stroke }}
       >
-        {product.name.slice(0, 1).toLocaleUpperCase()}
+        {product.menuNumber ?? product.name.slice(0, 1).toLocaleUpperCase()}
       </span>
       <span className="flex flex-1 flex-col justify-between gap-1 p-3">
         <span className="line-clamp-2 text-sm leading-snug font-medium" title={product.name}>

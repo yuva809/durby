@@ -36,7 +36,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { ConfirmAction, Loaded, NoAccess } from './common';
 
-/** /settings/roles (docs/platform/web-shell.md → Roles page). */
+/** The Roles tab of Manage Staff (docs/platform/web-shell.md → Roles page). */
 export function RolesPage() {
   const { session } = useAuth();
   if (!session) return null;

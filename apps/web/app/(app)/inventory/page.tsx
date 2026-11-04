@@ -1,5 +1,5 @@
-import { ModulePlaceholder } from '../../../components/module-placeholder';
+import { InventoryPage } from '../../../components/inventory/inventory-page';
 
 export default function Page() {
-  return <ModulePlaceholder feature="inventory" title="inventory.nav.title" />;
+  return <InventoryPage />;
 }

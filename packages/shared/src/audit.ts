@@ -30,6 +30,10 @@ export const AUDIT_ENTITY_TYPES = [
   'reservation_table_rule',
   'reservation_combination',
   'reservation',
+  'warehouse',
+  'stock_item',
+  'stock_document',
+  'recipe',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -211,6 +215,32 @@ export const AUDIT_ACTIONS = {
     entityType: 'dining_table',
     label: 'pos.audit.actions.diningTableMenuTokenRotated',
   },
+  'inventory.warehouse.created': {
+    entityType: 'warehouse',
+    label: 'inventory.audit.actions.warehouseCreated',
+  },
+  'inventory.warehouse.updated': {
+    entityType: 'warehouse',
+    label: 'inventory.audit.actions.warehouseUpdated',
+  },
+  'inventory.stock_item.created': {
+    entityType: 'stock_item',
+    label: 'inventory.audit.actions.stockItemCreated',
+  },
+  'inventory.stock_item.updated': {
+    entityType: 'stock_item',
+    label: 'inventory.audit.actions.stockItemUpdated',
+  },
+  /** A product's recipe was replaced (docs/modules/inventory.md → Recipes). */
+  'inventory.recipe.updated': {
+    entityType: 'recipe',
+    label: 'inventory.audit.actions.recipeUpdated',
+  },
+  /** A receipt, adjustment or transfer was posted (docs/modules/inventory.md → Audit). */
+  'inventory.stock_document.created': {
+    entityType: 'stock_document',
+    label: 'inventory.audit.actions.stockDocumentCreated',
+  },
   'pos.dining_area.created': {
     entityType: 'dining_area',
     label: 'pos.audit.actions.diningAreaCreated',
@@ -342,7 +372,16 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   outbox_event: ['id', 'type', 'version', 'attempts', 'deadLetteredAt', 'handler'],
   product_category: ['id', 'name', 'sortOrder', 'station', 'archivedAt'],
   /** `price`, `taxRate`: decimal strings. Never `description` (free text). */
-  product: ['id', 'categoryId', 'name', 'price', 'taxRate', 'sortOrder', 'archivedAt'],
+  product: [
+    'id',
+    'categoryId',
+    'name',
+    'menuNumber',
+    'price',
+    'taxRate',
+    'sortOrder',
+    'archivedAt',
+  ],
   dining_table: [
     'id',
     'locationId',
@@ -359,6 +398,13 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   /** Never line notes (free text). */
   kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'station', 'status', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
+  warehouse: ['id', 'locationId', 'name', 'sortOrder', 'suppliesStation', 'archivedAt'],
+  /** `itemIds`: sorted, joined with commas; snapshots hold flat values only. */
+  recipe: ['productId', 'lineCount', 'itemIds'],
+  /** `minQuantity`: decimal string. */
+  stock_item: ['id', 'name', 'sku', 'unit', 'minQuantity', 'archivedAt'],
+  /** Never `note` or `supplier` (free text). */
+  stock_document: ['id', 'number', 'kind', 'warehouseId', 'toWarehouseId', 'reason', 'lineCount'],
   location: ['id', 'brandId', 'name'],
   reservation_table_rule: ['tableId', 'bookingMode', 'minParty', 'maxParty'],
   reservation_combination: [

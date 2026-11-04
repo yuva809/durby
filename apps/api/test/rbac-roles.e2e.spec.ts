@@ -75,6 +75,13 @@ describe('roles API', () => {
       'platform.roles.read',
       'platform.settings.read',
       'catalog.products.read',
+      'inventory.stock.read',
+      'inventory.stock.receive',
+      'inventory.stock.adjust',
+      'inventory.stock.transfer',
+      'inventory.warehouses.manage',
+      'inventory.recipes.manage',
+      'inventory.costs.read',
       'pos.tables.read',
       'pos.tables.manage',
       'pos.orders.read',
@@ -92,6 +99,7 @@ describe('roles API', () => {
     expect(data[3]?.permissions).toEqual([
       'platform.settings.read',
       'catalog.products.read',
+      'inventory.stock.read',
       'pos.tables.read',
     ]);
     expect(data.map((r) => r.id)).not.toContain(custom);

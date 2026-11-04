@@ -5,6 +5,9 @@ import {
   type PrepStation,
   type Product,
   type ProductCategory,
+  type DishCost,
+  MENU_NUMBER_MAX_LENGTH,
+  menuNumberSchema,
   priceSchema,
   taxRateSchema,
   CATALOG_NAME_MAX_LENGTH,
@@ -23,9 +26,11 @@ import {
   createProduct,
   loadCategories,
   loadProducts,
+  numberProducts,
   updateCategory,
   updateProduct,
 } from '../../lib/catalog/api';
+import { loadCosts } from '../../lib/inventory/api';
 import { errorLabel } from '../../lib/auth/errors';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
@@ -36,7 +41,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
-import { Loaded, NoAccess } from '../users/common';
+import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { ArchiveToggle, Field, FormDialog } from '../form-dialog';
 import { BulkBar, type KeptRows } from './bulk-bar';
 import { ImportDialog } from './import-dialog';
@@ -51,6 +56,7 @@ export function CatalogPage() {
     <Catalog
       organizationId={session.activeOrganizationId}
       canManage={permissions.has('catalog.products.manage')}
+      canReadCosts={permissions.has('inventory.costs.read')}
     />
   );
 }
@@ -58,9 +64,11 @@ export function CatalogPage() {
 function Catalog({
   organizationId,
   canManage,
+  canReadCosts,
 }: {
   organizationId: string | null;
   canManage: boolean;
+  canReadCosts: boolean;
 }) {
   const t = useT();
   const { store } = useAuth();
@@ -75,12 +83,19 @@ function Catalog({
     loadCategories(store, showArchived),
   );
   const [products, reloadProducts] = useResource(key, () => loadProducts(store, showArchived));
+  const [costs, reloadCosts] = useResource(canReadCosts ? key : null, () => loadCosts(store));
   const reload = () => {
     reloadCategories();
     reloadProducts();
+    reloadCosts();
   };
   const openCategories =
     categories.status === 'ready' ? categories.data.filter((c) => c.archivedAt === null) : [];
+  const numberAction = useActionKey();
+  const unnumbered =
+    products.status === 'ready'
+      ? products.data.filter((p) => p.archivedAt === null && p.menuNumber === null).length
+      : 0;
   // Picked ids that are gone after a reload (deleted) drop out here.
   const selectedProducts =
     products.status === 'ready' ? products.data.filter((p) => pickedProducts.has(p.id)) : [];
@@ -114,6 +129,17 @@ function Catalog({
               </Link>
             </Button>
             <ImportDialog onDone={reload} />
+            {unnumbered > 0 && (
+              <ConfirmAction
+                trigger={t('catalog.page.fillNumbers')}
+                title={t('catalog.page.fillNumbersTitle', { count: String(unnumbered) })}
+                description={t('catalog.page.fillNumbersDescription')}
+                confirm={t('catalog.page.fillNumbersConfirm')}
+                run={() => numberProducts(store, numberAction)}
+                onDone={reload}
+                testId="fill-numbers"
+              />
+            )}
             <CategoryDialog onDone={reload} />
             {openCategories.length > 0 && (
               <ProductDialog categories={openCategories} onDone={reload} />
@@ -203,6 +229,8 @@ function Catalog({
                     canManage={canManage}
                     picked={pickedProducts}
                     onPick={toggle(pickedProducts, setPickedProducts)}
+                    costs={costs.status === 'ready' ? costs.data : []}
+                    canReadCosts={canReadCosts}
                     onDone={reload}
                   />
                 )}
@@ -277,6 +305,8 @@ function ProductTable({
   canManage,
   picked,
   onPick,
+  costs,
+  canReadCosts,
   onDone,
 }: {
   products: Product[];
@@ -284,6 +314,8 @@ function ProductTable({
   canManage: boolean;
   picked: ReadonlySet<string>;
   onPick: (ids: string[], on: boolean) => void;
+  costs: DishCost[];
+  canReadCosts: boolean;
   onDone: () => void;
 }) {
   const t = useT();
@@ -293,6 +325,14 @@ function ProductTable({
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
   const open = categories.filter((c) => c.archivedAt === null);
   const allPicked = products.every((p) => picked.has(p.id));
+  const costByProduct = new Map(costs.map((c) => [c.productId, c]));
+  const calcMargin = (price: string, costStr: string) => {
+    const p = Number(price);
+    const c = Number(costStr);
+    const taxRate = 0.19; // Default VAT; products have taxRate but we calculate on net
+    const netPrice = p / (1 + taxRate);
+    return netPrice > 0 ? (((netPrice - c) / netPrice) * 100).toFixed(0) : '–';
+  };
   return (
     <Card className="overflow-x-auto p-0">
       {/* Below md a row is a card (name, then category, price and VAT, then actions): no sideways scroll. */}
@@ -318,6 +358,12 @@ function ProductTable({
             <th className="p-3 font-medium">{t('catalog.fields.category')}</th>
             <th className="p-3 text-right font-medium">{t('catalog.fields.price')}</th>
             <th className="p-3 text-right font-medium">{t('catalog.fields.taxRate')}</th>
+            {canReadCosts && (
+              <>
+                <th className="p-3 text-right font-medium">{t('inventory.costs.cost')}</th>
+                <th className="p-3 text-right font-medium">{t('inventory.costs.margin')}</th>
+              </>
+            )}
             {canManage && <th className="p-3" />}
           </tr>
         </thead>
@@ -341,6 +387,14 @@ function ProductTable({
               )}
               <td className="min-w-0 flex-1 basis-40 lg:p-3">
                 <div className="flex flex-wrap items-center gap-2">
+                  {product.menuNumber && (
+                    <span
+                      className="rounded bg-muted px-1.5 font-mono text-xs tabular-nums"
+                      data-testid="product-number"
+                    >
+                      {product.menuNumber}
+                    </span>
+                  )}
                   <span className="font-medium">{product.name}</span>
                   {product.archivedAt && <Badge>{t('catalog.page.archived')}</Badge>}
                 </div>
@@ -360,6 +414,21 @@ function ProductTable({
                 </span>
                 {product.taxRate}
               </td>
+              {canReadCosts && (
+                <>
+                  <td className="tabular-nums lg:p-3 lg:text-right text-muted-foreground">
+                    {costByProduct.get(product.id)?.complete === false && (
+                      <span className="text-xs">{t('inventory.costs.incomplete')}</span>
+                    )}
+                    {costByProduct.get(product.id)?.cost ?? '–'}
+                  </td>
+                  <td className="tabular-nums lg:p-3 lg:text-right text-muted-foreground">
+                    {costByProduct.get(product.id)
+                      ? `${calcMargin(product.price, costByProduct.get(product.id)!.cost)}%`
+                      : '–'}
+                  </td>
+                </>
+              )}
               {canManage && (
                 <td className="w-full lg:w-auto lg:p-3">
                   <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -499,6 +568,7 @@ function ProductDialog({
   const action = useActionKey();
   const id = useId();
   const [form, setForm] = useState({
+    menuNumber: '',
     name: '',
     categoryId: '',
     description: '',
@@ -509,6 +579,10 @@ function ProductDialog({
   const set = (field: keyof typeof form) => (value: string) =>
     setForm((current) => ({ ...current, [field]: value }));
   const problems = {
+    menuNumber:
+      form.menuNumber.trim() === '' || menuNumberSchema.safeParse(form.menuNumber).success
+        ? null
+        : t('catalog.page.menuNumberInvalid'),
     name: form.name.trim() === '' ? t('catalog.page.nameRequired') : null,
     categoryId: form.categoryId === '' ? t('catalog.page.categoryRequired') : null,
     price: priceSchema.safeParse(form.price.trim()).success ? null : t('catalog.page.priceInvalid'),
@@ -526,6 +600,7 @@ function ProductDialog({
       title={t(product ? 'catalog.page.editProduct' : 'catalog.page.createProduct')}
       onOpen={() => {
         setForm({
+          menuNumber: product?.menuNumber ?? '',
           name: product?.name ?? '',
           categoryId:
             product?.categoryId && categories.some((c) => c.id === product.categoryId)
@@ -540,6 +615,7 @@ function ProductDialog({
       submit={() => {
         setChecked(true);
         if (Object.values(problems).some((p) => p !== null)) return null;
+        const menuNumber = form.menuNumber.trim();
         const body = {
           name: form.name.trim(),
           categoryId: form.categoryId,
@@ -548,20 +624,41 @@ function ProductDialog({
           taxRate: form.taxRate.trim(),
         };
         return product
-          ? updateProduct(store, action, product.id, body)
-          : createProduct(store, action, body);
+          ? updateProduct(store, action, product.id, { ...body, menuNumber: menuNumber || null })
+          : createProduct(store, action, { ...body, ...(menuNumber && { menuNumber }) });
       }}
       onDone={onDone}
     >
-      <Field id={`${id}-name`} label={t('catalog.fields.name')} problem={shown('name')}>
-        <Input
-          id={`${id}-name`}
-          value={form.name}
-          maxLength={CATALOG_NAME_MAX_LENGTH}
-          aria-invalid={shown('name') ? true : undefined}
-          onChange={(e) => set('name')(e.target.value)}
-        />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
+        <Field
+          id={`${id}-number`}
+          label={t('catalog.fields.menuNumber')}
+          problem={shown('menuNumber')}
+        >
+          <Input
+            id={`${id}-number`}
+            value={form.menuNumber}
+            maxLength={MENU_NUMBER_MAX_LENGTH}
+            autoComplete="off"
+            aria-describedby={`${id}-number-hint`}
+            aria-invalid={shown('menuNumber') ? true : undefined}
+            onChange={(e) => set('menuNumber')(e.target.value)}
+            data-testid="product-number-input"
+          />
+        </Field>
+        <Field id={`${id}-name`} label={t('catalog.fields.name')} problem={shown('name')}>
+          <Input
+            id={`${id}-name`}
+            value={form.name}
+            maxLength={CATALOG_NAME_MAX_LENGTH}
+            aria-invalid={shown('name') ? true : undefined}
+            onChange={(e) => set('name')(e.target.value)}
+          />
+        </Field>
+      </div>
+      <p id={`${id}-number-hint`} className="-mt-2 text-sm text-muted-foreground">
+        {t('catalog.page.menuNumberHint')}
+      </p>
       <Field
         id={`${id}-category`}
         label={t('catalog.fields.category')}

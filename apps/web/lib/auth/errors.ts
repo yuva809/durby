@@ -4,6 +4,7 @@ import type {
   CatalogErrorCode,
   EntitlementErrorCode,
   IdempotencyErrorCode,
+  InventoryErrorCode,
   InvitationErrorCode,
   LabelErrorCode,
   LocationErrorCode,
@@ -29,6 +30,7 @@ export type ApiErrorCode =
   | EntitlementErrorCode
   | AuditErrorCode
   | CatalogErrorCode
+  | InventoryErrorCode
   | LocationErrorCode
   | PosErrorCode
   | ReservationErrorCode
@@ -94,6 +96,18 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'audit.cursor_invalid': 'platform.errors.auditCursorInvalid',
   'locations.name_taken': 'platform.errors.locationsNameTaken',
   'locations.in_use': 'platform.errors.locationsInUse',
+  'inventory.warehouse_not_found': 'inventory.errors.warehouseNotFound',
+  'inventory.location_not_found': 'inventory.errors.locationNotFound',
+  'inventory.item_not_found': 'inventory.errors.itemNotFound',
+  'inventory.document_not_found': 'inventory.errors.documentNotFound',
+  'inventory.warehouse_name_taken': 'inventory.errors.warehouseNameTaken',
+  'inventory.item_name_taken': 'inventory.errors.itemNameTaken',
+  'inventory.insufficient_stock': 'inventory.errors.insufficientStock',
+  'inventory.unit_locked': 'inventory.errors.unitLocked',
+  'inventory.valuation_unsupported': 'inventory.errors.valuationUnsupported',
+  'inventory.same_warehouse': 'inventory.errors.sameWarehouse',
+  'inventory.product_not_found': 'inventory.errors.productNotFound',
+  'inventory.station_taken': 'inventory.errors.stationTaken',
   'catalog.category_not_found': 'catalog.errors.categoryNotFound',
   'catalog.product_not_found': 'catalog.errors.productNotFound',
   'catalog.category_name_taken': 'catalog.errors.categoryNameTaken',
@@ -101,6 +115,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'catalog.category_archived': 'catalog.errors.categoryArchived',
   'catalog.import_invalid': 'catalog.errors.importInvalid',
   'catalog.price_invalid': 'catalog.errors.priceInvalid',
+  'catalog.menu_number_taken': 'catalog.errors.menuNumberTaken',
   'pos.table_not_found': 'pos.errors.tableNotFound',
   'pos.location_not_found': 'pos.errors.locationNotFound',
   'pos.table_name_taken': 'pos.errors.tableNameTaken',

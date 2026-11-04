@@ -28,6 +28,7 @@ const product = (n: number, name: string, categoryId: string, price: string, tax
   id: id(10 + n),
   categoryId,
   name,
+  menuNumber: null,
   description: null,
   price,
   taxRate,
@@ -135,6 +136,66 @@ describe('CatalogPage', () => {
         },
       },
     ]);
+  });
+
+  // ADR 0029: menu numbers.
+  it('sets a menu number, checks its form, and clears it with null', async () => {
+    signedInAs('owner');
+    const writes = api({
+      ...catalogAnswers,
+      'GET /api/v1/catalog/products': () =>
+        Response.json({ data: [{ ...SOUP, menuNumber: '12' }, WATER] }),
+      [`PATCH /api/v1/catalog/products/${SOUP.id}`]: () => Response.json(SOUP),
+    });
+    render(<CatalogPage />);
+    await productNames();
+    const soup = screen.getAllByTestId('product-row').find((r) => r.dataset.name === 'Soup')!;
+    expect(within(soup).getByTestId('product-number').textContent).toBe('12');
+    await userEvent.click(within(soup).getByTestId('product-edit'));
+    const dialog = await screen.findByRole('dialog');
+    const number = within(dialog).getByTestId('product-number-input');
+    expect((number as HTMLInputElement).value).toBe('12');
+    await userEvent.clear(number);
+    await userEvent.type(number, '12 a');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    expect(within(dialog).getByText('Up to 6 letters, digits, dots or dashes.')).toBeTruthy();
+    expect(writes).toEqual([]);
+    await userEvent.clear(number);
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]).toMatchObject({ method: 'PATCH', body: { menuNumber: null } });
+  });
+
+  it('fills missing numbers after confirming, offered only while some are missing', async () => {
+    signedInAs('owner');
+    const writes = api({
+      ...catalogAnswers,
+      'POST /api/v1/catalog/products/number': () => Response.json({ numbered: 2 }),
+    });
+    render(<CatalogPage />);
+    await productNames();
+    await userEvent.click(screen.getByTestId('fill-numbers'));
+    expect(await screen.findByText('Number 2 products?')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Number them' }));
+    await waitFor(() =>
+      expect(writes).toEqual([
+        { method: 'POST', path: '/api/v1/catalog/products/number', body: undefined },
+      ]),
+    );
+    cleanup();
+    api({
+      ...catalogAnswers,
+      'GET /api/v1/catalog/products': () =>
+        Response.json({
+          data: [
+            { ...SOUP, menuNumber: '1' },
+            { ...WATER, menuNumber: '2' },
+          ],
+        }),
+    });
+    render(<CatalogPage />);
+    await productNames();
+    expect(screen.queryByTestId('fill-numbers')).toBeNull();
   });
 
   // ADR 0025: a category's station decides which ticket its items print on.

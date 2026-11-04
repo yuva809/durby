@@ -48,6 +48,7 @@ describe('settings registry', () => {
       'pos.billHeader',
       'pos.billFooter',
       'inventory.valuationMethod',
+      'inventory.targetFoodCostPercent',
       'inventory.allowNegativeStock',
     ]);
   });

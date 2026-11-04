@@ -29,6 +29,9 @@ describe('number series registry', () => {
   it('has the phase 1 series, then the table service and reservations ones', () => {
     expect(NUMBER_SERIES_KEYS).toEqual([
       'inventory.goodsReceipt',
+      'inventory.stockAdjustment',
+      'inventory.stockTransfer',
+      'inventory.stockConsumption',
       'inventory.purchaseOrder',
       'billing.invoice',
       'pos.order',

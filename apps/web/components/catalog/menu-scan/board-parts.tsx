@@ -1,6 +1,6 @@
 'use client';
 
-import type { ImportRowProblem } from '@durby/shared';
+import { type ImportRowProblem, MENU_NUMBER_MAX_LENGTH } from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -48,6 +48,7 @@ const FIELD_LABEL: Record<ImportRowProblem['field'], LabelKey> = {
   price: 'catalog.import.fields.price',
   taxRate: 'catalog.import.fields.taxRate',
   description: 'catalog.import.fields.description',
+  number: 'catalog.import.fields.number',
 };
 const PROBLEM_LABEL: Record<ImportRowProblem['problem'], LabelKey> = {
   required: 'catalog.import.problems.required',
@@ -207,14 +208,26 @@ export function ProductCard({
           aria-label={t('catalog.scan.select', { name: product.name })}
         />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <Input
-            aria-label={t('catalog.scan.productName')}
-            aria-invalid={invalid('name') || undefined}
-            value={product.name}
-            onChange={(e) => update({ name: e.target.value })}
-            className="min-h-9 font-medium"
-            data-testid="scan-product-name"
-          />
+          <div className="flex gap-1.5">
+            <Input
+              aria-label={t('catalog.scan.productNumber')}
+              aria-invalid={invalid('number') || undefined}
+              placeholder={t('catalog.scan.productNumber')}
+              value={product.number}
+              maxLength={MENU_NUMBER_MAX_LENGTH}
+              onChange={(e) => update({ number: e.target.value })}
+              className="min-h-9 w-16 shrink-0 font-mono tabular-nums"
+              data-testid="scan-product-number"
+            />
+            <Input
+              aria-label={t('catalog.scan.productName')}
+              aria-invalid={invalid('name') || undefined}
+              value={product.name}
+              onChange={(e) => update({ name: e.target.value })}
+              className="min-h-9 min-w-0 flex-1 font-medium"
+              data-testid="scan-product-name"
+            />
+          </div>
           <div className="flex gap-1.5">
             <Input
               aria-label={t('catalog.scan.productPrice')}
@@ -280,7 +293,12 @@ export function ProductCard({
             <ul className="text-xs text-destructive" role="alert">
               {problems.map((p) => (
                 <li key={`${p.field}-${p.problem}`}>
-                  {t(FIELD_LABEL[p.field])}: {t(PROBLEM_LABEL[p.problem])}
+                  {t(FIELD_LABEL[p.field])}:{' '}
+                  {t(
+                    p.field === 'number' && p.problem === 'duplicate'
+                      ? 'catalog.import.problems.duplicateNumber'
+                      : PROBLEM_LABEL[p.problem],
+                  )}
                 </li>
               ))}
             </ul>

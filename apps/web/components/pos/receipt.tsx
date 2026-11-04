@@ -118,7 +118,6 @@ export function Receipt({
             {line}
           </p>
         ))}
-        <p className="mt-1">{t('pos.bill.notReceipt')}</p>
         <p className="mt-2">{t('pos.bill.poweredBy', { product: productName })}</p>
         <p>{date}</p>
       </footer>

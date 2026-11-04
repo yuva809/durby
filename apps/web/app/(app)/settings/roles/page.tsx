@@ -1,5 +1,6 @@
-import { RolesPage } from '../../../../components/users/roles-page';
+import { redirect } from 'next/navigation';
 
+/** Roles moved into Manage Staff, as its Roles tab. */
 export default function Page() {
-  return <RolesPage />;
+  redirect('/staff');
 }

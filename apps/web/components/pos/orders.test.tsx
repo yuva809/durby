@@ -49,6 +49,7 @@ const product = (n: number, name: string, price: string, taxRate: string) => ({
   id: id(10 + n),
   categoryId: FOOD.id,
   name,
+  menuNumber: null,
   description: null,
   price,
   taxRate,
@@ -311,7 +312,7 @@ describe('OrderPage (till)', () => {
         },
       },
     ]);
-    expect(await screen.findByText('Sent: ticket 1.')).toBeTruthy();
+    expect(await screen.findByText('Sent: ticket 1 (Kitchen).')).toBeTruthy();
     // The ticket is in the print-only root: items and notes, no prices.
     const ticket = within(document.getElementById('print-root')!).getByTestId('kitchen-ticket');
     // Like a kitchen printer's slip: dine in, organization and time, table, # order, "New" items.
@@ -326,6 +327,43 @@ describe('OrderPage (till)', () => {
   });
 
   // ADR 0025: drinks go to the bar, as a print job of their own.
+  it('adds a dish by its menu number with Enter and names the stations on the send button', async () => {
+    signedInAs('waiter');
+    const DRINKS = { id: id(5), name: 'Drinks', sortOrder: 1, station: 'bar', archivedAt: null };
+    api({
+      ...withOrder(null),
+      'GET /api/v1/catalog/categories': () => Response.json({ data: [FOOD, DRINKS] }),
+      'GET /api/v1/catalog/products': () =>
+        Response.json({
+          data: [
+            { ...SOUP, menuNumber: '12' },
+            { ...COLA, categoryId: DRINKS.id, menuNumber: '40' },
+          ],
+        }),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    // The number is on the tile.
+    expect((await tile('Soup')).dataset.number).toBe('12');
+    const search = screen.getByTestId('menu-search');
+    await userEvent.type(search, '40{Enter}');
+    expect((search as HTMLInputElement).value).toBe('');
+    expect(screen.getByTestId('menu-added').textContent).toBe('Cola added.');
+    expect(screen.getByTestId('send-to-kitchen').textContent).toBe('Send 1 to bar · €3.80');
+    await userEvent.type(search, '12');
+    expect(within(screen.getByTestId('menu-exact')).getByTestId('menu-product').dataset.name).toBe(
+      'Soup',
+    );
+    await userEvent.type(search, '{Enter}');
+    await userEvent.type(search, '12{Enter}');
+    expect(screen.getAllByTestId('cart-line').map((l) => l.dataset.name)).toEqual(['Cola', 'Soup']);
+    expect(screen.getByTestId('send-to-kitchen').textContent).toBe(
+      'Send 3 to kitchen & bar · €17.60',
+    );
+    // An unknown number adds nothing.
+    await userEvent.type(search, '99{Enter}');
+    expect(screen.getAllByTestId('cart-line')).toHaveLength(2);
+  });
+
   it('prints the kitchen and the bar ticket of one send as two print jobs', async () => {
     signedInAs('waiter');
     const ticket = (n: number, station: 'kitchen' | 'bar', l: ReturnType<typeof line>) => ({
@@ -372,7 +410,7 @@ describe('OrderPage (till)', () => {
     await userEvent.click(screen.getByTestId('send-to-kitchen'));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(2));
     expect(jobs).toEqual([['kitchen'], ['bar']]);
-    expect(await screen.findByText('Sent: ticket 1, 2.')).toBeTruthy();
+    expect(await screen.findByText('Sent: ticket 1 (Kitchen), 2 (Bar).')).toBeTruthy();
     const printed = within(document.getElementById('print-root')!).getAllByTestId('kitchen-ticket');
     expect(printed.map((t) => t.hidden || t.closest('[hidden]') !== null)).toEqual([false, false]);
     expect(within(printed[0]!).getByText('Dine in')).toBeTruthy();
@@ -563,7 +601,6 @@ describe('OrderPage (till)', () => {
     await userEvent.click(screen.getByTestId('print-bill'));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
-    expect(within(printed).getByText('This is not a receipt.')).toBeTruthy();
     expect(within(printed).getByTestId('order-total').textContent).toBe('€13.80');
     // ADR 0025: the organization's header (empty fields left out), the fixed middle, its footer.
     const header = within(printed).getByTestId('bill-header');

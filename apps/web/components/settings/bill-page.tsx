@@ -9,11 +9,13 @@ import {
   billHeaderSchema,
   DEFAULT_BILL_FOOTER,
   DEFAULT_BILL_HEADER,
+  type KitchenTicket,
   type LocationSummary,
+  type PrepStation,
   type ResolvedSetting,
 } from '@durby/shared';
 import { ImageUp, Plus, Trash2 } from 'lucide-react';
-import { type FormEvent, useId, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useId, useRef, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -24,6 +26,7 @@ import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
 import { MoneyProvider } from '../pos/money';
+import { KitchenTicketView } from '../pos/kitchen-ticket';
 import { Receipt } from '../pos/receipt';
 import { useBrand } from '../theme-provider';
 import { Badge } from '../ui/badge';
@@ -36,6 +39,7 @@ import { Loaded, NoAccess } from '../users/common';
 
 /** Sample items of the preview: the real bill layout around made-up items. */
 const SAMPLE_ORDER_NUMBER = 'ORD-2026-000123';
+const SAMPLE_ID = '00000000-0000-7000-8000-000000000000';
 
 /** The form's text fields; '' is "none" (null in the setting). */
 type HeaderDraft = Record<'name' | 'phone' | 'email' | 'website', string> & {
@@ -249,8 +253,8 @@ function BillEditor({
   );
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <form className="flex flex-col gap-6" onSubmit={(e) => void save(e)} noValidate>
+    <div className="flex flex-col gap-6">
+      <form className="flex max-w-3xl flex-col gap-6" onSubmit={(e) => void save(e)} noValidate>
         {locationId !== null && (
           <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
             <p className="text-sm" data-testid="bill-scope-state">
@@ -405,45 +409,109 @@ function BillEditor({
         )}
       </form>
 
-      <section
-        aria-label={t('pos.billSettings.preview')}
-        className="flex flex-col gap-2 lg:sticky lg:top-4"
-      >
+      <section aria-label={t('pos.billSettings.preview')} className="flex flex-col gap-3">
         <h2 className="font-semibold">{t('pos.billSettings.preview')}</h2>
-        <Card className="mx-auto w-full max-w-80 p-4" data-testid="bill-preview">
-          <Receipt
-            layout={{ header: nextHeader, footer: nextFooter }}
-            organizationName={organizationName}
-            productName={productName}
-            tableName="5"
-            order={{
-              number: SAMPLE_ORDER_NUMBER,
-              covers: 2,
-              waiterName: t('pos.billSettings.sampleWaiter'),
-              total: '20.10',
-            }}
-            bill={[
-              {
-                key: 'dish',
-                name: t('pos.billSettings.sampleDish'),
-                note: null,
-                quantity: 1,
-                unitPrice: '12.50',
-                total: '12.50',
-              },
-              {
-                key: 'drink',
-                name: t('pos.billSettings.sampleDrink'),
-                note: null,
-                quantity: 2,
-                unitPrice: '3.80',
-                total: '7.60',
-              },
-            ]}
-            printedAt={new Date()}
-          />
-        </Card>
+        {/* What prints: the guest bill with the header and footer above, the kitchen and bar tickets as they are. */}
+        <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <Preview title={t('pos.bill.customer')} testId="bill-preview">
+            <Receipt
+              layout={{ header: nextHeader, footer: nextFooter }}
+              organizationName={organizationName}
+              productName={productName}
+              tableName="5"
+              order={{
+                number: SAMPLE_ORDER_NUMBER,
+                covers: 2,
+                waiterName: t('pos.billSettings.sampleWaiter'),
+                total: '20.10',
+              }}
+              bill={[
+                {
+                  key: 'dish',
+                  name: t('pos.billSettings.sampleDish'),
+                  note: null,
+                  quantity: 1,
+                  unitPrice: '12.50',
+                  total: '12.50',
+                },
+                {
+                  key: 'drink',
+                  name: t('pos.billSettings.sampleDrink'),
+                  note: null,
+                  quantity: 2,
+                  unitPrice: '3.80',
+                  total: '7.60',
+                },
+              ]}
+              printedAt={new Date()}
+            />
+          </Preview>
+          <Preview title={t('pos.bill.kitchen')} testId="bill-preview-kitchen">
+            <KitchenTicketView
+              ticket={sampleTicket('kitchen', t('pos.billSettings.sampleDish'), 1)}
+              tableName="5"
+              orderNumber={SAMPLE_ORDER_NUMBER}
+              organizationName={nextHeader.name ?? organizationName}
+            />
+          </Preview>
+          <Preview title={t('pos.bill.bar')} testId="bill-preview-bar">
+            <KitchenTicketView
+              ticket={sampleTicket('bar', t('pos.billSettings.sampleDrink'), 2)}
+              tableName="5"
+              orderNumber={SAMPLE_ORDER_NUMBER}
+              organizationName={nextHeader.name ?? organizationName}
+            />
+          </Preview>
+        </div>
       </section>
     </div>
   );
+}
+
+function Preview({
+  title,
+  testId,
+  children,
+}: {
+  title: string;
+  testId: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+      <Card className="mx-auto w-full max-w-80 p-4" data-testid={testId}>
+        {children}
+      </Card>
+    </div>
+  );
+}
+
+/** A made-up ticket for the kitchen and bar previews. */
+function sampleTicket(station: PrepStation, productName: string, quantity: number): KitchenTicket {
+  const at = new Date().toISOString();
+  return {
+    id: SAMPLE_ID,
+    sequence: 1,
+    kind: 'order',
+    station,
+    status: 'new',
+    createdAt: at,
+    lines: [
+      {
+        id: SAMPLE_ID,
+        ticketId: SAMPLE_ID,
+        productId: SAMPLE_ID,
+        productName,
+        unitPrice: '0.00',
+        taxRate: '0.00',
+        quantity,
+        note: null,
+        voidsLineId: null,
+        remaining: quantity,
+        total: '0.00',
+        createdAt: at,
+      },
+    ],
+  };
 }

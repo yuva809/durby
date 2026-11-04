@@ -243,6 +243,15 @@ export const SETTINGS = {
     scopes: ['partner', 'organization'],
     dataBound: true,
   }),
+  // The food cost a dish should have: the suggested price is cost ÷ target (docs/modules/inventory.md).
+  'inventory.targetFoodCostPercent': define({
+    label: 'platform.settings.inventoryTargetFoodCostPercent.name',
+    description: 'platform.settings.inventoryTargetFoodCostPercent.description',
+    schema: z.int().min(1).max(100),
+    default: 30,
+    scopes: ['partner', 'organization'],
+    dataBound: false,
+  }),
   'inventory.allowNegativeStock': define({
     label: 'platform.settings.inventoryAllowNegativeStock.name',
     description: 'platform.settings.inventoryAllowNegativeStock.description',

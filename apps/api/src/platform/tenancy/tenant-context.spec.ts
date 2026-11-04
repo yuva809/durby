@@ -104,6 +104,7 @@ describe('TENANT_MODELS', () => {
       'ProcessedEvent',
       'Product',
       'ProductCategory',
+      'RecipeLine',
       'Reservation',
       'ReservationCombination',
       'ReservationCombinationTable',
@@ -114,7 +115,12 @@ describe('TENANT_MODELS', () => {
       'Role',
       'RolePermission',
       'SettingValue',
+      'StockDocument',
+      'StockItem',
+      'StockLevel',
+      'StockMovement',
       'TenantFeatureOverride',
+      'Warehouse',
     ]);
   });
 });

@@ -8,6 +8,7 @@ import {
   type ImportProductsResponse,
   type ListProductCategoriesQuery,
   type ListProductsQuery,
+  type NumberProductsResponse,
   type PrepStation,
   type Product,
   type ProductCategory,
@@ -22,7 +23,7 @@ import {
   type TenantPrismaClient,
   type TenantTransactionClient,
 } from '../../platform/tenancy';
-import { catalogErrors, isUniqueViolation } from './catalog-errors';
+import { catalogErrors, isUniqueViolation, violates } from './catalog-errors';
 import { fixed2 } from './decimal-text';
 
 const CATEGORY_SELECT = {
@@ -37,6 +38,7 @@ const PRODUCT_SELECT = {
   id: true,
   categoryId: true,
   name: true,
+  menuNumber: true,
   description: true,
   price: true,
   taxRate: true,
@@ -149,6 +151,16 @@ export class CatalogService {
     );
   }
 
+  /** Products by id, archived ones too, for other modules (inventory recipes, ADR 0028). */
+  async productsByIds(ids: readonly string[]): Promise<Product[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db.product.findMany({
+      where: { id: { in: [...new Set(ids)] } },
+      select: PRODUCT_SELECT,
+    });
+    return rows.map(productResponse);
+  }
+
   async listProducts(query: ListProductsQuery): Promise<Product[]> {
     const rows = await this.db.product.findMany({
       where: {
@@ -166,11 +178,13 @@ export class CatalogService {
     return this.unique(catalogErrors.productNameTaken, () =>
       this.db.$transaction(async (tx) => {
         await this.openCategory(tx, body.categoryId);
+        if (body.menuNumber) await this.freeMenuNumber(tx, body.menuNumber, null);
         const row = await tx.product.create({
           data: {
             tenantId,
             categoryId: body.categoryId,
             name: body.name,
+            menuNumber: body.menuNumber ?? null,
             description: body.description || null,
             price: body.price,
             taxRate: body.taxRate,
@@ -205,6 +219,7 @@ export class CatalogService {
           ...before,
           categoryId: body.categoryId ?? before.categoryId,
           name: body.name ?? before.name,
+          menuNumber: body.menuNumber === undefined ? before.menuNumber : body.menuNumber,
           description:
             body.description === undefined ? before.description : body.description || null,
           price: body.price === undefined ? before.price : fixed2(body.price),
@@ -214,12 +229,17 @@ export class CatalogService {
         const nextArchivedAt = archivedAt(current.archivedAt, body.archived);
         next.archivedAt = nextArchivedAt?.toISOString() ?? null;
         if (JSON.stringify(next) === JSON.stringify(before)) return before;
+        // A new number, or a restored product taking its number back: it must be free.
+        if (next.menuNumber && next.archivedAt === null) {
+          await this.freeMenuNumber(tx, next.menuNumber, id);
+        }
 
         const row = await tx.product.update({
           where: { id },
           data: {
             categoryId: next.categoryId,
             name: next.name,
+            menuNumber: next.menuNumber,
             description: next.description,
             price: next.price,
             taxRate: next.taxRate,
@@ -279,7 +299,12 @@ export class CatalogService {
             let category = categories.get(categoryName.toLowerCase());
             if (!category) {
               category = await tx.productCategory.create({
-                data: { tenantId, name: categoryName, sortOrder: 0 },
+                data: {
+                  tenantId,
+                  name: categoryName,
+                  sortOrder: 0,
+                  ...(input.station && { station: input.station }),
+                },
                 select: CATEGORY_SELECT,
               });
               await this.audit.record(tx, {
@@ -297,12 +322,18 @@ export class CatalogService {
             const taxRate = fixed2(input.taxRate.trim());
             const key = productKey(category.id, name);
             const current = products.get(key);
+            // An empty number cell keeps the product's number (ADR 0029).
+            const menuNumber = input.number?.trim() || (current?.menuNumber ?? null);
+            if (menuNumber && menuNumber !== current?.menuNumber) {
+              await this.freeMenuNumber(tx, menuNumber, current?.id ?? null);
+            }
             if (!current) {
               const row = await tx.product.create({
                 data: {
                   tenantId,
                   categoryId: category.id,
                   name,
+                  menuNumber,
                   description: input.description?.trim() || null,
                   price,
                   taxRate,
@@ -331,7 +362,8 @@ export class CatalogService {
             if (
               before.price === price &&
               before.taxRate === taxRate &&
-              before.description === description
+              before.description === description &&
+              before.menuNumber === menuNumber
             ) {
               response.unchanged += 1;
               response.rows.push({ row: index + 1, status: 'unchanged', productId: current.id });
@@ -339,7 +371,7 @@ export class CatalogService {
             }
             const row = await tx.product.update({
               where: { id: current.id },
-              data: { price, taxRate, description },
+              data: { price, taxRate, description, menuNumber },
               select: PRODUCT_SELECT,
             });
             await this.audit.record(tx, {
@@ -363,6 +395,83 @@ export class CatalogService {
     );
   }
 
+  /**
+   * "Fill missing numbers" (ADR 0029): every non-archived product without a number gets the next
+   * integer above the highest numeric number in use, in menu order. The unique index backs a
+   * concurrent manual edit.
+   */
+  async numberProducts(): Promise<NumberProductsResponse> {
+    const { userId } = this.tenantContext.require();
+    const actor = auditActor.user(userId);
+    return this.unique(catalogErrors.productNameTaken, () =>
+      this.db.$transaction(
+        async (tx) => {
+          const [top] = await tx.$queryRaw<{ highest: number | null }[]>`
+            SELECT max(menu_number::int) AS highest FROM products
+            WHERE archived_at IS NULL AND menu_number ~ '^[0-9]{1,6}$'`;
+          const unnumbered = await tx.product.findMany({
+            where: { archivedAt: null, menuNumber: null },
+            select: PRODUCT_SELECT,
+            orderBy: [
+              { category: { sortOrder: 'asc' } },
+              { category: { name: 'asc' } },
+              { sortOrder: 'asc' },
+              { name: 'asc' },
+              { id: 'asc' },
+            ],
+          });
+          let next = (top?.highest ?? 0) + 1;
+          for (const current of unnumbered) {
+            // "012" counts as 12 for the highest but is not the text "12": skip taken texts too.
+            while (await this.menuNumberUsed(tx, String(next), null)) next += 1;
+            const row = await tx.product.update({
+              where: { id: current.id },
+              data: { menuNumber: String(next) },
+              select: PRODUCT_SELECT,
+            });
+            await this.audit.record(tx, {
+              action: 'catalog.product.updated',
+              actor,
+              entityId: row.id,
+              before: productSnapshot(current),
+              after: productSnapshot(row),
+            });
+            next += 1;
+          }
+          const response: NumberProductsResponse = { numbered: unnumbered.length };
+          await this.idempotency.completeInTransaction(tx, response);
+          return response;
+        },
+        { maxWait: 10_000, timeout: 60_000 },
+      ),
+    );
+  }
+
+  /** Another non-archived product has this number (case-insensitive): 409. */
+  private async freeMenuNumber(
+    tx: TenantTransactionClient,
+    menuNumber: string,
+    exceptId: string | null,
+  ): Promise<void> {
+    if (await this.menuNumberUsed(tx, menuNumber, exceptId)) throw catalogErrors.menuNumberTaken();
+  }
+
+  private async menuNumberUsed(
+    tx: TenantTransactionClient,
+    menuNumber: string,
+    exceptId: string | null,
+  ): Promise<boolean> {
+    const other = await tx.product.findFirst({
+      where: {
+        archivedAt: null,
+        menuNumber: { equals: menuNumber, mode: 'insensitive' },
+        ...(exceptId && { id: { not: exceptId } }),
+      },
+      select: { id: true },
+    });
+    return other !== null;
+  }
+
   /** The category exists in this tenant (RLS) and isn't archived. */
   private async openCategory(tx: TenantTransactionClient, id: string): Promise<void> {
     const category = await tx.productCategory.findUnique({
@@ -377,7 +486,9 @@ export class CatalogService {
     try {
       return await fn();
     } catch (error) {
-      if (isUniqueViolation(error)) throw taken();
+      if (isUniqueViolation(error)) {
+        throw violates(error, 'menu_number') ? catalogErrors.menuNumberTaken() : taken();
+      }
       throw error;
     }
   }

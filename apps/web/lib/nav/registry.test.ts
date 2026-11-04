@@ -69,6 +69,7 @@ describe('visibleNav', () => {
     };
     expect(ids(visibleNav(NAV_ITEMS, everything))).toEqual([
       'home',
+      'inventory',
       'catalog',
       'service',
       'kitchen',
@@ -80,7 +81,6 @@ describe('visibleNav', () => {
       'audit',
     ]);
     expect(NAV_ITEMS.filter((i) => i.planned).map((i) => i.id)).toEqual([
-      'inventory',
       'billing',
       'pos',
       'reports',

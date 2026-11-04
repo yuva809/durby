@@ -313,6 +313,7 @@ export function ReviewBoard({
       categoryId: category.id,
       product: {
         id: productId,
+        number: '',
         name: t('catalog.scan.newProduct'),
         price: '',
         description: '',

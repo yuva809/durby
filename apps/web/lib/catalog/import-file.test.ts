@@ -60,6 +60,15 @@ describe('parseProductsCsv', () => {
     });
   });
 
+  it('reads the menu number column under its usual names (ADR 0029)', () => {
+    for (const header of ['number', 'No', 'Nr', 'Menu number']) {
+      const parsed = parseProductsCsv(
+        `${header},category,name,price,tax_rate\n 12a ,BBQ,Galbi,24.90,7`,
+      );
+      expect(parsed.ok && parsed.rows[0]?.number, header).toBe('12a');
+    }
+  });
+
   it('reports an empty file, missing columns and too many rows', () => {
     expect(parseProductsCsv(PRODUCTS_CSV_TEMPLATE)).toEqual({
       ok: false,

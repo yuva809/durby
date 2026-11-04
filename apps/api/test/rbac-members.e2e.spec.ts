@@ -51,6 +51,7 @@ describe('members API', () => {
       'platform.settings.read',
       'catalog.products.read',
       'pos.tables.read',
+      'inventory.stock.read',
     ]);
 
   describe('GET /members', () => {
