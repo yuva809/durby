@@ -1,6 +1,7 @@
 import type { LabelKey } from '@durby/i18n';
 import type { FeatureKey, PermissionKey } from '@durby/shared';
 import {
+  ChefHat,
   ClipboardList,
   ConciergeBell,
   ChartLine,
@@ -13,6 +14,7 @@ import {
   SlidersHorizontal,
   UsersRound,
   UtensilsCrossed,
+  Wine,
 } from 'lucide-react';
 import { SETTINGS_TABS } from './settings-tabs';
 
@@ -96,6 +98,25 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: 'modules',
     feature: 'pos',
     permission: 'pos.orders.read',
+  },
+  {
+    // The kitchen and bar screens (docs/modules/pos.md → Kitchen and bar screens, ADR 0026).
+    id: 'kitchen',
+    href: '/kitchen',
+    label: 'pos.nav.kitchen',
+    icon: ChefHat,
+    group: 'modules',
+    feature: 'pos',
+    permission: 'pos.kitchen.use',
+  },
+  {
+    id: 'bar',
+    href: '/bar',
+    label: 'pos.nav.bar',
+    icon: Wine,
+    group: 'modules',
+    feature: 'pos',
+    permission: 'pos.bar.use',
   },
   {
     id: 'tables',

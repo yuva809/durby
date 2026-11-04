@@ -1,7 +1,7 @@
 'use client';
 
 import type { FloorTable, LocationSummary } from '@durby/shared';
-import { Clock, Users } from 'lucide-react';
+import { BellRing, Clock, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
@@ -207,6 +207,15 @@ function TableTile({ table, now }: { table: FloorTable; now: number }) {
               </span>
             </span>
             <span className="text-xs text-muted-foreground">{order.number}</span>
+            {order.readyCount > 0 && (
+              <span
+                className="inline-flex items-center gap-1 self-start rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground"
+                data-testid="floor-ready"
+              >
+                <BellRing aria-hidden className="size-3.5" />
+                {t('pos.floor.ready', { count: String(order.readyCount) })}
+              </span>
+            )}
           </span>
         ) : (
           <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">

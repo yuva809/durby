@@ -1,4 +1,9 @@
 import {
+  type PrepStation,
+  type SettableTicketStatus,
+  stationBoardResponseSchema,
+  type StationTicket,
+  stationTicketSchema,
   type BillLayout,
   billLayoutSchema,
   type CreateDiningAreaRequest,
@@ -53,6 +58,58 @@ export const updateTable = (
   body: UpdateDiningTableRequest,
 ): Promise<Result<DiningTable | null>> =>
   write(store, action, `/api/v1/pos/tables/${id}`, 'PATCH', body, diningTableSchema);
+
+/** A new QR menu code for the table; its old QR stops working (docs/modules/pos.md → QR menu). */
+export const renewMenuCode = (
+  store: Api,
+  action: ActionKey,
+  id: string,
+): Promise<Result<DiningTable | null>> =>
+  write(store, action, `/api/v1/pos/tables/${id}/menu-token`, 'POST', {}, diningTableSchema);
+
+/** The kitchen and bar screens (docs/modules/pos.md → Kitchen and bar screens). */
+export const loadStationBoard = (
+  store: Api,
+  station: PrepStation,
+  locationId: string,
+): Promise<Result<StationTicket[]>> =>
+  read(
+    store,
+    `/api/v1/pos/stations/${station}/tickets?locationId=${encodeURIComponent(locationId)}`,
+    list(stationBoardResponseSchema),
+  );
+
+export const moveTicket = (
+  store: Api,
+  action: ActionKey,
+  station: PrepStation,
+  ticketId: string,
+  status: SettableTicketStatus,
+): Promise<Result<StationTicket | null>> =>
+  write(
+    store,
+    action,
+    `/api/v1/pos/stations/${station}/tickets/${ticketId}/status`,
+    'POST',
+    { status },
+    stationTicketSchema,
+  );
+
+/** A waiter serves a ready ticket from the till. */
+export const serveTicket = (
+  store: Api,
+  action: ActionKey,
+  orderId: string,
+  ticketId: string,
+): Promise<Result<Order | null>> =>
+  write(
+    store,
+    action,
+    `/api/v1/pos/orders/${orderId}/tickets/${ticketId}/served`,
+    'POST',
+    {},
+    orderSchema,
+  );
 
 /** Calls of the floor and order screens (docs/modules/pos.md → Step 3). */
 

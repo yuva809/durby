@@ -211,6 +211,38 @@ describe('FloorPage', () => {
   });
 });
 
+describe('FloorPage ready', () => {
+  it('marks a table whose food or drinks are ready', async () => {
+    signedInAs('waiter');
+    api({
+      ...SETTINGS,
+      'GET /api/v1/locations': () => Response.json({ data: [LOCATION] }),
+      'GET /api/v1/pos/floor': () =>
+        Response.json({
+          data: [
+            { ...TABLE, order: { ...ORDER, tickets: undefined, totals: undefined, readyCount: 2 } },
+            {
+              ...TABLE,
+              id: id(5),
+              name: 'T2',
+              order: {
+                ...ORDER,
+                id: id(25),
+                tableId: id(5),
+                tickets: undefined,
+                totals: undefined,
+              },
+            },
+          ],
+        }),
+    });
+    render(<FloorPage />);
+    const tiles = await screen.findAllByTestId('floor-table');
+    expect(within(tiles[0]!).getByTestId('floor-ready').textContent).toBe('Ready to serve: 2');
+    expect(within(tiles[1]!).queryByTestId('floor-ready')).toBeNull();
+  });
+});
+
 describe('OrderPage (till)', () => {
   const tile = async (name: string) =>
     (await screen.findAllByTestId('menu-product')).find((b) => b.dataset.name === name)!;
@@ -605,5 +637,52 @@ describe('OrderPage (till)', () => {
     ]);
     const ticket = within(document.getElementById('print-root')!).getByTestId('kitchen-ticket');
     expect(within(ticket).getByText('CANCELLED')).toBeTruthy();
+  });
+  // ADR 0026: what the kitchen marked ready shows on the till until a waiter serves it.
+  it('shows ready tickets and lets a waiter mark one served', async () => {
+    signedInAs('waiter');
+    const ready: Order = {
+      ...ORDER,
+      readyCount: 1,
+      tickets: [{ ...ORDER.tickets[0]!, status: 'ready' }],
+    };
+    const served: Order = {
+      ...ORDER,
+      tickets: [{ ...ORDER.tickets[0]!, status: 'served' }],
+    };
+    let current = ready;
+    const writes = api({
+      ...menu,
+      [`GET /api/v1/pos/tables/${TABLE.id}/order`]: () =>
+        Response.json({ table: TABLE, order: current }),
+      [`POST /api/v1/pos/orders/${ORDER.id}/tickets/${id(21)}/served`]: () => {
+        current = served;
+        return Response.json(served, { status: 201 });
+      },
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    expect((await screen.findByTestId('till-ready')).textContent).toBe('Ready to serve: 1');
+    expect(screen.getByTestId('ticket-status').textContent).toBe('Ready');
+    await userEvent.click(screen.getByTestId('ticket-serve'));
+    await waitFor(() => expect(screen.getByTestId('ticket-status').textContent).toBe('Served'));
+    expect(screen.queryByTestId('till-ready')).toBeNull();
+    expect(screen.queryByTestId('ticket-serve')).toBeNull();
+    expect(writes).toEqual([
+      {
+        method: 'POST',
+        path: `/api/v1/pos/orders/${ORDER.id}/tickets/${id(21)}/served`,
+        body: {},
+      },
+    ]);
+  });
+
+  it('shows the status but no Served button to a cashier', async () => {
+    signedInAs('cashier');
+    api(
+      withOrder({ ...ORDER, readyCount: 1, tickets: [{ ...ORDER.tickets[0]!, status: 'ready' }] }),
+    );
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    expect(await screen.findByTestId('till-ready')).toBeTruthy();
+    expect(screen.queryByTestId('ticket-serve')).toBeNull();
   });
 });

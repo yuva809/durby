@@ -39,6 +39,7 @@ export const stationTicketSchema = z.object({
 
 export const stationBoardResponseSchema = z.object({ data: z.array(stationTicketSchema) });
 
+export type SettableTicketStatus = (typeof SETTABLE_TICKET_STATUSES)[number];
 export type StationBoardQuery = z.infer<typeof stationBoardQuerySchema>;
 export type TicketStatusRequest = z.infer<typeof ticketStatusRequestSchema>;
 export type StationTicket = z.infer<typeof stationTicketSchema>;

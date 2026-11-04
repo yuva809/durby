@@ -311,4 +311,44 @@ describe('TablesPage', () => {
       { method: 'PATCH', path: `/api/v1/pos/tables/${OLD.id}`, body: { archived: false } },
     ]);
   });
+  // ADR 0026: the table's QR code for guests, printed on a card; managers renew it.
+  it('shows a table QR code with its menu link; a new code replaces it', async () => {
+    signedInAs('manager');
+    const renewed = { ...T1, menuCode: 'NEWCODE0000000000000000x' };
+    const writes = api({
+      ...answers,
+      [`POST /api/v1/pos/tables/${T1.id}/menu-token`]: () =>
+        Response.json(renewed, { status: 201 }),
+    });
+    render(<TablesPage />);
+    await screen.findAllByTestId('table-card');
+    const t1 = screen.getAllByTestId('table-card')[0]!;
+    await userEvent.click(within(t1).getByTestId('table-qr'));
+    const dialog = await screen.findByRole('dialog');
+    const org = '0190a000-0000-7000-8000-0000000000a1';
+    expect(within(dialog).getByTestId('qr-url').textContent).toBe(
+      `${window.location.origin}/menu/${org}.${T1.menuCode}`,
+    );
+    const image = await within(dialog).findByTestId('qr-image');
+    expect(image.getAttribute('src')).toMatch(/^data:image\/svg\+xml/);
+    await userEvent.click(within(dialog).getByTestId('qr-renew'));
+    await waitFor(() =>
+      expect(within(dialog).getByTestId('qr-url').textContent).toContain(renewed.menuCode),
+    );
+    expect(writes).toEqual([
+      { method: 'POST', path: `/api/v1/pos/tables/${T1.id}/menu-token`, body: {} },
+    ]);
+  });
+
+  it('lets Staff see and print the QR code but not renew it', async () => {
+    signedInAs('staff');
+    api(answers);
+    render(<TablesPage />);
+    await screen.findAllByTestId('table-card');
+    await userEvent.click(within(screen.getAllByTestId('table-card')[0]!).getByTestId('table-qr'));
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByTestId('qr-image');
+    expect(within(dialog).queryByTestId('qr-renew')).toBeNull();
+    expect(within(dialog).getByTestId('qr-print')).toBeTruthy();
+  });
 });

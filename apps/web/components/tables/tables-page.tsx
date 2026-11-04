@@ -35,6 +35,7 @@ import { loadLocations } from '../../lib/users/api';
 import { cn } from '../../lib/utils';
 import { Field, FormDialog } from '../form-dialog';
 import { TableIcon, tableColors } from '../pos/table-icon';
+import { QrDialog } from './qr-dialog';
 import { NoLocations } from '../settings/locations-page';
 import { Button } from '../ui/button';
 import {
@@ -473,6 +474,11 @@ function TableTile({
               : statusLabel}
         </span>
         <span className="sr-only">{statusLabel}</span>
+        {!out && (
+          <div className="absolute top-2 left-2">
+            <QrDialog table={table} canManage={access.canManage} onDone={onDone} />
+          </div>
+        )}
         {access.canManage && (
           <div className="absolute top-2 right-2 flex gap-1">
             <TableDialog
