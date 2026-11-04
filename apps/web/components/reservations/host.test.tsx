@@ -85,7 +85,7 @@ function booking(n: number, name: string, over: Partial<Reservation> = {}): Rese
     startsAt: T('19:30'),
     endsAt: T('21:00'),
     tableIds: [id(12)],
-    guest: { id: id(60 + n), name, email: null, phone: null, locale: 'en' },
+    guest: { id: id(60 + n), name, email: null, phone: null, locale: 'en', anonymisedAt: null },
     guestNote: null,
     staffNote: null,
     createdAt: T('12:00'),

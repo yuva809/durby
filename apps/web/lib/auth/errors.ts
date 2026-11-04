@@ -147,6 +147,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'reservations.undo_expired': 'reservations.errors.undoExpired',
   'reservations.table_not_in_service': 'reservations.errors.tableNotInService',
   'reservations.busy': 'reservations.errors.busy',
+  'reservations.guest_not_found': 'reservations.errors.guestNotFound',
   'staff.unauthenticated': 'staff.errors.unauthenticated',
   'staff.invalid_credentials': 'staff.errors.invalidCredentials',
   'staff.reauth_required': 'staff.errors.reauthRequired',

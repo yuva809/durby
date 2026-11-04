@@ -81,6 +81,8 @@
   "reservations.audit.actions.reservationStatusUndone": "Reservation status change undone",
   "reservations.errors.tableNotInService": "A table of this booking is no longer in service. Move the booking to another table.",
   "reservations.errors.busy": "Very busy right now. Please try again in a moment.",
+  "reservations.audit.actions.guestAnonymised": "Guest data erased",
+  "reservations.errors.guestNotFound": "Guest not found.",
   "reservations.nav.host": "Host",
   "reservations.status.requested": "Requested",
   "reservations.status.pending": "Pending",

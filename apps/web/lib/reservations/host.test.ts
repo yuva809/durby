@@ -30,7 +30,7 @@ function booking(over: Partial<Reservation> = {}): Reservation {
     startsAt: new Date(T('19:00')).toISOString(),
     endsAt: new Date(T('20:30')).toISOString(),
     tableIds: [id(3)],
-    guest: { id: id(4), name: 'Weber', email: null, phone: null, locale: 'en' },
+    guest: { id: id(4), name: 'Weber', email: null, phone: null, locale: 'en', anonymisedAt: null },
     guestNote: null,
     staffNote: null,
     createdAt: new Date(T('12:00')).toISOString(),

@@ -34,6 +34,7 @@ export const AUDIT_ENTITY_TYPES = [
   'stock_item',
   'stock_document',
   'recipe',
+  'reservation_guest',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -287,6 +288,11 @@ export const AUDIT_ACTIONS = {
     entityType: 'reservation',
     label: 'reservations.audit.actions.reservationRulesOverridden',
   },
+  /** Erasure on request (R1.9): irreversible. */
+  'reservations.guest.anonymised': {
+    entityType: 'reservation_guest',
+    label: 'reservations.audit.actions.guestAnonymised',
+  },
 } as const satisfies Record<string, AuditActionDefinition>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -431,4 +437,6 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'overriddenRules',
     'sourceOrderId',
   ],
+  /** Never the guest's name, email, phone or notes: only that and when they were erased. */
+  reservation_guest: ['id', 'anonymisedAt'],
 } as const satisfies Record<AuditEntityType, readonly string[]>;

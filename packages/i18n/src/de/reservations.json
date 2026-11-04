@@ -81,6 +81,8 @@
   "reservations.audit.actions.reservationStatusUndone": "Statusänderung der Reservierung rückgängig gemacht",
   "reservations.errors.tableNotInService": "Ein Tisch dieser Reservierung ist nicht mehr in Betrieb. Die Reservierung an einen anderen Tisch verlegen.",
   "reservations.errors.busy": "Gerade sehr viel los. Bitte gleich noch einmal versuchen.",
+  "reservations.audit.actions.guestAnonymised": "Gastdaten gelöscht",
+  "reservations.errors.guestNotFound": "Gast nicht gefunden.",
   "reservations.nav.host": "Empfang",
   "reservations.status.requested": "Angefragt",
   "reservations.status.pending": "Offen",
