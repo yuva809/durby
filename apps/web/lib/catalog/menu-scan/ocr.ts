@@ -2,6 +2,15 @@ import { findStrips, prepareForOcr } from './image';
 import { joinRows, type OcrLine, orderColumns, segmentLine } from './parse';
 import { hasText, type TextItem } from './pdf-text';
 import { readingScore } from './reading-score';
+import {
+  isReadable,
+  mayHoldSidewaysText,
+  pickHeadings,
+  type Rotation,
+  type RotatedWord,
+  sidewaysScore,
+  unrotateBox,
+} from './rotated';
 
 /**
  * Menu photos and PDFs → text, entirely in the browser (docs/modules/catalog.md → Menu scan). A
@@ -11,7 +20,7 @@ import { readingScore } from './reading-score';
  */
 
 /** Photos and image-only PDF pages per scan: each is read by OCR, which takes a few seconds. */
-export const MAX_SCAN_PAGES = 10;
+export const MAX_SCAN_PAGES = 30;
 /** PDF pages per scan when their text is in the PDF (read at once). */
 export const MAX_PDF_PAGES = 60;
 /** Long edge after scaling: enough for menu text, quick to read. */
@@ -55,7 +64,7 @@ export interface ScanPage {
   sourceHeight: number;
   canvas: HTMLCanvasElement | null;
   /** The same page scaled but not prepared: clean screenshots read better this way (`readingScore`). */
-  plain: HTMLCanvasElement | null;
+  plain: Blob | null;
   text: TextItem[] | null;
   previewUrl: string;
 }
@@ -107,7 +116,12 @@ export async function preparePages(
       }
       images += 1;
       if (images > MAX_SCAN_PAGES) throw new ScanError('tooManyPages');
-      const { canvas, plain } = toScanCanvas(source.image);
+      const { canvas, plain: plainCanvas } = toScanCanvas(source.image);
+      // Kept as a compressed image: 30 pages of two full canvases would be hundreds of MB.
+      const plain = await new Promise<Blob | null>((resolve) =>
+        plainCanvas.toBlob(resolve, 'image/png'),
+      );
+      plainCanvas.width = 0;
       pages.push({
         number,
         name,
@@ -268,8 +282,74 @@ export async function recognizePages(
   const abort = () => void worker.terminate();
   signal?.addEventListener('abort', abort, { once: true });
 
-  /** One reading of a page from `canvas`. */
-  async function read(page: ScanPage, canvas: HTMLCanvasElement, variant: number) {
+  /**
+   * The category headings set sideways down a narrow strip, read from copies of the strip turned
+   * both ways (the better reading wins); null when it holds none. Read once per strip.
+   */
+  async function sidewaysHeadings(
+    page: ScanPage,
+    source: CanvasImageSource,
+    strip: { x0: number; x1: number },
+    index: number,
+  ): Promise<OcrLine[] | null> {
+    const size = { width: strip.x1 - strip.x0, height: page.height };
+    let best: { score: number; lines: OcrLine[]; words: RotatedWord[] } | null = null;
+    for (const rotation of ['cw', 'ccw'] as Rotation[]) {
+      if (signal?.aborted) break;
+      const turned = document.createElement('canvas');
+      turned.width = size.height;
+      turned.height = size.width;
+      const ctx = turned.getContext('2d');
+      if (!ctx) continue;
+      if (rotation === 'cw') {
+        ctx.translate(size.height, 0);
+        ctx.rotate(Math.PI / 2);
+      } else {
+        ctx.translate(0, size.width);
+        ctx.rotate(-Math.PI / 2);
+      }
+      ctx.drawImage(source, -strip.x0, 0);
+      const { data } = await worker.recognize(turned, {}, { blocks: true });
+      const words: RotatedWord[] = [];
+      const lines: OcrLine[] = [];
+      for (const block of data.blocks ?? []) {
+        for (const paragraph of block.paragraphs) {
+          for (const line of paragraph.lines) {
+            const read = line.words
+              .map((w) => ({ text: w.text.trim(), confidence: w.confidence, box: w.bbox }))
+              // Marks on their own (`|`, `[`, `+`) are the speck beside a heading, not part of it.
+              .filter((w) => /[\p{L}\d]|^[-–—&]$/u.test(w.text));
+            if (read.length === 0) continue;
+            words.push(...read);
+            const boxes = read.map((w) => unrotateBox(w.box, rotation, size, strip.x0));
+            lines.push({
+              text: read.map((w) => w.text).join(' '),
+              confidence: Math.min(...read.map((w) => w.confidence)),
+              page: page.number,
+              strip: index,
+              box: {
+                x0: Math.min(...boxes.map((b) => b.x0)),
+                x1: Math.max(...boxes.map((b) => b.x1)),
+                y0: Math.min(...boxes.map((b) => b.y0)),
+                y1: Math.max(...boxes.map((b) => b.y1)),
+              },
+            });
+          }
+        }
+      }
+      const score = sidewaysScore(words);
+      if (!best || score > best.score) best = { score, lines, words };
+    }
+    return best && isReadable(best.words) ? pickHeadings(best.lines) : null;
+  }
+
+  /** One reading of a page from `source`; `headings` remembers the sideways strips across readings. */
+  async function read(
+    page: ScanPage,
+    source: CanvasImageSource,
+    variant: number,
+    headings: Map<number, OcrLine[] | null>,
+  ) {
     // Prepared pages are read by layout analysis; plain ones in sparse mode, which finds the small
     // print of a screenshot that layout analysis skips.
     await worker.setParameters({
@@ -286,10 +366,24 @@ export async function recognizePages(
     for (const [index, strip] of strips.entries()) {
       if (signal?.aborted) break;
       share = { variant, index, count: strips.length };
+      if (mayHoldSidewaysText(strip.x1 - strip.x0, page.height)) {
+        if (!headings.has(index)) {
+          await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+          headings.set(index, await sidewaysHeadings(page, source, strip, index));
+          await worker.setParameters({
+            tessedit_pageseg_mode: variant === 0 ? PSM.AUTO : PSM.SPARSE_TEXT,
+          });
+        }
+        const found = headings.get(index);
+        if (found) {
+          segments.push(...found);
+          continue;
+        }
+      }
       const crop = document.createElement('canvas');
       crop.width = strip.x1 - strip.x0;
       crop.height = page.height;
-      crop.getContext('2d')?.drawImage(canvas, -strip.x0, 0);
+      crop.getContext('2d')?.drawImage(source, -strip.x0, 0);
       const { data } = await worker.recognize(crop, {}, { blocks: true });
       for (const block of data.blocks ?? []) {
         for (const paragraph of block.paragraphs) {
@@ -315,9 +409,18 @@ export async function recognizePages(
       if (signal?.aborted) break;
       current = position + 1;
       onProgress({ page: current, pages: images.length, progress: 0 });
-      const prepared = await read(page, page.canvas!, 0);
-      const plain = page.plain && !signal?.aborted ? await read(page, page.plain, 1) : null;
+      const headings = new Map<number, OcrLine[] | null>();
+      const prepared = await read(page, page.canvas!, 0, headings);
+      let plain: OcrLine[] | null = null;
+      if (page.plain && !signal?.aborted) {
+        const bitmap = await createImageBitmap(page.plain);
+        plain = await read(page, bitmap, 1, headings);
+        bitmap.close();
+      }
       lines.push(...(plain && readingScore(plain) > readingScore(prepared) ? plain : prepared));
+      // Done with this page: give its canvas back (30 pages would hold hundreds of MB).
+      page.canvas!.width = 0;
+      page.plain = null;
     }
     return lines;
   } finally {
