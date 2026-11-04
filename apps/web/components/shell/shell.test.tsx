@@ -107,4 +107,12 @@ describe('UserMenu', () => {
     expect(mockState.store.logout).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(mockState.router.replace).toHaveBeenCalledWith('/login'));
   });
+
+  it('opens your profile, where you choose your language', async () => {
+    mockState.session = sessionFixture();
+    render(<UserMenu />);
+    await userEvent.click(screen.getByRole('button', { name: 'Account menu' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Profile and language' }));
+    expect(mockState.router.push).toHaveBeenCalledWith('/account');
+  });
 });

@@ -113,17 +113,18 @@ All under `/api/v1/auth`. Bodies validated with Zod (`packages/shared/src/api/au
 `{ code, message, details? }`. "Origin" means the request must carry an `Origin` header equal to one of
 `WEB_ORIGINS`, else 403 `auth.origin_rejected` (CSRF protection for the cookie flow).
 
-| Method | Path                   | Marker                 | Request                       | Success                                                                                                    |
-| ------ | ---------------------- | ---------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| POST   | `/login`               | Public + Origin        | `{ email, password }`         | 200 session body + cookie                                                                                  |
-| POST   | `/refresh`             | Public + Origin        | cookie                        | 200 session body + rotated cookie                                                                          |
-| POST   | `/logout`              | Public + Origin        | cookie (optional)             | 204, family revoked, cookie cleared. 204 also without a cookie, so it works after the access token expired |
-| POST   | `/switch-organization` | Authenticated + Origin | `{ organizationId }` + cookie | 200 session body + rotated cookie (same family, new org); `last_organization_id` updated                   |
-| GET    | `/me`                  | Authenticated          | –                             | 200 `{ user, organizations, activeOrganizationId, activeRole, activePermissions }`                         |
-| POST   | `/password/forgot`     | Public                 | `{ email }`                   | 202 always                                                                                                 |
-| POST   | `/password/reset`      | Public                 | `{ token, password }`         | 204                                                                                                        |
-| POST   | `/verify-email`        | Public                 | `{ token }`                   | 204                                                                                                        |
-| POST   | `/verify-email/resend` | Public                 | `{ email }`                   | 202 always                                                                                                 |
+| Method | Path                   | Marker                 | Request                       | Success                                                                                                                     |
+| ------ | ---------------------- | ---------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/login`               | Public + Origin        | `{ email, password }`         | 200 session body + cookie                                                                                                   |
+| POST   | `/refresh`             | Public + Origin        | cookie                        | 200 session body + rotated cookie                                                                                           |
+| POST   | `/logout`              | Public + Origin        | cookie (optional)             | 204, family revoked, cookie cleared. 204 also without a cookie, so it works after the access token expired                  |
+| POST   | `/switch-organization` | Authenticated + Origin | `{ organizationId }` + cookie | 200 session body + rotated cookie (same family, new org); `last_organization_id` updated                                    |
+| GET    | `/me`                  | Authenticated          | –                             | 200 `{ user, organizations, activeOrganizationId, activeRole, activePermissions }`                                          |
+| PATCH  | `/me`                  | Authenticated          | `{ locale: 'en' \| 'de' }`    | 200 as `GET /me`: the caller's own UI and mail language (users row only; security event `auth.locale.changed`, ADR 0008 §7) |
+| POST   | `/password/forgot`     | Public                 | `{ email }`                   | 202 always                                                                                                                  |
+| POST   | `/password/reset`      | Public                 | `{ token, password }`         | 204                                                                                                                         |
+| POST   | `/verify-email`        | Public                 | `{ token }`                   | 204                                                                                                                         |
+| POST   | `/verify-email/resend` | Public                 | `{ email }`                   | 202 always                                                                                                                  |
 
 Session body: `{ accessToken, expiresIn, user: { id, email, locale }, activeOrganizationId, organizations: [{ id, name }],
 activeRole, activePermissions }`. `activeRole` (`{ id, systemKey, name }` or `null`) and `activePermissions` (registered

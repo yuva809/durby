@@ -1,5 +1,6 @@
 import { FEATURE_KEYS, sessionResponseSchema, type SessionResponse } from '@durby/shared';
 import { v7 as uuidv7 } from 'uuid';
+import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type AuthTestKit,
@@ -452,6 +453,60 @@ describe('auth', () => {
 
     it('requires an access token', async () => {
       await kit.client().get('/me').expect(401);
+    });
+  });
+
+  // Users choose their own language (docs/platform/auth.md → Endpoints).
+  describe('PATCH /me', () => {
+    const patchMe = (token: string | null, body: unknown) => {
+      const req = request(kit.server).patch('/api/v1/auth/me');
+      if (token) req.set(bearer(token));
+      return req.send(body as object);
+    };
+
+    it('sets the caller\'s language and answers like GET /me', async () => {
+      const org = await kit.createOrg('Org');
+      const user = await kit.createUser({ orgs: [org] });
+      const other = await kit.createUser({ orgs: [org] });
+      const { accessToken } = await kit.login(user.email);
+      const res = await patchMe(accessToken, { locale: 'de' }).expect(200);
+      expect(res.body).toEqual((await me(accessToken).expect(200)).body);
+      expect(res.body).toMatchObject({ user: { id: user.id, locale: 'de' } });
+      // Setting it again changes nothing; nobody else's language moves.
+      await patchMe(accessToken, { locale: 'de' }).expect(200);
+      const stored = await kit.raw.user.findMany({
+        where: { id: { in: [user.id, other.id] } },
+        select: { id: true, locale: true },
+      });
+      expect(Object.fromEntries(stored.map((u) => [u.id, u.locale]))).toEqual({
+        [user.id]: 'de',
+        [other.id]: 'en',
+      });
+    });
+
+    it('works without an active organization', async () => {
+      const user = await kit.createUser();
+      const { accessToken } = await kit.login(user.email);
+      const res = await patchMe(accessToken, { locale: 'de' }).expect(200);
+      expect(res.body).toMatchObject({ activeOrganizationId: null, user: { locale: 'de' } });
+    });
+
+    it('sends later mails in the new language', async () => {
+      const user = await kit.createUser();
+      const { accessToken } = await kit.login(user.email);
+      await patchMe(accessToken, { locale: 'de' }).expect(200);
+      await kit.client().post('/password/forgot').send({ email: user.email }).expect(202);
+      await kit.settle();
+      expect(kit.mailer.to(user.email).at(-1)?.subject).toBe('Neues Passwort festlegen');
+    });
+
+    it('accepts en and de only, nothing else in the body, and needs an access token', async () => {
+      const user = await kit.createUser();
+      const { accessToken } = await kit.login(user.email);
+      for (const body of [{ locale: 'fr' }, {}, { locale: 'de', email: 'x@example.test' }]) {
+        await patchMe(accessToken, body).expect(400);
+      }
+      await patchMe(null, { locale: 'de' }).expect(401);
     });
   });
 

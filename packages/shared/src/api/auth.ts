@@ -1,3 +1,4 @@
+import { LOCALES } from '@durby/i18n';
 import { z } from 'zod';
 import { roleRefSchema } from './rbac';
 
@@ -35,6 +36,9 @@ export const changePasswordRequestSchema = z.object({
   currentPassword: z.string().min(1).max(PASSWORD_MAX_LENGTH),
   newPassword: newPasswordSchema,
 });
+
+/** PATCH /auth/me: the caller's own settings; today only the UI and mail language. */
+export const updateMeRequestSchema = z.strictObject({ locale: z.enum(LOCALES) });
 
 export const authUserSchema = z.object({
   id: z.uuid(),
@@ -100,6 +104,7 @@ export type EmailRequest = z.infer<typeof emailRequestSchema>;
 export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
 export type VerifyEmailRequest = z.infer<typeof verifyEmailRequestSchema>;
 export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
+export type UpdateMeRequest = z.infer<typeof updateMeRequestSchema>;
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type OrganizationSummary = z.infer<typeof organizationSummarySchema>;
 export type MeResponse = z.infer<typeof meResponseSchema>;
