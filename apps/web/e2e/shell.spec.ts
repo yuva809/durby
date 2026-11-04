@@ -26,11 +26,11 @@ test.describe('default partner domain', () => {
     await expect(page.getByRole('menuitemradio')).toHaveText(['Demo Bistro', 'Demo Café']);
     await page.keyboard.press('Escape');
 
-    for (const id of ['catalog', 'service', 'tables', 'settings']) {
+    for (const id of ['catalog', 'service', 'tables', 'inventory', 'settings']) {
       await expect(nav.getByTestId(`nav-${id}`)).toBeVisible();
     }
     // Modules not built yet stay out of the menu (their pages still open by URL).
-    for (const id of ['inventory', 'billing', 'pos', 'reports']) {
+    for (const id of ['billing', 'pos', 'reports']) {
       await expect(nav.getByTestId(`nav-${id}`)).toHaveCount(0);
     }
   });
@@ -50,14 +50,15 @@ test.describe('demo partner domain', () => {
     // The inventory plan has no pos feature: no Service or Tables.
     await expect(nav.getByTestId('nav-service')).toHaveCount(0);
     await expect(nav.getByTestId('nav-tables')).toHaveCount(0);
-    await expect(nav.getByTestId('nav-inventory')).toHaveCount(0);
+    // Partner terminology: the inventory module carries the partner's label in the menu.
+    await expect(nav.getByTestId('nav-inventory')).toContainText('Stock');
     // One organization: its name, no switcher; the Durby organizations stay invisible.
     await expect(page.getByTestId('organization')).toHaveText('Demo Trattoria');
     await expect(page.getByTestId('organization-switcher')).toHaveCount(0);
 
     await page.goto(`${DOMAINS.demo}/billing`);
     await expect(page.getByTestId('module-notAvailable')).toBeVisible();
-    // Partner terminology: the inventory placeholder carries the partner's label.
+    // ...and as the page heading.
     await page.goto(`${DOMAINS.demo}/inventory`);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Stock');
 
