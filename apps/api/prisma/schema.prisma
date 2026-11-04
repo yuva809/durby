@@ -106,6 +106,11 @@ model Organization {
   posOrders                    PosOrder[]
   posKitchenTickets            PosKitchenTicket[]
   posTicketStatusChanges       PosTicketStatusChange[]
+  warehouses                   Warehouse[]
+  stockItems                   StockItem[]
+  stockDocuments               StockDocument[]
+  stockMovements               StockMovement[]
+  stockLevels                  StockLevel[]
   posOrderLines                PosOrderLine[]
   diningAreas                  DiningArea[]
   reservationTableRules        ReservationTableRule[]
@@ -152,6 +157,7 @@ model Location {
   diningAreas             DiningArea[]
   reservationCombinations ReservationCombination[]
   reservations            Reservation[]
+  warehouses              Warehouse[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -895,19 +901,19 @@ model PosOrder {
 
 /// One send to the kitchen (or one void). Append-only.
 model PosKitchenTicket {
-  id              String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId        String               @map("tenant_id") @db.Uuid
-  orderId         String               @map("order_id") @db.Uuid
+  id              String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String                  @map("tenant_id") @db.Uuid
+  orderId         String                  @map("order_id") @db.Uuid
   sequence        Int
   kind            PosKitchenTicketKind
   /// Snapshot of the lines' category station at send time (ADR 0025).
-  station         PrepStation          @default(kitchen)
-  createdByUserId String               @map("created_by_user_id") @db.Uuid
-  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  organization    Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  order           PosOrder             @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  station         PrepStation             @default(kitchen)
+  createdByUserId String                  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization            @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  order           PosOrder                @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   lines           PosOrderLine[]
-  linesOfOrder    PosOrderLine[]       @relation("PosOrderLineTicketOfOrder")
+  linesOfOrder    PosOrderLine[]          @relation("PosOrderLineTicketOfOrder")
   statusChanges   PosTicketStatusChange[]
 
   @@unique([tenantId, id])
@@ -1337,4 +1343,142 @@ model ReservationStatusChange {
   @@unique([tenantId, id])
   @@index([tenantId, reservationId, createdAt])
   @@map("reservation_status_changes")
+}
+
+// ---------------------------------------------------------------------------
+// Inventory module: warehouses and the stock ledger (docs/modules/inventory.md, ADR 0027). Private to
+// modules/inventory.
+// ---------------------------------------------------------------------------
+
+enum StockUnit {
+  kg
+  g
+  l
+  ml
+  pc
+
+  @@map("stock_unit")
+}
+
+enum StockDocumentKind {
+  receipt
+  adjustment
+  transfer
+
+  @@map("stock_document_kind")
+}
+
+enum StockAdjustmentReason {
+  waste
+  breakage
+  count
+  other
+
+  @@map("stock_adjustment_reason")
+}
+
+/// A store at a location (main store, kitchen, bar, cold room). Archived, never deleted.
+model Warehouse {
+  id           String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String          @map("tenant_id") @db.Uuid
+  locationId   String          @map("location_id") @db.Uuid
+  name         String
+  sortOrder    Int             @default(0) @map("sort_order")
+  archivedAt   DateTime?       @map("archived_at") @db.Timestamptz(6)
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location     Location        @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  documents    StockDocument[] @relation("StockDocumentWarehouse")
+  incoming     StockDocument[] @relation("StockDocumentToWarehouse")
+  movements    StockMovement[]
+  levels       StockLevel[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, locationId])
+  @@map("warehouses")
+}
+
+/// An ingredient or good kept in stock, organization-wide. The unit is fixed once the item has movements.
+model StockItem {
+  id           String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String          @map("tenant_id") @db.Uuid
+  name         String
+  sku          String?
+  unit         StockUnit
+  /// Reorder level; null = none.
+  minQuantity  Decimal?        @map("min_quantity") @db.Decimal(14, 3)
+  archivedAt   DateTime?       @map("archived_at") @db.Timestamptz(6)
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  movements    StockMovement[]
+  levels       StockLevel[]
+
+  @@unique([tenantId, id])
+  @@map("stock_items")
+}
+
+/// A receipt, adjustment or transfer. Append-only; numbered per kind (ADR 0012).
+model StockDocument {
+  id              String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String                 @map("tenant_id") @db.Uuid
+  number          String
+  kind            StockDocumentKind
+  warehouseId     String                 @map("warehouse_id") @db.Uuid
+  /// Set exactly for transfers (stock_documents_transfer_check).
+  toWarehouseId   String?                @map("to_warehouse_id") @db.Uuid
+  /// Set exactly for adjustments (stock_documents_reason_check).
+  reason          StockAdjustmentReason?
+  supplier        String?
+  note            String?
+  createdByUserId String                 @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization           @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  warehouse       Warehouse              @relation("StockDocumentWarehouse", fields: [tenantId, warehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  toWarehouse     Warehouse?             @relation("StockDocumentToWarehouse", fields: [tenantId, toWarehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  movements       StockMovement[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, number])
+  @@index([tenantId, warehouseId, createdAt])
+  @@map("stock_documents")
+}
+
+/// One line of the stock ledger: signed quantity at a unit cost. Append-only (CLAUDE.md rule 7).
+model StockMovement {
+  id           String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String        @map("tenant_id") @db.Uuid
+  documentId   String        @map("document_id") @db.Uuid
+  warehouseId  String        @map("warehouse_id") @db.Uuid
+  itemId       String        @map("item_id") @db.Uuid
+  quantity     Decimal       @db.Decimal(14, 3)
+  unitCost     Decimal       @map("unit_cost") @db.Decimal(14, 4)
+  value        Decimal       @db.Decimal(14, 2)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  document     StockDocument @relation(fields: [tenantId, documentId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  warehouse    Warehouse     @relation(fields: [tenantId, warehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  item         StockItem     @relation(fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, documentId])
+  @@index([tenantId, itemId, warehouseId])
+  @@map("stock_movements")
+}
+
+/// Current quantity and weighted average cost per warehouse and item: the ledger's projection (ADR 0027 §4).
+model StockLevel {
+  tenantId     String       @map("tenant_id") @db.Uuid
+  warehouseId  String       @map("warehouse_id") @db.Uuid
+  itemId       String       @map("item_id") @db.Uuid
+  quantity     Decimal      @db.Decimal(14, 3)
+  averageCost  Decimal      @map("average_cost") @db.Decimal(14, 4)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  warehouse    Warehouse    @relation(fields: [tenantId, warehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  item         StockItem    @relation(fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([tenantId, warehouseId, itemId])
+  @@map("stock_levels")
 }

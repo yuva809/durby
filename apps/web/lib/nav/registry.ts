@@ -60,7 +60,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: Package,
     group: 'modules',
     feature: 'inventory',
-    planned: true,
+    // Stock, documents and setup (docs/modules/inventory.md → Web).
+    permission: 'inventory.stock.read',
   },
   {
     id: 'catalog',

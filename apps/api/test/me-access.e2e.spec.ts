@@ -63,7 +63,12 @@ describe('active role and permissions', () => {
       .expect(200);
     expect(access(switched.body)).toEqual({
       activeRole: { id: b.roles.staff, systemKey: 'staff', name: null },
-      activePermissions: ['platform.settings.read', 'catalog.products.read', 'pos.tables.read'],
+      activePermissions: [
+        'platform.settings.read',
+        'catalog.products.read',
+        'inventory.stock.read',
+        'pos.tables.read',
+      ],
     });
     const token = (switched.body as { accessToken: string }).accessToken;
     expect(access((await me(token)).body).activeRole).toMatchObject({ systemKey: 'staff' });
@@ -81,7 +86,12 @@ describe('active role and permissions', () => {
     expect(access(adminMe.body).activeRole).toMatchObject({ id: a.roles.admin });
     expect(access(staffMe.body)).toEqual({
       activeRole: { id: a.roles.staff, systemKey: 'staff', name: null },
-      activePermissions: ['platform.settings.read', 'catalog.products.read', 'pos.tables.read'],
+      activePermissions: [
+        'platform.settings.read',
+        'catalog.products.read',
+        'inventory.stock.read',
+        'pos.tables.read',
+      ],
     });
   });
 

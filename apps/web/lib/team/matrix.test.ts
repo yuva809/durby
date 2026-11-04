@@ -47,6 +47,7 @@ describe('visiblePermissions', () => {
     const modules = new Set(groups.flatMap((g) => g.keys.map(moduleOf)));
     expect(modules).toEqual(new Set(['platform', 'catalog']));
     expect(hiddenModules).toEqual([
+      'platform.features.inventory.name',
       'platform.features.pos.name',
       'platform.features.reservations.name',
     ]);

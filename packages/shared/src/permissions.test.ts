@@ -46,6 +46,11 @@ describe('system roles', () => {
     expect(systemRolePermissions('admin').has('catalog.products.manage')).toBe(true);
     expect([...systemRolePermissions('manager')].sort()).toEqual([
       'catalog.products.read',
+      'inventory.stock.adjust',
+      'inventory.stock.read',
+      'inventory.stock.receive',
+      'inventory.stock.transfer',
+      'inventory.warehouses.manage',
       'platform.roles.read',
       'platform.settings.read',
       'platform.users.invite',
@@ -66,6 +71,7 @@ describe('system roles', () => {
     ]);
     expect([...systemRolePermissions('staff')].sort()).toEqual([
       'catalog.products.read',
+      'inventory.stock.read',
       'platform.settings.read',
       'pos.tables.read',
     ]);
@@ -136,12 +142,16 @@ describe('system roles', () => {
   });
 
   // ADR 0026: a station's screen only; no prices, orders or menu editing.
-  it('gives Kitchen and Bar their screen and the settings, nothing else', () => {
+  it('gives Kitchen and Bar their screen, the settings and their stores, nothing else', () => {
+    // Inventory (docs/modules/inventory.md): their stores' stock, deliveries and waste.
+    const store = ['inventory.stock.adjust', 'inventory.stock.read', 'inventory.stock.receive'];
     expect([...systemRolePermissions('kitchen')].sort()).toEqual([
+      ...store,
       'platform.settings.read',
       'pos.kitchen.use',
     ]);
     expect([...systemRolePermissions('bar')].sort()).toEqual([
+      ...store,
       'platform.settings.read',
       'pos.bar.use',
     ]);

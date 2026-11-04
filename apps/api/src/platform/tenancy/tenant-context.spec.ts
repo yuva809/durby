@@ -114,7 +114,12 @@ describe('TENANT_MODELS', () => {
       'Role',
       'RolePermission',
       'SettingValue',
+      'StockDocument',
+      'StockItem',
+      'StockLevel',
+      'StockMovement',
       'TenantFeatureOverride',
+      'Warehouse',
     ]);
   });
 });

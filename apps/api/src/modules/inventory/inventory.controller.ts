@@ -1,0 +1,152 @@
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  type AdjustmentRequest,
+  adjustmentRequestSchema,
+  type CreateStockItemRequest,
+  createStockItemRequestSchema,
+  type CreateWarehouseRequest,
+  createWarehouseRequestSchema,
+  type ListStockDocumentsQuery,
+  listStockDocumentsQuerySchema,
+  type ListStockItemsQuery,
+  listStockItemsQuerySchema,
+  type ListWarehousesQuery,
+  listWarehousesQuerySchema,
+  type ReceiptRequest,
+  receiptRequestSchema,
+  type StockDocument,
+  type StockItem,
+  type StockQuery,
+  stockQuerySchema,
+  type TransferRequest,
+  transferRequestSchema,
+  type UpdateStockItemRequest,
+  updateStockItemRequestSchema,
+  type UpdateWarehouseRequest,
+  updateWarehouseRequestSchema,
+  type Warehouse,
+} from '@durby/shared';
+import { RequireFeature } from '../../platform/config/entitlements';
+import { ZodBody, ZodQuery } from '../../platform/http';
+import { Idempotent } from '../../platform/idempotency';
+import { RequirePermission } from '../../platform/rbac';
+import { inventoryErrors } from './inventory-errors';
+import { InventorySetupService } from './setup.service';
+import { StockService } from './stock.service';
+
+const id = (notFound: () => Error) => new ParseUUIDPipe({ exceptionFactory: notFound });
+
+/**
+ * /api/v1/inventory (docs/modules/inventory.md). The guard checks each key for some location; the
+ * services check it at the warehouse's location. Creates and stock documents append rows, so they
+ * complete their idempotency key in the business transaction (rule 8).
+ */
+@RequireFeature('inventory')
+@Controller('inventory')
+export class InventoryController {
+  constructor(
+    private readonly setup: InventorySetupService,
+    private readonly stockService: StockService,
+  ) {}
+
+  @RequirePermission('inventory.stock.read')
+  @Get('warehouses')
+  async warehouses(
+    @Query(new ZodQuery(listWarehousesQuerySchema)) query: ListWarehousesQuery,
+  ): Promise<{ data: Warehouse[] }> {
+    return { data: await this.setup.listWarehouses(query) };
+  }
+
+  @RequirePermission('inventory.warehouses.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post('warehouses')
+  createWarehouse(
+    @Body(new ZodBody(createWarehouseRequestSchema)) body: CreateWarehouseRequest,
+  ): Promise<Warehouse> {
+    return this.setup.createWarehouse(body);
+  }
+
+  @RequirePermission('inventory.warehouses.manage')
+  @Idempotent()
+  @Patch('warehouses/:id')
+  updateWarehouse(
+    @Param('id', id(inventoryErrors.warehouseNotFound)) warehouseId: string,
+    @Body(new ZodBody(updateWarehouseRequestSchema)) body: UpdateWarehouseRequest,
+  ): Promise<Warehouse> {
+    return this.setup.updateWarehouse(warehouseId, body);
+  }
+
+  @RequirePermission('inventory.stock.read')
+  @Get('items')
+  async items(
+    @Query(new ZodQuery(listStockItemsQuerySchema)) query: ListStockItemsQuery,
+  ): Promise<{ data: StockItem[] }> {
+    return { data: await this.setup.listItems(query) };
+  }
+
+  @RequirePermission('inventory.items.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post('items')
+  createItem(
+    @Body(new ZodBody(createStockItemRequestSchema)) body: CreateStockItemRequest,
+  ): Promise<StockItem> {
+    return this.setup.createItem(body);
+  }
+
+  @RequirePermission('inventory.items.manage')
+  @Idempotent()
+  @Patch('items/:id')
+  updateItem(
+    @Param('id', id(() => inventoryErrors.itemNotFound())) itemId: string,
+    @Body(new ZodBody(updateStockItemRequestSchema)) body: UpdateStockItemRequest,
+  ): Promise<StockItem> {
+    return this.setup.updateItem(itemId, body);
+  }
+
+  @RequirePermission('inventory.stock.receive')
+  @Idempotent({ completion: 'transaction' })
+  @Post('receipts')
+  receive(@Body(new ZodBody(receiptRequestSchema)) body: ReceiptRequest): Promise<StockDocument> {
+    return this.stockService.receive(body);
+  }
+
+  @RequirePermission('inventory.stock.adjust')
+  @Idempotent({ completion: 'transaction' })
+  @Post('adjustments')
+  adjust(
+    @Body(new ZodBody(adjustmentRequestSchema)) body: AdjustmentRequest,
+  ): Promise<StockDocument> {
+    return this.stockService.adjust(body);
+  }
+
+  @RequirePermission('inventory.stock.transfer')
+  @Idempotent({ completion: 'transaction' })
+  @Post('transfers')
+  transfer(
+    @Body(new ZodBody(transferRequestSchema)) body: TransferRequest,
+  ): Promise<StockDocument> {
+    return this.stockService.transfer(body);
+  }
+
+  @RequirePermission('inventory.stock.read')
+  @Get('stock')
+  async stock(@Query(new ZodQuery(stockQuerySchema)) query: StockQuery) {
+    return { data: await this.stockService.stock(query) };
+  }
+
+  @RequirePermission('inventory.stock.read')
+  @Get('documents')
+  async documents(
+    @Query(new ZodQuery(listStockDocumentsQuerySchema)) query: ListStockDocumentsQuery,
+  ) {
+    return { data: await this.stockService.documents(query) };
+  }
+
+  @RequirePermission('inventory.stock.read')
+  @Get('documents/:id')
+  document(
+    @Param('id', id(inventoryErrors.documentNotFound)) documentId: string,
+  ): Promise<StockDocument> {
+    return this.stockService.document(documentId);
+  }
+}

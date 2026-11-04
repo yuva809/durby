@@ -93,6 +93,8 @@ describe('/api/v1/number-series', () => {
       const body = numberSeriesListResponseSchema.parse((await list(token).expect(200)).body);
       expect(body.data.map((s) => s.key)).toEqual([
         'inventory.goodsReceipt',
+        'inventory.stockAdjustment',
+        'inventory.stockTransfer',
         'inventory.purchaseOrder',
         'billing.invoice',
         'pos.order',
@@ -116,7 +118,12 @@ describe('/api/v1/number-series', () => {
       const keys = numberSeriesListResponseSchema
         .parse((await list(token).expect(200)).body)
         .data.map((s) => s.key);
-      expect(keys).toEqual(['inventory.goodsReceipt', 'inventory.purchaseOrder']);
+      expect(keys).toEqual([
+        'inventory.goodsReceipt',
+        'inventory.stockAdjustment',
+        'inventory.stockTransfer',
+        'inventory.purchaseOrder',
+      ]);
     });
 
     it('shows the next number after allocations', async () => {

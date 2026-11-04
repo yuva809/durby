@@ -55,7 +55,12 @@ describe('auth', () => {
         activeOrganizationId: orgB,
         // kit.join gives the Staff role (see rbac tests for the others); kit orgs are on `full`.
         activeRole: { id: expect.any(String) as string, systemKey: 'staff', name: null },
-        activePermissions: ['platform.settings.read', 'catalog.products.read', 'pos.tables.read'],
+        activePermissions: [
+          'platform.settings.read',
+          'catalog.products.read',
+          'inventory.stock.read',
+          'pos.tables.read',
+        ],
         activeFeatures: [...FEATURE_KEYS],
         passwordChangeRequired: false,
       });
@@ -444,7 +449,12 @@ describe('auth', () => {
         organizations: [{ id: org, name: 'Org' }],
         activeOrganizationId: org,
         activeRole: { id: expect.any(String) as string, systemKey: 'staff', name: null },
-        activePermissions: ['platform.settings.read', 'catalog.products.read', 'pos.tables.read'],
+        activePermissions: [
+          'platform.settings.read',
+          'catalog.products.read',
+          'inventory.stock.read',
+          'pos.tables.read',
+        ],
         activeFeatures: [...FEATURE_KEYS],
         passwordChangeRequired: false,
       });
