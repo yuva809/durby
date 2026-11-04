@@ -186,6 +186,78 @@ describe('manage staff', () => {
       .expect(400);
   });
 
+  // The inviter chooses the new staff member's language (docs/platform/auth.md → Language).
+  describe('language', () => {
+    const localeOf = async (email: string) =>
+      (await kit.raw.user.findUniqueOrThrow({ where: { email }, select: { locale: true } })).locale;
+    const waitForMail = async (email: string) => {
+      for (let i = 0; i < 100 && kit.mailer.to(email).length === 0; i++) {
+        await new Promise((r) => setTimeout(r, 20));
+      }
+      return kit.mailer.to(email).at(-1);
+    };
+    const accept = (link: string, locale: string) =>
+      request(kit.server)
+        .post('/api/v1/invitations/accept')
+        .set('X-Forwarded-For', randomIp())
+        .send({ token: new URL(link).hash.replace('#token=', ''), password: PASSWORD, locale });
+
+    it('creates the account in the chosen language, else in the organization language', async () => {
+      const [chosen, fallback] = [newEmail(), newEmail()];
+      const body = { name: 'Ravi', roleId: a.roles.waiter, temporaryPassword: TEMP };
+      await api(ownerA.token)
+        .post('', { ...body, email: chosen, locale: 'de' })
+        .expect(201);
+      await api(ownerA.token)
+        .post('', { ...body, email: fallback })
+        .expect(201);
+      expect(await localeOf(chosen)).toBe('de');
+      expect(await localeOf(fallback)).toBe('en');
+    });
+
+    it('mails the invitation in the chosen language and keeps it on accept', async () => {
+      const email = newEmail();
+      const res = await api(ownerA.token)
+        .post('', { name: 'Arun', email, roleId: a.roles.staff, sendEmail: true, locale: 'de' })
+        .expect(201);
+      expect((await waitForMail(email))?.subject).toBe('Einladung zu Bistro A');
+      const { invitationId } = res.body as { invitationId: string };
+      const { link } = (await api(ownerA.token).link(invitationId).expect(200)).body as {
+        link: string;
+      };
+      // The browser's language loses to the inviter's choice.
+      await accept(link, 'en').expect(200);
+      expect(await localeOf(email)).toBe('de');
+    });
+
+    it("mails an existing account in its own language, not the inviter's choice", async () => {
+      const existing = await kit.createUser();
+      await api(ownerA.token)
+        .post('', {
+          name: 'Mina',
+          email: existing.email,
+          roleId: a.roles.cashier,
+          sendEmail: true,
+          locale: 'de',
+        })
+        .expect(201);
+      expect((await waitForMail(existing.email))?.subject).toBe("You're invited to Bistro A");
+      expect(await localeOf(existing.email)).toBe('en');
+    });
+
+    it('accepts only a language the platform has', async () => {
+      await api(ownerA.token)
+        .post('', { name: 'X', email: newEmail(), roleId: a.roles.staff, locale: 'fr' })
+        .expect(400);
+      await request(kit.server)
+        .post('/api/v1/invitations')
+        .set('Idempotency-Key', uuidv7())
+        .auth(ownerA.token, { type: 'bearer' })
+        .send({ email: newEmail(), roleId: a.roles.staff, locale: 'fr' })
+        .expect(400);
+    });
+  });
+
   it('deactivates and reactivates a member, but never the last active Owner or yourself', async () => {
     const cashier = await member(a, a.roles.cashier);
     const id = (await api(ownerA.token).list()).members.find(

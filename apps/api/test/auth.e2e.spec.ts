@@ -464,7 +464,7 @@ describe('auth', () => {
       return req.send(body as object);
     };
 
-    it('sets the caller\'s language and answers like GET /me', async () => {
+    it("sets the caller's language and answers like GET /me", async () => {
       const org = await kit.createOrg('Org');
       const user = await kit.createUser({ orgs: [org] });
       const other = await kit.createUser({ orgs: [org] });
