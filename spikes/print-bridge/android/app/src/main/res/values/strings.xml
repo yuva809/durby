@@ -10,6 +10,10 @@
     <string name="test_connection">Test connection</string>
     <string name="test_print">Test print (text)</string>
     <string name="test_raster">Test print (raster ruler)</string>
+    <string name="test_raster_esc_star">Test print (raster ruler, ESC * fallback)</string>
+    <string name="printer_esc_star">Print images with ESC * instead of GS v 0 (also for prints from Durby)</string>
+    <string name="kick_drawer_pin2">Kick cash drawer (pin 2)</string>
+    <string name="kick_drawer_pin5">Kick cash drawer (pin 5)</string>
     <string name="log_title">Log</string>
     <string name="notification_channel">Print bridge</string>
     <string name="notification_text">Listening on 127.0.0.1:%1$d · printer %2$s</string>

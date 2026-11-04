@@ -21,12 +21,15 @@ object Prefs {
     private const val NAME = "printer"
 
     fun load(ctx: Context): PrinterConfig = ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE).run {
-        PrinterConfig(getString("host", "") ?: "", getInt("port", 9100), getInt("dots", 576), getBoolean("cutter", true))
+        PrinterConfig(
+            getString("host", "") ?: "", getInt("port", 9100), getInt("dots", 576), getBoolean("cutter", true),
+            getBoolean("escStar", false),
+        )
     }
 
     fun save(ctx: Context, cfg: PrinterConfig) = ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE).edit()
         .putString("host", cfg.host.trim()).putInt("port", cfg.port).putInt("dots", cfg.dots)
-        .putBoolean("cutter", cfg.cutter).apply()
+        .putBoolean("cutter", cfg.cutter).putBoolean("escStar", cfg.escStar).apply()
 }
 
 /** In-memory log the activity shows (spike only; the real app keeps no request contents). */

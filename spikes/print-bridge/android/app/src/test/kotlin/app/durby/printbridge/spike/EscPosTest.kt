@@ -52,6 +52,44 @@ class EscPosTest {
     }
 
     @Test
+    fun `ESC star sends 24-dot stripes column by column, top dot first`() {
+        // 8 dots wide, 25 rows: only the top-left dot and the dot at (7, 24) are black.
+        val bits = ByteArray(25)
+        bits[0] = 0x80.toByte()
+        bits[24] = 0x01
+        val out = EscPos.escStar(8, 25, bits)
+        val stripe = 5 + 8 * 3 + 1
+        assertEquals(3 + 2 * stripe + 2, out.size)
+        assertArrayEquals(hex(0x1B, 0x33, 24), out.copyOfRange(0, 3))
+        assertArrayEquals(hex(0x1B, 0x2A, 33, 8, 0), out.copyOfRange(3, 8))
+        assertArrayEquals(hex(0x80, 0, 0), out.copyOfRange(8, 11)) // column 0, rows 0..23
+        assertTrue(out.copyOfRange(11, 8 + 24).all { it == 0.toByte() })
+        assertEquals(0x0A.toByte(), out[8 + 24])
+        val second = 3 + stripe
+        assertArrayEquals(hex(0x1B, 0x2A, 33, 8, 0), out.copyOfRange(second, second + 5))
+        assertArrayEquals(hex(0x80, 0, 0), out.copyOfRange(second + 5 + 7 * 3, second + 5 + 8 * 3)) // column 7, row 24
+        assertArrayEquals(hex(0x1B, 0x32), out.copyOfRange(out.size - 2, out.size))
+    }
+
+    @Test
+    fun `width above 255 dots goes into nL nH`() {
+        val out = EscPos.escStar(576, 24, ByteArray(72 * 24))
+        assertArrayEquals(hex(0x1B, 0x2A, 33, 0x40, 0x02), out.copyOfRange(3, 8))
+    }
+
+    @Test
+    fun `a raster job can use ESC star`() {
+        val job = EscPos.rasterJob(8, 1, ByteArray(1), cutter = true, escStar = true)
+        assertArrayEquals(hex(0x1B, 0x40, 0x1B, 0x33, 24, 0x1B, 0x2A), job.copyOfRange(0, 7))
+    }
+
+    @Test
+    fun `drawer kick on pin 2 and pin 5`() {
+        assertArrayEquals(hex(0x1B, 0x70, 0, 25, 250), EscPos.kickDrawer())
+        assertArrayEquals(hex(0x1B, 0x70, 1, 25, 250), EscPos.kickDrawer(pin5 = true))
+    }
+
+    @Test
     fun `text is ASCII with a line feed, anything else becomes a question mark`() {
         assertArrayEquals("Gr??e 5?\n".toByteArray(), EscPos.line("Grüße 5€").let { it })
     }

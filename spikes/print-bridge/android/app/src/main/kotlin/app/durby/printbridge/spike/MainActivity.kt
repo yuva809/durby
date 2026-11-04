@@ -45,12 +45,15 @@ class MainActivity : Activity() {
         val dots = field(cfg.dots.toString(), InputType.TYPE_CLASS_NUMBER)
         val cutter = CheckBox(this).apply { setText(R.string.printer_cutter); isChecked = cfg.cutter }
         root.addView(cutter)
+        val escStar = CheckBox(this).apply { setText(R.string.printer_esc_star); isChecked = cfg.escStar }
+        root.addView(escStar)
 
         fun current() = PrinterConfig(
             host.text.toString().trim(),
             port.text.toString().toIntOrNull() ?: 9100,
             (dots.text.toString().toIntOrNull() ?: 576).coerceIn(8, 2040),
             cutter.isChecked,
+            escStar.isChecked,
         )
         fun button(res: Int, action: () -> Unit) = root.addView(Button(this).apply {
             setText(res); setOnClickListener { action() }
@@ -74,8 +77,22 @@ class MainActivity : Activity() {
         button(R.string.test_raster) {
             onPrinter {
                 val (h, bits) = EscPos.ruler(it.dots)
-                "ruler: " + TcpPrinter(it.host, it.port).send(EscPos.rasterJob(it.dots, h, bits, it.cutter))
+                "ruler (${if (it.escStar) "ESC *" else "GS v 0"}): " +
+                    TcpPrinter(it.host, it.port).send(EscPos.rasterJob(it.dots, h, bits, it.cutter, it.escStar))
             }
+        }
+        // Always ESC *, whatever the checkbox says: the retry when the GS v 0 ruler doesn't print.
+        button(R.string.test_raster_esc_star) {
+            onPrinter {
+                val (h, bits) = EscPos.ruler(it.dots)
+                "ruler (ESC *): " + TcpPrinter(it.host, it.port).send(EscPos.rasterJob(it.dots, h, bits, it.cutter, escStar = true))
+            }
+        }
+        button(R.string.kick_drawer_pin2) {
+            onPrinter { "drawer pin 2: " + TcpPrinter(it.host, it.port).send(EscPos.kickDrawer(pin5 = false)) }
+        }
+        button(R.string.kick_drawer_pin5) {
+            onPrinter { "drawer pin 5: " + TcpPrinter(it.host, it.port).send(EscPos.kickDrawer(pin5 = true)) }
         }
 
         label(R.string.log_title)

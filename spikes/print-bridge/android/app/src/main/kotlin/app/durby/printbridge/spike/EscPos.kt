@@ -67,9 +67,50 @@ object EscPos {
         return out.toByteArray()
     }
 
-    /** A full job: init, the image, then cut (or just feed past the tear bar when there is no cutter). */
-    fun rasterJob(widthDots: Int, heightDots: Int, bits: ByteArray, cutter: Boolean): ByteArray =
-        concat(INIT, raster(widthDots, heightDots, bits), if (cutter) cut(3) else feed(4))
+    /**
+     * Fallback for printers without GS v 0: ESC * 33 (24-dot double density) bit-image stripes. Each stripe
+     * is 24 rows, sent column by column (3 bytes per column, most significant bit = top dot), then a line
+     * feed with the line spacing set to exactly 24 dots (ESC 3 24) so stripes join without gaps; ESC 2
+     * restores the default spacing. Same [bits] layout as [raster].
+     */
+    fun escStar(widthDots: Int, heightDots: Int, bits: ByteArray): ByteArray {
+        require(widthDots in 1..2040) { "width $widthDots" }
+        require(heightDots >= 1) { "height $heightDots" }
+        val rowBytes = bytesPerRow(widthDots)
+        require(bits.size == rowBytes * heightDots) { "expected ${rowBytes * heightDots} bytes, got ${bits.size}" }
+        fun dot(x: Int, y: Int) = y < heightDots && bits[y * rowBytes + x / 8].toInt() and (0x80 ushr (x % 8)) != 0
+        val out = ByteArrayOutputStream(bits.size * 3 + heightDots)
+        out.write(byteArrayOf(ESC, 0x33, 24))
+        var top = 0
+        while (top < heightDots) {
+            out.write(byteArrayOf(ESC, 0x2A, 33, (widthDots and 0xFF).toByte(), (widthDots shr 8).toByte()))
+            for (x in 0 until widthDots) {
+                for (k in 0 until 3) {
+                    var b = 0
+                    for (bit in 0 until 8) if (dot(x, top + k * 8 + bit)) b = b or (0x80 ushr bit)
+                    out.write(b)
+                }
+            }
+            out.write(LF.toInt())
+            top += 24
+        }
+        out.write(byteArrayOf(ESC, 0x32))
+        return out.toByteArray()
+    }
+
+    /** ESC p m t1 t2: drawer kick pulse on connector pin 2 (m=0) or pin 5 (m=1), 50 ms on, 500 ms off. */
+    fun kickDrawer(pin5: Boolean = false): ByteArray = byteArrayOf(ESC, 0x70, if (pin5) 1 else 0, 25, 250.toByte())
+
+    /**
+     * A full job: init, the image, then cut (or just feed past the tear bar when there is no cutter).
+     * [escStar] picks the ESC * fallback instead of GS v 0.
+     */
+    fun rasterJob(widthDots: Int, heightDots: Int, bits: ByteArray, cutter: Boolean, escStar: Boolean = false): ByteArray =
+        concat(
+            INIT,
+            if (escStar) escStar(widthDots, heightDots, bits) else raster(widthDots, heightDots, bits),
+            if (cutter) cut(3) else feed(4),
+        )
 
     /** A width ruler: a full-width bar, then tick marks every 48 dots (6 mm at 203 dpi), to check the dot width. */
     fun ruler(widthDots: Int): Pair<Int, ByteArray> {

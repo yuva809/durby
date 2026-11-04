@@ -12,7 +12,14 @@ import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
-data class PrinterConfig(val host: String, val port: Int, val dots: Int, val cutter: Boolean) {
+data class PrinterConfig(
+    val host: String,
+    val port: Int,
+    val dots: Int,
+    val cutter: Boolean,
+    /** Raster as ESC * stripes instead of GS v 0 (printers without GS v 0). */
+    val escStar: Boolean = false,
+) {
     val configured get() = host.isNotBlank()
 }
 
@@ -83,7 +90,7 @@ class LocalServer(
             "GET /health" -> respond(out, origin, 200, json(
                 "ok" to true, "spike" to true, "version" to "0.0.1-spike",
                 "printer" to JSONObject().put("configured", cfg.configured).put("host", cfg.host)
-                    .put("port", cfg.port).put("dots", cfg.dots).put("cutter", cfg.cutter),
+                    .put("port", cfg.port).put("dots", cfg.dots).put("cutter", cfg.cutter).put("escStar", cfg.escStar),
             ))
             "GET /status" -> {
                 if (!cfg.configured) return respond(out, origin, 409, notConfigured())
@@ -94,7 +101,7 @@ class LocalServer(
             "POST /print/test" -> print(out, origin, null, cfg) { TestReceipt.bytes(it, origin) }
             "POST /print/ruler" -> print(out, origin, null, cfg) {
                 val (h, bits) = EscPos.ruler(it.dots)
-                EscPos.rasterJob(it.dots, h, bits, it.cutter)
+                EscPos.rasterJob(it.dots, h, bits, it.cutter, it.escStar)
             }
             "POST /print/raster" -> {
                 val body = JSONObject(String(req.body, Charsets.UTF_8))
@@ -102,7 +109,7 @@ class LocalServer(
                 val height = body.getInt("height")
                 val bits = Base64.getDecoder().decode(body.getString("data"))
                 val jobId = body.optString("jobId").ifBlank { null }
-                print(out, origin, jobId, cfg) { EscPos.rasterJob(width, height, bits, it.cutter) }
+                print(out, origin, jobId, cfg) { EscPos.rasterJob(width, height, bits, it.cutter, it.escStar) }
             }
             else -> respond(out, origin, 404, json("code" to "bridge.not_found", "message" to req.path))
         }
