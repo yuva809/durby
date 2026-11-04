@@ -52,4 +52,14 @@ export class TablesController {
   ): Promise<DiningTable> {
     return this.tables.update(id, body);
   }
+
+  /** A new QR menu token; a replay returns the same one (ADR 0026). */
+  @RequirePermission('pos.tables.manage')
+  @Idempotent()
+  @Post(':id/menu-token')
+  rotateMenuToken(
+    @Param('id', new ParseUUIDPipe({ exceptionFactory: posErrors.tableNotFound })) id: string,
+  ): Promise<DiningTable> {
+    return this.tables.rotateMenuToken(id);
+  }
 }

@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type {
   AuditActor,
@@ -28,9 +29,13 @@ const TABLE_SELECT = {
   color: true,
   sortOrder: true,
   archivedAt: true,
+  menuToken: true,
 } as const;
 
-type TableRow = Omit<DiningTable, 'archivedAt'> & { archivedAt: Date | null };
+type TableRow = Omit<DiningTable, 'archivedAt' | 'menuCode'> & {
+  archivedAt: Date | null;
+  menuToken: string;
+};
 
 /**
  * Dining tables per location (docs/modules/pos.md → Step 1). Both keys are location-scoped and
@@ -151,6 +156,36 @@ export class TablesService {
     );
   }
 
+  /**
+   * A new QR menu token (docs/modules/pos.md → QR menu, ADR 0026): the table's old QR stops
+   * working. Audited without the token (not in the snapshot allow-list).
+   */
+  async rotateMenuToken(id: string): Promise<DiningTable> {
+    const { userId } = this.tenantContext.require();
+    const found = await this.db.diningTable.findUnique({
+      where: { id },
+      select: { locationId: true },
+    });
+    if (!found || !(await this.access.can('pos.tables.read', { locationId: found.locationId }))) {
+      throw posErrors.tableNotFound();
+    }
+    await this.access.assert('pos.tables.manage', { locationId: found.locationId });
+    return this.db.$transaction(async (tx) => {
+      const row = await tx.diningTable.update({
+        where: { id },
+        data: { menuToken: newMenuToken() },
+        select: TABLE_SELECT,
+      });
+      await this.audit.record(tx, {
+        action: 'pos.dining_table.menu_token_rotated',
+        actor: auditActor.user(userId),
+        entityId: id,
+        after: tableSnapshot(row),
+      });
+      return tableResponse(row);
+    });
+  }
+
   private async unique<T>(fn: () => Promise<T>): Promise<T> {
     try {
       return await fn();
@@ -178,8 +213,13 @@ function archivedAt(current: Date | null, archived: boolean | undefined): Date |
   return current ?? new Date();
 }
 
-function tableResponse(row: TableRow): DiningTable {
-  return { ...row, archivedAt: row.archivedAt?.toISOString() ?? null };
+/** 24 URL-safe characters (18 random bytes), like the database default pos_new_menu_token(). */
+function newMenuToken(): string {
+  return randomBytes(18).toString('base64url');
+}
+
+function tableResponse({ menuToken, ...row }: TableRow): DiningTable {
+  return { ...row, archivedAt: row.archivedAt?.toISOString() ?? null, menuCode: menuToken };
 }
 
 function tableSnapshot(row: TableRow) {

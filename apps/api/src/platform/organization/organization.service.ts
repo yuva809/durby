@@ -16,6 +16,16 @@ export class OrganizationService {
     private readonly audit: AuditService,
   ) {}
 
+  /** The organization's name, for pages shown on its behalf (the public menu, ADR 0026). */
+  async name(): Promise<string> {
+    const { tenantId } = this.tenantContext.require();
+    const row = await this.db.organization.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+    return row.name;
+  }
+
   rename(name: string): Promise<Organization> {
     const { tenantId, userId } = this.tenantContext.require();
     return this.db.$transaction(async (tx) => {

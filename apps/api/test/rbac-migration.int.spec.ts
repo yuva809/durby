@@ -115,10 +115,21 @@ describe('rbac migration backfill', () => {
         [orgWithMember, orgWithoutMember]
           .sort()
           // waiter and cashier: system_roles_backfill (ADR 0016); host: system_role_host_backfill
-          // (reservations, ADR 0007 amendment); on the same existing organizations.
+          // (reservations, ADR 0007 amendment); kitchen and bar: qr_menu_ticket_status (ADR 0026);
+          // on the same existing organizations.
           .map((id) => ({
             tenant_id: id,
-            keys: ['owner', 'admin', 'manager', 'staff', 'waiter', 'cashier', 'host'],
+            keys: [
+              'owner',
+              'admin',
+              'manager',
+              'staff',
+              'waiter',
+              'cashier',
+              'host',
+              'kitchen',
+              'bar',
+            ],
           })),
       );
 

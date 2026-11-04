@@ -41,6 +41,12 @@ export const diningTableSchema = z.object({
   color,
   sortOrder: z.int(),
   archivedAt: z.iso.datetime().nullable(),
+  /**
+   * The table's QR menu code (docs/modules/pos.md → QR menu); the QR links to /menu/<org>.<code>.
+   * Not a credential: it only shows the menu. ("code", not "token": ADR 0014 §7 never stores
+   * responses with token-like keys for replay.)
+   */
+  menuCode: z.string(),
 });
 
 export const createDiningTableRequestSchema = z.strictObject({
@@ -96,6 +102,9 @@ export const POS_ERROR_CODES = [
   'pos.area_not_found',
   'pos.area_name_taken',
   'pos.area_not_empty',
+  'pos.menu_not_found',
+  'pos.ticket_not_found',
+  'pos.ticket_status_invalid',
 ] as const;
 
 export type PosErrorCode = (typeof POS_ERROR_CODES)[number];

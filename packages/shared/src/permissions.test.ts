@@ -50,7 +50,9 @@ describe('system roles', () => {
       'platform.settings.read',
       'platform.users.invite',
       'platform.users.read',
+      'pos.bar.use',
       'pos.bills.print',
+      'pos.kitchen.use',
       'pos.orders.close',
       'pos.orders.read',
       'pos.orders.take',
@@ -131,6 +133,22 @@ describe('system roles', () => {
       'host',
     ]);
     expect(holders('reservations.setup.manage')).toEqual(['owner', 'admin', 'manager']);
+  });
+
+  // ADR 0026: a station's screen only; no prices, orders or menu editing.
+  it('gives Kitchen and Bar their screen and the settings, nothing else', () => {
+    expect([...systemRolePermissions('kitchen')].sort()).toEqual([
+      'platform.settings.read',
+      'pos.kitchen.use',
+    ]);
+    expect([...systemRolePermissions('bar')].sort()).toEqual([
+      'platform.settings.read',
+      'pos.bar.use',
+    ]);
+    const holders = (key: PermissionKey) =>
+      SYSTEM_ROLES.filter((role) => systemRolePermissions(role).has(key));
+    expect(holders('pos.kitchen.use')).toEqual(['owner', 'admin', 'manager', 'kitchen']);
+    expect(holders('pos.bar.use')).toEqual(['owner', 'admin', 'manager', 'bar']);
   });
 
   // The door: bookings, walk-ins and the waitlist, and which tables exist; no orders, menu or setup.

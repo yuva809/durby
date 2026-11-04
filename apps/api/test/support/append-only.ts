@@ -6,6 +6,7 @@ export const APPEND_ONLY_TABLES = [
   'platform_audit_logs',
   'pos_kitchen_tickets',
   'pos_order_lines',
+  'pos_ticket_status_changes',
   'reservation_status_changes',
 ] as const;
 

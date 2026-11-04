@@ -105,6 +105,7 @@ model Organization {
   diningTables                 DiningTable[]
   posOrders                    PosOrder[]
   posKitchenTickets            PosKitchenTicket[]
+  posTicketStatusChanges       PosTicketStatusChange[]
   posOrderLines                PosOrderLine[]
   diningAreas                  DiningArea[]
   reservationTableRules        ReservationTableRule[]
@@ -287,6 +288,8 @@ enum SystemRole {
   waiter
   cashier
   host
+  kitchen
+  bar
 
   @@map("system_role")
 }
@@ -820,6 +823,8 @@ model DiningTable {
   /// How the table is drawn on the floor and tables pages.
   shape                   DiningTableShape              @default(square)
   color                   DiningTableColor              @default(neutral)
+  /// The QR menu link's secret part (ADR 0026): 24 URL-safe characters; rotated by staff.
+  menuToken               String                        @default(dbgenerated("pos_new_menu_token()")) @map("menu_token")
   sortOrder               Int                           @default(0) @map("sort_order")
   archivedAt              DateTime?                     @map("archived_at") @db.Timestamptz(6)
   createdAt               DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -836,6 +841,7 @@ model DiningTable {
   @@unique([tenantId, id])
   /// Hand-written in the pos_orders migration; target of composite FKs that pin a table to its location.
   @@unique([tenantId, id, locationId], map: "dining_tables_tenant_id_id_location_id_key")
+  @@unique([tenantId, menuToken])
   @@index([tenantId, locationId])
   @@index([tenantId, areaId])
   @@map("dining_tables")
@@ -902,12 +908,38 @@ model PosKitchenTicket {
   order           PosOrder             @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   lines           PosOrderLine[]
   linesOfOrder    PosOrderLine[]       @relation("PosOrderLineTicketOfOrder")
+  statusChanges   PosTicketStatusChange[]
 
   @@unique([tenantId, id])
   /// Hand-written in the pos_orders migration; target of pos_order_lines_ticket_order_fkey.
   @@unique([tenantId, orderId, id], map: "pos_kitchen_tickets_tenant_id_order_id_id_key")
   @@unique([tenantId, orderId, sequence])
   @@map("pos_kitchen_tickets")
+}
+
+/// A ticket's progress on the kitchen or bar screen (ADR 0026); `new` is the absence of a change.
+enum PosTicketStatus {
+  preparing
+  ready
+  served
+
+  @@map("pos_ticket_status")
+}
+
+/// One move of a ticket on its station's screen, or served from the till. Append-only; the latest row is the status.
+model PosTicketStatusChange {
+  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  ticketId        String           @map("ticket_id") @db.Uuid
+  status          PosTicketStatus
+  changedByUserId String           @map("changed_by_user_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  ticket          PosKitchenTicket @relation(fields: [tenantId, ticketId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, ticketId, createdAt])
+  @@map("pos_ticket_status_changes")
 }
 
 /// A sent item (quantity > 0) or a void of one (quantity < 0, voidsLineId set). Append-only; name, gross unit price

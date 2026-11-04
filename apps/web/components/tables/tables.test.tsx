@@ -37,6 +37,7 @@ const table = (n: number, name: string, extra: object = {}) => ({
   color: 'neutral',
   sortOrder: 0,
   archivedAt: null,
+  menuCode: `code${String(n).padStart(20, '0')}`,
   ...extra,
 });
 const T1 = table(1, 'T1');
@@ -63,6 +64,7 @@ const ORDER = {
   covers: null,
   itemCount: 6,
   gross: '56.00',
+  readyCount: 0,
 };
 
 function signedInAs(role: SystemRole) {

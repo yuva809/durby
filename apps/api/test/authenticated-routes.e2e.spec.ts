@@ -54,6 +54,8 @@ describe('route markers', () => {
     expect(withMarker(routes, 'public')).toEqual([
       'GET /api/v1/health',
       'GET /api/v1/health/live',
+      // ADR 0026: the table's menu, authenticated by nothing but its QR link; reads only.
+      'GET /api/v1/public/menu/:token',
       // ADR 0015 §3: the partner theme for the request's host; no tenant data.
       'GET /api/v1/theme',
       'POST /api/v1/auth/login',
@@ -180,7 +182,11 @@ describe('route markers', () => {
       'POST /api/v1/pos/areas',
       'POST /api/v1/pos/orders/:id/close',
       'POST /api/v1/pos/orders/:id/voids',
+      'POST /api/v1/pos/orders/:orderId/tickets/:id/served',
+      'POST /api/v1/pos/stations/bar/tickets/:id/status',
+      'POST /api/v1/pos/stations/kitchen/tickets/:id/status',
       'POST /api/v1/pos/tables',
+      'POST /api/v1/pos/tables/:id/menu-token',
       'POST /api/v1/pos/tables/:tableId/tickets',
       'POST /api/v1/reservations',
       'POST /api/v1/reservations/:id/arrive',

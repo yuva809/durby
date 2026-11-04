@@ -34,6 +34,17 @@ export const posErrors = {
     ),
   areaNotEmpty: () =>
     new ApiError(HttpStatus.CONFLICT, 'pos.area_not_empty', 'The area still has tables.'),
+  menuNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'pos.menu_not_found', 'This menu link is not valid.'),
+  ticketNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'pos.ticket_not_found', 'Ticket not found.'),
+  ticketStatusInvalid: (status: string) =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.ticket_status_invalid',
+      'The ticket cannot move to this status from where it is.',
+      { status },
+    ),
   voidExceeds: (lineId: string) =>
     new ApiError(HttpStatus.CONFLICT, 'pos.void_exceeds', 'More than is left of the item.', {
       lineId,

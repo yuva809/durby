@@ -12,6 +12,9 @@ export const ORDER_MAX_COVERS = 100;
 
 export const POS_ORDER_STATUSES = ['open', 'closed'] as const;
 export const KITCHEN_TICKET_KINDS = ['order', 'void'] as const;
+/** A ticket's progress on the kitchen or bar screen (ADR 0026); `new` = no status change yet. */
+export const TICKET_STATUSES = ['new', 'preparing', 'ready', 'served'] as const;
+export type TicketStatus = (typeof TICKET_STATUSES)[number];
 
 const quantity = z.int().min(1).max(ORDER_LINE_MAX_QUANTITY);
 const covers = z.int().min(1).max(ORDER_MAX_COVERS);
@@ -69,6 +72,8 @@ export const kitchenTicketSchema = z.object({
   kind: z.enum(KITCHEN_TICKET_KINDS),
   /** Where it prints: kitchen or bar (ADR 0025). */
   station: z.enum(PREP_STATIONS),
+  /** Its progress on the station's screen (ADR 0026). */
+  status: z.enum(TICKET_STATUSES),
   createdAt: z.iso.datetime(),
   lines: z.array(orderLineSchema),
 });
@@ -100,6 +105,8 @@ export const orderSummarySchema = z.object({
   covers: z.int().nullable(),
   itemCount: z.int(),
   gross: z.string(),
+  /** Tickets ready to serve: on the station's screen as ready, not yet served (ADR 0026). */
+  readyCount: z.int(),
 });
 
 export const orderSchema = orderSummarySchema.extend({

@@ -180,6 +180,8 @@ describe('custom-role editor', () => {
       'pos.tables',
       'pos.orders',
       'pos.bills',
+      'pos.kitchen',
+      'pos.bar',
       'reservations.bookings',
       'reservations.waitlist',
       'reservations.setup',

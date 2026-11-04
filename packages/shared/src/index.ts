@@ -13,6 +13,8 @@ export * from './api/numbering';
 export * from './api/organization';
 export * from './api/pos-areas';
 export * from './api/pos-bill';
+export * from './api/pos-kitchen';
+export * from './api/pos-menu';
 export * from './api/pos-orders';
 export * from './api/pos-tables';
 export * from './api/rbac';

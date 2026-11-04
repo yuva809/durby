@@ -27,6 +27,15 @@ export function authRateLimits(config: AppConfig) {
       limit: config.RATE_LIMIT_TOKEN_IP,
       windowMs: 15 * MIN,
     },
+    /**
+     * The public table menu (ADR 0026): guests of one restaurant often share its Wi-Fi address, so
+     * five times the refresh count per minute.
+     */
+    publicMenuIp: {
+      name: 'pos.menu.ip',
+      limit: config.RATE_LIMIT_REFRESH_IP * 5,
+      windowMs: MIN,
+    },
     /** Adding staff (accounts with temporary passwords, invitations) per organization (ADR 0023). */
     teamCreateOrg: {
       name: 'rbac.team.create.org',
