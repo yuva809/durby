@@ -71,6 +71,8 @@ describe('visibleNav', () => {
       'home',
       'catalog',
       'service',
+      'kitchen',
+      'bar',
       'tables',
       'staff',
       'settings',

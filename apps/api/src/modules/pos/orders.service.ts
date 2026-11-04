@@ -28,6 +28,7 @@ import {
 } from '../../platform/tenancy';
 import { lineTotal, orderTotals } from './order-totals';
 import { isUniqueViolation, posErrors } from './pos-errors';
+import { LATEST_STATUS, statusOf } from './ticket-status';
 
 type Db = TenantPrismaClient | TenantTransactionClient;
 
@@ -181,6 +182,11 @@ export class OrdersService {
   async get(id: string): Promise<Order> {
     await this.readableOrder(id);
     return this.load(this.db, id);
+  }
+
+  /** The full order in the caller's transaction (for writes of other pos services). */
+  orderIn(tx: TenantTransactionClient, orderId: string): Promise<Order> {
+    return this.load(tx, orderId);
   }
 
   /** Sends items to the kitchen: one ticket, opening the table's order if it has none. */
@@ -540,7 +546,14 @@ export class OrdersService {
     const [tickets, lines, names] = await Promise.all([
       db.posKitchenTicket.findMany({
         where: { orderId },
-        select: { id: true, sequence: true, kind: true, station: true, createdAt: true },
+        select: {
+          id: true,
+          sequence: true,
+          kind: true,
+          station: true,
+          createdAt: true,
+          statusChanges: LATEST_STATUS,
+        },
         orderBy: { sequence: 'asc' },
       }),
       db.posOrderLine.findMany({ where: { orderId }, select: LINE_SELECT, orderBy: { id: 'asc' } }),
@@ -559,11 +572,12 @@ export class OrdersService {
       sequence: t.sequence,
       kind: t.kind,
       station: t.station,
+      status: statusOf(t.statusChanges),
       createdAt: t.createdAt.toISOString(),
       lines: byTicket.get(t.id) ?? [],
     }));
     return {
-      ...summaryOf(order, totals.itemCount, totals.gross),
+      ...summaryOf(order, totals.itemCount, totals.gross, readyCount(ticketList)),
       tickets: ticketList,
       totals,
       waiterName: names.get(openedByUserId) ?? null,
@@ -583,17 +597,29 @@ export class OrdersService {
       ...(take ? { take } : {}),
     });
     if (orders.length === 0) return [];
-    const lines = await db.posOrderLine.findMany({
-      where: { orderId: { in: orders.map((o) => o.id) } },
-      select: { orderId: true, unitPrice: true, taxRate: true, quantity: true },
-    });
+    const ids = orders.map((o) => o.id);
+    const [lines, tickets] = await Promise.all([
+      db.posOrderLine.findMany({
+        where: { orderId: { in: ids } },
+        select: { orderId: true, unitPrice: true, taxRate: true, quantity: true },
+      }),
+      db.posKitchenTicket.findMany({
+        where: { orderId: { in: ids } },
+        select: { orderId: true, statusChanges: LATEST_STATUS },
+      }),
+    ]);
+    const ready = new Map<string, number>();
+    for (const t of tickets) {
+      if (statusOf(t.statusChanges) === 'ready')
+        ready.set(t.orderId, (ready.get(t.orderId) ?? 0) + 1);
+    }
     const byOrder = new Map<string, ReturnType<typeof priced>[]>();
     for (const line of lines) {
       byOrder.set(line.orderId, [...(byOrder.get(line.orderId) ?? []), priced(line)]);
     }
     return orders.map((order) => {
       const totals = orderTotals(byOrder.get(order.id) ?? []);
-      return summaryOf(order, totals.itemCount, totals.gross);
+      return summaryOf(order, totals.itemCount, totals.gross, ready.get(order.id) ?? 0);
     });
   }
 
@@ -644,7 +670,12 @@ function lineResponse(line: LineRow, remaining: number): OrderLine {
   };
 }
 
-function summaryOf(order: OrderRow, itemCount: number, gross: string): OrderSummary {
+/** Tickets ready to serve (ADR 0026). */
+function readyCount(tickets: readonly KitchenTicket[]): number {
+  return tickets.filter((t) => t.status === 'ready').length;
+}
+
+function summaryOf(order: OrderRow, itemCount: number, gross: string, ready: number): OrderSummary {
   return {
     id: order.id,
     number: order.number,
@@ -657,6 +688,7 @@ function summaryOf(order: OrderRow, itemCount: number, gross: string): OrderSumm
     covers: order.covers,
     itemCount,
     gross,
+    readyCount: ready,
   };
 }
 

@@ -270,3 +270,55 @@ would add them.
 footer }`, the effective values there. An unknown or unreadable location → 404 `pos.location_not_found`.
 - Web: Settings → **Bill** edits both for the organization or one location, with a preview of the real bill. The
   logo is shrunk in the browser to at most 384 × 192 px, grayscale, before it is saved.
+
+## QR menu (ADR 0026)
+
+Every dining table has a `menu_token` (24 random URL-safe characters, unique per tenant). Its QR code links to
+`/menu/<organizationId>.<menuToken>`; guests see the menu without signing in.
+
+| Method + path                     | Access                                            | Notes                                                          |
+| --------------------------------- | ------------------------------------------------- | -------------------------------------------------------------- |
+| `GET /public/menu/:token`         | `@Public()`, rate-limited per IP                  | 404 for an unknown token, an archived table or no `pos`        |
+| `POST /pos/tables/:id/menu-token` | `pos.tables.manage` at the table, `@Idempotent()` | new token; the old QR stops working; audited without the token |
+
+- Response: `{ name, logo, tableName, currency, locale, categories: [{ name, products: [{ name, description,
+price }] }] }`: the bill header's name and logo (else the organization's name), non-archived categories with
+  their non-archived products in menu order. No ids, VAT rates or staff data.
+- Tables (`GET /pos/tables`) carry it as `menuCode` for `pos.tables.read` holders, who print the QR (not
+  "token": ADR 0014 §7 never stores replies with token-like keys).
+- Web: Tables page → **QR** per table (code, link, print card, new code); public page `/menu/[token]`.
+
+## Kitchen and bar screens (ADR 0026)
+
+```
+PosKitchenTicket ── PosTicketStatusChange   pos_ticket_status_changes   append-only; preparing | ready | served
+```
+
+A ticket's status is its latest change, else `new`. Moves: new → preparing | ready, preparing → ready, ready →
+served, ready → preparing (undo); a void ticket new → served ("seen"). The current status again writes nothing;
+any other move → 409 `pos.ticket_status_invalid`.
+
+| Key               | Grants                                   | admin | manager | waiter | cashier | kitchen | bar |
+| ----------------- | ---------------------------------------- | ----- | ------- | ------ | ------- | ------- | --- |
+| `pos.kitchen.use` | the kitchen screen: see and move tickets | ✓     | ✓       |        |         | ✓       |     |
+| `pos.bar.use`     | the bar screen                           | ✓     | ✓       |        |         |         | ✓   |
+
+Staff and Host hold neither. Holders of `pos.orders.take` (waiters) may set `served` on a ready ticket only.
+Kitchen and Bar are system roles holding their key and `platform.settings.read` only.
+
+One route per station, so each declares its own key:
+
+| Method + path                                                | Access                                                    |
+| ------------------------------------------------------------ | --------------------------------------------------------- |
+| `GET /pos/stations/kitchen/tickets?locationId=`              | `pos.kitchen.use` at the location (bar: `pos.bar.use`)    |
+| `POST /pos/stations/kitchen/tickets/:id/status` `{ status }` | the station's key; `completion: 'transaction'`            |
+| `POST /pos/orders/:orderId/tickets/:id/served`               | `pos.orders.take`; ready → served only; returns the order |
+
+- The board lists the station's tickets at the location that are not served, plus those served in the last 15
+  minutes (undo), oldest first: order number, table, sequence, kind, lines (name, quantity, note), status,
+  `createdAt`, `statusAt`.
+- Audit: `pos.kitchen_ticket.status_changed` (after: id, sequence, status).
+- Orders: each ticket carries `status`; summaries carry `readyCount` (tickets ready, not served).
+- Web: `/kitchen` and `/bar`: columns New, Preparing, Ready; a card per ticket with the table, age, items and
+  one next-step button; refreshes every 5 s. The floor shows **Ready** on tables with ready tickets; the till's
+  ticket log shows each status and **Served** on ready tickets.

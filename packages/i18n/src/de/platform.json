@@ -12,6 +12,8 @@
   "platform.roles.waiter": "Service",
   "platform.roles.cashier": "Kasse",
   "platform.roles.host": "Empfang",
+  "platform.roles.kitchen": "Küche",
+  "platform.roles.bar": "Bar",
   "platform.permissions.orgManage": "Organisation verwalten",
   "platform.permissions.usersRead": "Mitglieder und Einladungen ansehen",
   "platform.permissions.usersInvite": "Mitglieder einladen",

@@ -12,7 +12,17 @@ import {
   type SendTicketResponse,
   TABLE_COLORS,
 } from '@durby/shared';
-import { ArrowLeft, ChefHat, Minus, Plus, Printer, Search, StickyNote, Users } from 'lucide-react';
+import {
+  ArrowLeft,
+  Check,
+  ChefHat,
+  Minus,
+  Plus,
+  Printer,
+  Search,
+  StickyNote,
+  Users,
+} from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
@@ -25,6 +35,7 @@ import {
   loadBillLayout,
   loadTableOrder,
   sendTicket,
+  serveTicket,
   updateOrder,
 } from '../../lib/pos/api';
 import {
@@ -345,7 +356,12 @@ function TableOrder({
                   }
                 />
                 {order && order.tickets.length > 0 && (
-                  <TicketLog order={order} onReprint={(id) => printTickets(order, [id])} />
+                  <TicketLog
+                    order={order}
+                    canServe={access.canTake}
+                    onReprint={(id) => printTickets(order, [id])}
+                    onServed={reload}
+                  />
                 )}
               </aside>
             </div>
@@ -760,13 +776,29 @@ function OnTheTable({
   );
 }
 
-function TicketLog({ order, onReprint }: { order: Order; onReprint: (ticketId: string) => void }) {
+function TicketLog({
+  order,
+  canServe,
+  onReprint,
+  onServed,
+}: {
+  order: Order;
+  canServe: boolean;
+  onReprint: (ticketId: string) => void;
+  onServed: () => void;
+}) {
   const t = useT();
   const money = useMoney();
+  const ready = order.tickets.filter((ticket) => ticket.status === 'ready').length;
   return (
     <details className="rounded-lg border border-border bg-card">
-      <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-medium">
+      <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-4 text-sm font-medium">
         {t('pos.bill.tickets', { count: String(order.tickets.length) })}
+        {ready > 0 && (
+          <Badge className="bg-accent text-accent-foreground" data-testid="till-ready">
+            {t('pos.floor.ready', { count: String(ready) })}
+          </Badge>
+        )}
       </summary>
       <div className="flex flex-col gap-3 border-t border-border p-4">
         {order.tickets.map((ticket) => (
@@ -777,11 +809,19 @@ function TicketLog({ order, onReprint }: { order: Order; onReprint: (ticketId: s
                   sequence: String(ticket.sequence),
                 })}
                 <Badge data-testid="ticket-station">{t(`pos.station.${ticket.station}`)}</Badge>
+                <Badge data-testid="ticket-status" data-status={ticket.status}>
+                  {t(`pos.status.${ticket.status}`)}
+                </Badge>
               </h3>
-              <Button variant="ghost" className="gap-1" onClick={() => onReprint(ticket.id)}>
-                <Printer aria-hidden className="size-4" />
-                {t('pos.order.reprint')}
-              </Button>
+              <span className="flex gap-1">
+                {canServe && ticket.status === 'ready' && (
+                  <ServeButton order={order} ticket={ticket} onServed={onServed} />
+                )}
+                <Button variant="ghost" className="gap-1" onClick={() => onReprint(ticket.id)}>
+                  <Printer aria-hidden className="size-4" />
+                  {t('pos.order.reprint')}
+                </Button>
+              </span>
             </div>
             <ul className="flex flex-col gap-0.5 text-sm">
               {ticket.lines.map((line) => (
@@ -1044,5 +1084,40 @@ function ProductCard({
         </span>
       )}
     </button>
+  );
+}
+
+/** A waiter marks a ready ticket as served (ADR 0026); the order reloads either way. */
+function ServeButton({
+  order,
+  ticket,
+  onServed,
+}: {
+  order: Order;
+  ticket: KitchenTicket;
+  onServed: () => void;
+}) {
+  const t = useT();
+  const { store } = useAuth();
+  const action = useActionKey();
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      variant="outline"
+      className="gap-1"
+      disabled={busy}
+      aria-label={t('pos.order.serveTicket', { sequence: String(ticket.sequence) })}
+      data-testid="ticket-serve"
+      onClick={() => {
+        setBusy(true);
+        void serveTicket(store, action, order.id, ticket.id).then(() => {
+          setBusy(false);
+          onServed();
+        });
+      }}
+    >
+      <Check aria-hidden className="size-4" />
+      {t('pos.order.serve')}
+    </Button>
   );
 }

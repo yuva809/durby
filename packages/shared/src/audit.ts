@@ -201,6 +201,16 @@ export const AUDIT_ACTIONS = {
     entityType: 'kitchen_ticket',
     label: 'pos.audit.actions.kitchenTicketCreated',
   },
+  /** Moved on the kitchen or bar screen, or served from the till (ADR 0026). */
+  'pos.kitchen_ticket.status_changed': {
+    entityType: 'kitchen_ticket',
+    label: 'pos.audit.actions.kitchenTicketStatusChanged',
+  },
+  /** A new QR menu token; the token itself is never recorded. */
+  'pos.dining_table.menu_token_rotated': {
+    entityType: 'dining_table',
+    label: 'pos.audit.actions.diningTableMenuTokenRotated',
+  },
   'pos.dining_area.created': {
     entityType: 'dining_area',
     label: 'pos.audit.actions.diningAreaCreated',
@@ -347,7 +357,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   ],
   pos_order: ['id', 'number', 'tableId', 'locationId', 'status', 'covers', 'closedAt'],
   /** Never line notes (free text). */
-  kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'station', 'lineCount'],
+  kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'station', 'status', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
   location: ['id', 'brandId', 'name'],
   reservation_table_rule: ['tableId', 'bookingMode', 'minParty', 'maxParty'],

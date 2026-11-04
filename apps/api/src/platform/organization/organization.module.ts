@@ -11,5 +11,6 @@ import { OrganizationService } from './organization.service';
 @Module({
   controllers: [LocationsController, OrganizationController],
   providers: [LocationsService, OrganizationService],
+  exports: [OrganizationService],
 })
 export class OrganizationModule {}
