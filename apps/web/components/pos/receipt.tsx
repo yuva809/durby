@@ -29,7 +29,6 @@ export function Receipt({
   order,
   bill,
   printedAt,
-  hideWaiter,
 }: {
   /** Null while it loads or when it can't be read: the defaults (organization name, thanks). */
   layout: BillLayout | null;
@@ -39,7 +38,6 @@ export function Receipt({
   order: ReceiptOrder;
   bill: BillLine[];
   printedAt: Date;
-  hideWaiter?: boolean;
 }) {
   const t = useT();
   const money = useMoney();

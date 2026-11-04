@@ -151,121 +151,125 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
             )}
           </div>
 
-      <Loaded resource={team} reload={reload}>
-        {(data) => {
-          const rows = filterRows(data, query, roleFilter, status);
-          return (
-            <>
-              <Stats stats={data.stats} />
-              <Card className="flex flex-col gap-3 p-3 md:flex-row">
-                <div className="relative md:flex-1">
-                  <Search
-                    aria-hidden
-                    className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <Input
-                    type="search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={t('platform.team.search')}
-                    aria-label={t('platform.team.search')}
-                    className="pl-9"
-                    data-testid="team-search"
-                  />
-                </div>
-                <Select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  aria-label={t('platform.team.filterRole')}
-                  className="md:w-56"
-                  data-testid="team-role-filter"
-                >
-                  <option value="">{t('platform.team.allRoles')}</option>
-                  {(roleList ?? []).map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {roleName(r, t)}
-                    </option>
-                  ))}
-                </Select>
-                <Select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as Status)}
-                  aria-label={t('platform.team.filterStatus')}
-                  className="md:w-48"
-                  data-testid="team-status-filter"
-                >
-                  <option value="all">{t('platform.team.allStatuses')}</option>
-                  <option value="active">{t('platform.team.status.active')}</option>
-                  <option value="inactive">{t('platform.team.status.inactive')}</option>
-                  <option value="invited">{t('platform.team.status.invited')}</option>
-                </Select>
-              </Card>
+          <Loaded resource={team} reload={reload}>
+            {(data) => {
+              const rows = filterRows(data, query, roleFilter, status);
+              return (
+                <>
+                  <Stats stats={data.stats} />
+                  <Card className="flex flex-col gap-3 p-3 md:flex-row">
+                    <div className="relative md:flex-1">
+                      <Search
+                        aria-hidden
+                        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                      />
+                      <Input
+                        type="search"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder={t('platform.team.search')}
+                        aria-label={t('platform.team.search')}
+                        className="pl-9"
+                        data-testid="team-search"
+                      />
+                    </div>
+                    <Select
+                      value={roleFilter}
+                      onChange={(e) => setRoleFilter(e.target.value)}
+                      aria-label={t('platform.team.filterRole')}
+                      className="md:w-56"
+                      data-testid="team-role-filter"
+                    >
+                      <option value="">{t('platform.team.allRoles')}</option>
+                      {(roleList ?? []).map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {roleName(r, t)}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value as Status)}
+                      aria-label={t('platform.team.filterStatus')}
+                      className="md:w-48"
+                      data-testid="team-status-filter"
+                    >
+                      <option value="all">{t('platform.team.allStatuses')}</option>
+                      <option value="active">{t('platform.team.status.active')}</option>
+                      <option value="inactive">{t('platform.team.status.inactive')}</option>
+                      <option value="invited">{t('platform.team.status.invited')}</option>
+                    </Select>
+                  </Card>
 
-              <Card className="overflow-hidden p-0">
-                <div className="border-b px-4 py-3">
-                  <Badge>{t('platform.team.count', { count: String(rows.length) })}</Badge>
-                </div>
-                {rows.length === 0 ? (
-                  <p className="px-4 py-10 text-center text-muted-foreground">
-                    {t('platform.team.empty')}
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm" data-testid="team-table">
-                      <thead className="max-lg:sr-only">
-                        <tr className="border-b text-xs tracking-wide text-muted-foreground uppercase">
-                          <th className={head}>{t('platform.team.columns.staff')}</th>
-                          <th className={head}>{t('platform.team.columns.contact')}</th>
-                          <th className={head}>{t('platform.team.columns.role')}</th>
-                          <th className={cn(head, rare)}>{t('platform.team.columns.worksIn')}</th>
-                          <th className={head}>{t('platform.team.columns.permissions')}</th>
-                          <th className={head}>{t('platform.team.columns.status')}</th>
-                          <th className={cn(head, rare)}>
-                            {t('platform.team.columns.lastActive')}
-                          </th>
-                          <th className={cn(head, 'text-right')}>
-                            <span className="sr-only">{t('platform.team.columns.actions')}</span>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map((row) =>
-                          row.kind === 'member' ? (
-                            <MemberRow
-                              key={row.member.membershipId}
-                              member={row.member}
-                              access={access}
-                              locations={locationList}
-                              dateFormat={dateFormat}
-                              onEdit={() => setEditing(row.member)}
-                              onConfirm={setConfirm}
-                            />
-                          ) : (
-                            <InvitationRow
-                              key={row.invitation.invitationId}
-                              invitation={row.invitation}
-                              canRevoke={canRevokeInvitation(
-                                access,
-                                { ...row.invitation, id: row.invitation.invitationId },
-                                roleList,
-                              )}
-                              canShare={access.canInvite}
-                              locations={locationList}
-                              dateFormat={dateFormat}
-                              onShare={() => setSharing(row.invitation)}
-                              onConfirm={setConfirm}
-                            />
-                          ),
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </Card>
-            </>
-          );
-        }}
-      </Loaded>
+                  <Card className="overflow-hidden p-0">
+                    <div className="border-b px-4 py-3">
+                      <Badge>{t('platform.team.count', { count: String(rows.length) })}</Badge>
+                    </div>
+                    {rows.length === 0 ? (
+                      <p className="px-4 py-10 text-center text-muted-foreground">
+                        {t('platform.team.empty')}
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm" data-testid="team-table">
+                          <thead className="max-lg:sr-only">
+                            <tr className="border-b text-xs tracking-wide text-muted-foreground uppercase">
+                              <th className={head}>{t('platform.team.columns.staff')}</th>
+                              <th className={head}>{t('platform.team.columns.contact')}</th>
+                              <th className={head}>{t('platform.team.columns.role')}</th>
+                              <th className={cn(head, rare)}>
+                                {t('platform.team.columns.worksIn')}
+                              </th>
+                              <th className={head}>{t('platform.team.columns.permissions')}</th>
+                              <th className={head}>{t('platform.team.columns.status')}</th>
+                              <th className={cn(head, rare)}>
+                                {t('platform.team.columns.lastActive')}
+                              </th>
+                              <th className={cn(head, 'text-right')}>
+                                <span className="sr-only">
+                                  {t('platform.team.columns.actions')}
+                                </span>
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rows.map((row) =>
+                              row.kind === 'member' ? (
+                                <MemberRow
+                                  key={row.member.membershipId}
+                                  member={row.member}
+                                  access={access}
+                                  locations={locationList}
+                                  dateFormat={dateFormat}
+                                  onEdit={() => setEditing(row.member)}
+                                  onConfirm={setConfirm}
+                                />
+                              ) : (
+                                <InvitationRow
+                                  key={row.invitation.invitationId}
+                                  invitation={row.invitation}
+                                  canRevoke={canRevokeInvitation(
+                                    access,
+                                    { ...row.invitation, id: row.invitation.invitationId },
+                                    roleList,
+                                  )}
+                                  canShare={access.canInvite}
+                                  locations={locationList}
+                                  dateFormat={dateFormat}
+                                  onShare={() => setSharing(row.invitation)}
+                                  onConfirm={setConfirm}
+                                />
+                              ),
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </Card>
+                </>
+              );
+            }}
+          </Loaded>
         </>
       )}
 
@@ -287,19 +291,22 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
       )}
 
       {view === 'members' && (
-      <Dialog open={sharing !== null} onOpenChange={(open) => !open && setSharing(null)}>
-        <DialogContent closeLabel={t('platform.common.close')}>
-          {sharing && (
-            <>
-              <DialogTitle>
-                {t('platform.team.result.invitedTitle', { name: sharing.name ?? sharing.email })}
-              </DialogTitle>
-              <DialogDescription>{t('platform.team.result.newLinkNote')}</DialogDescription>
-              <ShareLink invitationId={sharing.invitationId} organizationName={organizationName} />
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+        <Dialog open={sharing !== null} onOpenChange={(open) => !open && setSharing(null)}>
+          <DialogContent closeLabel={t('platform.common.close')}>
+            {sharing && (
+              <>
+                <DialogTitle>
+                  {t('platform.team.result.invitedTitle', { name: sharing.name ?? sharing.email })}
+                </DialogTitle>
+                <DialogDescription>{t('platform.team.result.newLinkNote')}</DialogDescription>
+                <ShareLink
+                  invitationId={sharing.invitationId}
+                  organizationName={organizationName}
+                />
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       )}
 
       <ConfirmDialog confirm={confirm} onClose={() => setConfirm(null)} onDone={reload} />

@@ -105,7 +105,7 @@ describe('BillPage', () => {
     signedInAs('owner');
     const writes = api({ '': EMPTY });
     render(<BillPage />, { wrapper: Brand });
-    const preview = await screen.findByTestId('bill-preview-customer');
+    const preview = await screen.findByTestId('bill-preview');
     // Empty: the organization's name and the default thanks; the fixed middle always.
     expect(within(preview).getByTestId('bill-header').textContent).toBe('Demo Bistro');
     expect(within(preview).getByTestId('bill-thanks').textContent).toBe('Thank you for visiting!');
@@ -113,6 +113,16 @@ describe('BillPage', () => {
     expect(within(preview).getByTestId('bill-table').textContent).toBe('Table 5 · Guests 2');
     expect(within(preview).getByTestId('order-total').textContent).toBe('€20.10');
     expect(within(preview).getByTestId('bill-footer').textContent).toContain('Powered by Product');
+    expect(preview.textContent).not.toContain('This is not a receipt.');
+    // The kitchen and bar tickets as they print: no prices, no waiter.
+    const kitchen = screen.getByTestId('bill-preview-kitchen');
+    expect(within(kitchen).getByTestId('kitchen-ticket').dataset.station).toBe('kitchen');
+    expect(kitchen.textContent).toContain('Sample dish');
+    expect(kitchen.textContent).not.toContain('€');
+    const bar = screen.getByTestId('bill-preview-bar');
+    expect(within(bar).getByTestId('kitchen-ticket').dataset.station).toBe('bar');
+    expect(bar.textContent).toContain('Sample drink');
+    expect(bar.textContent).not.toContain('Alex');
 
     await userEvent.type(screen.getByTestId('bill-name'), 'Bay Leaf');
     await userEvent.type(screen.getByTestId('bill-phone'), '+49 30 1234567');
@@ -179,7 +189,7 @@ describe('BillPage', () => {
       },
     });
     render(<BillPage />, { wrapper: Brand });
-    await screen.findByTestId('bill-preview-customer');
+    await screen.findByTestId('bill-preview');
     await userEvent.selectOptions(screen.getByTestId('bill-scope'), HARBOUR.id);
     await waitFor(() =>
       expect(screen.getByTestId<HTMLInputElement>('bill-name').value).toBe('Bay Leaf Harbour'),

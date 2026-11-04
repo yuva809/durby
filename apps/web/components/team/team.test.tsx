@@ -148,6 +148,18 @@ describe('TeamPage', () => {
     expect(within(rows[2]!).queryByTestId('team-row-menu')).toBeNull();
   });
 
+  it('has the roles as a tab of Manage Staff for holders of platform.roles.read', async () => {
+    signedInAs('owner');
+    api();
+    render(<TeamPage />);
+    await screen.findAllByTestId('team-row');
+    await userEvent.click(screen.getByTestId('team-tab-roles'));
+    expect((await screen.findAllByTestId('role-card')).length).toBe(ROLES.length);
+    expect(screen.queryByTestId('team-row')).toBeNull();
+    await userEvent.click(screen.getByTestId('team-tab-members'));
+    expect(await screen.findAllByTestId('team-row')).toHaveLength(3);
+  });
+
   it('filters by status and search', async () => {
     signedInAs('owner');
     api();

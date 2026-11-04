@@ -92,8 +92,12 @@ export const postTransfer = (store: Api, action: ActionKey, body: TransferReques
 export const loadRecipe = (store: Api, productId: string): Promise<Result<Recipe>> =>
   read(store, `${BASE}/recipes/${productId}`, recipeSchema);
 
-export const putRecipe = (store: Api, action: ActionKey, productId: string, body: PutRecipeRequest) =>
-  write(store, action, `${BASE}/recipes/${productId}`, 'PUT', body, recipeSchema);
+export const putRecipe = (
+  store: Api,
+  action: ActionKey,
+  productId: string,
+  body: PutRecipeRequest,
+) => write(store, action, `${BASE}/recipes/${productId}`, 'PUT', body, recipeSchema);
 
 export const loadCosts = (store: Api): Promise<Result<DishCost[]>> =>
   read(store, `${BASE}/costs`, list(dishCostListResponseSchema));
