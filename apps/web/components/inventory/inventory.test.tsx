@@ -23,15 +23,16 @@ afterEach(cleanup);
 
 const id = (n: number) => `0190a000-0000-7000-8000-0000000010${String(n).padStart(2, '0')}`;
 const MAIN_LOCATION = { id: id(1), name: 'Main street', brandId: id(90) };
-const warehouse = (n: number, name: string) => ({
+const warehouse = (n: number, name: string, suppliesStation: string | null = null) => ({
   id: id(10 + n),
   locationId: MAIN_LOCATION.id,
   name,
   sortOrder: 0,
+  suppliesStation,
   archivedAt: null,
 });
-const STORE = warehouse(1, 'Main store');
-const BAR = warehouse(2, 'Bar');
+const STORE = warehouse(1, 'Main store', 'kitchen');
+const BAR = warehouse(2, 'Bar', 'bar');
 const item = (n: number, name: string, unit: string, minQuantity: string | null = null) => ({
   id: id(20 + n),
   name,

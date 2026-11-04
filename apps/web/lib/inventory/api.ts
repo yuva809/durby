@@ -2,7 +2,13 @@ import {
   type AdjustmentRequest,
   type CreateStockItemRequest,
   type CreateWarehouseRequest,
+  type DishCost,
+  dishCostListResponseSchema,
+  type PutRecipeRequest,
+  putRecipeRequestSchema,
   type ReceiptRequest,
+  type Recipe,
+  recipeSchema,
   type StockDocument,
   stockDocumentListResponseSchema,
   stockDocumentSchema,
@@ -83,3 +89,12 @@ export const postAdjustment = (store: Api, action: ActionKey, body: AdjustmentRe
 
 export const postTransfer = (store: Api, action: ActionKey, body: TransferRequest) =>
   write(store, action, `${BASE}/transfers`, 'POST', body, stockDocumentSchema);
+
+export const loadRecipe = (store: Api, productId: string): Promise<Result<Recipe>> =>
+  read(store, `${BASE}/recipes/${productId}`, recipeSchema);
+
+export const putRecipe = (store: Api, action: ActionKey, productId: string, body: PutRecipeRequest) =>
+  write(store, action, `${BASE}/recipes/${productId}`, 'PUT', body, recipeSchema);
+
+export const loadCosts = (store: Api): Promise<Result<DishCost[]>> =>
+  read(store, `${BASE}/costs`, list(dishCostListResponseSchema));

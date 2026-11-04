@@ -106,6 +106,8 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'inventory.unit_locked': 'inventory.errors.unitLocked',
   'inventory.valuation_unsupported': 'inventory.errors.valuationUnsupported',
   'inventory.same_warehouse': 'inventory.errors.sameWarehouse',
+  'inventory.product_not_found': 'inventory.errors.productNotFound',
+  'inventory.station_taken': 'inventory.errors.stationTaken',
   'catalog.category_not_found': 'catalog.errors.categoryNotFound',
   'catalog.product_not_found': 'catalog.errors.productNotFound',
   'catalog.category_name_taken': 'catalog.errors.categoryNameTaken',

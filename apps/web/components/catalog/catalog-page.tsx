@@ -5,6 +5,7 @@ import {
   type PrepStation,
   type Product,
   type ProductCategory,
+  type DishCost,
   priceSchema,
   taxRateSchema,
   CATALOG_NAME_MAX_LENGTH,
@@ -26,6 +27,7 @@ import {
   updateCategory,
   updateProduct,
 } from '../../lib/catalog/api';
+import { loadCosts } from '../../lib/inventory/api';
 import { errorLabel } from '../../lib/auth/errors';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
@@ -51,6 +53,7 @@ export function CatalogPage() {
     <Catalog
       organizationId={session.activeOrganizationId}
       canManage={permissions.has('catalog.products.manage')}
+      canReadCosts={permissions.has('inventory.costs.read')}
     />
   );
 }
@@ -58,9 +61,11 @@ export function CatalogPage() {
 function Catalog({
   organizationId,
   canManage,
+  canReadCosts,
 }: {
   organizationId: string | null;
   canManage: boolean;
+  canReadCosts: boolean;
 }) {
   const t = useT();
   const { store } = useAuth();
@@ -75,9 +80,11 @@ function Catalog({
     loadCategories(store, showArchived),
   );
   const [products, reloadProducts] = useResource(key, () => loadProducts(store, showArchived));
+  const [costs, reloadCosts] = useResource(canReadCosts ? key : null, () => loadCosts(store));
   const reload = () => {
     reloadCategories();
     reloadProducts();
+    reloadCosts();
   };
   const openCategories =
     categories.status === 'ready' ? categories.data.filter((c) => c.archivedAt === null) : [];
@@ -203,6 +210,8 @@ function Catalog({
                     canManage={canManage}
                     picked={pickedProducts}
                     onPick={toggle(pickedProducts, setPickedProducts)}
+                    costs={costs.status === 'ready' ? costs.data : []}
+                    canReadCosts={canReadCosts}
                     onDone={reload}
                   />
                 )}
@@ -277,6 +286,8 @@ function ProductTable({
   canManage,
   picked,
   onPick,
+  costs,
+  canReadCosts,
   onDone,
 }: {
   products: Product[];
@@ -284,6 +295,8 @@ function ProductTable({
   canManage: boolean;
   picked: ReadonlySet<string>;
   onPick: (ids: string[], on: boolean) => void;
+  costs: DishCost[];
+  canReadCosts: boolean;
   onDone: () => void;
 }) {
   const t = useT();
@@ -293,6 +306,14 @@ function ProductTable({
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
   const open = categories.filter((c) => c.archivedAt === null);
   const allPicked = products.every((p) => picked.has(p.id));
+  const costByProduct = new Map(costs.map((c) => [c.productId, c]));
+  const calcMargin = (price: string, costStr: string) => {
+    const p = Number(price);
+    const c = Number(costStr);
+    const taxRate = 0.19; // Default VAT; products have taxRate but we calculate on net
+    const netPrice = p / (1 + taxRate);
+    return netPrice > 0 ? (((netPrice - c) / netPrice) * 100).toFixed(0) : '–';
+  };
   return (
     <Card className="overflow-x-auto p-0">
       {/* Below md a row is a card (name, then category, price and VAT, then actions): no sideways scroll. */}
@@ -318,6 +339,12 @@ function ProductTable({
             <th className="p-3 font-medium">{t('catalog.fields.category')}</th>
             <th className="p-3 text-right font-medium">{t('catalog.fields.price')}</th>
             <th className="p-3 text-right font-medium">{t('catalog.fields.taxRate')}</th>
+            {canReadCosts && (
+              <>
+                <th className="p-3 text-right font-medium">{t('inventory.costs.cost')}</th>
+                <th className="p-3 text-right font-medium">{t('inventory.costs.margin')}</th>
+              </>
+            )}
             {canManage && <th className="p-3" />}
           </tr>
         </thead>
@@ -360,6 +387,21 @@ function ProductTable({
                 </span>
                 {product.taxRate}
               </td>
+              {canReadCosts && (
+                <>
+                  <td className="tabular-nums lg:p-3 lg:text-right text-muted-foreground">
+                    {costByProduct.get(product.id)?.complete === false && (
+                      <span className="text-xs">{t('inventory.costs.incomplete')}</span>
+                    )}
+                    {costByProduct.get(product.id)?.cost ?? '–'}
+                  </td>
+                  <td className="tabular-nums lg:p-3 lg:text-right text-muted-foreground">
+                    {costByProduct.get(product.id)
+                      ? `${calcMargin(product.price, costByProduct.get(product.id)!.cost)}%`
+                      : '–'}
+                  </td>
+                </>
+              )}
               {canManage && (
                 <td className="w-full lg:w-auto lg:p-3">
                   <div className="flex flex-wrap gap-2 lg:justify-end">

@@ -69,6 +69,11 @@ export function WarehousesTab({ data }: { data: InventoryData }) {
                   >
                     <span className="flex items-center gap-2 font-medium">
                       {w.name}
+                      {w.suppliesStation && (
+                        <Badge className="bg-muted text-foreground">
+                          {t(`inventory.stations.${w.suppliesStation}`)}
+                        </Badge>
+                      )}
                       {w.archivedAt && <Badge>{t('inventory.page.archived')}</Badge>}
                     </span>
                     {canManage && (
@@ -127,6 +132,7 @@ function WarehouseDialog({
   const action = useActionKey();
   const [name, setName] = useState('');
   const [locationId, setLocationId] = useState('');
+  const [suppliesStation, setSuppliesStation] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const nameMissing = checked && name.trim() === '';
 
@@ -139,13 +145,17 @@ function WarehouseDialog({
       onOpen={() => {
         setName(warehouse?.name ?? '');
         setLocationId(warehouse?.locationId ?? data.locations[0]?.id ?? '');
+        setSuppliesStation(warehouse?.suppliesStation ?? null);
         setChecked(false);
       }}
       submit={() => {
         setChecked(true);
         if (name.trim() === '') return null;
         return warehouse
-          ? updateWarehouse(store, action, warehouse.id, { name: name.trim() })
+          ? updateWarehouse(store, action, warehouse.id, {
+              name: name.trim(),
+              suppliesStation: suppliesStation as any,
+            })
           : createWarehouse(store, action, { locationId, name: name.trim() });
       }}
       onDone={onDone}
@@ -177,6 +187,17 @@ function WarehouseDialog({
           aria-invalid={nameMissing || undefined}
           onChange={(e) => setName(e.target.value)}
         />
+      </Field>
+      <Field id={`${id}-station`} label={t('inventory.fields.suppliesStation')} problem={null}>
+        <Select
+          id={`${id}-station`}
+          value={suppliesStation ?? ''}
+          onChange={(e) => setSuppliesStation(e.target.value || null)}
+        >
+          <option value="">{t('inventory.stations.none')}</option>
+          <option value="kitchen">{t('inventory.stations.kitchen')}</option>
+          <option value="bar">{t('inventory.stations.bar')}</option>
+        </Select>
       </Field>
     </FormDialog>
   );
