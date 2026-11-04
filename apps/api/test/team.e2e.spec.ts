@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { v7 as uuidv7 } from 'uuid';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { TeamListResponse, TeamMember } from '@durby/shared';
 import { PASSWORD, randomIp, startAuthApp, type AuthTestKit } from './support/auth-app';
 import { withIdempotencyKey } from './support/idempotency';
@@ -21,6 +21,11 @@ describe('manage staff', () => {
   beforeAll(async () => {
     kit = await startAuthApp();
     seed = new RbacSeed(kit.app);
+  });
+
+  // Each test gets its own organizations, Owners and sessions: a test that deactivates an Owner
+  // (revoking their tokens) or fills the staff list never changes another test's start.
+  beforeEach(async () => {
     [a, b] = await Promise.all([seed.org('Bistro A'), seed.org('Bistro B')]);
     [ownerA, ownerB] = await Promise.all([member(a, a.roles.owner), member(b, b.roles.owner)]);
   });
@@ -186,6 +191,74 @@ describe('manage staff', () => {
       .expect(400);
   });
 
+  it('deactivates and reactivates a member, but never the last active Owner or yourself', async () => {
+    const cashier = await member(a, a.roles.cashier);
+    const id = (await api(ownerA.token).list()).members.find(
+      (m) => m.userId === cashier.id,
+    )!.membershipId;
+    const labels = () =>
+      request(kit.server).get('/api/v1/labels').auth(cashier.token, { type: 'bearer' });
+    await labels().expect(200);
+    const off = (await api(ownerA.token).post(`/${id}/deactivate`).expect(200)).body as TeamMember;
+    expect(off.status).toBe('inactive');
+    // Their open token stops working at once: revoked (401) or, failing that, no access (403).
+    expect([401, 403]).toContain((await labels()).status);
+    const on = (await api(ownerA.token).post(`/${id}/reactivate`).expect(200)).body as TeamMember;
+    expect(on.status).toBe('active');
+    await labels().expect(200);
+
+    const ownerId = (await api(ownerA.token).list()).members.find(
+      (m) => m.userId === ownerA.id,
+    )!.membershipId;
+    const self = await api(ownerA.token).post(`/${ownerId}/deactivate`).expect(403);
+    expect(self.body).toMatchObject({ code: 'rbac.cannot_change_self' });
+
+    // Owners can switch each other off while another active Owner remains (the database refuses
+    // the last one: manage-staff-migration.int.spec.ts); an Admin can never touch an Owner.
+    const second = await member(a, a.roles.owner);
+    await api(second.token).post(`/${ownerId}/deactivate`).expect(200);
+    const secondId = (await api(second.token).list()).members.find(
+      (m) => m.userId === second.id,
+    )!.membershipId;
+    const third = await member(a, a.roles.owner);
+    await api(third.token).post(`/${secondId}/deactivate`).expect(200);
+    const thirdId = (await api(third.token).list()).members.find(
+      (m) => m.userId === third.id,
+    )!.membershipId;
+    const fourth = await member(a, a.roles.admin);
+    const last = await api(fourth.token).post(`/${thirdId}/deactivate`).expect(403);
+    expect(last.body).toMatchObject({ code: 'rbac.not_grantable' });
+    await api(third.token).post(`/${ownerId}/reactivate`).expect(200);
+  });
+
+  it('keeps each organization to its own staff', async () => {
+    await member(a, a.roles.waiter);
+    await api(ownerA.token)
+      .post('', { name: 'Arun', email: newEmail(), roleId: a.roles.staff })
+      .expect(201);
+    const listA = await api(ownerA.token).list();
+    const someone = listA.members.find((m) => m.userId !== ownerA.id)!;
+    const listB = await api(ownerB.token).list();
+    expect(listB.members.map((m) => m.membershipId)).not.toContain(someone.membershipId);
+    const res = await api(ownerB.token).patch(someone.membershipId, { name: 'Hijack' }).expect(404);
+    expect(res.body).toMatchObject({ code: 'rbac.member_not_found' });
+    await api(ownerB.token).post(`/${someone.membershipId}/deactivate`).expect(404);
+    const invitation = listA.invitations[0]!;
+    await api(ownerB.token).link(invitation.invitationId).expect(404);
+  });
+
+  it('replays an idempotent create instead of adding the person twice', async () => {
+    const email = newEmail();
+    const key = uuidv7();
+    const body = { name: 'Sam', email, roleId: a.roles.waiter, temporaryPassword: TEMP };
+    const first = await api(ownerA.token).post('', body, key).expect(201);
+    const again = await api(ownerA.token).post('', body, key).expect(201);
+    expect(again.body).toEqual(first.body);
+    const list = await api(ownerA.token).list();
+    expect(list.members.filter((m) => m.email === email)).toHaveLength(1);
+    expect(list.invitations.filter((i) => i.email === email)).toHaveLength(0);
+  });
+
   // The inviter chooses the new staff member's language (docs/platform/auth.md → Language).
   describe('language', () => {
     const localeOf = async (email: string) =>
@@ -256,70 +329,5 @@ describe('manage staff', () => {
         .send({ email: newEmail(), roleId: a.roles.staff, locale: 'fr' })
         .expect(400);
     });
-  });
-
-  it('deactivates and reactivates a member, but never the last active Owner or yourself', async () => {
-    const cashier = await member(a, a.roles.cashier);
-    const id = (await api(ownerA.token).list()).members.find(
-      (m) => m.userId === cashier.id,
-    )!.membershipId;
-    const labels = () =>
-      request(kit.server).get('/api/v1/labels').auth(cashier.token, { type: 'bearer' });
-    await labels().expect(200);
-    const off = (await api(ownerA.token).post(`/${id}/deactivate`).expect(200)).body as TeamMember;
-    expect(off.status).toBe('inactive');
-    // Their open token stops working at once: revoked (401) or, failing that, no access (403).
-    expect([401, 403]).toContain((await labels()).status);
-    const on = (await api(ownerA.token).post(`/${id}/reactivate`).expect(200)).body as TeamMember;
-    expect(on.status).toBe('active');
-    await labels().expect(200);
-
-    const ownerId = (await api(ownerA.token).list()).members.find(
-      (m) => m.userId === ownerA.id,
-    )!.membershipId;
-    const self = await api(ownerA.token).post(`/${ownerId}/deactivate`).expect(403);
-    expect(self.body).toMatchObject({ code: 'rbac.cannot_change_self' });
-
-    // Owners can switch each other off while another active Owner remains (the database refuses
-    // the last one: manage-staff-migration.int.spec.ts); an Admin can never touch an Owner.
-    const second = await member(a, a.roles.owner);
-    await api(second.token).post(`/${ownerId}/deactivate`).expect(200);
-    const secondId = (await api(second.token).list()).members.find(
-      (m) => m.userId === second.id,
-    )!.membershipId;
-    const third = await member(a, a.roles.owner);
-    await api(third.token).post(`/${secondId}/deactivate`).expect(200);
-    const thirdId = (await api(third.token).list()).members.find(
-      (m) => m.userId === third.id,
-    )!.membershipId;
-    const fourth = await member(a, a.roles.admin);
-    const last = await api(fourth.token).post(`/${thirdId}/deactivate`).expect(403);
-    expect(last.body).toMatchObject({ code: 'rbac.not_grantable' });
-    // Reactivate the first Owner for the other tests.
-    await api(third.token).post(`/${ownerId}/reactivate`).expect(200);
-  });
-
-  it('keeps each organization to its own staff', async () => {
-    const listA = await api(ownerA.token).list();
-    const someone = listA.members.find((m) => m.userId !== ownerA.id)!;
-    const listB = await api(ownerB.token).list();
-    expect(listB.members.map((m) => m.membershipId)).not.toContain(someone.membershipId);
-    const res = await api(ownerB.token).patch(someone.membershipId, { name: 'Hijack' }).expect(404);
-    expect(res.body).toMatchObject({ code: 'rbac.member_not_found' });
-    await api(ownerB.token).post(`/${someone.membershipId}/deactivate`).expect(404);
-    const invitation = listA.invitations[0]!;
-    await api(ownerB.token).link(invitation.invitationId).expect(404);
-  });
-
-  it('replays an idempotent create instead of adding the person twice', async () => {
-    const email = newEmail();
-    const key = uuidv7();
-    const body = { name: 'Sam', email, roleId: a.roles.waiter, temporaryPassword: TEMP };
-    const first = await api(ownerA.token).post('', body, key).expect(201);
-    const again = await api(ownerA.token).post('', body, key).expect(201);
-    expect(again.body).toEqual(first.body);
-    const list = await api(ownerA.token).list();
-    expect(list.members.filter((m) => m.email === email)).toHaveLength(1);
-    expect(list.invitations.filter((i) => i.email === email)).toHaveLength(0);
   });
 });
