@@ -9,3 +9,6 @@ CLAUDE.md
 docs/architecture
 docs/plan
 docs/meroims
+# Gradle output of the print bridge spike
+spikes/**/build
+spikes/**/.gradle

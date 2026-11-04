@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Spike only: English. The real app ships values/ (en) and values-de/ (de). -->
+<resources>
+    <string name="app_name">Print Bridge (spike)</string>
+    <string name="printer_host">Printer IP</string>
+    <string name="printer_port">Port</string>
+    <string name="printer_dots">Printable width in dots (58 mm = 384, 80 mm = 576 or 512)</string>
+    <string name="printer_cutter">Printer has a cutter</string>
+    <string name="save_and_start">Save and start bridge</string>
+    <string name="test_connection">Test connection</string>
+    <string name="test_print">Test print (text)</string>
+    <string name="test_raster">Test print (raster ruler)</string>
+    <string name="log_title">Log</string>
+    <string name="notification_channel">Print bridge</string>
+    <string name="notification_text">Listening on 127.0.0.1:%1$d · printer %2$s</string>
+    <string name="not_configured">not configured</string>
+</resources>
