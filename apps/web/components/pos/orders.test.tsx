@@ -563,7 +563,6 @@ describe('OrderPage (till)', () => {
     await userEvent.click(screen.getByTestId('print-bill'));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
-    expect(within(printed).getByText('This is not a receipt.')).toBeTruthy();
     expect(within(printed).getByTestId('order-total').textContent).toBe('€13.80');
     // ADR 0025: the organization's header (empty fields left out), the fixed middle, its footer.
     const header = within(printed).getByTestId('bill-header');

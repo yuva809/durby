@@ -105,7 +105,7 @@ describe('BillPage', () => {
     signedInAs('owner');
     const writes = api({ '': EMPTY });
     render(<BillPage />, { wrapper: Brand });
-    const preview = await screen.findByTestId('bill-preview');
+    const preview = await screen.findByTestId('bill-preview-customer');
     // Empty: the organization's name and the default thanks; the fixed middle always.
     expect(within(preview).getByTestId('bill-header').textContent).toBe('Demo Bistro');
     expect(within(preview).getByTestId('bill-thanks').textContent).toBe('Thank you for visiting!');
@@ -179,7 +179,7 @@ describe('BillPage', () => {
       },
     });
     render(<BillPage />, { wrapper: Brand });
-    await screen.findByTestId('bill-preview');
+    await screen.findByTestId('bill-preview-customer');
     await userEvent.selectOptions(screen.getByTestId('bill-scope'), HARBOUR.id);
     await waitFor(() =>
       expect(screen.getByTestId<HTMLInputElement>('bill-name').value).toBe('Bay Leaf Harbour'),

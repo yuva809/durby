@@ -407,42 +407,105 @@ function BillEditor({
 
       <section
         aria-label={t('pos.billSettings.preview')}
-        className="flex flex-col gap-2 lg:sticky lg:top-4"
+        className="flex flex-col gap-4"
       >
         <h2 className="font-semibold">{t('pos.billSettings.preview')}</h2>
-        <Card className="mx-auto w-full max-w-80 p-4" data-testid="bill-preview">
-          <Receipt
-            layout={{ header: nextHeader, footer: nextFooter }}
-            organizationName={organizationName}
-            productName={productName}
-            tableName="5"
-            order={{
-              number: SAMPLE_ORDER_NUMBER,
-              covers: 2,
-              waiterName: t('pos.billSettings.sampleWaiter'),
-              total: '20.10',
-            }}
-            bill={[
-              {
-                key: 'dish',
-                name: t('pos.billSettings.sampleDish'),
-                note: null,
-                quantity: 1,
-                unitPrice: '12.50',
-                total: '12.50',
-              },
-              {
-                key: 'drink',
-                name: t('pos.billSettings.sampleDrink'),
-                note: null,
-                quantity: 2,
-                unitPrice: '3.80',
-                total: '7.60',
-              },
-            ]}
-            printedAt={new Date()}
-          />
-        </Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-medium">{t('pos.bill.customer')}</h3>
+            <Card className="flex-1 overflow-auto p-4" data-testid="bill-preview-customer">
+              <Receipt
+                layout={{ header: nextHeader, footer: nextFooter }}
+                organizationName={organizationName}
+                productName={productName}
+                tableName="5"
+                order={{
+                  number: SAMPLE_ORDER_NUMBER,
+                  covers: 2,
+                  waiterName: t('pos.billSettings.sampleWaiter'),
+                  total: '20.10',
+                }}
+                bill={[
+                  {
+                    key: 'dish',
+                    name: t('pos.billSettings.sampleDish'),
+                    note: null,
+                    quantity: 1,
+                    unitPrice: '12.50',
+                    total: '12.50',
+                  },
+                  {
+                    key: 'drink',
+                    name: t('pos.billSettings.sampleDrink'),
+                    note: null,
+                    quantity: 2,
+                    unitPrice: '3.80',
+                    total: '7.60',
+                  },
+                ]}
+                printedAt={new Date()}
+              />
+            </Card>
+          </div>
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-medium">{t('pos.bill.kitchen')}</h3>
+            <Card className="flex-1 overflow-auto p-4" data-testid="bill-preview-kitchen">
+              <Receipt
+                layout={{ header: nextHeader, footer: nextFooter }}
+                organizationName={organizationName}
+                productName={productName}
+                tableName="5"
+                order={{
+                  number: SAMPLE_ORDER_NUMBER,
+                  covers: null,
+                  waiterName: null,
+                  total: '12.50',
+                }}
+                bill={[
+                  {
+                    key: 'dish',
+                    name: t('pos.billSettings.sampleDish'),
+                    note: null,
+                    quantity: 1,
+                    unitPrice: '12.50',
+                    total: '12.50',
+                  },
+                ]}
+                printedAt={new Date()}
+                hideWaiter
+              />
+            </Card>
+          </div>
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-medium">{t('pos.bill.bar')}</h3>
+            <Card className="flex-1 overflow-auto p-4" data-testid="bill-preview-bar">
+              <Receipt
+                layout={{ header: nextHeader, footer: nextFooter }}
+                organizationName={organizationName}
+                productName={productName}
+                tableName="5"
+                order={{
+                  number: SAMPLE_ORDER_NUMBER,
+                  covers: null,
+                  waiterName: null,
+                  total: '7.60',
+                }}
+                bill={[
+                  {
+                    key: 'drink',
+                    name: t('pos.billSettings.sampleDrink'),
+                    note: null,
+                    quantity: 2,
+                    unitPrice: '3.80',
+                    total: '7.60',
+                  },
+                ]}
+                printedAt={new Date()}
+                hideWaiter
+              />
+            </Card>
+          </div>
+        </div>
       </section>
     </div>
   );

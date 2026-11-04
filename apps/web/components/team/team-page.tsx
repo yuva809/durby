@@ -46,6 +46,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '../ui/dialog';
+import { RolesPage } from '../users/roles-page';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -89,6 +90,7 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
   const [editing, setEditing] = useState<TeamMember | 'new' | null>(null);
   const [sharing, setSharing] = useState<TeamInvitation | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [view, setView] = useState<'members' | 'roles'>('members');
 
   const roleList = roles.status === 'ready' ? roles.data : null;
   const locationList = locations.status === 'ready' ? locations.data : null;
@@ -99,18 +101,55 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">{t('platform.team.title')}</h1>
-          <p className="text-muted-foreground">{t('platform.team.intro')}</p>
-        </div>
-        {access.canInvite && roleList && (
-          <Button onClick={() => setEditing('new')} data-testid="team-add">
-            <UserPlus aria-hidden />
-            {t('platform.team.add')}
-          </Button>
-        )}
-      </div>
+      {access.canReadRoles && (
+        <nav className="-mx-4 mb-2 border-b sm:-mx-8">
+          <ul className="flex gap-1 px-4 sm:px-8">
+            <li className="shrink-0">
+              <button
+                onClick={() => setView('members')}
+                className={cn(
+                  '-mb-px flex min-h-11 items-center border-b-2 px-3 text-sm font-medium whitespace-nowrap bg-none cursor-pointer',
+                  view === 'members'
+                    ? 'border-primary text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                )}
+                data-testid="team-tab-members"
+              >
+                {t('platform.team.title')}
+              </button>
+            </li>
+            <li className="shrink-0">
+              <button
+                onClick={() => setView('roles')}
+                className={cn(
+                  '-mb-px flex min-h-11 items-center border-b-2 px-3 text-sm font-medium whitespace-nowrap bg-none cursor-pointer',
+                  view === 'roles'
+                    ? 'border-primary text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                )}
+                data-testid="team-tab-roles"
+              >
+                {t('platform.nav.roles')}
+              </button>
+            </li>
+          </ul>
+        </nav>
+      )}
+
+      {view === 'members' && (
+        <>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-2xl font-semibold">{t('platform.team.title')}</h1>
+              <p className="text-muted-foreground">{t('platform.team.intro')}</p>
+            </div>
+            {access.canInvite && roleList && (
+              <Button onClick={() => setEditing('new')} data-testid="team-add">
+                <UserPlus aria-hidden />
+                {t('platform.team.add')}
+              </Button>
+            )}
+          </div>
 
       <Loaded resource={team} reload={reload}>
         {(data) => {
@@ -227,8 +266,12 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
           );
         }}
       </Loaded>
+        </>
+      )}
 
-      {roleList && (
+      {view === 'roles' && access.canReadRoles && <RolesPage />}
+
+      {roleList && view === 'members' && (
         <StaffDialog
           member={editing !== null && editing !== 'new' ? editing : undefined}
           open={editing !== null}
@@ -243,6 +286,7 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
         />
       )}
 
+      {view === 'members' && (
       <Dialog open={sharing !== null} onOpenChange={(open) => !open && setSharing(null)}>
         <DialogContent closeLabel={t('platform.common.close')}>
           {sharing && (
@@ -256,6 +300,7 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
           )}
         </DialogContent>
       </Dialog>
+      )}
 
       <ConfirmDialog confirm={confirm} onClose={() => setConfirm(null)} onDone={reload} />
     </div>

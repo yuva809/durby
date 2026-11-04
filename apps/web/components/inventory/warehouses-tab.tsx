@@ -192,7 +192,7 @@ function WarehouseDialog({
         <Select
           id={`${id}-station`}
           value={suppliesStation ?? ''}
-          onChange={(e) => setSuppliesStation(e.target.value || null)}
+          onChange={(e) => setSuppliesStation((e.target.value as 'kitchen' | 'bar') || null)}
         >
           <option value="">{t('inventory.stations.none')}</option>
           <option value="kitchen">{t('inventory.stations.kitchen')}</option>

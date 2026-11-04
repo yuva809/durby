@@ -29,6 +29,7 @@ export function Receipt({
   order,
   bill,
   printedAt,
+  hideWaiter,
 }: {
   /** Null while it loads or when it can't be read: the defaults (organization name, thanks). */
   layout: BillLayout | null;
@@ -38,6 +39,7 @@ export function Receipt({
   order: ReceiptOrder;
   bill: BillLine[];
   printedAt: Date;
+  hideWaiter?: boolean;
 }) {
   const t = useT();
   const money = useMoney();
@@ -118,7 +120,6 @@ export function Receipt({
             {line}
           </p>
         ))}
-        <p className="mt-1">{t('pos.bill.notReceipt')}</p>
         <p className="mt-2">{t('pos.bill.poweredBy', { product: productName })}</p>
         <p>{date}</p>
       </footer>
