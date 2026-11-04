@@ -132,7 +132,7 @@ function WarehouseDialog({
   const action = useActionKey();
   const [name, setName] = useState('');
   const [locationId, setLocationId] = useState('');
-  const [suppliesStation, setSuppliesStation] = useState<string | null>(null);
+  const [suppliesStation, setSuppliesStation] = useState<'kitchen' | 'bar' | null>(null);
   const [checked, setChecked] = useState(false);
   const nameMissing = checked && name.trim() === '';
 
@@ -154,7 +154,7 @@ function WarehouseDialog({
         return warehouse
           ? updateWarehouse(store, action, warehouse.id, {
               name: name.trim(),
-              suppliesStation: suppliesStation as any,
+              suppliesStation,
             })
           : createWarehouse(store, action, { locationId, name: name.trim() });
       }}

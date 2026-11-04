@@ -180,6 +180,8 @@ describe('custom-role editor', () => {
       'inventory.stock',
       'inventory.warehouses',
       'inventory.items',
+      'inventory.recipes',
+      'inventory.costs',
       'pos.tables',
       'pos.orders',
       'pos.bills',
