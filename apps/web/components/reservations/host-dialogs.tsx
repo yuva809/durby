@@ -14,21 +14,28 @@ import type { ApiErrorCode } from '../../lib/auth/errors';
 import { errorLabel } from '../../lib/auth/errors';
 import type { Result } from '../../lib/api-call';
 import {
+  anonymiseGuest,
+  bookingChanges,
   clockTime,
   createBooking,
   createWalkIn,
+  freeSlots,
   instantAt,
+  loadAvailability,
+  localDate,
   runAction,
   seatUntil,
   updateBooking,
 } from '../../lib/reservations/host';
 import { useActionKey } from '../../lib/use-action-key';
+import { useResource } from '../../lib/use-resource';
 import { Field } from '../form-dialog';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { ConfirmAction } from '../users/common';
 
 type Failure = ApiErrorCode | 'unknown';
 
@@ -138,7 +145,12 @@ function TablePicker({
 const partyOk = (n: number) => Number.isInteger(n) && n >= 1 && n <= 100;
 const trimmed = (s: string) => (s.trim() === '' ? undefined : s.trim());
 
-/** + Booking: a phone booking (docs/modules/reservations.md → Web, R1.8b). */
+/**
+ * + Booking (a phone booking, R1.8b) or, with `booking`, its edit (R1.9): date, party, the day's
+ * free times (the engine's table for each) or a typed time, tables chosen by hand if wanted, guest
+ * and notes. Pacing and reservation hours refusals offer "Book anyway". With `canErase` an edit can
+ * erase the guest's personal data (GDPR, confirm first).
+ */
 export function BookingDialog({
   open,
   onOpenChange,
@@ -147,6 +159,8 @@ export function BookingDialog({
   date,
   time,
   tables,
+  booking,
+  canErase = false,
   onDone,
 }: {
   open: boolean;
@@ -156,30 +170,60 @@ export function BookingDialog({
   date: LocalDate;
   time: string;
   tables: readonly ReservationsFloorTable[];
-  onDone: (booking: Reservation) => void;
+  /** Edit this booking instead of creating one. */
+  booking?: Reservation;
+  /** reservations.setup.manage: the edit offers "Erase guest data". */
+  canErase?: boolean;
+  /** The saved booking; null after the guest's data was erased. */
+  onDone: (booking: Reservation | null) => void;
 }) {
   const t = useT();
   const { store } = useAuth();
   const action = useActionKey();
+  const eraseAction = useActionKey();
   const id = useId();
-  const [form, setForm] = useState({
-    date,
-    time,
-    party: '2',
-    name: '',
-    phone: '',
-    guestNote: '',
-    staffNote: '',
-  });
-  const [tableIds, setTableIds] = useState<string[]>([]);
+  const editing = booking !== undefined;
+  const erased = booking?.guest.anonymisedAt != null;
+  const [form, setForm] = useState(() =>
+    booking
+      ? {
+          date: localDate(Date.parse(booking.startsAt), timeZone),
+          time: clockTime(booking.startsAt, timeZone),
+          party: String(booking.partySize),
+          name: booking.guest.name ?? '',
+          phone: booking.guest.phone ?? '',
+          email: booking.guest.email ?? '',
+          guestNote: booking.guestNote ?? '',
+          staffNote: booking.staffNote ?? '',
+        }
+      : {
+          date,
+          time,
+          party: '2',
+          name: '',
+          phone: '',
+          email: '',
+          guestNote: '',
+          staffNote: '',
+        },
+  );
+  const [tableIds, setTableIds] = useState<string[]>(booking ? [...booking.tableIds] : []);
+  const [choosing, setChoosing] = useState(false);
   const [problems, setProblems] = useState<{ time?: string; party?: string }>({});
   const [failure, setFailure] = useState<Failure | null>(null);
   const [busy, setBusy] = useState(false);
   const set = (field: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
+  const party = Number(form.party);
+  const [availability] = useResource(
+    partyOk(party) && form.date ? `${locationId}|${form.date}|${party}|${booking?.id ?? ''}` : null,
+    () => loadAvailability(store, locationId, form.date, party, booking?.id),
+  );
+  const slots = availability.status === 'ready' ? freeSlots(availability.data.slots) : null;
+  const names = new Map(tables.map((x) => [x.id, x.name]));
+
   async function submit(force: boolean) {
-    const party = Number(form.party);
     const startsAt = instantAt(form.date, form.time, timeZone);
     const found = {
       ...(startsAt === null && { time: t('reservations.host.booking.timeInvalid') }),
@@ -187,19 +231,34 @@ export function BookingDialog({
     };
     setProblems(found);
     if (startsAt === null || !partyOk(party)) return;
-    const body: CreateReservationRequest = {
-      locationId,
-      startsAt,
-      partySize: party,
-      ...(tableIds.length > 0 && { tableIds }),
-      guest: { name: trimmed(form.name), phone: trimmed(form.phone) },
-      guestNote: trimmed(form.guestNote),
-      staffNote: trimmed(form.staffNote),
-      ...(force && { force: true }),
-    };
-    setBusy(true);
-    setFailure(null);
-    const result = await createBooking(store, action, body);
+    let result: Result<Reservation | null>;
+    if (booking) {
+      const changes = bookingChanges(booking, { ...form, startsAt, partySize: party, tableIds });
+      if (!changes) {
+        onOpenChange(false);
+        return;
+      }
+      setBusy(true);
+      setFailure(null);
+      result = await updateBooking(store, action, booking.id, {
+        ...changes,
+        ...(force && { force: true }),
+      });
+    } else {
+      const body: CreateReservationRequest = {
+        locationId,
+        startsAt,
+        partySize: party,
+        ...(tableIds.length > 0 && { tableIds }),
+        guest: { name: trimmed(form.name), phone: trimmed(form.phone), email: trimmed(form.email) },
+        guestNote: trimmed(form.guestNote),
+        staffNote: trimmed(form.staffNote),
+        ...(force && { force: true }),
+      };
+      setBusy(true);
+      setFailure(null);
+      result = await createBooking(store, action, body);
+    }
     setBusy(false);
     if (result.ok && result.data) {
       onOpenChange(false);
@@ -212,13 +271,18 @@ export function BookingDialog({
   // Pacing and reservation hours are rules staff may override (Q2): offer it after the refusal.
   const overridable =
     failure === 'reservations.pacing_exceeded' || failure === 'reservations.outside_service_hours';
+  const guestLabel = booking?.guest.name ?? t('reservations.host.noName');
   return (
     <HostDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={t('reservations.host.booking.title')}
+      title={
+        booking
+          ? t('reservations.host.booking.editTitle', { number: booking.number })
+          : t('reservations.host.booking.title')
+      }
       testId="booking-dialog"
-      submitLabel={t('reservations.host.booking.submit')}
+      submitLabel={t(editing ? 'platform.common.save' : 'reservations.host.booking.submit')}
       busy={busy}
       error={failure ? t(errorLabel(failure)) : null}
       extra={
@@ -277,7 +341,85 @@ export function BookingDialog({
           />
         </Field>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+
+      <fieldset className="flex flex-col gap-2" data-testid="booking-free-times">
+        <legend className="mb-1 text-sm font-medium">
+          {t('reservations.host.booking.freeTimes')}
+        </legend>
+        {slots === null ? (
+          <p className="text-sm text-muted-foreground">
+            {availability.status === 'error'
+              ? t('reservations.host.booking.freeTimesFailed')
+              : t('reservations.host.booking.freeTimesLoading')}
+          </p>
+        ) : slots.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {t('reservations.host.booking.noFreeTimes')}
+          </p>
+        ) : (
+          <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">
+            {slots.map((slot) => {
+              const label = clockTime(slot.start, timeZone);
+              const chosen = label === form.time;
+              return (
+                <Button
+                  key={slot.start}
+                  type="button"
+                  variant={chosen ? 'default' : 'outline'}
+                  aria-pressed={chosen}
+                  className="min-h-11 tabular-nums"
+                  data-testid="booking-slot"
+                  onClick={() => {
+                    setForm((f) => ({ ...f, time: label }));
+                    setTableIds(slot.tableIds);
+                  }}
+                >
+                  {label}
+                </Button>
+              );
+            })}
+          </div>
+        )}
+      </fieldset>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm" data-testid="booking-tables-summary">
+          {tableIds.length > 0
+            ? t('reservations.host.booking.chosenTables', {
+                tables: tableIds
+                  .map((x) => names.get(x) ?? t('reservations.host.tableGone'))
+                  .join(' + '),
+              })
+            : t('reservations.host.booking.engineTables')}
+        </p>
+        {!choosing && (
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            data-testid="booking-choose-tables"
+            onClick={() => setChoosing(true)}
+          >
+            {t('reservations.host.booking.chooseTables')}
+          </Button>
+        )}
+      </div>
+      {choosing && (
+        <TablePicker
+          tables={tables}
+          selected={tableIds}
+          onChange={setTableIds}
+          walkIns={booking?.source === 'walk_in'}
+          legend={t('reservations.host.booking.tables')}
+        />
+      )}
+
+      {erased && (
+        <p className="rounded-md bg-accent px-3 py-2 text-sm" data-testid="booking-erased">
+          {t('reservations.guest.erasedHint')}
+        </p>
+      )}
+      <div className="grid gap-3 sm:grid-cols-3">
         <Field id={`${id}-name`} label={t('reservations.host.guestName')} problem={null}>
           <Input id={`${id}-name`} autoComplete="off" value={form.name} onChange={set('name')} />
         </Field>
@@ -290,29 +432,52 @@ export function BookingDialog({
             onChange={set('phone')}
           />
         </Field>
+        <Field id={`${id}-email`} label={t('reservations.host.email')} problem={null}>
+          <Input
+            id={`${id}-email`}
+            type="email"
+            autoComplete="off"
+            value={form.email}
+            onChange={set('email')}
+          />
+        </Field>
       </div>
-      <Field
-        id={`${id}-guest-note`}
-        label={t('reservations.host.booking.guestNote')}
-        problem={null}
-      >
-        <Input id={`${id}-guest-note`} value={form.guestNote} onChange={set('guestNote')} />
-      </Field>
-      <Field
-        id={`${id}-staff-note`}
-        label={t('reservations.host.booking.staffNote')}
-        problem={null}
-      >
-        <Input id={`${id}-staff-note`} value={form.staffNote} onChange={set('staffNote')} />
-      </Field>
-      <TablePicker
-        tables={tables}
-        selected={tableIds}
-        onChange={setTableIds}
-        walkIns={false}
-        legend={t('reservations.host.booking.tables')}
-      />
-      <p className="text-sm text-muted-foreground">{t('reservations.host.booking.tablesHint')}</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field
+          id={`${id}-guest-note`}
+          label={t('reservations.host.booking.guestNote')}
+          problem={null}
+        >
+          <Input id={`${id}-guest-note`} value={form.guestNote} onChange={set('guestNote')} />
+        </Field>
+        <Field
+          id={`${id}-staff-note`}
+          label={t('reservations.host.booking.staffNote')}
+          problem={null}
+        >
+          <Input id={`${id}-staff-note`} value={form.staffNote} onChange={set('staffNote')} />
+        </Field>
+      </div>
+
+      {booking && canErase && !erased && (
+        <div className="flex flex-col gap-2 border-t pt-4">
+          <p className="text-sm text-muted-foreground">{t('reservations.guest.eraseHint')}</p>
+          <div>
+            <ConfirmAction
+              trigger={t('reservations.guest.erase')}
+              title={t('reservations.guest.eraseTitle', { guest: guestLabel })}
+              description={t('reservations.guest.eraseDescription')}
+              confirm={t('reservations.guest.erase')}
+              testId="booking-erase"
+              run={() => anonymiseGuest(store, eraseAction, booking.guest.id)}
+              onDone={() => {
+                onOpenChange(false);
+                onDone(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </HostDialog>
   );
 }

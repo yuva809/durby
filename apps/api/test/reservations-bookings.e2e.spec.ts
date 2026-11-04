@@ -409,6 +409,7 @@ describe('reservations: bookings', () => {
         email: 'ada@example.test',
         phone: '+4917612345678', // was missing: filled
         locale: 'en',
+        anonymisedAt: null,
       });
     });
 

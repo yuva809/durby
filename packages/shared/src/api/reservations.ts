@@ -88,6 +88,8 @@ export const reservationsFloorResponseSchema = z.object({
   serviceWindows: z.array(z.object({ start: z.iso.datetime(), end: z.iso.datetime() })),
   /** The location's IANA time zone: the screen shows and enters times in it. */
   timeZone: z.string(),
+  /** reservations.floorHorizonMinutes: how soon a booking counts as arriving (and offers Arrive). */
+  horizonMinutes: z.int(),
 });
 
 export type ReservationsFloorQuery = z.infer<typeof reservationsFloorQuerySchema>;
@@ -372,6 +374,14 @@ export const reservationGuestSchema = z.object({
   email: z.string().nullable(),
   phone: z.string().nullable(),
   locale: z.string(),
+  /** Set once the guest's personal data was erased (name, email and phone are then null). */
+  anonymisedAt: z.iso.datetime().nullable(),
+});
+
+/** POST /reservations/guests/:id/anonymise (R1.9): erasure on request, irreversible. */
+export const anonymiseGuestResponseSchema = z.object({
+  id: z.uuid(),
+  anonymisedAt: z.iso.datetime(),
 });
 
 export const reservationStatusChangeSchema = z.object({
@@ -468,6 +478,8 @@ export const RESERVATION_ERROR_CODES = [
   'reservations.undo_expired',
   'reservations.table_not_in_service',
   'reservations.busy',
+  'reservations.guest_not_found',
 ] as const;
 
 export type ReservationErrorCode = (typeof RESERVATION_ERROR_CODES)[number];
+export type AnonymiseGuestResponse = z.infer<typeof anonymiseGuestResponseSchema>;

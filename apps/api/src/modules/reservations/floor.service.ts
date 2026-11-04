@@ -150,6 +150,7 @@ export class FloorService {
           date,
           live,
           timeZone,
+          horizonMinutes: setting(resolved, 'reservations.floorHorizonMinutes'),
           serviceWindows: windows.map((w) => ({
             start: new Date(w.start).toISOString(),
             end: new Date(w.end).toISOString(),

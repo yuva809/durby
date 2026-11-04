@@ -1,13 +1,19 @@
 'use client';
 
 import type { FloorTable, LocationSummary } from '@durby/shared';
-import { BellRing, Clock, Users } from 'lucide-react';
+import { BellRing, CalendarClock, Clock, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { loadFloor } from '../../lib/pos/api';
 import { durationLabel, minutesSince } from '../../lib/pos/format';
+import { loadFloor as loadReservationsFloor } from '../../lib/reservations/host';
+import {
+  reservationsVisible,
+  type ServiceBadge,
+  serviceBadges,
+} from '../../lib/reservations/service';
 import { useNow } from '../../lib/pos/use-now';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
@@ -58,11 +64,21 @@ type Filter = 'all' | 'open' | 'free';
 
 function LocationFloor({ locations }: { locations: LocationSummary[] }) {
   const t = useT();
-  const { store } = useAuth();
+  const { store, session } = useAuth();
   const id = useId();
   const [locationId, setLocationId] = useState(locations[0]!.id);
   const [filter, setFilter] = useState<Filter>('all');
-  const [tables, reload] = useResource(locationId, () => loadFloor(store, locationId));
+  const [tables, reloadTables] = useResource(locationId, () => loadFloor(store, locationId));
+  // Reservation badges (R1.9): only with the feature and the read key; a failed call hides them.
+  const [bookings, reloadBookings] = useResource(
+    reservationsVisible(session) ? locationId : null,
+    () => loadReservationsFloor(store, locationId, { kind: 'now' }),
+  );
+  const badges = bookings.status === 'ready' ? serviceBadges(bookings.data) : null;
+  const reload = () => {
+    reloadTables();
+    reloadBookings();
+  };
   // Other waiters open and close tables: refresh every 30 s while the page is visible.
   const now = useNow(30_000, reload);
 
@@ -123,13 +139,23 @@ function LocationFloor({ locations }: { locations: LocationSummary[] }) {
         </div>
       </div>
       <Loaded resource={tables} reload={reload}>
-        {(list) => <FloorGrid tables={list} filter={filter} now={now} />}
+        {(list) => <FloorGrid tables={list} filter={filter} now={now} badges={badges} />}
       </Loaded>
     </div>
   );
 }
 
-function FloorGrid({ tables, filter, now }: { tables: FloorTable[]; filter: Filter; now: number }) {
+function FloorGrid({
+  tables,
+  filter,
+  now,
+  badges,
+}: {
+  tables: FloorTable[];
+  filter: Filter;
+  now: number;
+  badges: ReadonlyMap<string, ServiceBadge> | null;
+}) {
   const t = useT();
   if (tables.length === 0) return <p className="text-muted-foreground">{t('pos.floor.empty')}</p>;
   const shown = tables.filter(
@@ -155,7 +181,7 @@ function FloorGrid({ tables, filter, now }: { tables: FloorTable[]; filter: Filt
           )}
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {list.map((table) => (
-              <TableTile key={table.id} table={table} now={now} />
+              <TableTile key={table.id} table={table} now={now} badge={badges?.get(table.id)} />
             ))}
           </ul>
         </section>
@@ -164,10 +190,36 @@ function FloorGrid({ tables, filter, now }: { tables: FloorTable[]; filter: Filt
   );
 }
 
-function TableTile({ table, now }: { table: FloorTable; now: number }) {
+function TableTile({
+  table,
+  now,
+  badge,
+}: {
+  table: FloorTable;
+  now: number;
+  badge?: ServiceBadge;
+}) {
   const t = useT();
   const money = useMoney();
   const order = table.order;
+  const bookingLine = badge && (badge.seatedParty !== null || badge.next) && (
+    <span className="flex flex-wrap gap-1.5" data-testid="floor-booking">
+      {badge.seatedParty !== null && (
+        <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+          {t('reservations.service.fromBooking')}
+        </span>
+      )}
+      {badge.next && (
+        <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+          <CalendarClock aria-hidden className="size-3.5" />
+          {t('reservations.service.next', {
+            time: badge.next.time,
+            party: t('reservations.host.partyOf', { count: String(badge.next.partySize) }),
+          })}
+        </span>
+      )}
+    </span>
+  );
   return (
     <li data-testid="floor-table" data-name={table.name} data-state={order ? 'open' : 'free'}>
       <Link
@@ -223,6 +275,7 @@ function TableTile({ table, now }: { table: FloorTable; now: number }) {
             {t('pos.floor.seats', { count: String(table.seats) })}
           </span>
         )}
+        {bookingLine}
       </Link>
     </li>
   );

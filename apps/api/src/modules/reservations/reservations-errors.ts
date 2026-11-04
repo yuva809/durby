@@ -13,6 +13,8 @@ export const reservationErrors = {
       'reservations.combination_not_found',
       'Table combination not found.',
     ),
+  guestNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'reservations.guest_not_found', 'Guest not found.'),
   reservationNotFound: () =>
     new ApiError(
       HttpStatus.NOT_FOUND,

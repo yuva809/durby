@@ -208,6 +208,7 @@ describe('route markers', () => {
       'POST /api/v1/reservations/:id/seat',
       'POST /api/v1/reservations/:id/undo',
       'POST /api/v1/reservations/combinations',
+      'POST /api/v1/reservations/guests/:id/anonymise',
       'POST /api/v1/reservations/walk-ins',
       'POST /api/v1/roles',
       'POST /api/v1/staff',

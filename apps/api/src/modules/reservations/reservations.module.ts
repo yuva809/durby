@@ -4,6 +4,8 @@ import { AvailabilityController } from './availability/availability.controller';
 import { AvailabilityLoader } from './availability/loader';
 import { BookingsController } from './bookings/bookings.controller';
 import { BookingsService } from './bookings/bookings.service';
+import { GuestsController } from './bookings/guests.controller';
+import { GuestsService } from './bookings/guests.service';
 import { PosEventsHandler } from './bookings/pos-events.handler';
 import { BookingStatusService } from './bookings/status.service';
 import { FloorController } from './floor.controller';
@@ -25,6 +27,7 @@ import { TableRulesService } from './setup/table-rules.service';
     AvailabilityController,
     SetupController,
     LocationSettingsController,
+    GuestsController,
     BookingsController,
   ],
   providers: [
@@ -35,6 +38,7 @@ import { TableRulesService } from './setup/table-rules.service';
     LocationSettingsService,
     BookingsService,
     BookingStatusService,
+    GuestsService,
     PosEventsHandler,
   ],
 })

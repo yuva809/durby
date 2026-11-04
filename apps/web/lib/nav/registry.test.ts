@@ -75,6 +75,7 @@ describe('visibleNav', () => {
       'kitchen',
       'bar',
       'host',
+      'reservations',
       'tables',
       'staff',
       'settings',
@@ -136,6 +137,7 @@ describe('activeNavItem', () => {
     ['/service/x', 'service'],
     ['/tables', 'tables'],
     ['/host', 'host'],
+    ['/reservations', 'reservations'],
     ['/unknown', undefined],
   ])('%s → %s', (path, id) => {
     expect(activeNavItem(NAV_ITEMS, path)?.id).toBe(id);

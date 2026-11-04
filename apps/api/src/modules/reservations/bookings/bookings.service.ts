@@ -56,7 +56,9 @@ const RESERVATION_SELECT = {
   guestNote: true,
   staffNote: true,
   createdAt: true,
-  guest: { select: { id: true, name: true, email: true, phone: true, locale: true } },
+  guest: {
+    select: { id: true, name: true, email: true, phone: true, locale: true, anonymisedAt: true },
+  },
   tables: { select: { tableId: true }, orderBy: { tableId: 'asc' } },
   // The latest change: what an undo would revert.
   // Ids are UUID v7: newest id = newest change.
@@ -87,7 +89,7 @@ export type ReservationRow = {
   guestNote: string | null;
   staffNote: string | null;
   createdAt: Date;
-  guest: Reservation['guest'];
+  guest: Omit<Reservation['guest'], 'anonymisedAt'> & { anonymisedAt: Date | null };
   tables: { tableId: string }[];
   changes: {
     id: string;
@@ -271,7 +273,12 @@ export class BookingsService {
       let guestId = current.guest.id;
       if (body.guest) {
         settings ??= await this.settings.all({ locationId: found.locationId }, tx);
-        guestId = await correctGuest(tx, current.guest.id, guestDetails(body.guest, settings));
+        guestId = await correctGuest(
+          tx,
+          tenantId,
+          current.guest,
+          guestDetails(body.guest, settings),
+        );
       }
 
       const data = {
@@ -581,7 +588,7 @@ export function toResponse(row: ReservationRow, archived: ReadonlySet<string>): 
     startsAt: row.startsAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
     tableIds: row.tables.map((t) => t.tableId),
-    guest: row.guest,
+    guest: { ...row.guest, anonymisedAt: row.guest.anonymisedAt?.toISOString() ?? null },
     guestNote: row.guestNote,
     staffNote: row.staffNote,
     createdAt: row.createdAt.toISOString(),

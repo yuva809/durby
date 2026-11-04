@@ -57,13 +57,22 @@ export async function resolveGuest(
 /**
  * A booking's guest corrected by staff (PATCH): an email that belongs to another live guest links
  * the booking to that guest (filling its blanks); otherwise the given fields replace the current
- * guest's. Phone never relinks: families share numbers.
+ * guest's. Phone never relinks: families share numbers. An anonymised guest is never written
+ * again (GDPR, R1.9): new details link the booking to a live guest (matched or new) instead.
  */
 export async function correctGuest(
   tx: TenantTransactionClient,
-  currentGuestId: string,
+  tenantId: string,
+  current: { id: string; locale: string; anonymisedAt: Date | null },
   details: Partial<GuestDetails>,
 ): Promise<string> {
+  const currentGuestId = current.id;
+  if (current.anonymisedAt !== null) {
+    if (details.name === undefined && details.email === undefined && details.phone === undefined) {
+      return currentGuestId;
+    }
+    return resolveGuest(tx, tenantId, { ...details, locale: details.locale ?? current.locale });
+  }
   if (details.email) {
     const owner = await tx.reservationGuest.findFirst({
       where: { email: details.email, anonymisedAt: null },
@@ -81,7 +90,11 @@ export async function correctGuest(
     ...(details.locale !== undefined && { locale: details.locale }),
   };
   if (Object.keys(data).length > 0) {
-    await tx.reservationGuest.update({ where: { id: currentGuestId }, data });
+    // Only while live: an anonymise that committed meanwhile wins.
+    await tx.reservationGuest.updateMany({
+      where: { id: currentGuestId, anonymisedAt: null },
+      data,
+    });
   }
   return currentGuestId;
 }
@@ -109,7 +122,7 @@ async function findMatch(
   return null;
 }
 
-/** Only fields the guest doesn't have yet; never overwrites. */
+/** Only fields the guest doesn't have yet; never overwrites, never refills an anonymised guest. */
 async function fillBlanks(
   tx: TenantTransactionClient,
   guest: GuestRow,
@@ -121,6 +134,6 @@ async function fillBlanks(
     ...(guest.phone === null && details.phone && { phone: details.phone }),
   };
   if (Object.keys(data).length > 0) {
-    await tx.reservationGuest.update({ where: { id: guest.id }, data });
+    await tx.reservationGuest.updateMany({ where: { id: guest.id, anonymisedAt: null }, data });
   }
 }
