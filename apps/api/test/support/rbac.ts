@@ -86,11 +86,17 @@ export class RbacSeed {
     orgId: string,
     userId: string,
     roleId: string,
-    opts: { locations?: string[] } = {},
+    opts: { locations?: string[]; displayName?: string } = {},
   ): Promise<string> {
     return this.as(orgId, async (db) => {
       const m = await db.membership.create({
-        data: { tenantId: orgId, userId, roleId, allLocations: opts.locations === undefined },
+        data: {
+          tenantId: orgId,
+          userId,
+          roleId,
+          allLocations: opts.locations === undefined,
+          displayName: opts.displayName ?? null,
+        },
       });
       await db.membershipLocation.createMany({
         data: (opts.locations ?? []).map((locationId) => ({

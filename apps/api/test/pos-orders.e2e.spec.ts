@@ -240,6 +240,149 @@ describe('pos orders', () => {
     });
   });
 
+  describe('stations (ADR 0025)', () => {
+    /** A bar category with a beer, on top of the restaurant's kitchen menu. */
+    async function withBar(r: Restaurant) {
+      const drinks = productCategorySchema.parse(
+        (await post(r.owner, '/catalog/categories', { name: 'Drinks', station: 'bar' }).expect(201))
+          .body,
+      );
+      expect(drinks.station).toBe('bar');
+      const beer = productSchema.parse(
+        (
+          await post(r.owner, '/catalog/products', {
+            categoryId: drinks.id,
+            name: 'Beer',
+            price: '4.50',
+            taxRate: '19',
+          }).expect(201)
+        ).body,
+      ).id;
+      return { drinks: drinks.id, beer };
+    }
+
+    it('splits a send into a kitchen and a bar ticket, kitchen first', async () => {
+      const r = await restaurant();
+      const { beer } = await withBar(r);
+      const res = await sent(r.owner, r.table, [
+        { productId: beer, quantity: 2 },
+        { productId: r.soup, quantity: 1, note: 'hot' },
+        { productId: r.cola, quantity: 1 },
+      ]);
+      expect(res.ticketIds).toHaveLength(2);
+      expect(res.ticketId).toBe(res.ticketIds[0]);
+      const tickets = res.order.tickets;
+      expect(tickets.map((t) => [t.id, t.sequence, t.station])).toEqual([
+        [res.ticketIds[0], 1, 'kitchen'],
+        [res.ticketIds[1], 2, 'bar'],
+      ]);
+      expect(tickets[0]!.lines.map((l) => l.productName)).toEqual(['Soup', 'Cola']);
+      expect(tickets[1]!.lines.map((l) => l.productName)).toEqual(['Beer']);
+      expect(res.order).toMatchObject({ itemCount: 4, gross: '19.70' });
+    });
+
+    it('makes one bar ticket for drinks only', async () => {
+      const r = await restaurant();
+      const { beer } = await withBar(r);
+      const res = await sent(r.owner, r.table, [{ productId: beer, quantity: 1 }]);
+      expect(res.ticketIds).toEqual([res.ticketId]);
+      expect(res.order.tickets.map((t) => t.station)).toEqual(['bar']);
+    });
+
+    it('voids at the station that got the item, even after the category moved', async () => {
+      const r = await restaurant();
+      const { drinks, beer } = await withBar(r);
+      const { order } = await sent(r.owner, r.table, [
+        { productId: r.soup, quantity: 1 },
+        { productId: beer, quantity: 1 },
+      ]);
+      // Moving drinks to the kitchen later changes neither old tickets nor where their voids go.
+      await withIdempotencyKey(
+        request(server)
+          .patch(`/api/v1/catalog/categories/${drinks}`)
+          .auth(r.owner, { type: 'bearer' }),
+      )
+        .send({ station: 'kitchen' })
+        .expect(200);
+      const [kitchen, bar] = order.tickets;
+      const voided = sendTicketResponseSchema.parse(
+        (
+          await post(r.owner, `/pos/orders/${order.id}/voids`, {
+            lines: [
+              { lineId: bar!.lines[0]!.id, quantity: 1 },
+              { lineId: kitchen!.lines[0]!.id, quantity: 1 },
+            ],
+          }).expect(201)
+        ).body,
+      );
+      const after = voided.order.tickets;
+      expect(after.map((t) => [t.sequence, t.kind, t.station])).toEqual([
+        [1, 'order', 'kitchen'],
+        [2, 'order', 'bar'],
+        [3, 'void', 'kitchen'],
+        [4, 'void', 'bar'],
+      ]);
+      expect(voided.ticketIds).toEqual([after[2]!.id, after[3]!.id]);
+      expect(after[3]!.lines.map((l) => [l.productName, l.quantity])).toEqual([['Beer', -1]]);
+    });
+
+    it('replays a repeated split send with the same tickets', async () => {
+      const r = await restaurant();
+      const { beer } = await withBar(r);
+      const key = uuidv7();
+      const lines = [
+        { productId: r.soup, quantity: 1 },
+        { productId: beer, quantity: 1 },
+      ];
+      const first = sendTicketResponseSchema.parse(
+        (await send(r.owner, r.table, lines, key).expect(201)).body,
+      );
+      const again = sendTicketResponseSchema.parse(
+        (await send(r.owner, r.table, lines, key).expect(201)).body,
+      );
+      expect(again.ticketIds).toEqual(first.ticketIds);
+      expect(again.order.tickets).toHaveLength(2);
+    });
+
+    it('records the station in the ticket audit rows', async () => {
+      const r = await restaurant();
+      const { beer } = await withBar(r);
+      await sent(r.owner, r.table, [
+        { productId: r.soup, quantity: 1 },
+        { productId: beer, quantity: 1 },
+      ]);
+      const rows = await seed.as(r.org.id, (db) =>
+        db.auditLog.findMany({
+          where: { action: 'pos.kitchen_ticket.created' },
+          orderBy: { id: 'asc' },
+          select: { after: true },
+        }),
+      );
+      expect(rows.map((row) => row.after)).toMatchObject([
+        { sequence: 1, station: 'kitchen', lineCount: 1 },
+        { sequence: 2, station: 'bar', lineCount: 1 },
+      ]);
+    });
+  });
+
+  describe('waiter on the bill (ADR 0025)', () => {
+    it('names the member who opened the order, never their id; null without a display name', async () => {
+      const r = await restaurant();
+      const userId = await seed.user();
+      await seed.member(r.org.id, userId, r.org.roles.waiter, { displayName: 'Priya' });
+      const waiter = await seed.token(userId, r.org.id);
+      const { order } = await sent(waiter, r.table, [{ productId: r.soup, quantity: 1 }]);
+      expect(order.waiterName).toBe('Priya');
+      expect(JSON.stringify(order)).not.toContain(userId);
+      // Another member adding items or reading doesn't change who served the table.
+      const more = await sent(r.owner, r.table, [{ productId: r.cola, quantity: 1 }]);
+      expect(more.order.waiterName).toBe('Priya');
+
+      const unnamed = await sent(r.owner, r.otherTable, [{ productId: r.soup, quantity: 1 }]);
+      expect(unnamed.order.waiterName).toBeNull();
+    });
+  });
+
   describe('voids', () => {
     it('writes a void ticket with negative lines and updates what is left', async () => {
       const r = await restaurant();

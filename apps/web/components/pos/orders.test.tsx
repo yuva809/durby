@@ -37,7 +37,7 @@ const TABLE = {
   shape: 'square',
   color: 'neutral',
 };
-const FOOD = { id: id(4), name: 'Food', sortOrder: 0, archivedAt: null };
+const FOOD = { id: id(4), name: 'Food', sortOrder: 0, station: 'kitchen', archivedAt: null };
 const product = (n: number, name: string, price: string, taxRate: string) => ({
   id: id(10 + n),
   categoryId: FOOD.id,
@@ -89,6 +89,7 @@ const ORDER: Order = {
       id: id(21),
       sequence: 1,
       kind: 'order',
+      station: 'kitchen',
       createdAt: '2026-10-27T12:00:00.000Z',
       lines: [line(1, id(21), SOUP, 2, 2)],
     },
@@ -98,6 +99,7 @@ const ORDER: Order = {
     gross: '13.80',
     byTaxRate: [{ taxRate: '7.00', gross: '13.80', net: '12.90', tax: '0.90' }],
   },
+  waiterName: 'Priya',
 };
 
 function signedInAs(role: SystemRole, without: string[] = []) {
@@ -215,6 +217,7 @@ describe('OrderPage (till)', () => {
           id: id(22),
           sequence: 1,
           kind: 'order',
+          station: 'kitchen',
           createdAt: '2026-10-27T12:00:00.000Z',
           lines: [line(2, id(22), SOUP, 2, 2), { ...line(3, id(22), COLA, 1, 1), note: 'no ice' }],
         },
@@ -223,7 +226,7 @@ describe('OrderPage (till)', () => {
     const writes = api({
       ...withOrder(null),
       [`POST /api/v1/pos/tables/${TABLE.id}/tickets`]: () =>
-        Response.json({ order: sent, ticketId: id(22) }, { status: 201 }),
+        Response.json({ order: sent, ticketId: id(22), ticketIds: [id(22)] }, { status: 201 }),
     });
     render(<OrderPage tableId={TABLE.id} />);
     expect(within(await screen.findByTestId('table-bar')).getByText('T1')).toBeTruthy();
@@ -289,7 +292,10 @@ describe('OrderPage (till)', () => {
       const writes = api({
         ...withOrder(null),
         [`POST /api/v1/pos/tables/${TABLE.id}/tickets`]: () =>
-          Response.json({ order: { ...ORDER, covers: 2 }, ticketId: id(21) }, { status: 201 }),
+          Response.json(
+            { order: { ...ORDER, covers: 2 }, ticketId: id(21), ticketIds: [id(21)] },
+            { status: 201 },
+          ),
       });
       render(<OrderPage tableId={TABLE.id} />);
       const field = await guests();
@@ -375,6 +381,7 @@ describe('OrderPage (till)', () => {
           id: id(24),
           sequence: 2,
           kind: 'order',
+          station: 'kitchen',
           createdAt: '2026-10-27T12:10:00.000Z',
           lines: [line(5, id(24), SOUP, 1, 1)],
         },
@@ -440,7 +447,7 @@ describe('OrderPage (till)', () => {
     // Laid out like a till receipt: table, order number, item total then quantity × price,
     // thanks; no VAT breakdown and no TSE data.
     expect(within(printed).getByTestId('bill-table').textContent).toMatch(/^Table T1/);
-    expect(within(printed).getByText('Thank you for your visit!')).toBeTruthy();
+    expect(within(printed).getByText('Thank you for visiting!')).toBeTruthy();
     expect(within(printed).getAllByTestId('bill-line')[0]!.textContent).toMatch(/×/);
     expect(printed.textContent).not.toMatch(/VAT|TSE/);
     expect(within(printed).getByTestId('bill-footer').textContent).toContain(ORDER.number);
@@ -467,6 +474,7 @@ describe('OrderPage (till)', () => {
           id: id(23),
           sequence: 2,
           kind: 'void',
+          station: 'kitchen',
           createdAt: '2026-10-27T12:05:00.000Z',
           lines: [{ ...line(4, id(23), SOUP, -1, 0), voidsLineId: id(31) }],
         },
@@ -475,7 +483,7 @@ describe('OrderPage (till)', () => {
     const writes = api({
       ...withOrder(ORDER),
       [`POST /api/v1/pos/orders/${ORDER.id}/voids`]: () =>
-        Response.json({ order: voided, ticketId: id(23) }, { status: 201 }),
+        Response.json({ order: voided, ticketId: id(23), ticketIds: [id(23)] }, { status: 201 }),
     });
     render(<OrderPage tableId={TABLE.id} />);
     await userEvent.click(await screen.findByTestId('void-items'));

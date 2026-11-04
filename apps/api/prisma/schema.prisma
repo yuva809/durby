@@ -757,11 +757,21 @@ model IdempotencyKey {
 // Name uniqueness among non-archived rows is a partial unique index in the migration.
 // ---------------------------------------------------------------------------
 
+/// Where a category's items are prepared: its own ticket per station (ADR 0025).
+enum PrepStation {
+  kitchen
+  bar
+
+  @@map("prep_station")
+}
+
 model ProductCategory {
   id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId     String       @map("tenant_id") @db.Uuid
   name         String
   sortOrder    Int          @default(0) @map("sort_order")
+  /// Which ticket its items print on (ADR 0025).
+  station      PrepStation  @default(kitchen)
   archivedAt   DateTime?    @map("archived_at") @db.Timestamptz(6)
   createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -884,6 +894,8 @@ model PosKitchenTicket {
   orderId         String               @map("order_id") @db.Uuid
   sequence        Int
   kind            PosKitchenTicketKind
+  /// Snapshot of the lines' category station at send time (ADR 0025).
+  station         PrepStation          @default(kitchen)
   createdByUserId String               @map("created_by_user_id") @db.Uuid
   createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   organization    Organization         @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)

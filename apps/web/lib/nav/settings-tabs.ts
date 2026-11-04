@@ -32,6 +32,8 @@ export const SETTINGS_TABS: readonly NavItem[] = [
   // Tables, combinations (R1.5b) and the location's reservation settings (R1.5c).
   tab('reservations', 'reservations.settingsPage.tab', 'reservations.setup.manage', 'reservations'),
   tab('numbering', 'platform.settingsTabs.numbering', 'platform.settings.read'),
+  // The printed bill's header and footer (docs/modules/pos.md → Bill layout).
+  tab('bill', 'platform.settingsTabs.bill', 'platform.settings.read', 'pos'),
   tab('labels', 'platform.settingsTabs.labels', 'platform.labels.manage'),
   tab('plan', 'platform.settingsTabs.plan'),
 ];

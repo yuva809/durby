@@ -330,7 +330,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   number_series_counter: ['id', 'seriesKey', 'period', 'nextValue'],
   /** Never `payload` or `lastError`. `handler`: set when one failed handler job was re-queued. */
   outbox_event: ['id', 'type', 'version', 'attempts', 'deadLetteredAt', 'handler'],
-  product_category: ['id', 'name', 'sortOrder', 'archivedAt'],
+  product_category: ['id', 'name', 'sortOrder', 'station', 'archivedAt'],
   /** `price`, `taxRate`: decimal strings. Never `description` (free text). */
   product: ['id', 'categoryId', 'name', 'price', 'taxRate', 'sortOrder', 'archivedAt'],
   dining_table: [
@@ -347,7 +347,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   ],
   pos_order: ['id', 'number', 'tableId', 'locationId', 'status', 'covers', 'closedAt'],
   /** Never line notes (free text). */
-  kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'lineCount'],
+  kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'station', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
   location: ['id', 'brandId', 'name'],
   reservation_table_rule: ['tableId', 'bookingMode', 'minParty', 'maxParty'],

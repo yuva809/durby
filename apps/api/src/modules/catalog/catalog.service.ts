@@ -8,6 +8,7 @@ import {
   type ImportProductsResponse,
   type ListProductCategoriesQuery,
   type ListProductsQuery,
+  type PrepStation,
   type Product,
   type ProductCategory,
   type UpdateProductCategoryRequest,
@@ -24,7 +25,13 @@ import {
 import { catalogErrors, isUniqueViolation } from './catalog-errors';
 import { fixed2 } from './decimal-text';
 
-const CATEGORY_SELECT = { id: true, name: true, sortOrder: true, archivedAt: true } as const;
+const CATEGORY_SELECT = {
+  id: true,
+  name: true,
+  sortOrder: true,
+  station: true,
+  archivedAt: true,
+} as const;
 
 const PRODUCT_SELECT = {
   id: true,
@@ -37,7 +44,13 @@ const PRODUCT_SELECT = {
   archivedAt: true,
 } as const;
 
-type CategoryRow = { id: string; name: string; sortOrder: number; archivedAt: Date | null };
+type CategoryRow = {
+  id: string;
+  name: string;
+  sortOrder: number;
+  station: PrepStation;
+  archivedAt: Date | null;
+};
 
 /** Prisma returns `numeric` columns as Decimal objects; only their exact text is used here. */
 type DecimalValue = { toFixed(digits: number): string };
@@ -80,7 +93,12 @@ export class CatalogService {
     return this.unique(catalogErrors.categoryNameTaken, () =>
       this.db.$transaction(async (tx) => {
         const row = await tx.productCategory.create({
-          data: { tenantId, name: body.name, sortOrder: body.sortOrder ?? 0 },
+          data: {
+            tenantId,
+            name: body.name,
+            sortOrder: body.sortOrder ?? 0,
+            station: body.station ?? 'kitchen',
+          },
           select: CATEGORY_SELECT,
         });
         await this.audit.record(tx, {
@@ -108,6 +126,7 @@ export class CatalogService {
         const data = {
           name: body.name ?? current.name,
           sortOrder: body.sortOrder ?? current.sortOrder,
+          station: body.station ?? current.station,
           archivedAt: archivedAt(current.archivedAt, body.archived),
         };
         if (sameSnapshot(categorySnapshot(current), categorySnapshot({ ...current, ...data }))) {

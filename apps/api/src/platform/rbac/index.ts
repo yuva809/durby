@@ -7,6 +7,7 @@ export {
   type InvitationSettings,
 } from './invitation-ports';
 export { IS_PLATFORM_ONLY_KEY, PlatformOnly } from '../markers';
+export { MemberNames } from './member-names';
 export { PERMISSION_REGISTRY, type PermissionRegistry } from './permission-registry';
 export { STAFF_AUTHENTICATOR, type StaffAuthenticatorPort } from './staff-port';
 export { SystemRoles } from './system-roles';

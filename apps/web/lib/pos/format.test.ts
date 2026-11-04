@@ -82,6 +82,7 @@ describe('billLines', () => {
       id: `0190a000-0000-7000-8000-00000000050${i}`,
       sequence: i + 1,
       kind: 'order' as const,
+      station: 'kitchen' as const,
       createdAt: '2026-10-27T12:00:00.000Z',
       lines,
     })),

@@ -6,6 +6,7 @@
   "catalog.fields.price": "Preis",
   "catalog.fields.taxRate": "MwSt. %",
   "catalog.fields.sortOrder": "Position",
+  "catalog.fields.station": "Station",
   "catalog.page.categories": "Kategorien",
   "catalog.page.allCategories": "Alle Kategorien",
   "catalog.page.showArchived": "Archivierte anzeigen",
@@ -216,5 +217,8 @@
   "catalog.bulk.deleteCategoriesDescription": "Ihre Produkte werden mitgelöscht, auch archivierte. Wurde eines davon verkauft, bleibt die ganze Kategorie mit allen Produkten bestehen.",
   "catalog.bulk.keptTitle": "Nicht gelöscht, weil verkauft: {names}",
   "catalog.bulk.archiveThem": "Archivieren",
-  "catalog.bulk.dismiss": "Schließen"
+  "catalog.bulk.dismiss": "Schließen",
+  "catalog.stations.kitchen": "Küche",
+  "catalog.stations.bar": "Bar",
+  "catalog.stations.hint": "Wo die Artikel zubereitet werden: jede Station bekommt ihren eigenen Bon."
 }

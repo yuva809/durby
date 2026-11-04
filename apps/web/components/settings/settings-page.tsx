@@ -8,6 +8,7 @@ import {
   type WeeklyHours,
 } from '@durby/shared';
 import { TriangleAlert } from 'lucide-react';
+import Link from 'next/link';
 import { type ReactNode, useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
@@ -89,6 +90,13 @@ export function SettingsPage() {
             const openingHours = ((saved.openingHours ?? byKey.get('openingHours'))?.value ??
               DEFAULT_OPENING_HOURS) as WeeklyHours;
             if (!setting || !control) return null;
+            if (control.kind === 'page') {
+              return (
+                <li key={key}>
+                  <SettingLink settingKey={key} href={control.href} />
+                </li>
+              );
+            }
             return (
               <li key={key}>
                 <SettingRow
@@ -113,6 +121,27 @@ export function SettingsPage() {
       <p className="text-muted-foreground">{t('platform.settingsPage.description')}</p>
       {body}
     </div>
+  );
+}
+
+/** A setting edited on a page of its own: its name, description and a link there. */
+function SettingLink({ settingKey, href }: { settingKey: SettingKey; href: string }) {
+  const t = useT();
+  const labels = settingLabels(settingKey);
+  return (
+    <Card
+      className="flex flex-wrap items-center justify-between gap-3 p-4"
+      data-testid="setting"
+      data-key={settingKey}
+    >
+      <div className="flex flex-col gap-1">
+        <p className="text-base font-medium">{t(labels.name)}</p>
+        <p className="text-sm text-muted-foreground">{t(labels.description)}</p>
+      </div>
+      <Button asChild variant="outline" className="min-h-11">
+        <Link href={href}>{t('platform.settingsPage.open')}</Link>
+      </Button>
+    </Card>
   );
 }
 

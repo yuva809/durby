@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PREP_STATIONS } from './catalog';
 import { TABLE_COLORS, TABLE_SHAPES } from './pos-tables';
 
 /** Request and response bodies of the order endpoints (docs/modules/pos.md → Step 3). */
@@ -66,6 +67,8 @@ export const kitchenTicketSchema = z.object({
   id: z.uuid(),
   sequence: z.int(),
   kind: z.enum(KITCHEN_TICKET_KINDS),
+  /** Where it prints: kitchen or bar (ADR 0025). */
+  station: z.enum(PREP_STATIONS),
   createdAt: z.iso.datetime(),
   lines: z.array(orderLineSchema),
 });
@@ -102,9 +105,19 @@ export const orderSummarySchema = z.object({
 export const orderSchema = orderSummarySchema.extend({
   tickets: z.array(kitchenTicketSchema),
   totals: orderTotalsSchema,
+  /** Who opened the order, for the bill (ADR 0025); null when the member is gone. */
+  waiterName: z.string().nullable(),
 });
 
-export const sendTicketResponseSchema = z.object({ order: orderSchema, ticketId: z.uuid() });
+/**
+ * One ticket per station the send (or void) had lines for, in sequence order (ADR 0025); `ticketId` is
+ * the first, kept for older clients.
+ */
+export const sendTicketResponseSchema = z.object({
+  order: orderSchema,
+  ticketId: z.uuid(),
+  ticketIds: z.array(z.uuid()).min(1),
+});
 
 export const floorTableSchema = z.object({
   id: z.uuid(),

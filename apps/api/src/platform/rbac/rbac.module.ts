@@ -8,6 +8,7 @@ import { ActiveAccessProvider } from './active-access.provider';
 import { InvitationMailer } from './invitation-mailer';
 import { InvitationsController } from './invitations.controller';
 import { InvitationsService } from './invitations.service';
+import { MemberNames } from './member-names';
 import { MembersController } from './members.controller';
 import { MembersService } from './members.service';
 import { defaultPermissionRegistry, PERMISSION_REGISTRY } from './permission-registry';
@@ -33,6 +34,7 @@ import { TeamService } from './team.service';
     AccessService,
     InvitationMailer,
     InvitationsService,
+    MemberNames,
     MembersService,
     RolesService,
     RouteMarkerCheck,
@@ -48,6 +50,7 @@ import { TeamService } from './team.service';
     ACTIVE_ACCESS_LOOKUP,
     ACTIVE_ENTITLEMENTS_LOOKUP,
     AccessService,
+    MemberNames,
     PERMISSION_REGISTRY,
     SystemRoles,
   ],

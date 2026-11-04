@@ -1,5 +1,7 @@
 import { isLabelKey, type LabelKey } from '@durby/i18n';
 import {
+  billFooterSchema,
+  billHeaderSchema,
   closedDatesSchema,
   type ResolvedSetting,
   SETTING_KEYS,
@@ -39,7 +41,9 @@ export type SettingControl =
   /** The literal `inherit` (another setting's schedule), or a weekly schedule of its own. */
   | { kind: 'scheduleOr'; inherit: string }
   /** Party-size bands with minutes (`reservations.turnTimes`). */
-  | { kind: 'turnTimes' };
+  | { kind: 'turnTimes' }
+  /** Edited on a page of its own (the bill's header and footer, with a preview). */
+  | { kind: 'page'; href: string };
 
 /** `weighted_average` → `weightedAverage` (label keys are camelCase). */
 const camel = (value: string) =>
@@ -62,6 +66,9 @@ export function controlOf(key: SettingKey): SettingControl | null {
   if (SETTINGS[key].schema === weeklyHoursSchema) return { kind: 'weeklyHours' };
   if (SETTINGS[key].schema === closedDatesSchema) return { kind: 'dateList' };
   if (SETTINGS[key].schema === turnTimesSchema) return { kind: 'turnTimes' };
+  if (SETTINGS[key].schema === billHeaderSchema || SETTINGS[key].schema === billFooterSchema) {
+    return { kind: 'page', href: '/settings/bill' };
+  }
   const schema = SETTINGS[key].schema as unknown as SchemaShape;
   switch (schema.def.type) {
     case 'literal': {

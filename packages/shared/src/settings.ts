@@ -8,6 +8,12 @@ import {
   turnTimesSchema,
 } from './reservation-settings';
 import { countryCodeSchema } from './phone';
+import {
+  billFooterSchema,
+  billHeaderSchema,
+  DEFAULT_BILL_FOOTER,
+  DEFAULT_BILL_HEADER,
+} from './pos-bill-settings';
 import { closedDatesSchema, DEFAULT_OPENING_HOURS, weeklyHoursSchema } from './time/opening-hours';
 
 /**
@@ -208,6 +214,24 @@ export const SETTINGS = {
     description: 'platform.settings.reservationsHoldMinutes.description',
     schema: z.int().min(1).max(15),
     default: 5,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  // The printed bill's header and footer (docs/modules/pos.md → Bill layout, ADR 0025); the middle
+  // part is the same for everyone. Read at the order's location.
+  'pos.billHeader': define({
+    label: 'platform.settings.posBillHeader.name',
+    description: 'platform.settings.posBillHeader.description',
+    schema: billHeaderSchema,
+    default: DEFAULT_BILL_HEADER,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  'pos.billFooter': define({
+    label: 'platform.settings.posBillFooter.name',
+    description: 'platform.settings.posBillFooter.description',
+    schema: billFooterSchema,
+    default: DEFAULT_BILL_FOOTER,
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
