@@ -142,7 +142,7 @@ Location
 | Table                 | Columns                                                                                                                                                                                                          | Notes                                                                                                 |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `pos_orders`          | `id`, `tenant_id`, `location_id`, `table_id`, `number`, `status` (`open`/`closed`), `covers` (int 1–100, nullable), `opened_by_user_id`, `opened_at`, `closed_by_user_id`, `closed_at`, timestamps               | `UNIQUE (tenant_id, number)`; partial `UNIQUE (tenant_id, table_id) WHERE status = 'open'`; no DELETE |
-| `pos_kitchen_tickets` | `id`, `tenant_id`, `order_id`, `sequence`, `kind` (`order`/`void`), `created_by_user_id`, `created_at`                                                                                                           | `UNIQUE (tenant_id, order_id, sequence)`; no UPDATE/DELETE                                            |
+| `pos_kitchen_tickets` | `id`, `tenant_id`, `order_id`, `sequence`, `kind` (`order`/`void`), `station` (`kitchen`/`bar`), `created_by_user_id`, `created_at`                                                                              | `UNIQUE (tenant_id, order_id, sequence)`; no UPDATE/DELETE                                            |
 | `pos_order_lines`     | `id`, `tenant_id`, `order_id`, `ticket_id`, `product_id`, `product_name`, `unit_price numeric(12,2)`, `tax_rate numeric(5,2)`, `quantity` (int ≠ 0), `note`, `voids_line_id`, `created_by_user_id`, `created_at` | no UPDATE/DELETE; `quantity < 0` exactly when `voids_line_id` is set                                  |
 
 - **Snapshots.** Name, gross unit price and VAT rate are copied from the product when the line is written; later
@@ -160,7 +160,13 @@ Location
 - **Concurrency.** Ticket writes lock the order row; two first sends to a free table race on the partial unique
   index and the loser retries once, landing on the same order.
 - User ids are stored without a foreign key (users are platform rows private to platform/auth) and never returned;
-  tickets don't name the waiter.
+  tickets don't name the waiter. The order carries `waiterName` (ADR 0025): the display name of the member who
+  opened it (null when it has none; the bill then leaves the line out), read through the platform port `MemberNames`, for the bill.
+- **Stations** (ADR 0025). A category's `station` (`kitchen` or `bar`, catalog) decides where its items go. A send
+  writes **one ticket per station** it has lines for, kitchen first, with consecutive sequence numbers, in one
+  transaction; a void splits the same way by the station of the ticket that sent each voided line. The ticket's
+  `station` is a snapshot. The send and void responses carry `ticketIds` (all of them, in sequence order) and
+  `ticketId` (the first, kept for older clients).
 
 ### Permissions (location scope, checked at the table's location)
 
@@ -227,19 +233,40 @@ would add them.
   view (`window.print()`); the order so far with voided items struck through, totals, **Reprint** per ticket,
   **Cancel items** (a void, with `pos.orders.void`), **Close order** (with `pos.orders.close`).
 - **Printing.** Holders of `pos.bills.print` (waiter, cashier, manager, admin, owner) print the **bill**, laid out
-  like a till receipt: organization, "Guest check", "Table n, Guests: g" (guests when recorded), the order number,
-  each item with its line total and "quantity × price" (notes below), the TOTAL, "Thank you for your visit!",
-  "This is not a receipt.", and the order number and print time at the bottom. **No VAT breakdown and no TSE
-  data** (decision 2026-11-02; the till's own screen still shows VAT per rate). It doesn't name the waiter. A role without it (a custom role) prints the **order slip**: table,
+  like a till receipt in three parts (ADR 0025):
+  - **Header**, from the setting `pos.billHeader` at the order's location: logo, name (else the organization's
+    name), phone, email, website; empty fields are left out.
+  - **Middle**, the same for everyone: waiter, "Table n · Guests g" (guests when recorded), the bill number (the
+    order number), each item as "quantity × name" with its line total (notes below), the TOTAL.
+  - **Footer**: the lines of `pos.billFooter` (else "Thank you for visiting!"), "This is not a receipt.",
+    "Powered by" the theme's product name, and the print date and time.
+
+  **No VAT breakdown and no TSE data** (decision 2026-11-02; the till's own screen still shows VAT per rate). A
+  role without it (a custom role) prints the **order slip**: table,
   order number, time, the order's items (combined) with quantities and notes, item count; no prices, VAT or totals.
   Waiters got `pos.bills.print` on 2026-10-29 (ADR 0016 §8 note): they bill and check out like the cashier. For now the key gates the web
   print; step 4's guest-check endpoints will require it in the api.
+
 - **Paper:** everything printed from the till (bill, order slip, kitchen ticket) is laid out for an **80 mm
   thermal roll**: `@page { size: 80mm 297mm; margin: 0 }` (the drivers' "roll paper 80 x 297 mm", cut after the
   content), 72 mm printed width, black on white, monospace (`app/globals.css`). Zero margins leave no room for the
-  browser's header and footer; while printing, the document title is the organization's name (`lib/pos/print.ts`),
-  so nothing printed names the product. The organization's name heads every slip.
-- Kitchen ticket, laid out like a kitchen printer's slip: "Dine in"; the organization and time; the table in large
+  browser's header and footer; while printing, the document title is the organization's name (`lib/pos/print.ts`).
+  The organization's name heads every slip; only the bill's footer names the product ("Powered by", ADR 0025).
+- Kitchen ticket, laid out like a kitchen printer's slip: "Dine in" (a bar ticket: "BAR"); the organization and time; the table in large
   type; "# order number · Ticket n"; a dashed rule; "New" (or "CANCELLED" in large letters); then each item as quantity
   and name in large type with its note under it. No prices, and it doesn't name the waiter (ADR 0016). Printed
-  through a print-only element (`#print-root`); everything else is hidden in print.
+  through a print-only element (`#print-root`); everything else is hidden in print. A send with kitchen and bar
+  items prints **one print job per ticket**, kitchen first, the next once the previous print dialog closes
+  (`afterprint`), so each can go to its own printer. The ticket log shows each ticket's station.
+
+### Bill layout
+
+- Settings (ADR 0010, organization or location scope, `platform.settings.manage`):
+  - `pos.billHeader` `{ logo, name, phone, email, website }`, each `null` or text (name ≤ 100, phone ≤ 40, email
+    ≤ 120, website ≤ 120); `logo` a `data:image/png|jpeg|webp;base64,…` URL of at most 200 000 characters. Default:
+    all `null`.
+  - `pos.billFooter` `{ lines }`, 0–4 lines of 1–64 characters. Default: none (the label `pos.bill.thanks`).
+- `GET /pos/bill-layout?locationId=` (`pos.bills.print` at that location, `@RequireFeature('pos')`) → `{ header,
+footer }`, the effective values there. An unknown or unreadable location → 404 `pos.location_not_found`.
+- Web: Settings → **Bill** edits both for the organization or one location, with a preview of the real bill. The
+  logo is shrunk in the browser to at most 384 × 192 px, grayscale, before it is saved.

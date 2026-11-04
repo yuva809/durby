@@ -13,7 +13,7 @@ Organization (tenant)
 
 | Table                | Columns                                                                                                                                          | Notes                                                                                            |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| `product_categories` | `id`, `tenant_id`, `name`, `sort_order`, `archived_at`, timestamps                                                                               | Name trimmed 1–100, unique per tenant among non-archived categories                              |
+| `product_categories` | `id`, `tenant_id`, `name`, `sort_order`, `station` (`kitchen`/`bar`), `archived_at`, timestamps                                                  | Name trimmed 1–100, unique per tenant among non-archived categories                              |
 | `products`           | `id`, `tenant_id`, `category_id`, `name`, `description`, `price numeric(12,2)`, `tax_rate numeric(5,2)`, `sort_order`, `archived_at`, timestamps | `(tenant_id, category_id)` → categories, `RESTRICT`. Name unique per category among non-archived |
 
 - ADR 0005 throughout: `UNIQUE (tenant_id, id)`, composite tenant FKs, `ENABLE` + `FORCE ROW LEVEL SECURITY`, `tenant_isolation`.
@@ -23,6 +23,8 @@ Organization (tenant)
 - **Archive; delete only what was never sold** (ADR 0024, amends ADR 0016 §5). Orders and guest checks (steps 3–4)
   reference products; an archived product or category is hidden from ordering and from default lists but stays
   readable. Unarchiving checks name uniqueness again. Only the bulk delete removes rows, and only unsold ones.
+- A category's **station** (`kitchen`, default, or `bar`) decides which ticket its items print on (ADR 0025,
+  docs/modules/pos.md → Stations). Mark drinks categories as `bar`.
 - A product can't be put into an archived category; archiving a category leaves its products as they are (the
   ordering screen hides products of archived categories).
 
@@ -43,8 +45,8 @@ catalog itself is organization-wide.
 | Method + path                   | Permission                | Idempotency                 | Body / query                                                     |
 | ------------------------------- | ------------------------- | --------------------------- | ---------------------------------------------------------------- |
 | `GET /catalog/categories`       | `catalog.products.read`   |                             | `?includeArchived=true`                                          |
-| `POST /catalog/categories`      | `catalog.products.manage` | `completion: 'transaction'` | `{ name, sortOrder? }`                                           |
-| `PATCH /catalog/categories/:id` | `catalog.products.manage` | response                    | `{ name?, sortOrder?, archived? }`                               |
+| `POST /catalog/categories`      | `catalog.products.manage` | `completion: 'transaction'` | `{ name, sortOrder?, station? }`                                 |
+| `PATCH /catalog/categories/:id` | `catalog.products.manage` | response                    | `{ name?, sortOrder?, station?, archived? }`                     |
 | `GET /catalog/products`         | `catalog.products.read`   |                             | `?categoryId=&includeArchived=true`                              |
 | `POST /catalog/products`        | `catalog.products.manage` | `completion: 'transaction'` | `{ categoryId, name, description?, price, taxRate, sortOrder? }` |
 | `PATCH /catalog/products/:id`   | `catalog.products.manage` | response                    | any of the create fields, `archived?`                            |

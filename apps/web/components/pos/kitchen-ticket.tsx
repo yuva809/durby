@@ -26,10 +26,10 @@ export function PrintRoot({ children }: { children: ReactNode }) {
 }
 
 /**
- * The kitchen ticket (docs/modules/pos.md → Step 3, Printing): laid out like a kitchen printer's slip
- * on the 80 mm roll: "Dine in", the organization and time, the table and order in large type, then
- * the new items with their quantity in a column. No prices; tickets don't name the waiter (ADR 0016).
- * A void ticket says so in large letters.
+ * The kitchen or bar ticket (docs/modules/pos.md → Step 3, Printing, Stations): laid out like a
+ * kitchen printer's slip on the 80 mm roll: "Dine in" (a bar ticket: "BAR"), the organization and
+ * time, the table and order in large type, then the new items with their quantity in a column. No
+ * prices; tickets don't name the waiter (ADR 0016, 0025). A void ticket says so in large letters.
  */
 export function KitchenTicketView({
   ticket,
@@ -50,9 +50,12 @@ export function KitchenTicketView({
     <article
       className="flex flex-col gap-3 p-2 font-sans text-foreground"
       data-testid="kitchen-ticket"
+      data-station={ticket.station}
     >
       <header className="flex flex-col items-center gap-1 text-center">
-        <p className="text-xl font-bold">{t('pos.ticket.dineIn')}</p>
+        <p className="text-xl font-bold">
+          {t(ticket.station === 'bar' ? 'pos.ticket.bar' : 'pos.ticket.dineIn')}
+        </p>
         <p className="text-sm">
           {t('pos.ticket.header', { organization: organizationName, time })}
         </p>

@@ -61,7 +61,15 @@ function api() {
     if (input.startsWith('/api/v1/catalog/categories')) {
       return Promise.resolve(
         Response.json({
-          data: [{ id: CATEGORY_ID, name: 'Starters', sortOrder: 0, archivedAt: null }],
+          data: [
+            {
+              id: CATEGORY_ID,
+              name: 'Starters',
+              sortOrder: 0,
+              station: 'kitchen',
+              archivedAt: null,
+            },
+          ],
         }),
       );
     }

@@ -1,167 +1,126 @@
 'use client';
 
-import type { Order } from '@durby/shared';
-import type { ReactNode } from 'react';
+import { type BillLayout, DEFAULT_BILL_FOOTER, DEFAULT_BILL_HEADER } from '@durby/shared';
 import { useT } from '../../app/labels-provider';
 import type { BillLine } from '../../lib/pos/format';
-import { cn } from '../../lib/utils';
 import { useMoney } from './money';
 
-/** A pending (not yet sent) item as the receipt shows it. */
-export interface PendingLine {
-  key: string;
-  name: string;
-  note: string;
-  quantity: number;
-  unitPrice: string;
+/** What the fixed middle of the bill shows: the order as printed (ADR 0025). */
+export interface ReceiptOrder {
+  number: string;
+  covers: number | null;
+  waiterName: string | null;
   total: string;
 }
 
-export type ReceiptSelection = { kind: 'new' | 'sent'; key: string } | null;
-
 /**
- * The bill as a till-receipt-style slip (docs/modules/pos.md → Printing), used for the preview on
- * the till and for printing: organization, table and guests, the order number, each item with its
- * total and "quantity × price", the total, thanks. No VAT breakdown and no TSE data (decision
- * 2026-11-02): it is a bill, not a receipt, and the footer says so (ADR 0016 §3).
- * `controls` renders under the selected line (preview only).
+ * The guest bill on the 80 mm roll (docs/modules/pos.md → Printing, ADR 0025), in three parts:
+ * the organization's **header** (logo, name, phone, email, website from `pos.billHeader`, empty
+ * fields left out), the **middle** that is the same for everyone (waiter, table and guests, bill
+ * number, items as "quantity × name" with their total, the TOTAL), and the **footer** (the lines of
+ * `pos.billFooter` or a thank-you, "This is not a receipt.", "Powered by" the product, date and
+ * time). No VAT breakdown and no TSE data (decision 2026-11-02).
  */
 export function Receipt({
+  layout,
   organizationName,
+  productName,
   tableName,
   order,
   bill,
-  pending,
   printedAt,
-  pendingTotal,
-  grandTotal,
-  selected,
-  onSelect,
-  controls,
 }: {
+  /** Null while it loads or when it can't be read: the defaults (organization name, thanks). */
+  layout: BillLayout | null;
   organizationName: string;
+  productName: string;
   tableName: string;
-  order: Order | null;
+  order: ReceiptOrder;
   bill: BillLine[];
-  pending: PendingLine[];
   printedAt: Date;
-  pendingTotal: string;
-  grandTotal: string;
-  selected?: ReceiptSelection;
-  onSelect?: (selection: ReceiptSelection) => void;
-  controls?: ReactNode;
 }) {
   const t = useT();
   const money = useMoney();
+  const header = layout?.header ?? DEFAULT_BILL_HEADER;
+  const footer = layout?.footer ?? DEFAULT_BILL_FOOTER;
   const date = new Intl.DateTimeFormat(undefined, {
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(printedAt);
-  const row = (label: string, value: string) => (
-    <p className="flex justify-between gap-2">
-      <span>{label}</span>
-      <span>{value}</span>
-    </p>
-  );
-  const line = (
-    kind: 'new' | 'sent',
-    l: {
-      key: string;
-      name: string;
-      note: string | null;
-      quantity: number;
-      unitPrice: string;
-      total: string;
-    },
-  ) => {
-    const isSelected = selected?.kind === kind && selected.key === l.key;
-    const body = (
-      <>
-        <span className="flex justify-between gap-2">
-          <span className="flex items-center gap-2">
-            <span className="font-semibold">{l.name}</span>
-            {kind === 'new' && (
-              <span className="rounded bg-primary px-1 text-[0.65rem] font-bold text-primary-foreground">
-                {t('pos.order.newTag')}
-              </span>
-            )}
-          </span>
-          <span className="shrink-0 font-semibold tabular-nums">{money(l.total)}</span>
-        </span>
-        <span className="block pl-2">
-          {l.quantity} × {money(l.unitPrice)}
-        </span>
-        {l.note && <span className="block pl-2 text-muted-foreground">{l.note}</span>}
-      </>
-    );
-    return (
-      <li
-        key={`${kind}-${l.key}`}
-        data-testid={kind === 'new' ? 'receipt-new' : 'bill-line'}
-        data-name={l.name}
-      >
-        {onSelect ? (
-          <button
-            type="button"
-            className={cn(
-              'block w-full rounded px-2 py-1.5 text-left hover:bg-muted',
-              isSelected && 'bg-muted',
-            )}
-            aria-expanded={isSelected}
-            onClick={() => onSelect(isSelected ? null : { kind, key: l.key })}
-          >
-            {body}
-          </button>
-        ) : (
-          <div className="px-2 py-1">{body}</div>
-        )}
-        {isSelected && controls}
-      </li>
-    );
-  };
+  const rule = <div aria-hidden className="my-2 border-t border-dashed border-foreground" />;
+  const contact = [header.phone, header.email, header.website].filter((v): v is string => !!v);
 
   return (
     <div
-      className="font-mono text-xs leading-relaxed print:font-sans print:text-sm"
+      className="font-mono text-xs leading-snug text-foreground print:text-sm"
       data-testid="receipt"
     >
-      <header className="flex flex-col items-center gap-0.5 pb-2 text-center">
-        <p className="text-base font-bold tracking-wide print:text-lg">{organizationName}</p>
-        <p className="text-muted-foreground">{t('pos.bill.slipTitle')}</p>
-        <p aria-hidden className="w-1/2 border-t border-dashed border-border pt-1" />
+      <header className="flex flex-col items-center gap-0.5 text-center" data-testid="bill-header">
+        {header.logo && (
+          // A data URL from the settings (ADR 0025 §2); next/image can't optimize it.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={header.logo}
+            alt=""
+            className="mb-1 max-h-24 max-w-[60%] object-contain grayscale"
+            data-testid="bill-logo"
+          />
+        )}
+        <p className="text-base font-bold tracking-wide print:text-lg">
+          {header.name ?? organizationName}
+        </p>
+        {contact.map((value) => (
+          <p key={value} className="break-all">
+            {value}
+          </p>
+        ))}
+      </header>
+      {rule}
+      <div className="flex flex-col gap-0.5" data-testid="bill-middle">
+        {order.waiterName && (
+          <p data-testid="bill-waiter">{t('pos.bill.waiter', { name: order.waiterName })}</p>
+        )}
         <p data-testid="bill-table">
-          {order?.covers
-            ? t('pos.bill.tableGuests', { table: tableName, guests: String(order.covers) })
+          {order.covers
+            ? t('pos.bill.tableAndGuests', { table: tableName, guests: String(order.covers) })
             : t('pos.ticket.table', { table: tableName })}
         </p>
-        {order && <p className="text-sm font-bold print:text-base">{order.number}</p>}
-      </header>
-      {bill.length === 0 && pending.length === 0 ? (
-        <p className="px-2 py-6 text-center text-muted-foreground">{t('pos.order.cartEmpty')}</p>
-      ) : (
-        <ul className="flex flex-col gap-1 py-1">
-          {bill.map((l) => line('sent', l))}
-          {pending.map((l) => line('new', { ...l, note: l.note || null }))}
-        </ul>
-      )}
-      <div className="mx-auto mt-1 w-1/2 border-t border-dashed border-border" />
-      <div className="flex flex-col gap-0.5 px-2 pt-2">
-        {order && pending.length > 0 && row(t('pos.bill.sent'), money(order.totals.gross))}
-        {pending.length > 0 && row(t('pos.bill.toSend'), money(pendingTotal))}
-        <p className="flex justify-between gap-2 pt-1 text-base font-bold print:text-lg">
-          <span>{t('pos.bill.total')}</span>
-          <span className="tabular-nums" data-testid="order-total">
-            {money(grandTotal)}
-          </span>
+        <p className="font-bold" data-testid="bill-number">
+          {t('pos.bill.billNo', { number: order.number })}
         </p>
       </div>
-      <footer className="mt-3 flex flex-col items-center gap-1 text-center">
-        <p className="text-sm print:text-base">{t('pos.bill.thanks')}</p>
-        <p className="text-muted-foreground">{t('pos.bill.notReceipt')}</p>
-        <div className="mt-2 text-muted-foreground" data-testid="bill-footer">
-          {order && <p>{t('pos.ticket.order', { number: order.number })}</p>}
-          <p>{date}</p>
-        </div>
+      {rule}
+      <ul className="flex flex-col gap-1">
+        {bill.map((l) => (
+          <li key={l.key} data-testid="bill-line" data-name={l.name}>
+            <p className="flex justify-between gap-2">
+              <span>
+                {t('pos.order.lineQuantity', { quantity: String(l.quantity), name: l.name })}
+              </span>
+              <span className="shrink-0 tabular-nums">{money(l.total)}</span>
+            </p>
+            {l.quantity > 1 && <p className="pl-3">{`${l.quantity} × ${money(l.unitPrice)}`}</p>}
+            {l.note && <p className="pl-3 italic">{l.note}</p>}
+          </li>
+        ))}
+      </ul>
+      {rule}
+      <p className="flex justify-between gap-2 text-base font-bold print:text-lg">
+        <span>{t('pos.bill.total')}</span>
+        <span className="tabular-nums" data-testid="order-total">
+          {money(order.total)}
+        </span>
+      </p>
+      {rule}
+      <footer className="flex flex-col items-center gap-0.5 text-center" data-testid="bill-footer">
+        {(footer.lines.length > 0 ? footer.lines : [t('pos.bill.thanks')]).map((line, i) => (
+          <p key={i} className="text-sm print:text-base" data-testid="bill-thanks">
+            {line}
+          </p>
+        ))}
+        <p className="mt-1">{t('pos.bill.notReceipt')}</p>
+        <p className="mt-2">{t('pos.bill.poweredBy', { product: productName })}</p>
+        <p>{date}</p>
       </footer>
     </div>
   );

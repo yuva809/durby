@@ -45,6 +45,8 @@ describe('settings registry', () => {
       'reservations.floorHorizonMinutes',
       'reservations.autoConfirm',
       'reservations.holdMinutes',
+      'pos.billHeader',
+      'pos.billFooter',
       'inventory.valuationMethod',
       'inventory.allowNegativeStock',
     ]);

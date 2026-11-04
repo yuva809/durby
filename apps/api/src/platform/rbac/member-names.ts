@@ -1,0 +1,25 @@
+import { Injectable } from '@nestjs/common';
+import type { TenantPrismaClient, TenantTransactionClient } from '../tenancy';
+
+/**
+ * Display names of the current organization's members, for modules that print who did something
+ * (the waiter on a bill, ADR 0025). Modules keep user ids without a foreign key and may not read
+ * memberships themselves. Reads in the caller's client and transaction (RLS: own tenant only) and
+ * checks no permission: callers check their own keys first.
+ */
+@Injectable()
+export class MemberNames {
+  /** userId → display name; users without a membership here or without a name are left out. */
+  async forUsers(
+    db: TenantPrismaClient | TenantTransactionClient,
+    userIds: readonly string[],
+  ): Promise<Map<string, string>> {
+    const ids = [...new Set(userIds)];
+    if (ids.length === 0) return new Map();
+    const rows = await db.membership.findMany({
+      where: { userId: { in: ids }, displayName: { not: null } },
+      select: { userId: true, displayName: true },
+    });
+    return new Map(rows.map((r) => [r.userId, r.displayName!]));
+  }
+}

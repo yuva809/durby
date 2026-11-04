@@ -22,8 +22,8 @@ globalThis.ResizeObserver ??= class {
 };
 
 const id = (n: number) => `0190a000-0000-7000-8000-0000000004${String(n).padStart(2, '0')}`;
-const FOOD = { id: id(1), name: 'Food', sortOrder: 0, archivedAt: null };
-const DRINKS = { id: id(2), name: 'Drinks', sortOrder: 1, archivedAt: null };
+const FOOD = { id: id(1), name: 'Food', sortOrder: 0, station: 'kitchen', archivedAt: null };
+const DRINKS = { id: id(2), name: 'Drinks', sortOrder: 1, station: 'kitchen', archivedAt: null };
 const product = (n: number, name: string, categoryId: string, price: string) => ({
   id: id(10 + n),
   categoryId,

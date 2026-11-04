@@ -6,6 +6,7 @@
   "catalog.fields.price": "Price",
   "catalog.fields.taxRate": "VAT %",
   "catalog.fields.sortOrder": "Position",
+  "catalog.fields.station": "Station",
   "catalog.page.categories": "Categories",
   "catalog.page.allCategories": "All categories",
   "catalog.page.showArchived": "Show archived",
@@ -216,5 +217,8 @@
   "catalog.bulk.deleteCategoriesDescription": "Their products are deleted with them, archived ones too. If one of a category's products was sold, that category and all its products stay.",
   "catalog.bulk.keptTitle": "Not deleted because they were sold: {names}",
   "catalog.bulk.archiveThem": "Archive them",
-  "catalog.bulk.dismiss": "Dismiss"
+  "catalog.bulk.dismiss": "Dismiss",
+  "catalog.stations.kitchen": "Kitchen",
+  "catalog.stations.bar": "Bar",
+  "catalog.stations.hint": "Where its items are prepared: each station gets its own ticket."
 }

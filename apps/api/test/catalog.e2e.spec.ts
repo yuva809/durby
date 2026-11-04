@@ -125,6 +125,22 @@ describe('/api/v1/catalog', () => {
       expect(all.data.map((c) => c.name)).toEqual(['Food', 'Drinks']);
     });
 
+    it('sets the station: kitchen by default, bar for drinks (ADR 0025)', async () => {
+      const { token } = await orgWith('owner');
+      const food = await category(token, 'Food');
+      expect(food.station).toBe('kitchen');
+      const drinks = productCategorySchema.parse(
+        (await send(token, 'post', '/categories', { name: 'Drinks', station: 'bar' }).expect(201))
+          .body,
+      );
+      expect(drinks.station).toBe('bar');
+      const moved = productCategorySchema.parse(
+        (await send(token, 'patch', `/categories/${food.id}`, { station: 'bar' }).expect(200)).body,
+      );
+      expect(moved).toMatchObject({ name: 'Food', station: 'bar' });
+      await send(token, 'post', '/categories', { name: 'X', station: 'grill' }).expect(400);
+    });
+
     it('keeps names unique among non-archived categories', async () => {
       const { token } = await orgWith('owner');
       const first = await category(token, 'Desserts');

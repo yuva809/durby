@@ -1,23 +1,25 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type {
-  FloorQuery,
-  FloorTable,
-  KitchenTicket,
-  ListOrdersQuery,
-  Order,
-  OrderLine,
-  OrderSummary,
-  SendTicketRequest,
-  SendTicketResponse,
-  TableOrderResponse,
-  UpdateOrderRequest,
-  VoidLinesRequest,
+import {
+  type FloorQuery,
+  type FloorTable,
+  type KitchenTicket,
+  type ListOrdersQuery,
+  type Order,
+  type OrderLine,
+  type OrderSummary,
+  PREP_STATIONS,
+  type PrepStation,
+  type SendTicketRequest,
+  type SendTicketResponse,
+  type TableOrderResponse,
+  type UpdateOrderRequest,
+  type VoidLinesRequest,
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
 import { NumberingService } from '../../platform/numbering';
 import { OutboxService } from '../../platform/outbox';
-import { AccessService } from '../../platform/rbac';
+import { AccessService, MemberNames } from '../../platform/rbac';
 import {
   TENANT_PRISMA,
   TenantContext,
@@ -28,6 +30,19 @@ import { lineTotal, orderTotals } from './order-totals';
 import { isUniqueViolation, posErrors } from './pos-errors';
 
 type Db = TenantPrismaClient | TenantTransactionClient;
+
+/** Tickets of one send or void go out kitchen first (ADR 0025). */
+const STATION_ORDER: readonly PrepStation[] = PREP_STATIONS;
+
+interface TicketLine {
+  productId: string;
+  productName: string;
+  unitPrice: string;
+  taxRate: string;
+  quantity: number;
+  note: string | null;
+  voidsLineId: string | null;
+}
 
 /** Prisma returns `numeric` columns as Decimal objects; only their exact text is used here. */
 type DecimalValue = { toFixed(digits: number): string };
@@ -100,6 +115,7 @@ export class OrdersService {
     private readonly idempotency: IdempotencyService,
     private readonly numbering: NumberingService,
     private readonly outbox: OutboxService,
+    private readonly memberNames: MemberNames,
   ) {}
 
   async floor(query: FloorQuery): Promise<FloorTable[]> {
@@ -218,24 +234,27 @@ export class OrdersService {
             },
           });
         }
-        const ticketId = await this.writeTicket(
+        const ticketIds = await this.writeTickets(
           tx,
           orderId,
           'order',
           body.lines.map((line) => {
             const product = products.get(line.productId)!;
             return {
-              productId: product.id,
-              productName: product.name,
-              unitPrice: product.price.toFixed(2),
-              taxRate: product.taxRate.toFixed(2),
-              quantity: line.quantity,
-              note: line.note || null,
-              voidsLineId: null,
+              station: product.category.station,
+              line: {
+                productId: product.id,
+                productName: product.name,
+                unitPrice: product.price.toFixed(2),
+                taxRate: product.taxRate.toFixed(2),
+                quantity: line.quantity,
+                note: line.note || null,
+                voidsLineId: null,
+              },
             };
           }),
         );
-        const response = { order: await this.load(tx, orderId), ticketId };
+        const response = await this.response(tx, orderId, ticketIds);
         await this.idempotency.completeInTransaction(tx, response);
         return response;
       }),
@@ -259,24 +278,36 @@ export class OrdersService {
       for (const [lineId, quantity] of requested) {
         if (quantity > (left.get(lineId) ?? 0)) throw posErrors.voidExceeds(lineId);
       }
-      const ticketId = await this.writeTicket(
+      // A void goes to the station that got the item, whatever its category says now.
+      const stations = new Map(
+        (
+          await tx.posKitchenTicket.findMany({
+            where: { orderId },
+            select: { id: true, station: true },
+          })
+        ).map((t) => [t.id, t.station]),
+      );
+      const ticketIds = await this.writeTickets(
         tx,
         orderId,
         'void',
         [...requested].map(([lineId, quantity]) => {
           const line = sentLines.get(lineId)!;
           return {
-            productId: line.productId,
-            productName: line.productName,
-            unitPrice: line.unitPrice.toFixed(2),
-            taxRate: line.taxRate.toFixed(2),
-            quantity: -quantity,
-            note: null,
-            voidsLineId: lineId,
+            station: stations.get(line.ticketId)!,
+            line: {
+              productId: line.productId,
+              productName: line.productName,
+              unitPrice: line.unitPrice.toFixed(2),
+              taxRate: line.taxRate.toFixed(2),
+              quantity: -quantity,
+              note: null,
+              voidsLineId: lineId,
+            },
           };
         }),
       );
-      const response = { order: await this.load(tx, orderId), ticketId };
+      const response = await this.response(tx, orderId, ticketIds);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
@@ -371,7 +402,13 @@ export class OrdersService {
     const wanted = [...new Set(ids)];
     const rows = await tx.product.findMany({
       where: { id: { in: wanted }, archivedAt: null, category: { archivedAt: null } },
-      select: { id: true, name: true, price: true, taxRate: true },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        taxRate: true,
+        category: { select: { station: true } },
+      },
     });
     const found = new Map(rows.map((p) => [p.id, p]));
     const missing = wanted.filter((id) => !found.has(id));
@@ -425,20 +462,40 @@ export class OrdersService {
     });
   }
 
+  /** A send or void response: the order and its new tickets in sequence order (ADR 0025). */
+  private async response(
+    tx: TenantTransactionClient,
+    orderId: string,
+    ticketIds: string[],
+  ): Promise<SendTicketResponse> {
+    return { order: await this.load(tx, orderId), ticketId: ticketIds[0]!, ticketIds };
+  }
+
+  /**
+   * One ticket per station the lines go to, kitchen first, in the lines' order within each
+   * (ADR 0025). Returns the ticket ids in sequence order.
+   */
+  private async writeTickets(
+    tx: TenantTransactionClient,
+    orderId: string,
+    kind: 'order' | 'void',
+    lines: { station: PrepStation; line: TicketLine }[],
+  ): Promise<string[]> {
+    const ids: string[] = [];
+    for (const station of STATION_ORDER) {
+      const group = lines.filter((l) => l.station === station).map((l) => l.line);
+      if (group.length > 0) ids.push(await this.writeTicket(tx, orderId, kind, station, group));
+    }
+    return ids;
+  }
+
   /** The next ticket of a locked order with its lines, audited. Returns the ticket id. */
   private async writeTicket(
     tx: TenantTransactionClient,
     orderId: string,
     kind: 'order' | 'void',
-    lines: {
-      productId: string;
-      productName: string;
-      unitPrice: string;
-      taxRate: string;
-      quantity: number;
-      note: string | null;
-      voidsLineId: string | null;
-    }[],
+    station: PrepStation,
+    lines: TicketLine[],
   ): Promise<string> {
     const { tenantId, userId } = this.tenantContext.require();
     const last = await tx.posKitchenTicket.aggregate({
@@ -451,9 +508,10 @@ export class OrdersService {
         orderId,
         sequence: (last._max.sequence ?? 0) + 1,
         kind,
+        station,
         createdByUserId: userId,
       },
-      select: { id: true, orderId: true, sequence: true, kind: true },
+      select: { id: true, orderId: true, sequence: true, kind: true, station: true },
     });
     await tx.posOrderLine.createMany({
       data: lines.map((line) => ({
@@ -475,17 +533,18 @@ export class OrdersService {
 
   /** The full order: tickets in order, their lines with what is left, and totals. */
   private async load(db: Db, orderId: string): Promise<Order> {
-    const order = await db.posOrder.findUniqueOrThrow({
+    const { openedByUserId, ...order } = await db.posOrder.findUniqueOrThrow({
       where: { id: orderId },
-      select: ORDER_SELECT,
+      select: { ...ORDER_SELECT, openedByUserId: true },
     });
-    const [tickets, lines] = await Promise.all([
+    const [tickets, lines, names] = await Promise.all([
       db.posKitchenTicket.findMany({
         where: { orderId },
-        select: { id: true, sequence: true, kind: true, createdAt: true },
+        select: { id: true, sequence: true, kind: true, station: true, createdAt: true },
         orderBy: { sequence: 'asc' },
       }),
       db.posOrderLine.findMany({ where: { orderId }, select: LINE_SELECT, orderBy: { id: 'asc' } }),
+      this.memberNames.forUsers(db, [openedByUserId]),
     ]);
     const left = remainingOf(lines);
     const totals = orderTotals(lines.map(priced));
@@ -499,6 +558,7 @@ export class OrdersService {
       id: t.id,
       sequence: t.sequence,
       kind: t.kind,
+      station: t.station,
       createdAt: t.createdAt.toISOString(),
       lines: byTicket.get(t.id) ?? [],
     }));
@@ -506,6 +566,7 @@ export class OrdersService {
       ...summaryOf(order, totals.itemCount, totals.gross),
       tickets: ticketList,
       totals,
+      waiterName: names.get(openedByUserId) ?? null,
     };
   }
 

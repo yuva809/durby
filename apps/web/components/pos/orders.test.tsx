@@ -2,11 +2,13 @@
 import type { Order } from '@durby/shared';
 import { type SystemRole, systemRolePermissions } from '@durby/shared';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { times } from '../../lib/pos/format';
 import { mockState, resetMocks } from '../../test/mocks';
 import { sessionFixture } from '../../test/session-fixture';
+import { BrandProvider } from '../theme-provider';
 import { FloorPage } from './floor-page';
 import { OrderPage } from './order-page';
 
@@ -15,6 +17,11 @@ vi.mock('../../app/labels-provider', async () => (await import('../../test/mocks
 vi.mock('next/navigation', async () => (await import('../../test/mocks')).navigationMock());
 
 const print = vi.fn();
+
+/** The till names the product on the bill ("Powered by"). */
+const Brand = ({ children }: { children: ReactNode }) => (
+  <BrandProvider brand={{ productName: 'Product', logoUrl: null }}>{children}</BrandProvider>
+);
 
 beforeEach(() => {
   resetMocks();
@@ -37,7 +44,7 @@ const TABLE = {
   shape: 'square',
   color: 'neutral',
 };
-const FOOD = { id: id(4), name: 'Food', sortOrder: 0, archivedAt: null };
+const FOOD = { id: id(4), name: 'Food', sortOrder: 0, station: 'kitchen', archivedAt: null };
 const product = (n: number, name: string, price: string, taxRate: string) => ({
   id: id(10 + n),
   categoryId: FOOD.id,
@@ -89,6 +96,7 @@ const ORDER: Order = {
       id: id(21),
       sequence: 1,
       kind: 'order',
+      station: 'kitchen',
       createdAt: '2026-10-27T12:00:00.000Z',
       lines: [line(1, id(21), SOUP, 2, 2)],
     },
@@ -98,6 +106,7 @@ const ORDER: Order = {
     gross: '13.80',
     byTaxRate: [{ taxRate: '7.00', gross: '13.80', net: '12.90', tax: '0.90' }],
   },
+  waiterName: 'Priya',
 };
 
 function signedInAs(role: SystemRole, without: string[] = []) {
@@ -215,6 +224,7 @@ describe('OrderPage (till)', () => {
           id: id(22),
           sequence: 1,
           kind: 'order',
+          station: 'kitchen',
           createdAt: '2026-10-27T12:00:00.000Z',
           lines: [line(2, id(22), SOUP, 2, 2), { ...line(3, id(22), COLA, 1, 1), note: 'no ice' }],
         },
@@ -223,9 +233,9 @@ describe('OrderPage (till)', () => {
     const writes = api({
       ...withOrder(null),
       [`POST /api/v1/pos/tables/${TABLE.id}/tickets`]: () =>
-        Response.json({ order: sent, ticketId: id(22) }, { status: 201 }),
+        Response.json({ order: sent, ticketId: id(22), ticketIds: [id(22)] }, { status: 201 }),
     });
-    render(<OrderPage tableId={TABLE.id} />);
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
     expect(within(await screen.findByTestId('table-bar')).getByText('T1')).toBeTruthy();
     expect(screen.queryByTestId('send-to-kitchen')).toBeNull();
 
@@ -266,7 +276,7 @@ describe('OrderPage (till)', () => {
         },
       },
     ]);
-    expect(await screen.findByText('Sent to the kitchen: ticket 1.')).toBeTruthy();
+    expect(await screen.findByText('Sent: ticket 1.')).toBeTruthy();
     // The ticket is in the print-only root: items and notes, no prices.
     const ticket = within(document.getElementById('print-root')!).getByTestId('kitchen-ticket');
     // Like a kitchen printer's slip: dine in, organization and time, table, # order, "New" items.
@@ -280,6 +290,67 @@ describe('OrderPage (till)', () => {
     expect(within(ticket).queryByText(/13\.80/)).toBeNull();
   });
 
+  // ADR 0025: drinks go to the bar, as a print job of their own.
+  it('prints the kitchen and the bar ticket of one send as two print jobs', async () => {
+    signedInAs('waiter');
+    const ticket = (n: number, station: 'kitchen' | 'bar', l: ReturnType<typeof line>) => ({
+      id: id(n),
+      sequence: n - 21,
+      kind: 'order' as const,
+      station,
+      createdAt: '2026-10-27T12:00:00.000Z',
+      lines: [l],
+    });
+    const sent: Order = {
+      ...ORDER,
+      tickets: [
+        ticket(22, 'kitchen', line(2, id(22), SOUP, 1, 1)),
+        ticket(23, 'bar', line(3, id(23), COLA, 1, 1)),
+      ],
+    };
+    let current: Order | null = null;
+    api({
+      ...menu,
+      [`GET /api/v1/pos/tables/${TABLE.id}/order`]: () =>
+        Response.json({ table: TABLE, order: current }),
+      [`POST /api/v1/pos/tables/${TABLE.id}/tickets`]: () => {
+        current = sent;
+        return Response.json(
+          { order: sent, ticketId: id(22), ticketIds: [id(22), id(23)] },
+          { status: 201 },
+        );
+      },
+    });
+    // What each print job shows: the tickets not hidden at that moment.
+    const jobs: string[][] = [];
+    print.mockImplementation(() =>
+      jobs.push(
+        [...document.querySelectorAll<HTMLElement>('#print-root [data-print-part]')]
+          .filter((part) => !part.hidden)
+          .map((part) => part.querySelector('[data-station]')!.getAttribute('data-station')!),
+      ),
+    );
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    await userEvent.click(await tile('Soup'));
+    await userEvent.click(await tile('Cola'));
+    await userEvent.click(screen.getByTestId('send-to-kitchen'));
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(2));
+    expect(jobs).toEqual([['kitchen'], ['bar']]);
+    expect(await screen.findByText('Sent: ticket 1, 2.')).toBeTruthy();
+    const printed = within(document.getElementById('print-root')!).getAllByTestId('kitchen-ticket');
+    expect(printed.map((t) => t.hidden || t.closest('[hidden]') !== null)).toEqual([false, false]);
+    expect(within(printed[0]!).getByText('Dine in')).toBeTruthy();
+    expect(within(printed[1]!).getByText('BAR')).toBeTruthy();
+    expect(within(printed[1]!).getByText('Cola')).toBeTruthy();
+    expect(within(printed[1]!).queryByText('Soup')).toBeNull();
+    // The ticket log names each ticket's station.
+    await waitFor(() => expect(screen.getAllByTestId('ticket-station')).toHaveLength(2));
+    expect(screen.getAllByTestId('ticket-station').map((b) => b.textContent)).toEqual([
+      'Kitchen',
+      'Bar',
+    ]);
+  });
+
   // docs/modules/reservations.md → R0.5: guests at the table.
   describe('guests', () => {
     const guests = () => screen.findByTestId('guests');
@@ -289,9 +360,12 @@ describe('OrderPage (till)', () => {
       const writes = api({
         ...withOrder(null),
         [`POST /api/v1/pos/tables/${TABLE.id}/tickets`]: () =>
-          Response.json({ order: { ...ORDER, covers: 2 }, ticketId: id(21) }, { status: 201 }),
+          Response.json(
+            { order: { ...ORDER, covers: 2 }, ticketId: id(21), ticketIds: [id(21)] },
+            { status: 201 },
+          ),
       });
-      render(<OrderPage tableId={TABLE.id} />);
+      render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
       const field = await guests();
       expect(within(field).getByTestId('guests-value').textContent).toBe('–');
       await userEvent.click(within(field).getByRole('button', { name: 'More guests' }));
@@ -314,7 +388,7 @@ describe('OrderPage (till)', () => {
         ...withOrder({ ...ORDER, covers: 3 }),
         [`PATCH /api/v1/pos/orders/${ORDER.id}`]: () => Response.json({ ...ORDER, covers: 4 }),
       });
-      render(<OrderPage tableId={TABLE.id} />);
+      render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
       const field = await guests();
       expect(within(field).getByTestId('guests-value').textContent).toBe('3');
       expect(within(screen.getByTestId('table-bar')).getByText(/3 guests/)).toBeTruthy();
@@ -331,7 +405,7 @@ describe('OrderPage (till)', () => {
     it('steps down to empty and back up', async () => {
       signedInAs('waiter');
       api(withOrder({ ...ORDER, covers: 1 }));
-      render(<OrderPage tableId={TABLE.id} />);
+      render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
       const field = await guests();
       await userEvent.click(within(field).getByRole('button', { name: 'Fewer guests' }));
       expect(within(field).getByTestId('guests-value').textContent).toBe('–');
@@ -344,7 +418,7 @@ describe('OrderPage (till)', () => {
     it('shows a cashier the guests in the header, without the field', async () => {
       signedInAs('cashier');
       api(withOrder({ ...ORDER, covers: 3 }));
-      render(<OrderPage tableId={TABLE.id} />);
+      render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
       expect(
         await within(await screen.findByTestId('table-bar')).findByText(/3 guests/),
       ).toBeTruthy();
@@ -355,7 +429,7 @@ describe('OrderPage (till)', () => {
   it('removes a new item at quantity zero, and clears all', async () => {
     signedInAs('waiter');
     api(withOrder(null));
-    render(<OrderPage tableId={TABLE.id} />);
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
     await userEvent.click(await tile('Soup'));
     await userEvent.click(await tile('Cola'));
     await userEvent.click(screen.getByRole('button', { name: 'One less Soup' }));
@@ -375,6 +449,7 @@ describe('OrderPage (till)', () => {
           id: id(24),
           sequence: 2,
           kind: 'order',
+          station: 'kitchen',
           createdAt: '2026-10-27T12:10:00.000Z',
           lines: [line(5, id(24), SOUP, 1, 1)],
         },
@@ -386,7 +461,7 @@ describe('OrderPage (till)', () => {
       },
     };
     api(withOrder(twice));
-    render(<OrderPage tableId={TABLE.id} />);
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
     const lines = await screen.findAllByTestId('bill-line');
     expect(lines.map((l) => l.textContent)).toEqual(['3×Soup€20.70']);
     expect(screen.getByTestId('order-total').textContent).toBe('€20.70');
@@ -408,7 +483,7 @@ describe('OrderPage (till)', () => {
   it('lets a waiter print the bill with prices, like the cashier', async () => {
     signedInAs('waiter');
     api(withOrder(ORDER));
-    render(<OrderPage tableId={TABLE.id} />);
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
     await screen.findAllByTestId('bill-line');
     expect(screen.queryByTestId('print-order')).toBeNull();
     // While printing, the document is titled with the organization (any browser header names it).
@@ -421,13 +496,29 @@ describe('OrderPage (till)', () => {
     expect(document.title).toBe('App');
     const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
     expect(within(printed).getByTestId('order-total').textContent).toBe('€13.80');
+    // No bill layout readable: the organization's name heads it, the default thanks ends it.
+    expect(within(printed).getByTestId('bill-header').textContent).toBe('Demo Bistro');
+    expect(within(printed).getByTestId('bill-thanks').textContent).toBe('Thank you for visiting!');
     expect(screen.getByTestId('close-order')).toBeTruthy();
   });
 
   it('lets a cashier see and print the bill with prices, without the menu', async () => {
     signedInAs('cashier');
-    api(withOrder(ORDER));
-    render(<OrderPage tableId={TABLE.id} />);
+    api({
+      ...withOrder({ ...ORDER, covers: 3 }),
+      'GET /api/v1/pos/bill-layout': () =>
+        Response.json({
+          header: {
+            logo: 'data:image/png;base64,iVBORw0KGgo=',
+            name: 'Bay Leaf',
+            phone: '+49 30 1234567',
+            email: null,
+            website: 'www.bayleaf.example',
+          },
+          footer: { lines: ['Thank you for visiting!', 'Vielen Dank für Ihren Besuch!'] },
+        }),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
     await screen.findAllByTestId('bill-line');
     expect(screen.queryAllByTestId('menu-product')).toEqual([]);
     expect(screen.queryByTestId('new-items')).toBeNull();
@@ -437,19 +528,32 @@ describe('OrderPage (till)', () => {
     const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
     expect(within(printed).getByText('This is not a receipt.')).toBeTruthy();
     expect(within(printed).getByTestId('order-total').textContent).toBe('€13.80');
-    // Laid out like a till receipt: table, order number, item total then quantity × price,
-    // thanks; no VAT breakdown and no TSE data.
-    expect(within(printed).getByTestId('bill-table').textContent).toMatch(/^Table T1/);
-    expect(within(printed).getByText('Thank you for your visit!')).toBeTruthy();
-    expect(within(printed).getAllByTestId('bill-line')[0]!.textContent).toMatch(/×/);
+    // ADR 0025: the organization's header (empty fields left out), the fixed middle, its footer.
+    const header = within(printed).getByTestId('bill-header');
+    expect(within(header).getByTestId('bill-logo')).toBeTruthy();
+    expect(header.textContent).toBe('Bay Leaf+49 30 1234567www.bayleaf.example');
+    expect(within(printed).getByTestId('bill-waiter').textContent).toBe('Waiter: Priya');
+    expect(within(printed).getByTestId('bill-table').textContent).toBe('Table T1 · Guests 3');
+    expect(within(printed).getByTestId('bill-number').textContent).toBe(`Bill no. ${ORDER.number}`);
+    expect(within(printed).getAllByTestId('bill-line')[0]!.textContent).toBe(
+      '2 × Soup€13.802 × €6.90',
+    );
+    expect(
+      within(printed)
+        .getAllByTestId('bill-thanks')
+        .map((l) => l.textContent),
+    ).toEqual(['Thank you for visiting!', 'Vielen Dank für Ihren Besuch!']);
+    const footer = within(printed).getByTestId('bill-footer').textContent;
+    expect(footer).toContain('Powered by Product');
+    expect(footer).toMatch(/\d/);
+    // A bill, not a receipt: no VAT breakdown and no TSE data.
     expect(printed.textContent).not.toMatch(/VAT|TSE/);
-    expect(within(printed).getByTestId('bill-footer').textContent).toContain(ORDER.number);
   });
 
   it('focuses the menu search with "/"', async () => {
     signedInAs('waiter');
     api(withOrder(null));
-    render(<OrderPage tableId={TABLE.id} />);
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
     await screen.findAllByTestId('menu-product');
     await userEvent.keyboard('/');
     expect(document.activeElement).toBe(screen.getByLabelText('Search the menu'));
@@ -467,6 +571,7 @@ describe('OrderPage (till)', () => {
           id: id(23),
           sequence: 2,
           kind: 'void',
+          station: 'kitchen',
           createdAt: '2026-10-27T12:05:00.000Z',
           lines: [{ ...line(4, id(23), SOUP, -1, 0), voidsLineId: id(31) }],
         },
@@ -475,9 +580,9 @@ describe('OrderPage (till)', () => {
     const writes = api({
       ...withOrder(ORDER),
       [`POST /api/v1/pos/orders/${ORDER.id}/voids`]: () =>
-        Response.json({ order: voided, ticketId: id(23) }, { status: 201 }),
+        Response.json({ order: voided, ticketId: id(23), ticketIds: [id(23)] }, { status: 201 }),
     });
-    render(<OrderPage tableId={TABLE.id} />);
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
     await userEvent.click(await screen.findByTestId('void-items'));
     const dialog = await screen.findByRole('dialog');
     await userEvent.click(within(dialog).getByTestId('form-save'));

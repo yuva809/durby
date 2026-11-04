@@ -22,8 +22,8 @@ globalThis.ResizeObserver ??= class {
 };
 
 const id = (n: number) => `0190a000-0000-7000-8000-0000000002${String(n).padStart(2, '0')}`;
-const FOOD = { id: id(1), name: 'Food', sortOrder: 0, archivedAt: null };
-const DRINKS = { id: id(2), name: 'Drinks', sortOrder: 1, archivedAt: null };
+const FOOD = { id: id(1), name: 'Food', sortOrder: 0, station: 'kitchen', archivedAt: null };
+const DRINKS = { id: id(2), name: 'Drinks', sortOrder: 1, station: 'kitchen', archivedAt: null };
 const product = (n: number, name: string, categoryId: string, price: string, taxRate: string) => ({
   id: id(10 + n),
   categoryId,
@@ -135,6 +135,41 @@ describe('CatalogPage', () => {
         },
       },
     ]);
+  });
+
+  // ADR 0025: a category's station decides which ticket its items print on.
+  it('creates a bar category and marks it in the list', async () => {
+    signedInAs('owner');
+    const bar = { ...DRINKS, id: '0190a000-0000-7000-8000-000000000199', name: 'Beer' };
+    const writes = api({
+      ...catalogAnswers,
+      'GET /api/v1/catalog/categories': () =>
+        Response.json({ data: [FOOD, { ...DRINKS, station: 'bar' }] }),
+      'POST /api/v1/catalog/categories': () =>
+        Response.json({ ...bar, station: 'bar' }, { status: 201 }),
+    });
+    render(<CatalogPage />);
+    await productNames();
+    const rows = screen.getAllByTestId('category-row');
+    const drinks = rows.find((r) => r.dataset.name === 'Drinks')!;
+    expect(within(drinks).getByTestId('category-station').textContent).toBe('Bar');
+    expect(
+      within(rows.find((r) => r.dataset.name === 'Food')!).queryByTestId('category-station'),
+    ).toBeNull();
+
+    await userEvent.click(screen.getByTestId('category-create'));
+    const dialog = await screen.findByRole('dialog');
+    const select = within(dialog).getByLabelText<HTMLSelectElement>('Station');
+    expect(select.value).toBe('kitchen');
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'Beer');
+    await userEvent.selectOptions(select, 'bar');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]).toEqual({
+      method: 'POST',
+      path: '/api/v1/catalog/categories',
+      body: { name: 'Beer', station: 'bar' },
+    });
   });
 
   it('shows the label of an api error in the dialog', async () => {

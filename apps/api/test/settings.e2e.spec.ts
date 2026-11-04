@@ -1,6 +1,8 @@
 import { type INestApplication, Injectable, type OnModuleInit } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
+  DEFAULT_BILL_FOOTER,
+  DEFAULT_BILL_HEADER,
   DEFAULT_OPENING_HOURS,
   DEFAULT_TURN_TIMES,
   type ResolvedSetting,
@@ -134,6 +136,8 @@ describe('/api/v1/settings', () => {
           ['reservations.floorHorizonMinutes', 60],
           ['reservations.autoConfirm', true],
           ['reservations.holdMinutes', 5],
+          ['pos.billHeader', DEFAULT_BILL_HEADER],
+          ['pos.billFooter', DEFAULT_BILL_FOOTER],
         ].map(([key, value]) => ({ key, value, source: 'default', dataBound: false })),
         {
           key: 'inventory.valuationMethod',

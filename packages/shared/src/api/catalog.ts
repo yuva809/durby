@@ -9,6 +9,10 @@ export const PRODUCT_DESCRIPTION_MAX_LENGTH = 500;
 const name = (max: number) => z.string().trim().min(1).max(max);
 const sortOrder = z.int().min(0).max(1_000_000);
 
+/** Where a category's items are prepared: each station gets its own ticket (ADR 0025). */
+export const PREP_STATIONS = ['kitchen', 'bar'] as const;
+export type PrepStation = (typeof PREP_STATIONS)[number];
+
 /**
  * Money and rates are decimal strings (CLAUDE.md rule 6), never JSON numbers. `price`: gross, up to
  * 10 integer digits and 2 decimals (`numeric(12,2)`). `taxRate`: a percentage in [0, 100].
@@ -23,6 +27,7 @@ export const productCategorySchema = z.object({
   id: z.uuid(),
   name: z.string(),
   sortOrder: z.int(),
+  station: z.enum(PREP_STATIONS),
   archivedAt: z.iso.datetime().nullable(),
 });
 
@@ -42,12 +47,14 @@ export const productSchema = z.object({
 export const createProductCategoryRequestSchema = z.strictObject({
   name: name(CATALOG_NAME_MAX_LENGTH),
   sortOrder: sortOrder.optional(),
+  station: z.enum(PREP_STATIONS).optional(),
 });
 
 export const updateProductCategoryRequestSchema = z
   .strictObject({
     name: name(CATALOG_NAME_MAX_LENGTH).optional(),
     sortOrder: sortOrder.optional(),
+    station: z.enum(PREP_STATIONS).optional(),
     archived: z.boolean().optional(),
   })
   .refine((body) => Object.values(body).some((v) => v !== undefined), {
