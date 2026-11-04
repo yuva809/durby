@@ -63,7 +63,6 @@
   "inventory.fields.number": "Number",
   "inventory.fields.kind": "Type",
   "inventory.fields.date": "Date",
-  "inventory.page.title": "Inventory",
   "inventory.page.allWarehouses": "All warehouses",
   "inventory.page.allKinds": "All types",
   "inventory.page.search": "Search items",
