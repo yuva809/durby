@@ -31,6 +31,14 @@ class MainActivity : Activity() {
         val cfg = Prefs.load(this)
         val pad = (16 * resources.displayMetrics.density).toInt()
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(pad, pad, pad, pad) }
+        // The version, large at the top, so the owner can read it out and we know which APK is installed.
+        title = getString(R.string.app_name) + " " + BuildConfig.VERSION_NAME
+        root.addView(TextView(this).apply {
+            text = getString(R.string.version_line, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
+            textSize = 22f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, 0, 0, pad)
+        })
 
         fun label(res: Int) = root.addView(TextView(this).apply { setText(res) })
         fun field(value: String, type: Int) = EditText(this).apply {

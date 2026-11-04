@@ -90,7 +90,7 @@ class BridgeService : Service() {
         )
         return Notification.Builder(this, "bridge")
             .setSmallIcon(android.R.drawable.ic_menu_send)
-            .setContentTitle(getString(R.string.app_name))
+            .setContentTitle(getString(R.string.app_name) + " " + BuildConfig.VERSION_NAME)
             .setContentText(text)
             .setOngoing(true)
             .build()

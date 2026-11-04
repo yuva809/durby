@@ -2,11 +2,29 @@
 
 Step 1 of docs/modules/print-bridge.md §9. It answers one question: **can the Durby page in the T2s Lite's Chrome
 reach an app on `http://127.0.0.1` and get a receipt printed on the LAN printer?** Delete this folder once the
-real bridge (`apps/print-bridge-android/`) exists. It is not part of the pnpm workspace or CI.
+real bridge (`apps/print-bridge-android/`) exists. It is not part of the pnpm workspace or CI, and it does not
+change Durby's browser printing.
 
 What it has: a Kotlin app (minSdk 28) with a foreground service serving HTTP on `127.0.0.1:17890` (CORS for any
-origin, logged), raw TCP ESC/POS printing, a settings screen with _Test connection_, _Test print_ (text) and a raster
-width ruler (GS v 0, or ESC \* as a fallback), cash drawer kick (ESC p, pin 2 or 5), and `spike.js`, a diagnostics script that runs inside the Durby page. No pairing or tokens yet.
+origin, logged), raw TCP ESC/POS printing, a settings screen with _Test connection_, _Test print_ (text) and a
+raster width ruler (GS v 0, or ESC \* as a fallback), cash drawer kick (ESC p, pin 2 or 5), and `spike.js`, a
+diagnostics script that runs inside the Durby page. No pairing or tokens yet.
+
+## Current APK
+
+|         |                                                                                |
+| ------- | ------------------------------------------------------------------------------ |
+| File    | `spikes/print-bridge/print-bridge-spike-0.0.2.apk` (not committed)             |
+| Version | 0.0.2 (build 2), package `app.durby.printbridge.spike`, Android 9+ (minSdk 28) |
+| Size    | 2,087,049 bytes (about 2.0 MB)                                                 |
+| SHA-256 | `06271955cb4920845d02b6f5fe73ec859511b9162fc0c188fa95cf4481ddcdec`             |
+| Signed  | Android debug key, APK Signature Scheme v2 (spike only; not for production)    |
+
+Check a copy before sending it, and after uploading it anywhere:
+
+```bash
+shasum -a 256 spikes/print-bridge/print-bridge-spike-0.0.2.apk
+```
 
 ## Build
 
@@ -17,13 +35,132 @@ cd spikes/print-bridge/android && gradle wrapper --gradle-version 8.11.1
 ```
 
 ```bash
-cd spikes/print-bridge/android && ./gradlew test assembleRelease
+cd spikes/print-bridge/android && ./gradlew clean test assembleRelease
 ```
 
-The APK is `app/build/outputs/apk/release/app-release.apk` (debug-key signed, spike only; a copy is kept as
-`spikes/print-bridge/print-bridge-spike-0.0.1.apk`, not committed).
+The APK is `app/build/outputs/apk/release/app-release.apk`; copy it to
+`spikes/print-bridge/print-bridge-spike-<version>.apk` and update the table above. The version lives in
+`android/app/build.gradle.kts` (`versionName`, `versionCode`) and shows in the app, its notification, `/health`
+and on the text test receipt.
 
-## On the T2s Lite
+---
+
+## For the restaurant owner: install and test the Print Bridge
+
+This is a **test app**. It does not change how Durby or DISH POS work today, and it does not touch your orders,
+bills or money. It only checks whether this terminal can talk to your receipt printer. Please do it **outside
+service hours**; it takes about 30 minutes and prints a few short test slips.
+
+Send everything back with the form in **`OWNER-REPORT-TEMPLATE.txt`** (you can copy it into an email or a
+WhatsApp message). Photos taken with your phone are perfect.
+
+### What you need
+
+- The SUNMI T2s Lite terminal, switched on and connected to the internet.
+- The receipt printer, switched on, with paper in it, and its network cable plugged in as usual.
+- The download link for the app file **`print-bridge-spike-0.0.2.apk`**, which we send you.
+- A phone to take photos.
+
+### 1. Print the printer's self-test page
+
+This page tells us the printer's model and its network address (IP address).
+
+1. Switch the printer **off**.
+2. Press and **hold the FEED button** (the paper feed button on the printer).
+3. While holding it, switch the printer **on**. Keep holding for 2–3 seconds until it starts printing, then let go.
+4. One or two long slips come out. **Take a clear photo of all of them.**
+
+On the printout, look for lines such as **IP Address**, **Model**, **MAC Address** and **Port**, and copy them into
+the report. If nothing prints, take a photo of the label on the bottom or back of the printer instead and tell us
+in the report. Printers differ; we have not assumed any model.
+
+### 2. Find the terminal's network address
+
+1. On the T2s Lite, open **Settings**.
+2. Go to **About** (sometimes called _About device_ or _About phone_) → **Status**, and find **IP address**. If it's
+   not there: **Settings → Network & internet → Ethernet** (or **Wi-Fi**) → tap the connected network.
+3. Write down the IP address (four numbers with dots, for example `192.168.2.20`; yours will be different).
+
+Compare the **first three numbers** of the terminal's and the printer's addresses. We expect both to start with
+`192.168.2.`. If they don't match (for example the printer starts with `192.168.64.`), **stop here** and just send
+the report: that needs a network change, not this app.
+
+### 3. Download and install the app
+
+1. On the T2s Lite, open the download link we sent you (in **Chrome**, or your email app).
+2. Download **`print-bridge-spike-0.0.2.apk`**. If Chrome warns that _"this type of file can harm your device"_,
+   tap **Download anyway** (we sent this file; it is our test app).
+3. When the download finishes, tap **Open** (or open it from **Files → Downloads**).
+4. Android may say _"For your security, your phone is not allowed to install unknown apps from this source"_. Tap
+   **Settings**, switch on **Allow from this source**, then go back.
+5. Tap **Install**, then **Open**.
+
+If you see a message that installation is **blocked** by the device or by SUNMI, or anything else unexpected, stop,
+take a photo of the message and send it to us. Don't change other security settings.
+
+### 4. The app screen and what to enter
+
+The app has **one screen** that you scroll up and down. From top to bottom:
+
+| On screen                                                                                                                                                                                       | What to do                                                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Title bar: **Print Bridge (spike) 0.0.2**                                                                                                                                                       | Nothing.                                                                                                    |
+| Large bold line: **Version 0.0.2 (build 2)**                                                                                                                                                    | Check it says exactly this. If not, you have an old file: tell us.                                          |
+| **Printer IP** (text box, empty)                                                                                                                                                                | Type the printer's IP address from the self-test page, exactly as printed (only numbers and dots).          |
+| **Port** (text box, shows `9100`)                                                                                                                                                               | Leave `9100`, unless the self-test page shows a different port number for network printing; then type that. |
+| **Printable width in dots (58 mm = 384, 80 mm = 576 or 512)** (text box, shows `576`)                                                                                                           | Measure the paper roll's width. **80 mm** (about 8 cm) → `576`. **58 mm** (about 6 cm) → `384`.             |
+| **Printer has a cutter** (tick box, ticked)                                                                                                                                                     | Ticked if DISH POS receipts come out **cut by the printer**. Unticked if staff **tear** them off by hand.   |
+| **Print images with ESC \* instead of GS v 0** (tick box, empty)                                                                                                                                | Leave empty for now (see step 5).                                                                           |
+| **Save and start bridge** (button)                                                                                                                                                              | Tap it after filling in the boxes.                                                                          |
+| **Test connection**, **Test print (text)**, **Test print (raster ruler)**, **Test print (raster ruler, ESC \* fallback)**, **Kick cash drawer (pin 2)**, **Kick cash drawer (pin 5)** (buttons) | See steps 5 and 6.                                                                                          |
+| **Log** (small text at the bottom)                                                                                                                                                              | Every button writes one line here, **newest at the top**. You'll copy these lines into the report.          |
+
+After **Save and start bridge**, a notification _"Listening on 127.0.0.1:17890 · printer …"_ stays at the top of
+the screen (pull down from the top edge to see it). That is normal; leave it.
+
+### 5. Run the three printer tests
+
+Tap each button **once** and wait a few seconds. After each one, look at the newest line in the **Log**.
+
+1. **Test connection.** Nothing prints. The log shows a new line: the time, then `test connection:` and a result.
+   Copy it into the report (for example _online_, _paper out_, _reachable, no answer to status query_ or _unreachable_).
+2. **Test print (text).** A short slip should print, starting with **PRINT BRIDGE TEST** and **Version 0.0.2
+   (spike)**. Take a photo of it.
+3. **Test print (raster ruler).** A slip with a **thick black bar** and **thin vertical lines** under it should
+   print. Take a photo. Check that there is a vertical line at the **far left and the far right** edge.
+   - If the right side is **cut off**: change the width to `512`, tap **Save and start bridge**, and tap **Test
+     print (raster ruler)** again.
+   - If **nothing** prints, or random characters or a very long strip print: tap **Test print (raster ruler,
+     ESC \* fallback)** and take a photo of what comes out.
+
+Write in the report what happened for each test, even if nothing printed. That's useful too.
+
+### 6. Cash drawer (only if one is connected to the printer)
+
+**Only** if a cash drawer is plugged into the **printer** with a cable, and with the staff's OK (it opens the real
+drawer):
+
+1. Tap **Kick cash drawer (pin 2)**. Did the drawer open?
+2. If not, tap **Kick cash drawer (pin 5)**. Did it open now?
+
+If there is no drawer on the printer, skip this and write _no drawer_ in the report.
+
+### 7. Check the Chrome version
+
+1. Open **Chrome** on the T2s Lite.
+2. In the address bar type **`chrome://version`** and press Enter.
+3. The first line shows the version (for example _Chrome 138.0…_). Write it down or take a photo.
+
+### 8. Send the report
+
+Fill in **`OWNER-REPORT-TEMPLATE.txt`** and send it with the photos: self-test page, text test slip, ruler slip(s),
+the app's Log (a phone photo of the screen is fine) and the Chrome version. You can leave the app installed; it
+does nothing unless someone taps its buttons. We'll schedule a short call for the next part (testing from inside
+Durby).
+
+---
+
+## Full spike checklist (developer, or the owner guided by the developer on a call)
 
 ### Step 0: find the printer's IP (before installing anything)
 

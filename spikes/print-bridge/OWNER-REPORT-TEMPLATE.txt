@@ -1,0 +1,100 @@
+PRINT BRIDGE TEST REPORT (app version 0.0.2)
+============================================
+Copy this into an email or message, fill in the blanks, and attach the photos.
+Write "don't know" or "didn't work" wherever that's the answer. That helps us too.
+
+Your name:
+Restaurant:
+Date and time of the test:
+
+
+1. PRINTER SELF-TEST PAGE
+-------------------------
+[ ] Photo of the self-test page attached
+    (if nothing printed: photo of the label on the printer attached)
+Printer brand and model:
+Printer IP address:
+Printer MAC address:
+Port shown on the page (if any):
+Paper roll width:   [ ] 80 mm   [ ] 58 mm   [ ] other: ____
+DISH POS receipts are:   [ ] cut by the printer   [ ] torn off by hand
+
+
+2. TERMINAL (SUNMI T2s Lite)
+----------------------------
+Terminal IP address:
+Connected by:   [ ] network cable   [ ] Wi-Fi
+First three numbers the same as the printer's?   [ ] yes   [ ] no
+(If "no": stop here and send this report.)
+
+
+3. INSTALLING THE APP
+---------------------
+[ ] Installed without problems
+[ ] Problem (describe, attach a photo of the message):
+
+The app shows "Version 0.0.2 (build 2)":   [ ] yes   [ ] no, it shows: ________
+
+What I entered in the app:
+  Printer IP:
+  Port:
+  Printable width:
+  Printer has a cutter:   [ ] ticked   [ ] not ticked
+
+After "Save and start bridge", the notification "Listening on 127.0.0.1:17890" appeared:
+  [ ] yes   [ ] no
+
+
+4. TESTS
+--------
+Test connection - log line (copy it exactly):
+
+
+Test print (text):
+  [ ] printed, photo attached
+  [ ] nothing printed
+  [ ] something strange printed (photo attached)
+
+Test print (raster ruler) with width 576 (or 384):
+  [ ] printed, line visible at BOTH far left and far right (photo attached)
+  [ ] printed, but the right side is cut off
+  [ ] nothing printed / random characters (photo attached)
+
+Only if the right side was cut off - ruler again with width 512:
+  [ ] both edge lines visible   [ ] still cut off   [ ] not tried
+
+Only if the ruler did not print properly - Test print (raster ruler, ESC * fallback):
+  [ ] printed correctly (photo attached)   [ ] did not work   [ ] not needed
+
+Any other log lines that looked like errors (copy them):
+
+
+
+5. CASH DRAWER
+--------------
+[ ] No cash drawer connected to the printer (skip the rest)
+[ ] Drawer opened with "Kick cash drawer (pin 2)"
+[ ] Drawer opened with "Kick cash drawer (pin 5)"
+[ ] Drawer did not open with either button
+
+
+6. CHROME
+---------
+Chrome version (first line of chrome://version):
+[ ] Photo attached
+
+
+7. ANYTHING ELSE
+----------------
+Did the printer still work normally with DISH POS afterwards?   [ ] yes   [ ] no
+Anything else you noticed:
+
+
+
+PHOTOS CHECKLIST
+----------------
+[ ] Printer self-test page
+[ ] Text test slip
+[ ] Ruler slip(s)
+[ ] App screen showing the Log
+[ ] Chrome version

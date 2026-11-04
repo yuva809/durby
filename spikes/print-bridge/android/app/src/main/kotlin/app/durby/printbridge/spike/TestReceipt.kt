@@ -12,6 +12,7 @@ object TestReceipt {
         return EscPos.concat(
             EscPos.INIT,
             EscPos.align(1), EscPos.bold(true), EscPos.line("PRINT BRIDGE TEST"), EscPos.bold(false),
+            EscPos.line("Version ${BuildConfig.VERSION_NAME} (spike)"),
             EscPos.line("-".repeat(cols)),
             EscPos.align(0),
             EscPos.line("Printer: ${cfg.host}:${cfg.port}"),

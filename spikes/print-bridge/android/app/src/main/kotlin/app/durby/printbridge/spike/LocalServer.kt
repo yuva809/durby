@@ -88,7 +88,7 @@ class LocalServer(
             "GET /", "GET /index.html" -> respondAsset(out, origin, "index.html", "text/html; charset=utf-8")
             "GET /spike.js" -> respondAsset(out, origin, "spike.js", "text/javascript; charset=utf-8")
             "GET /health" -> respond(out, origin, 200, json(
-                "ok" to true, "spike" to true, "version" to "0.0.1-spike",
+                "ok" to true, "spike" to true, "version" to BuildConfig.VERSION_NAME,
                 "printer" to JSONObject().put("configured", cfg.configured).put("host", cfg.host)
                     .put("port", cfg.port).put("dots", cfg.dots).put("cutter", cfg.cutter).put("escStar", cfg.escStar),
             ))

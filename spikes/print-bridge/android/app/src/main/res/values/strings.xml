@@ -2,6 +2,7 @@
 <!-- Spike only: English. The real app ships values/ (en) and values-de/ (de). -->
 <resources>
     <string name="app_name">Print Bridge (spike)</string>
+    <string name="version_line">Version %1$s (build %2$d)</string>
     <string name="printer_host">Printer IP</string>
     <string name="printer_port">Port</string>
     <string name="printer_dots">Printable width in dots (58 mm = 384, 80 mm = 576 or 512)</string>

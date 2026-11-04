@@ -11,8 +11,8 @@ android {
         applicationId = "app.durby.printbridge.spike"
         minSdk = 28 // Android 9 (SUNMI T2s Lite)
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.0.1-spike"
+        versionCode = 2
+        versionName = "0.0.2"
     }
 
     buildTypes {
@@ -21,6 +21,10 @@ android {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+
+    buildFeatures {
+        buildConfig = true // BuildConfig.VERSION_NAME: shown in the app, the notification, /health and the test receipt
     }
 
     compileOptions {
