@@ -124,7 +124,6 @@ kept, productsDeleted }`. Archive and restore as for a single category (all or n
 
 Labels: `catalog.errors.<camelCase>`.
 
-
 ### Menu numbers (ADR 0029)
 
 - `menuNumber` on products: optional, 1–6 characters (`^[A-Za-z0-9][A-Za-z0-9.-]{0,5}$`), unique per
