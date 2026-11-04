@@ -61,7 +61,15 @@ const RESERVATION_SELECT = {
   // The latest change: what an undo would revert.
   // Ids are UUID v7: newest id = newest change.
   changes: {
-    select: { id: true, toStatus: true, actorKind: true, sourceOrderId: true, createdAt: true },
+    select: {
+      id: true,
+      fromStatus: true,
+      toStatus: true,
+      undoesId: true,
+      actorKind: true,
+      sourceOrderId: true,
+      createdAt: true,
+    },
     orderBy: { id: 'desc' },
     take: 1,
   },
@@ -83,7 +91,9 @@ export type ReservationRow = {
   tables: { tableId: string }[];
   changes: {
     id: string;
+    fromStatus: Reservation['status'] | null;
     toStatus: Reservation['status'];
+    undoesId: string | null;
     actorKind: string;
     sourceOrderId: string | null;
     createdAt: Date;
@@ -578,7 +588,9 @@ export function toResponse(row: ReservationRow, archived: ReadonlySet<string>): 
     lastChangeId: last.id,
     lastChange: {
       id: last.id,
+      fromStatus: last.fromStatus,
       toStatus: last.toStatus,
+      undoesId: last.undoesId,
       actorKind: last.actorKind as 'user' | 'guest' | 'system',
       sourceOrderId: last.sourceOrderId,
       createdAt: last.createdAt.toISOString(),

@@ -1,4 +1,4 @@
-import type { ReservationStatus } from '@durby/shared';
+import { RESERVATION_UNDO_WINDOW_MS, type ReservationStatus } from '@durby/shared';
 
 /**
  * The staff status flow (docs/modules/reservations.md → Status flow, R1.6c): which action may move
@@ -16,7 +16,7 @@ const FLOW: Record<StatusAction, { from: readonly ReservationStatus[]; to: Reser
 };
 
 /** How long a change can be undone. */
-export const UNDO_WINDOW_MS = 5 * 60_000;
+export const UNDO_WINDOW_MS = RESERVATION_UNDO_WINDOW_MS;
 
 export type Transition =
   | { ok: true; to: ReservationStatus }

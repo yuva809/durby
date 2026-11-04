@@ -170,7 +170,12 @@ describe('GET /reservations/floor', () => {
     expect(denied.status).toBe(403);
 
     const floor = await floorOf(host, `locationId=${r.here}`);
-    expect(floor).toMatchObject({ at: new Date(at('19:00')).toISOString(), date: SAT, live: true });
+    expect(floor).toMatchObject({
+      at: new Date(at('19:00')).toISOString(),
+      date: SAT,
+      live: true,
+      timeZone: 'Europe/Berlin',
+    });
     expect(floor.serviceWindows).toEqual([
       { start: new Date(at('11:00')).toISOString(), end: new Date(at('23:00')).toISOString() },
     ]);

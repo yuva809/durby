@@ -86,6 +86,8 @@ export const reservationsFloorResponseSchema = z.object({
   live: z.boolean(),
   /** The date's service windows (opening hours narrowed by the reservation hours). */
   serviceWindows: z.array(z.object({ start: z.iso.datetime(), end: z.iso.datetime() })),
+  /** The location's IANA time zone: the screen shows and enters times in it. */
+  timeZone: z.string(),
 });
 
 export type ReservationsFloorQuery = z.infer<typeof reservationsFloorQuerySchema>;
@@ -401,13 +403,16 @@ export const reservationSchema = z.object({
   /** The latest status change: what an undo would revert (R1.6c). */
   lastChangeId: z.uuid(),
   /** That change: the host's badges ("auto-seated from till": actorKind system + sourceOrderId). */
-  lastChange: reservationStatusChangeSchema.omit({ fromStatus: true, undoesId: true }),
+  lastChange: reservationStatusChangeSchema,
   /** A blocking booking's tables that pos has archived since (move the booking); else []. */
   tablesNotInService: z.array(z.uuid()),
 });
 
 /** POST /reservations/:id/seat: optionally at other tables. */
 export const seatReservationRequestSchema = z.strictObject({ tableIds: tableIdList.optional() });
+
+/** How long a status change can be undone (R1.6c): the api checks it, the host screen shows it. */
+export const RESERVATION_UNDO_WINDOW_MS = 5 * 60_000;
 
 /** POST /reservations/:id/undo: the change the client saw (409 if it isn't the latest). */
 export const undoReservationRequestSchema = z.strictObject({ changeId: z.uuid() });
