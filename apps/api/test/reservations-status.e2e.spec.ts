@@ -274,6 +274,13 @@ describe('reservations: status actions, undo, walk-ins', () => {
         endsAt: b.endsAt,
         tableIds: [r.t2],
       });
+      // The response tells the screen it can't be undone again (R1.8b).
+      expect(undone.lastChange).toMatchObject({
+        fromStatus: 'seated',
+        toStatus: 'booked',
+        undoesId: seated.lastChangeId,
+      });
+      expect(b.lastChange).toMatchObject({ fromStatus: null, toStatus: 'booked', undoesId: null });
       const last = (await detail(r.owner, b.id)).history.at(-1);
       expect(last).toMatchObject({
         fromStatus: 'seated',

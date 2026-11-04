@@ -903,6 +903,36 @@ after each own action. **RT.1** swaps in the SSE stream (fetch streaming with th
 with ids only → re-fetch affected rows; `: ping` heartbeat every 15 s; Caddy `flush_interval -1` and
 `X-Accel-Buffering: no` on the stream route); on disconnect it falls back to polling until reconnected.
 
+**As built in R1.8b** (`components/reservations/host-page.tsx`; the waitlist column, drag-to-seat and the detail
+drawer come later):
+
+- **Header:** location picker (more than one location), ◀ / Today / ▶ and a date field, the day's counts (covers of
+  blocking bookings, booked, seated), **+ Booking** and **+ Walk-in** (both with `reservations.bookings.manage`, today
+  only for walk-ins).
+- **Which moment:** today is live (`GET /reservations/floor?locationId=`, now). Another day shows a time selector
+  (every 15 minutes through the day's `serviceWindows`, default the first window's start = the floor's `at`) and the
+  floor as a plan (`?at=`, bookings only); no actions on the floor then. Times show in the location's `timeZone` (floor
+  response).
+- **Timeline:** `GET /reservations?locationId=&date=`, by start. Per status: booked → Arrive, Seat, No-show (after
+  start), Cancel; arrived → Seat, No-show (after start), Cancel; pending → Cancel; seated → Finish. Cancel and No-show
+  confirm first. Flags: **"Table not in service, move booking"** (`tablesNotInService`) and **"Table still occupied"**
+  (the floor's `next.tableStillOccupied` for that booking), both with **Change tables** (PATCH `tableIds`, or Seat with
+  `tableIds` when seating); a 409 `table_not_in_service` on Seat opens the same dialog. Badges **"Auto-seated from
+  till"** / **"Finished at the till"** (`lastChange.actorKind = system` with `sourceOrderId`) with **Undo** while the
+  change is undoable (5 min, not an undo, not the creation).
+- **Floor:** tables by area with their state, current party, next booking, `overrun` and walk-in-only badges. Today, a
+  free table offers **Seat walk-in** (dialog with that table) and **Seat next booking** (its `next`, when booked or
+  arrived).
+- **+ Booking** (phone booking): date, time, party size, name, phone, guest note, staff note; tables optional (the
+  engine picks). `409 pacing_exceeded` / `outside_service_hours` shows the reason and **Book anyway** (same request
+  with `force: true`); other errors show their label.
+- **+ Walk-in:** party size, tables, optional name and phone. `409 table_unavailable` offers **Seat until HH:MM** (the
+  earliest `next.startsAt` of the chosen tables, when ≥ 15 min away) with `endsAt`.
+- **Undo bar** after each own status action ("Weber: seated", Undo with the remaining minutes) until the window ends.
+- **Refresh:** both lists every 30 s while visible and after each own action.
+- API additions for the screen: the floor response carries the location's `timeZone`; `lastChange` carries `fromStatus`
+  and `undoesId` (whether it can be undone).
+
 - **`/service` floor (pos)** adds reservation badges and the "occupied by booking" state by also calling
   `GET /reservations/floor` (only with the feature and `reservations.bookings.read`); the till pre-fills `covers`
   from the seated reservation's party size. No pos api change beyond `covers` (G5, Q7).
