@@ -44,6 +44,15 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
+      // The outbox worker (no HTTP server): the till's closed order finishes the booking
+      // (reservations smoke). Ready once it logs that it started.
+      command: 'pnpm --filter @durby/api exec node dist/worker.js',
+      wait: { stdout: /outbox\.worker_started/ },
+      env: { SMTP_URL: `smtp://localhost:${process.env.DURBY_SMTP_PORT ?? '1025'}` },
+      reuseExistingServer: !ci,
+      timeout: 60_000,
+    },
+    {
       command: 'pnpm --filter @durby/web start',
       url: 'http://localhost:3000/healthz',
       reuseExistingServer: !ci,

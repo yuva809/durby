@@ -285,6 +285,12 @@ export function clockTime(iso: string, timeZone: string): string {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
+/** The next quarter hour at the location (default time of a booking made for today). */
+export function nextQuarter(now: number, timeZone: string): string {
+  const quarter = 15 * 60_000;
+  return clockTime(new Date(Math.ceil(now / quarter) * quarter).toISOString(), timeZone);
+}
+
 /** The location's local date of an instant. */
 export const localDate = (at: number, timeZone: string): LocalDate =>
   zonedParts(new Date(at), timeZone).date;

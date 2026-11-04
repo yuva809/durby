@@ -176,6 +176,7 @@
   "reservations.host.booking.freeTimesFailed": "Freie Zeiten konnten nicht geladen werden. Bitte eine Uhrzeit eingeben.",
   "reservations.host.booking.noFreeTimes": "Keine freie Zeit für diese Personenzahl an diesem Tag. Für eine Buchung trotzdem eine Uhrzeit eingeben.",
   "reservations.host.booking.chosenTables": "Tische: {tables}",
+  "reservations.host.booking.engineTables": "Tische: das System wählt den besten freien.",
   "reservations.host.booking.chooseTables": "Tische wählen",
   "reservations.guest.erased": "Gastdaten gelöscht",
   "reservations.guest.erase": "Gastdaten löschen",

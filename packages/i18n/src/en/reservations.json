@@ -176,6 +176,7 @@
   "reservations.host.booking.freeTimesFailed": "Free times couldn't be loaded. Type a time instead.",
   "reservations.host.booking.noFreeTimes": "No free time for this party on this day. Type a time to book anyway.",
   "reservations.host.booking.chosenTables": "Tables: {tables}",
+  "reservations.host.booking.engineTables": "Tables: the system picks the best free one.",
   "reservations.host.booking.chooseTables": "Choose tables",
   "reservations.guest.erased": "Guest data erased",
   "reservations.guest.erase": "Erase guest data",

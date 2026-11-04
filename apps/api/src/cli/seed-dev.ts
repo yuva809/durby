@@ -31,6 +31,8 @@ export const DEV_SEED = {
     { email: 'staff@durby.local', role: 'staff', organizations: ['Demo Bistro'] },
     { email: 'waiter@durby.local', role: 'waiter', organizations: ['Demo Bistro'] },
     { email: 'cashier@durby.local', role: 'cashier', organizations: ['Demo Bistro'] },
+    // The door (docs/modules/reservations.md): /host, no till; the Playwright smoke signs in as it.
+    { email: 'host@durby.local', role: 'host', organizations: ['Demo Bistro'] },
     { email: 'owner@partner-demo.local', role: 'owner', organizations: ['Demo Trattoria'] },
   ],
 } as const;

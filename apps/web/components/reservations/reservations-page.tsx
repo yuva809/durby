@@ -22,6 +22,7 @@ import {
   loadFloor,
   loadRange,
   localDate,
+  nextQuarter,
   runAction,
 } from '../../lib/reservations/host';
 import { useActionKey } from '../../lib/use-action-key';
@@ -277,7 +278,7 @@ function BookingList({
           locationId={locationId}
           timeZone={ready.timeZone}
           date={start ?? ready.date}
-          time={clockTime(ready.at, ready.timeZone)}
+          time={nextQuarter(now, ready.timeZone)}
           tables={ready.data}
           booking={dialog.kind === 'edit' ? dialog.booking : undefined}
           canErase={canErase}

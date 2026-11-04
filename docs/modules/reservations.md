@@ -954,7 +954,7 @@ drawer come later):
 - **`/reservations`** (nav "Reservations"): list by day, search by name/number, create/edit dialog using the
   availability endpoint (slots grid, auto-allocated tables, "choose tables" override).
 
-**As planned for R1.9** (approved 2026-11-04):
+**As built in R1.9** (approved 2026-11-04; `components/reservations/reservations-page.tsx`, `host-dialogs.tsx`, `lib/reservations/service.ts`):
 
 - **`/reservations`** (nav "Reservations", `reservations.bookings.read`): location picker, a date range (one day by
   default, up to 31 days: one `GET /reservations?locationId=&date=` per day), search by guest name or number on the
@@ -972,8 +972,12 @@ drawer come later):
   covers with its party size; the waiter can change it.
 - **`/host` fix:** Arrive and Seat show only once a booking starts within `floorHorizonMinutes` (or has started).
 - **Seed and smoke:** `seed-dev` adds `host@durby.local` (Host role); the Playwright web server also runs the outbox
-  worker; the smoke test books on `/host`, arrives, seats, undoes, seats again, opens `/service` (covers
-  pre-filled), sends a ticket and closes the order, and sees "Finished at the till" on `/host`.
+  worker (ready on its `outbox.worker_started` log line); `e2e/reservations.spec.ts`: the host books on `/host`
+  (Berlin's current time, "Book anyway" outside the opening hours), arrives, seats, undoes, seats again; the waiter
+  sees "From booking" on `/service`, the till pre-fills 2 guests, sends a ticket and closes the order; `/host` then
+  shows Finished with "Finished at the till".
+- **Defaults:** the booking dialog's time is the next quarter hour; the floor response carries `horizonMinutes`. An
+  erased guest reads "Guest data erased" on `/host` and `/reservations`.
 - **Settings → Reservations** tab (feature `reservations`, `reservations.setup.manage`; R1.5b): a location picker,
   then **Tables** (one row per table in service: booking mode, min party, max party, saved per row) and
   **Combinations** (list, create/edit dialog with table checkboxes, archive/restore, "show archived"). The rules live

@@ -390,7 +390,7 @@ export function BookingDialog({
                   .map((x) => names.get(x) ?? t('reservations.host.tableGone'))
                   .join(' + '),
               })
-            : t('reservations.host.booking.tablesHint')}
+            : t('reservations.host.booking.engineTables')}
         </p>
         {!choosing && (
           <Button
@@ -442,20 +442,22 @@ export function BookingDialog({
           />
         </Field>
       </div>
-      <Field
-        id={`${id}-guest-note`}
-        label={t('reservations.host.booking.guestNote')}
-        problem={null}
-      >
-        <Input id={`${id}-guest-note`} value={form.guestNote} onChange={set('guestNote')} />
-      </Field>
-      <Field
-        id={`${id}-staff-note`}
-        label={t('reservations.host.booking.staffNote')}
-        problem={null}
-      >
-        <Input id={`${id}-staff-note`} value={form.staffNote} onChange={set('staffNote')} />
-      </Field>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field
+          id={`${id}-guest-note`}
+          label={t('reservations.host.booking.guestNote')}
+          problem={null}
+        >
+          <Input id={`${id}-guest-note`} value={form.guestNote} onChange={set('guestNote')} />
+        </Field>
+        <Field
+          id={`${id}-staff-note`}
+          label={t('reservations.host.booking.staffNote')}
+          problem={null}
+        >
+          <Input id={`${id}-staff-note`} value={form.staffNote} onChange={set('staffNote')} />
+        </Field>
+      </div>
 
       {booking && canErase && !erased && (
         <div className="flex flex-col gap-2 border-t pt-4">

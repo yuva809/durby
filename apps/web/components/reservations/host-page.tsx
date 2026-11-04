@@ -25,6 +25,7 @@ import {
   loadDay,
   loadFloor,
   localDate,
+  nextQuarter,
   runAction,
   shiftDate,
   stillOccupied,
@@ -370,12 +371,6 @@ function HostScreen({
   );
 }
 
-/** The next quarter hour at the location (default time of a booking made for today). */
-function nextQuarter(now: number, timeZone: string): string {
-  const quarter = 15 * 60_000;
-  return clockTime(new Date(Math.ceil(now / quarter) * quarter).toISOString(), timeZone);
-}
-
 // --- Timeline -------------------------------------------------------------------------------------
 
 function Timeline({
@@ -456,7 +451,10 @@ function TimelineRow({
   const action = useActionKey();
   const [failure, setFailure] = useState<ApiErrorCode | 'unknown' | null>(null);
   const [busy, setBusy] = useState(false);
-  const guest = booking.guest.name ?? t('reservations.host.noName');
+  const guest =
+    booking.guest.anonymisedAt !== null
+      ? t('reservations.guest.erased')
+      : (booking.guest.name ?? t('reservations.host.noName'));
   const badge = tillBadge(booking);
   const notInService = booking.tablesNotInService.length > 0;
   const actions = actionsFor(booking, now, horizonMinutes);
@@ -501,6 +499,7 @@ function TimelineRow({
       data-testid="timeline-row"
       data-guest={booking.guest.name ?? ''}
       data-status={booking.status}
+      data-tables={tableNames.join(',')}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
