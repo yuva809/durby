@@ -338,6 +338,7 @@ describe('/api/v1/catalog', () => {
         id: p.id,
         categoryId: c.id,
         name: 'Soup',
+        menuNumber: null,
         price: '12.50',
         taxRate: '7.00',
         sortOrder: 0,

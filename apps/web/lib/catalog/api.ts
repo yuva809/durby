@@ -7,6 +7,8 @@ import {
   type ImportProductRow,
   type ImportProductsResponse,
   importProductsResponseSchema,
+  type NumberProductsResponse,
+  numberProductsResponseSchema,
   type Product,
   type ProductBulkRequest,
   type ProductBulkResponse,
@@ -86,6 +88,20 @@ export const importProducts = (
     'POST',
     { rows },
     importProductsResponseSchema,
+  );
+
+/** Fill missing numbers (ADR 0029). */
+export const numberProducts = (
+  store: Api,
+  action: ActionKey,
+): Promise<Result<NumberProductsResponse | null>> =>
+  write(
+    store,
+    action,
+    '/api/v1/catalog/products/number',
+    'POST',
+    undefined,
+    numberProductsResponseSchema,
   );
 
 /** Bulk actions on the selected products or categories (docs/modules/catalog.md → Bulk actions). */

@@ -9,6 +9,8 @@ import type { Box, ParsedCategory } from './parse';
 
 export interface BoardProduct {
   id: string;
+  /** Menu number (ADR 0029); '' for none. */
+  number: string;
   name: string;
   price: string;
   description: string;
@@ -81,7 +83,7 @@ export function boardFromParsed(
     const drinks = isDrinkCategory(name);
     const productIds = c.products.map((p) => {
       const id = options.newId();
-      products[id] = { id, ...p, taxRate: null };
+      products[id] = { id, ...p, number: p.number ?? '', taxRate: null };
       return id;
     });
     return {
@@ -326,6 +328,7 @@ export function toImportRows(board: Board): ImportProductRow[] {
       const p = board.products[id];
       if (!p) return [];
       const description = p.description.trim();
+      const number = p.number.trim();
       return [
         {
           category: c.name.trim(),
@@ -333,6 +336,9 @@ export function toImportRows(board: Board): ImportProductRow[] {
           price: p.price.trim(),
           taxRate: (p.taxRate ?? c.taxRate).trim(),
           ...(description && { description }),
+          ...(number && { number }),
+          // Drink sections print at the bar when the import creates them (ADR 0029).
+          ...(c.drinks && { station: 'bar' as const }),
         },
       ];
     }),

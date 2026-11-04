@@ -120,8 +120,22 @@ kept, productsDeleted }`. Archive and restore as for a single category (all or n
 | `catalog.category_archived`   | 409    | create or move a product into an archived category               |
 | `catalog.import_invalid`      | 400    | an import row is invalid (`details.rows`)                        |
 | `catalog.price_invalid`       | 400    | a bulk price change would go below 0 or too high (`details.ids`) |
+| `catalog.menu_number_taken`   | 409    | a non-archived product already has this menu number              |
 
 Labels: `catalog.errors.<camelCase>`.
+
+
+### Menu numbers (ADR 0029)
+
+- `menuNumber` on products: optional, 1–6 characters (`^[A-Za-z0-9][A-Za-z0-9.-]{0,5}$`), unique per
+  organization among non-archived products, case-insensitive. Create/update take `menuNumber`
+  (update: `null` clears it). Import rows take an optional `number`; an empty cell keeps the current number.
+- `POST /catalog/products/number` (`catalog.products.manage`, idempotent in the transaction): every
+  non-archived product without a number gets the next integer above the highest numeric number in use, in
+  menu order (category position and name, then product position and name). Response `{ numbered }`.
+- Import rows take an optional `station` (`kitchen` | `bar`), used only when the import creates the category.
+- Web: the product dialog and table show the number; the order screen finds dishes by number, exact match
+  first, Enter adds it; the menu scan keeps printed numbers and sends drink sections as bar categories.
 
 ## Audit
 

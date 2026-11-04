@@ -438,6 +438,7 @@
   "platform.auditPage.ip": "IP-Adresse",
   "platform.audit.fields.partnerId": "Partner",
   "platform.audit.fields.name": "Name",
+  "platform.audit.fields.menuNumber": "Kartennummer",
   "platform.audit.fields.planId": "Tarif",
   "platform.audit.fields.systemKey": "Standardrolle",
   "platform.audit.fields.permissions": "Berechtigungen",

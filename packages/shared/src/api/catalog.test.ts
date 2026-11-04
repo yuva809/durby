@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { checkImportRows, importProductsRequestSchema, importRowKey } from './catalog';
+import {
+  checkImportRows,
+  importProductsRequestSchema,
+  importRowKey,
+  menuNumberSchema,
+} from './catalog';
 
 const row = (over: Partial<Record<string, string>> = {}) => ({
   category: 'Drinks',
@@ -38,6 +43,39 @@ describe('checkImportRows', () => {
     expect(importRowKey({ category: 'A', name: 'b' })).toBe(
       importRowKey({ category: ' a ', name: 'B' }),
     );
+  });
+});
+
+describe('menu numbers (ADR 0029)', () => {
+  it('takes 1 to 6 letters, digits, dots and dashes, starting with a letter or digit', () => {
+    for (const ok of ['1', '12', '12a', 'D4', 'B-3', '10.1', ' 7 ', '123456'])
+      expect(menuNumberSchema.safeParse(ok).success, ok).toBe(true);
+    for (const bad of ['', ' ', '-1', '1234567', '12 a', '#4', 'ä1'])
+      expect(menuNumberSchema.safeParse(bad).success, bad).toBe(false);
+    expect(menuNumberSchema.parse(' 7 ')).toBe('7');
+  });
+
+  it('checks import numbers: invalid, and the same number twice ignoring case', () => {
+    expect(
+      checkImportRows([
+        row({ number: '12a' }),
+        row({ name: 'Beer', number: '12A' }),
+        row({ name: 'Wine', number: 'no way' }),
+        row({ name: 'Water', number: ' ' }),
+      ]),
+    ).toEqual([
+      { row: 2, field: 'number', problem: 'duplicate' },
+      { row: 3, field: 'number', problem: 'invalid' },
+    ]);
+  });
+
+  it('lets a row carry the station of the category it creates', () => {
+    expect(
+      importProductsRequestSchema.safeParse({ rows: [{ ...row(), station: 'bar' }] }).success,
+    ).toBe(true);
+    expect(
+      importProductsRequestSchema.safeParse({ rows: [{ ...row(), station: 'grill' }] }).success,
+    ).toBe(false);
   });
 });
 

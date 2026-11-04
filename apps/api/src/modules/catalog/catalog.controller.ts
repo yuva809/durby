@@ -19,6 +19,7 @@ import {
   type ProductBulkResponse,
   type ImportProductsRequest,
   importProductsRequestSchema,
+  type NumberProductsResponse,
   type ImportProductsResponse,
   createProductCategoryRequestSchema,
   type CreateProductCategoryRequest,
@@ -137,6 +138,15 @@ export class CatalogController {
     @Body(new ZodBody(importProductsRequestSchema)) body: ImportProductsRequest,
   ): Promise<ImportProductsResponse> {
     return this.catalog.importProducts(body);
+  }
+
+  /** Fill missing numbers (ADR 0029): writes many products, so the result goes with the key. */
+  @RequirePermission('catalog.products.manage')
+  @Idempotent({ completion: 'transaction' })
+  @Post('products/number')
+  @HttpCode(HttpStatus.OK)
+  numberProducts(): Promise<NumberProductsResponse> {
+    return this.catalog.numberProducts();
   }
 
   @RequirePermission('catalog.products.manage')

@@ -179,6 +179,7 @@ describe('route markers', () => {
       'POST /api/v1/catalog/products',
       'POST /api/v1/catalog/products/bulk',
       'POST /api/v1/catalog/products/import',
+      'POST /api/v1/catalog/products/number',
       'POST /api/v1/inventory/adjustments',
       'POST /api/v1/inventory/items',
       'POST /api/v1/inventory/receipts',

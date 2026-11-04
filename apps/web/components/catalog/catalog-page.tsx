@@ -6,6 +6,8 @@ import {
   type Product,
   type ProductCategory,
   type DishCost,
+  MENU_NUMBER_MAX_LENGTH,
+  menuNumberSchema,
   priceSchema,
   taxRateSchema,
   CATALOG_NAME_MAX_LENGTH,
@@ -24,6 +26,7 @@ import {
   createProduct,
   loadCategories,
   loadProducts,
+  numberProducts,
   updateCategory,
   updateProduct,
 } from '../../lib/catalog/api';
@@ -38,7 +41,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
-import { Loaded, NoAccess } from '../users/common';
+import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { ArchiveToggle, Field, FormDialog } from '../form-dialog';
 import { BulkBar, type KeptRows } from './bulk-bar';
 import { ImportDialog } from './import-dialog';
@@ -88,6 +91,11 @@ function Catalog({
   };
   const openCategories =
     categories.status === 'ready' ? categories.data.filter((c) => c.archivedAt === null) : [];
+  const numberAction = useActionKey();
+  const unnumbered =
+    products.status === 'ready'
+      ? products.data.filter((p) => p.archivedAt === null && p.menuNumber === null).length
+      : 0;
   // Picked ids that are gone after a reload (deleted) drop out here.
   const selectedProducts =
     products.status === 'ready' ? products.data.filter((p) => pickedProducts.has(p.id)) : [];
@@ -121,6 +129,17 @@ function Catalog({
               </Link>
             </Button>
             <ImportDialog onDone={reload} />
+            {unnumbered > 0 && (
+              <ConfirmAction
+                trigger={t('catalog.page.fillNumbers')}
+                title={t('catalog.page.fillNumbersTitle', { count: String(unnumbered) })}
+                description={t('catalog.page.fillNumbersDescription')}
+                confirm={t('catalog.page.fillNumbersConfirm')}
+                run={() => numberProducts(store, numberAction)}
+                onDone={reload}
+                testId="fill-numbers"
+              />
+            )}
             <CategoryDialog onDone={reload} />
             {openCategories.length > 0 && (
               <ProductDialog categories={openCategories} onDone={reload} />
@@ -368,6 +387,14 @@ function ProductTable({
               )}
               <td className="min-w-0 flex-1 basis-40 lg:p-3">
                 <div className="flex flex-wrap items-center gap-2">
+                  {product.menuNumber && (
+                    <span
+                      className="rounded bg-muted px-1.5 font-mono text-xs tabular-nums"
+                      data-testid="product-number"
+                    >
+                      {product.menuNumber}
+                    </span>
+                  )}
                   <span className="font-medium">{product.name}</span>
                   {product.archivedAt && <Badge>{t('catalog.page.archived')}</Badge>}
                 </div>
@@ -541,6 +568,7 @@ function ProductDialog({
   const action = useActionKey();
   const id = useId();
   const [form, setForm] = useState({
+    menuNumber: '',
     name: '',
     categoryId: '',
     description: '',
@@ -551,6 +579,10 @@ function ProductDialog({
   const set = (field: keyof typeof form) => (value: string) =>
     setForm((current) => ({ ...current, [field]: value }));
   const problems = {
+    menuNumber:
+      form.menuNumber.trim() === '' || menuNumberSchema.safeParse(form.menuNumber).success
+        ? null
+        : t('catalog.page.menuNumberInvalid'),
     name: form.name.trim() === '' ? t('catalog.page.nameRequired') : null,
     categoryId: form.categoryId === '' ? t('catalog.page.categoryRequired') : null,
     price: priceSchema.safeParse(form.price.trim()).success ? null : t('catalog.page.priceInvalid'),
@@ -568,6 +600,7 @@ function ProductDialog({
       title={t(product ? 'catalog.page.editProduct' : 'catalog.page.createProduct')}
       onOpen={() => {
         setForm({
+          menuNumber: product?.menuNumber ?? '',
           name: product?.name ?? '',
           categoryId:
             product?.categoryId && categories.some((c) => c.id === product.categoryId)
@@ -582,6 +615,7 @@ function ProductDialog({
       submit={() => {
         setChecked(true);
         if (Object.values(problems).some((p) => p !== null)) return null;
+        const menuNumber = form.menuNumber.trim();
         const body = {
           name: form.name.trim(),
           categoryId: form.categoryId,
@@ -590,20 +624,41 @@ function ProductDialog({
           taxRate: form.taxRate.trim(),
         };
         return product
-          ? updateProduct(store, action, product.id, body)
-          : createProduct(store, action, body);
+          ? updateProduct(store, action, product.id, { ...body, menuNumber: menuNumber || null })
+          : createProduct(store, action, { ...body, ...(menuNumber && { menuNumber }) });
       }}
       onDone={onDone}
     >
-      <Field id={`${id}-name`} label={t('catalog.fields.name')} problem={shown('name')}>
-        <Input
-          id={`${id}-name`}
-          value={form.name}
-          maxLength={CATALOG_NAME_MAX_LENGTH}
-          aria-invalid={shown('name') ? true : undefined}
-          onChange={(e) => set('name')(e.target.value)}
-        />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
+        <Field
+          id={`${id}-number`}
+          label={t('catalog.fields.menuNumber')}
+          problem={shown('menuNumber')}
+        >
+          <Input
+            id={`${id}-number`}
+            value={form.menuNumber}
+            maxLength={MENU_NUMBER_MAX_LENGTH}
+            autoComplete="off"
+            aria-describedby={`${id}-number-hint`}
+            aria-invalid={shown('menuNumber') ? true : undefined}
+            onChange={(e) => set('menuNumber')(e.target.value)}
+            data-testid="product-number-input"
+          />
+        </Field>
+        <Field id={`${id}-name`} label={t('catalog.fields.name')} problem={shown('name')}>
+          <Input
+            id={`${id}-name`}
+            value={form.name}
+            maxLength={CATALOG_NAME_MAX_LENGTH}
+            aria-invalid={shown('name') ? true : undefined}
+            onChange={(e) => set('name')(e.target.value)}
+          />
+        </Field>
+      </div>
+      <p id={`${id}-number-hint`} className="-mt-2 text-sm text-muted-foreground">
+        {t('catalog.page.menuNumberHint')}
+      </p>
       <Field
         id={`${id}-category`}
         label={t('catalog.fields.category')}

@@ -372,7 +372,16 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   outbox_event: ['id', 'type', 'version', 'attempts', 'deadLetteredAt', 'handler'],
   product_category: ['id', 'name', 'sortOrder', 'station', 'archivedAt'],
   /** `price`, `taxRate`: decimal strings. Never `description` (free text). */
-  product: ['id', 'categoryId', 'name', 'price', 'taxRate', 'sortOrder', 'archivedAt'],
+  product: [
+    'id',
+    'categoryId',
+    'name',
+    'menuNumber',
+    'price',
+    'taxRate',
+    'sortOrder',
+    'archivedAt',
+  ],
   dining_table: [
     'id',
     'locationId',

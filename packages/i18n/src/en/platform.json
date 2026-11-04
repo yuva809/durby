@@ -438,6 +438,7 @@
   "platform.auditPage.ip": "IP address",
   "platform.audit.fields.partnerId": "Partner",
   "platform.audit.fields.name": "Name",
+  "platform.audit.fields.menuNumber": "Menu number",
   "platform.audit.fields.planId": "Plan",
   "platform.audit.fields.systemKey": "Built-in role",
   "platform.audit.fields.permissions": "Permissions",

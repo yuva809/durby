@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   cleanName,
   joinRows,
+  menuNumberOf,
   normalizePrice,
   type OcrLine,
   type OcrWord,
@@ -55,6 +56,15 @@ describe('splitPrices and cleanName', () => {
     expect(cleanName('01. Egg Hoppers ........')).toBe('Egg Hoppers');
     expect(cleanName('12) Devilled Chicken -')).toBe('Devilled Chicken');
     expect(cleanName('• Watalappan')).toBe('Watalappan');
+  });
+
+  it('reads the item number before a name, digits only', () => {
+    expect(menuNumberOf('01. Egg Hoppers')).toBe('01');
+    expect(menuNumberOf('12) Devilled Chicken')).toBe('12');
+    expect(menuNumberOf('(8 Naan')).toBe('8');
+    expect(menuNumberOf('Watalappan')).toBeNull();
+    expect(menuNumberOf('1dly')).toBeNull();
+    expect(menuNumberOf('$7 Naan')).toBeNull();
   });
 });
 
@@ -275,5 +285,22 @@ describe('menus read from screenshots', () => {
 
   it('cleans a half-read item number off a name', () => {
     expect(cleanName('. ERAL VARUTHATHU')).toBe('ERAL VARUTHATHU');
+  });
+
+  it('keeps the item number of a product (ADR 0029)', () => {
+    const numbered = read([
+      at('MAINS', 100, 40, 30),
+      at('12 Butter Chicken 12,90', 100, 100),
+      at('7 2.Poori 4,50', 100, 140),
+      at('Naan 3,90', 100, 180),
+      at('¢7 Garlic Naan 4,50', 100, 220),
+    ]).flatMap((c) => c.products);
+    expect(numbered.map((p) => [p.name, p.number])).toEqual([
+      ['Butter Chicken', '12'],
+      ['Poori', '72'],
+      ['Naan', undefined],
+      // A digit read as ¢: better no number than a wrong one.
+      ['Garlic Naan', undefined],
+    ]);
   });
 });

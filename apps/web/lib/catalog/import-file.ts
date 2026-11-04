@@ -8,9 +8,9 @@ import { CATALOG_IMPORT_MAX_ROWS, type ImportProductRow } from '@durby/shared';
  */
 
 /** The template's header row, also the canonical column names. */
-export const PRODUCTS_CSV_TEMPLATE = 'category,name,price,tax_rate,description\n';
+export const PRODUCTS_CSV_TEMPLATE = 'number,category,name,price,tax_rate,description\n';
 
-type Column = 'category' | 'name' | 'price' | 'taxRate' | 'description';
+type Column = 'category' | 'name' | 'price' | 'taxRate' | 'description' | 'number';
 
 const COLUMN_NAMES: Record<string, Column> = {
   category: 'category',
@@ -20,6 +20,11 @@ const COLUMN_NAMES: Record<string, Column> = {
   vat: 'taxRate',
   vatrate: 'taxRate',
   description: 'description',
+  // The dish's number on the menu (ADR 0029).
+  number: 'number',
+  no: 'number',
+  nr: 'number',
+  menunumber: 'number',
 };
 const REQUIRED: readonly Column[] = ['category', 'name', 'price', 'taxRate'];
 
@@ -119,6 +124,7 @@ export function rowsFromTable(table: string[][]): ParsedProductsCsv {
 
   const cell = (record: string[], column: Column) => record[index.get(column)!] ?? '';
   const hasDescription = index.has('description');
+  const hasNumber = index.has('number');
   return {
     ok: true,
     rows: data.map((record) => ({
@@ -127,6 +133,7 @@ export function rowsFromTable(table: string[][]): ParsedProductsCsv {
       price: decimal(cell(record, 'price')),
       taxRate: decimal(cell(record, 'taxRate')).replace(/%$/, '').trim(),
       ...(hasDescription && { description: cell(record, 'description').trim() }),
+      ...(hasNumber && { number: cell(record, 'number').trim() }),
     })),
   };
 }

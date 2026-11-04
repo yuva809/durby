@@ -25,6 +25,8 @@ export interface OcrLine {
 
 export interface ParsedProduct {
   name: string;
+  /** The dish number printed before the name (ADR 0029), digits only; absent when none or unsure. */
+  number?: string;
   /** Decimal text with two places, e.g. `1500.00`. */
   price: string;
   description: string;
@@ -363,19 +365,33 @@ export function splitPrices(text: string): { name: string; prices: string[] } {
   return { name: tokens.join(' '), prices };
 }
 
+/**
+ * Item numbers: `12 Soup`, `12. Soup`, `67.Naan`, `67Naan`, `7 2.Poori`, `¢7 Naan`, `(8 Naan`; a lone
+ * digit glued to a word stays (`1dly` is a misread `Idly`).
+ */
+const ITEM_NUMBER =
+  /^\s*[#(¢$§]?\s?(?:\d{2,3}|\d(?=[\s.,):-]))(?:\s?[\d¢$§])?[.,):-]?\s*(?=\p{L})/u;
+
+/**
+ * The item number before a product name, digits only (`7 2.Poori` → `72`). null when there is none,
+ * or when OCR read a digit as `¢`, `$` or `§`: a wrong number is worse than none.
+ */
+export function menuNumberOf(text: string): string | null {
+  const match = ITEM_NUMBER.exec(text)?.[0];
+  if (!match || /[¢$§]/.test(match)) return null;
+  const digits = match.replace(/\D/g, '');
+  return digits === '' ? null : digits;
+}
+
 /** Item numbers, dot leaders and trailing separators off a product name. */
 export function cleanName(text: string): string {
-  return (
-    text
-      // Item numbers: `12 Soup`, `12. Soup`, `67.Naan`, `67Naan`, `7 2.Poori`, `¢7 Naan`, `(8 Naan`;
-      // a lone digit glued to a word stays (`1dly` is a misread `Idly`).
-      .replace(/^\s*[#(¢$§]?\s?(?:\d{2,3}|\d(?=[\s.,):-]))(?:\s?[\d¢$§])?[.,):-]?\s*(?=\p{L})/u, '')
-      .replace(/^[\s.,:;|•*·-]+(?=[\p{L}\d(])/u, '')
-      .replace(/[.·…_]{2,}/g, ' ')
-      .replace(/[\s:;,|–—-]+$/, '')
-      .replace(/\s{2,}/g, ' ')
-      .trim()
-  );
+  return text
+    .replace(ITEM_NUMBER, '')
+    .replace(/^[\s.,:;|•*·-]+(?=[\p{L}\d(])/u, '')
+    .replace(/[.·…_]{2,}/g, ' ')
+    .replace(/[\s:;,|–—-]+$/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 const letters = (text: string) => text.replace(/[^\p{L}]/gu, '');
@@ -444,8 +460,10 @@ export function parseMenu(lines: readonly OcrLine[]): ParsedCategory[] {
     if (prices.length > 0 && letters(name).length >= 2) {
       if (!current) category(null);
       const [price, ...more] = prices;
+      const number = menuNumberOf(rawName);
       lastProduct = {
         name,
+        ...(number && { number }),
         price: price!,
         description: more.length > 0 ? more.join(' / ') : '',
         confidence: Math.round(line.confidence),
