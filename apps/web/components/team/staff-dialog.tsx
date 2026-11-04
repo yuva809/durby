@@ -86,7 +86,9 @@ export function StaffDialog({
     >
       <DialogContent
         closeLabel={t('platform.common.close')}
-        className={cn('p-0 sm:max-w-5xl', result && 'sm:max-w-lg')}
+        // One scroller: the form's body. The box itself never scrolls, so the header and the
+        // buttons stay put and no empty space is left under them.
+        className={cn('gap-0 overflow-hidden p-0 sm:max-w-5xl', result && 'sm:max-w-lg')}
         data-testid="team-dialog"
       >
         {result ? (
@@ -257,7 +259,7 @@ function StaffForm({
 
   return (
     <form
-      className="flex max-h-[90dvh] flex-col"
+      className="flex min-h-0 flex-1 flex-col"
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
@@ -555,7 +557,7 @@ function ResultView({
 }) {
   const t = useT();
   return (
-    <div className="flex flex-col gap-4 p-6" data-testid="team-result">
+    <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-6" data-testid="team-result">
       <div className="flex items-start gap-3 pr-8">
         {result.kind === 'created' ? (
           <CheckCircle2 aria-hidden className="mt-0.5 size-6 shrink-0 text-primary" />
