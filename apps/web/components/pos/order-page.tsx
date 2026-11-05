@@ -56,6 +56,8 @@ import { useNow } from '../../lib/pos/use-now';
 import { printAs } from '../../lib/pos/print';
 import { useBrand } from '../theme-provider';
 import { useActionKey } from '../../lib/use-action-key';
+import { loadFloor as loadReservationsFloor } from '../../lib/reservations/host';
+import { reservationsVisible, serviceBadges } from '../../lib/reservations/service';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
 import { Badge } from '../ui/badge';
@@ -158,7 +160,7 @@ function TableOrder({
   const t = useT();
   const money = useMoney();
   const { productName } = useBrand();
-  const { store } = useAuth();
+  const { store, session } = useAuth();
   const action = useActionKey();
   const closeAction = useActionKey();
   const [view, reload] = useResource(tableId, () => loadTableOrder(store, tableId));
@@ -175,6 +177,22 @@ function TableOrder({
   const [sent, setSent] = useState<string | null>(null);
   // Guests chosen before the table has an order: they go with the first send.
   const [pendingCovers, setPendingCovers] = useState<number | null>(null);
+  // A seated booking's party pre-fills them until the waiter changes it (Q7, R1.9; web only).
+  const [coversTouched, setCoversTouched] = useState(false);
+  const noOrderYet = view.status === 'ready' && view.data.order === null;
+  const [bookings] = useResource(
+    reservationsVisible(session) && noOrderYet && locationId ? `${locationId}|${tableId}` : null,
+    () => loadReservationsFloor(store, locationId!, { kind: 'now' }),
+  );
+  const seatedParty =
+    bookings.status === 'ready'
+      ? (serviceBadges(bookings.data).get(tableId)?.seatedParty ?? null)
+      : null;
+  const covers = coversTouched ? pendingCovers : (pendingCovers ?? seatedParty);
+  const choosePending = (next: number | null) => {
+    setCoversTouched(true);
+    setPendingCovers(next);
+  };
 
   useEffect(() => {
     if (print) printParts(organizationName);
@@ -228,7 +246,7 @@ function TableOrder({
         quantity: l.quantity,
         note: l.note.trim(),
       })),
-      ...(pendingCovers === null ? {} : { covers: pendingCovers }),
+      ...(covers === null ? {} : { covers }),
     });
     setBusy(false);
     if (result.ok && result.data) {
@@ -238,6 +256,7 @@ function TableOrder({
         .map((x) => `${x.sequence} (${t(`pos.station.${x.station}`)})`);
       setCart([]);
       setPendingCovers(null);
+      setCoversTouched(false);
       setSent(t('pos.order.sent', { sequence: sequences.join(', ') }));
       afterWrite(result.data);
     } else if (!result.ok) {
@@ -317,10 +336,10 @@ function TableOrder({
               >
                 {access.canTake && (
                   <GuestsField
-                    key={`${order?.id ?? 'new'}:${order?.covers ?? ''}`}
+                    key={`${order?.id ?? 'new'}:${order?.covers ?? ''}:${seatedParty ?? ''}`}
                     order={order}
-                    pending={pendingCovers}
-                    onPending={setPendingCovers}
+                    pending={covers}
+                    onPending={choosePending}
                     onSaved={reload}
                   />
                 )}

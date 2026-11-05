@@ -52,6 +52,7 @@ const INVITATION_SELECT = {
   createdAt: true,
   displayName: true,
   phone: true,
+  locale: true,
   role: { select: ROLE_SELECT },
   locations: { select: { locationId: true } },
   permissions: { select: { permissionKey: true, effect: true } },
@@ -66,6 +67,8 @@ export interface InviteInput {
   phone?: string | null;
   grants?: string[];
   denies?: string[];
+  /** The new staff member's language (docs/platform/auth.md → Language). */
+  locale?: string | null;
 }
 
 export interface InviteResult {
@@ -182,6 +185,7 @@ export class InvitationsService {
           expiresAt: new Date(now.getTime() + INVITATION_TTL_DAYS * DAY_MS),
           displayName: body.name ?? null,
           phone: body.phone ?? null,
+          locale: body.locale ?? null,
         },
         select: { id: true },
       });
@@ -213,7 +217,7 @@ export class InvitationsService {
     const partnerHostnames = org.partner.domains.map((d) => d.hostname);
     if (opts.sendEmail) {
       // In the organization's tenant context: its labels and its `locale` setting. The invitee's
-      // own locale if they have an account (ADR 0011 §9).
+      // own locale if they have an account (ADR 0011 §9), else the inviter's choice.
       this.inBackground('invitation mail', () =>
         this.tenantContext.run({ tenantId, userId: actor.userId }, async () => {
           const [invitee, orgLocale] = await Promise.all([
@@ -222,7 +226,7 @@ export class InvitationsService {
           ]);
           await this.mailer.send({
             to: email,
-            locale: invitee?.locale ?? orgLocale,
+            locale: invitee?.locale ?? row.locale ?? orgLocale,
             organizationName: org.name,
             token,
             partnerHostnames,
@@ -335,7 +339,7 @@ export class InvitationsService {
     const parsed = parseInvitationToken(body.token);
     if (!parsed) throw authErrors.tokenInvalid();
     const { organizationId, hash } = parsed;
-    const locale = (LOCALES as readonly string[]).includes(body.locale ?? '')
+    const browserLocale = (LOCALES as readonly string[]).includes(body.locale ?? '')
       ? (body.locale as string)
       : DEFAULT_LOCALE;
 
@@ -351,7 +355,8 @@ export class InvitationsService {
             const user = await this.users.createVerified(tx, {
               email: invitation.email,
               password: body.password,
-              locale,
+              // The inviter's choice wins over the accept page's language (older invitations: null).
+              locale: invitation.locale ?? browserLocale,
             });
             await this.acceptInto(tx, organizationId, invitation, user.id);
           });

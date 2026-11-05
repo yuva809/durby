@@ -395,6 +395,8 @@ model Invitation {
   /// Applied to the membership on accept (ADR 0023 §7).
   displayName      String?                @map("display_name")
   phone            String?
+  /// The new staff member's language, chosen by the inviter (en | de); null on older invitations.
+  locale           String?
   createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization     Organization           @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)

@@ -10,6 +10,7 @@ export type SecurityEvent =
   | 'auth.password.reset_requested'
   | 'auth.password.reset'
   | 'auth.password.changed'
+  | 'auth.locale.changed'
   | 'auth.email.verification_requested'
   | 'auth.email.verified'
   // Durby staff (ADR 0017): the platform audit log has the successful actions too.
@@ -26,6 +27,8 @@ export interface SecurityEventFields {
   /** sha256 of the normalized email, for failures of unknown users. Never the email itself. */
   emailKey?: string;
   ip?: string;
+  /** The new UI language (auth.locale.changed). */
+  locale?: string;
 }
 
 /**

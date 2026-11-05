@@ -42,6 +42,8 @@ describe('route markers', () => {
       'GET /api/v1/auth/me',
       // ADR 0009 §6: reads only the token's active organization's features, for a member.
       'GET /api/v1/me/entitlements',
+      // The caller's own language: the users row only, no tenant data.
+      'PATCH /api/v1/auth/me',
       // ADR 0023 §3: the caller's own password (and the forced change of a temporary one).
       'POST /api/v1/auth/password/change',
       'POST /api/v1/auth/switch-organization',
@@ -122,6 +124,8 @@ describe('route markers', () => {
   /** CLAUDE.md rule 8 / ADR 0014: a new exempt write route changes this list and needs review. */
   it('lists every @IdempotencyExempt() write route', () => {
     expect(idempotency.filter((r) => r.exempt !== undefined).map((r) => r.route)).toEqual([
+      // Sets one value on the caller's own users row (no tenant for the idempotency store).
+      'PATCH /api/v1/auth/me',
       'PATCH /api/v1/platform/staff/:id',
       'POST /api/v1/auth/login',
       'POST /api/v1/auth/logout',
@@ -207,6 +211,7 @@ describe('route markers', () => {
       'POST /api/v1/reservations/:id/seat',
       'POST /api/v1/reservations/:id/undo',
       'POST /api/v1/reservations/combinations',
+      'POST /api/v1/reservations/guests/:id/anonymise',
       'POST /api/v1/reservations/walk-ins',
       'POST /api/v1/roles',
       'POST /api/v1/staff',

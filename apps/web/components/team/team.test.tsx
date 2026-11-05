@@ -212,12 +212,14 @@ describe('TeamPage', () => {
       sendEmail: false,
     });
     expect((post.body as { temporaryPassword: string }).temporaryPassword).toHaveLength(12);
+    // Language left on the organization's: the api picks it.
+    expect(post.body).not.toHaveProperty('locale');
   });
 
   it('invites without a password and shares the link on WhatsApp', async () => {
     signedInAs('owner');
     const link = 'https://app.test/accept-invite#token=abc';
-    api({
+    const sent = api({
       'POST /api/v1/staff': () =>
         Response.json(
           { kind: 'invited', invitationId: id(91), existingAccount: true },
@@ -230,8 +232,10 @@ describe('TeamPage', () => {
     const dialog = await screen.findByTestId('team-dialog');
     await userEvent.type(within(dialog).getByTestId('team-name'), 'Mina');
     await userEvent.type(within(dialog).getByTestId('team-email'), 'mina@example.test');
+    await userEvent.selectOptions(within(dialog).getByTestId('team-locale'), 'de');
     await userEvent.click(within(dialog).getByTestId('team-save'));
     const result = await screen.findByTestId('team-result');
+    expect(sent.find((s) => s.path === '/api/v1/staff')?.body).toMatchObject({ locale: 'de' });
     expect(result.textContent).toContain('already has an account');
     await userEvent.click(within(result).getByTestId('team-get-link'));
     await waitFor(() => expect(screen.getByTestId<HTMLInputElement>('team-link').value).toBe(link));

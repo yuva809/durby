@@ -241,7 +241,8 @@ any override. Granting: an actor may set a grant or deny only for keys they hold
 the member's effective keys are a subset of their own (Owners only by Owners; never yourself).
 
 **Adding staff** — `POST /staff { name, email, phone?, roleId, locationIds?, grants[], denies[], temporaryPassword?,
-sendEmail }`:
+sendEmail, locale? }` (`locale`: the new person's language, see auth.md → Language; `POST /invitations` takes it
+too):
 
 | Case                                     | Result                                                                                                                                                                                                                                    |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -282,6 +283,7 @@ validation error for a password outside the policy, plus the RBAC codes above. E
 **Web.** Manage Staff, its own menu item (`/staff`; `/settings/staff` and `/settings/members` redirect): stats, search, role and status filters,
 a table (cards on phones) with permission chips ("Role defaults (N)" or the person's changes) and row actions (edit,
 share invite link, deactivate/reactivate, remove, cancel invitation). The Add/Edit dialog has the details, an
+a Language select (new people only; default: the organization's, see auth.md → Language), an
 optional temporary password (generate; empty = invitation), role chips (a new person starts with the
 least-privileged role you can give, never Owner), locations and a permission matrix grouped by area: ticks start
 from the role, changes are marked, keys you don't hold are locked, modules switched off for the organization are

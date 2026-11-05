@@ -1,6 +1,8 @@
 import type { LabelKey } from '@durby/i18n';
 import type { FeatureKey, PermissionKey } from '@durby/shared';
 import {
+  CalendarClock,
+  CalendarDays,
   ChefHat,
   ClipboardList,
   ConciergeBell,
@@ -118,6 +120,26 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: 'modules',
     feature: 'pos',
     permission: 'pos.bar.use',
+  },
+  {
+    // The door: bookings, walk-ins and the floor (docs/modules/reservations.md → Web).
+    id: 'host',
+    href: '/host',
+    label: 'reservations.nav.host',
+    icon: CalendarClock,
+    group: 'modules',
+    feature: 'reservations',
+    permission: 'reservations.bookings.read',
+  },
+  {
+    // Bookings over a few days: search, edit, cancel (docs/modules/reservations.md → Web, R1.9).
+    id: 'reservations',
+    href: '/reservations',
+    label: 'reservations.nav.reservations',
+    icon: CalendarDays,
+    group: 'modules',
+    feature: 'reservations',
+    permission: 'reservations.bookings.read',
   },
   {
     id: 'tables',

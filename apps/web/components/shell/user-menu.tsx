@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, UserRound } from 'lucide-react';
+import { LogOut, Settings2, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 
-/** The signed-in user with their role in the active organization, and sign-out. */
+/** The signed-in user with their role in the active organization, their profile, and sign-out. */
 export function UserMenu() {
   const { store, session } = useAuth();
   const t = useT();
@@ -54,6 +54,10 @@ export function UserMenu() {
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => router.push('/account')} data-testid="account-link">
+          <Settings2 aria-hidden />
+          {t('platform.account.menu')}
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => void signOut()} data-testid="sign-out">
           <LogOut aria-hidden />
           {t('auth.logout.action')}

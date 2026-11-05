@@ -1,3 +1,4 @@
+import { LOCALES } from '@durby/i18n';
 import { z } from 'zod';
 import { newPasswordSchema } from './auth';
 import { roleRefSchema } from './rbac';
@@ -36,6 +37,8 @@ export const createTeamMemberRequestSchema = z
     temporaryPassword: newPasswordSchema.optional(),
     /** Also email the invitation link (when an invitation is created). */
     sendEmail: z.boolean().default(false),
+    /** The new staff member's language; absent: the organization's `locale` setting. */
+    locale: z.enum(LOCALES).optional(),
   })
   .refine(disjoint, DISJOINT);
 

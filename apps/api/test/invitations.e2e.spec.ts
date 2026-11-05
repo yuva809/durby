@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { v7 as uuidv7 } from 'uuid';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PasswordHasher } from '../src/platform/auth/password-hasher';
 import { PASSWORD, randomIp, startAuthApp, WEB_ORIGIN, type AuthTestKit } from './support/auth-app';
 import { RbacSeed, type SeededOrg } from './support/rbac';
@@ -19,6 +19,11 @@ describe('invitations', () => {
   beforeAll(async () => {
     kit = await startAuthApp({ logs });
     seed = new RbacSeed(kit.app);
+  });
+
+  // Each test gets its own organizations and Owner session, so no test depends on what another
+  // left in the invitation list or did to a shared token.
+  beforeEach(async () => {
     [a, b] = await Promise.all([seed.org('Bistro A'), seed.org('Bistro B')]);
     ownerA = await member(a, a.roles.owner);
   });
@@ -313,9 +318,12 @@ describe('invitations', () => {
     it('all answer the same 400 auth.token_invalid', async () => {
       const valid = await invite(newEmail());
       const [org, secret] = valid.split('.') as [string, string];
-      const revoked = await invite(newEmail());
+      const revokedEmail = newEmail();
+      const revoked = await invite(revokedEmail);
       const list = await api(ownerA.token).get('').expect(200);
-      const revokedId = (list.body as { data: { id: string; email: string }[] }).data[0]?.id;
+      const revokedId = (list.body as { data: { id: string; email: string }[] }).data.find(
+        (i) => i.email === revokedEmail,
+      )?.id;
       await api(ownerA.token)
         .delete(`/${revokedId ?? ''}`)
         .expect(204);

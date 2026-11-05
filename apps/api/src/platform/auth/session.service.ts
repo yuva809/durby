@@ -163,6 +163,23 @@ export class SessionService {
     };
   }
 
+  /** Sets the caller's own language (users row only); the answer is GET /me's. */
+  async updateMe(auth: Readonly<AuthContextValue>, body: { locale: string }): Promise<MeResponse> {
+    const { count } = await this.db.user.updateMany({
+      where: { id: auth.userId },
+      data: { locale: body.locale },
+    });
+    if (count === 0) throw authErrors.unauthenticated();
+    // A user-level change: no organization's audit log holds it, the security log does (like a
+    // password change).
+    this.security.event('auth.locale.changed', {
+      userId: auth.userId,
+      sessionId: auth.sessionId,
+      locale: body.locale,
+    });
+    return this.me(auth);
+  }
+
   /**
    * Changes the caller's password (and a temporary one, ADR 0023 §3): checks the current password,
    * clears `must_change_password`, ends every session of the user and starts a new one for this

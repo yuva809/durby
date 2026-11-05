@@ -756,3 +756,162 @@ describe('OrderPage (till)', () => {
     expect(screen.queryByTestId('ticket-serve')).toBeNull();
   });
 });
+
+/** /service with reservations (docs/modules/reservations.md → Web, R1.9): composed in the web. */
+describe('with reservations', () => {
+  const resTable = (tableId: string, name: string, over: object = {}) => ({
+    id: tableId,
+    locationId: LOCATION.id,
+    name,
+    seats: 4,
+    areaId: null,
+    area: null,
+    shape: 'square',
+    color: 'neutral',
+    sortOrder: 0,
+    state: 'free',
+    overrun: false,
+    walkInOnly: false,
+    current: null,
+    next: null,
+    occupied: false,
+    occupiedSince: null,
+    covers: null,
+    ...over,
+  });
+  const seated = {
+    state: 'occupied',
+    occupied: true,
+    occupiedSince: '2027-03-06T17:40:00.000Z',
+    covers: 3,
+    current: {
+      reservationId: id(40),
+      partySize: 3,
+      guestName: 'Weber',
+      since: '2027-03-06T17:40:00.000Z',
+      until: '2027-03-06T19:10:00.000Z',
+    },
+  };
+  const reservationsFloor = (tables: object[]) => () =>
+    Response.json({
+      data: tables,
+      at: '2027-03-06T17:45:00.000Z',
+      date: '2027-03-06',
+      live: true,
+      timeZone: 'Europe/Berlin',
+      horizonMinutes: 60,
+      serviceWindows: [],
+    });
+
+  function signedInWithReservations() {
+    mockState.session = sessionFixture({
+      activePermissions: [...systemRolePermissions('waiter')],
+      activeFeatures: ['catalog', 'pos', 'reservations'],
+    });
+  }
+
+  const posFloor = {
+    ...SETTINGS,
+    'GET /api/v1/locations': () => Response.json({ data: [LOCATION] }),
+    'GET /api/v1/pos/floor': () =>
+      Response.json({
+        data: [
+          { ...TABLE, order: null },
+          { ...TABLE, id: id(5), name: 'T2', order: null },
+        ],
+      }),
+  };
+
+  it("shows the next booking and a table seated from one on the floor's tiles", async () => {
+    signedInWithReservations();
+    api({
+      ...posFloor,
+      'GET /api/v1/reservations/floor': reservationsFloor([
+        resTable(TABLE.id, 'T1', seated),
+        resTable(id(5), 'T2', {
+          next: {
+            reservationId: id(41),
+            startsAt: '2027-03-06T18:30:00.000Z',
+            partySize: 4,
+            guestName: 'Klein',
+            tableStillOccupied: false,
+          },
+        }),
+      ]),
+    });
+    render(<FloorPage />);
+    const [t1, t2] = await screen.findAllByTestId('floor-table');
+    expect((await within(t1!).findByTestId('floor-booking')).textContent).toBe('From booking');
+    expect(within(t2!).getByTestId('floor-booking').textContent).toBe('19:30 · 4 p.');
+  });
+
+  it('never calls reservations without the feature, and hides the badges when the call fails', async () => {
+    signedInAs('waiter');
+    api(posFloor);
+    render(<FloorPage />);
+    await screen.findAllByTestId('floor-table');
+    expect(
+      mockState.store.apiFetch.mock.calls.some(([path]) =>
+        String(path).startsWith('/api/v1/reservations'),
+      ),
+    ).toBe(false);
+    cleanup();
+
+    signedInWithReservations();
+    api({
+      ...posFloor,
+      'GET /api/v1/reservations/floor': () =>
+        Response.json({ code: 'reservations.busy', message: 'x' }, { status: 503 }),
+    });
+    render(<FloorPage />);
+    await screen.findAllByTestId('floor-table');
+    expect(screen.queryByTestId('floor-booking')).toBeNull();
+  });
+
+  it("pre-fills the guests with the seated booking's party; the waiter can change it", async () => {
+    signedInWithReservations();
+    const writes = api({
+      ...withOrder(null),
+      'GET /api/v1/reservations/floor': reservationsFloor([resTable(TABLE.id, 'T1', seated)]),
+      [`POST /api/v1/pos/tables/${TABLE.id}/tickets`]: () =>
+        Response.json(
+          { order: { ...ORDER, covers: 2 }, ticketId: id(21), ticketIds: [id(21)] },
+          { status: 201 },
+        ),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    // The field remounts once the booking's party arrives: query it afresh.
+    await waitFor(() => expect(screen.getByTestId('guests-value').textContent).toBe('3'));
+    const field = screen.getByTestId('guests');
+    await userEvent.click(within(field).getByRole('button', { name: 'Fewer guests' }));
+    expect(within(field).getByTestId('guests-value').textContent).toBe('2');
+    await userEvent.click(
+      (await screen.findAllByTestId('menu-product')).find((x) => x.textContent?.includes('Soup'))!,
+    );
+    await userEvent.click(screen.getByTestId('send-to-kitchen'));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]?.body).toMatchObject({ covers: 2 });
+  });
+
+  it('sends the pre-filled guests when the waiter leaves them', async () => {
+    signedInWithReservations();
+    const writes = api({
+      ...withOrder(null),
+      'GET /api/v1/reservations/floor': reservationsFloor([resTable(TABLE.id, 'T1', seated)]),
+      [`POST /api/v1/pos/tables/${TABLE.id}/tickets`]: () =>
+        Response.json(
+          { order: { ...ORDER, covers: 3 }, ticketId: id(21), ticketIds: [id(21)] },
+          { status: 201 },
+        ),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    // The field remounts once the booking's party arrives: query it afresh.
+    await waitFor(() => expect(screen.getByTestId('guests-value').textContent).toBe('3'));
+    await userEvent.click(
+      (await screen.findAllByTestId('menu-product')).find((x) => x.textContent?.includes('Soup'))!,
+    );
+    await userEvent.click(screen.getByTestId('send-to-kitchen'));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]?.body).toMatchObject({ covers: 3 });
+  });
+});

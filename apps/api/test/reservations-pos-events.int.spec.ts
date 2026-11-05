@@ -213,7 +213,9 @@ describe('reservations: pos order events', () => {
       // The host screen's "auto-seated from till" badge reads the latest change (R1.8a).
       expect(seated.lastChange).toMatchObject({
         id: seated.lastChangeId,
+        fromStatus: 'booked',
         toStatus: 'seated',
+        undoesId: null,
         actorKind: 'system',
         sourceOrderId: orderId,
       });
