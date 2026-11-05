@@ -34,7 +34,12 @@ const WRAP_GAP = 1.4;
 const COLUMN_REACH = 1.5;
 
 const PRICE = /^(?:€\s?)?(\d{1,4}(?:[.,]\d{3})*[.,]\d{2})\s?(?:€|EUR)?$/i;
-const NUMBER = /^\d{1,3}\.$/;
+/** An item number on its own (`12.`, `12)`, `12a.`); bare `12` / `12a` only at the start of a row. */
+const NUMBER = /^\d{1,3}[a-z]?[.)]$/i;
+const BARE_NUMBER = /^\d{1,3}[a-z]?$/i;
+/** An item number inside the name's own text run: `12. Soup`, `12a) Soup`, `12 Soup`. */
+const NAME_NUMBER = /^(\d{1,3}[a-z]?)(?:[.)]\s*|\s+)(?=\p{L})/iu;
+const numberText = (item: TextItem) => item.text.trim().replace(/[.)]$/, '');
 const VOLUME = /^\d+(?:[.,]\d+)?\s?(?:l|cl|ml)$/i;
 
 const priceOf = (text: string): string | null => {
@@ -85,7 +90,17 @@ export function parseTextPage(
 ): { categories: ParsedCategory[]; heading: string | null } {
   const text = items.filter((i) => i.text.trim());
   const prices = text.filter((i) => !i.rotated && priceOf(i.text) !== null);
-  const numbers = text.filter((i) => !i.rotated && NUMBER.test(i.text.trim()));
+  // A bare number is an item number only when it starts a row with text after it; elsewhere it is
+  // an allergen code or a note.
+  const sameRow = (a: TextItem, b: TextItem) => Math.abs(a.y - b.y) <= 0.6 * Math.max(a.size, b.size);
+  const startsRow = (n: TextItem) =>
+    text.some((i) => i !== n && sameRow(i, n) && i.x > n.x) &&
+    !text.some((i) => i !== n && sameRow(i, n) && i.x < n.x);
+  const numbers = text.filter((i) => {
+    if (i.rotated) return false;
+    const t = i.text.trim();
+    return NUMBER.test(t) || (BARE_NUMBER.test(t) && startsRow(i));
+  });
   const volumes = text.filter((i) => !i.rotated && VOLUME.test(i.text.trim()));
   const rest = text.filter(
     (i) => !i.rotated && !prices.includes(i) && !numbers.includes(i) && !volumes.includes(i),
@@ -156,7 +171,11 @@ export function parseTextPage(
 
   const products: ParsedProduct[] = [];
   for (const entry of usable) {
-    const name = joinText(entry.names);
+    // The dish number (ADR 0029): its own text run, or printed in front of the name.
+    const joined = joinText(entry.names);
+    const inName = entry.number ? null : NAME_NUMBER.exec(joined);
+    const name = inName ? joined.slice(inName[0].length) : joined;
+    const number = entry.number ? numberText(entry.number) : (inName?.[1] ?? null);
     const description = joinText(entry.descriptions);
     const source = {
       page,
@@ -183,6 +202,8 @@ export function parseTextPage(
       const variant = volume ?? (priced.length > 1 ? String(index + 1) : null);
       products.push({
         name: variant ? `${name} ${variant}` : name,
+        // Numbers are unique: of an item's sizes, the first carries it.
+        ...(number && index === 0 && { number }),
         price: priceOf(price.text)!,
         description,
         confidence: 100,

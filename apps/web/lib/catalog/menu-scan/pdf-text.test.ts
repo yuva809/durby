@@ -70,6 +70,15 @@ describe('parseTextPages on a 26-page digital menu', () => {
     expect(find('Moru')[0]).toMatchObject({ price: '4.90', category: 'Alkoholfreie' });
   });
 
+  it('keeps the printed item numbers, once per item (ADR 0029)', () => {
+    const numbered = products.filter((p) => p.number);
+    expect(numbered.length).toBeGreaterThan(100);
+    expect(numbered.every((p) => /^\d{1,3}$/.test(p.number!))).toBe(true);
+    const all = numbered.map((p) => p.number);
+    expect(new Set(all).size).toBe(all.length);
+    expect(products.every((p) => !/^\d/.test(p.name))).toBe(true);
+  });
+
   it('names drinks with their volume and splits two price columns into two products', () => {
     expect(find('Coca-Cola 0,4l')[0]?.price).toBe('3.90');
     expect(find('Wasser Still/Medium 0,25l')[0]?.price).toBe('3.10');
@@ -127,6 +136,37 @@ describe('parseTextPage', () => {
       first.heading,
     );
     expect(next.categories[0]).toMatchObject({ name: 'Starters', products: [{ name: 'Pakora' }] });
+  });
+
+  it('reads item numbers on their own, bare at the row start, or in front of the name', () => {
+    const read = (items: TextItem[]) =>
+      parseTextPage(items, 1, 'Food').categories[0]!.products.map((p) => [p.name, p.number]);
+    expect(
+      read([
+        item('12a)', 60, 100, 20),
+        item('Soup', 100, 100, 20),
+        item('5,50', 400, 100, 14),
+        item('13', 60, 200, 20),
+        item('Samosa', 100, 200, 20),
+        // An allergen code after the name is not a number.
+        item('3', 180, 200, 8),
+        item('4,90', 400, 200, 14),
+      ]),
+    ).toEqual([
+      ['Soup', '12a'],
+      ['Samosa', '13'],
+    ]);
+    expect(
+      read([
+        item('7. Pakora', 100, 100, 20),
+        item('6,90', 400, 100, 14),
+        item('Chai', 100, 200, 20),
+        item('2,90', 400, 200, 14),
+      ]),
+    ).toEqual([
+      ['Pakora', '7'],
+      ['Chai', undefined],
+    ]);
   });
 
   it('tells text pages from scanned images', () => {
