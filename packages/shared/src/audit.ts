@@ -34,6 +34,7 @@ export const AUDIT_ENTITY_TYPES = [
   'stock_item',
   'stock_document',
   'recipe',
+  'price_rule',
   'reservation_guest',
 ] as const;
 
@@ -190,6 +191,18 @@ export const AUDIT_ACTIONS = {
   'catalog.product.updated': {
     entityType: 'product',
     label: 'catalog.audit.actions.productUpdated',
+  },
+  'catalog.price_rule.created': {
+    entityType: 'price_rule',
+    label: 'catalog.audit.actions.priceRuleCreated',
+  },
+  'catalog.price_rule.updated': {
+    entityType: 'price_rule',
+    label: 'catalog.audit.actions.priceRuleUpdated',
+  },
+  'catalog.price_rule.deleted': {
+    entityType: 'price_rule',
+    label: 'catalog.audit.actions.priceRuleDeleted',
   },
   'pos.dining_table.created': {
     entityType: 'dining_table',
@@ -377,6 +390,22 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   /** Never `payload` or `lastError`. `handler`: set when one failed handler job was re-queued. */
   outbox_event: ['id', 'type', 'version', 'attempts', 'deadLetteredAt', 'handler'],
   product_category: ['id', 'name', 'sortOrder', 'station', 'archivedAt'],
+  /** `days`: comma-separated weekdays; `value`: decimal text. */
+  price_rule: [
+    'id',
+    'name',
+    'locationId',
+    'productId',
+    'categoryId',
+    'kind',
+    'value',
+    'days',
+    'startsAt',
+    'endsAt',
+    'validFrom',
+    'validUntil',
+    'active',
+  ],
   /** `price`, `taxRate`: decimal strings. Never `description` (free text). */
   product: [
     'id',

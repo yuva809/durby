@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PublicMenu, SettingKey, SettingValue } from '@durby/shared';
-import { AuthRateLimits } from '../../platform/auth';
+import { AuthRateLimits, Clock } from '../../platform/auth';
 import { type ResolvedSettings, SettingsService } from '../../platform/config/settings';
 import { EntitlementService } from '../../platform/config/entitlements';
 import { OrganizationService } from '../../platform/organization';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../../platform/tenancy';
-import { CatalogService } from '../catalog';
+import { CatalogService, PricingService } from '../catalog';
 import { posErrors } from './pos-errors';
 
 /** No user reads the public menu; audit and RLS only need an id. */
@@ -37,6 +37,8 @@ export class PublicMenuService {
     private readonly settings: SettingsService,
     private readonly organization: OrganizationService,
     private readonly catalog: CatalogService,
+    private readonly pricing: PricingService,
+    private readonly clock: Clock,
   ) {}
 
   async menu(token: string, ip: string): Promise<PublicMenu> {
@@ -51,11 +53,15 @@ export class PublicMenuService {
           select: { name: true, locationId: true },
         });
         if (!table || !(await this.entitlements.isEnabled('pos'))) throw posErrors.menuNotFound();
-        const [resolved, organizationName, categories, products] = await Promise.all([
+        const [resolved, organizationName, categories, products, prices] = await Promise.all([
           this.settings.all({ locationId: table.locationId }),
           this.organization.name(),
           this.catalog.listCategories({ includeArchived: false }),
           this.catalog.listProducts({ includeArchived: false }),
+          // What this location charges now, after price rules (ADR 0030).
+          this.db.$transaction((tx) =>
+            this.pricing.pricesAt(tx, { locationId: table.locationId, at: this.clock.now() }),
+          ),
         ]);
         const header = setting(resolved, 'pos.billHeader');
         return {
@@ -69,7 +75,11 @@ export class PublicMenuService {
               name: category.name,
               products: products
                 .filter((p) => p.categoryId === category.id)
-                .map((p) => ({ name: p.name, description: p.description, price: p.price })),
+                .map((p) => ({
+                  name: p.name,
+                  description: p.description,
+                  price: prices.get(p.id)?.price ?? p.price,
+                })),
             }))
             .filter((category) => category.products.length > 0),
         };

@@ -8,6 +8,7 @@ import { auditActor, AuditService, snapshot } from '../../../platform/audit';
 import { IdempotencyService } from '../../../platform/idempotency';
 import { AccessService } from '../../../platform/rbac';
 import {
+  asTenantDb,
   TENANT_PRISMA,
   TenantContext,
   type TenantPrismaClient,
@@ -56,7 +57,7 @@ export class CombinationsService {
   ) {}
 
   async list(locationId: string, includeArchived: boolean): Promise<ReservationCombination[]> {
-    await readableLocation(this.db, this.access, locationId);
+    await readableLocation(asTenantDb(this.db), this.access, locationId);
     const rows = await this.db.reservationCombination.findMany({
       where: { locationId, ...(includeArchived ? {} : { archivedAt: null }) },
       select: COMBINATION_SELECT,
@@ -67,7 +68,7 @@ export class CombinationsService {
 
   async create(body: CreateCombinationRequest): Promise<ReservationCombination> {
     const { tenantId, userId } = this.tenantContext.require();
-    await readableLocation(this.db, this.access, body.locationId);
+    await readableLocation(asTenantDb(this.db), this.access, body.locationId);
     await this.access.assert('reservations.setup.manage', { locationId: body.locationId });
     checkRange(body.minParty, body.maxParty);
     await this.assertTablesInService(body.locationId, body.tableIds);

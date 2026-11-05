@@ -241,6 +241,9 @@ export const CATALOG_ERROR_CODES = [
   'catalog.import_invalid',
   'catalog.price_invalid',
   'catalog.menu_number_taken',
+  'catalog.price_rule_not_found',
+  'catalog.price_rule_invalid',
+  'catalog.location_not_found',
 ] as const;
 
 export type CatalogErrorCode = (typeof CATALOG_ERROR_CODES)[number];

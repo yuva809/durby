@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { TenantPrismaClient, TenantTransactionClient } from '../tenancy';
+import type { TenantDb } from '../tenancy';
 
 /**
  * Display names of the current organization's members, for modules that print who did something
@@ -10,10 +10,7 @@ import type { TenantPrismaClient, TenantTransactionClient } from '../tenancy';
 @Injectable()
 export class MemberNames {
   /** userId → display name; users without a membership here or without a name are left out. */
-  async forUsers(
-    db: TenantPrismaClient | TenantTransactionClient,
-    userIds: readonly string[],
-  ): Promise<Map<string, string>> {
+  async forUsers(db: TenantDb, userIds: readonly string[]): Promise<Map<string, string>> {
     const ids = [...new Set(userIds)];
     if (ids.length === 0) return new Map();
     const rows = await db.membership.findMany({

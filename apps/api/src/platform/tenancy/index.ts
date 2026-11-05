@@ -1,4 +1,6 @@
 export {
+  asTenantDb,
+  type TenantDb,
   AuthPrivateModelOnPlatformClientError,
   PLATFORM_PRISMA,
   StaffPrivateModelOnPlatformClientError,

@@ -13,7 +13,7 @@ import {
   CATALOG_NAME_MAX_LENGTH,
   PRODUCT_DESCRIPTION_MAX_LENGTH,
 } from '@durby/shared';
-import { ScanText } from 'lucide-react';
+import { ScanText, Tags } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
@@ -30,7 +30,10 @@ import {
   updateCategory,
   updateProduct,
 } from '../../lib/catalog/api';
+import { marginPercent } from '../../lib/catalog/margin';
+import { loadPrices } from '../../lib/catalog/prices-api';
 import { loadCosts } from '../../lib/inventory/api';
+import { loadLocations } from '../../lib/users/api';
 import { errorLabel } from '../../lib/auth/errors';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
@@ -84,6 +87,17 @@ function Catalog({
   );
   const [products, reloadProducts] = useResource(key, () => loadProducts(store, showArchived));
   const [costs, reloadCosts] = useResource(canReadCosts ? key : null, () => loadCosts(store));
+  const [locations] = useResource(organizationId, () => loadLocations(store));
+  const [priceLocation, setPriceLocation] = useState('');
+  // The location's regular price (price rules without times, ADR 0030); margins use it.
+  const [locationPrices] = useResource(priceLocation ? `${priceLocation}:${key ?? ''}` : null, () =>
+    loadPrices(store, priceLocation, { timed: false }),
+  );
+  const priceOf = new Map(
+    locationPrices.status === 'ready' && priceLocation
+      ? locationPrices.data.data.map((p) => [p.productId, p.price] as const)
+      : [],
+  );
   const reload = () => {
     reloadCategories();
     reloadProducts();
@@ -120,32 +134,40 @@ function Catalog({
     <div className={`flex flex-col gap-6${canManage ? ' pb-28 lg:pb-0' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t('catalog.nav.title')}</h1>
-        {canManage && (
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild>
-              <Link href="/catalog/scan" data-testid="scan-open">
-                <ScanText aria-hidden />
-                {t('catalog.scan.open')}
-              </Link>
-            </Button>
-            <ImportDialog onDone={reload} />
-            {unnumbered > 0 && (
-              <ConfirmAction
-                trigger={t('catalog.page.fillNumbers')}
-                title={t('catalog.page.fillNumbersTitle', { count: String(unnumbered) })}
-                description={t('catalog.page.fillNumbersDescription')}
-                confirm={t('catalog.page.fillNumbersConfirm')}
-                run={() => numberProducts(store, numberAction)}
-                onDone={reload}
-                testId="fill-numbers"
-              />
-            )}
-            <CategoryDialog onDone={reload} />
-            {openCategories.length > 0 && (
-              <ProductDialog categories={openCategories} onDone={reload} />
-            )}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/catalog/prices" data-testid="price-rules-open">
+              <Tags aria-hidden />
+              {t('catalog.prices.open')}
+            </Link>
+          </Button>
+          {canManage && (
+            <>
+              <Button variant="outline" asChild>
+                <Link href="/catalog/scan" data-testid="scan-open">
+                  <ScanText aria-hidden />
+                  {t('catalog.scan.open')}
+                </Link>
+              </Button>
+              <ImportDialog onDone={reload} />
+              {unnumbered > 0 && (
+                <ConfirmAction
+                  trigger={t('catalog.page.fillNumbers')}
+                  title={t('catalog.page.fillNumbersTitle', { count: String(unnumbered) })}
+                  description={t('catalog.page.fillNumbersDescription')}
+                  confirm={t('catalog.page.fillNumbersConfirm')}
+                  run={() => numberProducts(store, numberAction)}
+                  onDone={reload}
+                  testId="fill-numbers"
+                />
+              )}
+              <CategoryDialog onDone={reload} />
+              {openCategories.length > 0 && (
+                <ProductDialog categories={openCategories} onDone={reload} />
+              )}
+            </>
+          )}
+        </div>
       </div>
       <div className="flex min-h-11 items-center gap-3">
         <Checkbox
@@ -156,6 +178,27 @@ function Catalog({
         <Label htmlFor={`${id}-archived`} className="font-normal">
           {t('catalog.page.showArchived')}
         </Label>
+        {locations.status === 'ready' && locations.data.length > 0 && (
+          <div className="ml-auto flex items-center gap-2">
+            <Label htmlFor={`${id}-price-location`} className="font-normal">
+              {t('catalog.prices.menuLocation')}
+            </Label>
+            <Select
+              id={`${id}-price-location`}
+              value={priceLocation}
+              onChange={(e) => setPriceLocation(e.target.value)}
+              className="w-48"
+              data-testid="menu-price-location"
+            >
+              <option value="">{t('catalog.prices.ownPrice')}</option>
+              {locations.data.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
       </div>
       {canManage && (
         <BulkBar
@@ -231,6 +274,7 @@ function Catalog({
                     onPick={toggle(pickedProducts, setPickedProducts)}
                     costs={costs.status === 'ready' ? costs.data : []}
                     canReadCosts={canReadCosts}
+                    priceOf={priceOf}
                     onDone={reload}
                   />
                 )}
@@ -307,6 +351,7 @@ function ProductTable({
   onPick,
   costs,
   canReadCosts,
+  priceOf,
   onDone,
 }: {
   products: Product[];
@@ -316,6 +361,8 @@ function ProductTable({
   onPick: (ids: string[], on: boolean) => void;
   costs: DishCost[];
   canReadCosts: boolean;
+  /** Prices at the chosen location; products not in it show their own price. */
+  priceOf: ReadonlyMap<string, string>;
   onDone: () => void;
 }) {
   const t = useT();
@@ -326,12 +373,10 @@ function ProductTable({
   const open = categories.filter((c) => c.archivedAt === null);
   const allPicked = products.every((p) => picked.has(p.id));
   const costByProduct = new Map(costs.map((c) => [c.productId, c]));
-  const calcMargin = (price: string, costStr: string) => {
-    const p = Number(price);
-    const c = Number(costStr);
-    const taxRate = 0.19; // Default VAT; products have taxRate but we calculate on net
-    const netPrice = p / (1 + taxRate);
-    return netPrice > 0 ? (((netPrice - c) / netPrice) * 100).toFixed(0) : '–';
+  const priceFor = (product: Product) => priceOf.get(product.id) ?? product.price;
+  const margin = (product: Product, cost: string) => {
+    const value = marginPercent(priceFor(product), product.taxRate, cost);
+    return value === null ? '–' : `${value}%`;
   };
   return (
     <Card className="overflow-x-auto p-0">
@@ -407,7 +452,9 @@ function ProductTable({
               <td className="text-muted-foreground lg:p-3 lg:text-foreground">
                 {categoryName.get(product.categoryId)}
               </td>
-              <td className="tabular-nums lg:p-3 lg:text-right">{product.price}</td>
+              <td className="tabular-nums lg:p-3 lg:text-right" data-testid="product-price">
+                {priceFor(product)}
+              </td>
               <td className="tabular-nums lg:p-3 lg:text-right">
                 <span className="text-muted-foreground lg:hidden">
                   {t('catalog.fields.taxRate')}{' '}
@@ -424,7 +471,7 @@ function ProductTable({
                   </td>
                   <td className="tabular-nums lg:p-3 lg:text-right text-muted-foreground">
                     {costByProduct.get(product.id)
-                      ? `${calcMargin(product.price, costByProduct.get(product.id)!.cost)}%`
+                      ? margin(product, costByProduct.get(product.id)!.cost)
                       : '–'}
                   </td>
                 </>

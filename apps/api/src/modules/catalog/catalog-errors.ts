@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import type { ImportRowProblem } from '@durby/shared';
+import type { ImportRowProblem, PriceRuleProblem } from '@durby/shared';
 import { ApiError } from '../../platform/http';
 
 /** Error codes of the catalog module (docs/modules/catalog.md → Errors). */
@@ -35,6 +35,19 @@ export const catalogErrors = {
       'The price change would make some prices invalid.',
       { ids },
     ),
+  priceRuleNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'catalog.price_rule_not_found', 'Price rule not found.'),
+  priceRuleInvalid: (problems: PriceRuleProblem[]) =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'catalog.price_rule_invalid',
+      'The price rule is invalid.',
+      {
+        problems,
+      },
+    ),
+  locationNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'catalog.location_not_found', 'Location not found.'),
   menuNumberTaken: () =>
     new ApiError(
       HttpStatus.CONFLICT,

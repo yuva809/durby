@@ -364,6 +364,39 @@ describe('OrderPage (till)', () => {
     expect(screen.getAllByTestId('cart-line')).toHaveLength(2);
   });
 
+  it("shows the price the table's location charges now, with the time rule's name", async () => {
+    signedInAs('waiter');
+    const asked: string[] = [];
+    api({
+      ...withOrder(null),
+      'GET /api/v1/catalog/prices': () => {
+        asked.push(TABLE.locationId);
+        return Response.json({
+          locationId: TABLE.locationId,
+          at: '2026-11-06T17:00:00.000Z',
+          data: [
+            { productId: SOUP.id, price: '6.90', ruleId: null, ruleName: null, timed: false },
+            {
+              productId: COLA.id,
+              price: '3.04',
+              ruleId: id(60),
+              ruleName: 'Happy hour',
+              timed: true,
+            },
+          ],
+        });
+      },
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    const cola = await tile('Cola');
+    await waitFor(() => expect(within(cola).getByTestId('menu-price').textContent).toBe('€3.04'));
+    expect(within(cola).getByTestId('menu-price-tag').textContent).toBe('Happy hour');
+    expect(within(await tile('Soup')).queryByTestId('menu-price-tag')).toBeNull();
+    expect(asked[0]).toBe(TABLE.locationId);
+    await userEvent.click(cola);
+    expect(screen.getByTestId('cart-total').textContent).toBe('€3.04');
+  });
+
   it('prints the kitchen and the bar ticket of one send as two print jobs', async () => {
     signedInAs('waiter');
     const ticket = (n: number, station: 'kitchen' | 'bar', l: ReturnType<typeof line>) => ({

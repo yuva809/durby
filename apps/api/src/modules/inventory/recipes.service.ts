@@ -3,16 +3,17 @@ import Decimal from 'decimal.js';
 import type { DishCost, PutRecipeRequest, Recipe } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import {
+  asTenantDb,
   TENANT_PRISMA,
   TenantContext,
+  type TenantDb,
   type TenantPrismaClient,
-  type TenantTransactionClient,
 } from '../../platform/tenancy';
 import { CatalogService } from '../catalog';
 import { inventoryErrors } from './inventory-errors';
 import { costText, valueOf } from './valuation';
 
-type Db = TenantPrismaClient | TenantTransactionClient;
+type Db = TenantDb;
 
 /**
  * Recipes and dish costs (docs/modules/inventory.md → Step 2, ADR 0028). A recipe is the stock
@@ -30,7 +31,7 @@ export class RecipesService {
 
   async get(productId: string): Promise<Recipe> {
     await this.product(productId);
-    return recipeOf(this.db, productId);
+    return recipeOf(asTenantDb(this.db), productId);
   }
 
   /** Replaces the recipe; the same lines again change nothing. */
@@ -92,7 +93,7 @@ export class RecipesService {
     if (lines.length === 0) return [];
     const products = await this.catalog.productsByIds(lines.map((l) => l.productId));
     const live = new Set(products.filter((p) => !p.archivedAt).map((p) => p.id));
-    const costs = await currentCosts(this.db, [...new Set(lines.map((l) => l.itemId))]);
+    const costs = await currentCosts(asTenantDb(this.db), [...new Set(lines.map((l) => l.itemId))]);
     const byProduct = new Map<string, typeof lines>();
     for (const line of lines) {
       if (!live.has(line.productId)) continue;
