@@ -135,6 +135,9 @@ Labels: `catalog.errors.<camelCase>`.
 - Import rows take an optional `station` (`kitchen` | `bar`), used only when the import creates the category.
 - Web: the product dialog and table show the number; the order screen finds dishes by number, exact match
   first, Enter adds it; the menu scan keeps printed numbers and sends drink sections as bar categories.
+  Scans read numbers from images (OCR, digits only) and from text PDFs (`12.`, `12a)`, a bare `12` starting a
+  row, or `12. Soup` in the name's own text); of a dish's sizes only the first takes the number, and a number
+  read twice is sent with its first product only.
 
 ### Price rules (ADR 0030)
 

@@ -323,12 +323,16 @@ export function historyReducer(state: BoardHistory, action: HistoryAction): Boar
  * the scan has one, so importing never clears an existing product's description.
  */
 export function toImportRows(board: Board): ImportProductRow[] {
+  // Numbers are unique (ADR 0029): a number read twice stays on its first product only.
+  const seen = new Set<string>();
   return board.categories.flatMap((c) =>
     c.productIds.flatMap((id) => {
       const p = board.products[id];
       if (!p) return [];
       const description = p.description.trim();
-      const number = p.number.trim();
+      const read = p.number.trim();
+      const number = read && !seen.has(read.toLowerCase()) ? read : '';
+      if (number) seen.add(number.toLowerCase());
       return [
         {
           category: c.name.trim(),

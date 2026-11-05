@@ -192,4 +192,18 @@ describe('toImportRows', () => {
     ]);
     expect(checkImportRows(rows)).toEqual([]);
   });
+
+  it('sends a number read twice only with its first product (ADR 0029)', () => {
+    let b = board();
+    const [bread] = b.categories[0]!.productIds;
+    const [chicken, cheese] = b.categories[1]!.productIds;
+    for (const [id, number] of [
+      [bread, '12'],
+      [chicken, '12'],
+      [cheese, '13A'],
+    ] as const) {
+      b = boardReducer(b, { type: 'updateProduct', productId: id!, patch: { number } });
+    }
+    expect(toImportRows(b).map((r) => r.number)).toEqual(['12', undefined, '13A', undefined]);
+  });
 });
