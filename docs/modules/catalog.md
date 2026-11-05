@@ -136,6 +136,25 @@ Labels: `catalog.errors.<camelCase>`.
 - Web: the product dialog and table show the number; the order screen finds dishes by number, exact match
   first, Enter adds it; the menu scan keeps printed numbers and sends drink sections as bar categories.
 
+### Price rules (ADR 0030)
+
+- `price_rules`: `name`, `locationId` (null = all), `productId` or `categoryId` (exactly one), `kind`
+  (`fixed` | `percent_off`, percent on categories only), `value`, `days` (weekdays, empty = every day),
+  `startsAt`/`endsAt` (`HH:mm`, both or neither; past midnight belongs to the start day),
+  `validFrom`/`validUntil` (inclusive local dates), `active`.
+- `GET /catalog/price-rules` (`catalog.products.read`); `POST` (`catalog.products.manage`, idempotent in the
+  transaction), `PATCH /catalog/price-rules/:id`, `DELETE /catalog/price-rules/:id` (`catalog.products.manage`).
+- `GET /catalog/prices?locationId=&at=&timed=` (`catalog.products.read` at the location): every orderable
+  product's price there now (or at `at`), with the rule that set it; `timed=false` leaves time rules out.
+- Resolution (`resolvePrice`, shared): the most specific rule without days/hours/dates gives the regular
+  price, else the product's price; a matching time rule applies on top (`fixed` replaces, `percent_off` takes
+  off, half up). Product here > product everywhere > category here > category everywhere; ties: lower price.
+  Local time: the location's `timezone`.
+- pos charges this price when items are sent; the guest QR menu shows it; voids keep the charged price.
+- Errors: `catalog.price_rule_not_found` (404), `catalog.price_rule_invalid` (400, `details.problems`:
+  `target`, `percent_on_product`, `value`, `hours`, `dates`).
+- Audit: `catalog.price_rule.created|updated|deleted`.
+
 ## Audit
 
 | Action                             | Entity             | Snapshot fields                                                           |

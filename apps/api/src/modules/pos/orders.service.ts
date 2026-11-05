@@ -16,21 +16,25 @@ import {
   type VoidLinesRequest,
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
+import { Clock } from '../../platform/auth';
 import { IdempotencyService } from '../../platform/idempotency';
 import { NumberingService } from '../../platform/numbering';
 import { OutboxService } from '../../platform/outbox';
 import { AccessService, MemberNames } from '../../platform/rbac';
 import {
+  asTenantDb,
   TENANT_PRISMA,
   TenantContext,
+  type TenantDb,
   type TenantPrismaClient,
   type TenantTransactionClient,
 } from '../../platform/tenancy';
+import { PricingService } from '../catalog';
 import { lineTotal, orderTotals } from './order-totals';
 import { isUniqueViolation, posErrors } from './pos-errors';
 import { LATEST_STATUS, statusOf } from './ticket-status';
 
-type Db = TenantPrismaClient | TenantTransactionClient;
+type Db = TenantDb;
 
 /** Tickets of one send or void go out kitchen first (ADR 0025). */
 const STATION_ORDER: readonly PrepStation[] = PREP_STATIONS;
@@ -117,6 +121,8 @@ export class OrdersService {
     private readonly numbering: NumberingService,
     private readonly outbox: OutboxService,
     private readonly memberNames: MemberNames,
+    private readonly pricing: PricingService,
+    private readonly clock: Clock,
   ) {}
 
   async floor(query: FloorQuery): Promise<FloorTable[]> {
@@ -138,7 +144,7 @@ export class OrdersService {
       },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
     });
-    const open = await this.summaries(this.db, {
+    const open = await this.summaries(asTenantDb(this.db), {
       status: 'open',
       tableId: { in: tables.map((t) => t.id) },
     });
@@ -162,7 +168,7 @@ export class OrdersService {
         shape: table.shape,
         color: table.color,
       },
-      order: open ? await this.load(this.db, open.id) : null,
+      order: open ? await this.load(asTenantDb(this.db), open.id) : null,
     };
   }
 
@@ -170,7 +176,7 @@ export class OrdersService {
     const locations = await this.readableLocations(query.locationId);
     if (locations !== 'all' && locations.length === 0) return [];
     return this.summaries(
-      this.db,
+      asTenantDb(this.db),
       {
         ...(query.status ? { status: query.status } : {}),
         ...(locations === 'all' ? {} : { locationId: { in: locations } }),
@@ -181,7 +187,7 @@ export class OrdersService {
 
   async get(id: string): Promise<Order> {
     await this.readableOrder(id);
-    return this.load(this.db, id);
+    return this.load(asTenantDb(this.db), id);
   }
 
   /** The full order in the caller's transaction (for writes of other pos services). */
@@ -203,6 +209,7 @@ export class OrdersService {
         const products = await this.availableProducts(
           tx,
           body.lines.map((l) => l.productId),
+          table.locationId,
         );
         let orderId = await this.lockOpenOrder(tx, tableId);
         // `covers` counts only when this send opens the order. On an open order it is ignored: a
@@ -247,12 +254,13 @@ export class OrdersService {
           body.lines.map((line) => {
             const product = products.get(line.productId)!;
             return {
-              station: product.category.station,
+              station: product.station,
               line: {
                 productId: product.id,
                 productName: product.name,
-                unitPrice: product.price.toFixed(2),
-                taxRate: product.taxRate.toFixed(2),
+                // The location's price now, after price rules (ADR 0030).
+                unitPrice: product.price,
+                taxRate: product.taxRate,
                 quantity: line.quantity,
                 note: line.note || null,
                 voidsLineId: null,
@@ -403,23 +411,17 @@ export class OrdersService {
     return scope === 'all' || scope.includes(locationId) ? [locationId] : [];
   }
 
-  /** Products that can be ordered (not archived, category not archived), or 409 naming the rest. */
-  private async availableProducts(tx: TenantTransactionClient, ids: string[]) {
-    const wanted = [...new Set(ids)];
-    const rows = await tx.product.findMany({
-      where: { id: { in: wanted }, archivedAt: null, category: { archivedAt: null } },
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        taxRate: true,
-        category: { select: { station: true } },
-      },
+  /**
+   * Products that can be ordered (not archived, category not archived) at the price the location
+   * charges now (catalog's price rules, ADR 0030), or 409 naming the rest.
+   */
+  private async availableProducts(tx: TenantTransactionClient, ids: string[], locationId: string) {
+    const { products, missing } = await this.pricing.orderableProducts(tx, ids, {
+      locationId,
+      at: this.clock.now(),
     });
-    const found = new Map(rows.map((p) => [p.id, p]));
-    const missing = wanted.filter((id) => !found.has(id));
     if (missing.length > 0) throw posErrors.productUnavailable(missing);
-    return found;
+    return products;
   }
 
   /** The table's open order, locked for this transaction, or null. */

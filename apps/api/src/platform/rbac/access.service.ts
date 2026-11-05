@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { PermissionKey } from '@durby/shared';
 import { ClsService } from 'nestjs-cls';
 import {
+  asTenantDb,
   TENANT_PRISMA,
   TenantContext,
   type TenantPrismaClient,
@@ -80,7 +81,7 @@ export class AccessService {
     userId: string,
     tx?: TenantTransactionClient,
   ): Promise<ResolvedAccess> {
-    const row = await (tx ?? this.db).membership.findUnique({
+    const row = await asTenantDb(tx ?? this.db).membership.findUnique({
       where: { tenantId_userId: { tenantId, userId } },
       select: {
         id: true,

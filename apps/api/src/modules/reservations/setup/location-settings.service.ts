@@ -13,7 +13,7 @@ import {
   SettingsService,
 } from '../../../platform/config/settings';
 import { AccessService } from '../../../platform/rbac';
-import { TENANT_PRISMA, type TenantPrismaClient } from '../../../platform/tenancy';
+import { asTenantDb, TENANT_PRISMA, type TenantPrismaClient } from '../../../platform/tenancy';
 import { readableLocation } from './table-rules.service';
 
 const SETUP = 'reservations.setup.manage';
@@ -55,7 +55,7 @@ export class LocationSettingsService {
 
   /** 404 where the caller can't read bookings (or no such location), 403 where they can't set up. */
   private async manageable(locationId: string): Promise<void> {
-    await readableLocation(this.db, this.access, locationId);
+    await readableLocation(asTenantDb(this.db), this.access, locationId);
     await this.access.assert(SETUP, { locationId });
   }
 }

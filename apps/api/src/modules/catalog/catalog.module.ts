@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { CatalogController } from './catalog.controller';
+import { PricingController } from './pricing.controller';
 import { CatalogBulkService } from './catalog-bulk.service';
 import { CatalogService } from './catalog.service';
+import { PricingService } from './pricing.service';
 
-/** Product categories and products (docs/modules/catalog.md). */
+/** Product categories, products and their price rules (docs/modules/catalog.md). */
 @Module({
-  controllers: [CatalogController],
-  providers: [CatalogService, CatalogBulkService],
-  exports: [CatalogService],
+  controllers: [CatalogController, PricingController],
+  providers: [CatalogService, CatalogBulkService, PricingService],
+  exports: [CatalogService, PricingService],
 })
 export class CatalogModule {}

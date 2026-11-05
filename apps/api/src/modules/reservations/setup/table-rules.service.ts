@@ -3,10 +3,11 @@ import type { PutTableRuleRequest, ReservationTable, TableBookingMode } from '@d
 import { auditActor, AuditService, snapshot } from '../../../platform/audit';
 import { AccessService } from '../../../platform/rbac';
 import {
+  asTenantDb,
   TENANT_PRISMA,
   TenantContext,
+  type TenantDb,
   type TenantPrismaClient,
-  type TenantTransactionClient,
 } from '../../../platform/tenancy';
 import { type FloorTable, PosFloorReader } from '../../pos';
 import { reservationErrors } from '../reservations-errors';
@@ -35,7 +36,7 @@ export class TableRulesService {
 
   /** The location's tables in service with their rules. */
   async list(locationId: string): Promise<ReservationTable[]> {
-    await readableLocation(this.db, this.access, locationId);
+    await readableLocation(asTenantDb(this.db), this.access, locationId);
     const [tables, rules] = await Promise.all([
       this.pos.tablesAt(locationId),
       this.db.reservationTableRule.findMany({
@@ -100,7 +101,7 @@ export class TableRulesService {
  * transaction per request).
  */
 export async function readableLocation(
-  db: TenantPrismaClient | TenantTransactionClient,
+  db: TenantDb,
   access: AccessService,
   locationId: string,
 ): Promise<void> {

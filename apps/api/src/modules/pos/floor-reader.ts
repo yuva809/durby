@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { TableColor, TableShape } from '@durby/shared';
 import { z } from 'zod';
 import {
+  asTenantDb,
   TENANT_PRISMA,
   type TenantPrismaClient,
   type TenantTransactionClient,
@@ -74,7 +75,7 @@ export class PosFloorReader {
    */
   async tablesAt(locationId: string, tx?: TenantTransactionClient): Promise<FloorTable[]> {
     if (!uuid.safeParse(locationId).success) return [];
-    const rows = await (tx ?? this.db).diningTable.findMany({
+    const rows = await asTenantDb(tx ?? this.db).diningTable.findMany({
       where: { locationId, archivedAt: null },
       select: TABLE_SELECT,
       orderBy: [...FLOOR_ORDER],
@@ -93,7 +94,7 @@ export class PosFloorReader {
   async tables(ids: readonly string[], tx?: TenantTransactionClient): Promise<FloorTable[]> {
     const valid = ids.filter((id) => uuid.safeParse(id).success);
     if (valid.length === 0) return [];
-    const rows = await (tx ?? this.db).diningTable.findMany({
+    const rows = await asTenantDb(tx ?? this.db).diningTable.findMany({
       where: { id: { in: valid } },
       select: TABLE_SELECT,
       orderBy: [...FLOOR_ORDER],
@@ -104,7 +105,7 @@ export class PosFloorReader {
   /** One order, open or closed; null if it doesn't exist in this tenant. `tx` as above. */
   async order(orderId: string, tx?: TenantTransactionClient): Promise<OrderRef | null> {
     if (!uuid.safeParse(orderId).success) return null;
-    const row = await (tx ?? this.db).posOrder.findUnique({
+    const row = await asTenantDb(tx ?? this.db).posOrder.findUnique({
       where: { id: orderId },
       select: {
         id: true,
@@ -130,7 +131,7 @@ export class PosFloorReader {
   /** The location's open orders, one per table at most, in floor order of their tables; `tx` as above. */
   async openOrders(locationId: string, tx?: TenantTransactionClient): Promise<OpenOrderRef[]> {
     if (!uuid.safeParse(locationId).success) return [];
-    const rows = await (tx ?? this.db).posOrder.findMany({
+    const rows = await asTenantDb(tx ?? this.db).posOrder.findMany({
       where: { locationId, status: 'open' },
       select: { id: true, tableId: true, openedAt: true, covers: true },
       orderBy: [{ table: { sortOrder: 'asc' } }, { table: { name: 'asc' } }, { tableId: 'asc' }],

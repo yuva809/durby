@@ -2,6 +2,8 @@ export * from './api/audit';
 export * from './api/auth';
 export * from './api/catalog';
 export * from './api/catalog-bulk';
+export * from './api/price-rules';
+export * from './catalog/prices';
 export * from './api/inventory';
 export * from './api/entitlements';
 export * from './api/errors';

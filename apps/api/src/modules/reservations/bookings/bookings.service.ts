@@ -23,6 +23,7 @@ import { NumberingService } from '../../../platform/numbering';
 import { OutboxService } from '../../../platform/outbox';
 import { AccessService } from '../../../platform/rbac';
 import {
+  asTenantDb,
   TENANT_PRISMA,
   TenantContext,
   type TenantPrismaClient,
@@ -408,7 +409,7 @@ export class BookingsService {
 
   /** The booking, if the caller reads bookings at its location (else 404). Writes pass their `tx`. */
   async readable(id: string, tx?: TenantTransactionClient) {
-    const found = await (tx ?? this.db).reservation.findUnique({
+    const found = await asTenantDb(tx ?? this.db).reservation.findUnique({
       where: { id },
       select: { locationId: true },
     });

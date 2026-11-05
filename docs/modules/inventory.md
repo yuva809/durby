@@ -2,7 +2,7 @@
 
 Stock of ingredients and goods per warehouse: what is there, what it is worth, and every movement. Feature
 `inventory`. Step 1 (this document): warehouses, stock items, receipts, adjustments, transfers, stock on hand.
-Later steps: recipes and dish cost with sales consumption (Step 2), prices per location and time (Step 3, catalog),
+Later steps: recipes and dish cost with sales consumption (Step 2), prices per location and time (Step 3, catalog, ADR 0030),
 the sales profit report (Step 4, reports). ADR 0027.
 
 ## Entities

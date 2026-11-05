@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  type EffectivePrice,
   type FloorTable,
   type KitchenTicket,
   type Order,
@@ -32,6 +33,7 @@ import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { loadCategories, loadProducts } from '../../lib/catalog/api';
+import { loadPrices } from '../../lib/catalog/prices-api';
 import {
   closeOrder,
   loadBillLayout,
@@ -305,7 +307,9 @@ function TableOrder({
                 access.canTake ? 'lg:grid-cols-[minmax(0,1fr)_23rem]' : 'mx-auto w-full max-w-lg',
               )}
             >
-              {access.canTake && <Menu tableId={tableId} cart={cart} onAdd={add} />}
+              {access.canTake && (
+                <Menu tableId={tableId} locationId={table.locationId} cart={cart} onAdd={add} />
+              )}
               <aside
                 id="order-panel"
                 className="flex flex-col gap-4 lg:sticky lg:top-4"
@@ -870,10 +874,12 @@ function TicketLog({
 /** A category rail (side list on wide screens, a scrolling row on phones), search and product cards. */
 function Menu({
   tableId,
+  locationId,
   cart,
   onAdd,
 }: {
   tableId: string;
+  locationId: string;
   cart: CartLine[];
   onAdd: (product: Product, station: PrepStation) => void;
 }) {
@@ -888,6 +894,13 @@ function Menu({
     if (!products.ok) return products;
     return { ok: true as const, data: { categories: categories.data, products: products.data } };
   });
+  // What the location charges now (price rules, ADR 0030), checked every minute; the api decides on
+  // send. A reload keeps the last answer while it loads, so prices don't flicker.
+  const [prices, reloadPrices] = useResource(locationId, () => loadPrices(store, locationId));
+  useNow(60_000, reloadPrices);
+  const priceOf = new Map<string, EffectivePrice>(
+    prices.status === 'ready' ? prices.data.data.map((p) => [p.productId, p]) : [],
+  );
   const [category, setCategory] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const inCart = new Map(cart.map((l) => [l.product.id, l.quantity]));
@@ -908,7 +921,15 @@ function Menu({
 
   return (
     <Loaded resource={menu} reload={reloadMenu}>
-      {({ categories, products }) => {
+      {({ categories, products: ownPrices }) => {
+        const products = ownPrices.map((p) => ({
+          ...p,
+          price: priceOf.get(p.id)?.price ?? p.price,
+        }));
+        const tagOf = (product: Product) => {
+          const price = priceOf.get(product.id);
+          return price?.timed ? price.ruleName : null;
+        };
         const stationOf = new Map(categories.map((c) => [c.id, c.station]));
         const addProduct = (product: Product) =>
           onAdd(product, stationOf.get(product.categoryId) ?? 'kitchen');
@@ -963,6 +984,7 @@ function Menu({
                 matching={result.matching}
                 category={category}
                 inCart={inCart}
+                tagOf={tagOf}
                 onAdd={addProduct}
               />
             </section>
@@ -1024,6 +1046,7 @@ function ProductGrid({
   matching,
   category,
   inCart,
+  tagOf,
   onAdd,
 }: {
   categories: ProductCategory[];
@@ -1032,6 +1055,8 @@ function ProductGrid({
   matching: Product[];
   category: string | null;
   inCart: ReadonlyMap<string, number>;
+  /** A time rule's name for a product priced by one (e.g. "Happy hour"). */
+  tagOf: (product: Product) => string | null;
   onAdd: (product: Product) => void;
 }) {
   const t = useT();
@@ -1056,6 +1081,7 @@ function ProductGrid({
             <ProductCard
               product={exact}
               count={inCart.get(exact.id) ?? 0}
+              tag={tagOf(exact)}
               color={colorOf.get(exact.categoryId) ?? TABLE_COLORS[1]}
               onAdd={onAdd}
             />
@@ -1072,6 +1098,7 @@ function ProductGrid({
               <li key={product.id}>
                 <ProductCard
                   product={product}
+                  tag={tagOf(product)}
                   count={inCart.get(product.id) ?? 0}
                   color={colorOf.get(product.categoryId) ?? 'neutral'}
                   onAdd={onAdd}
@@ -1089,10 +1116,12 @@ function ProductCard({
   product,
   count,
   color,
+  tag,
   onAdd,
 }: {
   product: Product;
   count: number;
+  tag: string | null;
   color: (typeof TABLE_COLORS)[number];
   onAdd: (product: Product) => void;
 }) {
@@ -1122,7 +1151,14 @@ function ProductCard({
         <span className="line-clamp-2 text-sm leading-snug font-medium" title={product.name}>
           {product.name}
         </span>
-        <span className="text-sm text-muted-foreground tabular-nums">{money(product.price)}</span>
+        <span className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
+          <span data-testid="menu-price">{money(product.price)}</span>
+          {tag && (
+            <Badge className="border-primary text-foreground" data-testid="menu-price-tag">
+              {tag}
+            </Badge>
+          )}
+        </span>
       </span>
       {count > 0 && (
         <span

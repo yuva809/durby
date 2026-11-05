@@ -116,4 +116,16 @@ export function createPlatformPrismaClient(base: PrismaClient) {
 }
 
 export type TenantPrismaClient = ReturnType<typeof createTenantPrismaClient>;
+
+/**
+ * Code that reads with either the tenant client or a transaction of it. Both have the same model
+ * delegates at runtime, but since the schema grew past what TypeScript compares (TS2321 "excessive
+ * stack depth" on `TenantPrismaClient | TenantTransactionClient`), calls on the union no longer type.
+ * Such code takes a `TenantDb` and callers pass `asTenantDb(this.db)` or the `tx` they hold.
+ */
+export type TenantDb = TenantTransactionClient;
+
+export function asTenantDb(db: TenantPrismaClient | TenantTransactionClient): TenantDb {
+  return db as unknown as TenantDb;
+}
 export type PlatformPrismaClient = ReturnType<typeof createPlatformPrismaClient>;
