@@ -8,6 +8,7 @@ import {
   productSchema,
   sendTicketResponseSchema,
   stationBoardResponseSchema,
+  tableOrderResponseSchema,
   stationTicketSchema,
   type SystemRole,
 } from '@durby/shared';
@@ -253,6 +254,97 @@ describe('pos kitchen and bar screens', () => {
     await post(waiterB, `/pos/orders/${a.order.id}/tickets/${a.kitchenTicket}/served`).expect(404);
     const cookA = await memberToken(a.org, 'kitchen');
     expect((await board(cookA, 'kitchen', a.here))[0]?.status).toBe('new');
+  });
+
+  describe('processing switches (ADR 0031)', () => {
+    const put = (token: string, key: string, value: unknown, locationId?: string) =>
+      withIdempotencyKey(
+        request(server)
+          .put(`/api/v1/settings/${key}${locationId ? `?locationId=${locationId}` : ''}`)
+          .auth(token, { type: 'bearer' }),
+        uuidv7(),
+      ).send({ value });
+    const send = async (token: string, tableId: string, lines: object[]) =>
+      sendTicketResponseSchema.parse(
+        (await post(token, `/pos/tables/${tableId}/tickets`, { lines }).expect(201)).body,
+      );
+    const processing = async (token: string, tableId: string) =>
+      tableOrderResponseSchema.parse(
+        (await get(token, `/pos/tables/${tableId}/order`).expect(200)).body,
+      ).processing;
+
+    it('sends bar items straight to the bill where the bar is off; the kitchen still gets its ticket', async () => {
+      const r = await restaurant();
+      const cook = await memberToken(r.org, 'kitchen');
+      const bartender = await memberToken(r.org, 'bar');
+      expect(await processing(r.owner, r.t1)).toEqual({ kitchen: true, bar: true });
+      await put(r.owner, 'pos.barProcessing', false).expect(200);
+      expect(await processing(r.owner, r.t1)).toEqual({ kitchen: true, bar: false });
+
+      const sent = await send(r.owner, r.t1, [
+        { productId: r.beer, quantity: 2 },
+        { productId: r.soup, quantity: 1 },
+      ]);
+      const fresh = sent.order.tickets.filter((t) => sent.ticketIds.includes(t.id));
+      expect(fresh.map((t) => [t.station, t.direct])).toEqual([
+        ['kitchen', false],
+        ['bar', true],
+      ]);
+      // The bill counts it: 3 × soup + 3 × beer at 5.00.
+      expect(sent.order.totals.gross).toBe('30.00');
+      // Only the earlier bar ticket is work for the bar; the new kitchen ticket is on the kitchen screen.
+      expect((await board(bartender, 'bar', r.here)).map((t) => t.id)).toEqual([r.barTicket]);
+      expect(await board(cook, 'kitchen', r.here)).toHaveLength(2);
+
+      // Nothing to prepare: no moves, not served from the till.
+      const direct = fresh[1]!.id;
+      expect((await move(bartender, 'bar', direct, 'ready').expect(409)).body).toMatchObject({
+        code: 'pos.ticket_status_invalid',
+      });
+      await post(r.owner, `/pos/orders/${r.order.id}/tickets/${direct}/served`).expect(409);
+
+      // A void of a direct item is direct too; a void of a prepared one still goes to the bar.
+      const directLine = fresh[1]!.lines[0]!.id;
+      const preparedLine = r.order.tickets[1]!.lines[0]!.id;
+      const voids = sendTicketResponseSchema.parse(
+        (
+          await post(r.owner, `/pos/orders/${r.order.id}/voids`, {
+            lines: [
+              { lineId: directLine, quantity: 1 },
+              { lineId: preparedLine, quantity: 1 },
+            ],
+          }).expect(201)
+        ).body,
+      );
+      const voidTickets = voids.order.tickets.filter((t) => voids.ticketIds.includes(t.id));
+      expect(voidTickets.map((t) => [t.station, t.kind, t.direct])).toEqual([
+        ['bar', 'void', false],
+        ['bar', 'void', true],
+      ]);
+      expect(await board(bartender, 'bar', r.here)).toHaveLength(2);
+
+      const audit = await seed.as(r.org.id, (db) =>
+        db.auditLog.findFirst({
+          where: { action: 'pos.kitchen_ticket.created', entityId: direct },
+        }),
+      );
+      expect(audit?.after).toMatchObject({ station: 'bar', direct: true });
+    });
+
+    it("takes a location's own switch over the organization's", async () => {
+      const r = await restaurant();
+      const cook = await memberToken(r.org, 'kitchen');
+      await put(r.owner, 'pos.kitchenProcessing', false).expect(200);
+      await put(r.owner, 'pos.kitchenProcessing', true, r.here).expect(200);
+      expect(await processing(r.owner, r.t1)).toEqual({ kitchen: true, bar: true });
+      expect(await processing(r.owner, r.t9)).toEqual({ kitchen: false, bar: true });
+
+      const there = await send(r.owner, r.t9, [{ productId: r.soup, quantity: 1 }]);
+      expect(there.order.tickets.map((t) => t.direct)).toEqual([true]);
+      expect(await board(cook, 'kitchen', r.org.locations[1])).toEqual([]);
+      const here = await send(r.owner, r.t1, [{ productId: r.soup, quantity: 1 }]);
+      expect(here.order.tickets.at(-1)?.direct).toBe(false);
+    });
   });
 
   it('gives Kitchen and Bar their screen only: no orders, menu or tables', async () => {

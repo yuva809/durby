@@ -235,6 +235,23 @@ export const SETTINGS = {
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
+  // Off: that station's items go straight to the bill, no ticket to prepare (ADR 0031).
+  'pos.kitchenProcessing': define({
+    label: 'platform.settings.posKitchenProcessing.name',
+    description: 'platform.settings.posKitchenProcessing.description',
+    schema: z.boolean(),
+    default: true,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  'pos.barProcessing': define({
+    label: 'platform.settings.posBarProcessing.name',
+    description: 'platform.settings.posBarProcessing.description',
+    schema: z.boolean(),
+    default: true,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
   'inventory.valuationMethod': define({
     label: 'platform.settings.inventoryValuationMethod.name',
     description: 'platform.settings.inventoryValuationMethod.description',

@@ -322,3 +322,18 @@ One route per station, so each declares its own key:
 - Web: `/kitchen` and `/bar`: columns New, Preparing, Ready; a card per ticket with the table, age, items and
   one next-step button; refreshes every 5 s. The floor shows **Ready** on tables with ready tickets; the till's
   ticket log shows each status and **Served** on ready tickets.
+
+## Kitchen and bar processing (ADR 0031)
+
+- Settings `pos.kitchenProcessing` and `pos.barProcessing` (boolean, default `true`; organization, location
+  override; `platform.settings.manage`). Off: that station's items go **straight to the bill**.
+- A send still writes one ticket per station; a station that is off gets a ticket with `direct = true`
+  (`pos_kitchen_tickets.direct`, snapshot at send time). A void copies the voided line's ticket's `direct`. The
+  settings are read at the table's location inside the send's transaction.
+- Direct tickets: not on the station screens, no status moves (409 `pos.ticket_status_invalid`), audited with
+  `direct` in the snapshot. Totals, bill, voids and consumption are unchanged.
+- `GET /pos/tables/:tableId/order` carries `processing: { kitchen, bar }` (effective values there); tickets carry
+  `direct`.
+- Web: Settings → **Kitchen & bar** (organization or one location; "Use the organization's setting" on a
+  location). Till: the send button says **Add to bill** when nothing goes to a station; direct tickets print
+  nothing on send and show **Added to bill** in the ticket log.

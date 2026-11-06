@@ -84,6 +84,7 @@ describe('billLines', () => {
       kind: 'order' as const,
       station: 'kitchen' as const,
       status: 'new' as const,
+      direct: false,
       createdAt: '2026-10-27T12:00:00.000Z',
       lines,
     })),

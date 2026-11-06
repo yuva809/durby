@@ -138,6 +138,8 @@ describe('/api/v1/settings', () => {
           ['reservations.holdMinutes', 5],
           ['pos.billHeader', DEFAULT_BILL_HEADER],
           ['pos.billFooter', DEFAULT_BILL_FOOTER],
+          ['pos.kitchenProcessing', true],
+          ['pos.barProcessing', true],
         ].map(([key, value]) => ({ key, value, source: 'default', dataBound: false })),
         {
           key: 'inventory.valuationMethod',

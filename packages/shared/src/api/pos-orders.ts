@@ -74,6 +74,8 @@ export const kitchenTicketSchema = z.object({
   station: z.enum(PREP_STATIONS),
   /** Its progress on the station's screen (ADR 0026). */
   status: z.enum(TICKET_STATUSES),
+  /** Went straight to the bill: the station's processing was off (ADR 0031). */
+  direct: z.boolean(),
   createdAt: z.iso.datetime(),
   lines: z.array(orderLineSchema),
 });
@@ -140,9 +142,13 @@ export const floorTableSchema = z.object({
 
 export const floorResponseSchema = z.object({ data: z.array(floorTableSchema) });
 
+/** Whether each station prepares what is sent, at the table's location (ADR 0031). */
+export const stationProcessingSchema = z.object({ kitchen: z.boolean(), bar: z.boolean() });
+
 export const tableOrderResponseSchema = z.object({
   table: floorTableSchema.omit({ order: true }),
   order: orderSchema.nullable(),
+  processing: stationProcessingSchema,
 });
 
 export const floorQuerySchema = z.object({ locationId: z.uuid().optional() });
@@ -165,6 +171,7 @@ export type Order = z.infer<typeof orderSchema>;
 export type SendTicketResponse = z.infer<typeof sendTicketResponseSchema>;
 export type FloorTable = z.infer<typeof floorTableSchema>;
 export type FloorResponse = z.infer<typeof floorResponseSchema>;
+export type StationProcessing = z.infer<typeof stationProcessingSchema>;
 export type TableOrderResponse = z.infer<typeof tableOrderResponseSchema>;
 export type FloorQuery = z.infer<typeof floorQuerySchema>;
 export type ListOrdersQuery = z.infer<typeof listOrdersQuerySchema>;

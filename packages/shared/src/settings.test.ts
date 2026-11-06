@@ -47,6 +47,8 @@ describe('settings registry', () => {
       'reservations.holdMinutes',
       'pos.billHeader',
       'pos.billFooter',
+      'pos.kitchenProcessing',
+      'pos.barProcessing',
       'inventory.valuationMethod',
       'inventory.targetFoodCostPercent',
       'inventory.allowNegativeStock',

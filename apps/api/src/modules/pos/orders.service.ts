@@ -11,12 +11,14 @@ import {
   type PrepStation,
   type SendTicketRequest,
   type SendTicketResponse,
+  type StationProcessing,
   type TableOrderResponse,
   type UpdateOrderRequest,
   type VoidLinesRequest,
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { Clock } from '../../platform/auth';
+import { SettingsService } from '../../platform/config/settings';
 import { IdempotencyService } from '../../platform/idempotency';
 import { NumberingService } from '../../platform/numbering';
 import { OutboxService } from '../../platform/outbox';
@@ -123,6 +125,7 @@ export class OrdersService {
     private readonly memberNames: MemberNames,
     private readonly pricing: PricingService,
     private readonly clock: Clock,
+    private readonly settings: SettingsService,
   ) {}
 
   async floor(query: FloorQuery): Promise<FloorTable[]> {
@@ -169,6 +172,22 @@ export class OrdersService {
         color: table.color,
       },
       order: open ? await this.load(asTenantDb(this.db), open.id) : null,
+      processing: await this.processing(table.locationId),
+    };
+  }
+
+  /**
+   * Whether each station prepares what is sent at the location (ADR 0031): `pos.kitchenProcessing`
+   * and `pos.barProcessing` there. Off: its items go straight to the bill (a direct ticket).
+   */
+  private async processing(
+    locationId: string,
+    tx?: TenantTransactionClient,
+  ): Promise<StationProcessing> {
+    const resolved = await this.settings.all({ locationId }, tx);
+    return {
+      kitchen: resolved.get('pos.kitchenProcessing')?.value !== false,
+      bar: resolved.get('pos.barProcessing')?.value !== false,
     };
   }
 
@@ -211,6 +230,7 @@ export class OrdersService {
           body.lines.map((l) => l.productId),
           table.locationId,
         );
+        const processing = await this.processing(table.locationId, tx);
         let orderId = await this.lockOpenOrder(tx, tableId);
         // `covers` counts only when this send opens the order. On an open order it is ignored: a
         // till may hold a value from before another waiter opened the table, and changes go
@@ -255,6 +275,7 @@ export class OrdersService {
             const product = products.get(line.productId)!;
             return {
               station: product.station,
+              direct: !processing[product.station],
               line: {
                 productId: product.id,
                 productName: product.name,
@@ -293,13 +314,15 @@ export class OrdersService {
         if (quantity > (left.get(lineId) ?? 0)) throw posErrors.voidExceeds(lineId);
       }
       // A void goes to the station that got the item, whatever its category says now.
-      const stations = new Map(
+      // A void goes where the item went: its ticket's station, and straight to the bill when the
+      // item did (ADR 0031).
+      const sentTickets = new Map(
         (
           await tx.posKitchenTicket.findMany({
             where: { orderId },
-            select: { id: true, station: true },
+            select: { id: true, station: true, direct: true },
           })
-        ).map((t) => [t.id, t.station]),
+        ).map((t) => [t.id, t]),
       );
       const ticketIds = await this.writeTickets(
         tx,
@@ -307,8 +330,10 @@ export class OrdersService {
         'void',
         [...requested].map(([lineId, quantity]) => {
           const line = sentLines.get(lineId)!;
+          const sent = sentTickets.get(line.ticketId)!;
           return {
-            station: stations.get(line.ticketId)!,
+            station: sent.station,
+            direct: sent.direct,
             line: {
               productId: line.productId,
               productName: line.productName,
@@ -481,18 +506,25 @@ export class OrdersService {
 
   /**
    * One ticket per station the lines go to, kitchen first, in the lines' order within each
-   * (ADR 0025). Returns the ticket ids in sequence order.
+   * (ADR 0025); prepared items before direct ones of the same station (ADR 0031). Returns the
+   * ticket ids in sequence order.
    */
   private async writeTickets(
     tx: TenantTransactionClient,
     orderId: string,
     kind: 'order' | 'void',
-    lines: { station: PrepStation; line: TicketLine }[],
+    lines: { station: PrepStation; direct: boolean; line: TicketLine }[],
   ): Promise<string[]> {
     const ids: string[] = [];
     for (const station of STATION_ORDER) {
-      const group = lines.filter((l) => l.station === station).map((l) => l.line);
-      if (group.length > 0) ids.push(await this.writeTicket(tx, orderId, kind, station, group));
+      for (const direct of [false, true]) {
+        const group = lines
+          .filter((l) => l.station === station && l.direct === direct)
+          .map((l) => l.line);
+        if (group.length > 0) {
+          ids.push(await this.writeTicket(tx, orderId, kind, { station, direct }, group));
+        }
+      }
     }
     return ids;
   }
@@ -502,7 +534,7 @@ export class OrdersService {
     tx: TenantTransactionClient,
     orderId: string,
     kind: 'order' | 'void',
-    station: PrepStation,
+    { station, direct }: { station: PrepStation; direct: boolean },
     lines: TicketLine[],
   ): Promise<string> {
     const { tenantId, userId } = this.tenantContext.require();
@@ -517,9 +549,10 @@ export class OrdersService {
         sequence: (last._max.sequence ?? 0) + 1,
         kind,
         station,
+        direct,
         createdByUserId: userId,
       },
-      select: { id: true, orderId: true, sequence: true, kind: true, station: true },
+      select: { id: true, orderId: true, sequence: true, kind: true, station: true, direct: true },
     });
     const written = await tx.posOrderLine.createManyAndReturn({
       data: lines.map((line) => ({
@@ -571,6 +604,7 @@ export class OrdersService {
           sequence: true,
           kind: true,
           station: true,
+          direct: true,
           createdAt: true,
           statusChanges: LATEST_STATUS,
         },
@@ -593,6 +627,7 @@ export class OrdersService {
       kind: t.kind,
       station: t.station,
       status: statusOf(t.statusChanges),
+      direct: t.direct,
       createdAt: t.createdAt.toISOString(),
       lines: byTicket.get(t.id) ?? [],
     }));

@@ -35,6 +35,8 @@ afterEach(() => {
 
 const id = (n: number) => `0190a000-0000-7000-8000-0000000003${String(n).padStart(2, '0')}`;
 const LOCATION = { id: id(1), name: 'Main street', brandId: id(2) };
+/** Kitchen and bar both prepare (ADR 0031), unless a test says otherwise. */
+const ON = { kitchen: true, bar: true };
 const TABLE = {
   id: id(3),
   locationId: LOCATION.id,
@@ -100,6 +102,7 @@ const ORDER: Order = {
       kind: 'order',
       station: 'kitchen',
       status: 'new',
+      direct: false,
       createdAt: '2026-10-27T12:00:00.000Z',
       lines: [line(1, id(21), SOUP, 2, 2)],
     },
@@ -153,7 +156,8 @@ const menu = {
 
 const withOrder = (order: Order | null) => ({
   ...menu,
-  [`GET /api/v1/pos/tables/${TABLE.id}/order`]: () => Response.json({ table: TABLE, order }),
+  [`GET /api/v1/pos/tables/${TABLE.id}/order`]: () =>
+    Response.json({ table: TABLE, order, processing: ON }),
 });
 
 describe('FloorPage', () => {
@@ -261,6 +265,7 @@ describe('OrderPage (till)', () => {
           kind: 'order',
           station: 'kitchen',
           status: 'new',
+          direct: false,
           createdAt: '2026-10-27T12:00:00.000Z',
           lines: [line(2, id(22), SOUP, 2, 2), { ...line(3, id(22), COLA, 1, 1), note: 'no ice' }],
         },
@@ -405,6 +410,7 @@ describe('OrderPage (till)', () => {
       kind: 'order' as const,
       station,
       status: 'new' as const,
+      direct: false,
       createdAt: '2026-10-27T12:00:00.000Z',
       lines: [l],
     });
@@ -419,7 +425,7 @@ describe('OrderPage (till)', () => {
     api({
       ...menu,
       [`GET /api/v1/pos/tables/${TABLE.id}/order`]: () =>
-        Response.json({ table: TABLE, order: current }),
+        Response.json({ table: TABLE, order: current, processing: ON }),
       [`POST /api/v1/pos/tables/${TABLE.id}/tickets`]: () => {
         current = sent;
         return Response.json(
@@ -455,6 +461,67 @@ describe('OrderPage (till)', () => {
     expect(screen.getAllByTestId('ticket-station').map((b) => b.textContent)).toEqual([
       'Kitchen',
       'Bar',
+    ]);
+  });
+
+  it('adds straight to the bill where the bar is off: prints only the kitchen ticket (ADR 0031)', async () => {
+    signedInAs('waiter');
+    const ticket = (
+      n: number,
+      station: 'kitchen' | 'bar',
+      direct: boolean,
+      l: ReturnType<typeof line>,
+    ) => ({
+      id: id(n),
+      sequence: n - 21,
+      kind: 'order' as const,
+      station,
+      status: 'new' as const,
+      direct,
+      createdAt: '2026-10-27T12:00:00.000Z',
+      lines: [l],
+    });
+    const sent: Order = {
+      ...ORDER,
+      tickets: [
+        ticket(22, 'kitchen', false, line(2, id(22), SOUP, 1, 1)),
+        ticket(23, 'bar', true, line(3, id(23), COLA, 1, 1)),
+      ],
+    };
+    const DRINKS = { id: id(5), name: 'Drinks', sortOrder: 1, station: 'bar', archivedAt: null };
+    let current: Order | null = null;
+    api({
+      ...menu,
+      'GET /api/v1/catalog/categories': () => Response.json({ data: [FOOD, DRINKS] }),
+      'GET /api/v1/catalog/products': () =>
+        Response.json({ data: [SOUP, { ...COLA, categoryId: DRINKS.id }] }),
+      [`GET /api/v1/pos/tables/${TABLE.id}/order`]: () =>
+        Response.json({ table: TABLE, order: current, processing: { kitchen: true, bar: false } }),
+      [`POST /api/v1/pos/tables/${TABLE.id}/tickets`]: () => {
+        current = sent;
+        return Response.json(
+          { order: sent, ticketId: id(22), ticketIds: [id(22), id(23)] },
+          { status: 201 },
+        );
+      },
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    // Drinks only: nothing goes to a station.
+    await userEvent.click(await tile('Cola'));
+    expect(screen.getByTestId('send-to-kitchen').textContent).toContain('Add 1 to bill');
+    await userEvent.click(await tile('Soup'));
+    expect(screen.getByTestId('send-to-kitchen').textContent).toContain('Send 2 to kitchen');
+    await userEvent.click(screen.getByTestId('send-to-kitchen'));
+    expect(await screen.findByText('Sent: ticket 1 (Kitchen), 2 (Bill).')).toBeTruthy();
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    const printed = within(document.getElementById('print-root')!).getAllByTestId('kitchen-ticket');
+    expect(printed).toHaveLength(1);
+    expect(within(printed[0]!).getByText('Dine in')).toBeTruthy();
+    // The ticket log says where the drink went.
+    await waitFor(() => expect(screen.getAllByTestId('ticket-status')).toHaveLength(2));
+    expect(screen.getAllByTestId('ticket-status').map((b) => b.textContent)).toEqual([
+      'New',
+      'Added to bill',
     ]);
   });
 
@@ -558,6 +625,7 @@ describe('OrderPage (till)', () => {
           kind: 'order',
           station: 'kitchen',
           status: 'new',
+          direct: false,
           createdAt: '2026-10-27T12:10:00.000Z',
           lines: [line(5, id(24), SOUP, 1, 1)],
         },
@@ -680,6 +748,7 @@ describe('OrderPage (till)', () => {
           kind: 'void',
           station: 'kitchen',
           status: 'new',
+          direct: false,
           createdAt: '2026-10-27T12:05:00.000Z',
           lines: [{ ...line(4, id(23), SOUP, -1, 0), voidsLineId: id(31) }],
         },
@@ -724,7 +793,7 @@ describe('OrderPage (till)', () => {
     const writes = api({
       ...menu,
       [`GET /api/v1/pos/tables/${TABLE.id}/order`]: () =>
-        Response.json({ table: TABLE, order: current }),
+        Response.json({ table: TABLE, order: current, processing: ON }),
       [`POST /api/v1/pos/orders/${ORDER.id}/tickets/${id(21)}/served`]: () => {
         current = served;
         return Response.json(served, { status: 201 });
