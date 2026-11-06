@@ -346,77 +346,94 @@ function TableOrder({
               {access.canTake && (
                 <Menu tableId={tableId} locationId={table.locationId} cart={cart} onAdd={add} />
               )}
+              {/*
+                From 1024 px the panel stays in view while the menu scrolls: its own scroll area for
+                the cart, the bill and the tickets, with Send and Print pinned below it. Below
+                1024 px the bottom bar carries the action.
+              */}
               <aside
                 id="order-panel"
-                className="flex flex-col gap-4 lg:sticky lg:top-4"
+                className="flex flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)]"
                 aria-label={t('pos.order.panel')}
               >
-                {access.canTake && (
-                  <GuestsField
-                    key={`${order?.id ?? 'new'}:${order?.covers ?? ''}:${seatedParty ?? ''}`}
+                <div
+                  className="flex flex-col gap-4 lg:-mr-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-2"
+                  data-testid="order-panel-scroll"
+                >
+                  {access.canTake && (
+                    <GuestsField
+                      key={`${order?.id ?? 'new'}:${order?.covers ?? ''}:${seatedParty ?? ''}`}
+                      order={order}
+                      pending={covers}
+                      onPending={choosePending}
+                      onSaved={reload}
+                    />
+                  )}
+                  {access.canTake && (
+                    <NewItems
+                      cart={cart}
+                      total={cartTotal}
+                      onChange={change}
+                      onClear={() => setCart([])}
+                      footer={
+                        // Below 1024 px; from 1024 px the error shows above the pinned buttons.
+                        <div className="lg:hidden">
+                          <Notice text={error} tone="error" />
+                        </div>
+                      }
+                    />
+                  )}
+                  <OnTheTable
                     order={order}
-                    pending={covers}
-                    onPending={choosePending}
-                    onSaved={reload}
-                  />
-                )}
-                {access.canTake && (
-                  <NewItems
-                    cart={cart}
-                    total={cartTotal}
-                    onChange={change}
-                    onClear={() => setCart([])}
-                    footer={
-                      <>
-                        <Notice text={error} tone="error" />
-                        {sendAction && (
-                          <Button
-                            className="hidden min-h-12 gap-2 text-base lg:flex"
-                            disabled={busy}
-                            onClick={sendAction.run}
-                            data-testid={sendAction.testId}
-                          >
-                            {sendAction.icon}
-                            {sendAction.label}
-                          </Button>
-                        )}
-                      </>
+                    bill={bill}
+                    notice={sent}
+                    voidButton={
+                      order &&
+                      order.status === 'open' &&
+                      access.canVoid &&
+                      order.totals.itemCount > 0 ? (
+                        <VoidDialog order={order} onVoided={afterWrite} />
+                      ) : null
                     }
                   />
-                )}
-                <OnTheTable
-                  order={order}
-                  bill={bill}
-                  notice={sent}
-                  voidButton={
-                    order &&
-                    order.status === 'open' &&
-                    access.canVoid &&
-                    order.totals.itemCount > 0 ? (
-                      <VoidDialog order={order} onVoided={afterWrite} />
-                    ) : null
-                  }
-                  printButton={
-                    printAction && (
+                  {order && order.tickets.length > 0 && (
+                    <TicketLog
+                      order={order}
+                      canServe={access.canTake}
+                      onReprint={(id) => printTickets(order, [id])}
+                      onServed={reload}
+                    />
+                  )}
+                </div>
+                {(sendAction || printAction || error) && (
+                  <div
+                    className="hidden shrink-0 flex-col gap-2 border-t border-border pt-3 lg:flex"
+                    data-testid="order-panel-actions"
+                  >
+                    <Notice text={error} tone="error" />
+                    {sendAction && (
+                      <Button
+                        className="min-h-12 gap-2 text-base"
+                        disabled={busy}
+                        onClick={sendAction.run}
+                        data-testid={sendAction.testId}
+                      >
+                        {sendAction.icon}
+                        {sendAction.label}
+                      </Button>
+                    )}
+                    {printAction && (
                       <Button
                         variant={sendAction ? 'outline' : 'default'}
-                        className="hidden min-h-11 gap-2 lg:flex"
+                        className="min-h-11 gap-2"
                         onClick={printAction.run}
                         data-testid={printAction.testId}
                       >
                         {printAction.icon}
                         {printAction.label}
                       </Button>
-                    )
-                  }
-                />
-                {order && order.tickets.length > 0 && (
-                  <TicketLog
-                    order={order}
-                    canServe={access.canTake}
-                    onReprint={(id) => printTickets(order, [id])}
-                    onServed={reload}
-                  />
+                    )}
+                  </div>
                 )}
               </aside>
             </div>
@@ -757,19 +774,17 @@ function CartRow({
   );
 }
 
-/** What the table has: combined items, VAT split, total, and the print and void actions. */
+/** What the table has: combined items, VAT split, total, and the void action. */
 function OnTheTable({
   order,
   bill,
   notice,
   voidButton,
-  printButton,
 }: {
   order: Order | null;
   bill: BillLine[];
   notice: string | null;
   voidButton: ReactNode;
-  printButton: ReactNode;
 }) {
   const t = useT();
   const money = useMoney();
@@ -826,7 +841,6 @@ function OnTheTable({
           </p>
         </div>
       )}
-      {printButton}
     </Card>
   );
 }
