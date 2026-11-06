@@ -92,7 +92,8 @@ export function parseTextPage(
   const prices = text.filter((i) => !i.rotated && priceOf(i.text) !== null);
   // A bare number is an item number only when it starts a row with text after it; elsewhere it is
   // an allergen code or a note.
-  const sameRow = (a: TextItem, b: TextItem) => Math.abs(a.y - b.y) <= 0.6 * Math.max(a.size, b.size);
+  const sameRow = (a: TextItem, b: TextItem) =>
+    Math.abs(a.y - b.y) <= 0.6 * Math.max(a.size, b.size);
   const startsRow = (n: TextItem) =>
     text.some((i) => i !== n && sameRow(i, n) && i.x > n.x) &&
     !text.some((i) => i !== n && sameRow(i, n) && i.x < n.x);
