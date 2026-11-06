@@ -496,6 +496,7 @@ function sampleTicket(station: PrepStation, productName: string, quantity: numbe
     kind: 'order',
     station,
     status: 'new',
+    direct: false,
     createdAt: at,
     lines: [
       {

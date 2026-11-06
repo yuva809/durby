@@ -917,6 +917,8 @@ model PosKitchenTicket {
   kind            PosKitchenTicketKind
   /// Snapshot of the lines' category station at send time (ADR 0025).
   station         PrepStation             @default(kitchen)
+  /// Went straight to the bill: the station's processing was off at send time (ADR 0031).
+  direct          Boolean                 @default(false)
   createdByUserId String                  @map("created_by_user_id") @db.Uuid
   createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   organization    Organization            @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)

@@ -12,6 +12,7 @@ import {
   type Product,
   type ProductCategory,
   type SendTicketResponse,
+  type StationProcessing,
   TABLE_COLORS,
 } from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
@@ -22,6 +23,7 @@ import {
   Minus,
   Plus,
   Printer,
+  ReceiptText,
   Search,
   StickyNote,
   Users,
@@ -111,9 +113,16 @@ interface CartLine {
   note: string;
 }
 
-/** "Send to kitchen", "Send to bar" or "Send to kitchen & bar", by the stations in the cart. */
-function sendLabels(cart: readonly CartLine[]): { label: LabelKey; short: LabelKey } {
-  const stations = new Set(cart.map((l) => l.station));
+/**
+ * "Send to kitchen", "Send to bar", "Send to kitchen & bar" or "Add to bill", by the stations in
+ * the cart that prepare what is sent here (ADR 0031): a station that is off takes nothing.
+ */
+function sendLabels(
+  cart: readonly CartLine[],
+  processing: StationProcessing,
+): { label: LabelKey; short: LabelKey } {
+  const stations = new Set(cart.map((l) => l.station).filter((s) => processing[s]));
+  if (stations.size === 0) return { label: 'pos.order.sendCountBill', short: 'pos.order.sendBill' };
   if (stations.size > 1) return { label: 'pos.order.sendCountBoth', short: 'pos.order.sendBoth' };
   if (stations.has('bar')) return { label: 'pos.order.sendCountBar', short: 'pos.order.sendBar' };
   return { label: 'pos.order.sendCount', short: 'pos.order.send' };
@@ -198,8 +207,9 @@ function TableOrder({
     if (print) printParts(organizationName);
   }, [print, organizationName]);
 
-  const printTickets = (order: Order, ticketIds: readonly string[]) => {
-    const tickets = order.tickets.filter((x) => ticketIds.includes(x.id));
+  /** `sent`: right after a send or void, when items that went straight to the bill don't print. */
+  const printTickets = (order: Order, ticketIds: readonly string[], sent = false) => {
+    const tickets = order.tickets.filter((x) => ticketIds.includes(x.id) && !(sent && x.direct));
     if (tickets.length > 0) {
       setPrint((prev) => ({
         kind: 'tickets',
@@ -211,7 +221,7 @@ function TableOrder({
   };
   const afterWrite = (response: SendTicketResponse) => {
     reload();
-    printTickets(response.order, response.ticketIds);
+    printTickets(response.order, response.ticketIds, true);
   };
 
   const add = (product: Product, station: PrepStation) => {
@@ -253,7 +263,9 @@ function TableOrder({
       // "Sent: ticket 4 (Kitchen), 5 (Bar)." so it's clear where each went.
       const sequences = result.data.order.tickets
         .filter((x) => result.data?.ticketIds.includes(x.id))
-        .map((x) => `${x.sequence} (${t(`pos.station.${x.station}`)})`);
+        .map(
+          (x) => `${x.sequence} (${t(x.direct ? 'pos.order.toBill' : `pos.station.${x.station}`)})`,
+        );
       setCart([]);
       setPendingCovers(null);
       setCoversTouched(false);
@@ -266,9 +278,9 @@ function TableOrder({
 
   return (
     <Loaded resource={view} reload={reload}>
-      {({ table, order }) => {
+      {({ table, order, processing }) => {
         const bill = order ? billLines(order) : [];
-        const labels = sendLabels(cart);
+        const labels = sendLabels(cart, processing);
         const sendAction =
           cart.length > 0 && access.canTake
             ? {
@@ -276,7 +288,12 @@ function TableOrder({
                 short: t(labels.short),
                 run: () => void send(),
                 testId: 'send-to-kitchen',
-                icon: <ChefHat aria-hidden />,
+                icon:
+                  labels.short === 'pos.order.sendBill' ? (
+                    <ReceiptText aria-hidden />
+                  ) : (
+                    <ChefHat aria-hidden />
+                  ),
               }
             : null;
         const printAction =
@@ -847,9 +864,16 @@ function TicketLog({
                   sequence: String(ticket.sequence),
                 })}
                 <Badge data-testid="ticket-station">{t(`pos.station.${ticket.station}`)}</Badge>
-                <Badge data-testid="ticket-status" data-status={ticket.status}>
-                  {t(`pos.status.${ticket.status}`)}
-                </Badge>
+                {ticket.direct ? (
+                  // Straight to the bill: nothing to prepare (ADR 0031).
+                  <Badge data-testid="ticket-status" data-status="direct">
+                    {t('pos.order.addedToBill')}
+                  </Badge>
+                ) : (
+                  <Badge data-testid="ticket-status" data-status={ticket.status}>
+                    {t(`pos.status.${ticket.status}`)}
+                  </Badge>
+                )}
               </h3>
               <span className="flex gap-1">
                 {canServe && ticket.status === 'ready' && (

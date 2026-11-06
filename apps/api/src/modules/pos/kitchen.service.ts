@@ -87,6 +87,8 @@ export class KitchenService {
     const rows: TicketRow[] = await this.db.posKitchenTicket.findMany({
       where: {
         station,
+        // Items that went straight to the bill are not work for the station (ADR 0031).
+        direct: false,
         order: { locationId },
         OR: [
           { order: { status: 'open' } },
@@ -109,6 +111,8 @@ export class KitchenService {
   ): Promise<StationTicket> {
     const ticket = await this.visibleTicket(ticketId, STATION_KEYS[station]);
     if (ticket.station !== station) throw posErrors.ticketNotFound();
+    // Straight to the bill: nothing to prepare (ADR 0031).
+    if (ticket.direct) throw posErrors.ticketStatusInvalid(body.status);
     return this.db.$transaction(async (tx) => {
       const row = await this.change(tx, ticketId, body.status);
       const response = ticketResponse(row);
@@ -125,6 +129,7 @@ export class KitchenService {
     const ticket = await this.visibleTicket(ticketId, 'pos.orders.read');
     if (ticket.orderId !== orderId) throw posErrors.ticketNotFound();
     await this.access.assert('pos.orders.take', { locationId: ticket.order.locationId });
+    if (ticket.direct) throw posErrors.ticketStatusInvalid('served');
     return this.db.$transaction(async (tx) => {
       const current = await this.lockedStatus(tx, ticket);
       if (current !== 'ready' && current !== 'served')
@@ -145,6 +150,7 @@ export class KitchenService {
         orderId: true,
         station: true,
         kind: true,
+        direct: true,
         order: { select: { locationId: true } },
       },
     });

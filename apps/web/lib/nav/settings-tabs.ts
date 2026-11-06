@@ -33,6 +33,8 @@ export const SETTINGS_TABS: readonly NavItem[] = [
   tab('numbering', 'platform.settingsTabs.numbering', 'platform.settings.read'),
   // The printed bill's header and footer (docs/modules/pos.md → Bill layout).
   tab('bill', 'platform.settingsTabs.bill', 'platform.settings.read', 'pos'),
+  // Whether the kitchen and the bar prepare orders, or items go straight to the bill (ADR 0031).
+  tab('service', 'platform.settingsTabs.service', 'platform.settings.read', 'pos'),
   tab('labels', 'platform.settingsTabs.labels', 'platform.labels.manage'),
   tab('plan', 'platform.settingsTabs.plan'),
 ];

@@ -431,7 +431,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   ],
   pos_order: ['id', 'number', 'tableId', 'locationId', 'status', 'covers', 'closedAt'],
   /** Never line notes (free text). */
-  kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'station', 'status', 'lineCount'],
+  kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'station', 'direct', 'status', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
   warehouse: ['id', 'locationId', 'name', 'sortOrder', 'suppliesStation', 'archivedAt'],
   /** `itemIds`: sorted, joined with commas; snapshots hold flat values only. */
