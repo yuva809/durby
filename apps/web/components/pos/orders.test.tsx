@@ -692,6 +692,7 @@ describe('OrderPage (till)', () => {
             website: 'www.bayleaf.example',
           },
           footer: { lines: ['Thank you for visiting!', 'Vielen Dank für Ihren Besuch!'] },
+          printers: { bill: null },
         }),
     });
     render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });

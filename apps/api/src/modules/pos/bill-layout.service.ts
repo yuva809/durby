@@ -6,7 +6,7 @@ import { TENANT_PRISMA, type TenantPrismaClient } from '../../platform/tenancy';
 import { posErrors } from './pos-errors';
 
 /**
- * The printed bill's header and footer at a location (docs/modules/pos.md → Bill layout, ADR 0025):
+ * The printed bill's header and footer, and the printers (ADR 0032), at a location (docs/modules/pos.md → Bill layout, ADR 0025):
  * the effective `pos.billHeader` and `pos.billFooter` there. For those who print bills
  * (`pos.bills.print` at that location); a location they can't print at doesn't exist for them.
  */
@@ -32,6 +32,7 @@ export class BillLayoutService {
       return {
         header: setting(resolved, 'pos.billHeader'),
         footer: setting(resolved, 'pos.billFooter'),
+        printers: setting(resolved, 'pos.printers'),
       };
     });
   }

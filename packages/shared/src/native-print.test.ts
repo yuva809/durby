@@ -3,6 +3,7 @@ import addresses from './native-print-addresses.json';
 import {
   isAllowedPrinterHost,
   isAllowedPrinterPort,
+  nativeDiscoverAnswerSchema,
   nativePrintAnswerSchema,
   nativePrintRequestSchema,
   printerSettingsSchema,
@@ -62,12 +63,14 @@ describe('print request', () => {
       type: 'print',
       jobId: JOB,
       image: image(384, 10),
+      printer,
       ...patch,
     });
 
-  it('takes a 384-dot image whose data matches its size, with or without a printer', () => {
+  it('takes a 384-dot image whose data matches its size, with the printer', () => {
     expect(request().success).toBe(true);
-    expect(request({ printer }).success).toBe(true);
+    expect(request({ printer: undefined }).success).toBe(false);
+    expect(request({ printer: { ...printer, host: '8.8.8.8' } }).success).toBe(false);
   });
   it('refuses data that does not match width x height', () => {
     expect(request({ image: image(384, 10, 48 * 10 - 1) }).success).toBe(false);
@@ -98,5 +101,21 @@ describe('print answer', () => {
         code: 'boom',
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('discover answer', () => {
+  it('takes found printers on private addresses only', () => {
+    const answer = (host: string) => ({
+      type: 'discover',
+      subnet: '192.168.64.0/24',
+      printers: [{ host, port: 9100, status: 'online' }],
+    });
+    expect(nativeDiscoverAnswerSchema.safeParse(answer('192.168.64.20')).success).toBe(true);
+    expect(nativeDiscoverAnswerSchema.safeParse(answer('8.8.8.8')).success).toBe(false);
+    expect(
+      nativeDiscoverAnswerSchema.safeParse({ type: 'discover', subnet: null, printers: [] })
+        .success,
+    ).toBe(true);
   });
 });

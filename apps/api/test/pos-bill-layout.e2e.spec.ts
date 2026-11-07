@@ -1,6 +1,11 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { billLayoutSchema, DEFAULT_BILL_FOOTER, DEFAULT_BILL_HEADER } from '@durby/shared';
+import {
+  billLayoutSchema,
+  DEFAULT_BILL_FOOTER,
+  DEFAULT_BILL_HEADER,
+  DEFAULT_POS_PRINTERS,
+} from '@durby/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { v7 as uuidv7 } from 'uuid';
@@ -64,7 +69,11 @@ describe('pos bill layout', () => {
   it('starts empty: no header fields, no footer lines', async () => {
     const { org: o, owner } = await org();
     const body = billLayoutSchema.parse((await layout(owner, o.locations[0]).expect(200)).body);
-    expect(body).toEqual({ header: DEFAULT_BILL_HEADER, footer: DEFAULT_BILL_FOOTER });
+    expect(body).toEqual({
+      header: DEFAULT_BILL_HEADER,
+      footer: DEFAULT_BILL_FOOTER,
+      printers: DEFAULT_POS_PRINTERS,
+    });
   });
 
   it("returns the organization's values, and a location's own where it has them", async () => {
@@ -96,6 +105,33 @@ describe('pos bill layout', () => {
     const second = billLayoutSchema.parse((await layout(owner, o.locations[1]).expect(200)).body);
     expect(second.header.phone).toBe('+49 40 7654321');
     expect(second.footer).toEqual(first.footer);
+  });
+
+  it("carries the location's printer to those who print there (ADR 0032)", async () => {
+    const { org: o, owner } = await org();
+    const bill = {
+      host: '192.168.64.20',
+      port: 9100,
+      widthDots: 384,
+      cutter: true,
+      imageMode: 'gsV0',
+    };
+    await put(owner, 'pos.printers', { bill }, o.locations[0]).expect(200);
+    const waiter = await member(o, 'waiter', [o.locations[0]]);
+    const here = billLayoutSchema.parse((await layout(waiter, o.locations[0]).expect(200)).body);
+    expect(here.printers.bill).toEqual(bill);
+    const there = billLayoutSchema.parse((await layout(owner, o.locations[1]).expect(200)).body);
+    expect(there.printers.bill).toBeNull();
+  });
+
+  it('refuses printer addresses outside the private network and other ports', async () => {
+    const { owner } = await org();
+    const bill = { host: '8.8.8.8', port: 9100, widthDots: 384, cutter: true, imageMode: 'gsV0' };
+    await put(owner, 'pos.printers', { bill }).expect(422);
+    await put(owner, 'pos.printers', { bill: { ...bill, host: '192.168.1.5', port: 80 } }).expect(
+      422,
+    );
+    await put(owner, 'pos.printers', { bill: { ...bill, host: 'printer.local' } }).expect(422);
   });
 
   it('refuses invalid values through the settings api', async () => {

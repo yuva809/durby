@@ -247,6 +247,8 @@ function TableOrder({
   // browser, prints through window.print() as before.
   const [nativeJob, setNativeJob] = useState<NativeBillJob | null>(null);
   const nativeBusy = useRef(false);
+  // The location's bill printer (`pos.printers`, ADR 0032), read with the bill layout.
+  const billPrinter = layout.status === 'ready' ? layout.data.printers.bill : null;
   const printNatively = (jobId: string) => {
     const printer = nativePrinter();
     const bill = document.querySelector<HTMLElement>('#print-root [data-testid="printed-bill"]');
@@ -254,7 +256,7 @@ function TableOrder({
     nativeBusy.current = true;
     setNativeJob({ jobId, outcome: null });
     const done = bill
-      ? printBillNatively(printer, bill, jobId, renderBillImage)
+      ? printBillNatively(printer, billPrinter, bill, jobId, renderBillImage)
       : Promise.resolve<NativePrintOutcome>({ state: 'failed', code: 'print.payload_invalid' });
     void done.then((outcome) => {
       nativeBusy.current = false;

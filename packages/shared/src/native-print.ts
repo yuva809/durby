@@ -55,6 +55,16 @@ export const printerSettingsSchema = z.strictObject({
 });
 export type PrinterSettings = z.infer<typeof printerSettingsSchema>;
 
+/**
+ * `pos.printers` (ADR 0032 §6): one slot per printer role, so kitchen and bar printers are added later as new
+ * slots without renaming anything. Version 1 has the bill printer only.
+ */
+export const posPrintersSchema = z.strictObject({
+  bill: printerSettingsSchema.nullable(),
+});
+export type PosPrinters = z.infer<typeof posPrintersSchema>;
+export const DEFAULT_POS_PRINTERS: PosPrinters = { bill: null };
+
 /** Bytes a base64 string decodes to (without decoding it). */
 function base64Bytes(data: string): number {
   const padding = data.endsWith('==') ? 2 : data.endsWith('=') ? 1 : 0;
@@ -88,17 +98,20 @@ export const nativePrintRequestSchema = z.strictObject({
   /** One per tap; Retry sends the same id, and the app answers it from memory without printing again. */
   jobId: z.uuid(),
   image: printImageSchema,
-  /** Version 1.1: the location's printer. Version 1 apps ignore it and use the device's printer. */
-  printer: printerSettingsSchema.optional(),
+  /** The location's bill printer (`pos.printers`); the app checks the address rules again. */
+  printer: printerSettingsSchema,
 });
 export type NativePrintRequest = z.infer<typeof nativePrintRequestSchema>;
+
+export const nativeDiscoverRequestSchema = z.strictObject({
+  version: z.literal(NATIVE_PRINT_PROTOCOL),
+  type: z.literal('discover'),
+});
 
 export const nativeInfoAnswerSchema = z.object({
   type: z.literal('info'),
   appVersion: z.string(),
   protocol: z.number().int(),
-  /** The device's bill printer (version 1); null when none is set. */
-  printer: z.object({ widthDots: z.number().int().min(8).max(2040) }).nullable(),
 });
 export type NativeInfoAnswer = z.infer<typeof nativeInfoAnswerSchema>;
 
@@ -109,3 +122,25 @@ export const nativePrintAnswerSchema = z.object({
   code: z.enum(NATIVE_PRINT_CODES),
 });
 export type NativePrintAnswer = z.infer<typeof nativePrintAnswerSchema>;
+
+export const DISCOVERED_PRINTER_STATUSES = [
+  'online',
+  'paper_out',
+  'cover_open',
+  'no_status',
+] as const;
+
+/** Printers the app found on its own /24 (`discover`). Addresses only, already checked against the rules. */
+export const nativeDiscoverAnswerSchema = z.object({
+  type: z.literal('discover'),
+  /** The scanned network, e.g. `192.168.64.0/24`; null when the device has no private IPv4 address. */
+  subnet: z.string().nullable(),
+  printers: z.array(
+    z.object({
+      host: z.string().refine(isAllowedPrinterHost),
+      port: z.number().int().refine(isAllowedPrinterPort),
+      status: z.enum(DISCOVERED_PRINTER_STATUSES),
+    }),
+  ),
+});
+export type NativeDiscoverAnswer = z.infer<typeof nativeDiscoverAnswerSchema>;

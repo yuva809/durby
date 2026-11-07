@@ -152,6 +152,8 @@
   "platform.settings.posBillHeader.description": "Logo, Name und Kontaktdaten oben auf der Rechnung.",
   "platform.settings.posBillFooter.name": "Rechnungsfuß",
   "platform.settings.posBillFooter.description": "Die Dankeszeilen am Ende der Rechnung.",
+  "platform.settings.posPrinters.name": "Drucker",
+  "platform.settings.posPrinters.description": "Die Netzwerkdrucker, auf denen die Android-App an diesem Standort druckt.",
   "platform.settings.posKitchenProcessing.name": "Küchenbearbeitung",
   "platform.settings.posKitchenProcessing.description": "Speisen an die Küche senden (Bon und Küchenbildschirm). Aus: direkt auf die Rechnung.",
   "platform.settings.posBarProcessing.name": "Barbearbeitung",

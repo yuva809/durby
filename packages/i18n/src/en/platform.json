@@ -152,6 +152,8 @@
   "platform.settings.posBillHeader.description": "Logo, name and contact details printed at the top of the bill.",
   "platform.settings.posBillFooter.name": "Bill footer",
   "platform.settings.posBillFooter.description": "The thank-you lines printed at the end of the bill.",
+  "platform.settings.posPrinters.name": "Printers",
+  "platform.settings.posPrinters.description": "The network printers the Android app prints to at this location.",
   "platform.settings.posKitchenProcessing.name": "Kitchen processing",
   "platform.settings.posKitchenProcessing.description": "Send food to the kitchen (ticket and kitchen screen). Off: it goes straight to the bill.",
   "platform.settings.posBarProcessing.name": "Bar processing",

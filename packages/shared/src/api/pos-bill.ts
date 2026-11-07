@@ -1,14 +1,16 @@
 import { z } from 'zod';
+import { posPrintersSchema } from '../native-print';
 import { billFooterSchema, billHeaderSchema } from '../pos-bill-settings';
 
 /** `GET /pos/bill-layout?locationId=` (docs/modules/pos.md → Bill layout). */
 
 export const billLayoutQuerySchema = z.object({ locationId: z.uuid() });
 
-/** The effective `pos.billHeader` and `pos.billFooter` at the location. */
+/** The effective `pos.billHeader`, `pos.billFooter` and `pos.printers` at the location. */
 export const billLayoutSchema = z.object({
   header: billHeaderSchema,
   footer: billFooterSchema,
+  printers: posPrintersSchema,
 });
 
 export type BillLayoutQuery = z.infer<typeof billLayoutQuerySchema>;
