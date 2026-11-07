@@ -78,6 +78,10 @@ website itself.
 ## Consequences
 
 - Printing natively works only inside the app; other browsers keep `window.print()`.
+- Measured on emulators (2026-11-07): stock Android 9 ships WebView 66, where Durby stays blank and the print link is
+  missing; on WebView 113 Durby renders and the print link answers both ways. `window.print()` does nothing in a WebView
+  (§10), and `createPrintDocumentAdapter` opens the Android print screen. That screen reaches a printer only if a print
+  service is installed, as in Chrome today.
 - The app's browser engine is the device's system WebView, which we don't control. On Android 9 it gets no updates past
   version 138, and Next.js 16 and Tailwind v4 need 111 or newer. Step A0 measures it before any of this is built. This
   is a security limit of the hardware, as Chrome on it already is.
