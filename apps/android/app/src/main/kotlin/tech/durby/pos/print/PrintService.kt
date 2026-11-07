@@ -1,17 +1,19 @@
 package tech.durby.pos.print
 
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
  * Answers the page's messages (protocol version 1). One job at a time; the same job id never prints twice once it
- * was sent, while a failed one may be retried with its id (docs/modules/android-app.md → Duplicates).
+ * was sent, while a failed one may be retried with its id (docs/modules/android-app.md → Duplicates). The printer
+ * comes with each job (the location's, from Durby) and is checked against the address rules here, every time.
  */
 class PrintService internal constructor(
     private val appVersion: String,
-    private val printer: () -> PrinterConfig?,
+    private val scanner: () -> PrinterScanner.Result,
     private val allowLoopbackForTests: Boolean,
 ) {
-    constructor(appVersion: String, printer: () -> PrinterConfig?) : this(appVersion, printer, false)
+    constructor(appVersion: String, scanner: () -> PrinterScanner.Result) : this(appVersion, scanner, false)
 
     /** Job ids already sent, newest last; the oldest are forgotten past [REMEMBERED_JOBS]. */
     private val sent = object : LinkedHashMap<String, Unit>(16, 0.75f, false) {
@@ -24,8 +26,9 @@ class PrintService internal constructor(
             .put("type", "info")
             .put("appVersion", appVersion)
             .put("protocol", PrintRequest.PROTOCOL)
-            .put("printer", printer()?.let { JSONObject().put("widthDots", it.widthDots) } ?: JSONObject.NULL)
             .toString()
+
+        PrintRequest.Discover -> discover()
 
         PrintRequest.Invalid -> answer(PrintRequest.jobIdOf(message), "print.payload_invalid")
 
@@ -34,7 +37,7 @@ class PrintService internal constructor(
 
     private fun print(request: PrintRequest.Print): String {
         if (request.jobId in sent) return "print.sent"
-        val config = printer() ?: return "print.no_printer"
+        val config = request.printer
         val problem = config.problem()
         val loopbackTest = allowLoopbackForTests && config.host == "127.0.0.1"
         if (problem != null && !(loopbackTest && problem == "print.host_not_allowed")) return problem
@@ -50,6 +53,19 @@ class PrintService internal constructor(
         val code = TcpPrinter(AddressRules.octets(config.host)!!, config.port).print(job)
         if (code == "print.sent") sent[request.jobId] = Unit
         return code
+    }
+
+    private fun discover(): String {
+        val result = scanner()
+        val printers = JSONArray()
+        result.printers.forEach {
+            printers.put(JSONObject().put("host", it.host).put("port", it.port).put("status", it.status))
+        }
+        return JSONObject()
+            .put("type", "discover")
+            .put("subnet", result.subnet ?: JSONObject.NULL)
+            .put("printers", printers)
+            .toString()
     }
 
     private fun answer(jobId: String?, code: String): String = JSONObject()

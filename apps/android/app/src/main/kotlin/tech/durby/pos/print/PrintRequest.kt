@@ -8,8 +8,19 @@ import java.util.Base64
 sealed interface PrintRequest {
     data object Info : PrintRequest
 
-    /** [bits]: 1 bit per dot, row-major, rows padded to whole bytes, MSB = leftmost dot, 1 = black. */
-    class Print(val jobId: String, val width: Int, val height: Int, val bits: ByteArray) : PrintRequest
+    data object Discover : PrintRequest
+
+    /**
+     * [bits]: 1 bit per dot, row-major, rows padded to whole bytes, MSB = leftmost dot, 1 = black. [printer] is the
+     * location's printer as the page sent it: not yet checked against the address rules ([PrinterConfig.problem]).
+     */
+    class Print(
+        val jobId: String,
+        val width: Int,
+        val height: Int,
+        val bits: ByteArray,
+        val printer: PrinterConfig,
+    ) : PrintRequest
 
     data object Invalid : PrintRequest
 
@@ -26,7 +37,7 @@ sealed interface PrintRequest {
             } else {
                 when (json.optString("type")) {
                     "info" -> Info
-                    // A `printer` from the page is ignored in version 1: the device's printer is used.
+                    "discover" -> Discover
                     "print" -> print(json)
                     else -> Invalid
                 }
@@ -56,7 +67,18 @@ sealed interface PrintRequest {
                 return Invalid
             }
             if (bits.size != (width + 7) / 8 * height || bits.size > MAX_IMAGE_BYTES) return Invalid
-            return Print(jobId, width, height, bits)
+            val printer = printer(json.optJSONObject("printer") ?: return Invalid) ?: return Invalid
+            return Print(jobId, width, height, bits, printer)
+        }
+
+        /** The printer's fields with their types; the address rules are checked by the service, with their own codes. */
+        private fun printer(json: JSONObject): PrinterConfig? {
+            val host = json.opt("host") as? String ?: return null
+            val port = json.opt("port") as? Int ?: return null
+            val widthDots = json.opt("widthDots") as? Int ?: return null
+            val cutter = json.opt("cutter") as? Boolean ?: return null
+            val mode = ImageMode.of(json.opt("imageMode") as? String ?: return null) ?: return null
+            return PrinterConfig(host, port, widthDots, cutter, mode)
         }
     }
 }

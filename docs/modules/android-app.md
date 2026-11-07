@@ -62,14 +62,15 @@ Page to app, through the origin-restricted object. JSON, version 1:
 Other types: `info` (app version, protocol version), `testPrint` (a receipt the app builds; the settings as above).
 
 `discover` (`{ "version": 1, "type": "discover" }`) scans the device's own /24, if it is private, on ports
-9100–9102 (connect timeout 300 ms, 32 at a time, about 3 s) and answers
+9100–9102 (connect timeout 300 ms, 32 at a time, up to about 10 s) and answers
 `{ "type": "discover", "subnet": "192.168.64.0/24" | null, "printers": [{ "host", "port", "status" }] }` with
 `status` `online`, `paper_out`, `cover_open` or `no_status` (the printer accepts connections but doesn't answer
 status queries). The device's own address and the network and broadcast addresses are skipped.
 
 In version 1 `print` must carry `printer` (the location's, from `GET /pos/bill-layout`); `info` answers the app
 version and protocol only. A test print is an ordinary `print` of a small test bill the web draws (labels, so it is
-in the location's language).
+in the location's language). `printScreen` is sent only by the app's own script that replaces `window.print()`
+on allow-listed pages; the app answers by opening Android's print screen for the page.
 
 Answer: `{ "jobId", "state": "sent" | "failed", "code" }`.
 

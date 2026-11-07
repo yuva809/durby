@@ -13,9 +13,12 @@ class PrintRequestTest {
         JSONObject().put("width", width).put("height", height)
             .put("data", Base64.getEncoder().encodeToString(ByteArray(bytes)))
 
+    private fun printer() = JSONObject().put("host", "192.168.64.20").put("port", 9100).put("widthDots", 384)
+        .put("cutter", true).put("imageMode", "gsV0")
+
     private fun print(patch: (JSONObject) -> Unit = {}) =
         JSONObject().put("version", 1).put("type", "print").put("jobId", job).put("image", image(384, 10))
-            .also(patch).toString()
+            .put("printer", printer()).also(patch).toString()
 
     @Test
     fun readsAPrintRequest() {
@@ -24,6 +27,7 @@ class PrintRequestTest {
         assertEquals(384, r.width)
         assertEquals(10, r.height)
         assertEquals(480, r.bits.size)
+        assertEquals(PrinterConfig("192.168.64.20", 9100, 384, true, ImageMode.GS_V0), r.printer)
     }
 
     @Test
@@ -32,9 +36,14 @@ class PrintRequestTest {
     }
 
     @Test
-    fun ignoresAPrinterFromThePageInVersion1() {
-        val r = PrintRequest.parse(print { it.put("printer", JSONObject().put("host", "8.8.8.8").put("port", 80)) })
-        assertTrue(r is PrintRequest.Print)
+    fun readsDiscover() {
+        assertTrue(PrintRequest.parse("""{"version":1,"type":"discover"}""") is PrintRequest.Discover)
+    }
+
+    @Test
+    fun keepsAForbiddenAddressForTheServiceToRefuseWithItsOwnCode() {
+        val r = PrintRequest.parse(print { it.put("printer", printer().put("host", "8.8.8.8")) })
+        assertEquals("print.host_not_allowed", (r as PrintRequest.Print).printer.problem())
     }
 
     @Test
@@ -48,6 +57,10 @@ class PrintRequestTest {
             print { it.put("image", image(384, 10).put("data", "%%%")) },
             print { it.put("image", image(4096, 10)) },
             print { it.put("image", image(384, 50_000)) }, // over 2 MB
+            print { it.remove("printer") },
+            print { it.put("printer", printer().put("port", "9100")) },
+            print { it.put("printer", printer().put("imageMode", "raw")) },
+            print { it.put("printer", printer().put("host", JSONObject.NULL)) },
         )
         bad.forEach { assertEquals(it, PrintRequest.Invalid, PrintRequest.parse(it)) }
     }

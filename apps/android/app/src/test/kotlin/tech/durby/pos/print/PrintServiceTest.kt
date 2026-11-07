@@ -54,16 +54,22 @@ class PrintServiceTest {
 
     private fun printer(status: (Int) -> Int? = { 0x12 }) = FakePrinter(status).also { printers += it }
 
+    private val noScan = { PrinterScanner.Result(null, emptyList()) }
+
     /** The fake listens on 127.0.0.1, which the address rules refuse; tests let loopback through explicitly. */
-    private fun service(config: PrinterConfig?) =
-        PrintService(appVersion = "1.0.0", printer = { config }, allowLoopbackForTests = true)
+    private fun service() = PrintService(appVersion = "1.0.0", scanner = noScan, allowLoopbackForTests = true)
+
+    private fun strict() = PrintService(appVersion = "1.0.0", scanner = noScan)
 
     private fun config(port: Int) = PrinterConfig("127.0.0.1", port, 384, cutter = true, imageMode = ImageMode.GS_V0)
 
-    private fun print(height: Int = 10, id: String = job) = JSONObject()
+    private fun print(config: PrinterConfig, height: Int = 10, id: String = job) = JSONObject()
         .put("version", 1).put("type", "print").put("jobId", id)
         .put("image", JSONObject().put("width", 384).put("height", height)
-            .put("data", Base64.getEncoder().encodeToString(ByteArray(48 * height) { 0x0F }))).toString()
+            .put("data", Base64.getEncoder().encodeToString(ByteArray(48 * height) { 0x0F })))
+        .put("printer", JSONObject().put("host", config.host).put("port", config.port)
+            .put("widthDots", config.widthDots).put("cutter", config.cutter).put("imageMode", config.imageMode.key))
+        .toString()
 
     private fun answer(json: String) = JSONObject(json)
 
@@ -75,7 +81,7 @@ class PrintServiceTest {
     @Test
     fun sendsTheImageAsOneEscPosJob() {
         val p = printer()
-        val a = answer(service(config(p.server.localPort)).handle(print()))
+        val a = answer(service().handle(print(config(p.server.localPort))))
         assertEquals("sent", a.getString("state"))
         assertEquals("print.sent", a.getString("code"))
         assertEquals(job, a.getString("jobId"))
@@ -89,9 +95,9 @@ class PrintServiceTest {
     @Test
     fun theSameJobIdNeverPrintsTwice() {
         val p = printer()
-        val s = service(config(p.server.localPort))
-        assertEquals("print.sent", answer(s.handle(print())).getString("code"))
-        assertEquals("print.sent", answer(s.handle(print())).getString("code"))
+        val s = service()
+        assertEquals("print.sent", answer(s.handle(print(config(p.server.localPort)))).getString("code"))
+        assertEquals("print.sent", answer(s.handle(print(config(p.server.localPort)))).getString("code"))
         waitFor(p, 1)
         Thread.sleep(200)
         assertEquals(1, p.jobs.size)
@@ -100,21 +106,19 @@ class PrintServiceTest {
     @Test
     fun aFailedJobCanBeRetriedWithTheSameId() {
         val dead = ServerSocket(0).apply { close() }.localPort
-        var target = config(dead)
-        val s = PrintService("1.0.0", printer = { target }, allowLoopbackForTests = true)
-        assertEquals("print.printer_unreachable", answer(s.handle(print())).getString("code"))
+        val s = service()
+        assertEquals("print.printer_unreachable", answer(s.handle(print(config(dead)))).getString("code"))
 
         val p = printer()
-        target = config(p.server.localPort)
-        assertEquals("print.sent", answer(s.handle(print())).getString("code"))
+        assertEquals("print.sent", answer(s.handle(print(config(p.server.localPort)))).getString("code"))
     }
 
     @Test
     fun paperOutAndCoverOpenStopTheJobBeforeAnythingIsPrinted() {
         val paperOut = printer { n -> mapOf(1 to 0x1A, 2 to 0x32, 4 to 0x72)[n] }
-        assertEquals("print.paper_out", answer(service(config(paperOut.server.localPort)).handle(print())).getString("code"))
+        assertEquals("print.paper_out", answer(service().handle(print(config(paperOut.server.localPort)))).getString("code"))
         val coverOpen = printer { n -> mapOf(1 to 0x1A, 2 to 0x16, 4 to 0x12)[n] }
-        assertEquals("print.cover_open", answer(service(config(coverOpen.server.localPort)).handle(print())).getString("code"))
+        assertEquals("print.cover_open", answer(service().handle(print(config(coverOpen.server.localPort)))).getString("code"))
         waitFor(paperOut, 1)
         waitFor(coverOpen, 1)
         // Only the status queries reached them.
@@ -124,32 +128,37 @@ class PrintServiceTest {
     @Test
     fun aPrinterThatNeverAnswersStatusStillPrints() {
         val silent = printer { null }
-        assertEquals("print.sent", answer(service(config(silent.server.localPort)).handle(print())).getString("code"))
+        assertEquals("print.sent", answer(service().handle(print(config(silent.server.localPort)))).getString("code"))
     }
 
     @Test
-    fun refusesWithoutAPrinterOrWithAForbiddenAddress() {
-        assertEquals("print.no_printer", answer(service(null).handle(print())).getString("code"))
-        val strict = PrintService("1.0.0", printer = { config(9100).copy(host = "8.8.8.8") })
-        assertEquals("print.host_not_allowed", answer(strict.handle(print())).getString("code"))
-        val loopback = PrintService("1.0.0", printer = { config(9100) })
-        assertEquals("print.host_not_allowed", answer(loopback.handle(print())).getString("code"))
+    fun refusesForbiddenAddressesAndPortsWithoutConnecting() {
+        assertEquals("print.host_not_allowed", answer(strict().handle(print(config(9100).copy(host = "8.8.8.8")))).getString("code"))
+        assertEquals("print.host_not_allowed", answer(strict().handle(print(config(9100)))).getString("code"))
+        assertEquals("print.port_not_allowed", answer(strict().handle(print(config(80).copy(host = "192.168.64.20")))).getString("code"))
     }
 
     @Test
     fun answersInvalidRequests() {
-        val a = answer(service(config(9100)).handle("""{"version":1,"type":"print","jobId":"$job","image":{}}"""))
+        val a = answer(service().handle("""{"version":1,"type":"print","jobId":"$job","image":{}}"""))
         assertEquals("failed", a.getString("state"))
         assertEquals("print.payload_invalid", a.getString("code"))
         assertEquals(job, a.getString("jobId"))
     }
 
     @Test
-    fun infoTellsTheWebTheWidthToRenderAt() {
-        val a = answer(service(config(9100)).handle("""{"version":1,"type":"info"}"""))
+    fun infoTellsTheAppVersion() {
+        val a = answer(service().handle("""{"version":1,"type":"info"}"""))
         assertEquals("1.0.0", a.getString("appVersion"))
         assertEquals(1, a.getInt("protocol"))
-        assertEquals(384, a.getJSONObject("printer").getInt("widthDots"))
-        assertEquals(JSONObject.NULL, answer(service(null).handle("""{"version":1,"type":"info"}""")).get("printer"))
+    }
+
+    @Test
+    fun discoverAnswersWhatTheScannerFound() {
+        val found = PrinterScanner.Result("192.168.64.0/24", listOf(PrinterScanner.Found("192.168.64.20", 9100, "online")))
+        val a = answer(PrintService("1.0.0", scanner = { found }).handle("""{"version":1,"type":"discover"}"""))
+        assertEquals("192.168.64.0/24", a.getString("subnet"))
+        assertEquals("192.168.64.20", a.getJSONArray("printers").getJSONObject(0).getString("host"))
+        assertEquals("online", a.getJSONArray("printers").getJSONObject(0).getString("status"))
     }
 }

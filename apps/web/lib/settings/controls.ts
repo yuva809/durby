@@ -3,6 +3,7 @@ import {
   billFooterSchema,
   billHeaderSchema,
   closedDatesSchema,
+  posPrintersSchema,
   type ResolvedSetting,
   SETTING_KEYS,
   type SettingKey,
@@ -42,7 +43,7 @@ export type SettingControl =
   | { kind: 'scheduleOr'; inherit: string }
   /** Party-size bands with minutes (`reservations.turnTimes`). */
   | { kind: 'turnTimes' }
-  /** Edited on a page of its own (the bill's header and footer, with a preview). */
+  /** Edited on a page of its own (the bill's header and footer with a preview; the printers). */
   | { kind: 'page'; href: string };
 
 /** `weighted_average` → `weightedAverage` (label keys are camelCase). */
@@ -69,6 +70,9 @@ export function controlOf(key: SettingKey): SettingControl | null {
   if (SETTINGS[key].schema === billHeaderSchema || SETTINGS[key].schema === billFooterSchema) {
     return { kind: 'page', href: '/settings/bill' };
   }
+  // Printers per location, with Find printer and a test print through the Android app (ADR 0032).
+  if (SETTINGS[key].schema === posPrintersSchema)
+    return { kind: 'page', href: '/settings/printers' };
   const schema = SETTINGS[key].schema as unknown as SchemaShape;
   switch (schema.def.type) {
     case 'literal': {

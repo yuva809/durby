@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app's own screens (ADR 0032 §14). They show German and English together: they appear before any sign-in,
+     and the photo of them has to be readable for both sides. -->
+<resources>
+    <string name="app_name" translatable="false">Durby</string>
+
+    <string name="check_title_de">Dieses Gerät kann Durby nicht ausführen</string>
+    <string name="check_title_en">This device can\'t run Durby</string>
+    <string name="check_body_de">Bitte machen Sie ein Foto von diesem Bildschirm und senden Sie es an Ihren Durby-Ansprechpartner. Sie müssen nichts verändern.</string>
+    <string name="check_body_en">Please take a photo of this screen and send it to your Durby contact. You don\'t need to change anything.</string>
+    <string name="check_again">Erneut prüfen · Check again</string>
+
+    <string name="offline_title_de">Durby ist nicht erreichbar</string>
+    <string name="offline_title_en">Durby can\'t be reached</string>
+    <string name="offline_body_de">Prüfen Sie die Internetverbindung des Geräts und versuchen Sie es erneut.</string>
+    <string name="offline_body_en">Check the device\'s internet connection and try again.</string>
+    <string name="try_again">Erneut versuchen · Try again</string>
+</resources>

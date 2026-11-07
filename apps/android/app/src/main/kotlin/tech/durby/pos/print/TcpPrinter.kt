@@ -64,6 +64,19 @@ class TcpPrinter(
         }
     }
 
+    /** Connects and asks for status only: null when nothing answers on the port, else what the printer said. */
+    fun query(): PrinterStatus? {
+        val socket = Socket()
+        return try {
+            socket.connect(InetSocketAddress(InetAddress.getByAddress(address), port), connectTimeoutMs)
+            status(socket) ?: PrinterStatus(reachable = true, answered = false)
+        } catch (_: IOException) {
+            null
+        } finally {
+            runCatching { socket.close() }
+        }
+    }
+
     /** DLE EOT 1, 2, 4. Null when the printer doesn't answer the first one. */
     private fun status(socket: Socket): PrinterStatus? {
         socket.soTimeout = statusTimeoutMs
