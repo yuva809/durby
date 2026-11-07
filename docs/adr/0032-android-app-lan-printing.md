@@ -78,6 +78,22 @@ website itself.
     environment. Signed APKs are built by a tag-triggered workflow, not on every merge. Downloads are served from
     `/downloads` on our own domain.
 
+14. **Two releases, because the customer needs bills now.** Version 1 ships 2–3 working days after A0 confirms the
+    WebView; version 1.1 completes the decisions above.
+    - **Version 1:** the app frame, the allow-list, sign-in, direct bill printing (§7–9, §11), duplicate protection
+      and clear messages. The bill printer (host, port, width, cutter, image mode) is set on the **device settings
+      screen**, under the same address rules; the page sends only the picture, and asks the app for the width
+      first. One server, staging, fixed in the build. A signed APK, built on our machine with the release key and
+      shared through Drive.
+    - **Version 1.1:** `pos.printers` and Settings → Printers (§5–6; the device's printer field goes away and the
+      page sends the location's printer), the Server select (§4), kitchen tickets and slips through the Android
+      print screen (§10), the tag-triggered signed build and `/downloads` (§13).
+    - **What the cut costs:** each till's printer is set by hand on the device, and a replaced device needs it again.
+      Kitchen tickets, order slips and QR cards do nothing inside the app until §10 lands, because `window.print()`
+      does nothing in a WebView. Moving the customer to `app.durby.tech` needs a new APK. Updates are installed by
+      hand from Drive. The release key exists before the build workflow does, so it must be the final key from the
+      start (Android refuses an update signed with another key).
+
 ## Consequences
 
 - Printing natively works only inside the app; other browsers keep `window.print()`.

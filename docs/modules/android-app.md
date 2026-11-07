@@ -1,7 +1,7 @@
 # Android app
 
 A minimal Kotlin app that loads the Durby website and prints bills over LAN (ADR 0032). Version 1: one bill printer per
-location, 58 mm / 384 dots first. Status: A0 waits for the customer's device check; A1's virtual printer is built.
+location, 58 mm / 384 dots first. Status: A0 waits for the customer's device check; fast version 1 in preparation (ADR 0032 §14).
 
 ## Parts
 
@@ -61,22 +61,32 @@ Page to app, through the origin-restricted object. JSON, version 1:
 
 Other types: `info` (app version, protocol version), `testPrint` (a receipt the app builds; the settings as above).
 
+**Version 1 (fast release, ADR 0032 §14)** reads the printer from the device settings screen, not from the page:
+
+- `info` answers `{ "type": "info", "appVersion", "protocol": 1, "printer": { "widthDots" } | null }`. The web
+  renders at that width; `null` means no printer is set on the device (message: set it in the app's settings).
+- `print` carries `version`, `type`, `jobId` and `image`. A `printer` field from the page is ignored.
+- `testPrint` is started from the device settings screen only.
+
 Answer: `{ "jobId", "state": "sent" | "failed", "code" }`.
 
-| Code                         | Meaning                                                  |
-| ---------------------------- | -------------------------------------------------------- |
-| `print.sent`                 | All bytes written and flushed. Not proof of paper.       |
-| `print.host_not_allowed`     | Not a private IPv4 literal. Nothing is sent.             |
-| `print.port_not_allowed`     | Not 9100–9102. Nothing is sent.                          |
-| `print.payload_invalid`      | Size or width doesn't match the data, or over 2 MB.      |
-| `print.printer_unreachable`  | Refused, or no route.                                    |
-| `print.printer_timeout`      | No connection in 3 s, or writing stalled for 10 s.       |
-| `print.printer_disconnected` | The connection dropped during the job. Outcome unknown.  |
-| `print.paper_out`            | The status query says so. Only when the printer answers. |
-| `print.cover_open`           | The status query says so. Only when the printer answers. |
+| Code                         | Meaning                                                   |
+| ---------------------------- | --------------------------------------------------------- |
+| `print.sent`                 | All bytes written and flushed. Not proof of paper.        |
+| `print.no_printer`           | Version 1: no printer set on the device. Nothing is sent. |
+| `print.host_not_allowed`     | Not a private IPv4 literal. Nothing is sent.              |
+| `print.port_not_allowed`     | Not 9100–9102. Nothing is sent.                           |
+| `print.payload_invalid`      | Size or width doesn't match the data, or over 2 MB.       |
+| `print.printer_unreachable`  | Refused, or no route.                                     |
+| `print.printer_timeout`      | No connection in 3 s, or writing stalled for 10 s.        |
+| `print.printer_disconnected` | The connection dropped during the job. Outcome unknown.   |
+| `print.paper_out`            | The status query says so. Only when the printer answers.  |
+| `print.cover_open`           | The status query says so. Only when the printer answers.  |
 
-**Duplicates.** One job id per tap; **Retry** reuses it. The same id returns the stored answer without printing. A job
-that failed after bytes were written is never retried by itself.
+**Duplicates.** One job id per tap; **Retry** reuses it. An id that was sent answers `print.sent` again without
+printing (the app remembers the last 500, until it restarts). A failed id may be retried: nothing printed for most
+codes, but after `print.printer_disconnected` or a write timeout the bill may have printed, so the web says to check
+the paper before **Retry**. The app never retries by itself.
 
 ## Device screen
 
@@ -85,6 +95,8 @@ Opened by long-pressing the app icon, and from the app's offline screen so a dea
 - **Server:** a select of the allow-list, default staging. Changing it reloads the site; sign-in is per server.
 - **Connection check:** the server answers `/api/v1/health`; the last printer used answers on its port.
 - **App version.**
+- **Version 1 only: Bill printer** (host, port, width in dots, cutter, image mode) and **Test print**. Saving checks
+  the address rules; the field moves to Settings → Printers in 1.1.
 
 ## App behaviour
 
@@ -111,19 +123,27 @@ Opened by long-pressing the app icon, and from the app's offline screen so a dea
 `192.169.0.1`, `224.0.0.1`, `printer.local`, `example.com`, `::1`, `fe80::1`, `3232235521`, `0xC0.0xA8.0.1`,
 `192.168.1`, `192.168.1.256`, `192.168.01.1`, `192.168.1.1.example.com`, an empty string. Ports 0, 80, 9099, 9103, 65536. **Accepted:** `10.0.0.1`, `172.16.0.1`, `172.31.255.254`, `192.168.64.20`, ports 9100–9102.
 
+Kotlin tests run with `./gradlew testDebugUnitTest` in `apps/android/` (JDK 17, Android SDK); CI doesn't run them
+yet (1.1, with the build workflow).
+
 ## Build order
 
-| Step | Work                                                                              |
-| ---- | --------------------------------------------------------------------------------- |
-| A0   | Probe APK measures the device's WebView; ADR 0032 and this spec                   |
-| A1   | Virtual printer (`tools/virtual-printer/`); emulator setup                        |
-| A2   | App shell: WebView, allow-list, Server select, file chooser, Android print screen |
-| A3   | Printer core from the spike; address rules; print object; duplicates              |
-| A4   | `pos.printers`, Settings → Printers, `GET /pos/bill-layout`, labels               |
-| A5   | Web: detection, rendering, messages, test print                                   |
-| A6   | Release key, signed build workflow, `/downloads`                                  |
-| A7   | Full emulator run; web deploy outside service hours                               |
-| A8   | Rollout call                                                                      |
+ADR 0032 §14: a fast version 1, then version 1.1.
 
-Moving a customer to production is the Server select, once Hetzner production serves `app.durby.tech`. That move
+| Step | Work                                                                                                   | Release |
+| ---- | ------------------------------------------------------------------------------------------------------ | ------- |
+| A0   | Probe APK measures the device's WebView (and the RawBT stopgap); ADR 0032 and this spec                | —       |
+| A1   | Virtual printer (`tools/virtual-printer/`, done); emulator setup                                       | 1       |
+| A2   | App shell: WebView, allow-list (staging only in the build), sign-in kept, file chooser, offline screen | 1       |
+| A3   | Printer core from the spike; address rules; device printer settings; print object; duplicates          | 1       |
+| A5   | Web: detection, `info`, 384-dot rendering, messages per code (labels en/de)                            | 1       |
+| A6a  | Release key; signed APK built locally; shared through Drive                                            | 1       |
+| A7a  | Emulator run with the virtual printer; web deploy to staging outside service hours; install call       | 1       |
+| A4   | `pos.printers`, Settings → Printers, `GET /pos/bill-layout`, labels; device printer field removed      | 1.1     |
+| A2b  | Server select; `window.print()` → Android print screen                                                 | 1.1     |
+| A6b  | Tag-triggered signed build workflow, `/downloads`                                                      | 1.1     |
+
+Version 1 needs the web change deployed to staging, so GitHub Actions must be running (or a manual deploy).
+
+Moving a customer to production is the Server select (1.1), once Hetzner production serves `app.durby.tech`. That move
 changes DNS before the old Vercel project is deleted ([production.md](../ops/production.md)).
