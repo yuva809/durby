@@ -2,6 +2,7 @@ import { type INestApplication, Injectable, type OnModuleInit } from '@nestjs/co
 import { Test } from '@nestjs/testing';
 import {
   DEFAULT_BILL_FOOTER,
+  DEFAULT_POS_PRINTERS,
   DEFAULT_BILL_HEADER,
   DEFAULT_OPENING_HOURS,
   DEFAULT_TURN_TIMES,
@@ -138,6 +139,7 @@ describe('/api/v1/settings', () => {
           ['reservations.holdMinutes', 5],
           ['pos.billHeader', DEFAULT_BILL_HEADER],
           ['pos.billFooter', DEFAULT_BILL_FOOTER],
+          ['pos.printers', DEFAULT_POS_PRINTERS],
           ['pos.kitchenProcessing', true],
           ['pos.barProcessing', true],
         ].map(([key, value]) => ({ key, value, source: 'default', dataBound: false })),
