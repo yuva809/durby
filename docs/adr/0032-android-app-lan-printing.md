@@ -78,23 +78,34 @@ website itself.
     environment. Signed APKs are built by a tag-triggered workflow, not on every merge. Downloads are served from
     `/downloads` on our own domain.
 
-14. **Two releases, because the customer needs bills now.** Version 1 ships 2–3 working days after A0 confirms the
-    WebView; version 1.1 completes the decisions above.
-    - **Version 1:** the app frame, the allow-list, sign-in, direct bill printing (§7–9, §11), duplicate protection
-      and clear messages, and kitchen tickets, order slips and QR cards through the Android print screen (§10).
-      The bill printer (host, port, width, cutter, image mode) is set on the **device settings
-      screen**, under the same address rules; the page sends only the picture, and asks the app for the width
-      first. One server, staging, fixed in the build. A signed APK, built on our machine with the release key and
-      shared through Drive.
-    - **Version 1.1:** `pos.printers` and Settings → Printers (§5–6; the device's printer field goes away and the
-      page sends the location's printer), the Server select (§4), the tag-triggered signed build and `/downloads`
-      (§13).
-    - **What the cut costs:** each till's printer is set by hand on the device, and a replaced device needs it again.
-      Moving the customer to `app.durby.tech` needs a new APK. Updates are installed by
-      hand from Drive. The release key exists before the build workflow does, so it must be the final key from the
-      start (Android refuses an update signed with another key). It lives in a password manager and an encrypted
-      offline copy; on the build machine the key file sits in the git-ignored `apps/android/release/` and its password
-      only in the user's `~/.gradle/gradle.properties` (`durbyReleasePassword`).
+14. **Version 1 for staff who only install and sign in** (revised 2026-11-07: no separate device call, no RawBT).
+    Staff open a link, install, open and sign in; everything else is checked by the app or set from Durby.
+    - **Device check on every start,** before Durby loads: the WebView version (111 or newer) and the print link
+      (`WEB_MESSAGE_LISTENER`). OK → straight to the sign-in. Not OK → one screen in German and English with the
+      device, Android, WebView and Chrome versions and "send a photo of this screen". App screens are Android string
+      resources (en, de), not Durby labels: they show before any Durby page exists.
+    - **Printers are set in Durby** (§5–6 back in version 1): Settings → Printers, per location, with **Find
+      printer** and **Send test print**. Inside the app both run on the device. From a browser elsewhere they are
+      queued for the location's device (§15). The page sends the location's printer with each print (§7); the
+      device keeps no printer of its own.
+    - **Find printer:** the app scans its own /24 (a private one only) for ports 9100–9102 with short timeouts and
+      reports each answering address with its status. Manual entry stays. The same address rules apply to found
+      and typed addresses.
+    - **The shell sits behind one engine interface** (load, back, print object, print screen) so GeckoView can
+      replace the system WebView if the check fails on the customer's device. GeckoView is not built now.
+    - One server, `https://staging.durby.tech`, fixed in the build; the Server select (§4), the build workflow and
+      `/downloads` (§13) follow in 1.1. A signed APK, built on our machine, shared by link.
+    - **What remains cut:** moving to `app.durby.tech` needs a new APK; updates are installed by hand. The release key
+      must be the final key from the start (Android refuses an update signed with another key). It lives in a
+      password manager and an encrypted offline copy; on the build machine the key file sits in the git-ignored
+      `apps/android/release/` and its password only in the user's `~/.gradle/gradle.properties`
+      (`durbyReleasePassword`).
+15. **Remote printer setup through the device** (proposed with step A4b; its migration is reviewed first). A
+    tenant table `pos_print_tasks` (location, kind `discover` or `test_print`, status, the requester, a result of
+    addresses and answer codes only) is filled from Settings → Printers under `platform.settings.manage`. Inside the
+    app, the POS pages of that location ask for open tasks every 15 seconds (`pos.bills.print`), run them through the
+    print object and post the result. Each write is idempotent and audited. Without the app open at the location,
+    tasks stay open and the page says so.
 
 ## Consequences
 
