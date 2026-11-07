@@ -221,7 +221,6 @@
   "pos.printerSettings.statusCoverOpen": "Abdeckung offen",
   "pos.printerSettings.statusNoStatus": "Antwortet, ohne Status",
   "pos.printerSettings.test": "Testdruck senden",
-  "pos.printerSettings.appOnly": "Drucker suchen und der Testdruck laufen auf der Android-Kasse des Standorts. Öffnen Sie diese Seite dort in der App oder geben Sie die Adresse von Hand ein.",
   "pos.printerSettings.testTitle": "Testdruck",
   "pos.printerSettings.testLine": "Wenn Sie dies lesen können, werden Rechnungen hier gedruckt.",
   "pos.printerSettings.testPrinter": "Drucker {address}",

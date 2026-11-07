@@ -24,6 +24,7 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Loaded, NoAccess } from '../users/common';
 import { MoneyProvider, useMoney } from './money';
+import { PrinterCommandRunner } from './printer-command-runner';
 import { TableIcon } from './table-icon';
 
 /** /service: the floor, every table of a location and its open order (docs/modules/pos.md → Web). */
@@ -90,6 +91,11 @@ function LocationFloor({ locations }: { locations: LocationSummary[] }) {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Inside the Android app only: runs Find printer and test prints sent from Settings (ADR 0032 §15). */}
+      <PrinterCommandRunner
+        locationId={locationId}
+        locationName={locations.find((l) => l.id === locationId)?.name ?? ''}
+      />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">{t('pos.nav.service')}</h1>

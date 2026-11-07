@@ -148,12 +148,62 @@ describe('PrintersPage', () => {
     expect(writes).toEqual([]);
   });
 
-  it('says in a browser that Find printer and the test print run on the till', async () => {
+  it('from a browser, sends Find printer to the till and shows what it found', async () => {
     signedInAs('owner');
-    api({});
+    const writes = api({});
+    const command = {
+      id: id(50),
+      locationId: MAIN.id,
+      kind: 'find_printers',
+      status: 'pending',
+      expired: false,
+      createdAt: '2026-11-07T12:00:00.000Z',
+      expiresAt: '2026-11-07T12:05:00.000Z',
+      completedAt: null,
+      result: null,
+    };
+    const base = mockState.store.apiFetch.getMockImplementation()!;
+    mockState.store.apiFetch.mockImplementation((input: string, init?: RequestInit) => {
+      if (input === '/api/v1/pos/printer-commands' && init?.method === 'POST') {
+        writes.push({ method: 'POST', url: input, body: JSON.parse(init.body as string) });
+        return Promise.resolve(Response.json(command, { status: 201 }));
+      }
+      if (input.startsWith('/api/v1/pos/printer-commands?')) {
+        return Promise.resolve(
+          Response.json({
+            data: [
+              {
+                ...command,
+                status: 'done',
+                completedAt: '2026-11-07T12:00:20.000Z',
+                result: {
+                  subnet: '192.168.64.0/24',
+                  printers: [{ host: '192.168.64.20', port: 9100, status: 'online' }],
+                },
+              },
+            ],
+          }),
+        );
+      }
+      return base(input, init);
+    });
     render(<PrintersPage />);
-    expect(await screen.findByTestId('printers-app-only')).toBeTruthy();
     expect(screen.queryByTestId('printers-find')).toBeNull();
+    const find = await screen.findByTestId('printers-find-on-till');
+    // Nothing saved yet: the test print waits for a saved printer.
+    expect(screen.getByTestId<HTMLButtonElement>('printers-test-on-till').disabled).toBe(true);
+    await userEvent.click(find);
+    expect(writes).toContainEqual({
+      method: 'POST',
+      url: '/api/v1/pos/printer-commands',
+      body: { locationId: MAIN.id, kind: 'find_printers' },
+    });
+    expect(screen.getByTestId('printers-command-state').textContent).toContain(
+      'Waiting for the till',
+    );
+    const found = await screen.findByTestId('printers-found', {}, { timeout: 6_000 });
+    await userEvent.click(within(found).getByText('Use'));
+    expect(screen.getByTestId<HTMLInputElement>('printers-host').value).toBe('192.168.64.20');
   });
 
   it('in the app, finds printers on the network and takes one with a tap, then test-prints it', async () => {
@@ -200,6 +250,6 @@ describe('PrintersPage', () => {
       expect(screen.getByTestId<HTMLInputElement>('printers-host').disabled).toBe(true),
     );
     expect(screen.queryByTestId('printers-save')).toBeNull();
-    expect(screen.queryByTestId('printers-app-only')).toBeNull();
+    expect(screen.queryByTestId('printers-on-till')).toBeNull();
   });
 });

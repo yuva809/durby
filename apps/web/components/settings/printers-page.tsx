@@ -5,6 +5,8 @@ import {
   DEFAULT_POS_PRINTERS,
   type LocationSummary,
   type NativeDiscoverAnswer,
+  type PrinterCommand,
+  type PrinterCommandKind,
   type PrinterSettings,
   posPrintersSchema,
   printerSettingsSchema,
@@ -12,11 +14,12 @@ import {
   type ResolvedSetting,
 } from '@durby/shared';
 import { Printer, Search } from 'lucide-react';
-import { type FormEvent, useId, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
+import { loadPrinterCommands, requestPrinterCommand } from '../../lib/pos/printer-commands';
 import { renderBillImage } from '../../lib/print/bill-image';
 import { nativePrinter, type NativePrintOutcome } from '../../lib/print/native';
 import { nativePrintMessage } from '../../lib/print/native-bill';
@@ -32,6 +35,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Loaded, NoAccess } from '../users/common';
+import { TestPrintPage } from '../pos/test-print-page';
 
 const PAPER_WIDTHS = [384, 576, 512] as const;
 
@@ -346,11 +350,14 @@ function PrinterEditor({
             }}
           />
         ) : (
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground" data-testid="printers-app-only">
-              {t('pos.printerSettings.appOnly')}
-            </p>
-          </Card>
+          <OnTill
+            locationId={locationId}
+            canTest={printers.bill !== null && parsed.success && sameAs(parsed.data, printers.bill)}
+            onPick={(host, port) => {
+              setSaved(false);
+              setDraft((d) => ({ ...d, host, port: String(port) }));
+            }}
+          />
         ))}
     </div>
   );
@@ -429,21 +436,133 @@ function OnDevice({
         />
       )}
 
-      {/* The test bill the printer gets, drawn like a bill: black on white, at the printer's width. */}
-      <div className="hidden">
-        <div ref={testBill} className="flex flex-col gap-1 p-2 font-mono text-xs text-foreground">
-          <p className="text-base font-bold">{t('pos.printerSettings.testTitle')}</p>
-          <p>{locationName}</p>
-          {printer && (
-            <p>
-              {t('pos.printerSettings.testPrinter', { address: `${printer.host}:${printer.port}` })}
-            </p>
-          )}
-          <p>{new Date().toLocaleString()}</p>
-          <p>{t('pos.printerSettings.testLine')}</p>
-        </div>
-      </div>
+      <TestPrintPage ref={testBill} locationName={locationName} printer={printer} />
     </Card>
+  );
+}
+
+const sameAs = (a: PrinterSettings, b: PrinterSettings) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * From a browser (Berlin): Find printer and the test print go to the location's till as remote commands
+ * (ADR 0032 §15); the page follows the command until the till answers or it expires after 5 minutes.
+ */
+function OnTill({
+  locationId,
+  canTest,
+  onPick,
+}: {
+  locationId: string;
+  canTest: boolean;
+  onPick: (host: string, port: number) => void;
+}) {
+  const t = useT();
+  const { store } = useAuth();
+  const findAction = useActionKey();
+  const testAction = useActionKey();
+  const [command, setCommand] = useState<PrinterCommand | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const open =
+    command !== null &&
+    !command.expired &&
+    (command.status === 'pending' || command.status === 'claimed');
+
+  // Follow the command while it is open: the till picks it up within 15 s.
+  useEffect(() => {
+    if (!open || !command) return;
+    const timer = setInterval(() => {
+      void loadPrinterCommands(store, locationId).then((list) => {
+        const latest = list.ok ? list.data.find((c) => c.id === command.id) : undefined;
+        if (latest) setCommand(latest);
+      });
+    }, 3_000);
+    return () => clearInterval(timer);
+  }, [open, command, store, locationId]);
+
+  async function send(kind: PrinterCommandKind) {
+    setError(null);
+    const action = kind === 'find_printers' ? findAction : testAction;
+    const created = await requestPrinterCommand(store, action, locationId, kind);
+    action.done();
+    if (!created.ok) setError(t(errorLabel(created.code)));
+    else setCommand(created.data);
+  }
+
+  return (
+    <Card className="flex flex-col gap-4 p-4" data-testid="printers-on-till">
+      <p className="text-sm text-muted-foreground">{t('pos.printerSettings.remoteHint')}</p>
+      <div className="flex flex-wrap gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="gap-2"
+          disabled={open}
+          onClick={() => void send('find_printers')}
+          data-testid="printers-find-on-till"
+        >
+          <Search aria-hidden />
+          {t('pos.printerSettings.findOnTill')}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="gap-2"
+          disabled={open || !canTest}
+          onClick={() => void send('test_print')}
+          data-testid="printers-test-on-till"
+        >
+          <Printer aria-hidden />
+          {t('pos.printerSettings.testOnTill')}
+        </Button>
+      </div>
+      {!canTest && (
+        <p className="text-sm text-muted-foreground">{t('pos.printerSettings.testSaved')}</p>
+      )}
+      <Notice text={error} tone="error" />
+      {command && <CommandOutcome command={command} onPick={onPick} />}
+    </Card>
+  );
+}
+
+function CommandOutcome({
+  command,
+  onPick,
+}: {
+  command: PrinterCommand;
+  onPick: (host: string, port: number) => void;
+}) {
+  const t = useT();
+  const testId = 'printers-command-state';
+  if (command.expired) {
+    return (
+      <div data-testid={testId}>
+        <Notice text={t('pos.printerSettings.expired')} tone="error" />
+      </div>
+    );
+  }
+  if (command.status === 'pending' || command.status === 'claimed') {
+    const text = t(
+      command.status === 'pending' ? 'pos.printerSettings.waiting' : 'pos.printerSettings.running',
+    );
+    return (
+      <div data-testid={testId}>
+        <Notice text={text} tone="info" />
+      </div>
+    );
+  }
+  const result = command.result;
+  if (result && 'printers' in result) {
+    return (
+      <div data-testid={testId}>
+        <FoundPrinters answer={{ type: 'discover', ...result }} onPick={onPick} />
+      </div>
+    );
+  }
+  const code = result?.code ?? 'print.no_answer';
+  return (
+    <div data-testid={testId}>
+      <Notice text={t(nativePrintMessage(code))} tone={code === 'print.sent' ? 'info' : 'error'} />
+    </div>
   );
 }
 

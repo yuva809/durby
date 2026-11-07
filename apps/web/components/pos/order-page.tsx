@@ -72,6 +72,7 @@ import { Input } from '../ui/input';
 import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { KitchenTicketView, OrderSlip, PrintRoot } from './kitchen-ticket';
 import { MoneyProvider, useMoney } from './money';
+import { PrinterCommandRunner } from './printer-command-runner';
 import { Receipt } from './receipt';
 import { tableColors } from './table-icon';
 import { VoidDialog } from './void-dialog';
@@ -532,6 +533,7 @@ function TableOrder({
                 </Button>
               </div>
             )}
+            {access.canPrintBill && <PrinterCommandRunner locationId={table.locationId} />}
             {print && (
               <PrintRoot>
                 {print.kind === 'tickets' ? (

@@ -221,7 +221,6 @@
   "pos.printerSettings.statusCoverOpen": "Cover open",
   "pos.printerSettings.statusNoStatus": "Answers, no status",
   "pos.printerSettings.test": "Send test print",
-  "pos.printerSettings.appOnly": "Find printer and the test print run on the location's Android till. Open this page in the app there, or set the address by hand.",
   "pos.printerSettings.testTitle": "Test print",
   "pos.printerSettings.testLine": "If you can read this, bills will print here.",
   "pos.printerSettings.testPrinter": "Printer {address}",
