@@ -130,18 +130,18 @@ yet (1.1, with the build workflow).
 
 ADR 0032 §14: a fast version 1, then version 1.1.
 
-| Step | Work                                                                                                   | Release |
-| ---- | ------------------------------------------------------------------------------------------------------ | ------- |
-| A0   | Probe APK measures the device's WebView (and the RawBT stopgap); ADR 0032 and this spec                | —       |
-| A1   | Virtual printer (`tools/virtual-printer/`, done); emulator setup                                       | 1       |
-| A2   | App shell: WebView, allow-list (staging only in the build), sign-in kept, file chooser, offline screen | 1       |
-| A3   | Printer core from the spike; address rules; device printer settings; print object; duplicates          | 1       |
-| A5   | Web: detection, `info`, 384-dot rendering, messages per code (labels en/de)                            | 1       |
-| A6a  | Release key; signed APK built locally; shared through Drive                                            | 1       |
-| A7a  | Emulator run with the virtual printer; web deploy to staging outside service hours; install call       | 1       |
-| A4   | `pos.printers`, Settings → Printers, `GET /pos/bill-layout`, labels; device printer field removed      | 1.1     |
-| A2b  | Server select; `window.print()` → Android print screen                                                 | 1.1     |
-| A6b  | Tag-triggered signed build workflow, `/downloads`                                                      | 1.1     |
+| Step | Work                                                                                                                                            | Release |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| A0   | Probe APK measures the device's WebView (and the RawBT stopgap); ADR 0032 and this spec                                                         | —       |
+| A1   | Virtual printer (`tools/virtual-printer/`, done); emulator setup                                                                                | 1       |
+| A2   | App shell: WebView, allow-list (staging only in the build), sign-in kept, file chooser, offline screen, `window.print()` → Android print screen | 1       |
+| A3   | Printer core from the spike; address rules; device printer settings; print object; duplicates                                                   | 1       |
+| A5   | Web: detection, `info`, 384-dot rendering, messages per code (labels en/de)                                                                     | 1       |
+| A6a  | Release key; signed APK built locally; shared through Drive                                                                                     | 1       |
+| A7a  | Emulator run with the virtual printer; web deploy to staging outside service hours; install call                                                | 1       |
+| A4   | `pos.printers`, Settings → Printers, `GET /pos/bill-layout`, labels; device printer field removed                                               | 1.1     |
+| A2b  | Server select                                                                                                                                   | 1.1     |
+| A6b  | Tag-triggered signed build workflow, `/downloads`                                                                                               | 1.1     |
 
 Version 1 needs the web change deployed to staging, so GitHub Actions must be running (or a manual deploy).
 
