@@ -8,6 +8,9 @@
     <string name="check_title_en">This device can\'t run Durby</string>
     <string name="check_body_de">Bitte machen Sie ein Foto von diesem Bildschirm und senden Sie es an Ihren Durby-Ansprechpartner. Sie müssen nichts verändern.</string>
     <string name="check_body_en">Please take a photo of this screen and send it to your Durby contact. You don\'t need to change anything.</string>
+    <string name="update_now">Jetzt aktualisieren · Update now</string>
+    <string name="update_body_de">Tippen Sie auf „Jetzt aktualisieren“ und im Play Store auf „Aktualisieren“. Kommen Sie danach zurück: Die App prüft dann von selbst noch einmal. Klappt es nicht, machen Sie bitte ein Foto von diesem Bildschirm und senden Sie es an Ihren Durby-Ansprechpartner.</string>
+    <string name="update_body_en">Tap “Update now”, then “Update” in the Play Store. Then come back: the app checks again by itself. If it doesn\'t work, please take a photo of this screen and send it to your Durby contact.</string>
     <string name="check_again">Erneut prüfen · Check again</string>
 
     <string name="offline_title_de">Durby ist nicht erreichbar</string>

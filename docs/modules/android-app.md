@@ -96,7 +96,8 @@ the paper before **Retry**. The app never retries by itself.
 
 - **Device check** (every start, before Durby loads): WebView 111 or newer and the print link. OK → Durby's sign-in,
   nothing shown. Not OK → one screen, German and English: device model, Android version, WebView package and version,
-  Chrome version, app version, what failed, and "send a photo of this screen to your contact".
+  Chrome version, app version, what failed, and "send a photo of this screen to your contact". With the Play Store,
+  a large **Jetzt aktualisieren · Update now** opens the WebView in the Play Store; coming back re-checks by itself.
 - **Offline:** Durby didn't load: **Try again**.
 - Version 1.1 adds the device settings screen with the Server select.
 

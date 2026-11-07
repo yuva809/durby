@@ -44,6 +44,19 @@ object DeviceCheck {
         if (!facts.startScript) add(Problem.NO_START_SCRIPT)
     }
 
+    /** Every problem here is fixed by a newer WebView: the Play Store update is worth offering. */
+    fun fixableByUpdate(problems: List<Problem>): Boolean = problems.isNotEmpty()
+
+    /**
+     * The Play Store page to open for the update: the package that provides the WebView now when it is one the
+     * Play Store updates (Google's WebView or Chrome), otherwise Android System WebView.
+     */
+    fun updatePackage(webViewPackage: String?): String =
+        webViewPackage?.takeIf { it in UPDATABLE_PACKAGES } ?: GOOGLE_WEBVIEW
+
+    const val GOOGLE_WEBVIEW = "com.google.android.webview"
+    private val UPDATABLE_PACKAGES = setOf(GOOGLE_WEBVIEW, "com.android.chrome")
+
     /** The lines for the photo: plain facts, the same in every language. */
     fun report(facts: DeviceFacts, problems: List<Problem>): String = buildString {
         appendLine("Device:   ${facts.model}")

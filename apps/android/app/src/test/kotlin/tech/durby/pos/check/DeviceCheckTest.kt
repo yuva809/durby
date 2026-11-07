@@ -46,4 +46,13 @@ class DeviceCheckTest {
         listOf("SUNMI T2s Lite", "API 28", "com.android.webview 66.0", "needs 111+", "Chrome:   125", "1.0.0", "WEBVIEW_TOO_OLD")
             .forEach { assertTrue(it, text.contains(it)) }
     }
+
+    @Test
+    fun theUpdateOpensThePackageThatProvidesTheWebView() {
+        assertEquals("com.google.android.webview", DeviceCheck.updatePackage("com.google.android.webview"))
+        assertEquals("com.android.chrome", DeviceCheck.updatePackage("com.android.chrome"))
+        // The plain AOSP WebView isn't in the Play Store; Google's is the one to install.
+        assertEquals("com.google.android.webview", DeviceCheck.updatePackage("com.android.webview"))
+        assertEquals("com.google.android.webview", DeviceCheck.updatePackage(null))
+    }
 }

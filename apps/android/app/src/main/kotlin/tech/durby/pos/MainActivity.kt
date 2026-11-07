@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -38,6 +39,15 @@ class MainActivity : Activity(), WebEngine.Host {
     private val printService = PrintService(BuildConfig.VERSION_NAME, scanner = { PrinterScanner().scan() })
     private var engine: WebEngine? = null
 
+    /** The WebView version this process started with; after a Play Store update it differs (see [onResume]). */
+    private var startedWithWebView: String? = null
+
+    /** True while the device check screen is shown: coming back to the app checks again by itself. */
+    private var checking = false
+
+    /** Set when the app goes to the background (the Play Store opened); the next resume checks again. */
+    private var away = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         start()
@@ -45,9 +55,15 @@ class MainActivity : Activity(), WebEngine.Host {
 
     private fun start() {
         val facts = readFacts()
+        if (startedWithWebView == null) startedWithWebView = facts.webViewVersion
         val problems = DeviceCheck.problems(facts)
+        checking = problems.isNotEmpty()
+        // Device facts only (no user data): what support needs from `adb logcat -s DurbyApp`.
+        Log.i(TAG, "device check: ${facts.webViewPackage} ${facts.webViewVersion} -> ${problems.ifEmpty { "OK" }}")
         if (problems.isNotEmpty()) {
-            showDeviceCheck(DeviceCheck.report(facts, problems))
+            val store = playStore()
+            val update = if (store && DeviceCheck.fixableByUpdate(problems)) DeviceCheck.updatePackage(facts.webViewPackage) else null
+            showDeviceCheck(DeviceCheck.report(facts, problems), update)
             return
         }
         val e = engine ?: SystemWebViewEngine(this, this).also { engine = it }
@@ -122,8 +138,37 @@ class MainActivity : Activity(), WebEngine.Host {
         if (e != null && e.view.parent != null && e.canGoBack()) e.goBack() else super.onBackPressed()
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (!checking || !away) return
+        away = false
+        val now = runCatching { WebViewCompat.getCurrentWebViewPackage(this)?.versionName }.getOrNull()
+        if (now != startedWithWebView) {
+            // The WebView was updated while we were away. This process may still hold the old one, so start afresh.
+            restartApp()
+        } else {
+            start()
+        }
+    }
+
+    private fun restartApp() {
+        val launch = packageManager.getLaunchIntentForPackage(packageName) ?: return start()
+        startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+        Runtime.getRuntime().exit(0)
+    }
+
+    /** The Play Store is installed, enabled and can open an app page. */
+    private fun playStore(): Boolean {
+        val enabled = runCatching { packageManager.getApplicationInfo(PLAY_STORE, 0).enabled }.getOrDefault(false)
+        return enabled && marketIntent(DeviceCheck.GOOGLE_WEBVIEW).resolveActivity(packageManager) != null
+    }
+
+    private fun marketIntent(pkg: String) =
+        Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg")).setPackage(PLAY_STORE)
+
     override fun onPause() {
         super.onPause()
+        away = true
         engine?.onPause()
     }
 
@@ -135,14 +180,31 @@ class MainActivity : Activity(), WebEngine.Host {
 
     // --- Own screens --------------------------------------------------------------------------------------------
 
-    /** One screen with everything needed from a photo: what to do (de, en) and the facts. */
-    private fun showDeviceCheck(report: String) {
+    /**
+     * One screen with everything needed from a photo: what to do (de, en) and the facts. With the Play Store, a large
+     * "Update now" first; coming back from the store checks again by itself ([onResume]).
+     */
+    private fun showDeviceCheck(report: String, updatePackage: String?) {
+        val update = updatePackage?.let { pkg ->
+            getString(R.string.update_now) to {
+                try {
+                    startActivity(marketIntent(pkg))
+                } catch (_: ActivityNotFoundException) {
+                    start()
+                }
+            }
+        }
         screen(
             title = getString(R.string.check_title_de) + "\n" + getString(R.string.check_title_en),
-            body = getString(R.string.check_body_de) + "\n\n" + getString(R.string.check_body_en),
+            body = if (update != null) {
+                getString(R.string.update_body_de) + "\n\n" + getString(R.string.update_body_en)
+            } else {
+                getString(R.string.check_body_de) + "\n\n" + getString(R.string.check_body_en)
+            },
             details = report,
             button = getString(R.string.check_again),
             accent = Color.rgb(0xB0, 0x00, 0x20),
+            primary = update,
         ) { start() }
     }
 
@@ -156,7 +218,15 @@ class MainActivity : Activity(), WebEngine.Host {
         ) { start() }
     }
 
-    private fun screen(title: String, body: String, details: String, button: String, accent: Int, onButton: () -> Unit) {
+    private fun screen(
+        title: String,
+        body: String,
+        details: String,
+        button: String,
+        accent: Int,
+        primary: Pair<String, () -> Unit>? = null,
+        onButton: () -> Unit,
+    ) {
         val pad = (16 * resources.displayMetrics.density).toInt()
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -177,6 +247,17 @@ class MainActivity : Activity(), WebEngine.Host {
             setTextColor(Color.BLACK)
             setPadding(0, pad, 0, pad)
         })
+        primary?.let { (label, action) ->
+            column.addView(Button(this).apply {
+                text = label
+                textSize = 24f
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(Color.WHITE)
+                setBackgroundColor(Color.rgb(0x1A, 0x73, 0xE8))
+                setPadding(pad * 2, pad, pad * 2, pad)
+                setOnClickListener { action() }
+            }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { bottomMargin = pad })
+        }
         column.addView(TextView(this).apply {
             text = details
             textSize = 16f
@@ -199,5 +280,7 @@ class MainActivity : Activity(), WebEngine.Host {
 
     companion object {
         private const val PICK_FILES = 1
+        private const val TAG = "DurbyApp"
+        private const val PLAY_STORE = "com.android.vending"
     }
 }

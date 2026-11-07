@@ -82,7 +82,11 @@ website itself.
     Staff open a link, install, open and sign in; everything else is checked by the app or set from Durby.
     - **Device check on every start,** before Durby loads: the WebView version (111 or newer) and the print link
       (`WEB_MESSAGE_LISTENER`). OK → straight to the sign-in. Not OK → one screen in German and English with the
-      device, Android, WebView and Chrome versions and "send a photo of this screen". App screens are Android string
+      device, Android, WebView and Chrome versions and "send a photo of this screen". With the Play Store
+      installed and enabled, the screen leads with a large **Jetzt aktualisieren · Update now** that opens the
+      WebView's page in the Play Store (Google's WebView, or Chrome when that provides it); coming back checks again
+      by itself, and restarts the app if the WebView changed meanwhile. The update needs a Google account signed in
+      to the Play Store. App screens are Android string
       resources (en, de), not Durby labels: they show before any Durby page exists.
     - **Printers are set in Durby** (§5–6 back in version 1): Settings → Printers, per location, with **Find
       printer** and **Send test print**. Inside the app both run on the device. From a browser elsewhere they are
@@ -100,12 +104,16 @@ website itself.
       password manager and an encrypted offline copy; on the build machine the key file sits in the git-ignored
       `apps/android/release/` and its password only in the user's `~/.gradle/gradle.properties`
       (`durbyReleasePassword`).
-15. **Remote printer setup through the device** (proposed with step A4b; its migration is reviewed first). A
-    tenant table `pos_print_tasks` (location, kind `discover` or `test_print`, status, the requester, a result of
-    addresses and answer codes only) is filled from Settings → Printers under `platform.settings.manage`. Inside the
-    app, the POS pages of that location ask for open tasks every 15 seconds (`pos.bills.print`), run them through the
-    print object and post the result. Each write is idempotent and audited. Without the app open at the location,
-    tasks stay open and the page says so.
+15. **Remote printer commands** (step A4b; its migration is reviewed first). Two commands only, **find printers**
+    and **test print**, each for one location, requested from Settings → Printers under `platform.settings.manage`
+    (Owner and Admin). A tenant table `pos_printer_commands` holds the kind, status (`pending`, `claimed`, `done`,
+    `failed`), requester, claimer, result (addresses and answer codes only) and times; a command expires 5 minutes
+    after it was requested. Inside the app, the POS page of a location (the floor or a table, so the location the
+    till is signed in and working at) asks every 15 seconds for open commands of **that location only**
+    (`pos.bills.print` there), claims one atomically so two tills never both run it, runs it through the print
+    object (the test print goes to the location's saved printer) and posts the result. Requesting, claiming and
+    completing are idempotent and audited; the app never deletes rows. Settings → Printers shows the result: the
+    printers found (one tap to take one), printed, or the error; or that no till picked it up in time.
 
 ## Consequences
 
