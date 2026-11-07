@@ -1,7 +1,7 @@
 # Android app
 
 A minimal Kotlin app that loads the Durby website and prints bills over LAN (ADR 0032). Version 1: one bill printer per
-location, 58 mm / 384 dots first. Status: planned; step A0 in progress.
+location, 58 mm / 384 dots first. Status: A0 waits for the customer's device check; A1's virtual printer is built.
 
 ## Parts
 
@@ -116,7 +116,7 @@ Opened by long-pressing the app icon, and from the app's offline screen so a dea
 | Step | Work                                                                              |
 | ---- | --------------------------------------------------------------------------------- |
 | A0   | Probe APK measures the device's WebView; ADR 0032 and this spec                   |
-| A1   | Virtual printer; emulator setup                                                   |
+| A1   | Virtual printer (`tools/virtual-printer/`); emulator setup                        |
 | A2   | App shell: WebView, allow-list, Server select, file chooser, Android print screen |
 | A3   | Printer core from the spike; address rules; print object; duplicates              |
 | A4   | `pos.printers`, Settings → Printers, `GET /pos/bill-layout`, labels               |
@@ -124,3 +124,6 @@ Opened by long-pressing the app icon, and from the app's offline screen so a dea
 | A6   | Release key, signed build workflow, `/downloads`                                  |
 | A7   | Full emulator run; web deploy outside service hours                               |
 | A8   | Rollout call                                                                      |
+
+Moving a customer to production is the Server select, once Hetzner production serves `app.durby.tech`. That move
+changes DNS before the old Vercel project is deleted ([production.md](../ops/production.md)).
