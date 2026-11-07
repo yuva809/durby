@@ -34,6 +34,7 @@ export * from './granting';
 export * from './numbering';
 export * from './permissions';
 export * from './phone';
+export * from './native-print';
 export * from './pos-bill-settings';
 export * from './reservation-settings';
 export * from './platform-audit';
