@@ -177,7 +177,7 @@
   "pos.permissions.barUse": "Barbildschirm nutzen",
   "pos.order.printOrder": "Bestellung drucken",
   "pos.nativePrint.printing": "Rechnung wird gedruckt …",
-  "pos.nativePrint.sent": "Rechnung an den Drucker gesendet.",
+  "pos.nativePrint.sent": "An den Drucker gesendet.",
   "pos.nativePrint.noPrinter": "Auf diesem Gerät ist kein Drucker eingerichtet. Richten Sie ihn in den Geräteeinstellungen der App ein (App-Symbol gedrückt halten).",
   "pos.nativePrint.hostNotAllowed": "Die Druckeradresse in den Geräteeinstellungen ist nicht erlaubt. Verwenden Sie die Adresse des Druckers im lokalen Netz, zum Beispiel 192.168.1.20.",
   "pos.nativePrint.portNotAllowed": "Der Druckerport in den Geräteeinstellungen muss 9100, 9101 oder 9102 sein.",

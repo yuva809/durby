@@ -7,15 +7,32 @@ import android.net.Uri
  * print-screen script exist only for these origins, and every other link opens in the browser.
  */
 object Servers {
-    const val START_URL = "https://staging.durby.tech/"
+    val ORIGINS = Origins(BuildConfig.DEV_ORIGIN)
 
-    val ALLOWED_ORIGINS: Set<String> = setOf("https://staging.durby.tech", "https://app.durby.tech")
+    val START_URL: String get() = ORIGINS.startUrl
 
-    /** "https://staging.durby.tech" for any URL there; exact scheme and host, default port only. */
+    val ALLOWED_ORIGINS: Set<String> get() = ORIGINS.allowed
+
+    /** "https://staging.durby.tech" for any URL there; scheme, host and port must match an allowed origin exactly. */
     fun originOf(uri: Uri): String? {
-        if (uri.scheme != "https" || uri.host.isNullOrEmpty() || uri.port != -1 || uri.userInfo != null) return null
-        return "https://${uri.host}"
+        if (uri.host.isNullOrEmpty() || uri.userInfo != null) return null
+        val port = if (uri.port == -1) "" else ":${uri.port}"
+        return "${uri.scheme}://${uri.host}$port"
     }
 
     fun isAllowed(uri: Uri): Boolean = originOf(uri) in ALLOWED_ORIGINS
+}
+
+/** Pure, so the release allow-list is tested on the JVM. [devOrigin] is empty in release builds. */
+class Origins(devOrigin: String) {
+    private val dev = devOrigin.takeIf { it.isNotEmpty() }
+
+    val allowed: Set<String> = PRODUCTION + listOfNotNull(dev)
+
+    val startUrl: String = (dev ?: STAGING) + "/"
+
+    companion object {
+        const val STAGING = "https://staging.durby.tech"
+        val PRODUCTION: Set<String> = setOf(STAGING, "https://app.durby.tech")
+    }
 }

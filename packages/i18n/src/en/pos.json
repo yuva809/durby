@@ -177,7 +177,7 @@
   "pos.permissions.barUse": "Use the bar screen",
   "pos.order.printOrder": "Print order",
   "pos.nativePrint.printing": "Printing the bill…",
-  "pos.nativePrint.sent": "Bill sent to the printer.",
+  "pos.nativePrint.sent": "Sent to the printer.",
   "pos.nativePrint.noPrinter": "No printer is set up on this device. Set it in the app's device settings (press and hold the app icon).",
   "pos.nativePrint.hostNotAllowed": "The printer address in the device settings isn't allowed. Use the printer's local network address, for example 192.168.1.20.",
   "pos.nativePrint.portNotAllowed": "The printer port in the device settings must be 9100, 9101 or 9102.",

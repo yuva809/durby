@@ -231,7 +231,7 @@ describe('PrintersPage', () => {
     expect(screen.getByTestId<HTMLInputElement>('printers-host').value).toBe('192.168.64.20');
 
     await userEvent.click(screen.getByTestId('printers-test'));
-    await screen.findByText('Bill sent to the printer.');
+    await screen.findByText('Sent to the printer.');
     expect(app.printer.print).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ width: 384 }),

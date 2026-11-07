@@ -40,9 +40,15 @@ android {
     }
 
     buildTypes {
+        // Debug builds also load a local web (`adb reverse tcp:3000 tcp:3000`) for emulator runs. Release builds
+        // never do: their extra origin is empty, so only the allow-list in Servers.kt applies.
+        debug {
+            buildConfigField("String", "DEV_ORIGIN", "\"http://localhost:3000\"")
+        }
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
+            buildConfigField("String", "DEV_ORIGIN", "\"\"")
         }
     }
 
