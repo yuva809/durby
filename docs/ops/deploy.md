@@ -2,6 +2,7 @@
 
 Staging runs on one Hetzner Cloud CPX22 (2 vCPU, 4 GB RAM, 80 GB NVMe, Ubuntu 24.04) with Docker Compose,
 at **https://staging.durby.tech**. Decisions and trade-offs: [ADR 0004](../adr/0004-staging-deployment.md).
+Production is not set up yet; what it must do beyond these steps is in [production.md](production.md).
 
 ```
 GitHub: push to main ─► CI (lint, typecheck, test, build, images) ─► Deploy staging

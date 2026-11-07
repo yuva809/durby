@@ -31,7 +31,10 @@ website itself.
    staging. Moving a customer to production is a settings change, never a new APK. A stored value not on the list is
    ignored and the default is used. Navigation to anything else opens in Chrome, never in the app. A new domain
    (a partner's, for example) does need a new APK. The list is one reviewed constant; there are no per-customer builds
-   (hard rule 2).
+   (hard rule 2). `app.durby.tech` is ours: today it serves the previous version of Durby from Vercel, and production
+   on Hetzner replaces it under the same name, so the list doesn't change. That switch changes DNS first (or at the
+   same moment) and deletes the Vercel project only afterwards (`docs/ops/production.md`): a record left pointing at a
+   deleted project could be claimed by someone else, and their page would get the print object.
 5. **Printer settings live in Durby, per location,** not on the device: one setting, `pos.printers` (§6). A replaced
    device needs no printer setup, and whoever manages the location can fix a printer without touching the till.
 6. **`pos.printers`** (`dataBound: false`, scopes organization, brand, location; default `{ "bill": null }`):
@@ -95,7 +98,4 @@ website itself.
 
 ## Open
 
-- `app.durby.tech` already answers (a Vercel deployment titled "Durby" that redirects to `/login`), while the docs place
-  our stack on Hetzner. Before it ships on the allow-list, confirm that this deployment is ours and is where production
-  will run: anything on an allow-listed domain can use the print object.
 - The address the pilot customer uses.
