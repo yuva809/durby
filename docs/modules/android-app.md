@@ -92,6 +92,20 @@ printing (the app remembers the last 500, until it restarts). A failed id may be
 codes, but after `print.printer_disconnected` or a write timeout the bill may have printed, so the web says to check
 the paper before **Retry**. The app never retries by itself.
 
+## Remote commands (ADR 0032 §15)
+
+| Endpoint                                        | Who                                         | What                                                                                                   |
+| ----------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `POST /pos/printer-commands`                    | `platform.settings.manage` (Owner, Admin)   | `{ locationId, kind: find_printers \| test_print }`, 5 min                                             |
+| `GET /pos/printer-commands?locationId=`         | `platform.settings.read`                    | The location's last 10 commands with status and result                                                 |
+| `GET /pos/printer-commands/pending?locationId=` | `pos.bills.print` at the location           | Open commands; the till polls this every 15 s, in the app only                                         |
+| `POST /pos/printer-commands/claim`              | `pos.bills.print` at the location           | One atomic `UPDATE … WHERE status = 'pending' AND expires_at > now() RETURNING`: exactly one till wins |
+| `POST /pos/printer-commands/:id/result`         | the till that claimed it, before it expires | `{ result: { subnet, printers } \| { code } }` → done or failed                                        |
+
+Every write takes an `Idempotency-Key` and is audited (`pos.printer_command.requested`, `.claimed`, `.completed`);
+the audit log is the lasting record. A test print goes to the location's saved printer. Errors:
+`pos.printer_command_not_found`, `pos.printer_command_expired`, `pos.printer_command_not_claimed`.
+
 ## Device screens
 
 - **Device check** (every start, before Durby loads): WebView 111 or newer and the print link. OK → Durby's sign-in,
