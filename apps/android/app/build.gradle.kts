@@ -1,16 +1,21 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
-// The release key lives only in the git-ignored apps/android/release/ (ADR 0032 §13–14). Without it, release
-// builds stay unsigned and can't be installed.
-val releaseDir = rootProject.file("release")
-val releaseSigning = releaseDir.resolve("signing.properties").takeIf { it.isFile }?.let { file ->
-    Properties().apply { file.inputStream().use { load(it) } }
-}
+/*
+ * Release signing (ADR 0032 §13–14). The key file lives in the git-ignored apps/android/release/; its password only
+ * in the user's Gradle properties (~/.gradle/gradle.properties), never in this repo:
+ *
+ *   durbyReleasePassword=<the password in the password manager>
+ *   durbyReleaseStoreFile=/absolute/path/to/durby-release.p12   (optional; default apps/android/release/durby-release.p12)
+ *
+ * PKCS12 has one password for the store and the key. A release build without them fails before it starts.
+ */
+val releaseAlias = "durby-release"
+val releasePassword: String? = providers.gradleProperty("durbyReleasePassword").orNull
+val releaseStoreFile: File = providers.gradleProperty("durbyReleaseStoreFile").orNull?.let(::File)
+    ?: rootProject.file("release/durby-release.p12")
 
 android {
     namespace = "tech.durby.pos"
@@ -25,21 +30,19 @@ android {
     }
 
     signingConfigs {
-        if (releaseSigning != null) {
-            create("release") {
-                storeFile = releaseDir.resolve(releaseSigning.getProperty("storeFile"))
-                storePassword = releaseSigning.getProperty("storePassword")
-                keyAlias = releaseSigning.getProperty("keyAlias")
-                keyPassword = releaseSigning.getProperty("keyPassword")
-                storeType = "pkcs12"
-            }
+        create("release") {
+            storeFile = releaseStoreFile
+            storePassword = releasePassword
+            keyAlias = releaseAlias
+            keyPassword = releasePassword
+            storeType = "pkcs12"
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.findByName("release")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -68,4 +71,29 @@ tasks.withType<Test>().configureEach {
         "durby.addressFixture",
         rootProject.file("../../packages/shared/src/native-print-addresses.json").absolutePath,
     )
+}
+
+// Fail early and clearly when a release APK is built without the key, instead of an unsigned or half-signed APK.
+// Debug builds and unit tests never need it.
+gradle.taskGraph.whenReady {
+    val releasePackaging = Regex("^(assemble|bundle|package|install|sign|validateSigning).*Release.*")
+    if (allTasks.none { it.project == project && releasePackaging.matches(it.name) }) return@whenReady
+    val repoProperties = rootProject.file("gradle.properties")
+    if (repoProperties.isFile && repoProperties.readText().contains("durbyRelease")) {
+        throw GradleException(
+            "durbyRelease* found in ${repoProperties.path}, which is committed. Move it to ~/.gradle/gradle.properties.",
+        )
+    }
+    if (releasePassword.isNullOrEmpty()) {
+        throw GradleException(
+            "Release signing: durbyReleasePassword is not set. Add it to ~/.gradle/gradle.properties " +
+                "(the password in the password manager). See apps/android/app/build.gradle.kts.",
+        )
+    }
+    if (!releaseStoreFile.isFile) {
+        throw GradleException(
+            "Release signing: no key file at ${releaseStoreFile.path}. Put durby-release.p12 there, or set " +
+                "durbyReleaseStoreFile in ~/.gradle/gradle.properties.",
+        )
+    }
 }

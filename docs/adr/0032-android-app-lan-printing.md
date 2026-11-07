@@ -93,7 +93,8 @@ website itself.
       Moving the customer to `app.durby.tech` needs a new APK. Updates are installed by
       hand from Drive. The release key exists before the build workflow does, so it must be the final key from the
       start (Android refuses an update signed with another key). It lives in a password manager and an encrypted
-      offline copy; on the build machine only in the git-ignored `apps/android/release/`.
+      offline copy; on the build machine the key file sits in the git-ignored `apps/android/release/` and its password
+      only in the user's `~/.gradle/gradle.properties` (`durbyReleasePassword`).
 
 ## Consequences
 
