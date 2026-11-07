@@ -125,6 +125,23 @@ the audit log is the lasting record. A test print goes to the location's saved p
 - Blob downloads (the product import template) are not supported in version 1; use a browser.
 - Permissions: `INTERNET`, `ACCESS_NETWORK_STATE`. No foreground service, no boot receiver.
 
+## Install guide
+
+`docs/android/installationsanleitung.html`: one A4 page in German for staff (link, allowing the install source on
+Android 9, install, sign in, the red check screen). Screenshots from the Android 9 emulator in German, in
+`docs/android/img/`. Before sending, replace `LINK` with the APK's Drive link and print it to PDF:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --no-pdf-header-footer --print-to-pdf=docs/android/Durby-Installationsanleitung.pdf "file://$PWD/docs/android/installationsanleitung.html"
+```
+
+## Emulator runs
+
+Debug builds (never release) also allow `http://localhost:3000` and start there, so an emulator can use the local
+web: `adb reverse tcp:3000 tcp:3000`, the virtual printer on the Mac (`10.0.2.2:9100` from the emulator), and the
+WebView's DevTools socket for driving pages. On plain HTTP the secure refresh cookie isn't kept, so a full reload
+signs out locally; staging (HTTPS) keeps it.
+
 ## Tests
 
 | Layer                      | What                                                                                                                                                                          |
