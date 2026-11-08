@@ -224,6 +224,7 @@
   "pos.printerSettings.testTitle": "Testdruck",
   "pos.printerSettings.testLine": "Wenn Sie dies lesen können, werden Rechnungen hier gedruckt.",
   "pos.printerSettings.testPrinter": "Drucker {address}",
+  "pos.printerSettings.testEdges": "Beide Enden der Linie oben müssen auf dem Papier sein. Fehlt eines, wählen Sie die andere Papierbreite.",
   "pos.printerSettings.remoteHint": "Von hier aus werden „Drucker suchen“ und der Testdruck an die Kasse des Standorts gesendet. Sie führt sie innerhalb von 15 Sekunden aus, solange die App dort auf der Tischseite geöffnet ist.",
   "pos.printerSettings.findOnTill": "Drucker suchen (an der Kasse)",
   "pos.printerSettings.testOnTill": "Testdruck senden (an der Kasse)",

@@ -17,9 +17,12 @@ location, 58 mm / 384 dots first. Status: version 1 in progress (ADR 0032 §14�
 ## Printer settings (web)
 
 **Settings → Printers**, like the Bill tab: pick a location, inherit or set here. Fields: host, port (default 9100),
-width in dots (default 384), cutter, image mode. Reading needs `platform.settings.read`, saving
-`platform.settings.manage`, and the `pos` feature. **Send test print** works in the app; in a browser the button
-explains that it needs the app. Labels `pos.printerSettings.*` and `platform.settings.posPrinters.*`, en and de.
+width in dots (default 576, 80 mm: most restaurant printers in Germany; 58 mm is 384), cutter, image mode. Reading
+needs `platform.settings.read`, saving `platform.settings.manage`, and the `pos` feature. **Find printer** and **Send
+test print** run in the app; in a browser they are sent to the location's till (remote commands below). The test page
+prints a line across the full width (`|<---->|`) and asks for both ends to be on the paper: an 80 mm picture on 58 mm
+paper loses its right edge, where bills put the prices. Labels `pos.printerSettings.*` and
+`platform.settings.posPrinters.*`, en and de.
 
 `pos.printers` schema: `bill` is null or a strict object. `host` is a private IPv4 literal, `port` 9100–9102,
 `widthDots` 8–2040, `cutter` boolean, `imageMode` `gsV0` or `escStar`.
@@ -28,7 +31,10 @@ explains that it needs the app. Labels `pos.printerSettings.*` and `platform.set
 
 1. **Print bill** on a table, as today. The bill renders into `#print-root`.
 2. If the print object is there and the location has a bill printer, the web clones the bill, lays it out at
-   `widthDots / 2` css px, rasterizes it (text thresholded, logo dithered) and calls `print`.
+   `widthDots / 2` css px, rasterizes it (text thresholded, logo dithered) and calls `print`. The converter copies
+   every style but heights: text can measure a hair wider on screen than in the picture, so a line that wraps on
+   screen may fit in the picture, and a copied height left an empty line on paper. The picture is drawn with room to
+   spare and its blank end cut 16 dots below the last line.
 3. The app validates the printer settings, builds the ESC/POS job and sends it over one TCP connection.
 4. The web shows **sent** or the failure. On failure: **Retry** (same job id) and **Print with Android** (the print
    screen).
@@ -118,12 +124,27 @@ the audit log is the lasting record. A test print goes to the location's saved p
 ## App behaviour
 
 - HTTPS only, no mixed content, no local file access; web debugging off in release builds.
-- Sign-in survives restarts (the refresh cookie `__Secure-durby_rt` is flushed to disk).
+- Sign-in survives restarts: cookies are written to disk every 10 s, after each page load, on pause and on close.
+  The WebView alone kept a new refresh cookie (`__Secure-durby_rt`) in memory for minutes, so a power cut or crash
+  signed staff out (found on staging, 2026-11-08).
 - File chooser for uploads (menu scan, import, bill logo).
 - Links outside the allow-list, and `target="_blank"` links, open in Chrome.
 - Offline: an error screen with **Retry** and **Device settings**.
 - Blob downloads (the product import template) are not supported in version 1; use a browser.
 - Permissions: `INTERNET`, `ACCESS_NETWORK_STATE`. No foreground service, no boot receiver.
+
+## Pilot printer setup
+
+The first pilot restaurant's printer (self-test, 2026-11-08): DURAPOS DPT201-URE-BK, firmware SV3.02.46, **80 mm
+paper (576 dots, 203 dpi**; 48 characters per line in font A, 64 in font B), Ethernet with the static address
+`192.168.64.20` (mask 255.255.255.0, gateway 192.168.64.1, DHCP off), auto cutter, cash drawer port, near paper-end
+sensor, code page PC437 (irrelevant: Durby sends pictures).
+
+In Durby, Settings → Printers for that location: address `192.168.64.20`, port `9100`, paper **80 mm (576 dots)**,
+print mode Standard, **Cut the paper after each bill** on. Then **Send test print** (in a browser it goes to the
+till, which must have the app open): both ends of the `|<---->|` line must be on the paper. Staff do nothing for this;
+the install guide tells them the printer is set up remotely. Find printer on the till lists `192.168.64.20:9100` as
+Ready when the till is on the same network.
 
 ## Install guide
 
@@ -165,19 +186,20 @@ yet (1.1, with the build workflow).
 Version 1 (ADR 0032 §14–15): staff only install and sign in. Estimate from 2026-11-07: **6–7 working days**, of which
 the printer core, bill rendering, virtual printer and signing are done.
 
-| Step | Work                                                                                                                                                                  | Days  | State |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ----- |
-| A1   | Virtual printer (`tools/virtual-printer/`)                                                                                                                            | —     | done  |
-| A3   | Printer core, address rules, protocol, duplicates                                                                                                                     | —     | done  |
-| A5   | Web: detection, 384-dot rendering, messages                                                                                                                           | —     | done  |
-| A6a  | Release key and signing                                                                                                                                               | —     | done  |
-| A2   | Shell behind an engine interface; device check screen (en, de); allow-list; sign-in kept; file chooser; offline screen; print object; `window.print()` → print screen | 1.5   |       |
-| A3b  | Find printer: /24 scan on the device, `discover` message                                                                                                              | 0.5   |       |
-| A4   | `pos.printers`, Settings → Printers (find, manual, test print in the app), `GET /pos/bill-layout` gains `printers`                                                    | 1.5   |       |
-| A4b  | Remote find and test print: `pos_print_tasks`, api, polling in the app, Settings shows results (migration reviewed first)                                             | 1.5–2 |       |
-| A8   | Install guide (German, one page, screenshots: link, unknown apps on Android 9, install, open, sign in)                                                                | 0.5   |       |
-| A7   | Emulator run with the virtual printer (Android 9 and 14); web deploy to staging; APK link                                                                             | 1     |       |
-| 1.1  | Server select, tag-triggered build workflow, `/downloads`, GeckoView only if the device check fails                                                                   | —     |       |
+| Step | Work                                                                                                                                                                                                                  | Days  | State |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ----- |
+| A1   | Virtual printer (`tools/virtual-printer/`)                                                                                                                                                                            | —     | done  |
+| A3   | Printer core, address rules, protocol, duplicates                                                                                                                                                                     | —     | done  |
+| A5   | Web: detection, 384-dot rendering, messages                                                                                                                                                                           | —     | done  |
+| A6a  | Release key and signing                                                                                                                                                                                               | —     | done  |
+| A2   | Shell behind an engine interface; device check screen (en, de); allow-list; sign-in kept; file chooser; offline screen; print object; `window.print()` → print screen                                                 | 1.5   |       |
+| A3b  | Find printer: /24 scan on the device, `discover` message                                                                                                                                                              | 0.5   |       |
+| A4   | `pos.printers`, Settings → Printers (find, manual, test print in the app), `GET /pos/bill-layout` gains `printers`                                                                                                    | 1.5   |       |
+| A4b  | Remote find and test print: `pos_print_tasks`, api, polling in the app, Settings shows results (migration reviewed first)                                                                                             | 1.5–2 |       |
+| A8   | Install guide (German, one page, screenshots: link, unknown apps on Android 9, install, open, sign in)                                                                                                                | 0.5   |       |
+| A7   | Emulator run with the virtual printer (Android 9 and 14); web deploy to staging; APK link                                                                                                                             | 1     |       |
+| 1.1  | Server select, tag-triggered build workflow, `/downloads`, GeckoView only if the device check fails                                                                                                                   | —     |       |
+| 1.1  | Paper near end: the app already reads it (`DLE EOT 4`, bits 2+3) but only paper out and cover open stop a job. Show it as a warning after a sent bill and in Find printer (new status `paper_near_end`, labels en/de) | —     |       |
 
 The web changes need a staging deploy, so GitHub Actions must be running (or a manual deploy).
 

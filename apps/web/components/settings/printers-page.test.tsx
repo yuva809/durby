@@ -122,7 +122,9 @@ describe('PrintersPage', () => {
     await userEvent.selectOptions(screen.getByTestId('printers-location'), MAIN.id);
     await waitFor(() => expect(screen.getByTestId('printers-not-set')).toBeTruthy());
     await userEvent.type(screen.getByTestId('printers-host'), '10.0.0.7');
-    await userEvent.selectOptions(screen.getByTestId('printers-paper'), '576');
+    // A new printer starts at 80 mm, the common width in Germany.
+    expect(screen.getByTestId<HTMLSelectElement>('printers-paper').value).toBe('576');
+    await userEvent.selectOptions(screen.getByTestId('printers-paper'), '384');
     await userEvent.click(screen.getByTestId('printers-save'));
     await screen.findByTestId('printers-saved');
     expect(writes).toEqual([
@@ -131,7 +133,7 @@ describe('PrintersPage', () => {
         url: `/api/v1/settings/pos.printers?locationId=${MAIN.id}`,
         body: {
           value: {
-            bill: { host: '10.0.0.7', port: 9100, widthDots: 576, cutter: true, imageMode: 'gsV0' },
+            bill: { host: '10.0.0.7', port: 9100, widthDots: 384, cutter: true, imageMode: 'gsV0' },
           },
         },
       },
@@ -235,7 +237,7 @@ describe('PrintersPage', () => {
     expect(app.printer.print).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ width: 384 }),
-      { host: '192.168.64.20', port: 9100, widthDots: 384, cutter: true, imageMode: 'gsV0' },
+      { host: '192.168.64.20', port: 9100, widthDots: 576, cutter: true, imageMode: 'gsV0' },
     );
   });
 

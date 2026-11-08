@@ -37,7 +37,9 @@ import { Select } from '../ui/select';
 import { Loaded, NoAccess } from '../users/common';
 import { TestPrintPage } from '../pos/test-print-page';
 
-const PAPER_WIDTHS = [384, 576, 512] as const;
+/** 80 mm first and the default for a new printer: most restaurant printers in Germany use it. */
+const PAPER_WIDTHS = [576, 512, 384] as const;
+const DEFAULT_WIDTH_DOTS = PAPER_WIDTHS[0];
 
 const STATUS_LABELS: Record<NativeDiscoverAnswer['printers'][number]['status'], LabelKey> = {
   online: 'pos.printerSettings.statusOnline',
@@ -57,7 +59,7 @@ interface Draft {
 const draftOf = (p: PrinterSettings | null): Draft => ({
   host: p?.host ?? '',
   port: String(p?.port ?? 9100),
-  widthDots: String(p?.widthDots ?? 384),
+  widthDots: String(p?.widthDots ?? DEFAULT_WIDTH_DOTS),
   cutter: p?.cutter ?? true,
   imageMode: p?.imageMode ?? 'gsV0',
 });
