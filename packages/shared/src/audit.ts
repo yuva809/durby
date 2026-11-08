@@ -37,6 +37,7 @@ export const AUDIT_ENTITY_TYPES = [
   'price_rule',
   'reservation_guest',
   'printer_command',
+  'printer',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -268,6 +269,10 @@ export const AUDIT_ACTIONS = {
     entityType: 'dining_area',
     label: 'pos.audit.actions.diningAreaDeleted',
   },
+  // Printers per location (ADR 0033).
+  'pos.printer.created': { entityType: 'printer', label: 'pos.audit.actions.printerCreated' },
+  'pos.printer.updated': { entityType: 'printer', label: 'pos.audit.actions.printerUpdated' },
+  'pos.printer.archived': { entityType: 'printer', label: 'pos.audit.actions.printerArchived' },
   // Remote printer commands (ADR 0032 §15): the audit log is their lasting record.
   'pos.printer_command.requested': {
     entityType: 'printer_command',
@@ -448,7 +453,29 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'station', 'direct', 'status', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
   /** `resultCode`: the answer code, or `found` for a search; `printerCount`: printers a search found. */
-  printer_command: ['id', 'locationId', 'kind', 'status', 'resultCode', 'printerCount'],
+  printer_command: [
+    'id',
+    'locationId',
+    'kind',
+    'printerId',
+    'status',
+    'resultCode',
+    'printerCount',
+  ],
+  printer: [
+    'id',
+    'locationId',
+    'name',
+    'host',
+    'port',
+    'widthDots',
+    'cutter',
+    'imageMode',
+    'enabled',
+    'printsBills',
+    'stations',
+    'archivedAt',
+  ],
   warehouse: ['id', 'locationId', 'name', 'sortOrder', 'suppliesStation', 'archivedAt'],
   /** `itemIds`: sorted, joined with commas; snapshots hold flat values only. */
   recipe: ['productId', 'lineCount', 'itemIds'],

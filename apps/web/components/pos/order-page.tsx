@@ -11,6 +11,9 @@ import {
   type PrepStation,
   type Product,
   type ProductCategory,
+  billPrinterFor,
+  type Printer as LocationPrinter,
+  printerSettingsOf,
   type SendTicketResponse,
   type StationProcessing,
   TABLE_COLORS,
@@ -58,6 +61,7 @@ import { useNow } from '../../lib/pos/use-now';
 import { printAs } from '../../lib/pos/print';
 import { renderBillImage } from '../../lib/print/bill-image';
 import { nativePrinter, type NativePrintOutcome } from '../../lib/print/native';
+import { deviceBillPrinter, setDeviceBillPrinter } from '../../lib/print/device-printer';
 import { nativePrintMessage, printBillNatively } from '../../lib/print/native-bill';
 import { useBrand } from '../theme-provider';
 import { useActionKey } from '../../lib/use-action-key';
@@ -161,8 +165,15 @@ function printParts(title: string): void {
   }
 }
 
-/** A bill printed by our Android app (ADR 0032): one job id per tap, kept for Retry. */
-type NativeBillJob = { jobId: string; outcome: NativePrintOutcome | null };
+/**
+ * A bill printed by our Android app (ADR 0032): one job id per tap, kept for Retry. `choose`: the location has
+ * several receipt printers and this device has no default yet (ADR 0033).
+ */
+type NativeBillJob = {
+  jobId: string;
+  outcome: NativePrintOutcome | null;
+  choose?: LocationPrinter[];
+};
 
 /**
  * What happened to the bill the app printed: printing, sent, or the failure with Retry (same job id, so a bill
@@ -172,13 +183,29 @@ function NativePrintStatus({
   job,
   onRetry,
   onPrintScreen,
+  onChoose,
 }: {
   job: NativeBillJob | null;
   onRetry: () => void;
   onPrintScreen: () => void;
+  onChoose: (printerId: string) => void;
 }) {
   const t = useT();
   if (!job) return null;
+  if (job.choose) {
+    return (
+      <div className="flex flex-col gap-2" data-testid="native-print-choose">
+        <Notice text={t('pos.nativePrint.choosePrinter')} tone="info" />
+        <div className="flex flex-wrap gap-2">
+          {job.choose.map((p) => (
+            <Button key={p.id} variant="outline" onClick={() => onChoose(p.id)}>
+              {p.name}
+            </Button>
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (!job.outcome) return <Notice text={t('pos.nativePrint.printing')} tone="info" />;
   const failed = job.outcome.state === 'failed';
   return (
@@ -248,16 +275,24 @@ function TableOrder({
   // browser, prints through window.print() as before.
   const [nativeJob, setNativeJob] = useState<NativeBillJob | null>(null);
   const nativeBusy = useRef(false);
-  // The location's bill printer (`pos.printers`, ADR 0032), read with the bill layout.
-  const billPrinter = layout.status === 'ready' ? layout.data.printers.bill : null;
-  const printNatively = (jobId: string) => {
+  // The location's printers (ADR 0033), read with the bill layout.
+  const printerList = layout.status === 'ready' ? layout.data.printerList : [];
+  /** `chosen`: the receipt printer picked just now, kept as this device's default for the location. */
+  const printNatively = (jobId: string, chosen?: string) => {
     const printer = nativePrinter();
     const bill = document.querySelector<HTMLElement>('#print-root [data-testid="printed-bill"]');
-    if (!printer || nativeBusy.current) return;
+    if (!printer || nativeBusy.current || !locationId) return;
+    if (chosen) setDeviceBillPrinter(locationId, chosen);
+    const target = billPrinterFor(printerList, chosen ?? deviceBillPrinter(locationId));
+    if (target.kind === 'choose') {
+      setNativeJob({ jobId, outcome: null, choose: target.options });
+      return;
+    }
+    const settings = target.kind === 'printer' ? printerSettingsOf(target.printer) : null;
     nativeBusy.current = true;
     setNativeJob({ jobId, outcome: null });
     const done = bill
-      ? printBillNatively(printer, billPrinter, bill, jobId, renderBillImage)
+      ? printBillNatively(printer, settings, bill, jobId, renderBillImage)
       : Promise.resolve<NativePrintOutcome>({ state: 'failed', code: 'print.payload_invalid' });
     void done.then((outcome) => {
       nativeBusy.current = false;
@@ -268,7 +303,8 @@ function TableOrder({
 
   useEffect(() => {
     if (!print) return;
-    if (print.kind === 'bill' && nativePrinter()) printNewBill();
+    // Started after this effect: printing (or asking which printer) updates the page's state.
+    if (print.kind === 'bill' && nativePrinter()) void Promise.resolve().then(printNewBill);
     else printParts(organizationName);
   }, [print, organizationName]);
   const nativeStatus = (
@@ -276,6 +312,7 @@ function TableOrder({
       job={nativeJob}
       onRetry={() => nativeJob && printNatively(nativeJob.jobId)}
       onPrintScreen={() => printParts(organizationName)}
+      onChoose={(printerId) => nativeJob && printNatively(nativeJob.jobId, printerId)}
     />
   );
 

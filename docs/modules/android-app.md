@@ -14,18 +14,38 @@ location, 58 mm / 384 dots first. Status: version 1 in progress (ADR 0032 §14�
 | Web: Settings → Printers              | `apps/web/components/settings/printers-page.tsx`                |
 | Virtual printer for tests             | `tools/virtual-printer/`                                        |
 
-## Printer settings (web)
+## Printers (ADR 0033)
 
-**Settings → Printers**, like the Bill tab: pick a location, inherit or set here. Fields: host, port (default 9100),
-width in dots (default 576, 80 mm: most restaurant printers in Germany; 58 mm is 384), cutter, image mode. Reading
-needs `platform.settings.read`, saving `platform.settings.manage`, and the `pos` feature. **Find printer** and **Send
-test print** run in the app; in a browser they are sent to the location's till (remote commands below). The test page
-prints a line across the full width (`|<---->|`) and asks for both ends to be on the paper: an 80 mm picture on 58 mm
-paper loses its right edge, where bills put the prices. Labels `pos.printerSettings.*` and
-`platform.settings.posPrinters.*`, en and de.
+**Settings → Printers**: pick a location; its printers are a list with **Add printer**. Each printer has a name
+(unique per location among printers in use), address, port (default 9100), width in dots (default 576, 80 mm: most
+restaurant printers in Germany; 58 mm is 384), cutter, image mode, **Prints bills**, **Prints tickets for** (the
+stations, by key: Kitchen, Bar), **Switched on**, Find printer, test print and Archive. One printer may serve several
+stations; one station may print on several printers. A new printer starts switched off and is switched on after its
+test print. Reading needs `platform.settings.read`, changing `platform.settings.manage`, and the `pos` feature.
+**Find printer** and **Send test print** run in the app; in a browser they are sent to the location's till (remote
+commands below). The test page names the printer and prints a line across the full width (`|<---->|`), asking for
+both ends to be on the paper: an 80 mm picture on 58 mm paper loses its right edge, where bills put the prices.
+Labels `pos.printerSettings.*`, en and de.
 
-`pos.printers` schema: `bill` is null or a strict object. `host` is a private IPv4 literal, `port` 9100–9102,
-`widthDots` 8–2040, `cutter` boolean, `imageMode` `gsV0` or `escStar`.
+| Endpoint                         | Who                                       | What                                                                     |
+| -------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------ |
+| `GET /pos/printers?locationId=`  | `platform.settings.read`                  | The location's printers in use, by name                                  |
+| `POST /pos/printers`             | `platform.settings.manage` (Owner, Admin) | Adds one, always switched off (`enabled` isn't accepted)                 |
+| `PATCH /pos/printers/:id`        | `platform.settings.manage`                | Any of name, address, port, width, cutter, mode, bills, stations, on/off |
+| `POST /pos/printers/:id/archive` | `platform.settings.manage`                | Archives it: off, out of the lists, its name free again                  |
+
+Every write takes an `Idempotency-Key` and is audited (`pos.printer.created`, `.updated`, `.archived`). Errors:
+`pos.printer_not_found`, `pos.printer_name_taken`, `pos.printer_required`. `GET /pos/bill-layout` carries the
+location's printers in use (`printerList`, on or off) for the till.
+
+**Which printer a bill goes to:** this device's default receipt printer if it is still on and prints bills at the
+location, else the only such printer, else the till asks once ("Which printer?") and keeps the answer as this device's
+default; with none, the Android print screen. Until version 1.1 of the app keeps it in its own storage, the default is held in memory: the till asks once per app start (the web never uses browser storage).
+
+**Version 1's setting** `pos.printers` (`{ bill }`) was copied into a printer per location by the migration
+`pos_printers` (on, prints bills, named by its address). It stays registered and in the bill layout for the previous
+release until a contract step removes it, and is read forward-compatibly: the setting's `read` schema drops keys and
+fields this release doesn't know. Image mode only; a text mode for impact printers is a later option.
 
 ## Print flow
 
@@ -102,14 +122,14 @@ the paper before **Retry**. The app never retries by itself.
 
 | Endpoint                                        | Who                                         | What                                                                                                   |
 | ----------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `POST /pos/printer-commands`                    | `platform.settings.manage` (Owner, Admin)   | `{ locationId, kind: find_printers \| test_print }`, 5 min                                             |
+| `POST /pos/printer-commands`                    | `platform.settings.manage` (Owner, Admin)   | `{ locationId, kind: find_printers \| test_print, printerId? }`, 5 min; a test print needs `printerId` |
 | `GET /pos/printer-commands?locationId=`         | `platform.settings.read`                    | The location's last 10 commands with status and result                                                 |
 | `GET /pos/printer-commands/pending?locationId=` | `pos.bills.print` at the location           | Open commands; the till polls this every 15 s, in the app only                                         |
 | `POST /pos/printer-commands/claim`              | `pos.bills.print` at the location           | One atomic `UPDATE … WHERE status = 'pending' AND expires_at > now() RETURNING`: exactly one till wins |
 | `POST /pos/printer-commands/:id/result`         | the till that claimed it, before it expires | `{ result: { subnet, printers } \| { code } }` → done or failed                                        |
 
 Every write takes an `Idempotency-Key` and is audited (`pos.printer_command.requested`, `.claimed`, `.completed`);
-the audit log is the lasting record. A test print goes to the location's saved printer. Errors:
+the audit log is the lasting record. A test print goes to its printer (on or off) and names it on the page. Errors:
 `pos.printer_command_not_found`, `pos.printer_command_expired`, `pos.printer_command_not_claimed`.
 
 ## Device screens

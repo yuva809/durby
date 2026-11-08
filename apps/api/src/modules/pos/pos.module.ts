@@ -12,6 +12,8 @@ import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { PrinterCommandsController } from './printer-commands.controller';
 import { PrinterCommandsService } from './printer-commands.service';
+import { PrintersController } from './printers.controller';
+import { PrintersService } from './printers.service';
 import { PublicMenuController } from './public-menu.controller';
 import { PublicMenuService } from './public-menu.service';
 import { TablesController } from './tables.controller';
@@ -31,6 +33,7 @@ import { TablesService } from './tables.service';
     KitchenController,
     PublicMenuController,
     PrinterCommandsController,
+    PrintersController,
   ],
   providers: [
     TablesService,
@@ -41,6 +44,7 @@ import { TablesService } from './tables.service';
     PublicMenuService,
     PosFloorReader,
     PrinterCommandsService,
+    PrintersService,
   ],
   exports: [TablesService, AreasService, PosFloorReader],
 })

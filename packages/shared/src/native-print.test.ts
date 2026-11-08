@@ -6,6 +6,8 @@ import {
   nativeDiscoverAnswerSchema,
   nativePrintAnswerSchema,
   nativePrintRequestSchema,
+  posPrintersReadSchema,
+  posPrintersSchema,
   printerSettingsSchema,
 } from './native-print';
 
@@ -22,7 +24,7 @@ const printer = {
   port: 9100,
   widthDots: 384,
   cutter: true,
-  imageMode: 'gsV0',
+  imageMode: 'gsV0' as const,
 };
 
 describe('printer address rules (shared with the Android app)', () => {
@@ -117,5 +119,21 @@ describe('discover answer', () => {
       nativeDiscoverAnswerSchema.safeParse({ type: 'discover', subnet: null, printers: [] })
         .success,
     ).toBe(true);
+  });
+});
+
+describe('reading pos.printers forward-compatibly (ADR 0033)', () => {
+  const later = { bill: { ...printer, textMode: true }, kitchen: printer };
+  it("reads a later release's value: unknown keys and printer fields are dropped", () => {
+    expect(posPrintersReadSchema.parse(later)).toEqual({ bill: printer });
+  });
+  it('still writes strictly', () => {
+    expect(posPrintersSchema.safeParse(later).success).toBe(false);
+  });
+  it('still refuses a bad bill printer', () => {
+    expect(posPrintersReadSchema.safeParse({ bill: { ...printer, host: '8.8.8.8' } }).success).toBe(
+      false,
+    );
+    expect(posPrintersReadSchema.safeParse('printer').success).toBe(false);
   });
 });

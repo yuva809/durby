@@ -81,7 +81,9 @@ export function resolveSettings(
         onIgnored(`${key} is not allowed at ${scope} scope`);
         continue;
       }
-      const parsed = SETTINGS[key].schema.safeParse(levels[scope]);
+      // Forward-compatible where the key has a read schema: a later release's additions are dropped (ADR 0033).
+      const def = SETTINGS[key];
+      const parsed = (def.read ?? def.schema).safeParse(levels[scope]);
       if (!parsed.success) {
         onIgnored(`invalid ${scope} value of ${key}`);
         continue;

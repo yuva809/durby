@@ -144,4 +144,17 @@ describe('settingRegistryProblems', () => {
       'bound: data-bound settings start at organization scope',
     ]);
   });
+
+  it('reports a read schema that reads the default differently from the schema', () => {
+    const schema = z.strictObject({ a: z.number() });
+    expect(
+      settingRegistryProblems({
+        lenient: def(
+          { schema, read: z.preprocess((v) => v, schema), default: { a: 1 } },
+          'lenient',
+        ),
+        wrong: def({ schema, read: z.strictObject({ b: z.number() }), default: { a: 1 } }, 'wrong'),
+      }),
+    ).toEqual(['wrong: the read schema must read the default as the schema does']);
+  });
 });

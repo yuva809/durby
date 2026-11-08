@@ -18,6 +18,10 @@ step needs them.
 Keys are `module.camelCaseName` (platform-wide keys have no module prefix). Each entry has a name and a description
 label, a strict Zod schema, a default that passes the schema, the scopes it may be set at, and `dataBound`.
 
+A key a later release may extend can add a `read` schema (ADR 0033): reads drop what this release doesn't know (a new
+key, a new field) and then apply the strict schema, so a value saved by the next release still resolves after a
+rollback. Writes always use the strict schema. `pos.printers` has one.
+
 | Key                            | Value                                                                                                                                               | Default                 | Scopes                                 | dataBound |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | -------------------------------------- | --------- |
 | `locale`                       | a supported locale (`LOCALES`: en, de)                                                                                                              | `en`                    | partner, organization, brand, location |           |

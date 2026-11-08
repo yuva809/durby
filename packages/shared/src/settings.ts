@@ -7,7 +7,7 @@ import {
   SLOT_INTERVALS,
   turnTimesSchema,
 } from './reservation-settings';
-import { DEFAULT_POS_PRINTERS, posPrintersSchema } from './native-print';
+import { DEFAULT_POS_PRINTERS, posPrintersReadSchema, posPrintersSchema } from './native-print';
 import { countryCodeSchema } from './phone';
 import {
   billFooterSchema,
@@ -47,7 +47,14 @@ export interface SettingDefinition<S extends z.ZodType = z.ZodType> {
   label: string;
   /** Label key of a one-line description. */
   description: string;
+  /** Validates writes: strict, so stored values never carry free-form fields. */
   schema: S;
+  /**
+   * Forward-compatible reading (ADR 0033), for keys a later release may extend: drops what this release doesn't
+   * know and then validates with `schema`, so a value saved by the next release still resolves here after a
+   * rollback. Missing: reads use `schema`.
+   */
+  read?: z.ZodType<z.infer<S>>;
   default: z.infer<S>;
   /** The scopes a value may be stored at. */
   scopes: readonly SettingScope[];
@@ -241,6 +248,7 @@ export const SETTINGS = {
     label: 'platform.settings.posPrinters.name',
     description: 'platform.settings.posPrinters.description',
     schema: posPrintersSchema,
+    read: posPrintersReadSchema,
     default: DEFAULT_POS_PRINTERS,
     scopes: ALL_SCOPES,
     dataBound: false,
@@ -338,6 +346,12 @@ export function settingRegistryProblems(
     }
     if (!def.schema.safeParse(def.default).success) {
       problems.push(`${key}: default fails the schema`);
+    }
+    if (def.read) {
+      const read = def.read.safeParse(def.default);
+      if (!read.success || !def.schema.safeParse(read.data).success) {
+        problems.push(`${key}: the read schema must read the default as the schema does`);
+      }
     }
     // A strict object has a `never` catchall, so stored values can't carry free-form fields.
     if (def.schema instanceof z.ZodObject && !(def.schema.def.catchall instanceof z.ZodNever)) {

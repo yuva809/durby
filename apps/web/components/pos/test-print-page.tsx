@@ -1,12 +1,19 @@
 'use client';
 
-import type { PrinterSettings } from '@durby/shared';
 import type { Ref } from 'react';
 import { useT } from '../../app/labels-provider';
 
+/** What the test page says about its printer. */
+export interface TestPagePrinter {
+  name: string;
+  host: string;
+  port: number;
+}
+
 /**
- * The test page a printer gets (Settings → Printers, remote test print; ADR 0032): drawn like a bill, at the
- * printer's width, in the location's language. Kept hidden; only its picture is printed.
+ * The test page a printer gets (Settings → Printers, remote test print; ADR 0032, ADR 0033): drawn like a bill, at
+ * the printer's width, in the location's language, with the printer's name and address, so several printers can be
+ * told apart from far away. Kept hidden; only its picture is printed.
  */
 export function TestPrintPage({
   ref,
@@ -15,13 +22,21 @@ export function TestPrintPage({
 }: {
   ref: Ref<HTMLDivElement>;
   locationName: string;
-  printer: PrinterSettings | null;
+  printer: TestPagePrinter | null;
 }) {
   const t = useT();
   return (
     <div className="hidden" aria-hidden>
-      <div ref={ref} className="flex flex-col gap-1 p-2 font-mono text-xs text-foreground">
-        <p className="text-base font-bold">{t('pos.printerSettings.testTitle')}</p>
+      <div
+        ref={ref}
+        className="flex flex-col gap-1 p-2 font-mono text-xs text-foreground"
+        data-testid="test-print-page"
+      >
+        <p className="text-base font-bold">
+          {printer?.name
+            ? t('pos.printerSettings.testTitleNamed', { printer: printer.name })
+            : t('pos.printerSettings.testTitle')}
+        </p>
         {locationName && <p>{locationName}</p>}
         {printer && (
           <p>

@@ -60,8 +60,42 @@ describe('pos printer commands', () => {
       .get(`/api/v1/pos/printer-commands${path}?locationId=${locationId}`)
       .auth(token, { type: 'bearer' });
 
+  /** A printer per location for test prints (ADR 0033), added once. */
+  const printers = new Map<string, string>();
+  const printerAt = async (token: string, locationId: string) => {
+    const known = printers.get(locationId);
+    if (known) return known;
+    const created = await withIdempotencyKey(
+      request(server).post('/api/v1/pos/printers').auth(token, { type: 'bearer' }),
+      uuidv7(),
+    )
+      .send({
+        locationId,
+        name: 'Bar',
+        host: '192.168.64.20',
+        port: 9100,
+        widthDots: 576,
+        cutter: true,
+        imageMode: 'gsV0',
+        printsBills: true,
+        stations: [],
+      })
+      .expect(201);
+    const id = (created.body as { id: string }).id;
+    printers.set(locationId, id);
+    return id;
+  };
+
   const ask = async (token: string, locationId: string, kind: 'find_printers' | 'test_print') =>
-    printerCommandSchema.parse((await post(token, '', { locationId, kind }).expect(201)).body);
+    printerCommandSchema.parse(
+      (
+        await post(token, '', {
+          locationId,
+          kind,
+          ...(kind === 'test_print' ? { printerId: await printerAt(token, locationId) } : {}),
+        }).expect(201)
+      ).body,
+    );
 
   const claim = (token: string, locationId: string) => post(token, '/claim', { locationId });
 
@@ -138,6 +172,36 @@ describe('pos printer commands', () => {
       expect(winners).toHaveLength(1);
       expect(winners[0]!.command!.id).toBe(command.id);
     }
+  });
+
+  it('sends a test print to one printer of the location, and carries it to the till (ADR 0033)', async () => {
+    const { org: o, owner } = await org();
+    const till = await member(o, 'waiter', [o.locations[0]]);
+    const err = await post(owner, '', { locationId: o.locations[0], kind: 'test_print' }).expect(
+      400,
+    );
+    expect(err.body).toMatchObject({ code: 'pos.printer_required' });
+    const elsewhere = await printerAt(owner, o.locations[1]);
+    await post(owner, '', {
+      locationId: o.locations[0],
+      kind: 'test_print',
+      printerId: elsewhere,
+    }).expect(404);
+
+    const find = await ask(owner, o.locations[0], 'find_printers');
+    expect(find.printerId).toBeNull();
+    const test = await ask(owner, o.locations[0], 'test_print');
+    expect(test.printerId).toBe(printers.get(o.locations[0]));
+    const first = claimPrinterCommandResponseSchema.parse(
+      (await claim(till, o.locations[0]).expect(200)).body,
+    );
+    const second = claimPrinterCommandResponseSchema.parse(
+      (await claim(till, o.locations[0]).expect(200)).body,
+    );
+    expect([first.command?.printerId, second.command?.printerId]).toEqual([
+      null,
+      printers.get(o.locations[0]),
+    ]);
   });
 
   it('marks a test print failed with its code, and refuses a printer list for it', async () => {
