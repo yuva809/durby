@@ -76,6 +76,22 @@ Later, its own step: stations as a list.
 
 - A printer switched on in Durby prints alongside the previous till system for that station: switch that system's
   printing off for it at the same time.
-- Until the contract step, a printer changed in Durby isn't written back to `pos.printers`: a rollback to version 1
-  prints bills on the version 1 value.
 - Polling costs one small request per till every 1.5 s; RT.1 removes it.
+
+### Rollback
+
+- **After this release, printer edits go to `pos_printers` only.** Nothing writes `pos.printers` any more (Settings →
+  Printers no longer edits it), so the setting keeps the last value version 1 saved.
+- **A rollback to the previous release restores that last `pos.printers` value**: bills print on the printer as it was
+  before this release. Printers added, renamed, re-addressed, switched off or archived since are not seen by the
+  previous release; its Settings → Printers shows and edits the old value again.
+- **The schema stays** (expand only, ADR 0004): `pos_printers`, `pos_printer_stations` and
+  `pos_printer_commands.printer_id` remain and the previous release ignores them. Rolling forward again shows the
+  printers as they were before the rollback; edits made to `pos.printers` during the rollback are not copied again
+  (the copy runs once, only for locations without a printer).
+- **The print object is unchanged** (no file under `apps/android` changed): the version 1 app keeps working with this
+  release's web. Checked on the emulator (2026-11-08) with the version 1 build of commit `035bcbb`: a bill on a
+  migrated printer, Find printer, and a remote test print from a browser. A test print the previous release queued
+  in its last 5 minutes (no printer) answers "no printer" here and is sent again from Settings.
+- **The contract step** (after version 1.1 has run for a while) stops serving `pos.printers` in the bill layout,
+  unregisters the setting, removes its values and adds the CHECK that a test print names its printer.
