@@ -11,6 +11,21 @@ const PILOT = {
 const LOCATION = '0190a000-0000-7000-8000-000000000101';
 const COMMAND_ID = '0190a000-0000-7000-8000-000000000201';
 const image = { width: 384, height: 1, data: 'A'.repeat(64) };
+const PRINTER_ID = '0190a000-0000-7000-8000-000000000301';
+const SAVED = {
+  id: PRINTER_ID,
+  locationId: LOCATION,
+  name: 'Bar',
+  ...PILOT,
+  enabled: false,
+  printsBills: true,
+  stations: [],
+  archivedAt: null,
+  createdAt: '2026-11-08T12:00:00.000Z',
+  updatedAt: '2026-11-08T12:00:00.000Z',
+};
+const FIND = { kind: 'find_printers', printerId: null } as const;
+const TEST = { kind: 'test_print', printerId: PRINTER_ID } as const;
 
 function device(overrides: Partial<CommandDevice> = {}): CommandDevice {
   return {
@@ -24,7 +39,7 @@ function device(overrides: Partial<CommandDevice> = {}): CommandDevice {
       ),
       print: vi.fn(() => Promise.resolve({ state: 'sent' as const, code: 'print.sent' as const })),
     },
-    savedPrinter: () => Promise.resolve(PILOT),
+    printerFor: () => Promise.resolve(SAVED),
     renderTestPage: () => Promise.resolve(image),
     ...overrides,
   };
@@ -32,29 +47,34 @@ function device(overrides: Partial<CommandDevice> = {}): CommandDevice {
 
 describe('runPrinterCommand', () => {
   it('finds printers through the app', async () => {
-    expect(await runPrinterCommand('find_printers', device())).toEqual({
+    expect(await runPrinterCommand(FIND, device())).toEqual({
       subnet: '192.168.64.0/24',
       printers: [{ host: '192.168.64.20', port: 9100, status: 'online' }],
     });
   });
 
-  it("prints the test page on the location's saved printer", async () => {
-    const d = device();
-    expect(await runPrinterCommand('test_print', d)).toEqual({ code: 'print.sent' });
+  it("prints the test page on the command's printer, even while it is switched off (ADR 0033)", async () => {
+    const printerFor = vi.fn(() => Promise.resolve(SAVED));
+    const renderTestPage = vi.fn(() => Promise.resolve(image));
+    const d = device({ printerFor, renderTestPage });
+    expect(await runPrinterCommand(TEST, d)).toEqual({ code: 'print.sent' });
+    expect(printerFor).toHaveBeenCalledWith(PRINTER_ID);
+    expect(renderTestPage).toHaveBeenCalledWith(SAVED);
+    // The print object gets the printer only.
     expect(d.printer.print).toHaveBeenCalledWith(expect.any(String), image, PILOT);
   });
 
   it('answers with a code when it cannot run', async () => {
     expect(
-      await runPrinterCommand('test_print', device({ savedPrinter: () => Promise.resolve(null) })),
+      await runPrinterCommand(TEST, device({ printerFor: () => Promise.resolve(null) })),
     ).toEqual({
       code: 'print.no_printer',
     });
     const silent = device();
     silent.printer.discover = vi.fn(() => Promise.resolve(null));
-    expect(await runPrinterCommand('find_printers', silent)).toEqual({ code: 'print.no_answer' });
+    expect(await runPrinterCommand(FIND, silent)).toEqual({ code: 'print.no_answer' });
     const broken = device({ renderTestPage: () => Promise.reject(new Error('no canvas')) });
-    expect(await runPrinterCommand('test_print', broken)).toEqual({
+    expect(await runPrinterCommand(TEST, broken)).toEqual({
       code: 'print.payload_invalid',
     });
   });
@@ -65,6 +85,7 @@ describe('pollPrinterCommands', () => {
     id: COMMAND_ID,
     locationId: LOCATION,
     kind: 'find_printers',
+    printerId: null,
     status: 'claimed',
     expired: false,
     createdAt: '2026-11-07T12:00:00.000Z',

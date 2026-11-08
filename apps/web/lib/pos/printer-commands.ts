@@ -6,7 +6,8 @@ import {
   printerCommandListResponseSchema,
   type PrinterCommandResult,
   printerCommandSchema,
-  type PrinterSettings,
+  type Printer,
+  printerSettingsOf,
   type PrintImage,
 } from '@durby/shared';
 import { type Api, list, read, type Result, write } from '../api-call';
@@ -22,13 +23,15 @@ export const requestPrinterCommand = (
   action: ActionKey,
   locationId: string,
   kind: PrinterCommandKind,
+  /** The printer a test print is for (ADR 0033); none for Find printer. */
+  printerId?: string,
 ): Promise<Result<PrinterCommand | null>> =>
   write(
     store,
     action,
     '/api/v1/pos/printer-commands',
     'POST',
-    { locationId, kind },
+    printerId ? { locationId, kind, printerId } : { locationId, kind },
     printerCommandSchema,
   );
 
@@ -84,30 +87,37 @@ export const completePrinterCommand = (
 /** What running a command needs on the till. */
 export interface CommandDevice {
   printer: Pick<NativePrinter, 'discover' | 'print'>;
-  /** The location's saved bill printer, read when the command runs. */
-  savedPrinter: () => Promise<PrinterSettings | null>;
-  /** The test page at the printer's width. */
-  renderTestPage: (widthDots: number) => Promise<PrintImage>;
+  /**
+   * The command's printer at the location, read when the command runs, switched on or not: the test print comes
+   * before switching a printer on (ADR 0033). Null when it was archived meanwhile.
+   */
+  printerFor: (printerId: string) => Promise<Printer | null>;
+  /** The test page for that printer, at its width. */
+  renderTestPage: (printer: Printer) => Promise<PrintImage>;
 }
 
 /** Runs one claimed command through the print object. Never throws: every end is a result. */
 export async function runPrinterCommand(
-  kind: PrinterCommandKind,
+  command: Pick<PrinterCommand, 'kind' | 'printerId'>,
   device: CommandDevice,
 ): Promise<PrinterCommandResult> {
-  if (kind === 'find_printers') {
+  if (command.kind === 'find_printers') {
     const found = await device.printer.discover();
     return found ? { subnet: found.subnet, printers: found.printers } : { code: 'print.no_answer' };
   }
-  const printer = await device.savedPrinter();
+  const printer = command.printerId ? await device.printerFor(command.printerId) : null;
   if (!printer) return { code: 'print.no_printer' };
   let image: PrintImage;
   try {
-    image = await device.renderTestPage(printer.widthDots);
+    image = await device.renderTestPage(printer);
   } catch {
     return { code: 'print.payload_invalid' };
   }
-  const outcome = await device.printer.print(crypto.randomUUID(), image, printer);
+  const outcome = await device.printer.print(
+    crypto.randomUUID(),
+    image,
+    printerSettingsOf(printer),
+  );
   return { code: outcome.code };
 }
 
@@ -125,7 +135,7 @@ export async function pollPrinterCommands(
   const claimed = await claimPrinterCommand(store, new ActionKey(), locationId);
   const command = claimed.ok ? claimed.data?.command : null;
   if (!command) return 'taken';
-  const result = await runPrinterCommand(command.kind, device);
+  const result = await runPrinterCommand(command, device);
   // One key for this result: a retry after a lost answer replays instead of failing as "not claimed".
   const action = new ActionKey();
   const sent = await completePrinterCommand(store, action, command.id, result);

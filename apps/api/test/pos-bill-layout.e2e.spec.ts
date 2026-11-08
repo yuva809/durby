@@ -73,6 +73,7 @@ describe('pos bill layout', () => {
       header: DEFAULT_BILL_HEADER,
       footer: DEFAULT_BILL_FOOTER,
       printers: DEFAULT_POS_PRINTERS,
+      printerList: [],
     });
   });
 
@@ -122,6 +123,28 @@ describe('pos bill layout', () => {
     expect(here.printers.bill).toEqual(bill);
     const there = billLayoutSchema.parse((await layout(owner, o.locations[1]).expect(200)).body);
     expect(there.printers.bill).toBeNull();
+  });
+
+  it('still gives the bill printer when a later release saved more (rollback, ADR 0033)', async () => {
+    const { org: o, owner } = await org();
+    const bill = {
+      host: '192.168.64.21',
+      port: 9100,
+      widthDots: 576,
+      cutter: true,
+      imageMode: 'gsV0',
+    };
+    await put(owner, 'pos.printers', { bill }, o.locations[0]).expect(200);
+    // As a later release might store it: a new key and a new field, which this release's writes refuse.
+    await seed.as(o.id, (db) =>
+      db.settingValue.updateMany({
+        where: { key: 'pos.printers', locationId: o.locations[0] },
+        data: { value: { bill: { ...bill, paperSaver: true }, kitchen: bill } },
+      }),
+    );
+    await put(owner, 'pos.printers', { bill, kitchen: bill }, o.locations[1]).expect(422);
+    const here = billLayoutSchema.parse((await layout(owner, o.locations[0]).expect(200)).body);
+    expect(here.printers).toEqual({ bill });
   });
 
   it('refuses printer addresses outside the private network and other ports', async () => {

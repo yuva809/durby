@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { times } from '../../lib/pos/format';
+import { forgetDeviceBillPrinters } from '../../lib/print/device-printer';
 import { mockState, resetMocks } from '../../test/mocks';
 import { sessionFixture } from '../../test/session-fixture';
 import { BrandProvider } from '../theme-provider';
@@ -18,6 +19,19 @@ vi.mock('next/navigation', async () => (await import('../../test/mocks')).naviga
 
 const print = vi.fn();
 
+/** The Android app's print object, or none (a browser: every other test). */
+const app = vi.hoisted(() => ({
+  printer: null as null | { print: ReturnType<typeof vi.fn> },
+}));
+vi.mock('../../lib/print/native', async (original) => ({
+  ...(await original<typeof import('../../lib/print/native')>()),
+  nativePrinter: () => app.printer,
+}));
+// jsdom has no canvas: the picture itself is tested in lib/print.
+vi.mock('../../lib/print/bill-image', () => ({
+  renderBillImage: vi.fn(() => Promise.resolve({ width: 576, height: 1, data: 'A'.repeat(96) })),
+}));
+
 /** The till names the product on the bill ("Powered by"). */
 const Brand = ({ children }: { children: ReactNode }) => (
   <BrandProvider brand={{ productName: 'Product', logoUrl: null }}>{children}</BrandProvider>
@@ -27,6 +41,8 @@ beforeEach(() => {
   resetMocks();
   print.mockReset();
   window.print = print;
+  app.printer = null;
+  forgetDeviceBillPrinters();
 });
 afterEach(() => {
   cleanup();
@@ -693,6 +709,7 @@ describe('OrderPage (till)', () => {
           },
           footer: { lines: ['Thank you for visiting!', 'Vielen Dank für Ihren Besuch!'] },
           printers: { bill: null },
+          printerList: [],
         }),
     });
     render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
@@ -724,6 +741,78 @@ describe('OrderPage (till)', () => {
     expect(footer).toMatch(/\d/);
     // A bill, not a receipt: no VAT breakdown and no TSE data.
     expect(printed.textContent).not.toMatch(/VAT|TSE/);
+  });
+
+  it('in the app, asks once which receipt printer this device uses, then prints there (ADR 0033)', async () => {
+    signedInAs('cashier');
+    const at = '2026-11-08T12:00:00.000Z';
+    const printer = (n: number, name: string, overrides: object = {}) => ({
+      id: id(90 + n),
+      locationId: TABLE.locationId,
+      name,
+      host: `192.168.64.2${n}`,
+      port: 9100,
+      widthDots: 576,
+      cutter: true,
+      imageMode: 'gsV0',
+      enabled: true,
+      printsBills: true,
+      stations: [],
+      archivedAt: null,
+      createdAt: at,
+      updatedAt: at,
+      ...overrides,
+    });
+    app.printer = {
+      print: vi.fn(() => Promise.resolve({ state: 'sent', code: 'print.sent' })),
+    };
+    api({
+      ...withOrder(ORDER),
+      'GET /api/v1/pos/bill-layout': () =>
+        Response.json({
+          header: { logo: null, name: null, phone: null, email: null, website: null },
+          footer: { lines: [] },
+          printers: { bill: null },
+          printerList: [
+            printer(1, 'Till 1'),
+            printer(2, 'Till 2'),
+            // Off, or only for tickets: never offered for bills.
+            printer(3, 'New', { enabled: false }),
+            printer(4, 'Kitchen', { printsBills: false, stations: ['kitchen'] }),
+          ],
+        }),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    await screen.findAllByTestId('bill-line');
+    await waitFor(() => expect(screen.getByTestId<HTMLButtonElement>('print-bill')).toBeTruthy());
+    await userEvent.click(screen.getByTestId('print-bill'));
+    const choose = await screen.findByTestId('native-print-choose');
+    expect(
+      within(choose)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Till 1', 'Till 2']);
+    await userEvent.click(within(choose).getByText('Till 2'));
+    await screen.findByText('Sent to the printer.');
+    const settings = {
+      host: '192.168.64.22',
+      port: 9100,
+      widthDots: 576,
+      cutter: true,
+      imageMode: 'gsV0',
+    };
+    expect(app.printer.print).toHaveBeenCalledWith(expect.any(String), expect.anything(), settings);
+
+    // The next bill goes straight to this device's choice.
+    await userEvent.click(screen.getByTestId('print-bill'));
+    await waitFor(() => expect(app.printer!.print).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId('native-print-choose')).toBeNull();
+    expect(app.printer.print).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.anything(),
+      settings,
+    );
+    expect(print).not.toHaveBeenCalled();
   });
 
   it('focuses the menu search with "/"', async () => {

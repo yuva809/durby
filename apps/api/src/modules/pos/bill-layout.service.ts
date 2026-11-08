@@ -4,6 +4,7 @@ import { type ResolvedSettings, SettingsService } from '../../platform/config/se
 import { AccessService } from '../../platform/rbac';
 import { TENANT_PRISMA, type TenantPrismaClient } from '../../platform/tenancy';
 import { posErrors } from './pos-errors';
+import { PrintersService } from './printers.service';
 
 /**
  * The printed bill's header and footer, and the printers (ADR 0032), at a location (docs/modules/pos.md → Bill layout, ADR 0025):
@@ -16,6 +17,7 @@ export class BillLayoutService {
     @Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient,
     private readonly access: AccessService,
     private readonly settings: SettingsService,
+    private readonly printers: PrintersService,
   ) {}
 
   async at(locationId: string): Promise<BillLayout> {
@@ -33,6 +35,7 @@ export class BillLayoutService {
         header: setting(resolved, 'pos.billHeader'),
         footer: setting(resolved, 'pos.billFooter'),
         printers: setting(resolved, 'pos.printers'),
+        printerList: await this.printers.listIn(tx, locationId),
       };
     });
   }

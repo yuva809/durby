@@ -2,18 +2,20 @@
 
 import type { LabelKey } from '@durby/i18n';
 import {
-  DEFAULT_POS_PRINTERS,
   type LocationSummary,
   type NativeDiscoverAnswer,
+  type Printer,
   type PrinterCommand,
   type PrinterCommandKind,
   type PrinterSettings,
-  posPrintersSchema,
+  printerSettingsOf,
   printerSettingsSchema,
+  PRINTER_NAME_MAX_LENGTH,
   PRINTER_PORTS,
-  type ResolvedSetting,
+  PRINTER_STATION_KEYS,
+  type PrinterStationKey,
 } from '@durby/shared';
-import { Printer, Search } from 'lucide-react';
+import { Plus, Printer as PrinterIcon, Search } from 'lucide-react';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
@@ -23,7 +25,7 @@ import { loadPrinterCommands, requestPrinterCommand } from '../../lib/pos/printe
 import { renderBillImage } from '../../lib/print/bill-image';
 import { nativePrinter, type NativePrintOutcome } from '../../lib/print/native';
 import { nativePrintMessage } from '../../lib/print/native-bill';
-import { deleteSetting, loadSettings, putSetting } from '../../lib/settings/api';
+import { archivePrinter, createPrinter, loadPrinters, updatePrinter } from '../../lib/pos/printers';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
@@ -34,8 +36,8 @@ import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
-import { Loaded, NoAccess } from '../users/common';
-import { TestPrintPage } from '../pos/test-print-page';
+import { ConfirmAction, Loaded, NoAccess } from '../users/common';
+import { TestPrintPage, type TestPagePrinter } from '../pos/test-print-page';
 
 /** 80 mm first and the default for a new printer: most restaurant printers in Germany use it. */
 const PAPER_WIDTHS = [576, 512, 384] as const;
@@ -48,20 +50,34 @@ const STATUS_LABELS: Record<NativeDiscoverAnswer['printers'][number]['status'], 
   no_status: 'pos.printerSettings.statusNoStatus',
 };
 
+const STATION_LABELS: Record<PrinterStationKey, LabelKey> = {
+  kitchen: 'pos.station.kitchen',
+  bar: 'pos.station.bar',
+};
+
 interface Draft {
+  name: string;
   host: string;
   port: string;
   widthDots: string;
   cutter: boolean;
   imageMode: PrinterSettings['imageMode'];
+  printsBills: boolean;
+  stations: PrinterStationKey[];
+  enabled: boolean;
 }
 
-const draftOf = (p: PrinterSettings | null): Draft => ({
+const draftOf = (p: Printer | null): Draft => ({
+  name: p?.name ?? '',
   host: p?.host ?? '',
   port: String(p?.port ?? 9100),
   widthDots: String(p?.widthDots ?? DEFAULT_WIDTH_DOTS),
   cutter: p?.cutter ?? true,
   imageMode: p?.imageMode ?? 'gsV0',
+  printsBills: p?.printsBills ?? false,
+  stations: p?.stations ?? [],
+  // A new printer starts switched off (ADR 0033); it is switched on after a test print.
+  enabled: p?.enabled ?? false,
 });
 
 const printerOf = (d: Draft) =>
@@ -74,9 +90,10 @@ const printerOf = (d: Draft) =>
   });
 
 /**
- * /settings/printers (ADR 0032 §6, §14): the bill printer of each location, which the Android app prints bills
- * on. Find printer and the test print run through the app on the till; in a browser the page says so. Reading
- * needs platform.settings.read, saving platform.settings.manage (the api checks both).
+ * /settings/printers (ADR 0032, ADR 0033): each location's printers, as a list. A printer prints bills and/or the
+ * tickets of chosen stations; one printer may serve several stations and one station may print on several. New
+ * printers start switched off. Find printer and the test print run in the app, or from a browser through the till
+ * (remote commands). Reading needs platform.settings.read, changing platform.settings.manage (the api checks both).
  */
 export function PrintersPage() {
   const { store, session } = useAuth();
@@ -102,9 +119,9 @@ function PrinterSettingsView({ locations }: { locations: LocationSummary[] }) {
   const { store, session } = useAuth();
   // Printers are where the paper is: always one location.
   const [locationId, setLocationId] = useState(locations[0]?.id ?? '');
-  const [settings, reload] = useResource(
+  const [printers, reload] = useResource(
     locationId ? `${session?.activeOrganizationId ?? ''}:${locationId}` : null,
-    () => loadSettings(store, locationId),
+    () => loadPrinters(store, locationId),
   );
 
   return (
@@ -135,58 +152,130 @@ function PrinterSettingsView({ locations }: { locations: LocationSummary[] }) {
       {locations.length === 0 ? (
         <p className="text-muted-foreground">{t('pos.printerSettings.noLocations')}</p>
       ) : (
-        <Loaded resource={settings} reload={reload}>
-          {(list) => {
-            const stored = list.find((s) => s.key === 'pos.printers');
-            return (
-              <PrinterEditor
-                key={`${locationId}:${JSON.stringify(stored?.value ?? null)}`}
-                locationId={locationId}
-                locationName={locations.find((l) => l.id === locationId)?.name ?? ''}
-                stored={stored}
-                onChanged={reload}
-              />
-            );
-          }}
+        <Loaded resource={printers} reload={reload}>
+          {(list) => (
+            <PrinterList
+              key={locationId}
+              locationId={locationId}
+              locationName={locations.find((l) => l.id === locationId)?.name ?? ''}
+              printers={list}
+              onChanged={reload}
+            />
+          )}
         </Loaded>
       )}
     </div>
   );
 }
 
-function PrinterEditor({
+function PrinterList({
   locationId,
   locationName,
-  stored,
+  printers,
   onChanged,
 }: {
   locationId: string;
   locationName: string;
-  stored: ResolvedSetting | undefined;
+  printers: Printer[];
   onChanged: () => void;
 }) {
   const t = useT();
-  const id = useId();
-  const { store, session } = useAuth();
-  const saveAction = useActionKey();
-  const removeAction = useActionKey();
+  const { session } = useAuth();
   const canManage = session?.activePermissions.includes('platform.settings.manage') ?? false;
-  const printers = posPrintersSchema.safeParse(stored?.value).data ?? DEFAULT_POS_PRINTERS;
-  const [draft, setDraft] = useState<Draft>(() => draftOf(printers.bill));
+  const [adding, setAdding] = useState(false);
+
+  return (
+    <div className="flex max-w-3xl flex-col gap-6">
+      {printers.length === 0 && !adding && (
+        <p className="text-muted-foreground" data-testid="printers-none">
+          {t('pos.printerSettings.noPrinters')}
+        </p>
+      )}
+      {printers.map((p) => (
+        // A saved change remounts only that card; the others keep what is being typed.
+        <PrinterCard
+          key={`${p.id}:${p.updatedAt}`}
+          locationId={locationId}
+          locationName={locationName}
+          printer={p}
+          canManage={canManage}
+          onChanged={onChanged}
+        />
+      ))}
+      {adding && (
+        <PrinterCard
+          locationId={locationId}
+          locationName={locationName}
+          printer={null}
+          canManage={canManage}
+          onChanged={() => {
+            setAdding(false);
+            onChanged();
+          }}
+          onCancel={() => setAdding(false)}
+        />
+      )}
+      {canManage && !adding && (
+        <Button
+          type="button"
+          variant="outline"
+          className="gap-2 self-start"
+          onClick={() => setAdding(true)}
+          data-testid="printers-add"
+        >
+          <Plus aria-hidden />
+          {t('pos.printerSettings.add')}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** One printer, or a new one (`printer` null) until it is added. */
+function PrinterCard({
+  locationId,
+  locationName,
+  printer,
+  canManage,
+  onChanged,
+  onCancel,
+}: {
+  locationId: string;
+  locationName: string;
+  printer: Printer | null;
+  canManage: boolean;
+  onChanged: () => void;
+  onCancel?: () => void;
+}) {
+  const t = useT();
+  const id = useId();
+  const { store } = useAuth();
+  const saveAction = useActionKey();
+  const archiveAction = useActionKey();
+  const [draft, setDraft] = useState<Draft>(() => draftOf(printer));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const app = nativePrinter();
 
   const parsed = printerOf(draft);
+  const name = draft.name.trim();
+  const valid = parsed.success && name !== '';
   const hostInvalid =
     draft.host.trim() !== '' &&
     !printerSettingsSchema.shape.host.safeParse(draft.host.trim()).success;
+  const testId = printer ? `printers-card-${printer.id}` : 'printers-card-new';
 
-  const set = <K extends keyof Draft>(field: K, value: Draft[K]) => {
-    setSaved(false);
-    setDraft((d) => ({ ...d, [field]: value }));
-  };
+  const set = <K extends keyof Draft>(field: K, next: Draft[K]) =>
+    setDraft((d) => ({ ...d, [field]: next }));
+  const toggleStation = (key: PrinterStationKey, on: boolean) =>
+    setDraft((d) => ({
+      ...d,
+      stations: on
+        ? PRINTER_STATION_KEYS.filter((k) => k === key || d.stations.includes(k))
+        : d.stations.filter((k) => k !== key),
+    }));
+  const pick = (host: string, port: number) =>
+    setDraft((d) => ({ ...d, host, port: String(port) }));
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -194,148 +283,198 @@ function PrinterEditor({
       setError(t('pos.printerSettings.hostInvalid'));
       return;
     }
+    if (!name) {
+      setError(t('pos.printerSettings.nameRequired'));
+      return;
+    }
     setBusy(true);
     setError(null);
-    const result = await putSetting(
-      store,
-      saveAction,
-      'pos.printers',
-      { ...printers, bill: parsed.data },
-      locationId,
-    );
+    const fields = {
+      name,
+      ...parsed.data,
+      printsBills: draft.printsBills,
+      stations: draft.stations,
+    };
+    const result = printer
+      ? await updatePrinter(store, saveAction, printer.id, { ...fields, enabled: draft.enabled })
+      : await createPrinter(store, saveAction, { locationId, ...fields });
     setBusy(false);
     if (!result.ok) {
       setError(t(errorLabel(result.code)));
       return;
     }
-    setSaved(true);
+    saveAction.done();
+    onChanged();
   }
 
-  async function remove() {
-    setBusy(true);
-    setError(null);
-    // The location's own value goes; an organization-wide printer, if any, applies again.
-    const result = await deleteSetting(store, removeAction, 'pos.printers', locationId);
-    setBusy(false);
-    if (!result.ok) setError(t(errorLabel(result.code)));
-    else onChanged();
-  }
+  // What the test page says: the saved name, or the one being typed.
+  const testPrinter: TestPagePrinter | null = parsed.success
+    ? { name: name || (printer?.name ?? ''), host: parsed.data.host, port: parsed.data.port }
+    : null;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <form className="flex flex-col gap-6" onSubmit={(e) => void save(e)} noValidate>
-        <Card className="flex flex-col gap-4 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold">{t('pos.printerSettings.billPrinter')}</h2>
-            {!printers.bill && (
-              <p className="text-sm text-muted-foreground" data-testid="printers-not-set">
-                {t('pos.printerSettings.notSet')}
-              </p>
-            )}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${id}-host`}>{t('pos.printerSettings.host')}</Label>
-              <Input
-                id={`${id}-host`}
-                data-testid="printers-host"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="192.168.1.20"
-                value={draft.host}
-                disabled={!canManage}
-                aria-invalid={hostInvalid || undefined}
-                onChange={(e) => set('host', e.target.value)}
-              />
-              <p
-                className={
-                  hostInvalid ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'
-                }
-              >
-                {t(
-                  hostInvalid ? 'pos.printerSettings.hostInvalid' : 'pos.printerSettings.hostHint',
-                )}
-              </p>
-            </div>
-            <div className="grid content-start gap-1.5">
-              <Label htmlFor={`${id}-port`}>{t('pos.printerSettings.port')}</Label>
-              <Select
-                id={`${id}-port`}
-                data-testid="printers-port"
-                value={draft.port}
-                disabled={!canManage}
-                onChange={(e) => set('port', e.target.value)}
-              >
-                {PRINTER_PORTS.map((p) => (
-                  <option key={p} value={String(p)}>
-                    {p}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${id}-paper`}>{t('pos.printerSettings.paper')}</Label>
-              <Select
-                id={`${id}-paper`}
-                data-testid="printers-paper"
-                value={draft.widthDots}
-                disabled={!canManage}
-                onChange={(e) => set('widthDots', e.target.value)}
-              >
-                {PAPER_WIDTHS.map((w) => (
-                  <option key={w} value={String(w)}>
-                    {t(`pos.printerSettings.paper${w}`)}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${id}-mode`}>{t('pos.printerSettings.imageMode')}</Label>
-              <Select
-                id={`${id}-mode`}
-                data-testid="printers-mode"
-                value={draft.imageMode}
-                disabled={!canManage}
-                onChange={(e) => set('imageMode', e.target.value as Draft['imageMode'])}
-              >
-                <option value="gsV0">{t('pos.printerSettings.imageModeGsV0')}</option>
-                <option value="escStar">{t('pos.printerSettings.imageModeEscStar')}</option>
-              </Select>
-            </div>
-          </div>
-          <div className="flex min-h-11 items-center gap-3">
-            <Checkbox
-              id={`${id}-cutter`}
-              data-testid="printers-cutter"
-              checked={draft.cutter}
+    <Card className="flex flex-col gap-4 p-4" data-testid={testId}>
+      <form className="flex flex-col gap-4" onSubmit={(e) => void save(e)} noValidate>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold">{printer?.name ?? t('pos.printerSettings.newPrinter')}</h2>
+          {printer && (
+            <Badge data-testid="printers-state">
+              {t(printer.enabled ? 'pos.printerSettings.on' : 'pos.printerSettings.off')}
+            </Badge>
+          )}
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`${id}-name`}>{t('pos.printerSettings.name')}</Label>
+          <Input
+            id={`${id}-name`}
+            data-testid="printers-name"
+            maxLength={PRINTER_NAME_MAX_LENGTH}
+            value={draft.name}
+            disabled={!canManage}
+            onChange={(e) => set('name', e.target.value)}
+          />
+          <p className="text-sm text-muted-foreground">{t('pos.printerSettings.nameHint')}</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-host`}>{t('pos.printerSettings.host')}</Label>
+            <Input
+              id={`${id}-host`}
+              data-testid="printers-host"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="192.168.1.20"
+              value={draft.host}
               disabled={!canManage}
-              onCheckedChange={(on) => set('cutter', on === true)}
+              aria-invalid={hostInvalid || undefined}
+              onChange={(e) => set('host', e.target.value)}
             />
-            <Label htmlFor={`${id}-cutter`} className="cursor-pointer">
-              {t('pos.printerSettings.cutter')}
-            </Label>
+            <p
+              className={hostInvalid ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}
+            >
+              {t(hostInvalid ? 'pos.printerSettings.hostInvalid' : 'pos.printerSettings.hostHint')}
+            </p>
           </div>
-        </Card>
+          <div className="grid content-start gap-1.5">
+            <Label htmlFor={`${id}-port`}>{t('pos.printerSettings.port')}</Label>
+            <Select
+              id={`${id}-port`}
+              data-testid="printers-port"
+              value={draft.port}
+              disabled={!canManage}
+              onChange={(e) => set('port', e.target.value)}
+            >
+              {PRINTER_PORTS.map((p) => (
+                <option key={p} value={String(p)}>
+                  {p}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-paper`}>{t('pos.printerSettings.paper')}</Label>
+            <Select
+              id={`${id}-paper`}
+              data-testid="printers-paper"
+              value={draft.widthDots}
+              disabled={!canManage}
+              onChange={(e) => set('widthDots', e.target.value)}
+            >
+              {PAPER_WIDTHS.map((w) => (
+                <option key={w} value={String(w)}>
+                  {t(`pos.printerSettings.paper${w}`)}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-mode`}>{t('pos.printerSettings.imageMode')}</Label>
+            <Select
+              id={`${id}-mode`}
+              data-testid="printers-mode"
+              value={draft.imageMode}
+              disabled={!canManage}
+              onChange={(e) => set('imageMode', e.target.value as Draft['imageMode'])}
+            >
+              <option value="gsV0">{t('pos.printerSettings.imageModeGsV0')}</option>
+              <option value="escStar">{t('pos.printerSettings.imageModeEscStar')}</option>
+            </Select>
+          </div>
+        </div>
+        <CheckRow
+          id={`${id}-cutter`}
+          testId="printers-cutter"
+          checked={draft.cutter}
+          disabled={!canManage}
+          onChange={(on) => set('cutter', on)}
+          label={t('pos.printerSettings.cutter')}
+        />
+        <fieldset className="flex flex-col gap-1">
+          <CheckRow
+            id={`${id}-bills`}
+            testId="printers-bills"
+            checked={draft.printsBills}
+            disabled={!canManage}
+            onChange={(on) => set('printsBills', on)}
+            label={t('pos.printerSettings.printsBills')}
+          />
+          <legend className="sr-only">{t('pos.printerSettings.ticketsFor')}</legend>
+          <p className="mt-2 text-sm font-medium">{t('pos.printerSettings.ticketsFor')}</p>
+          <div className="flex flex-wrap gap-x-6">
+            {PRINTER_STATION_KEYS.map((key) => (
+              <CheckRow
+                key={key}
+                id={`${id}-station-${key}`}
+                testId={`printers-station-${key}`}
+                checked={draft.stations.includes(key)}
+                disabled={!canManage}
+                onChange={(on) => toggleStation(key, on)}
+                label={t(STATION_LABELS[key])}
+              />
+            ))}
+          </div>
+        </fieldset>
+        {printer && (
+          <div className="flex flex-col gap-1">
+            <CheckRow
+              id={`${id}-enabled`}
+              testId="printers-enabled"
+              checked={draft.enabled}
+              disabled={!canManage}
+              onChange={(on) => set('enabled', on)}
+              label={t('pos.printerSettings.enabled')}
+              strong
+            />
+            <p className="text-sm text-muted-foreground">{t('pos.printerSettings.enabledHint')}</p>
+          </div>
+        )}
+        {!printer && (
+          <p className="text-sm text-muted-foreground">{t('pos.printerSettings.enabledHint')}</p>
+        )}
 
         {canManage && (
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={busy || !parsed.success} data-testid="printers-save">
-              {t('pos.printerSettings.save')}
+            <Button type="submit" disabled={busy || !valid} data-testid="printers-save">
+              {t(printer ? 'pos.printerSettings.save' : 'pos.printerSettings.create')}
             </Button>
-            {stored?.source === 'location' && (
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={busy}
-                onClick={() => void remove()}
-                data-testid="printers-remove"
-              >
-                {t('pos.printerSettings.remove')}
+            {onCancel && (
+              <Button type="button" variant="ghost" onClick={onCancel}>
+                {t('pos.printerSettings.cancel')}
               </Button>
             )}
-            {saved && <Badge data-testid="printers-saved">{t('pos.printerSettings.saved')}</Badge>}
+            {printer && (
+              <ConfirmAction
+                trigger={t('pos.printerSettings.archive')}
+                title={t('pos.printerSettings.archive')}
+                description={t('pos.printerSettings.archiveConfirm')}
+                confirm={t('pos.printerSettings.archive')}
+                run={() => archivePrinter(store, archiveAction, printer.id)}
+                onDone={onChanged}
+                testId="printers-archive"
+              />
+            )}
             <Notice text={error} tone="error" />
           </div>
         )}
@@ -345,22 +484,53 @@ function PrinterEditor({
         (app ? (
           <OnDevice
             printer={parsed.success ? parsed.data : null}
+            testPrinter={testPrinter}
             locationName={locationName}
-            onPick={(host, port) => {
-              setSaved(false);
-              setDraft((d) => ({ ...d, host, port: String(port) }));
-            }}
+            onPick={pick}
           />
         ) : (
           <OnTill
             locationId={locationId}
-            canTest={printers.bill !== null && parsed.success && sameAs(parsed.data, printers.bill)}
-            onPick={(host, port) => {
-              setSaved(false);
-              setDraft((d) => ({ ...d, host, port: String(port) }));
-            }}
+            printerId={printer?.id ?? null}
+            canTest={
+              printer !== null && parsed.success && sameAs(parsed.data, printerSettingsOf(printer))
+            }
+            onPick={pick}
           />
         ))}
+    </Card>
+  );
+}
+
+function CheckRow({
+  id,
+  testId,
+  checked,
+  disabled,
+  onChange,
+  label,
+  strong = false,
+}: {
+  id: string;
+  testId: string;
+  checked: boolean;
+  disabled: boolean;
+  onChange: (on: boolean) => void;
+  label: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex min-h-11 items-center gap-3">
+      <Checkbox
+        id={id}
+        data-testid={testId}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(on) => onChange(on === true)}
+      />
+      <Label htmlFor={id} className={strong ? 'cursor-pointer font-semibold' : 'cursor-pointer'}>
+        {label}
+      </Label>
     </div>
   );
 }
@@ -368,10 +538,12 @@ function PrinterEditor({
 /** Inside the Android app: find printers on the till's network and send a test print to the form's printer. */
 function OnDevice({
   printer,
+  testPrinter,
   locationName,
   onPick,
 }: {
   printer: PrinterSettings | null;
+  testPrinter: TestPagePrinter | null;
   locationName: string;
   onPick: (host: string, port: number) => void;
 }) {
@@ -400,7 +572,10 @@ function OnDevice({
   }
 
   return (
-    <Card className="flex flex-col gap-4 p-4" data-testid="printers-on-device">
+    <div
+      className="flex flex-col gap-4 border-t border-border pt-4"
+      data-testid="printers-on-device"
+    >
       <div className="flex flex-wrap gap-3">
         <Button
           type="button"
@@ -421,7 +596,7 @@ function OnDevice({
           onClick={() => void testPrint()}
           data-testid="printers-test"
         >
-          <Printer aria-hidden />
+          <PrinterIcon aria-hidden />
           {t('pos.printerSettings.test')}
         </Button>
       </div>
@@ -438,8 +613,8 @@ function OnDevice({
         />
       )}
 
-      <TestPrintPage ref={testBill} locationName={locationName} printer={printer} />
-    </Card>
+      <TestPrintPage ref={testBill} locationName={locationName} printer={testPrinter} />
+    </div>
   );
 }
 
@@ -451,10 +626,13 @@ const sameAs = (a: PrinterSettings, b: PrinterSettings) => JSON.stringify(a) ===
  */
 function OnTill({
   locationId,
+  printerId,
   canTest,
   onPick,
 }: {
   locationId: string;
+  /** The saved printer a test print goes to; none before it is added. */
+  printerId: string | null;
   canTest: boolean;
   onPick: (host: string, port: number) => void;
 }) {
@@ -484,14 +662,20 @@ function OnTill({
   async function send(kind: PrinterCommandKind) {
     setError(null);
     const action = kind === 'find_printers' ? findAction : testAction;
-    const created = await requestPrinterCommand(store, action, locationId, kind);
+    const created = await requestPrinterCommand(
+      store,
+      action,
+      locationId,
+      kind,
+      kind === 'test_print' ? (printerId ?? undefined) : undefined,
+    );
     action.done();
     if (!created.ok) setError(t(errorLabel(created.code)));
     else setCommand(created.data);
   }
 
   return (
-    <Card className="flex flex-col gap-4 p-4" data-testid="printers-on-till">
+    <div className="flex flex-col gap-4 border-t border-border pt-4" data-testid="printers-on-till">
       <p className="text-sm text-muted-foreground">{t('pos.printerSettings.remoteHint')}</p>
       <div className="flex flex-wrap gap-3">
         <Button
@@ -513,7 +697,7 @@ function OnTill({
           onClick={() => void send('test_print')}
           data-testid="printers-test-on-till"
         >
-          <Printer aria-hidden />
+          <PrinterIcon aria-hidden />
           {t('pos.printerSettings.testOnTill')}
         </Button>
       </div>
@@ -522,7 +706,7 @@ function OnTill({
       )}
       <Notice text={error} tone="error" />
       {command && <CommandOutcome command={command} onPick={onPick} />}
-    </Card>
+    </div>
   );
 }
 

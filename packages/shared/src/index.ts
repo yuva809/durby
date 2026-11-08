@@ -20,6 +20,7 @@ export * from './api/pos-kitchen';
 export * from './api/pos-menu';
 export * from './api/pos-orders';
 export * from './api/pos-printer-commands';
+export * from './api/pos-printers';
 export * from './api/pos-tables';
 export * from './api/rbac';
 export * from './api/team';

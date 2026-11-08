@@ -48,6 +48,11 @@ export const printerCommandResultSchema = z.union([
 export const createPrinterCommandRequestSchema = z.strictObject({
   locationId: z.uuid(),
   kind: z.enum(PRINTER_COMMAND_KINDS),
+  /**
+   * The printer a test print is for (ADR 0033), required for a test print: the till prints on it, on or off, and
+   * the test page names it. Find printer has none.
+   */
+  printerId: z.uuid().optional(),
 });
 
 export const printerCommandQuerySchema = z.object({ locationId: z.uuid() });
@@ -62,6 +67,8 @@ export const printerCommandSchema = z.object({
   id: z.uuid(),
   locationId: z.uuid(),
   kind: z.enum(PRINTER_COMMAND_KINDS),
+  /** The printer of a test print; null for Find printer. */
+  printerId: z.uuid().nullable(),
   status: z.enum(PRINTER_COMMAND_STATUSES),
   /** Pending or claimed past `expiresAt`: no till finished it in time. */
   expired: z.boolean(),

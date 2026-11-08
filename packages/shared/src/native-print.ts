@@ -65,6 +65,29 @@ export const posPrintersSchema = z.strictObject({
 export type PosPrinters = z.infer<typeof posPrintersSchema>;
 export const DEFAULT_POS_PRINTERS: PosPrinters = { bill: null };
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Only the keys `known` lists, for an object; anything else as it is (for the schema to judge). */
+function pick(value: unknown, known: readonly string[]): unknown {
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(known.filter((k) => Object.hasOwn(value, k)).map((k) => [k, value[k]]));
+}
+
+/**
+ * Reading `pos.printers` forward-compatibly (ADR 0033): keys and printer fields this release doesn't know are dropped,
+ * then the strict schema applies, so a value written by a later release never breaks this one (during a deploy or
+ * after a rollback). Writes stay strict (`posPrintersSchema`). A new value for an existing field still fails: add
+ * those as new fields.
+ */
+export const posPrintersReadSchema = z.preprocess((value) => {
+  if (!isRecord(value)) return value;
+  const known = pick(value, ['bill']) as Record<string, unknown>;
+  if (Object.hasOwn(known, 'bill'))
+    known.bill = pick(known.bill, Object.keys(printerSettingsSchema.shape));
+  return known;
+}, posPrintersSchema);
+
 /** Bytes a base64 string decodes to (without decoding it). */
 function base64Bytes(data: string): number {
   const padding = data.endsWith('==') ? 2 : data.endsWith('=') ? 1 : 0;

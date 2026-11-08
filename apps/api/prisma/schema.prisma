@@ -123,6 +123,7 @@ model Organization {
   reservationStatusChanges     ReservationStatusChange[]
   priceRules                   PriceRule[]
   posPrinterCommands           PosPrinterCommand[]
+  posPrinters                  PosPrinter[]
 
   @@index([partnerId])
   @@index([planId])
@@ -163,6 +164,7 @@ model Location {
   warehouses              Warehouse[]
   priceRules              PriceRule[]
   posPrinterCommands      PosPrinterCommand[]
+  posPrinters             PosPrinter[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -1576,12 +1578,58 @@ model PosPrinterCommand {
   expiresAt         DateTime                @map("expires_at") @db.Timestamptz(6)
   claimedAt         DateTime?               @map("claimed_at") @db.Timestamptz(6)
   completedAt       DateTime?               @map("completed_at") @db.Timestamptz(6)
+  /// The printer a test print is for (ADR 0033); null for Find printer and for commands from before printers.
+  printerId         String?                 @map("printer_id") @db.Uuid
   organization      Organization            @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   location          Location                @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  printer           PosPrinter?             @relation(fields: [tenantId, printerId], references: [tenantId, id], onDelete: NoAction, onUpdate: Restrict)
 
   @@unique([tenantId, id])
   @@index([tenantId, locationId, createdAt])
   @@map("pos_printer_commands")
+}
+
+/// A network printer at a location (ADR 0033): prints bills and/or the tickets of its stations. Archived, never
+/// deleted; a new printer starts switched off. Address rules as ADR 0032 (CHECKs in the migration).
+model PosPrinter {
+  id           String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String              @map("tenant_id") @db.Uuid
+  locationId   String              @map("location_id") @db.Uuid
+  /// Unique per location among printers that aren't archived (pos_printers_location_name_key, case-insensitive).
+  name         String
+  host         String
+  port         Int
+  widthDots    Int                 @map("width_dots")
+  cutter       Boolean
+  /// gsV0 or escStar (CHECK).
+  imageMode    String              @map("image_mode")
+  enabled      Boolean             @default(false)
+  printsBills  Boolean             @default(false) @map("prints_bills")
+  archivedAt   DateTime?           @map("archived_at") @db.Timestamptz(6)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location     Location            @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  stations     PosPrinterStation[]
+  commands     PosPrinterCommand[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, locationId])
+  @@map("pos_printers")
+}
+
+/// Which stations' tickets a printer prints (ADR 0033): many-to-many by station key, so "stations as a list" later
+/// needs no printer changes (CHECK on today's keys until then).
+model PosPrinterStation {
+  tenantId   String     @map("tenant_id") @db.Uuid
+  printerId  String     @map("printer_id") @db.Uuid
+  stationKey String     @map("station_key")
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  printer    PosPrinter @relation(fields: [tenantId, printerId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([tenantId, printerId, stationKey])
+  @@index([tenantId, stationKey])
+  @@map("pos_printer_stations")
 }
 
 enum PosPrinterCommandKind {

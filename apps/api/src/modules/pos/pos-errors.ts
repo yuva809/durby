@@ -63,6 +63,20 @@ export const posErrors = {
       'pos.printer_command_not_claimed',
       'This till is not running the printer command.',
     ),
+  printerNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'pos.printer_not_found', 'Printer not found.'),
+  printerNameTaken: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.printer_name_taken',
+      'This location already has a printer with this name.',
+    ),
+  printerRequired: () =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'pos.printer_required',
+      'A test print needs the printer it is for.',
+    ),
   voidExceeds: (lineId: string) =>
     new ApiError(HttpStatus.CONFLICT, 'pos.void_exceeds', 'More than is left of the item.', {
       lineId,

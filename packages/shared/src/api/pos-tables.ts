@@ -108,6 +108,9 @@ export const POS_ERROR_CODES = [
   'pos.printer_command_not_found',
   'pos.printer_command_expired',
   'pos.printer_command_not_claimed',
+  'pos.printer_not_found',
+  'pos.printer_name_taken',
+  'pos.printer_required',
 ] as const;
 
 export type PosErrorCode = (typeof POS_ERROR_CODES)[number];

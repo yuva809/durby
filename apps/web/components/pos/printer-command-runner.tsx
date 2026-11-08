@@ -1,7 +1,8 @@
 'use client';
 
-import { PRINTER_COMMAND_POLL_MS } from '@durby/shared';
-import { useEffect, useRef } from 'react';
+import { PRINTER_COMMAND_POLL_MS, type Printer } from '@durby/shared';
+import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useAuth } from '../../app/providers';
 import { loadBillLayout } from '../../lib/pos/api';
 import { pollPrinterCommands } from '../../lib/pos/printer-commands';
@@ -23,6 +24,8 @@ export function PrinterCommandRunner({
 }) {
   const { store } = useAuth();
   const testPage = useRef<HTMLDivElement>(null);
+  // The printer the test page is drawn for: set (and rendered) just before its picture is taken.
+  const [testPrinter, setTestPrinter] = useState<Printer | null>(null);
   const inApp = nativePrinter() !== null;
 
   useEffect(() => {
@@ -36,13 +39,16 @@ export function PrinterCommandRunner({
       try {
         await pollPrinterCommands(store, locationId, {
           printer,
-          savedPrinter: async () => {
+          printerFor: async (printerId) => {
             const layout = await loadBillLayout(store, locationId);
-            return layout.ok ? layout.data.printers.bill : null;
+            return layout.ok
+              ? (layout.data.printerList.find((p) => p.id === printerId) ?? null)
+              : null;
           },
-          renderTestPage: (widthDots) => {
+          renderTestPage: (target) => {
+            flushSync(() => setTestPrinter(target));
             if (!testPage.current) return Promise.reject(new Error('no test page'));
-            return renderBillImage(testPage.current, widthDots);
+            return renderBillImage(testPage.current, target.widthDots);
           },
         });
       } finally {
@@ -57,5 +63,7 @@ export function PrinterCommandRunner({
     };
   }, [store, locationId]);
 
-  return inApp ? <TestPrintPage ref={testPage} locationName={locationName} printer={null} /> : null;
+  return inApp ? (
+    <TestPrintPage ref={testPage} locationName={locationName} printer={testPrinter} />
+  ) : null;
 }

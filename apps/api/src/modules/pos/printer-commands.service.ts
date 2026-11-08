@@ -15,11 +15,13 @@ import { IdempotencyService } from '../../platform/idempotency';
 import { AccessService } from '../../platform/rbac';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../../platform/tenancy';
 import { posErrors } from './pos-errors';
+import { PrintersService } from './printers.service';
 
 const SELECT = {
   id: true,
   locationId: true,
   kind: true,
+  printerId: true,
   status: true,
   result: true,
   createdAt: true,
@@ -31,6 +33,7 @@ interface Row {
   id: string;
   locationId: string;
   kind: PrinterCommandKind;
+  printerId: string | null;
   status: PrinterCommand['status'];
   result: unknown;
   createdAt: Date;
@@ -43,6 +46,7 @@ interface RawRow {
   id: string;
   location_id: string;
   kind: PrinterCommandKind;
+  printer_id: string | null;
   status: PrinterCommand['status'];
   result: unknown;
   created_at: Date;
@@ -54,6 +58,7 @@ const fromRaw = (r: RawRow): Row => ({
   id: r.id,
   locationId: r.location_id,
   kind: r.kind,
+  printerId: r.printer_id,
   status: r.status,
   result: r.result,
   createdAt: r.created_at,
@@ -75,6 +80,7 @@ export class PrinterCommandsService {
     private readonly access: AccessService,
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
+    private readonly printers: PrintersService,
   ) {}
 
   /** `platform.settings.manage` (the controller): Owner and Admin. */
@@ -86,12 +92,19 @@ export class PrinterCommandsService {
         select: { id: true },
       });
       if (!location) throw posErrors.locationNotFound();
+      // A test print goes to one printer of this location (ADR 0033), on or off; Find printer to none.
+      let printerId: string | null = null;
+      if (body.kind === 'test_print') {
+        if (!body.printerId) throw posErrors.printerRequired();
+        printerId = (await this.printers.requireAt(tx, body.locationId, body.printerId)).id;
+      }
       const now = new Date();
       const row = (await tx.posPrinterCommand.create({
         data: {
           tenantId,
           locationId: body.locationId,
           kind: body.kind,
+          printerId,
           requestedByUserId: userId,
           createdAt: now,
           expiresAt: new Date(now.getTime() + PRINTER_COMMAND_LIFETIME_MS),
@@ -159,7 +172,7 @@ export class PrinterCommandsService {
                   LIMIT 1
                )
            AND "status" = 'pending' AND "expires_at" > now()
-        RETURNING "id", "location_id", "kind", "status", "result", "created_at", "expires_at", "completed_at"`;
+        RETURNING "id", "location_id", "kind", "printer_id", "status", "result", "created_at", "expires_at", "completed_at"`;
       const row = raw ? fromRaw(raw) : null;
       if (row) {
         await this.audit.record(tx, {
@@ -202,7 +215,7 @@ export class PrinterCommandsService {
                "completed_at" = now()
          WHERE "id" = ${id}::uuid
            AND "status" = 'claimed' AND "claimed_by_user_id" = ${userId}::uuid AND "expires_at" > now()
-        RETURNING "id", "location_id", "kind", "status", "result", "created_at", "expires_at", "completed_at"`;
+        RETURNING "id", "location_id", "kind", "printer_id", "status", "result", "created_at", "expires_at", "completed_at"`;
       if (!raw) {
         const current = await tx.posPrinterCommand.findUnique({
           where: { id },
@@ -247,6 +260,7 @@ function toCommand(row: Row, now: Date): PrinterCommand {
     id: row.id,
     locationId: row.locationId,
     kind: row.kind,
+    printerId: row.printerId,
     status: row.status,
     expired: (row.status === 'pending' || row.status === 'claimed') && row.expiresAt <= now,
     createdAt: row.createdAt.toISOString(),
@@ -260,12 +274,15 @@ function parseResult(value: unknown): PrinterCommandResult | null {
   return value === null ? null : (printerCommandResultSchema.safeParse(value).data ?? null);
 }
 
-function commandSnapshot(row: Pick<Row, 'id' | 'locationId' | 'kind' | 'status' | 'result'>) {
+function commandSnapshot(
+  row: Pick<Row, 'id' | 'locationId' | 'kind' | 'printerId' | 'status' | 'result'>,
+) {
   const result = parseResult(row.result);
   return snapshot('printer_command', {
     id: row.id,
     locationId: row.locationId,
     kind: row.kind,
+    printerId: row.printerId,
     status: row.status,
     resultCode: result === null ? null : 'printers' in result ? 'found' : result.code,
     printerCount: result !== null && 'printers' in result ? result.printers.length : null,
