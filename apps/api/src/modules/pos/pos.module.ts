@@ -12,6 +12,8 @@ import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { PrinterCommandsController } from './printer-commands.controller';
 import { PrinterCommandsService } from './printer-commands.service';
+import { PrintJobsController } from './print-jobs.controller';
+import { PrintJobsService } from './print-jobs.service';
 import { PrintersController } from './printers.controller';
 import { PrintersService } from './printers.service';
 import { PublicMenuController } from './public-menu.controller';
@@ -34,6 +36,7 @@ import { TablesService } from './tables.service';
     PublicMenuController,
     PrinterCommandsController,
     PrintersController,
+    PrintJobsController,
   ],
   providers: [
     TablesService,
@@ -45,6 +48,7 @@ import { TablesService } from './tables.service';
     PosFloorReader,
     PrinterCommandsService,
     PrintersService,
+    PrintJobsService,
   ],
   exports: [TablesService, AreasService, PosFloorReader],
 })

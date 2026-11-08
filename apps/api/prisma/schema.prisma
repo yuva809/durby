@@ -124,6 +124,7 @@ model Organization {
   priceRules                   PriceRule[]
   posPrinterCommands           PosPrinterCommand[]
   posPrinters                  PosPrinter[]
+  posPrintJobs                 PosPrintJob[]
 
   @@index([partnerId])
   @@index([planId])
@@ -165,6 +166,7 @@ model Location {
   priceRules              PriceRule[]
   posPrinterCommands      PosPrinterCommand[]
   posPrinters             PosPrinter[]
+  posPrintJobs            PosPrintJob[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -905,6 +907,8 @@ model PosOrder {
   tickets         PosKitchenTicket[]
   lines           PosOrderLine[]
 
+  printJobs PosPrintJob[]
+
   @@unique([tenantId, id])
   @@unique([tenantId, number])
   @@index([tenantId, locationId, status])
@@ -930,6 +934,8 @@ model PosKitchenTicket {
   lines           PosOrderLine[]
   linesOfOrder    PosOrderLine[]          @relation("PosOrderLineTicketOfOrder")
   statusChanges   PosTicketStatusChange[]
+
+  printJobs PosPrintJob[]
 
   @@unique([tenantId, id])
   /// Hand-written in the pos_orders migration; target of pos_order_lines_ticket_order_fkey.
@@ -1613,6 +1619,8 @@ model PosPrinter {
   stations     PosPrinterStation[]
   commands     PosPrinterCommand[]
 
+  printJobs PosPrintJob[]
+
   @@unique([tenantId, id])
   @@index([tenantId, locationId])
   @@map("pos_printers")
@@ -1646,4 +1654,57 @@ enum PosPrinterCommandStatus {
   failed
 
   @@map("pos_printer_command_status")
+}
+
+/// Print jobs (ADR 0033): one per ticket and printer (or per bill), claimed by a till with the app and printed there.
+/// Never deleted; retried only when nothing can have printed. CHECKs and partial indexes in the migration.
+model PosPrintJob {
+  id                String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String            @map("tenant_id") @db.Uuid
+  locationId        String            @map("location_id") @db.Uuid
+  printerId         String            @map("printer_id") @db.Uuid
+  kind              PosPrintJobKind
+  orderId           String            @map("order_id") @db.Uuid
+  /// Set iff kind = ticket (CHECK).
+  ticketId          String?           @map("ticket_id") @db.Uuid
+  status            PosPrintJobStatus @default(pending)
+  attempts          Int               @default(0)
+  /// The print object's last answer (print.*).
+  lastCode          String?           @map("last_code")
+  /// Not claimed before this instant: the wait before a retry.
+  notBefore         DateTime          @default(now()) @map("not_before") @db.Timestamptz(6)
+  /// Never printed by itself after this (setting pos.printJobMaxAgeSeconds when queued).
+  expiresAt         DateTime          @map("expires_at") @db.Timestamptz(6)
+  requestedByUserId String            @map("requested_by_user_id") @db.Uuid
+  claimedByUserId   String?           @map("claimed_by_user_id") @db.Uuid
+  claimedAt         DateTime?         @map("claimed_at") @db.Timestamptz(6)
+  completedAt       DateTime?         @map("completed_at") @db.Timestamptz(6)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization      Organization      @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location          Location          @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  printer           PosPrinter        @relation(fields: [tenantId, printerId], references: [tenantId, id], onDelete: NoAction, onUpdate: Restrict)
+  order             PosOrder          @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: NoAction, onUpdate: Restrict)
+  ticket            PosKitchenTicket? @relation(fields: [tenantId, ticketId], references: [tenantId, id], onDelete: NoAction, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, orderId])
+  @@map("pos_print_jobs")
+}
+
+enum PosPrintJobKind {
+  ticket
+  bill
+
+  @@map("pos_print_job_kind")
+}
+
+enum PosPrintJobStatus {
+  pending
+  claimed
+  printed
+  failed
+  needs_check
+
+  @@map("pos_print_job_status")
 }

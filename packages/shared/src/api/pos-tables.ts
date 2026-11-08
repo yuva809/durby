@@ -111,6 +111,9 @@ export const POS_ERROR_CODES = [
   'pos.printer_not_found',
   'pos.printer_name_taken',
   'pos.printer_required',
+  'pos.print_job_not_found',
+  'pos.print_job_not_claimed',
+  'pos.print_job_not_reprintable',
 ] as const;
 
 export type PosErrorCode = (typeof POS_ERROR_CODES)[number];

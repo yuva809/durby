@@ -140,6 +140,7 @@ describe('/api/v1/settings', () => {
           ['pos.billHeader', DEFAULT_BILL_HEADER],
           ['pos.billFooter', DEFAULT_BILL_FOOTER],
           ['pos.printers', DEFAULT_POS_PRINTERS],
+          ['pos.printJobMaxAgeSeconds', 600],
           ['pos.kitchenProcessing', true],
           ['pos.barProcessing', true],
         ].map(([key, value]) => ({ key, value, source: 'default', dataBound: false })),
