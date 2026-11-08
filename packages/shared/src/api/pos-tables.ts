@@ -105,6 +105,9 @@ export const POS_ERROR_CODES = [
   'pos.menu_not_found',
   'pos.ticket_not_found',
   'pos.ticket_status_invalid',
+  'pos.printer_command_not_found',
+  'pos.printer_command_expired',
+  'pos.printer_command_not_claimed',
 ] as const;
 
 export type PosErrorCode = (typeof POS_ERROR_CODES)[number];

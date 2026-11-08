@@ -29,7 +29,7 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -56,6 +56,9 @@ import {
 import { enterTarget, searchMenu } from '../../lib/pos/menu-search';
 import { useNow } from '../../lib/pos/use-now';
 import { printAs } from '../../lib/pos/print';
+import { renderBillImage } from '../../lib/print/bill-image';
+import { nativePrinter, type NativePrintOutcome } from '../../lib/print/native';
+import { nativePrintMessage, printBillNatively } from '../../lib/print/native-bill';
 import { useBrand } from '../theme-provider';
 import { useActionKey } from '../../lib/use-action-key';
 import { loadFloor as loadReservationsFloor } from '../../lib/reservations/host';
@@ -69,6 +72,7 @@ import { Input } from '../ui/input';
 import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { KitchenTicketView, OrderSlip, PrintRoot } from './kitchen-ticket';
 import { MoneyProvider, useMoney } from './money';
+import { PrinterCommandRunner } from './printer-command-runner';
 import { Receipt } from './receipt';
 import { tableColors } from './table-icon';
 import { VoidDialog } from './void-dialog';
@@ -157,6 +161,43 @@ function printParts(title: string): void {
   }
 }
 
+/** A bill printed by our Android app (ADR 0032): one job id per tap, kept for Retry. */
+type NativeBillJob = { jobId: string; outcome: NativePrintOutcome | null };
+
+/**
+ * What happened to the bill the app printed: printing, sent, or the failure with Retry (same job id, so a bill
+ * that was sent never prints twice) and Print with Android (the print screen).
+ */
+function NativePrintStatus({
+  job,
+  onRetry,
+  onPrintScreen,
+}: {
+  job: NativeBillJob | null;
+  onRetry: () => void;
+  onPrintScreen: () => void;
+}) {
+  const t = useT();
+  if (!job) return null;
+  if (!job.outcome) return <Notice text={t('pos.nativePrint.printing')} tone="info" />;
+  const failed = job.outcome.state === 'failed';
+  return (
+    <div data-testid="native-print-status">
+      <Notice text={t(nativePrintMessage(job.outcome.code))} tone={failed ? 'error' : 'info'} />
+      {failed && (
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={onRetry} data-testid="native-print-retry">
+            {t('pos.nativePrint.retry')}
+          </Button>
+          <Button variant="ghost" onClick={onPrintScreen}>
+            {t('pos.nativePrint.printWithAndroid')}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TableOrder({
   tableId,
   organizationName,
@@ -203,9 +244,40 @@ function TableOrder({
     setPendingCovers(next);
   };
 
+  // Inside our Android app (ADR 0032) the bill goes straight to the LAN printer; everything else, and every
+  // browser, prints through window.print() as before.
+  const [nativeJob, setNativeJob] = useState<NativeBillJob | null>(null);
+  const nativeBusy = useRef(false);
+  // The location's bill printer (`pos.printers`, ADR 0032), read with the bill layout.
+  const billPrinter = layout.status === 'ready' ? layout.data.printers.bill : null;
+  const printNatively = (jobId: string) => {
+    const printer = nativePrinter();
+    const bill = document.querySelector<HTMLElement>('#print-root [data-testid="printed-bill"]');
+    if (!printer || nativeBusy.current) return;
+    nativeBusy.current = true;
+    setNativeJob({ jobId, outcome: null });
+    const done = bill
+      ? printBillNatively(printer, billPrinter, bill, jobId, renderBillImage)
+      : Promise.resolve<NativePrintOutcome>({ state: 'failed', code: 'print.payload_invalid' });
+    void done.then((outcome) => {
+      nativeBusy.current = false;
+      setNativeJob({ jobId, outcome });
+    });
+  };
+  const printNewBill = useEffectEvent(() => printNatively(crypto.randomUUID()));
+
   useEffect(() => {
-    if (print) printParts(organizationName);
+    if (!print) return;
+    if (print.kind === 'bill' && nativePrinter()) printNewBill();
+    else printParts(organizationName);
   }, [print, organizationName]);
+  const nativeStatus = (
+    <NativePrintStatus
+      job={nativeJob}
+      onRetry={() => nativeJob && printNatively(nativeJob.jobId)}
+      onPrintScreen={() => printParts(organizationName)}
+    />
+  );
 
   /** `sent`: right after a send or void, when items that went straight to the bill don't print. */
   const printTickets = (order: Order, ticketIds: readonly string[], sent = false) => {
@@ -379,6 +451,7 @@ function TableOrder({
                         // Below 1024 px; from 1024 px the error shows above the pinned buttons.
                         <div className="lg:hidden">
                           <Notice text={error} tone="error" />
+                          {nativeStatus}
                         </div>
                       }
                     />
@@ -411,6 +484,7 @@ function TableOrder({
                     data-testid="order-panel-actions"
                   >
                     <Notice text={error} tone="error" />
+                    {nativeStatus}
                     {sendAction && (
                       <Button
                         className="min-h-12 gap-2 text-base"
@@ -459,6 +533,7 @@ function TableOrder({
                 </Button>
               </div>
             )}
+            {access.canPrintBill && <PrinterCommandRunner locationId={table.locationId} />}
             {print && (
               <PrintRoot>
                 {print.kind === 'tickets' ? (

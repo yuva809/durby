@@ -100,6 +100,7 @@ describe('TENANT_MODELS', () => {
       'PosKitchenTicket',
       'PosOrder',
       'PosOrderLine',
+      'PosPrinterCommand',
       'PosTicketStatusChange',
       'PriceRule',
       'ProcessedEvent',

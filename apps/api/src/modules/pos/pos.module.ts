@@ -10,6 +10,8 @@ import { KitchenController } from './kitchen.controller';
 import { KitchenService } from './kitchen.service';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
+import { PrinterCommandsController } from './printer-commands.controller';
+import { PrinterCommandsService } from './printer-commands.service';
 import { PublicMenuController } from './public-menu.controller';
 import { PublicMenuService } from './public-menu.service';
 import { TablesController } from './tables.controller';
@@ -17,7 +19,7 @@ import { TablesService } from './tables.service';
 
 /**
  * Table service (docs/modules/pos.md): dining tables, orders, kitchen and bar tickets and screens,
- * the bill layout, the public QR menu.
+ * the bill layout, the public QR menu, remote printer commands for the Android app.
  */
 @Module({
   imports: [CatalogModule, OrganizationModule],
@@ -28,6 +30,7 @@ import { TablesService } from './tables.service';
     BillLayoutController,
     KitchenController,
     PublicMenuController,
+    PrinterCommandsController,
   ],
   providers: [
     TablesService,
@@ -37,6 +40,7 @@ import { TablesService } from './tables.service';
     KitchenService,
     PublicMenuService,
     PosFloorReader,
+    PrinterCommandsService,
   ],
   exports: [TablesService, AreasService, PosFloorReader],
 })

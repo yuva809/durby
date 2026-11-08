@@ -45,6 +45,24 @@ export const posErrors = {
       'The ticket cannot move to this status from where it is.',
       { status },
     ),
+  printerCommandNotFound: () =>
+    new ApiError(
+      HttpStatus.NOT_FOUND,
+      'pos.printer_command_not_found',
+      'Printer command not found.',
+    ),
+  printerCommandExpired: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.printer_command_expired',
+      'The printer command expired.',
+    ),
+  printerCommandNotClaimed: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.printer_command_not_claimed',
+      'This till is not running the printer command.',
+    ),
   voidExceeds: (lineId: string) =>
     new ApiError(HttpStatus.CONFLICT, 'pos.void_exceeds', 'More than is left of the item.', {
       lineId,

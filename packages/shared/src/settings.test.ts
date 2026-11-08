@@ -47,6 +47,7 @@ describe('settings registry', () => {
       'reservations.holdMinutes',
       'pos.billHeader',
       'pos.billFooter',
+      'pos.printers',
       'pos.kitchenProcessing',
       'pos.barProcessing',
       'inventory.valuationMethod',

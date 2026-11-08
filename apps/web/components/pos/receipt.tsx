@@ -31,7 +31,7 @@ export function Receipt({
   printedAt,
 }: {
   /** Null while it loads or when it can't be read: the defaults (organization name, thanks). */
-  layout: BillLayout | null;
+  layout: Pick<BillLayout, 'header' | 'footer'> | null;
   organizationName: string;
   productName: string;
   tableName: string;

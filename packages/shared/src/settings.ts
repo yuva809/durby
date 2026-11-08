@@ -7,6 +7,7 @@ import {
   SLOT_INTERVALS,
   turnTimesSchema,
 } from './reservation-settings';
+import { DEFAULT_POS_PRINTERS, posPrintersSchema } from './native-print';
 import { countryCodeSchema } from './phone';
 import {
   billFooterSchema,
@@ -232,6 +233,15 @@ export const SETTINGS = {
     description: 'platform.settings.posBillFooter.description',
     schema: billFooterSchema,
     default: DEFAULT_BILL_FOOTER,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  // The LAN printers the Durby Android app prints to (ADR 0032 §6); read with the bill layout.
+  'pos.printers': define({
+    label: 'platform.settings.posPrinters.name',
+    description: 'platform.settings.posPrinters.description',
+    schema: posPrintersSchema,
+    default: DEFAULT_POS_PRINTERS,
     scopes: ALL_SCOPES,
     dataBound: false,
   }),

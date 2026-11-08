@@ -1,0 +1,9 @@
+{
+  "extends": "@durby/config/tsconfig/library.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "test", "*.ts"]
+}

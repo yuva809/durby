@@ -122,6 +122,7 @@ model Organization {
   reservationTables            ReservationTable[]
   reservationStatusChanges     ReservationStatusChange[]
   priceRules                   PriceRule[]
+  posPrinterCommands           PosPrinterCommand[]
 
   @@index([partnerId])
   @@index([planId])
@@ -161,6 +162,7 @@ model Location {
   reservations            Reservation[]
   warehouses              Warehouse[]
   priceRules              PriceRule[]
+  posPrinterCommands      PosPrinterCommand[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -1555,4 +1557,45 @@ model PriceRule {
   @@unique([tenantId, id])
   @@index([tenantId, locationId])
   @@map("price_rules")
+}
+
+/// Remote printer commands (ADR 0032 §15): find printers or print a test page on a location's Android till.
+/// Expires 5 minutes after it was requested (pos_printer_commands_expiry_check); claimed and finished in order
+/// (pos_printer_commands_lifecycle_check). The app never deletes rows; the audit log is the lasting record.
+model PosPrinterCommand {
+  id                String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String                  @map("tenant_id") @db.Uuid
+  locationId        String                  @map("location_id") @db.Uuid
+  kind              PosPrinterCommandKind
+  status            PosPrinterCommandStatus @default(pending)
+  requestedByUserId String                  @map("requested_by_user_id") @db.Uuid
+  claimedByUserId   String?                 @map("claimed_by_user_id") @db.Uuid
+  /// Addresses and answer codes only (posPrinterCommandResultSchema).
+  result            Json?
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt         DateTime                @map("expires_at") @db.Timestamptz(6)
+  claimedAt         DateTime?               @map("claimed_at") @db.Timestamptz(6)
+  completedAt       DateTime?               @map("completed_at") @db.Timestamptz(6)
+  organization      Organization            @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location          Location                @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, locationId, createdAt])
+  @@map("pos_printer_commands")
+}
+
+enum PosPrinterCommandKind {
+  find_printers
+  test_print
+
+  @@map("pos_printer_command_kind")
+}
+
+enum PosPrinterCommandStatus {
+  pending
+  claimed
+  done
+  failed
+
+  @@map("pos_printer_command_status")
 }
