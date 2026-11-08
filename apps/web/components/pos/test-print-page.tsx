@@ -30,6 +30,13 @@ export function TestPrintPage({
         )}
         <p>{new Date().toLocaleString()}</p>
         <p>{t('pos.printerSettings.testLine')}</p>
+        {/* The paper's full width: on too narrow a paper the right end (where bills put prices) is cut off. */}
+        <div className="mt-1 flex items-center gap-1 font-bold" data-testid="test-print-edges">
+          <span>|&lt;</span>
+          <span className="flex-1 border-t-2 border-dashed border-foreground" />
+          <span>&gt;|</span>
+        </div>
+        <p>{t('pos.printerSettings.testEdges')}</p>
       </div>
     </div>
   );

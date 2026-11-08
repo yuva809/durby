@@ -70,6 +70,28 @@ export function packBits(
   return bits;
 }
 
+/**
+ * Rows to send: down to the last row with ink (as dark as the text threshold), plus `margin` rows of paper, at most
+ * `height` and at least one row. The picture is drawn taller than the screen layout, so its blank end is cut here.
+ */
+export function inkHeight(
+  rgba: Uint8ClampedArray,
+  width: number,
+  height: number,
+  margin: number,
+): number {
+  for (let y = height - 1; y >= 0; y--) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const a = rgba[i + 3]! / 255;
+      const lum =
+        (0.299 * rgba[i]! + 0.587 * rgba[i + 1]! + 0.114 * rgba[i + 2]!) * a + 255 * (1 - a);
+      if (lum < 160) return Math.min(height, y + 1 + margin);
+    }
+  }
+  return 1;
+}
+
 export function toBase64(bytes: Uint8Array): string {
   let binary = '';
   const CHUNK = 0x8000;

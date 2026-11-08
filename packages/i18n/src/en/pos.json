@@ -224,6 +224,7 @@
   "pos.printerSettings.testTitle": "Test print",
   "pos.printerSettings.testLine": "If you can read this, bills will print here.",
   "pos.printerSettings.testPrinter": "Printer {address}",
+  "pos.printerSettings.testEdges": "Both ends of the line above must be on the paper. If one is missing, choose the other paper width.",
   "pos.printerSettings.remoteHint": "From here, Find printer and the test print are sent to the location's till. It runs them within 15 seconds while the app is open on the tables page there.",
   "pos.printerSettings.findOnTill": "Find printer (on the till)",
   "pos.printerSettings.testOnTill": "Send test print (on the till)",

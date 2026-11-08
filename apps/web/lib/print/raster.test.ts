@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { packBits, renderGeometry, toBase64 } from './raster';
+import { inkHeight, packBits, renderGeometry, toBase64 } from './raster';
 
 const rgba = (w: number, h: number, grey: number) => {
   const px = new Uint8ClampedArray(w * h * 4);
@@ -18,6 +18,21 @@ describe('renderGeometry', () => {
     expect(() => renderGeometry(0)).toThrow();
     expect(() => renderGeometry(5000)).toThrow();
     expect(() => renderGeometry(Number.NaN)).toThrow();
+  });
+});
+
+describe('inkHeight', () => {
+  it('ends the paper a margin below the last printed row, never past the picture', () => {
+    const px = rgba(8, 100, 255);
+    px.set([0, 0, 0, 255], (40 * 8 + 3) * 4);
+    expect(inkHeight(px, 8, 100, 16)).toBe(57);
+    expect(inkHeight(px, 8, 50, 16)).toBe(50);
+  });
+  it('counts light grey as paper and mid grey as ink, like the text threshold', () => {
+    const px = rgba(4, 30, 200);
+    expect(inkHeight(px, 4, 30, 0)).toBe(1);
+    px.set([120, 120, 120, 255], 10 * 4 * 4);
+    expect(inkHeight(px, 4, 30, 0)).toBe(11);
   });
 });
 
