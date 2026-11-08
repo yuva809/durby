@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.print.PrintManager
 import android.view.View
 import android.webkit.CookieManager
@@ -27,6 +29,20 @@ import tech.durby.pos.Servers
 class SystemWebViewEngine(context: Context, private val host: WebEngine.Host) : WebEngine {
     private val web = WebView(context)
     private var fileCallback: ValueCallback<Array<Uri>>? = null
+    private val main = Handler(Looper.getMainLooper())
+
+    /**
+     * The WebView keeps new cookies in memory and wrote them to disk only on onPause: an app killed without a pause
+     * (power cut, crash, Android freeing memory) lost the sign-in, and the refresh token rotates, so a stale one on disk
+     * would not sign in either. Writing every few seconds and after each page load keeps the disk current; a write
+     * with nothing changed costs nothing.
+     */
+    private val flushing = object : Runnable {
+        override fun run() {
+            flushCookies()
+            main.postDelayed(this, COOKIE_FLUSH_MS)
+        }
+    }
 
     override val view: View get() = web
 
@@ -40,8 +56,9 @@ class SystemWebViewEngine(context: Context, private val host: WebEngine.Host) : 
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             setSupportMultipleWindows(false)
         }
-        // Sign-in survives restarts: the refresh cookie is kept and flushed in onPause.
+        // Sign-in survives restarts: the refresh cookie is kept and written to disk (see [flushCookies]).
         CookieManager.getInstance().setAcceptCookie(true)
+        main.postDelayed(flushing, COOKIE_FLUSH_MS)
 
         val origins = Servers.ALLOWED_ORIGINS
         // The print object exists only on allow-listed pages (ADR 0032 §8); frames from anywhere else never see it.
@@ -68,7 +85,10 @@ class SystemWebViewEngine(context: Context, private val host: WebEngine.Host) : 
                 }
             }
 
-            override fun onPageFinished(view: WebView, url: String) = host.onPageLoaded()
+            override fun onPageFinished(view: WebView, url: String) {
+                flushCookies()
+                host.onPageLoaded()
+            }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (request.isForMainFrame) host.onLoadFailed("${error.errorCode} ${error.description}")
@@ -106,12 +126,21 @@ class SystemWebViewEngine(context: Context, private val host: WebEngine.Host) : 
         fileCallback = null
     }
 
-    override fun onPause() = CookieManager.getInstance().flush()
+    override fun onPause() = flushCookies()
 
-    override fun destroy() = web.destroy()
+    override fun destroy() {
+        main.removeCallbacks(flushing)
+        flushCookies()
+        web.destroy()
+    }
+
+    private fun flushCookies() = CookieManager.getInstance().flush()
 
     companion object {
         const val PRINT_OBJECT = "durbyPrint"
+
+        /** How often cookies are written to disk while the app runs. */
+        const val COOKIE_FLUSH_MS = 10_000L
 
         fun printLinkSupported() = WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)
 
