@@ -134,6 +134,11 @@ export class RefreshTokenStore {
         expiresAt,
       },
     });
-    return { token, familyId: session.familyId, expiresAt, familyExpiresAt: session.familyExpiresAt };
+    return {
+      token,
+      familyId: session.familyId,
+      expiresAt,
+      familyExpiresAt: session.familyExpiresAt,
+    };
   }
 }
