@@ -131,10 +131,64 @@ export const nativeDiscoverRequestSchema = z.strictObject({
   type: z.literal('discover'),
 });
 
+/**
+ * What an app version can do, named in its `info` answer (version 1.1 on). The web decides by these, never by the
+ * version number; an app without `features` (1.0) gets the version 1 behaviour.
+ * - `parallel`: prints to different printers at the same time (one lane per printer).
+ * - `deviceSettings`: keeps this device's settings (`deviceSettings` / `setDeviceSettings`).
+ * - `nothingPrinted`: says when a failed print sent not one byte of the job.
+ */
+export const NATIVE_APP_FEATURES = ['parallel', 'deviceSettings', 'nothingPrinted'] as const;
+export type NativeAppFeature = (typeof NATIVE_APP_FEATURES)[number];
+
 export const nativeInfoAnswerSchema = z.object({
   type: z.literal('info'),
   appVersion: z.string(),
   protocol: z.number().int(),
+  /** Unknown names (a later app) are kept and ignored. */
+  features: z.array(z.string()).optional(),
+});
+
+/** Receipt printers a device remembers, at most one per location. */
+export const MAX_DEVICE_RECEIPT_PRINTERS = 50;
+
+/**
+ * This device's settings (ADR 0033 §5, §13), kept by the app in its own storage: the web never uses browser
+ * storage. Ids are only remembered: the web checks them against the location's printers every time.
+ */
+export const nativeDeviceSettingsSchema = z.strictObject({
+  /** "This device prints": runs print jobs for its location, and keeps the screen on while Durby is in front. */
+  prints: z.boolean(),
+  /** The location this device prints for; null: the location of the floor page shown last. */
+  tillLocationId: z.uuid().nullable(),
+  /** The default receipt printer per location (location id → printer id). */
+  receiptPrinters: z
+    .record(z.uuid(), z.uuid())
+    .refine((r) => Object.keys(r).length <= MAX_DEVICE_RECEIPT_PRINTERS),
+});
+export type NativeDeviceSettings = z.infer<typeof nativeDeviceSettingsSchema>;
+export const DEFAULT_DEVICE_SETTINGS: NativeDeviceSettings = {
+  prints: true,
+  tillLocationId: null,
+  receiptPrinters: {},
+};
+
+export const nativeDeviceSettingsRequestSchema = z.strictObject({
+  version: z.literal(NATIVE_PRINT_PROTOCOL),
+  type: z.literal('deviceSettings'),
+});
+
+export const nativeSetDeviceSettingsRequestSchema = z.strictObject({
+  version: z.literal(NATIVE_PRINT_PROTOCOL),
+  type: z.literal('setDeviceSettings'),
+  settings: nativeDeviceSettingsSchema,
+});
+
+/** The settings as stored, after a read or a write; `refused`: the write broke the schema and stored nothing. */
+export const nativeDeviceSettingsAnswerSchema = z.object({
+  type: z.literal('deviceSettings'),
+  settings: nativeDeviceSettingsSchema,
+  refused: z.boolean().optional(),
 });
 export type NativeInfoAnswer = z.infer<typeof nativeInfoAnswerSchema>;
 
@@ -143,6 +197,8 @@ export const nativePrintAnswerSchema = z.object({
   jobId: z.uuid(),
   state: z.enum(['sent', 'failed']),
   code: z.enum(NATIVE_PRINT_CODES),
+  /** `nothingPrinted` feature: the job failed before any of its bytes were sent (safe to send again). */
+  nothingPrinted: z.boolean().optional(),
 });
 export type NativePrintAnswer = z.infer<typeof nativePrintAnswerSchema>;
 

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetDeviceSettings } from '../../lib/print/device-settings';
 import { mockState, resetMocks } from '../../test/mocks';
 import { PrinterCommandRunner } from './printer-command-runner';
 
@@ -14,6 +15,7 @@ const LOCATION = '0190a000-0000-7000-8000-000000000101';
 
 beforeEach(() => {
   resetMocks();
+  resetDeviceSettings();
   app.printer = null;
   mockState.store.apiFetch.mockImplementation(() => Promise.resolve(Response.json({ data: [] })));
 });

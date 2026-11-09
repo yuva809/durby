@@ -7,17 +7,18 @@ import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { activeNavItem, type NavItem, visibleNav } from '../../lib/nav/registry';
 import { SETTINGS_TABS } from '../../lib/nav/settings-tabs';
+import { nativePrinter } from '../../lib/print/native';
 import { cn } from '../../lib/utils';
 
 /** The tabs the signed-in user may open (UI hints; every page and the api check again). */
 function useSettingsTabs(): NavItem[] {
   const { session } = useAuth();
-  return session
-    ? visibleNav(SETTINGS_TABS, {
-        activeFeatures: session.activeFeatures,
-        activePermissions: session.activePermissions,
-      })
-    : [];
+  if (!session) return [];
+  const inApp = nativePrinter() !== null;
+  return visibleNav(SETTINGS_TABS, {
+    activeFeatures: session.activeFeatures,
+    activePermissions: session.activePermissions,
+  }).filter((tab) => inApp || !tab.appOnly);
 }
 
 /**

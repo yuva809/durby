@@ -43,13 +43,27 @@ export const claimPrintJob = (
     claimPrintJobResponseSchema,
   );
 
+/** `nothingPrinted` (app 1.1): the job failed before any of its bytes were sent, so the queue may send it again. */
 export const answerPrintJob = (
   store: Api,
   action: ActionKey,
   id: string,
-  code: NativePrintCode,
+  { code, nothingPrinted }: JobAnswer,
 ): Promise<Result<PrintJob | null>> =>
-  write(store, action, `/api/v1/pos/print-jobs/${id}/result`, 'POST', { code }, printJobSchema);
+  write(
+    store,
+    action,
+    `/api/v1/pos/print-jobs/${id}/result`,
+    'POST',
+    { code, ...(nothingPrinted && { nothingPrinted: true }) },
+    printJobSchema,
+  );
+
+/** How a job ended on this device. */
+export interface JobAnswer {
+  code: NativePrintCode;
+  nothingPrinted?: boolean;
+}
 
 /** Reprint from the till (`pos.bills.print`), or from a station's screen for its own tickets. */
 export const reprintPrintJob = (
@@ -111,15 +125,15 @@ export interface JobDevice {
   render: (job: PrintJob, printer: Printer) => Promise<PrintImage>;
 }
 
-/** Runs one claimed job through the print object. Never throws: every end is an answer code. */
-export async function runPrintJob(job: PrintJob, device: JobDevice): Promise<NativePrintCode> {
+/** Runs one claimed job through the print object. Never throws: every end is an answer. */
+export async function runPrintJob(job: PrintJob, device: JobDevice): Promise<JobAnswer> {
   const printer = await device.printerFor(job.printerId);
-  if (!printer) return 'print.no_printer';
+  if (!printer) return { code: 'print.no_printer' };
   let image: PrintImage;
   try {
     image = await device.render(job, printer);
   } catch {
-    return 'print.payload_invalid';
+    return { code: 'print.payload_invalid' };
   }
   // A new id per claim: a reprint prints again, while the app still refuses this claim twice.
   const outcome = await device.printer.print(
@@ -128,7 +142,8 @@ export async function runPrintJob(job: PrintJob, device: JobDevice): Promise<Nat
     printerSettingsOf(printer),
   );
   // The app didn't answer in time: it may have printed, so a person checks (needs check, never a silent retry).
-  return outcome.code === 'print.no_answer' ? 'print.printer_timeout' : outcome.code;
+  if (outcome.code === 'print.no_answer') return { code: 'print.printer_timeout' };
+  return { code: outcome.code, ...(outcome.nothingPrinted && { nothingPrinted: true }) };
 }
 
 /** Runs `fn` one call at a time, in call order: what the till draws shares one hidden page. */
@@ -176,10 +191,10 @@ async function printAndAnswer(
   job: PrintJob,
   device: JobDevice,
 ): Promise<NativePrintCode> {
-  const code = await runPrintJob(job, device);
+  const answer = await runPrintJob(job, device);
   // One key for this answer: a retry after a lost response replays instead of failing as "not claimed".
   const action = new ActionKey();
-  const sent = await answerPrintJob(store, action, job.id, code);
-  if (!sent.ok && sent.code === 'unknown') await answerPrintJob(store, action, job.id, code);
-  return code;
+  const sent = await answerPrintJob(store, action, job.id, answer);
+  if (!sent.ok && sent.code === 'unknown') await answerPrintJob(store, action, job.id, answer);
+  return answer.code;
 }

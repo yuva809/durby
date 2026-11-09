@@ -14,6 +14,7 @@ import { loadBillLayout } from '../../lib/pos/api';
 import { billLines } from '../../lib/pos/format';
 import { loadOrder, oneAtATime, pollPrintJobs } from '../../lib/pos/print-jobs';
 import { preloadBillRenderer, renderBillImage } from '../../lib/print/bill-image';
+import { loadDeviceSettings, useDeviceSettings } from '../../lib/print/device-settings';
 import { nativePrinter } from '../../lib/print/native';
 import { useTillLocation } from '../../lib/print/till-location';
 import { useBrand } from '../theme-provider';
@@ -28,8 +29,8 @@ type Drawn = { job: PrintJob; order: Order; layout: BillLayout | null } | null;
 const LAYOUT_TTL_MS = 30_000;
 
 /**
- * Print jobs on the till (ADR 0033 §10–12): on every page, while the Android app is open and the signed-in member may
- * print bills, asks every 1.5 s for the till's location's due jobs, claims them (exactly one till wins each), draws
+ * Print jobs on the till (ADR 0033 §10–12): on every page, while the Android app is open, "This device prints" is on
+ * (Settings → This device, app 1.1) and the signed-in member may print bills, asks every 1.5 s for the till's location's due jobs, claims them (exactly one till wins each), draws
  * each ticket or bill at its printer's width, prints it through the print object and answers; one lane per printer. In a normal browser it
  * renders nothing and never polls.
  */
@@ -38,7 +39,13 @@ export function PrintJobRunner() {
   const canPrint =
     (session?.activePermissions.includes('pos.bills.print') ?? false) &&
     (session?.activeFeatures.includes('pos') ?? false);
+  const device = useDeviceSettings();
+  useEffect(() => {
+    if (nativePrinter()) void loadDeviceSettings();
+  }, []);
   if (nativePrinter() === null || !canPrint) return null;
+  // Read from the app first: a device switched to "doesn't print" never polls, not even once.
+  if (!device.loaded || !device.settings.prints) return null;
   // Bills print in the organization's currency: its settings load once, before the first job.
   return (
     <MoneyProvider>

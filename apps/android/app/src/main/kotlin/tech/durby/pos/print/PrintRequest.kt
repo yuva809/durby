@@ -10,6 +10,15 @@ sealed interface PrintRequest {
 
     data object Discover : PrintRequest
 
+    /** Reads this device's settings (version 1.1). */
+    data object GetSettings : PrintRequest
+
+    /** Stores this device's settings, already checked against the shared schema (version 1.1). */
+    class SetSettings(val settings: DeviceSettings) : PrintRequest
+
+    /** A settings write the shared schema doesn't allow: nothing is stored, the stored settings are answered. */
+    data object SettingsRefused : PrintRequest
+
     /**
      * [bits]: 1 bit per dot, row-major, rows padded to whole bytes, MSB = leftmost dot, 1 = black. [printer] is the
      * location's printer as the page sent it: not yet checked against the address rules ([PrinterConfig.problem]).
@@ -39,6 +48,8 @@ sealed interface PrintRequest {
                     "info" -> Info
                     "discover" -> Discover
                     "print" -> print(json)
+                    "deviceSettings" -> if (json.length() == 2) GetSettings else Invalid
+                    "setDeviceSettings" -> setSettings(json)
                     else -> Invalid
                 }
             }
@@ -69,6 +80,12 @@ sealed interface PrintRequest {
             if (bits.size != (width + 7) / 8 * height || bits.size > MAX_IMAGE_BYTES) return Invalid
             val printer = printer(json.optJSONObject("printer") ?: return Invalid) ?: return Invalid
             return Print(jobId, width, height, bits, printer)
+        }
+
+        private fun setSettings(json: JSONObject): PrintRequest {
+            if (json.length() != 3) return SettingsRefused
+            val settings = DeviceSettings.parse(json.optJSONObject("settings") ?: return SettingsRefused)
+            return settings?.let { SetSettings(it) } ?: SettingsRefused
         }
 
         /** The printer's fields with their types; the address rules are checked by the service, with their own codes. */

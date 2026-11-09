@@ -40,7 +40,9 @@ location's printers in use (`printerList`, on or off) for the till.
 
 **Which printer a bill goes to:** this device's default receipt printer if it is still on and prints bills at the
 location, else the only such printer, else the till asks once ("Which printer?") and keeps the answer as this device's
-default; with none, the Android print screen. Until version 1.1 of the app keeps it in its own storage, the default is held in memory: the till asks once per app start (the web never uses browser storage).
+default; with none, the Android print screen. The default is a device setting: app 1.1 keeps it in its own storage
+(Settings → This device); with app 1.0 it is held in memory, so the till asks once per app start (the web never uses
+browser storage).
 
 **Version 1's setting** `pos.printers` (`{ bill }`) was copied into a printer per location by the migration
 `pos_printers` (on, prints bills, named by its address). It stays registered and in the bill layout for the previous
@@ -94,8 +96,9 @@ it polls the till's location every 1.5 s, claims the due jobs (oldest first), lo
 ticket (`KitchenTicketView`) or the bill (`Receipt`) at the printer's width, prints it through the print object (a
 new job id per claim) and answers. One lane per printer: a printer's jobs in order, different printers at the same
 time, so a bar ticket doesn't wait for the kitchen printer. Pictures are drawn one at a time (one hidden page). An app
-that doesn't answer in time counts as a timeout (needs check). The till's location is the one its floor or order page
-showed last (held in memory); version 1.1 of the app makes it a device setting.
+that doesn't answer in time counts as a timeout (needs check). The till's location is the device setting "Prints for"
+(app 1.1), else the one its floor or order page showed last (held in memory). A device with "This device prints" off
+runs no jobs and no remote commands: it never polls.
 
 **With the v1 app (1.0.0).** The runner sends version 1's `print` message, unchanged (protocol 1, same fields, answer
 codes from the v1 set), so kitchen and bar printing works with the app installed at customers today. Differences:
@@ -111,8 +114,14 @@ codes from the v1 set), so kitchen and bar printing works with the app installed
   another app in front, the app's offline screen) stalls drawing: claimed jobs then show as "may have printed" after
   60 s. Keep the till's screen on with the app in front (Android display settings) until 1.1.
 
+**With app 1.1** (`features` in `info`, see Print protocol): different printers print at the same time (one thread
+per printer address in the app), `nothingPrinted` sends a job that failed before any byte left the device back to the
+queue by itself, **Settings → This device** keeps "This device prints", "Prints for" and the receipt printer in the
+app, and a device that prints keeps its screen on while Durby is in front.
+
 **Rollout until 1.1 (step 4).** Every device with the app whose signed-in member may print bills runs jobs. So only
-the till may have the app installed; waiters' phones use the browser. With the app on two devices, both poll: each
+the till may have the app installed; waiters' phones use the browser. With 1.1 on every device, switch "This device
+prints" off on waiters' phones instead. With the app on two devices, both poll: each
 job still prints once (one claim wins), but on whichever device claimed it, and a phone in a pocket stalls its jobs
 until they show as "may have printed".
 
@@ -171,7 +180,21 @@ Page to app, through the origin-restricted object. JSON, version 1:
 }
 ```
 
-Other types: `info` (app version, protocol version), `testPrint` (a receipt the app builds; the settings as above).
+Other types: `info` (app version, protocol version, from 1.1 `features`), `discover`, and from 1.1 `deviceSettings`
+and `setDeviceSettings`.
+
+**Features (app 1.1).** `info` answers `features`: `parallel` (one lane per printer), `deviceSettings`,
+`nothingPrinted`. The web decides by these, never by the version number; an app without `features` (1.0) gets the
+version 1 behaviour, and a later app's unknown names are ignored. The protocol version stays 1: every new message and
+field is optional for the other side.
+
+**Device settings (app 1.1).** `{ "version": 1, "type": "deviceSettings" }` reads and
+`{ "version": 1, "type": "setDeviceSettings", "settings": { … } }` writes
+`{ "prints": true, "tillLocationId": "uuid" | null, "receiptPrinters": { "<location id>": "<printer id>" } }` (at most
+50; `nativeDeviceSettingsSchema`). Both answer `{ "type": "deviceSettings", "settings", "refused"? }` with what is
+stored; a write the schema doesn't allow stores nothing and answers `refused: true` (never a print answer, which would
+fail the page's oldest waiting print). Stored in the app's private preferences; ids are checked against the location's
+printers by the page every time.
 
 `discover` (`{ "version": 1, "type": "discover" }`) scans the device's own /24, if it is private, on ports
 9100–9102 (connect timeout 300 ms, 32 at a time, up to about 10 s) and answers
@@ -184,7 +207,10 @@ version and protocol only. A test print is an ordinary `print` of a small test b
 in the location's language). `printScreen` is sent only by the app's own script that replaces `window.print()`
 on allow-listed pages; the app answers by opening Android's print screen for the page.
 
-Answer: `{ "jobId", "state": "sent" | "failed", "code" }`.
+Answer: `{ "jobId", "state": "sent" | "failed", "code" }`; from 1.1 also `"nothingPrinted": true` when the job failed
+before any of its bytes were written (connect failed or timed out, the status queries failed, paper out, cover open,
+address refused). The runner passes it on (`POST /pos/print-jobs/:id/result`), so a timeout before sending is retried
+by the queue instead of "may have printed".
 
 | Code                         | Meaning                                                                           |
 | ---------------------------- | --------------------------------------------------------------------------------- |
@@ -225,7 +251,9 @@ the audit log is the lasting record. A test print goes to its printer (on or off
   Chrome version, app version, what failed, and "send a photo of this screen to your contact". With the Play Store,
   a large **Jetzt aktualisieren · Update now** opens the WebView in the Play Store; coming back re-checks by itself.
 - **Offline:** Durby didn't load: **Try again**.
-- Version 1.1 adds the device settings screen with the Server select.
+- **Settings → This device** (app 1.1) is a page of Durby itself, shown only inside the app to members who print
+  bills: "This device prints", "Prints for" (a location, or the service page shown last), the receipt printer for
+  bills at that location, and the app version. The Server select follows with the next app update.
 
 ## App behaviour
 
@@ -238,6 +266,8 @@ the audit log is the lasting record. A test print goes to its printer (on or off
 - Offline: an error screen with **Retry** and **Device settings**.
 - Blob downloads (the product import template) are not supported in version 1; use a browser.
 - Permissions: `INTERNET`, `ACCESS_NETWORK_STATE`. No foreground service, no boot receiver.
+- Screen kept on (app 1.1) only while Durby is in front **and** "This device prints" is on
+  (`FLAG_KEEP_SCREEN_ON`): a sleeping till stops polling, while waiters' phones with printing off sleep as usual.
 
 ## Pilot printer setup
 

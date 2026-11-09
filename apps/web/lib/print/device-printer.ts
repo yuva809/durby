@@ -1,19 +1,27 @@
+import { MAX_DEVICE_RECEIPT_PRINTERS } from '@durby/shared';
+import { deviceSettings, resetDeviceSettings, updateDeviceSettings } from './device-settings';
+
 /**
  * This device's default receipt printer per location (ADR 0033): the printer a bill goes to when the location has
- * several. Held in memory for now, so the till asks once per app start: the web never uses browser storage
- * (lib/auth/session.test.ts). Version 1.1 of the app keeps it in the app's own storage (device settings).
+ * several. Part of the device settings: kept by the app from version 1.1, in memory for the page before that
+ * (lib/print/device-settings.ts).
  */
-const chosen = new Map<string, string>();
-
 export function deviceBillPrinter(locationId: string): string | null {
-  return chosen.get(locationId) ?? null;
+  return deviceSettings().settings.receiptPrinters[locationId] ?? null;
 }
 
 export function setDeviceBillPrinter(locationId: string, printerId: string): void {
-  chosen.set(locationId, printerId);
+  const others = Object.entries(deviceSettings().settings.receiptPrinters).filter(
+    ([location]) => location !== locationId,
+  );
+  // At most 50 locations are remembered: the oldest choices go first.
+  const kept = others.slice(Math.max(0, others.length - (MAX_DEVICE_RECEIPT_PRINTERS - 1)));
+  void updateDeviceSettings({
+    receiptPrinters: { ...Object.fromEntries(kept), [locationId]: printerId },
+  });
 }
 
 /** Tests: forget every choice. */
 export function forgetDeviceBillPrinters(): void {
-  chosen.clear();
+  resetDeviceSettings();
 }

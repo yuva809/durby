@@ -18,25 +18,32 @@ class TcpPrinter(
     private val writeTimeoutMs: Long = 10_000,
     private val statusTimeoutMs: Int = 500,
 ) {
-    /** Sends [job]; returns an answer code (`print.*`). */
-    fun print(job: ByteArray): String {
+    /**
+     * What sending a job came to: an answer code (`print.*`), and whether not one byte of the job left this device
+     * (a connection that failed before the job was written can't have printed anything).
+     */
+    data class Sent(val code: String, val nothingPrinted: Boolean)
+
+    /** Sends [job]. */
+    fun print(job: ByteArray): Sent {
         val socket = Socket()
         try {
             try {
                 socket.connect(InetSocketAddress(InetAddress.getByAddress(address), port), connectTimeoutMs)
             } catch (_: SocketTimeoutException) {
-                return "print.printer_timeout"
+                return Sent("print.printer_timeout", nothingPrinted = true)
             } catch (_: IOException) {
-                return "print.printer_unreachable"
+                return Sent("print.printer_unreachable", nothingPrinted = true)
             }
 
+            // Only status queries go out before the job: a failure here can't have printed anything.
             val status = try {
                 status(socket)
             } catch (_: IOException) {
-                return "print.printer_disconnected"
+                return Sent("print.printer_disconnected", nothingPrinted = true)
             }
-            if (status?.coverOpen == true) return "print.cover_open"
-            if (status?.paperOut == true) return "print.paper_out"
+            if (status?.coverOpen == true) return Sent("print.cover_open", nothingPrinted = true)
+            if (status?.paperOut == true) return Sent("print.paper_out", nothingPrinted = true)
 
             // A socket read timeout doesn't bound writes: a watchdog closes the socket if writing stalls.
             val stalled = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -53,9 +60,10 @@ class TcpPrinter(
                     write(job)
                     flush()
                 }
-                "print.sent"
+                Sent("print.sent", nothingPrinted = false)
             } catch (_: IOException) {
-                if (stalled.get()) "print.printer_timeout" else "print.printer_disconnected"
+                // Part of the job may have reached the printer.
+                Sent(if (stalled.get()) "print.printer_timeout" else "print.printer_disconnected", nothingPrinted = false)
             } finally {
                 watchdog.interrupt()
             }

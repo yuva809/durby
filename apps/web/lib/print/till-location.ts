@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react';
+import { useDeviceSettings } from './device-settings';
 
 /**
- * The location this device prints jobs for (ADR 0033): the one its floor or order page shows last, held in memory.
- * A till sits on its own location's floor, so that is where its printers are. Version 1.1 of the app makes it a
- * device setting. Null until such a page was open.
+ * The location this device prints jobs for (ADR 0033): the device setting (app 1.1, Settings → This device), else the
+ * one its floor or order page shows last, held in memory: a till sits on its own location's floor, so that is where
+ * its printers are. Null until either is known.
  */
 let current: string | null = null;
 const listeners = new Set<() => void>();
@@ -19,6 +20,12 @@ export function tillLocation(): string | null {
 }
 
 export function useTillLocation(): string | null {
+  const chosen = useDeviceSettings().settings.tillLocationId;
+  const shown = useLastShownLocation();
+  return chosen ?? shown;
+}
+
+function useLastShownLocation(): string | null {
   return useSyncExternalStore(
     (listener) => {
       listeners.add(listener);

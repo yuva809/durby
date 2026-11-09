@@ -35,6 +35,8 @@ export const SETTINGS_TABS: readonly NavItem[] = [
   tab('bill', 'platform.settingsTabs.bill', 'platform.settings.read', 'pos'),
   // The LAN printer each location prints bills on through the Android app (ADR 0032).
   tab('printers', 'platform.settingsTabs.printers', 'platform.settings.read', 'pos'),
+  // This device's own settings, kept by the Android app (ADR 0033 §5, §13): only inside the app.
+  { ...tab('device', 'platform.settingsTabs.device', 'pos.bills.print', 'pos'), appOnly: true },
   // Whether the kitchen and the bar prepare orders, or items go straight to the bill (ADR 0031).
   tab('service', 'platform.settingsTabs.service', 'platform.settings.read', 'pos'),
   tab('labels', 'platform.settingsTabs.labels', 'platform.labels.manage'),
