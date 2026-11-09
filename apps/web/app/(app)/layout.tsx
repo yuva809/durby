@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, useEffect } from 'react';
 import { ChoosePassword } from '../../components/auth/choose-password';
+import { PrintJobRunner } from '../../components/pos/print-job-runner';
 import { AppShell } from '../../components/shell/app-shell';
 import { Skeleton } from '../../components/ui/skeleton';
 import { loginPath } from '../../lib/auth/next-path';
@@ -36,5 +37,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }
   // A temporary password: nothing else until it is changed (ADR 0023 §3).
   if (session?.passwordChangeRequired) return <ChoosePassword />;
-  return <AppShell>{children}</AppShell>;
+  return (
+    <>
+      <AppShell>{children}</AppShell>
+      {/* Print jobs on the till, on every page, in the Android app only (ADR 0033). */}
+      <PrintJobRunner />
+    </>
+  );
 }

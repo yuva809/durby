@@ -12,7 +12,8 @@ import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { PrinterCommandsController } from './printer-commands.controller';
 import { PrinterCommandsService } from './printer-commands.service';
-import { PrintJobsController } from './print-jobs.controller';
+import { PrintJobsController, StationPrintJobsController } from './print-jobs.controller';
+import { PrintJobSweep } from './print-job-sweep';
 import { PrintJobsService } from './print-jobs.service';
 import { PrintersController } from './printers.controller';
 import { PrintersService } from './printers.service';
@@ -37,6 +38,7 @@ import { TablesService } from './tables.service';
     PrinterCommandsController,
     PrintersController,
     PrintJobsController,
+    StationPrintJobsController,
   ],
   providers: [
     TablesService,
@@ -49,6 +51,7 @@ import { TablesService } from './tables.service';
     PrinterCommandsService,
     PrintersService,
     PrintJobsService,
+    PrintJobSweep,
   ],
   exports: [TablesService, AreasService, PosFloorReader],
 })

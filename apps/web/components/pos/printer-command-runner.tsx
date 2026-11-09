@@ -8,6 +8,7 @@ import { loadBillLayout } from '../../lib/pos/api';
 import { pollPrinterCommands } from '../../lib/pos/printer-commands';
 import { renderBillImage } from '../../lib/print/bill-image';
 import { nativePrinter } from '../../lib/print/native';
+import { setTillLocation } from '../../lib/print/till-location';
 import { TestPrintPage } from './test-print-page';
 
 /**
@@ -27,6 +28,9 @@ export function PrinterCommandRunner({
   // The printer the test page is drawn for: set (and rendered) just before its picture is taken.
   const [testPrinter, setTestPrinter] = useState<Printer | null>(null);
   const inApp = nativePrinter() !== null;
+
+  // The till prints its print jobs for the location its floor or order page shows (ADR 0033).
+  useEffect(() => setTillLocation(locationId), [locationId]);
 
   useEffect(() => {
     const printer = nativePrinter();

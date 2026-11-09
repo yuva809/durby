@@ -59,6 +59,11 @@ function logoRects(holder: HTMLElement, scale: number): Rect[] {
   ];
 }
 
+/** Loads the converter ahead of the first print, so a till's first ticket isn't slower than the rest. */
+export async function preloadBillRenderer(): Promise<void> {
+  await import('html-to-image');
+}
+
 /**
  * Re-lays-out a clone of the rendered bill at the printer's width and turns it into printer dots. The bill
  * component and browser printing are untouched; the converter loads only inside the app.

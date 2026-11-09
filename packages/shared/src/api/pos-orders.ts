@@ -126,6 +126,11 @@ export const sendTicketResponseSchema = z.object({
   order: orderSchema,
   ticketId: z.uuid(),
   ticketIds: z.array(z.uuid()).min(1),
+  /**
+   * The tickets queued on a printer of the location (ADR 0033): the till prints them, so the device that sent them
+   * doesn't. Missing from older apis: nothing queued.
+   */
+  printQueuedIds: z.array(z.uuid()).optional(),
 });
 
 export const floorTableSchema = z.object({

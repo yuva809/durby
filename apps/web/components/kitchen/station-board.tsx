@@ -26,6 +26,7 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Loaded, NoAccess } from '../users/common';
+import { PrintWarnings } from '../pos/print-warnings';
 
 const STATION_KEYS: Record<PrepStation, PermissionKey> = {
   kitchen: 'pos.kitchen.use',
@@ -134,6 +135,8 @@ function Board({ station, locations }: { station: PrepStation; locations: Locati
         )}
       </div>
       <Notice text={error} tone="error" />
+      {/* This station's tickets that aren't printing, with Reprint (ADR 0033). */}
+      <PrintWarnings locationId={locationId} station={station} canReprint />
       <Loaded resource={board} reload={reload}>
         {(tickets) => (
           <div className="grid gap-4 md:grid-cols-3" data-testid="station-board">

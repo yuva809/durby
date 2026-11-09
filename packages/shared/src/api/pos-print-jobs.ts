@@ -111,10 +111,15 @@ export const printJobStatusSchema = z.object({
   waiting: z.object({ count: z.number().int(), oldestAt: z.iso.datetime().nullable() }),
   /** Waiting printers with their last answer (not reachable, paper out, …); expired jobs are in `attention`. */
   retrying: z.array(
-    z.object({ printerId: z.uuid(), lastCode: z.string(), count: z.number().int() }),
+    z.object({
+      printerId: z.uuid(),
+      printerName: z.string(),
+      lastCode: z.string(),
+      count: z.number().int(),
+    }),
   ),
-  /** Jobs a person has to look at: may have printed (check, then reprint) or can't print. */
-  attention: z.array(printJobSchema),
+  /** Jobs a person has to look at: may have printed (check, then reprint), can't print, or too old. */
+  attention: z.array(printJobSchema.extend({ printerName: z.string(), orderNumber: z.string() })),
 });
 
 export type PrintJob = z.infer<typeof printJobSchema>;

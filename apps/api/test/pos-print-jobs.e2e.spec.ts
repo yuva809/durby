@@ -18,6 +18,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { EntitlementsAdmin } from '../src/platform/config/entitlements';
+import { OutboxCleanup } from '../src/platform/outbox';
 import { withIdempotencyKey } from './support/idempotency';
 import { RbacSeed, type SeededOrg } from './support/rbac';
 
@@ -41,7 +42,11 @@ describe('pos print jobs', () => {
     await app.close();
   });
 
-  async function member(o: SeededOrg, role: 'owner' | 'waiter' | 'staff', locations?: string[]) {
+  async function member(
+    o: SeededOrg,
+    role: 'owner' | 'waiter' | 'staff' | 'kitchen' | 'bar',
+    locations?: string[],
+  ) {
     const userId = await seed.user();
     await seed.member(o.id, userId, o.roles[role], locations ? { locations } : {});
     return seed.token(userId, o.id);
@@ -321,7 +326,9 @@ describe('pos print jobs', () => {
 
     const now = await status();
     expect(now.waiting.count).toBe(1);
-    expect(now.retrying).toEqual([{ printerId: kitchen, lastCode: 'print.paper_out', count: 1 }]);
+    expect(now.retrying).toEqual([
+      { printerId: kitchen, printerName: 'Kitchen', lastCode: 'print.paper_out', count: 1 },
+    ]);
     expect(now.attention.map((j) => [j.id, j.status])).toEqual([[second!.id, 'needs_check']]);
     // The poll just now: a till is printing here.
     expect(Date.now() - Date.parse(now.tillSeenAt!)).toBeLessThan(10_000);
@@ -511,5 +518,111 @@ describe('pos print jobs', () => {
 
     // Printed: the next tap is a new bill.
     expect((await tap()).id).not.toBe(first.id);
+  });
+
+  it('tells the sending device which tickets the till prints', async () => {
+    const r = await restaurant();
+    await printer(r, 'Kitchen', { stations: ['kitchen'] });
+    const res = await send(r, [
+      { productId: r.soup, quantity: 1 },
+      { productId: r.beer, quantity: 1 },
+    ]);
+    // The kitchen ticket has a printer; the bar ticket has none here, so the device prints it as before.
+    expect(res.printQueuedIds).toEqual([res.ticketIds[0]]);
+  });
+
+  it('sweeps jobs past their maximum age into needs check, as the system, once', async () => {
+    const r = await restaurant();
+    await printer(r, 'Kitchen', { stations: ['kitchen'] });
+    const till = await member(r.org, 'waiter', [r.here]);
+    await send(r, [{ productId: r.soup, quantity: 1 }]);
+    await send(r, [{ productId: r.soup, quantity: 1 }]);
+    const [never, retried] = (await jobsOf(r)).map((j) => j.id);
+    // One retried (its claim cleared), one never claimed; both past their maximum age.
+    expect((await claim(till, r.here))!.id).toBe(never);
+    await answer(till, never!, { code: 'print.printer_unreachable' }).expect(200);
+    await seed.as(r.org.id, (db) =>
+      db.posPrintJob.updateMany({
+        data: {
+          createdAt: new Date(Date.now() - 11 * 60_000),
+          expiresAt: new Date(Date.now() - 60_000),
+        },
+      }),
+    );
+    const cleanup = app.get(OutboxCleanup);
+    const first = await cleanup.runOnce();
+    expect(first.printJobsExpired).toBeGreaterThanOrEqual(2);
+    const rows = await seed.as(r.org.id, (db) =>
+      db.posPrintJob.findMany({
+        select: { id: true, status: true, lastCode: true, claimedAt: true, completedAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+    );
+    expect(rows.map((j) => [j.status, j.lastCode, j.claimedAt])).toEqual([
+      ['needs_check', 'print.expired', null],
+      ['needs_check', 'print.expired', null],
+    ]);
+    expect(rows.every((j) => j.completedAt !== null)).toBe(true);
+    const audit = await seed.as(r.org.id, (db) =>
+      db.auditLog.findMany({
+        where: { action: 'pos.print_job.expired' },
+        select: { entityId: true, actorType: true, actorSystem: true },
+      }),
+    );
+    expect(audit.map((a) => [a.actorType, a.actorSystem]).sort()).toEqual([
+      ['system', 'job.print_jobs'],
+      ['system', 'job.print_jobs'],
+    ]);
+
+    // Idempotent: nothing left to stamp here, no second audit row.
+    await cleanup.runOnce();
+    expect(
+      await seed.as(r.org.id, (db) =>
+        db.auditLog.count({ where: { action: 'pos.print_job.expired' } }),
+      ),
+    ).toBe(2);
+    // Staff can still reprint it.
+    await post(till, `/pos/print-jobs/${retried}/reprint`).expect(200);
+    expect((await claim(till, r.here))!.id).toBe(retried);
+  });
+
+  it("shows a station's screen its own tickets' print problems, and lets it reprint them", async () => {
+    const r = await restaurant();
+    await printer(r, 'Kitchen', { stations: ['kitchen'] });
+    await printer(r, 'Bar', { stations: ['bar'] });
+    const till = await member(r.org, 'waiter', [r.here]);
+    const cook = await member(r.org, 'kitchen', [r.here]);
+    const barkeeper = await member(r.org, 'bar', [r.here]);
+    await send(r, [
+      { productId: r.soup, quantity: 1 },
+      { productId: r.beer, quantity: 1 },
+    ]);
+    for (let i = 0; i < 2; i++) {
+      const job = await claim(till, r.here);
+      await answer(till, job!.id, { code: 'print.printer_disconnected' }).expect(200);
+    }
+    const kitchenStatus = printJobStatusSchema.parse(
+      (await get(cook, `/pos/stations/kitchen/print-status?locationId=${r.here}`).expect(200)).body,
+    );
+    expect(kitchenStatus.attention).toHaveLength(1);
+    expect(kitchenStatus.attention[0]).toMatchObject({
+      printerName: 'Kitchen',
+      status: 'needs_check',
+    });
+    expect(kitchenStatus.attention[0]!.orderNumber).toMatch(/^ORD-/);
+    // Kitchen staff don't read orders: the general status isn't theirs, the bar's neither.
+    await get(cook, `/pos/print-jobs/status?locationId=${r.here}`).expect(403);
+    await get(cook, `/pos/stations/bar/print-status?locationId=${r.here}`).expect(403);
+    const barJob = printJobStatusSchema.parse(
+      (await get(barkeeper, `/pos/stations/bar/print-status?locationId=${r.here}`).expect(200))
+        .body,
+    ).attention[0]!;
+    // A screen reprints its own tickets only.
+    await post(cook, `/pos/stations/kitchen/print-jobs/${barJob.id}/reprint`).expect(404);
+    await post(barkeeper, `/pos/stations/bar/print-jobs/${barJob.id}/reprint`).expect(200);
+    await post(
+      cook,
+      `/pos/stations/kitchen/print-jobs/${kitchenStatus.attention[0]!.id}/reprint`,
+    ).expect(200);
   });
 });
