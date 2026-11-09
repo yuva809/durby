@@ -815,6 +815,94 @@ describe('OrderPage (till)', () => {
     expect(print).not.toHaveBeenCalled();
   });
 
+  it('leaves a ticket that a printer of the location prints to the till (ADR 0033)', async () => {
+    signedInAs('waiter');
+    const ticketId = ORDER.tickets[0]!.id;
+    api({
+      ...withOrder(null),
+      [`POST /api/v1/pos/tables/${TABLE.id}/tickets`]: () =>
+        Response.json(
+          { order: ORDER, ticketId, ticketIds: [ticketId], printQueuedIds: [ticketId] },
+          { status: 201 },
+        ),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    const soup = await screen.findAllByTestId('menu-product');
+    await userEvent.click(soup.find((b) => b.dataset.name === 'Soup')!);
+    await userEvent.click(screen.getByTestId('send-to-kitchen'));
+    expect(await screen.findByText('Sent: ticket 1 (Kitchen).')).toBeTruthy();
+    // Not on this device: no print screen, nothing in the print-only root.
+    expect(print).not.toHaveBeenCalled();
+    expect(document.getElementById('print-root')?.textContent ?? '').toBe('');
+  });
+
+  it("in a browser, sends the bill to the till's receipt printer instead of the print screen", async () => {
+    signedInAs('cashier');
+    const at = '2026-11-09T12:00:00.000Z';
+    const receipt = (n: number, name: string) => ({
+      id: id(90 + n),
+      locationId: TABLE.locationId,
+      name,
+      host: `192.168.64.2${n}`,
+      port: 9100,
+      widthDots: 576,
+      cutter: true,
+      imageMode: 'gsV0',
+      enabled: true,
+      printsBills: true,
+      stations: [],
+      archivedAt: null,
+      createdAt: at,
+      updatedAt: at,
+    });
+    const writes = api({
+      ...withOrder(ORDER),
+      'GET /api/v1/pos/bill-layout': () =>
+        Response.json({
+          header: { logo: null, name: null, phone: null, email: null, website: null },
+          footer: { lines: [] },
+          printers: { bill: null },
+          printerList: [receipt(1, 'Till 1'), receipt(2, 'Till 2')],
+        }),
+      'POST /api/v1/pos/print-jobs/bill': () =>
+        Response.json(
+          {
+            id: id(80),
+            locationId: TABLE.locationId,
+            printerId: id(92),
+            kind: 'bill',
+            orderId: ORDER.id,
+            ticketId: null,
+            status: 'pending',
+            stale: false,
+            expired: false,
+            attempts: 0,
+            lastCode: null,
+            notBefore: at,
+            expiresAt: '2026-11-09T12:10:00.000Z',
+            createdAt: at,
+            claimedAt: null,
+            completedAt: null,
+          },
+          { status: 201 },
+        ),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    await screen.findAllByTestId('bill-line');
+    await userEvent.click(screen.getByTestId('print-bill'));
+    // Two receipt printers: this device chooses once.
+    const choose = await screen.findByTestId('native-print-choose');
+    await userEvent.click(within(choose).getByText('Till 2'));
+    expect(await screen.findByText('Sent to Till 2. The till prints it.')).toBeTruthy();
+    await userEvent.click(screen.getByTestId('print-bill'));
+    await waitFor(() => expect(writes.filter((w) => w.path.endsWith('/bill'))).toHaveLength(2));
+    expect(writes.filter((w) => w.path.endsWith('/bill')).map((w) => w.body)).toEqual([
+      { orderId: ORDER.id, printerId: id(92) },
+      { orderId: ORDER.id, printerId: id(92) },
+    ]);
+    expect(print).not.toHaveBeenCalled();
+  });
+
   it('focuses the menu search with "/"', async () => {
     signedInAs('waiter');
     api(withOrder(null));

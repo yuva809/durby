@@ -94,6 +94,9 @@ const fromRaw = (r: RawRow): Row => ({
   completedAt: r.completed_at,
 });
 
+/** The permission of a station's screen (its reprints and warnings). */
+const STATION_PERMISSION = { kitchen: 'pos.kitchen.use', bar: 'pos.bar.use' } as const;
+
 /** How long the last poll of a location's till counts as "a till is printing" (ADR 0033 §12). */
 const TILL_SEEN_TTL_S = 3_600;
 
@@ -364,13 +367,20 @@ export class PrintJobsService {
    * Back to the queue after a person looked (ADR 0033 §12): a job that may have printed, couldn't print, or was
    * claimed and never answered. `pos.bills.print` at its location.
    */
-  async reprint(id: string): Promise<PrintJob> {
+  async reprint(id: string, station?: PrepStation): Promise<PrintJob> {
     const { userId } = this.tenantContext.require();
     const found = await this.db.posPrintJob.findUnique({
       where: { id },
-      select: { locationId: true },
+      select: { locationId: true, ticket: { select: { station: true } } },
     });
-    if (!found || !(await this.access.can('pos.bills.print', { locationId: found.locationId }))) {
+    // From a station's screen: only that station's tickets, with the screen's permission there.
+    const allowed = found
+      ? station
+        ? found.ticket?.station === station &&
+          (await this.access.can(STATION_PERMISSION[station], { locationId: found.locationId }))
+        : await this.access.can('pos.bills.print', { locationId: found.locationId })
+      : false;
+    if (!found || !allowed) {
       throw posErrors.printJobNotFound();
     }
     return this.db.$transaction(async (tx) => {
@@ -425,62 +435,85 @@ export class PrintJobsService {
   }
 
   /** What the warnings show at a location (`pos.orders.read` there). */
-  async status(locationId: string): Promise<PrintJobStatusResponse> {
-    if (!(await this.access.can('pos.orders.read', { locationId }))) {
+  async status(locationId: string, station?: PrepStation): Promise<PrintJobStatusResponse> {
+    const permission = station ? STATION_PERMISSION[station] : 'pos.orders.read';
+    if (!(await this.access.can(permission, { locationId }))) {
       throw posErrors.locationNotFound();
     }
+    // A station's screen sees its own tickets' jobs only.
+    const scope = station ? { kind: 'ticket' as const, ticket: { station } } : {};
     const now = new Date();
     const waitingSince = new Date(now.getTime() - PRINT_JOB_WAIT_WARNING_MS);
     const staleSince = new Date(now.getTime() - PRINT_JOB_ANSWER_TIMEOUT_MS);
-    const [waiting, oldest, retrying, attention] = await this.db.$transaction(async (tx) => {
-      const location = await tx.location.findUnique({
-        where: { id: locationId },
-        select: { id: true },
-      });
-      if (!location) throw posErrors.locationNotFound();
-      const pendingOld = {
-        locationId,
-        status: 'pending' as const,
-        createdAt: { lte: waitingSince },
-        expiresAt: { gt: now },
-      };
-      return Promise.all([
-        tx.posPrintJob.count({ where: pendingOld }),
-        tx.posPrintJob.findFirst({
-          where: pendingOld,
-          select: { createdAt: true },
-          orderBy: { createdAt: 'asc' },
-        }),
-        tx.posPrintJob.groupBy({
-          by: ['printerId', 'lastCode'],
-          where: { locationId, status: 'pending', lastCode: { not: null }, expiresAt: { gt: now } },
-          _count: { _all: true },
-        }),
-        tx.posPrintJob.findMany({
-          where: {
-            locationId,
-            OR: [
-              { status: { in: ['failed', 'needs_check'] } },
-              { status: 'claimed', claimedAt: { lte: staleSince } },
-              // Waited past its maximum age: never printed by itself (shown as needs check).
-              { status: 'pending', expiresAt: { lte: now } },
-            ],
-          },
-          select: SELECT,
-          orderBy: { createdAt: 'asc' },
-          take: 50,
-        }),
-      ]);
-    });
+    const [waiting, oldest, retrying, attention, printers] = await this.db.$transaction(
+      async (tx) => {
+        const location = await tx.location.findUnique({
+          where: { id: locationId },
+          select: { id: true },
+        });
+        if (!location) throw posErrors.locationNotFound();
+        const pendingOld = {
+          ...scope,
+          locationId,
+          status: 'pending' as const,
+          createdAt: { lte: waitingSince },
+          expiresAt: { gt: now },
+        };
+        return Promise.all([
+          tx.posPrintJob.count({ where: pendingOld }),
+          tx.posPrintJob.findFirst({
+            where: pendingOld,
+            select: { createdAt: true },
+            orderBy: { createdAt: 'asc' },
+          }),
+          tx.posPrintJob.groupBy({
+            by: ['printerId', 'lastCode'],
+            where: {
+              ...scope,
+              locationId,
+              status: 'pending',
+              lastCode: { not: null },
+              expiresAt: { gt: now },
+            },
+            _count: { _all: true },
+          }),
+          tx.posPrintJob.findMany({
+            where: {
+              ...scope,
+              locationId,
+              OR: [
+                { status: { in: ['failed', 'needs_check'] } },
+                { status: 'claimed', claimedAt: { lte: staleSince } },
+                // Waited past its maximum age: never printed by itself (shown as needs check).
+                { status: 'pending', expiresAt: { lte: now } },
+              ],
+            },
+            select: {
+              ...SELECT,
+              printer: { select: { name: true } },
+              order: { select: { number: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+            take: 50,
+          }),
+          tx.posPrinter.findMany({ where: { locationId }, select: { id: true, name: true } }),
+        ]);
+      },
+    );
     return {
       tillSeenAt: await this.tillSeenAt(locationId),
       waiting: { count: waiting, oldestAt: oldest?.createdAt.toISOString() ?? null },
       retrying: retrying.map((r) => ({
         printerId: r.printerId,
+        printerName: printers.find((p) => p.id === r.printerId)?.name ?? '',
         lastCode: r.lastCode ?? '',
         count: r._count._all,
       })),
-      attention: attention.map((r) => toJob(r, now)),
+      attention: attention.map((r) => ({
+        ...toJob(r, now),
+        printerName: r.printer.name,
+        orderNumber: r.order.number,
+      })),
     };
   }
 

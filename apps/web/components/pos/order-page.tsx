@@ -12,6 +12,7 @@ import {
   type Product,
   type ProductCategory,
   billPrinterFor,
+  receiptPrinters,
   type Printer as LocationPrinter,
   printerSettingsOf,
   type SendTicketResponse,
@@ -61,6 +62,7 @@ import { useNow } from '../../lib/pos/use-now';
 import { printAs } from '../../lib/pos/print';
 import { renderBillImage } from '../../lib/print/bill-image';
 import { nativePrinter, type NativePrintOutcome } from '../../lib/print/native';
+import { queueBillPrintJob } from '../../lib/pos/print-jobs';
 import { deviceBillPrinter, setDeviceBillPrinter } from '../../lib/print/device-printer';
 import { nativePrintMessage, printBillNatively } from '../../lib/print/native-bill';
 import { useBrand } from '../theme-provider';
@@ -76,6 +78,7 @@ import { Input } from '../ui/input';
 import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { KitchenTicketView, OrderSlip, PrintRoot } from './kitchen-ticket';
 import { MoneyProvider, useMoney } from './money';
+import { PrintWarnings } from './print-warnings';
 import { PrinterCommandRunner } from './printer-command-runner';
 import { Receipt } from './receipt';
 import { tableColors } from './table-icon';
@@ -277,6 +280,7 @@ function TableOrder({
   const nativeBusy = useRef(false);
   // The location's printers (ADR 0033), read with the bill layout.
   const printerList = layout.status === 'ready' ? layout.data.printerList : [];
+  const hasReceiptPrinter = receiptPrinters(printerList).length > 0;
   /** `chosen`: the receipt printer picked just now, kept as this device's default for the location. */
   const printNatively = (jobId: string, chosen?: string) => {
     const printer = nativePrinter();
@@ -301,19 +305,62 @@ function TableOrder({
   };
   const printNewBill = useEffectEvent(() => printNatively(crypto.randomUUID()));
 
+  // A device without the app (a waiter's phone) sends the bill to the till's receipt printer (ADR 0033): the till
+  // prints it; a second tap while it waits gets the same job.
+  const billAction = useActionKey();
+  const [queuedBill, setQueuedBill] = useState<{ printer: string } | { error: string } | null>(
+    null,
+  );
+  const orderId = view.status === 'ready' ? (view.data.order?.id ?? null) : null;
+  const queueBill = async (chosen?: string) => {
+    if (!locationId || !orderId) return;
+    if (chosen) setDeviceBillPrinter(locationId, chosen);
+    const target = billPrinterFor(printerList, chosen ?? deviceBillPrinter(locationId));
+    if (target.kind === 'choose') {
+      setNativeJob({ jobId: crypto.randomUUID(), outcome: null, choose: target.options });
+      return;
+    }
+    if (target.kind === 'none') {
+      printParts(organizationName);
+      return;
+    }
+    setNativeJob(null);
+    const result = await queueBillPrintJob(store, billAction, orderId, target.printer.id);
+    setQueuedBill(
+      result.ok ? { printer: target.printer.name } : { error: t(errorLabel(result.code)) },
+    );
+  };
+  const queueNewBill = useEffectEvent(() => void queueBill());
+
   useEffect(() => {
     if (!print) return;
     // Started after this effect: printing (or asking which printer) updates the page's state.
     if (print.kind === 'bill' && nativePrinter()) void Promise.resolve().then(printNewBill);
+    else if (print.kind === 'bill' && hasReceiptPrinter) void Promise.resolve().then(queueNewBill);
     else printParts(organizationName);
-  }, [print, organizationName]);
+  }, [print, organizationName, hasReceiptPrinter]);
   const nativeStatus = (
-    <NativePrintStatus
-      job={nativeJob}
-      onRetry={() => nativeJob && printNatively(nativeJob.jobId)}
-      onPrintScreen={() => printParts(organizationName)}
-      onChoose={(printerId) => nativeJob && printNatively(nativeJob.jobId, printerId)}
-    />
+    <>
+      <NativePrintStatus
+        job={nativeJob}
+        onRetry={() => nativeJob && printNatively(nativeJob.jobId)}
+        onPrintScreen={() => printParts(organizationName)}
+        onChoose={(printerId) =>
+          nativeJob &&
+          (nativePrinter() ? printNatively(nativeJob.jobId, printerId) : void queueBill(printerId))
+        }
+      />
+      {queuedBill && (
+        <Notice
+          tone={'error' in queuedBill ? 'error' : 'info'}
+          text={
+            'error' in queuedBill
+              ? queuedBill.error
+              : t('pos.printWarnings.billQueued', { printer: queuedBill.printer })
+          }
+        />
+      )}
+    </>
   );
 
   /** `sent`: right after a send or void, when items that went straight to the bill don't print. */
@@ -330,7 +377,13 @@ function TableOrder({
   };
   const afterWrite = (response: SendTicketResponse) => {
     reload();
-    printTickets(response.order, response.ticketIds, true);
+    // Tickets a printer of the location prints come out at the till (ADR 0033); this device prints the rest.
+    const queued = response.printQueuedIds ?? [];
+    printTickets(
+      response.order,
+      response.ticketIds.filter((id) => !queued.includes(id)),
+      true,
+    );
   };
 
   const add = (product: Product, station: PrepStation) => {
@@ -571,6 +624,8 @@ function TableOrder({
               </div>
             )}
             {access.canPrintBill && <PrinterCommandRunner locationId={table.locationId} />}
+            {/* What isn't printing at this location, e.g. a ticket just sent (ADR 0033). */}
+            <PrintWarnings locationId={table.locationId} canReprint={access.canPrintBill} />
             {print && (
               <PrintRoot>
                 {print.kind === 'tickets' ? (

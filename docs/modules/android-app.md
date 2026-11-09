@@ -87,6 +87,50 @@ Times the queue compares (`not_before`, `created_at`) come from the database's c
 database write. The poll does no location lookup either: a location of another organization just has no jobs there
 (RLS). Errors: `pos.print_job_not_found`, `pos.print_job_not_claimed`, `pos.print_job_not_reprintable`.
 
+## Till runner and warnings (ADR 0033, step 3)
+
+**Runner** (`PrintJobRunner`, mounted on every signed-in page): inside the app only, for members who may print bills,
+it polls the till's location every 1.5 s, claims the due jobs (oldest first), loads each order, draws the kitchen/bar
+ticket (`KitchenTicketView`) or the bill (`Receipt`) at the printer's width, prints it through the print object (a
+new job id per claim) and answers. One lane per printer: a printer's jobs in order, different printers at the same
+time, so a bar ticket doesn't wait for the kitchen printer. Pictures are drawn one at a time (one hidden page). An app
+that doesn't answer in time counts as a timeout (needs check). The till's location is the one its floor or order page
+showed last (held in memory); version 1.1 of the app makes it a device setting.
+
+**With the v1 app (1.0.0).** The runner sends version 1's `print` message, unchanged (protocol 1, same fields, answer
+codes from the v1 set), so kitchen and bar printing works with the app installed at customers today. Differences:
+
+- The v1 app sends one job at a time (one print thread). Jobs for different printers queue in the app; the web
+  still draws the next picture while the app sends. A job takes the app at most about 14 s (3 s connect, 10 s write
+  watchdog), and the web waits 30 s for an answer, so with up to 3 printers a waiting job is answered in time even if
+  the other two hang. With 4 or more hanging printers a waiting job can run out of time: it shows as "may have
+  printed" (check, then reprint), never a silent second print. Version 1.1 sends to different printers in parallel.
+- v1 doesn't say whether anything was sent before a connection broke (`nothingPrinted`): a timeout or a drop is
+  always "may have printed" there.
+- v1 has no "This device prints" switch and doesn't keep the screen on. A WebView in the background (screen off,
+  another app in front, the app's offline screen) stalls drawing: claimed jobs then show as "may have printed" after
+  60 s. Keep the till's screen on with the app in front (Android display settings) until 1.1.
+
+**Rollout until 1.1 (step 4).** Every device with the app whose signed-in member may print bills runs jobs. So only
+the till may have the app installed; waiters' phones use the browser. With the app on two devices, both poll: each
+job still prints once (one claim wins), but on whichever device claimed it, and a phone in a pocket stalls its jobs
+until they show as "may have printed".
+
+**The sending device** leaves tickets a printer of the location prints to the till: the send response names them
+(`printQueuedIds`); the rest print on the device as before. **Print bill on a device without the app** queues the bill
+for a receipt printer (choose once if there are several; a second tap gets the waiting job) and says "Sent to … The
+till prints it."; with no receipt printer, the print screen as before. Inside the app the bill still prints directly.
+
+**Warnings** (`PrintWarnings`): on the floor page and the order page (the location, `pos.orders.read`) and on the
+kitchen and bar screens (their own tickets only: `GET /pos/stations/{kitchen|bar}/print-status`, with
+`pos.kitchen.use` / `pos.bar.use`, and `POST /pos/stations/{station}/print-jobs/:id/reprint`). They show jobs waiting
+without a till (no till polled in the last 30 s), printers being retried with the reason, and jobs to check (may have
+printed, couldn't print, too old) with Reprint. Read every 10 s while the page is visible.
+
+**Sweep**: the worker's hourly retention pass stores pending jobs past `expires_at` as `needs_check` with
+`print.expired` (audited as the system actor `job.print_jobs`, idempotent). The migration
+`pos_print_jobs_expired` lets such a job be needs check without a claim.
+
 ## Print flow
 
 1. **Print bill** on a table, as today. The bill renders into `#print-root`.

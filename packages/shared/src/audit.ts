@@ -285,6 +285,7 @@ export const AUDIT_ACTIONS = {
     entityType: 'print_job',
     label: 'pos.audit.actions.printJobReprinted',
   },
+  'pos.print_job.expired': { entityType: 'print_job', label: 'pos.audit.actions.printJobExpired' },
   // Remote printer commands (ADR 0032 §15): the audit log is their lasting record.
   'pos.printer_command.requested': {
     entityType: 'printer_command',
@@ -363,6 +364,8 @@ export const AUDIT_SYSTEM_ACTORS = {
   'staff.admin_portal': { label: 'platform.audit.actors.adminPortal' },
   /** Outbox handlers (ADR 0013), when one records audit rows. */
   'job.outbox': { label: 'platform.audit.actors.jobOutbox' },
+  /** The worker's hourly sweep of print jobs past their maximum age (ADR 0033 §12). */
+  'job.print_jobs': { label: 'platform.audit.actors.jobPrintJobs' },
   migration: { label: 'platform.audit.actors.migration' },
 } as const satisfies Record<string, { label: string }>;
 

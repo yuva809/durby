@@ -503,7 +503,19 @@ export class OrdersService {
     orderId: string,
     ticketIds: string[],
   ): Promise<SendTicketResponse> {
-    return { order: await this.load(tx, orderId), ticketId: ticketIds[0]!, ticketIds };
+    // Tickets a printer of the location prints (ADR 0033): the sending device leaves them to the till.
+    const queued = await tx.posPrintJob.findMany({
+      where: { ticketId: { in: ticketIds } },
+      select: { ticketId: true },
+      distinct: ['ticketId'],
+    });
+    const printQueuedIds = ticketIds.filter((id) => queued.some((q) => q.ticketId === id));
+    return {
+      order: await this.load(tx, orderId),
+      ticketId: ticketIds[0]!,
+      ticketIds,
+      printQueuedIds,
+    };
   }
 
   /**

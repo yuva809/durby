@@ -24,6 +24,7 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Loaded, NoAccess } from '../users/common';
 import { MoneyProvider, useMoney } from './money';
+import { PrintWarnings } from './print-warnings';
 import { PrinterCommandRunner } from './printer-command-runner';
 import { TableIcon } from './table-icon';
 
@@ -95,6 +96,11 @@ function LocationFloor({ locations }: { locations: LocationSummary[] }) {
       <PrinterCommandRunner
         locationId={locationId}
         locationName={locations.find((l) => l.id === locationId)?.name ?? ''}
+      />
+      {/* What isn't printing at this location, with Reprint for those who print bills (ADR 0033). */}
+      <PrintWarnings
+        locationId={locationId}
+        canReprint={session?.activePermissions.includes('pos.bills.print') ?? false}
       />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1">

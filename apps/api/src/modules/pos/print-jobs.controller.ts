@@ -98,3 +98,51 @@ export class PrintJobsController {
     return this.jobs.status(query.locationId);
   }
 }
+
+/**
+ * The print warnings of a station's screen and its reprints (ADR 0033 §12): only that station's tickets, with the
+ * screen's own permission, since kitchen and bar staff don't read orders.
+ */
+@RequireFeature('pos')
+@Controller('pos/stations')
+export class StationPrintJobsController {
+  constructor(private readonly jobs: PrintJobsService) {}
+
+  @RequirePermission('pos.kitchen.use')
+  @Get('kitchen/print-status')
+  kitchenStatus(
+    @Query(new ZodQuery(printJobQuerySchema)) query: PrintJobQuery,
+  ): Promise<PrintJobStatusResponse> {
+    return this.jobs.status(query.locationId, 'kitchen');
+  }
+
+  @RequirePermission('pos.bar.use')
+  @Get('bar/print-status')
+  barStatus(
+    @Query(new ZodQuery(printJobQuerySchema)) query: PrintJobQuery,
+  ): Promise<PrintJobStatusResponse> {
+    return this.jobs.status(query.locationId, 'bar');
+  }
+
+  @RequirePermission('pos.kitchen.use')
+  @Idempotent({ completion: 'transaction' })
+  @Post('kitchen/print-jobs/:id/reprint')
+  @HttpCode(HttpStatus.OK)
+  reprintKitchen(
+    @Param('id', new ParseUUIDPipe({ exceptionFactory: () => posErrors.printJobNotFound() }))
+    id: string,
+  ): Promise<PrintJob> {
+    return this.jobs.reprint(id, 'kitchen');
+  }
+
+  @RequirePermission('pos.bar.use')
+  @Idempotent({ completion: 'transaction' })
+  @Post('bar/print-jobs/:id/reprint')
+  @HttpCode(HttpStatus.OK)
+  reprintBar(
+    @Param('id', new ParseUUIDPipe({ exceptionFactory: () => posErrors.printJobNotFound() }))
+    id: string,
+  ): Promise<PrintJob> {
+    return this.jobs.reprint(id, 'bar');
+  }
+}
