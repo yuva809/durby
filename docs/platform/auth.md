@@ -53,8 +53,9 @@ rejected. Random tokens have 256 bits of entropy, so a plain sha256 is enough to
 | `false` (dev only)           | `durby_rt`          | `HttpOnly; SameSite=Strict; Path=/api/v1/auth`         |
 
 Chromium and Firefox accept `Secure` cookies on `http://localhost`, so local dev keeps the prefixed name. `false` is a
-fallback for browsers that don't (Safari); the config rejects it when `NODE_ENV=production`. The prefix is never
-used without `Secure`.
+fallback for browsers that don't (Safari, the Android app's WebView); the config rejects it when
+`NODE_ENV=production`. The prefix is never used without `Secure`. The api logs a warning at boot when
+`COOKIE_SECURE=true` and a `WEB_ORIGINS` entry is plain `http://`: there, those clients sign out on every reload.
 
 ### Rotation and reuse detection
 
@@ -62,7 +63,14 @@ Every refresh consumes the presented token atomically
 (`UPDATE refresh_tokens SET used_at = now() WHERE token_hash = $1 AND used_at IS NULL AND revoked_at IS NULL AND expires_at > now() AND family_expires_at > now() RETURNING …`)
 and issues the next token of the same family. If the token exists but was already used, it has been stolen or
 replayed: the whole family is revoked (`revoked_reason = 'reuse_detected'`), including the newest token, and a
-security event is logged. There is no grace window; the web app runs at most one refresh at a time across tabs.
+security event is logged. The web app runs at most one refresh at a time across tabs.
+
+**Lost responses** (ADR 0006, amendment 2026-11-09): every token records the token it was issued from
+(`parent_id`). A used token presented again within 60 s of its use, while none of the tokens issued from it has been
+used, gets another token issued from it (security event `auth.refresh.recovered`) instead of revoking the family: the
+client never received the answer (reload, app stopped, network dropped). When one of a parent's tokens is used, its
+live siblings are revoked as `superseded`; presenting a superseded token is reuse. Recovery and the rotation of a
+token with a parent lock the parent row, so the two never interleave.
 
 ### Early revocation of access tokens
 
@@ -225,8 +233,8 @@ asserts that no token or link appears.
   storing responses would persist tokens.
 - User-level auth actions belong to no tenant and stay structured `security` log events without secrets
   (ADR 0008 §7): `auth.login.succeeded`, `auth.login.failed`, `auth.login.locked`, `auth.refresh.reuse_detected`,
-  `auth.logout`, `auth.password.reset_requested`, `auth.password.reset`, `auth.email.verification_requested`,
-  `auth.email.verified`.
+  `auth.refresh.recovered`, `auth.logout`, `auth.password.reset_requested`, `auth.password.reset`,
+  `auth.email.verification_requested`, `auth.email.verified`.
 - The organization switch is audited in the target organization (`platform.session.organization_switched`,
   [audit.md](audit.md)), in the same transaction as `users.last_organization_id`.
 

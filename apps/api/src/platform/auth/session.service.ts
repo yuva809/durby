@@ -234,6 +234,13 @@ export class SessionService {
       await this.revokeReusedFamily(result.session, ip);
       throw authErrors.refreshReused();
     }
+    if (result.recovered) {
+      this.security.event('auth.refresh.recovered', {
+        userId: result.session.userId,
+        sessionId: result.session.familyId,
+        ip,
+      });
+    }
     return this.issue(result.session.userId, result.session.organizationId, result.next);
   }
 

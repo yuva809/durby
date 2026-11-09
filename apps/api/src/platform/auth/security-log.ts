@@ -6,6 +6,7 @@ export type SecurityEvent =
   | 'auth.login.failed'
   | 'auth.login.locked'
   | 'auth.refresh.reuse_detected'
+  | 'auth.refresh.recovered'
   | 'auth.logout'
   | 'auth.password.reset_requested'
   | 'auth.password.reset'
