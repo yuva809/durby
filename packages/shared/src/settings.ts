@@ -253,6 +253,16 @@ export const SETTINGS = {
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
+  // A print job this old is never printed by itself (ADR 0033): a ticket from long ago would only confuse the
+  // kitchen. Fixed per job when it is queued; staff can still reprint it.
+  'pos.printJobMaxAgeSeconds': define({
+    label: 'platform.settings.posPrintJobMaxAgeSeconds.name',
+    description: 'platform.settings.posPrintJobMaxAgeSeconds.description',
+    schema: z.number().int().min(60).max(86_400),
+    default: 600,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
   // Off: that station's items go straight to the bill, no ticket to prepare (ADR 0031).
   'pos.kitchenProcessing': define({
     label: 'platform.settings.posKitchenProcessing.name',

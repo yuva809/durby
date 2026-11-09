@@ -34,6 +34,7 @@ import {
 import { PricingService } from '../catalog';
 import { lineTotal, orderTotals } from './order-totals';
 import { isUniqueViolation, posErrors } from './pos-errors';
+import { PrintJobsService } from './print-jobs.service';
 import { LATEST_STATUS, statusOf } from './ticket-status';
 
 type Db = TenantDb;
@@ -126,6 +127,7 @@ export class OrdersService {
     private readonly pricing: PricingService,
     private readonly clock: Clock,
     private readonly settings: SettingsService,
+    private readonly printJobs: PrintJobsService,
   ) {}
 
   async floor(query: FloorQuery): Promise<FloorTable[]> {
@@ -587,6 +589,10 @@ export class OrdersService {
         lines: written.map((l) => ({ lineId: l.id, productId: l.productId, quantity: l.quantity })),
       },
     });
+    // On paper at the station's printers (ADR 0033); a ticket straight to the bill prints nowhere.
+    if (!direct) {
+      await this.printJobs.queueTicket(tx, { id: ticket.id, orderId, locationId, station });
+    }
     return ticket.id;
   }
 

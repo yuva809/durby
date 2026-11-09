@@ -53,7 +53,10 @@ never print by surprise. Version 1 also can't update itself.
 12. **Never twice, never lost.** Retried by itself only when nothing can have printed (not reachable, or paper out or
     cover open before sending); a connection lost while sending, or no answer within 60 s, becomes "check printer"
     with Reprint. The app answers a job id it already sent from memory. Warnings on the Kitchen and Bar screens, the
-    till and the order page when jobs wait.
+    till and the order page when jobs wait. A job older than `pos.printJobMaxAgeSeconds` (default 600 s, per
+    location, fixed per job when queued) is never printed by itself: the poll and the claim skip it, a late retry
+    becomes "check printer" (`print.expired`), and only Reprint brings it back. This also covers jobs queued before
+    the till runner exists. One open bill per order and printer: a second Print bill gets the waiting job.
 13. **Which devices print**: any device with the app at its location unless its device setting "This device prints"
     is off (default on). Browsers never print jobs. A bill from a device without the app is queued for the receipt
     printer that device chose.

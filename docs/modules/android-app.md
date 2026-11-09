@@ -47,6 +47,46 @@ default; with none, the Android print screen. Until version 1.1 of the app keeps
 release until a contract step removes it, and is read forward-compatibly: the setting's `read` schema drops keys and
 fields this release doesn't know. Image mode only; a text mode for impact printers is a later option.
 
+## Print jobs (ADR 0033 §10–12)
+
+A sent ticket queues one job per printer of its location that is on and serves its station, in the ticket's own
+transaction (`pos_print_jobs`; a station with processing off sends no ticket, a ticket straight to the bill prints
+nowhere). Never two jobs for the same ticket on the same printer (unique index). A device without the app queues a bill
+for a receipt printer it chose. A till with the app polls every 1.5 s, claims the oldest due job (one atomic `UPDATE …
+RETURNING`, exactly one till wins), prints it and answers with the print object's code.
+
+| Endpoint                                 | Who                                    | What                                                              |
+| ---------------------------------------- | -------------------------------------- | ----------------------------------------------------------------- |
+| `GET /pos/print-jobs/due?locationId=`    | `pos.bills.print` at the location      | Due job ids, oldest first: one indexed read, no write             |
+| `POST /pos/print-jobs/claim`             | `pos.bills.print` at the location      | `{ locationId }` → `{ job \| null }`                              |
+| `POST /pos/print-jobs/:id/result`        | the till that holds it                 | `{ code, nothingPrinted? }` → printed, retry, needs check, failed |
+| `POST /pos/print-jobs/:id/reprint`       | `pos.bills.print` at its location      | A job that may have printed, couldn't print or went unanswered    |
+| `POST /pos/print-jobs/bill`              | `pos.bills.print` at the order's place | `{ orderId, printerId }`: a receipt printer that is on            |
+| `GET /pos/print-jobs/status?locationId=` | `pos.orders.read` at the location      | For the warnings: till last seen, waiting, retrying, attention    |
+
+**Answers** (`printJobOutcome`): `print.sent` → printed. Not reachable, paper out, cover open → back to the queue after
+5 s, doubling to at most a minute (nothing reached the paper). Timeout or disconnected → needs check (it may have
+printed), unless the app says `nothingPrinted` (version 1.1). No printer, an address outside the rules, a broken picture
+→ failed. A claimed job without an answer for 60 s shows as stale (needs check); a late `print.sent` still counts.
+Reprint puts it back to the queue; a printed job is never reprinted by the queue. Every change is audited
+(`pos.print_job.queued`, `.claimed`, `.answered`, `.reprinted`).
+
+**Maximum age** (`pos.printJobMaxAgeSeconds`, default 600, settable per location): a job not printed within it is
+never printed by itself, so nothing old comes out when a printer is back. Each job stores its `expires_at` when queued
+(the poll reads no settings). The poll and the claim leave expired jobs out; a retry that would come after the expiry
+stores needs check with `print.expired`; a pending job past it is shown as needs check with `print.expired`
+(`expired: true`). Reprint gives it a new window of the same length.
+
+**One open bill per order and printer** (unique index on pending or claimed bill jobs): a second Print bill while one
+is waiting or printing gets the same job, also when two taps arrive at once; after it printed, the next tap is a new
+bill. A waiting bill past its maximum age is queued again by the tap.
+
+Times the queue compares (`not_before`, `created_at`) come from the database's clock, as do the poll and the claim.
+
+**Till last seen** comes from the poll, as a Redis timestamp per location (an hour), so the poll stays one read with no
+database write. The poll does no location lookup either: a location of another organization just has no jobs there
+(RLS). Errors: `pos.print_job_not_found`, `pos.print_job_not_claimed`, `pos.print_job_not_reprintable`.
+
 ## Print flow
 
 1. **Print bill** on a table, as today. The bill renders into `#print-root`.

@@ -48,6 +48,7 @@ describe('settings registry', () => {
       'pos.billHeader',
       'pos.billFooter',
       'pos.printers',
+      'pos.printJobMaxAgeSeconds',
       'pos.kitchenProcessing',
       'pos.barProcessing',
       'inventory.valuationMethod',

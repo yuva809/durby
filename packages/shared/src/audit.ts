@@ -38,6 +38,7 @@ export const AUDIT_ENTITY_TYPES = [
   'reservation_guest',
   'printer_command',
   'printer',
+  'print_job',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -273,6 +274,17 @@ export const AUDIT_ACTIONS = {
   'pos.printer.created': { entityType: 'printer', label: 'pos.audit.actions.printerCreated' },
   'pos.printer.updated': { entityType: 'printer', label: 'pos.audit.actions.printerUpdated' },
   'pos.printer.archived': { entityType: 'printer', label: 'pos.audit.actions.printerArchived' },
+  // Print jobs (ADR 0033): queued with a ticket or a bill, claimed by a till, answered, reprinted.
+  'pos.print_job.queued': { entityType: 'print_job', label: 'pos.audit.actions.printJobQueued' },
+  'pos.print_job.claimed': { entityType: 'print_job', label: 'pos.audit.actions.printJobClaimed' },
+  'pos.print_job.answered': {
+    entityType: 'print_job',
+    label: 'pos.audit.actions.printJobAnswered',
+  },
+  'pos.print_job.reprinted': {
+    entityType: 'print_job',
+    label: 'pos.audit.actions.printJobReprinted',
+  },
   // Remote printer commands (ADR 0032 §15): the audit log is their lasting record.
   'pos.printer_command.requested': {
     entityType: 'printer_command',
@@ -461,6 +473,17 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'status',
     'resultCode',
     'printerCount',
+  ],
+  print_job: [
+    'id',
+    'locationId',
+    'printerId',
+    'kind',
+    'orderId',
+    'ticketId',
+    'status',
+    'attempts',
+    'lastCode',
   ],
   printer: [
     'id',

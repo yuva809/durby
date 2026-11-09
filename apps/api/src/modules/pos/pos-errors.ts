@@ -77,6 +77,20 @@ export const posErrors = {
       'pos.printer_required',
       'A test print needs the printer it is for.',
     ),
+  printJobNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'pos.print_job_not_found', 'Print job not found.'),
+  printJobNotClaimed: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.print_job_not_claimed',
+      'This till is not printing the job.',
+    ),
+  printJobNotReprintable: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.print_job_not_reprintable',
+      'Only a job that may have printed or could not print is reprinted.',
+    ),
   voidExceeds: (lineId: string) =>
     new ApiError(HttpStatus.CONFLICT, 'pos.void_exceeds', 'More than is left of the item.', {
       lineId,
