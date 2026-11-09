@@ -25,6 +25,8 @@ export interface Session extends MeResponse {
   accessToken: string;
   /** Epoch ms when the access token expires. */
   expiresAt: number;
+  /** When the sign-in ends whatever happens (the 30-day cap); the shell asks to sign in again before. */
+  sessionExpiresAt?: string;
 }
 
 export type AuthResult = { ok: true } | { ok: false; code: ApiErrorCode | 'unknown' };

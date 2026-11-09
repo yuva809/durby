@@ -161,3 +161,18 @@ export const migrationEnvSchema = z.object({
 });
 
 export type AppConfig = z.infer<typeof appEnvSchema>;
+
+/**
+ * Settings that boot but are likely wrong, logged as warnings at start. Secure cookies over plain http: desktop
+ * Chromium and Firefox keep them on `http://localhost`, but the Android app's WebView, Safari and any other http
+ * origin drop them, so every reload signs out.
+ */
+export function configWarnings(env: Pick<AppConfig, 'COOKIE_SECURE' | 'WEB_ORIGINS'>): string[] {
+  const http = env.WEB_ORIGINS.filter((origin) => origin.startsWith('http://'));
+  if (!env.COOKIE_SECURE || http.length === 0) return [];
+  return [
+    `COOKIE_SECURE=true with http origins (${http.join(', ')}): the Android app's WebView, Safari and ` +
+      'non-localhost http origins drop the Secure refresh cookie, so every reload signs out. ' +
+      'Set COOKIE_SECURE=false for local testing with them (never in production).',
+  ];
+}
