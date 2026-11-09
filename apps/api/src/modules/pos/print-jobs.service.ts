@@ -16,6 +16,7 @@ import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
 import { SettingsService } from '../../platform/config/settings';
 import { AccessService } from '../../platform/rbac';
+import { AuthContext, SessionStatus } from '../../platform/auth';
 import { RedisService } from '../../platform/redis';
 import {
   TENANT_PRISMA,
@@ -119,6 +120,8 @@ export class PrintJobsService {
     private readonly idempotency: IdempotencyService,
     private readonly redis: RedisService,
     private readonly settings: SettingsService,
+    private readonly authContext: AuthContext,
+    private readonly sessions: SessionStatus,
   ) {}
 
   /** When a job queued now stops printing by itself: `pos.printJobMaxAgeSeconds` at the location. */
@@ -501,7 +504,7 @@ export class PrintJobsService {
       },
     );
     return {
-      tillSeenAt: await this.tillSeenAt(locationId),
+      ...(await this.tillSeen(locationId)),
       waiting: { count: waiting, oldestAt: oldest?.createdAt.toISOString() ?? null },
       retrying: retrying.map((r) => ({
         printerId: r.printerId,
@@ -529,17 +532,38 @@ export class PrintJobsService {
     return `durby:print:till-seen:${tenantId}:${locationId}`;
   }
 
-  private markTillSeen(locationId: string): void {
-    this.redis
-      .set(this.seenKey(locationId), new Date().toISOString(), 'EX', TILL_SEEN_TTL_S)
-      .catch((error: unknown) => this.logger.warn({ error }, 'till seen not recorded'));
+  /** The sign-in of the till that polled last, to tell "signed out" from "app closed". */
+  private sessionKey(locationId: string): string {
+    const { tenantId } = this.tenantContext.require();
+    return `durby:print:till-session:${tenantId}:${locationId}`;
   }
 
-  private async tillSeenAt(locationId: string): Promise<string | null> {
+  private markTillSeen(locationId: string): void {
+    const sessionId = this.authContext.get()?.sessionId;
+    const writes = [
+      this.redis.set(this.seenKey(locationId), new Date().toISOString(), 'EX', TILL_SEEN_TTL_S),
+      ...(sessionId
+        ? [this.redis.set(this.sessionKey(locationId), sessionId, 'EX', TILL_SEEN_TTL_S)]
+        : []),
+    ];
+    Promise.all(writes).catch((error: unknown) =>
+      this.logger.warn({ error }, 'till seen not recorded'),
+    );
+  }
+
+  /** When a till polled last, and whether that till's sign-in has ended since (logout, cap, reuse). */
+  private async tillSeen(
+    locationId: string,
+  ): Promise<{ tillSeenAt: string | null; tillSignedOut: boolean }> {
     try {
-      return await this.redis.get(this.seenKey(locationId));
+      const [seenAt, sessionId] = await Promise.all([
+        this.redis.get(this.seenKey(locationId)),
+        this.redis.get(this.sessionKey(locationId)),
+      ]);
+      const signedOut = sessionId !== null && !(await this.sessions.isActive(sessionId));
+      return { tillSeenAt: seenAt, tillSignedOut: signedOut };
     } catch {
-      return null;
+      return { tillSeenAt: null, tillSignedOut: false };
     }
   }
 }

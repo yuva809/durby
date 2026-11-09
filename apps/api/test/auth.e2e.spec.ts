@@ -44,10 +44,13 @@ describe('auth', () => {
       const user = await kit.createUser({ orgs: [orgA, orgB] });
       await kit.raw.user.update({ where: { id: user.id }, data: { lastOrganizationId: orgB } });
 
+      const signedInAt = kit.clock.now().getTime();
       const { res, accessToken } = await kit.login(user.email);
       expect(sessionOf(res.body)).toEqual({
         accessToken,
         expiresIn: 600,
+        // The 30-day cap: the web asks to sign in again from 3 days before.
+        sessionExpiresAt: new Date(signedInAt + 30 * DAY).toISOString(),
         user: { id: user.id, email: user.email, locale: 'en' },
         organizations: [
           { id: orgA, name: 'Alpha' },
@@ -238,7 +241,10 @@ describe('auth', () => {
         user: { id: user.id },
       });
       await me(sessionOf(res.body).accessToken).expect(200);
-      await kit.client().post('/refresh').set('Cookie', cookie(next)).expect(200);
+      kit.clock.advance(DAY);
+      const later = await kit.client().post('/refresh').set('Cookie', cookie(next)).expect(200);
+      // Refreshing never moves the sign-in's end.
+      expect(sessionOf(later.body).sessionExpiresAt).toBe(sessionOf(res.body).sessionExpiresAt);
     });
 
     it('reuse of a used token revokes the whole family, including its access tokens', async () => {

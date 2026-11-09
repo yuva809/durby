@@ -20,6 +20,8 @@ export interface IssuedRefreshToken {
   token: string;
   familyId: string;
   expiresAt: Date;
+  /** The session's absolute end (REFRESH_FAMILY_MAX_DAYS after sign-in): signing in again is the only way past it. */
+  familyExpiresAt: Date;
 }
 
 export interface RefreshSession {
@@ -201,7 +203,12 @@ export class RefreshTokenStore {
         expiresAt,
       },
     });
-    return { token, familyId: session.familyId, expiresAt };
+    return {
+      token,
+      familyId: session.familyId,
+      expiresAt,
+      familyExpiresAt: session.familyExpiresAt,
+    };
   }
 }
 

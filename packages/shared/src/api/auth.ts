@@ -77,6 +77,11 @@ export const sessionResponseSchema = meResponseSchema.extend({
   accessToken: z.string(),
   /** Seconds until the access token expires. */
   expiresIn: z.number().int().positive(),
+  /**
+   * When this sign-in ends whatever happens (the 30-day cap, ADR 0006): the web asks the user to sign in again
+   * beforehand. Optional for answers from an api without it (expand/contract).
+   */
+  sessionExpiresAt: z.iso.datetime().optional(),
 });
 
 /** Stable error codes of the auth endpoints; the web app shows the matching label. */
