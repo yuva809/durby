@@ -93,6 +93,10 @@
       .wide {
         grid-column: 1 / -1;
       }
+      /* Sign-in beside both 3 and 5: its picture is the tallest. */
+      .tall {
+        grid-row: span 2;
+      }
       .wide .cols {
         display: grid;
         grid-template-columns: 1fr 1.3fr;
@@ -148,13 +152,26 @@
         <img src="img/03-install.jpg" alt="Möchtest du diese App installieren?" />
         <img class="buttons" src="img/03-buttons.jpg" alt="Abbrechen / Installieren" />
       </li>
-      <li>
+      <li class="tall">
         <h2><span>4</span>Anmelden</h2>
         <p>
           Die Durby-Anmeldung erscheint. Melden Sie sich mit Ihrer E-Mail und Ihrem Passwort an.
           Fertig: Ab jetzt öffnen Sie Durby über das Symbol <b>D</b> auf dem Startbildschirm.
         </p>
         <img class="login" src="img/06-login.jpg" alt="Durby-Anmeldung" />
+      </li>
+      <li>
+        <h2><span>5</span>Updates (ab Version 1.1)</h2>
+        <p>
+          Bei „Eine neue Version der App ist bereit“ in einer ruhigen Minute auf
+          <b class="btn">Jetzt aktualisieren</b> tippen. Beim ersten Mal
+          <b>Dieser Quelle vertrauen</b> für Durby einschalten, <b class="btn">Zurück ◀</b>, noch
+          einmal tippen.
+        </p>
+        <img
+          src="img/07-update-source.jpg"
+          alt="„Dieser Quelle vertrauen“ für Durby eingeschaltet"
+        />
       </li>
       <li class="wide">
         <h2><span>!</span>Nur falls ein roter Bildschirm erscheint</h2>

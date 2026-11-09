@@ -82,6 +82,8 @@ describe('NativePrinter', () => {
       print: 100,
       discover: 100,
       settings: 100,
+      update: 100,
+      install: 100,
     });
     const info = printer.info();
     const print = printer.print(JOB, image, settings);
@@ -98,6 +100,8 @@ describe('NativePrinter', () => {
       print: 100,
       discover: 100,
       settings: 100,
+      update: 100,
+      install: 100,
     });
     const print = printer.print(JOB, image, settings);
     app.answer({ type: 'print', jobId: JOB, state: 'sent', code: 'print.made_up' });
@@ -162,5 +166,20 @@ describe('app 1.1: features, device settings, nothingPrinted', () => {
       code: 'print.printer_timeout',
       nothingPrinted: true,
     });
+  });
+});
+
+describe('app 1.1: updates', () => {
+  it('asks for a newer version and to install it, each only when called', async () => {
+    const app = fakeApp();
+    const printer = new NativePrinter(app.target);
+    const check = printer.checkUpdate();
+    expect(app.sent.at(-1)).toEqual({ version: 1, type: 'update' });
+    app.answer({ type: 'update', available: { versionCode: 3, versionName: '1.1.1' } });
+    expect(await check).toEqual({ versionCode: 3, versionName: '1.1.1' });
+    const install = printer.installUpdate();
+    expect(app.sent.at(-1)).toEqual({ version: 1, type: 'installUpdate' });
+    app.answer({ type: 'installUpdate', result: 'update.checksum' });
+    expect(await install).toBe('update.checksum');
   });
 });

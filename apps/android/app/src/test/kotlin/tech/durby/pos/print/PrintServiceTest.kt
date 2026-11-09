@@ -178,6 +178,38 @@ class PrintServiceTest {
         .apply { if (settings != null) put("settings", settings) }
         .toString()
 
+    private class FakeUpdates(val available: tech.durby.pos.update.UpdateManifest?, val result: String) :
+        tech.durby.pos.update.AppUpdates {
+        var installs = 0
+        override fun check() = available
+        override fun install(): String {
+            installs++
+            return result
+        }
+    }
+
+    private fun message(type: String) = JSONObject().put("version", 1).put("type", type).toString()
+
+    @Test
+    fun answersUpdateChecksAndInstallsOnlyWhenAsked() {
+        val release = tech.durby.pos.update.UpdateManifest(3, "1.1.1", "durby-1.1.1.apk", "a".repeat(64))
+        val updates = FakeUpdates(release, "installing")
+        val s = PrintService("1.1.0", scanner = noScan, updates = updates)
+        val features = answer(s.handle(message("info"))).getJSONArray("features")
+        assertTrue(List(features.length()) { features.getString(it) }.contains("update"))
+
+        val check = answer(s.handle(message("update"))).getJSONObject("available")
+        assertEquals("1.1.1", check.getString("versionName"))
+        assertEquals(3, check.getInt("versionCode"))
+        // Checking never installs.
+        assertEquals(0, updates.installs)
+        assertEquals("installing", answer(s.handle(message("installUpdate"))).getString("result"))
+        assertEquals(1, updates.installs)
+
+        val none = PrintService("1.1.0", scanner = noScan, updates = FakeUpdates(null, "update.none"))
+        assertTrue(answer(none.handle(message("update"))).isNull("available"))
+    }
+
     @Test
     fun keepsTheDeviceSettings() {
         val store = InMemoryDeviceSettings()

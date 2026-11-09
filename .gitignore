@@ -16,3 +16,6 @@ apps/api/src/platform/database/generated/
 # Playwright
 test-results/
 playwright-report/
+
+# The in-app updater served by the local dev web for emulator runs (ADR 0033 §14); never committed.
+apps/web/public/downloads/

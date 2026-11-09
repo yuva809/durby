@@ -38,6 +38,17 @@
 		reverse_proxy api:4000
 	}
 
+	# The Android app's updates (ADR 0033 §14): latest.json and the APKs it names, uploaded by hand to
+	# downloads/android/ next to docker-compose.staging.yml. Read-only, no directory listing.
+	handle /downloads/android/* {
+		root * /srv
+		@manifest path /downloads/android/latest.json
+		header @manifest Cache-Control "no-cache"
+		@apk path *.apk
+		header @apk Content-Type "application/vnd.android.package-archive"
+		file_server
+	}
+
 	# Web: no basic auth since ADR 0018; the app's own sign-in protects it.
 	handle {
 		reverse_proxy web:3000
