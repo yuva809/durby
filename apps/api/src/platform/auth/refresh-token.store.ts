@@ -115,7 +115,12 @@ export class RefreshTokenStore {
         });
       }
       const next = await this.issue(tx, { ...session, organizationId }, now, row.id);
-      return { kind: 'rotated', session: { ...session, organizationId }, next, recovered: false } as const;
+      return {
+        kind: 'rotated',
+        session: { ...session, organizationId },
+        next,
+        recovered: false,
+      } as const;
     });
     if (rotated) return rotated;
     // A concurrent request with the same token won: read it again, now as used (a lost response or reuse).
@@ -148,7 +153,12 @@ export class RefreshTokenStore {
       });
       if (childUsed > 0 || current.revokedAt !== null) return { kind: 'reused', session } as const;
       const next = await this.issue(tx, { ...session, organizationId }, now, row.id);
-      return { kind: 'rotated', session: { ...session, organizationId }, next, recovered: true } as const;
+      return {
+        kind: 'rotated',
+        session: { ...session, organizationId },
+        next,
+        recovered: true,
+      } as const;
     });
   }
 

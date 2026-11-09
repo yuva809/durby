@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { appEnvSchema, configWarnings, migrationEnvSchema, RATE_LIMIT_DEFAULTS } from './env.schema';
+import {
+  appEnvSchema,
+  configWarnings,
+  migrationEnvSchema,
+  RATE_LIMIT_DEFAULTS,
+} from './env.schema';
 import { loadConfig } from './load-config';
 
 const validEnv = {
@@ -249,9 +254,9 @@ describe('configWarnings', () => {
   });
 
   it('stays quiet with https only or with COOKIE_SECURE=false', () => {
-    expect(configWarnings(appEnvSchema.parse({ ...validEnv, WEB_ORIGINS: 'https://a.test' }))).toEqual(
-      [],
-    );
+    expect(
+      configWarnings(appEnvSchema.parse({ ...validEnv, WEB_ORIGINS: 'https://a.test' })),
+    ).toEqual([]);
     expect(configWarnings(appEnvSchema.parse({ ...validEnv, COOKIE_SECURE: 'false' }))).toEqual([]);
   });
 });

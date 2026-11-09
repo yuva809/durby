@@ -272,7 +272,11 @@ describe('auth', () => {
         kit.clock.advance(59_000);
         const retry = await kit.client().post('/refresh').set('Cookie', cookie(first)).expect(200);
         await me(sessionOf(retry.body).accessToken).expect(200);
-        await kit.client().post('/refresh').set('Cookie', cookie(refreshCookieOf(retry))).expect(200);
+        await kit
+          .client()
+          .post('/refresh')
+          .set('Cookie', cookie(refreshCookieOf(retry)))
+          .expect(200);
       });
 
       it('after 60 s it is reuse: the family is revoked', async () => {
@@ -282,7 +286,11 @@ describe('auth', () => {
         kit.clock.advance(61_000);
         const late = await kit.client().post('/refresh').set('Cookie', cookie(first)).expect(401);
         expect(late.body).toMatchObject({ code: 'auth.refresh_reused' });
-        await kit.client().post('/refresh').set('Cookie', cookie(refreshCookieOf(lost))).expect(401);
+        await kit
+          .client()
+          .post('/refresh')
+          .set('Cookie', cookie(refreshCookieOf(lost)))
+          .expect(401);
       });
 
       it('once a token issued from it was used, it is reuse even within 60 s', async () => {
@@ -296,7 +304,11 @@ describe('auth', () => {
           .expect(200);
         const replay = await kit.client().post('/refresh').set('Cookie', cookie(first)).expect(401);
         expect(replay.body).toMatchObject({ code: 'auth.refresh_reused' });
-        await kit.client().post('/refresh').set('Cookie', cookie(refreshCookieOf(r2))).expect(401);
+        await kit
+          .client()
+          .post('/refresh')
+          .set('Cookie', cookie(refreshCookieOf(r2)))
+          .expect(401);
       });
 
       it('the lost token, presented after its sibling was used, is reuse (a thief is still caught)', async () => {
@@ -316,14 +328,26 @@ describe('auth', () => {
           .expect(401);
         expect(stale.body).toMatchObject({ code: 'auth.refresh_reused' });
         await me(sessionOf(next.body).accessToken).expect(401);
-        await kit.client().post('/refresh').set('Cookie', cookie(refreshCookieOf(next))).expect(401);
+        await kit
+          .client()
+          .post('/refresh')
+          .set('Cookie', cookie(refreshCookieOf(next)))
+          .expect(401);
       });
 
       it('a token of a signed-out session is not recovered', async () => {
         const user = await kit.createUser();
         const { refresh: first } = await kit.login(user.email);
-        const rotated = await kit.client().post('/refresh').set('Cookie', cookie(first)).expect(200);
-        await kit.client().post('/logout').set('Cookie', cookie(refreshCookieOf(rotated))).expect(204);
+        const rotated = await kit
+          .client()
+          .post('/refresh')
+          .set('Cookie', cookie(first))
+          .expect(200);
+        await kit
+          .client()
+          .post('/logout')
+          .set('Cookie', cookie(refreshCookieOf(rotated)))
+          .expect(204);
         await kit.client().post('/refresh').set('Cookie', cookie(first)).expect(401);
       });
 
@@ -336,7 +360,11 @@ describe('auth', () => {
         expect(results.map((r) => r.status)).toEqual([200, 200]);
         const [kept, dropped] = results.map((r) => refreshCookieOf(r));
         await kit.client().post('/refresh').set('Cookie', cookie(kept!)).expect(200);
-        const other = await kit.client().post('/refresh').set('Cookie', cookie(dropped!)).expect(401);
+        const other = await kit
+          .client()
+          .post('/refresh')
+          .set('Cookie', cookie(dropped!))
+          .expect(401);
         expect(other.body).toMatchObject({ code: 'auth.refresh_reused' });
       });
     });
