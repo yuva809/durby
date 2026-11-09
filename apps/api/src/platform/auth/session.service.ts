@@ -268,6 +268,7 @@ export class SessionService {
       body: {
         accessToken,
         expiresIn: this.accessTokens.ttlSeconds,
+        sessionExpiresAt: refresh.familyExpiresAt.toISOString(),
         user: { id: user.id, email: user.email, locale: user.locale },
         organizations: organizations ?? (await this.memberships.organizationsOf(userId)),
         activeOrganizationId: organizationId,

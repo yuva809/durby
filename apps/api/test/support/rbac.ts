@@ -109,7 +109,29 @@ export class RbacSeed {
     });
   }
 
-  token(userId: string, organizationId: string | null): Promise<string> {
-    return this.tokens.sign({ userId, organizationId, sessionId: uuidv7() });
+  token(userId: string, organizationId: string | null, sessionId = uuidv7()): Promise<string> {
+    return this.tokens.sign({ userId, organizationId, sessionId });
+  }
+
+  /** A sign-in that can still refresh (one live refresh token); `end` revokes it as a logout. */
+  async session(userId: string): Promise<{ id: string; end: () => Promise<void> }> {
+    const id = uuidv7();
+    const familyExpiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000);
+    await this.raw.refreshToken.create({
+      data: {
+        userId,
+        familyId: id,
+        familyExpiresAt,
+        expiresAt: familyExpiresAt,
+        tokenHash: `test-${id}`,
+      },
+    });
+    const end = async () => {
+      await this.raw.refreshToken.updateMany({
+        where: { familyId: id },
+        data: { revokedAt: new Date(), revokedReason: 'logout' },
+      });
+    };
+    return { id, end };
   }
 }

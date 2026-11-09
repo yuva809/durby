@@ -71,6 +71,31 @@ describe('PrintWarnings (ADR 0033)', () => {
     );
   });
 
+  it('says when the till was signed out, so someone signs in on it again', async () => {
+    const lastPoll = new Date(Date.now() - 5 * 60_000).toISOString();
+    api({
+      ...none,
+      tillSeenAt: lastPoll,
+      tillSignedOut: true,
+      waiting: { count: 1, oldestAt: AT },
+    });
+    render(<PrintWarnings locationId={LOCATION} canReprint />);
+    expect((await screen.findByTestId('print-warnings')).textContent).toContain(
+      '1 waiting to print: the till was signed out. Sign in on the till again.',
+    );
+  });
+
+  it('a till still polling counts as printing, even if its old sign-in ended', async () => {
+    api({
+      ...none,
+      tillSeenAt: new Date().toISOString(),
+      tillSignedOut: true,
+      waiting: { count: 1, oldestAt: AT },
+    });
+    render(<PrintWarnings locationId={LOCATION} canReprint />);
+    expect((await screen.findByTestId('print-warnings')).textContent).not.toContain('signed out');
+  });
+
   it('names a printer being retried and why', async () => {
     api({
       ...none,

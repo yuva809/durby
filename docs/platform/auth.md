@@ -126,10 +126,14 @@ All under `/api/v1/auth`. Bodies validated with Zod (`packages/shared/src/api/au
 | POST   | `/verify-email`        | Public                 | `{ token }`                   | 204                                                                                                                         |
 | POST   | `/verify-email/resend` | Public                 | `{ email }`                   | 202 always                                                                                                                  |
 
-Session body: `{ accessToken, expiresIn, user: { id, email, locale }, activeOrganizationId, organizations: [{ id, name }],
+Session body: `{ accessToken, expiresIn, sessionExpiresAt, user: { id, email, locale }, activeOrganizationId, organizations: [{ id, name }],
 activeRole, activePermissions }`. `activeRole` (`{ id, systemKey, name }` or `null`) and `activePermissions` (registered
 keys, effective for the caller) describe the caller's own membership in the active organization. They are UI hints:
 stale until the next refresh, while the api checks every permission per request (ADR 0007, amendment).
+`sessionExpiresAt` is the sign-in's absolute end (`REFRESH_FAMILY_MAX_DAYS` after login; refreshing never moves it).
+From 3 days before it, the app shell shows "Please sign in again soon … in N days" with **Sign in again now**, which
+signs out and opens sign-in: a till signs in again with the password at a quiet moment instead of being signed out
+during service. There is no renewal without the password.
 
 Active organization on login: `last_organization_id` if the user is still a member, else the first organization by
 name, else `null`. On refresh the membership is re-checked; if it is gone, the new token has `org: null`.

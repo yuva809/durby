@@ -124,8 +124,10 @@ till prints it."; with no receipt printer, the print screen as before. Inside th
 **Warnings** (`PrintWarnings`): on the floor page and the order page (the location, `pos.orders.read`) and on the
 kitchen and bar screens (their own tickets only: `GET /pos/stations/{kitchen|bar}/print-status`, with
 `pos.kitchen.use` / `pos.bar.use`, and `POST /pos/stations/{station}/print-jobs/:id/reprint`). They show jobs waiting
-without a till (no till polled in the last 30 s), printers being retried with the reason, and jobs to check (may have
-printed, couldn't print, too old) with Reprint. Read every 10 s while the page is visible.
+without a till (no till polled in the last 30 s; "the till was signed out" when the sign-in of the till that polled
+last has ended, `tillSignedOut`, read through platform auth's `SessionStatus`), printers being retried with the
+reason, and jobs to check (may have printed, couldn't print, too old) with Reprint. Read every 10 s while the page is
+visible.
 
 **Sweep**: the worker's hourly retention pass stores pending jobs past `expires_at` as `needs_check` with
 `print.expired` (audited as the system actor `job.print_jobs`, idempotent). The migration
