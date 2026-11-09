@@ -7,6 +7,8 @@ import { PrintJobRunner } from '../../components/pos/print-job-runner';
 import { AppShell } from '../../components/shell/app-shell';
 import { Skeleton } from '../../components/ui/skeleton';
 import { loginPath } from '../../lib/auth/next-path';
+import { loadDeviceSettings } from '../../lib/print/device-settings';
+import { nativePrinter } from '../../lib/print/native';
 import { useAuth } from '../providers';
 
 /**
@@ -21,6 +23,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (status === 'anonymous') router.replace(loginPath(pathname));
   }, [status, router, pathname]);
+
+  // Inside the Android app: this device's settings (prints, till location, receipt printers), once per page.
+  useEffect(() => {
+    if (nativePrinter()) void loadDeviceSettings();
+  }, []);
 
   if (status !== 'authenticated') {
     return (

@@ -77,7 +77,12 @@ describe('NativePrinter', () => {
 
   it('gives up when the app stays silent', async () => {
     vi.useFakeTimers();
-    const printer = new NativePrinter(fakeApp().target, { info: 100, print: 100, discover: 100 });
+    const printer = new NativePrinter(fakeApp().target, {
+      info: 100,
+      print: 100,
+      discover: 100,
+      settings: 100,
+    });
     const info = printer.info();
     const print = printer.print(JOB, image, settings);
     await vi.advanceTimersByTimeAsync(150);
@@ -88,7 +93,12 @@ describe('NativePrinter', () => {
   it('ignores answers it cannot read', async () => {
     vi.useFakeTimers();
     const app = fakeApp();
-    const printer = new NativePrinter(app.target, { info: 100, print: 100, discover: 100 });
+    const printer = new NativePrinter(app.target, {
+      info: 100,
+      print: 100,
+      discover: 100,
+      settings: 100,
+    });
     const print = printer.print(JOB, image, settings);
     app.answer({ type: 'print', jobId: JOB, state: 'sent', code: 'print.made_up' });
     await vi.advanceTimersByTimeAsync(150);
@@ -101,5 +111,56 @@ describe('NativePrinter', () => {
     const print = printer.print(JOB, image, settings);
     app.answer({ type: 'print', jobId: null, state: 'failed', code: 'print.payload_invalid' });
     expect(await print).toEqual({ state: 'failed', code: 'print.payload_invalid' });
+  });
+});
+
+describe('app 1.1: features, device settings, nothingPrinted', () => {
+  const LOCATION = '0190a000-0000-7000-8000-000000000101';
+  const stored = { prints: false, tillLocationId: LOCATION, receiptPrinters: {} };
+
+  it('reads the features once; a v1 app names none', async () => {
+    const app = fakeApp();
+    const printer = new NativePrinter(app.target);
+    const first = printer.has('parallel');
+    app.answer({ type: 'info', appVersion: '1.1.0', protocol: 1, features: ['parallel'] });
+    expect(await first).toBe(true);
+    expect(await printer.has('deviceSettings')).toBe(false);
+    expect(app.sent.filter((m) => m.type === 'info')).toHaveLength(1);
+
+    const v1 = fakeApp();
+    const old = new NativePrinter(v1.target);
+    const none = old.features();
+    v1.answer({ type: 'info', appVersion: '1.0.0', protocol: 1 });
+    expect([...(await none)]).toEqual([]);
+  });
+
+  it('reads and writes the device settings', async () => {
+    const app = fakeApp();
+    const printer = new NativePrinter(app.target);
+    const written = printer.setDeviceSettings(stored);
+    expect(app.sent.at(-1)).toEqual({ version: 1, type: 'setDeviceSettings', settings: stored });
+    app.answer({ type: 'deviceSettings', settings: stored });
+    expect(await written).toEqual({ settings: stored, refused: false });
+    const read = printer.deviceSettings();
+    app.answer({ type: 'deviceSettings', settings: stored, refused: true });
+    expect(await read).toEqual({ settings: stored, refused: true });
+  });
+
+  it('passes nothingPrinted on', async () => {
+    const app = fakeApp();
+    const printer = new NativePrinter(app.target);
+    const print = printer.print(JOB, image, settings);
+    app.answer({
+      type: 'print',
+      jobId: JOB,
+      state: 'failed',
+      code: 'print.printer_timeout',
+      nothingPrinted: true,
+    });
+    expect(await print).toEqual({
+      state: 'failed',
+      code: 'print.printer_timeout',
+      nothingPrinted: true,
+    });
   });
 });

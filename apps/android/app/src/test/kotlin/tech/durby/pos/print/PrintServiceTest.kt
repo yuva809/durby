@@ -4,11 +4,15 @@ import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.net.ServerSocket
 import java.util.Base64
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 class PrintServiceTest {
@@ -114,6 +118,17 @@ class PrintServiceTest {
     }
 
     @Test
+    fun saysWhenNothingOfTheJobWasSent() {
+        val dead = ServerSocket(0).apply { close() }.localPort
+        assertTrue(answer(service().handle(print(config(dead)))).getBoolean("nothingPrinted"))
+        val paperOut = printer { n -> mapOf(1 to 0x1A, 2 to 0x32, 4 to 0x72)[n] }
+        assertTrue(answer(service().handle(print(config(paperOut.server.localPort)))).getBoolean("nothingPrinted"))
+        // A sent job carries no flag.
+        val p = printer()
+        assertFalse(answer(service().handle(print(config(p.server.localPort)))).has("nothingPrinted"))
+    }
+
+    @Test
     fun paperOutAndCoverOpenStopTheJobBeforeAnythingIsPrinted() {
         val paperOut = printer { n -> mapOf(1 to 0x1A, 2 to 0x32, 4 to 0x72)[n] }
         assertEquals("print.paper_out", answer(service().handle(print(config(paperOut.server.localPort)))).getString("code"))
@@ -151,6 +166,69 @@ class PrintServiceTest {
         val a = answer(service().handle("""{"version":1,"type":"info"}"""))
         assertEquals("1.0.0", a.getString("appVersion"))
         assertEquals(1, a.getInt("protocol"))
+        val features = a.getJSONArray("features")
+        assertEquals(listOf("parallel", "deviceSettings", "nothingPrinted"), List(features.length()) { features.getString(it) })
+    }
+
+    private val location = "0190a000-0000-7000-8000-000000000101"
+    private val receipt = "0190a000-0000-7000-8000-000000000301"
+
+    private fun setSettings(settings: JSONObject?) = JSONObject()
+        .put("version", 1).put("type", "setDeviceSettings")
+        .apply { if (settings != null) put("settings", settings) }
+        .toString()
+
+    @Test
+    fun keepsTheDeviceSettings() {
+        val store = InMemoryDeviceSettings()
+        val changed = mutableListOf<DeviceSettings>()
+        val s = PrintService("1.1.0", scanner = noScan, settings = store, onSettingsChanged = { changed += it })
+        val read = answer(s.handle(JSONObject().put("version", 1).put("type", "deviceSettings").toString()))
+        assertEquals("deviceSettings", read.getString("type"))
+        assertTrue(read.getJSONObject("settings").getBoolean("prints"))
+
+        val wanted = DeviceSettings(false, location, mapOf(location to receipt))
+        val stored = answer(s.handle(setSettings(wanted.toJson()))).getJSONObject("settings")
+        assertFalse(stored.getBoolean("prints"))
+        assertEquals(wanted, store.load())
+        assertEquals(listOf(wanted), changed)
+    }
+
+    @Test
+    fun refusesSettingsTheSchemaDoesNotAllowAndStoresNothing() {
+        val store = InMemoryDeviceSettings()
+        val s = PrintService("1.1.0", scanner = noScan, settings = store)
+        val ok = DeviceSettings().toJson()
+        listOf(
+            setSettings(JSONObject(ok.toString()).put("prints", "no")),
+            setSettings(JSONObject(ok.toString()).put("tillLocationId", "x")),
+            setSettings(JSONObject(ok.toString()).put("more", 1)),
+            setSettings(null),
+        ).forEach { message ->
+            val a = answer(s.handle(message))
+            // Never a print answer: that would fail the page's oldest waiting print.
+            assertEquals("deviceSettings", a.getString("type"))
+            assertTrue(a.getBoolean("refused"))
+        }
+        assertEquals(DeviceSettings(), store.load())
+    }
+
+    @Test
+    fun printsToDifferentPrintersAtTheSameTimeAndToOnePrinterInOrder() {
+        // The kitchen printer takes its time over every status answer; the bar answers at once.
+        val kitchen = printer { Thread.sleep(300); 0x12 }
+        val bar = printer()
+        val dispatcher = PrintDispatcher(service())
+        val order = CopyOnWriteArrayList<String>()
+        val done = CountDownLatch(3)
+        fun send(name: String, port: Int, id: String) =
+            dispatcher.submit(print(config(port), id = id)) { order += name; done.countDown() }
+        send("kitchen 1", kitchen.server.localPort, "0195f2a4-7c1e-7d3a-9b2c-000000000001")
+        send("kitchen 2", kitchen.server.localPort, "0195f2a4-7c1e-7d3a-9b2c-000000000002")
+        send("bar", bar.server.localPort, "0195f2a4-7c1e-7d3a-9b2c-000000000003")
+        assertTrue(done.await(10, TimeUnit.SECONDS))
+        dispatcher.shutdown()
+        assertEquals(listOf("bar", "kitchen 1", "kitchen 2"), order.toList())
     }
 
     @Test

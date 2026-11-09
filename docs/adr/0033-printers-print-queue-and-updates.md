@@ -98,3 +98,18 @@ Later, its own step: stations as a list.
   in its last 5 minutes (no printer) answers "no printer" here and is sent again from Settings.
 - **The contract step** (after version 1.1 has run for a while) stops serving `pos.printers` in the bill layout,
   unregisters the setting, removes its values and adds the CHECK that a test print names its printer.
+
+## Amendment (2026-11-09): app 1.1 device settings and screen on
+
+- **Screen on only on devices that print.** The screen stays on while Durby is in front **and** "This device prints"
+  is on, not on every device with Durby open (step 4 above): waiters' phones with printing off sleep as usual and
+  don't drain their battery. A till keeps polling because its screen never turns off.
+- **Device settings through the print object.** "This device prints", the till location ("Prints for") and the
+  default receipt printer per location are stored by the app (`deviceSettings` / `setDeviceSettings`, protocol 1) and
+  edited on a Durby page, Settings → This device, shown only inside the app. The web still never uses browser
+  storage. A device with printing off runs neither print jobs nor remote commands.
+- **Features, not versions.** `info` names what an app can do (`parallel`, `deviceSettings`, `nothingPrinted`); the
+  web gives an app without `features` (1.0) the version 1 behaviour. The protocol version stays 1.
+- **Parallel sending in the app**: one thread per printer address (at most 16, the rest share one), so one printer's
+  jobs stay in order while different printers print at the same time; `nothingPrinted` reports a job that failed
+  before any of its bytes were written.

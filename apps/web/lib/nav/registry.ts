@@ -37,6 +37,8 @@ export interface NavItem {
    * when the module ships.
    */
   planned?: true;
+  /** Only inside the Android app (Settings → This device): its settings live in the app. */
+  appOnly?: true;
   /** Pages behind this item (e.g. the Settings tabs): shown while at least one of them is. */
   children?: readonly NavItem[];
 }

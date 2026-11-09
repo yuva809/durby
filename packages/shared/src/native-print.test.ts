@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import addresses from './native-print-addresses.json';
 import {
+  DEFAULT_DEVICE_SETTINGS,
   isAllowedPrinterHost,
   isAllowedPrinterPort,
+  nativeDeviceSettingsSchema,
   nativeDiscoverAnswerSchema,
+  nativeInfoAnswerSchema,
   nativePrintAnswerSchema,
   nativePrintRequestSchema,
   posPrintersReadSchema,
@@ -135,5 +138,44 @@ describe('reading pos.printers forward-compatibly (ADR 0033)', () => {
       false,
     );
     expect(posPrintersReadSchema.safeParse('printer').success).toBe(false);
+  });
+});
+
+describe('device settings (app 1.1)', () => {
+  const L = '0190a000-0000-7000-8000-000000000101';
+  const P = '0190a000-0000-7000-8000-000000000301';
+
+  it('accepts what the app stores and refuses anything else', () => {
+    const ok = { prints: false, tillLocationId: L, receiptPrinters: { [L]: P } };
+    expect(nativeDeviceSettingsSchema.parse(ok)).toEqual(ok);
+    expect(nativeDeviceSettingsSchema.safeParse({ ...ok, extra: 1 }).success).toBe(false);
+    expect(nativeDeviceSettingsSchema.safeParse({ ...ok, tillLocationId: 'x' }).success).toBe(
+      false,
+    );
+    expect(
+      nativeDeviceSettingsSchema.safeParse({ ...ok, receiptPrinters: { [L]: 'x' } }).success,
+    ).toBe(false);
+  });
+
+  it('remembers at most 50 receipt printers', () => {
+    const many = Object.fromEntries(
+      Array.from({ length: 51 }, (_, i) => [
+        `0190a000-0000-7000-8000-${String(i).padStart(12, '0')}`,
+        P,
+      ]),
+    );
+    expect(
+      nativeDeviceSettingsSchema.safeParse({ ...DEFAULT_DEVICE_SETTINGS, receiptPrinters: many })
+        .success,
+    ).toBe(false);
+  });
+
+  it('reads an info answer with or without features', () => {
+    const v1 = { type: 'info', appVersion: '1.0.0', protocol: 1 };
+    expect(nativeInfoAnswerSchema.parse(v1).features).toBeUndefined();
+    expect(
+      nativeInfoAnswerSchema.parse({ ...v1, appVersion: '1.1.0', features: ['parallel', 'later'] })
+        .features,
+    ).toEqual(['parallel', 'later']);
   });
 });

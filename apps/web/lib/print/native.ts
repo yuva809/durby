@@ -1,4 +1,7 @@
 import {
+  type NativeAppFeature,
+  type NativeDeviceSettings,
+  nativeDeviceSettingsAnswerSchema,
   NATIVE_PRINT_OBJECT,
   NATIVE_PRINT_PROTOCOL,
   nativeDiscoverAnswerSchema,
@@ -27,6 +30,14 @@ export interface NativePrintObject {
 export interface NativePrintOutcome {
   state: 'sent' | 'failed';
   code: NativePrintCode | 'print.no_answer';
+  /** App 1.1 (`nothingPrinted`): the job failed before any of its bytes left the device. */
+  nothingPrinted?: boolean;
+}
+
+/** This device's settings as the app stored them; `refused`: the write broke the schema and stored nothing. */
+export interface NativeDeviceSettingsOutcome {
+  settings: NativeDeviceSettings;
+  refused: boolean;
 }
 
 export function findNativePrintObject(scope: object = globalThis): NativePrintObject | null {
@@ -39,12 +50,14 @@ export function findNativePrintObject(scope: object = globalThis): NativePrintOb
     : null;
 }
 
-export const NATIVE_TIMEOUTS = { info: 3_000, print: 30_000, discover: 20_000 };
+export const NATIVE_TIMEOUTS = { info: 3_000, print: 30_000, discover: 20_000, settings: 3_000 };
 
 export class NativePrinter {
   private readonly infoWaiters: ((answer: NativeInfoAnswer | null) => void)[] = [];
   private readonly discoverWaiters: ((answer: NativeDiscoverAnswer | null) => void)[] = [];
   private readonly printWaiters = new Map<string, (outcome: NativePrintOutcome) => void>();
+  private readonly settingsWaiters: ((answer: NativeDeviceSettingsOutcome | null) => void)[] = [];
+  private featureSet: Promise<ReadonlySet<string>> | null = null;
 
   constructor(
     private readonly target: NativePrintObject,
@@ -58,6 +71,34 @@ export class NativePrinter {
     return this.ask(this.infoWaiters, 'info', this.timeouts.info);
   }
 
+  /**
+   * What this app can do (`NATIVE_APP_FEATURES`), asked once per page. Version 1.0 names none; an app that doesn't
+   * answer counts as none (asked again next time).
+   */
+  features(): Promise<ReadonlySet<string>> {
+    this.featureSet ??= this.info().then((answer) => {
+      if (!answer) this.featureSet = null;
+      return new Set(answer?.features ?? []);
+    });
+    return this.featureSet;
+  }
+
+  async has(feature: NativeAppFeature): Promise<boolean> {
+    return (await this.features()).has(feature);
+  }
+
+  /** This device's stored settings; null if the app doesn't answer. Only for apps with `deviceSettings`. */
+  deviceSettings(): Promise<NativeDeviceSettingsOutcome | null> {
+    return this.ask(this.settingsWaiters, 'deviceSettings', this.timeouts.settings);
+  }
+
+  /** Stores this device's settings and answers what is stored now; null if the app doesn't answer. */
+  setDeviceSettings(settings: NativeDeviceSettings): Promise<NativeDeviceSettingsOutcome | null> {
+    return this.ask(this.settingsWaiters, 'setDeviceSettings', this.timeouts.settings, {
+      settings,
+    });
+  }
+
   /** Printers on the device's own network; null if the app doesn't answer. */
   discover(): Promise<NativeDiscoverAnswer | null> {
     return this.ask(this.discoverWaiters, 'discover', this.timeouts.discover);
@@ -67,6 +108,7 @@ export class NativePrinter {
     waiters: ((answer: T | null) => void)[],
     type: string,
     ms: number,
+    extra: object = {},
   ): Promise<T | null> {
     return new Promise((resolve) => {
       const waiter = (answer: T | null) => {
@@ -79,7 +121,7 @@ export class NativePrinter {
         resolve(null);
       }, ms);
       waiters.push(waiter);
-      this.target.postMessage(JSON.stringify({ version: NATIVE_PRINT_PROTOCOL, type }));
+      this.target.postMessage(JSON.stringify({ version: NATIVE_PRINT_PROTOCOL, type, ...extra }));
     });
   }
 
@@ -118,11 +160,20 @@ export class NativePrinter {
       this.discoverWaiters.shift()?.(found.data);
       return;
     }
+    const settings = nativeDeviceSettingsAnswerSchema.safeParse(message);
+    if (settings.success) {
+      this.settingsWaiters.shift()?.({
+        settings: settings.data.settings,
+        refused: settings.data.refused ?? false,
+      });
+      return;
+    }
     const answer = nativePrintAnswerSchema.safeParse(message);
     if (answer.success) {
       this.printWaiters.get(answer.data.jobId)?.({
         state: answer.data.state,
         code: answer.data.code,
+        ...(answer.data.nothingPrinted && { nothingPrinted: true }),
       });
       return;
     }

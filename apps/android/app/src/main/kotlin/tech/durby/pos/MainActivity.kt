@@ -13,6 +13,7 @@ import android.os.Looper
 import android.util.Log
 import android.view.Gravity
 import android.view.View
+import android.view.WindowManager
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.Button
@@ -25,9 +26,11 @@ import tech.durby.pos.check.DeviceCheck
 import tech.durby.pos.check.DeviceFacts
 import tech.durby.pos.engine.SystemWebViewEngine
 import tech.durby.pos.engine.WebEngine
+import tech.durby.pos.print.DeviceSettings
+import tech.durby.pos.print.PrefsDeviceSettings
+import tech.durby.pos.print.PrintDispatcher
 import tech.durby.pos.print.PrintService
 import tech.durby.pos.print.PrinterScanner
-import java.util.concurrent.Executors
 
 /**
  * The whole app (ADR 0032 §14): check the device, then Durby full screen. Screens of its own only when the device
@@ -35,9 +38,12 @@ import java.util.concurrent.Executors
  */
 class MainActivity : Activity(), WebEngine.Host {
     private val main = Handler(Looper.getMainLooper())
-    private val printing = Executors.newSingleThreadExecutor()
-    private val printService = PrintService(BuildConfig.VERSION_NAME, scanner = { PrinterScanner().scan() })
+    private lateinit var deviceSettings: PrefsDeviceSettings
+    private lateinit var printing: PrintDispatcher
     private var engine: WebEngine? = null
+
+    /** True while Durby itself is shown (not the device check or offline screen). */
+    private var showingDurby = false
 
     /** The WebView version this process started with; after a Play Store update it differs (see [onResume]). */
     private var startedWithWebView: String? = null
@@ -50,6 +56,14 @@ class MainActivity : Activity(), WebEngine.Host {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        deviceSettings = PrefsDeviceSettings(this)
+        val service = PrintService(
+            BuildConfig.VERSION_NAME,
+            scanner = { PrinterScanner().scan() },
+            settings = deviceSettings,
+            onSettingsChanged = { main.post { keepScreenOn(it) } },
+        )
+        printing = PrintDispatcher(service)
         start()
     }
 
@@ -69,7 +83,21 @@ class MainActivity : Activity(), WebEngine.Host {
         val e = engine ?: SystemWebViewEngine(this, this).also { engine = it }
         (e.view.parent as? LinearLayout)?.removeView(e.view)
         setContentView(e.view)
+        showingDurby = true
+        keepScreenOn(deviceSettings.load())
         e.load(Servers.START_URL)
+    }
+
+    /**
+     * A device that prints keeps its screen on while Durby is in front (ADR 0033): a sleeping till stops polling and
+     * the kitchen's tickets wait. Other devices sleep as usual. The flag only acts while this activity is visible.
+     */
+    private fun keepScreenOn(settings: DeviceSettings) {
+        if (showingDurby && settings.prints) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     private fun readFacts(): DeviceFacts {
@@ -99,11 +127,8 @@ class MainActivity : Activity(), WebEngine.Host {
             engine?.openPrintScreen(getString(R.string.app_name))
             return
         }
-        // Network and printer work never runs on the main thread; answers go back on it.
-        printing.execute {
-            val answer = printService.handle(message)
-            main.post { reply(answer) }
-        }
+        // Network and printer work never runs on the main thread (one lane per printer); answers go back on it.
+        printing.submit(message) { answer -> main.post { reply(answer) } }
     }
 
     override fun openExternally(url: String) {
@@ -174,7 +199,7 @@ class MainActivity : Activity(), WebEngine.Host {
 
     override fun onDestroy() {
         engine?.destroy()
-        printing.shutdownNow()
+        printing.shutdown()
         super.onDestroy()
     }
 
@@ -274,6 +299,8 @@ class MainActivity : Activity(), WebEngine.Host {
             gravity = Gravity.START
         })
         engine?.view?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
+        showingDurby = false
+        keepScreenOn(deviceSettings.load())
         setContentView(ScrollView(this).apply { addView(column) })
         column.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
     }

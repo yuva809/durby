@@ -55,22 +55,34 @@ function device(overrides: Partial<JobDevice> = {}): JobDevice {
   };
 }
 
+function api(due: unknown[], claimed: unknown) {
+  const calls: { method: string; url: string; body: unknown }[] = [];
+  const apiFetch = vi.fn((url: string, init?: RequestInit) => {
+    const method = init?.method ?? 'GET';
+    calls.push({ method, url, body: init?.body ? JSON.parse(init.body as string) : null });
+    if (method === 'GET') return Promise.resolve(Response.json({ data: due }));
+    if (url.endsWith('/claim')) return Promise.resolve(Response.json({ job: claimed }));
+    return Promise.resolve(Response.json({ ...JOB, status: 'printed' }));
+  });
+  return { store: { apiFetch } as never, calls };
+}
+
 describe('runPrintJob (ADR 0033)', () => {
   it("draws the job at its printer's width and prints it there", async () => {
     const render = vi.fn(() => Promise.resolve(image));
     const d = device({ render });
-    expect(await runPrintJob(JOB, d)).toBe('print.sent');
+    expect(await runPrintJob(JOB, d)).toEqual({ code: 'print.sent' });
     expect(render).toHaveBeenCalledWith(JOB, PRINTER);
     expect(d.printer.print).toHaveBeenCalledWith(expect.any(String), image, SETTINGS);
   });
 
   it('answers with a code when it cannot print', async () => {
-    expect(await runPrintJob(JOB, device({ printerFor: () => Promise.resolve(null) }))).toBe(
-      'print.no_printer',
-    );
+    expect(await runPrintJob(JOB, device({ printerFor: () => Promise.resolve(null) }))).toEqual({
+      code: 'print.no_printer',
+    });
     expect(
       await runPrintJob(JOB, device({ render: () => Promise.reject(new Error('no canvas')) })),
-    ).toBe('print.payload_invalid');
+    ).toEqual({ code: 'print.payload_invalid' });
   });
 
   it("reports an app that didn't answer as a timeout: it may have printed, so a person checks", async () => {
@@ -78,23 +90,32 @@ describe('runPrintJob (ADR 0033)', () => {
     d.printer.print = vi.fn(() =>
       Promise.resolve({ state: 'failed' as const, code: 'print.no_answer' as const }),
     );
-    expect(await runPrintJob(JOB, d)).toBe('print.printer_timeout');
+    expect(await runPrintJob(JOB, d)).toEqual({ code: 'print.printer_timeout' });
+  });
+
+  it("passes the app's nothingPrinted on, so the queue sends the job again by itself", async () => {
+    const d = device();
+    d.printer.print = vi.fn(() =>
+      Promise.resolve({
+        state: 'failed' as const,
+        code: 'print.printer_timeout' as const,
+        nothingPrinted: true,
+      }),
+    );
+    expect(await runPrintJob(JOB, d)).toEqual({
+      code: 'print.printer_timeout',
+      nothingPrinted: true,
+    });
+    const { store, calls } = api([{ id: JOB_ID }], JOB);
+    await pollPrintJobs(store, LOCATION, d);
+    expect(calls.find((c) => c.url.endsWith('/result'))!.body).toEqual({
+      code: 'print.printer_timeout',
+      nothingPrinted: true,
+    });
   });
 });
 
 describe('pollPrintJobs', () => {
-  function api(due: unknown[], claimed: unknown) {
-    const calls: { method: string; url: string; body: unknown }[] = [];
-    const apiFetch = vi.fn((url: string, init?: RequestInit) => {
-      const method = init?.method ?? 'GET';
-      calls.push({ method, url, body: init?.body ? JSON.parse(init.body as string) : null });
-      if (method === 'GET') return Promise.resolve(Response.json({ data: due }));
-      if (url.endsWith('/claim')) return Promise.resolve(Response.json({ job: claimed }));
-      return Promise.resolve(Response.json({ ...JOB, status: 'printed' }));
-    });
-    return { store: { apiFetch } as never, calls };
-  }
-
   it('only reads while nothing is due', async () => {
     const { store, calls } = api([], null);
     expect(await pollPrintJobs(store, LOCATION, device())).toBe('idle');

@@ -2,6 +2,7 @@
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { systemRolePermissions } from '@durby/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetDeviceSettings } from '../../lib/print/device-settings';
 import { setTillLocation } from '../../lib/print/till-location';
 import { mockState, resetMocks } from '../../test/mocks';
 import { sessionFixture } from '../../test/session-fixture';
@@ -18,7 +19,7 @@ vi.mock('../../app/providers', async () => (await import('../../test/mocks')).pr
 vi.mock('../../app/labels-provider', async () => (await import('../../test/mocks')).labelsMock());
 
 const app = vi.hoisted(() => ({
-  printer: null as null | { print: ReturnType<typeof vi.fn> },
+  printer: null as null | { print: ReturnType<typeof vi.fn>; [more: string]: unknown },
   drawn: [] as string[],
 }));
 vi.mock('../../lib/print/native', () => ({ nativePrinter: () => app.printer }));
@@ -158,6 +159,7 @@ const ORDER = {
 
 beforeEach(() => {
   resetMocks();
+  resetDeviceSettings();
   app.printer = null;
   app.drawn = [];
   setTillLocation(null);
@@ -169,6 +171,37 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('PrintJobRunner (ADR 0033)', () => {
+  /** App 1.1 with these device settings. */
+  const appWith = (prints: boolean, tillLocationId: string | null) => ({
+    print: vi.fn(() => Promise.resolve({ state: 'sent', code: 'print.sent' })),
+    has: () => Promise.resolve(true),
+    deviceSettings: () =>
+      Promise.resolve({
+        settings: { prints, tillLocationId, receiptPrinters: {} },
+        refused: false,
+      }),
+  });
+
+  it('never polls on a device with "This device prints" off', async () => {
+    app.printer = appWith(false, LOCATION);
+    const calls = api(ORDER);
+    render(<Runner />);
+    act(() => setTillLocation(LOCATION));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(calls.filter((c) => c.url.includes('/print-jobs'))).toEqual([]);
+  });
+
+  it('prints for the location set on This device, before any floor page was open', async () => {
+    app.printer = appWith(true, LOCATION);
+    const calls = api(ORDER);
+    render(<Runner />);
+    await waitFor(() =>
+      expect(calls.map((c) => c.url)).toContain(
+        `/api/v1/pos/print-jobs/due?locationId=${LOCATION}`,
+      ),
+    );
+  });
+
   it('never polls in a normal browser', async () => {
     api(ORDER);
     act(() => setTillLocation(LOCATION));
