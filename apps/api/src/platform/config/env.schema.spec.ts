@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appEnvSchema, migrationEnvSchema, RATE_LIMIT_DEFAULTS } from './env.schema';
+import { appEnvSchema, configWarnings, migrationEnvSchema, RATE_LIMIT_DEFAULTS } from './env.schema';
 import { loadConfig } from './load-config';
 
 const validEnv = {
@@ -235,5 +235,23 @@ describe('loadConfig', () => {
 
   it('reports a missing var as required', () => {
     expect(() => loadConfig(without('DATABASE_URL'))).toThrow(/DATABASE_URL: is required/);
+  });
+});
+
+describe('configWarnings', () => {
+  it('warns about Secure cookies over http origins, naming them', () => {
+    const warnings = configWarnings(
+      appEnvSchema.parse({ ...validEnv, WEB_ORIGINS: 'http://localhost:3000,https://a.test' }),
+    );
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('http://localhost:3000');
+    expect(warnings[0]).not.toContain('https://a.test');
+  });
+
+  it('stays quiet with https only or with COOKIE_SECURE=false', () => {
+    expect(configWarnings(appEnvSchema.parse({ ...validEnv, WEB_ORIGINS: 'https://a.test' }))).toEqual(
+      [],
+    );
+    expect(configWarnings(appEnvSchema.parse({ ...validEnv, COOKIE_SECURE: 'false' }))).toEqual([]);
   });
 });

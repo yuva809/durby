@@ -48,7 +48,7 @@ describe('auth logs', () => {
     const login = await kit.login(user.email, PASSWORD, client);
     keep(login.accessToken, login.refresh);
 
-    // Refresh, switch, me, reuse detection.
+    // Refresh, switch, a recovered lost answer, me, reuse detection.
     const refreshed = await client
       .post('/refresh')
       .set('Cookie', cookie(login.refresh))
@@ -64,6 +64,9 @@ describe('auth logs', () => {
       .expect(200);
     const refresh3 = refreshCookieOf(switched);
     keep(refresh3, (switched.body as { accessToken: string }).accessToken);
+    // The switch's answer "got lost": the token before it is presented again and recovered.
+    const recovered = await client.post('/refresh').set('Cookie', cookie(refresh2)).expect(200);
+    keep(refreshCookieOf(recovered), (recovered.body as { accessToken: string }).accessToken);
     await client.get('/me').set('Authorization', `Bearer ${access2}`).expect(200);
     await client.post('/refresh').set('Cookie', cookie(login.refresh)).expect(401);
 
@@ -107,6 +110,7 @@ describe('auth logs', () => {
         'auth.login.failed',
         'auth.login.succeeded',
         'auth.refresh.reuse_detected',
+        'auth.refresh.recovered',
         'auth.logout',
         'auth.password.reset_requested',
         'auth.password.reset',
