@@ -207,6 +207,7 @@
   "pos.nativePrint.choosePrinter": "Auf welchem Drucker soll dieses Gerät Rechnungen drucken? Die Wahl bleibt für dieses Gerät gespeichert.",
   "pos.printWarnings.noTill": "{count} warten auf den Druck: keine Kasse mit der Durby-App ist offen.",
   "pos.printWarnings.noTillSince": "{count} warten auf den Druck: keine Kasse mit der Durby-App seit {time}.",
+  "pos.printWarnings.tillSignedOut": "{count} warten auf den Druck: die Kasse wurde abgemeldet. Melden Sie sich an der Kasse wieder an.",
   "pos.deviceSettings.title": "Dieses Gerät",
   "pos.deviceSettings.description": "Diese Einstellungen gehören zu diesem Gerät und bleiben darauf. Andere Geräte haben ihre eigenen.",
   "pos.deviceSettings.onlyInApp": "Diese Einstellungen gibt es nur in der Android-App.",

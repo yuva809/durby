@@ -15,6 +15,7 @@ export { RequireOrigin } from './origin.guard';
 export { PasswordHasher } from './password-hasher';
 export { RevocationService } from './revocation.service';
 export { SecurityLog } from './security-log';
+export { SessionStatus } from './session-status';
 export { type UserProfile, UserDirectory } from './user-directory';
 
 // Bootstrap commands (src/cli) only.

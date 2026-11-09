@@ -82,12 +82,14 @@ export function PrintWarnings({
           text={
             tillAlive
               ? t('pos.printWarnings.waiting', { count: String(waiting.count) })
-              : seen === null
-                ? t('pos.printWarnings.noTill', { count: String(waiting.count) })
-                : t('pos.printWarnings.noTillSince', {
-                    count: String(waiting.count),
-                    time: time(seen),
-                  })
+              : status.tillSignedOut
+                ? t('pos.printWarnings.tillSignedOut', { count: String(waiting.count) })
+                : seen === null
+                  ? t('pos.printWarnings.noTill', { count: String(waiting.count) })
+                  : t('pos.printWarnings.noTillSince', {
+                      count: String(waiting.count),
+                      time: time(seen),
+                    })
           }
         />
       )}

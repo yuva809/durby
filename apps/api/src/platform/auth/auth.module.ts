@@ -16,6 +16,7 @@ import { RefreshTokenStore } from './refresh-token.store';
 import { RevocationService } from './revocation.service';
 import { SecurityLog } from './security-log';
 import { SessionService } from './session.service';
+import { SessionStatus } from './session-status';
 import { UserDirectory } from './user-directory';
 
 /**
@@ -41,6 +42,7 @@ import { UserDirectory } from './user-directory';
     RevocationService,
     SecurityLog,
     SessionService,
+    SessionStatus,
     UserDirectory,
     { provide: AUDIT_ACTOR_DIRECTORY, useExisting: UserDirectory },
   ],
@@ -56,6 +58,7 @@ import { UserDirectory } from './user-directory';
     PasswordService,
     RevocationService,
     SecurityLog,
+    SessionStatus,
     UserDirectory,
   ],
 })

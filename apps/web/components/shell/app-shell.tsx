@@ -7,6 +7,7 @@ import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '../ui/sheet';
 import { Wordmark } from '../wordmark';
 import { OrgSwitcher } from './org-switcher';
+import { SessionEnding } from './session-ending';
 import { SidebarNav } from './sidebar-nav';
 import { UserMenu } from './user-menu';
 
@@ -64,6 +65,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main id="main" tabIndex={-1} className="flex-1 px-4 py-6 outline-none sm:px-8">
+          <SessionEnding />
           {children}
         </main>
       </div>

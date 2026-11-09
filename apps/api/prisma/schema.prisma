@@ -235,6 +235,8 @@ enum RefreshTokenRevokeReason {
   logout
   reuse_detected
   password_reset
+  /// A sibling issued from the same parent was used (ADR 0006 amendment: lost responses).
+  superseded
 
   @@map("refresh_token_revoke_reason")
 }
@@ -245,6 +247,8 @@ model RefreshToken {
   userId          String                    @map("user_id") @db.Uuid
   familyId        String                    @map("family_id") @db.Uuid
   tokenHash       String                    @unique @map("token_hash")
+  /// The token this one was issued from (null: login). Siblings exist only after a recovered lost response.
+  parentId        String?                   @map("parent_id") @db.Uuid
   /// Active organization of the session. Not a tenant key: membership is re-checked on every refresh.
   organizationId  String?                   @map("organization_id") @db.Uuid
   expiresAt       DateTime                  @map("expires_at") @db.Timestamptz(6)
@@ -256,8 +260,12 @@ model RefreshToken {
   user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   organization    Organization?             @relation(fields: [organizationId], references: [id], onDelete: SetNull, onUpdate: Restrict)
 
+  parent          RefreshToken?             @relation("RefreshTokenParent", fields: [parentId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  children        RefreshToken[]            @relation("RefreshTokenParent")
+
   @@index([familyId])
   @@index([userId])
+  @@index([parentId])
   @@map("refresh_tokens")
 }
 

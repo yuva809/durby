@@ -124,3 +124,30 @@ collide with the tenancy rules: a user belongs to several organizations, and lis
 - Removing a membership (1.3) must write a revocation marker so access ends immediately.
 - Deploying this step to the existing staging server needs a new secret in `/opt/durby/.env`
   (see deploy.md, "Upgrading the existing server"); the deploy preflight fails early if it is missing.
+
+## Amendment (2026-11-09): recovering a lost refresh response
+
+A till signed out on staging after a reload during a refresh. With strict rotation, a refresh whose response never
+reaches the client (page reloaded or app stopped mid-request, Wi-Fi dropped after the server answered) leaves the
+client with a token the server already consumed; its next refresh counts as reuse and revokes the family. Serializing
+refreshes in the web app (§4) can't prevent this: the server commits the rotation whether or not the answer arrives.
+
+1. **Grace for the most recent token.** A used token presented again within **60 s** of its use, while none of the
+   tokens issued from it has been used, is a lost response, not theft: the api issues another token from it (a
+   sibling of the lost one) and logs `auth.refresh.recovered`. Membership is re-checked as for every refresh.
+   Anything else stays reuse and revokes the family: later than 60 s, after a token issued from it was used, or a
+   revoked token (logout, password reset, reuse).
+2. **Siblings are superseded on first use.** Each token records the token it was issued from (`parent_id`). When one
+   of a parent's tokens is used, its live siblings are revoked with `revoked_reason = 'superseded'`. Presenting a
+   superseded token is reuse. So a stolen token used within the grace window is still detected: whichever of the
+   client and the thief refreshes second presents a superseded token, and the family is revoked.
+3. **Concurrent refreshes with one token** (the race the web app's lock normally prevents) both succeed: one
+   rotates, the other recovers. The browser keeps one of the two cookies; using it supersedes the other.
+4. **Serialized on the parent row.** Recovery and the rotation of a token with a parent lock the parent row
+   (`SELECT … FOR UPDATE`), so a sibling can't be issued while another sibling is being used.
+5. **Rejected:** (a) a grace window for any used token of the family: an old stolen token would work for 60 s after
+   every refresh. (b) Revoking the lost token and issuing a replacement: two concurrent refreshes would leave the
+   browser holding a revoked cookie half the time. (c) Client-only fixes: the client can't know whether the server
+   committed a request it never saw answered.
+
+The 30-day family cap (§4, `REFRESH_FAMILY_MAX_DAYS`) is unchanged.

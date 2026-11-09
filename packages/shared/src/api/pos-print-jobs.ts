@@ -107,6 +107,11 @@ export const claimPrintJobResponseSchema = z.object({ job: printJobSchema.nullab
 export const printJobStatusSchema = z.object({
   /** The last poll of a till with the app; null when none polled lately. */
   tillSeenAt: z.iso.datetime().nullable(),
+  /**
+   * The till that polled last has been signed out since (logout, the 30-day cap, a revoked session), so it can't
+   * print until someone signs in on it again. Optional for answers from an api without it (expand/contract).
+   */
+  tillSignedOut: z.boolean().optional(),
   /** Pending jobs older than PRINT_JOB_WAIT_WARNING_MS. */
   waiting: z.object({ count: z.number().int(), oldestAt: z.iso.datetime().nullable() }),
   /** Waiting printers with their last answer (not reachable, paper out, …); expired jobs are in `attention`. */

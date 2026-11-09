@@ -334,6 +334,25 @@ describe('pos print jobs', () => {
     expect(Date.now() - Date.parse(now.tillSeenAt!)).toBeLessThan(10_000);
   });
 
+  it('tells a till that was signed out from one that is only closed', async () => {
+    const r = await restaurant();
+    await printer(r, 'Kitchen', { stations: ['kitchen'] });
+    const userId = await seed.user();
+    await seed.member(r.org.id, userId, r.org.roles.waiter, { locations: [r.here] });
+    const signIn = await seed.session(userId);
+    const till = await seed.token(userId, r.org.id, signIn.id);
+    const status = async () =>
+      printJobStatusSchema.parse(
+        (await get(till, `/pos/print-jobs/status?locationId=${r.here}`).expect(200)).body,
+      );
+
+    await get(till, `/pos/print-jobs/due?locationId=${r.here}`).expect(200);
+    expect((await status()).tillSignedOut).toBe(false);
+    // Signed out (logout, the 30-day cap): the access token still reads, but the till can't refresh any more.
+    await signIn.end();
+    expect((await status()).tillSignedOut).toBe(true);
+  });
+
   it('queues a bill from a device without the app for a receipt printer of the location', async () => {
     const r = await restaurant();
     const receipt = await printer(r, 'Till', { bills: true });
