@@ -25,8 +25,8 @@ android {
         applicationId = "tech.durby.pos"
         minSdk = 28 // Android 9 (SUNMI T2s Lite)
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     signingConfigs {

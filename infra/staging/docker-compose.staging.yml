@@ -243,6 +243,8 @@ services:
     # A directory mount, so a replaced Caddyfile is visible to `caddy reload`.
     volumes:
       - ./caddy:/etc/caddy:ro
+      # The Android app's updates, served at /downloads/android/ (ADR 0033 §14).
+      - ./downloads:/srv/downloads:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on: [api, web]

@@ -31,6 +31,7 @@ import tech.durby.pos.print.PrefsDeviceSettings
 import tech.durby.pos.print.PrintDispatcher
 import tech.durby.pos.print.PrintService
 import tech.durby.pos.print.PrinterScanner
+import tech.durby.pos.update.Updater
 
 /**
  * The whole app (ADR 0032 §14): check the device, then Durby full screen. Screens of its own only when the device
@@ -40,6 +41,7 @@ class MainActivity : Activity(), WebEngine.Host {
     private val main = Handler(Looper.getMainLooper())
     private lateinit var deviceSettings: PrefsDeviceSettings
     private lateinit var printing: PrintDispatcher
+    private var updateStatus: Updater.StatusReceiver? = null
     private var engine: WebEngine? = null
 
     /** True while Durby itself is shown (not the device check or offline screen). */
@@ -62,7 +64,9 @@ class MainActivity : Activity(), WebEngine.Host {
             scanner = { PrinterScanner().scan() },
             settings = deviceSettings,
             onSettingsChanged = { main.post { keepScreenOn(it) } },
+            updates = Updater(this, Servers.START_URL.removeSuffix("/"), BuildConfig.VERSION_CODE),
         )
+        updateStatus = Updater.StatusReceiver(this).also { it.register() }
         printing = PrintDispatcher(service)
         start()
     }
@@ -200,6 +204,7 @@ class MainActivity : Activity(), WebEngine.Host {
     override fun onDestroy() {
         engine?.destroy()
         printing.shutdown()
+        updateStatus?.let { runCatching { unregisterReceiver(it) } }
         super.onDestroy()
     }
 

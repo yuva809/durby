@@ -2,6 +2,10 @@ import {
   type NativeAppFeature,
   type NativeDeviceSettings,
   nativeDeviceSettingsAnswerSchema,
+  type NativeInstallResult,
+  nativeInstallUpdateAnswerSchema,
+  type NativeUpdateAnswer,
+  nativeUpdateAnswerSchema,
   NATIVE_PRINT_OBJECT,
   NATIVE_PRINT_PROTOCOL,
   nativeDiscoverAnswerSchema,
@@ -50,13 +54,24 @@ export function findNativePrintObject(scope: object = globalThis): NativePrintOb
     : null;
 }
 
-export const NATIVE_TIMEOUTS = { info: 3_000, print: 30_000, discover: 20_000, settings: 3_000 };
+export const NATIVE_TIMEOUTS = {
+  info: 3_000,
+  print: 30_000,
+  discover: 20_000,
+  settings: 3_000,
+  /** Reading latest.json from the server. */
+  update: 15_000,
+  /** Downloading and checking the APK (a few MB). */
+  install: 180_000,
+};
 
 export class NativePrinter {
   private readonly infoWaiters: ((answer: NativeInfoAnswer | null) => void)[] = [];
   private readonly discoverWaiters: ((answer: NativeDiscoverAnswer | null) => void)[] = [];
   private readonly printWaiters = new Map<string, (outcome: NativePrintOutcome) => void>();
   private readonly settingsWaiters: ((answer: NativeDeviceSettingsOutcome | null) => void)[] = [];
+  private readonly updateWaiters: ((answer: NativeUpdateAnswer | null) => void)[] = [];
+  private readonly installWaiters: ((answer: NativeInstallResult | null) => void)[] = [];
   private featureSet: Promise<ReadonlySet<string>> | null = null;
 
   constructor(
@@ -97,6 +112,16 @@ export class NativePrinter {
     return this.ask(this.settingsWaiters, 'setDeviceSettings', this.timeouts.settings, {
       settings,
     });
+  }
+
+  /** A newer app version on the server, or null (none, or no answer). Only for apps with `update`; never installs. */
+  async checkUpdate(): Promise<NativeUpdateAnswer['available']> {
+    return (await this.ask(this.updateWaiters, 'update', this.timeouts.update))?.available ?? null;
+  }
+
+  /** Downloads, checks and hands the update to Android's installer, which asks the user; null if no answer. */
+  installUpdate(): Promise<NativeInstallResult | null> {
+    return this.ask(this.installWaiters, 'installUpdate', this.timeouts.install);
   }
 
   /** Printers on the device's own network; null if the app doesn't answer. */
@@ -158,6 +183,16 @@ export class NativePrinter {
     const found = nativeDiscoverAnswerSchema.safeParse(message);
     if (found.success) {
       this.discoverWaiters.shift()?.(found.data);
+      return;
+    }
+    const update = nativeUpdateAnswerSchema.safeParse(message);
+    if (update.success) {
+      this.updateWaiters.shift()?.(update.data);
+      return;
+    }
+    const install = nativeInstallUpdateAnswerSchema.safeParse(message);
+    if (install.success) {
+      this.installWaiters.shift()?.(install.data.result);
       return;
     }
     const settings = nativeDeviceSettingsAnswerSchema.safeParse(message);

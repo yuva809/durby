@@ -137,8 +137,14 @@ export const nativeDiscoverRequestSchema = z.strictObject({
  * - `parallel`: prints to different printers at the same time (one lane per printer).
  * - `deviceSettings`: keeps this device's settings (`deviceSettings` / `setDeviceSettings`).
  * - `nothingPrinted`: says when a failed print sent not one byte of the job.
+ * - `update`: checks for and installs a newer app version when asked (`update`, `installUpdate`).
  */
-export const NATIVE_APP_FEATURES = ['parallel', 'deviceSettings', 'nothingPrinted'] as const;
+export const NATIVE_APP_FEATURES = [
+  'parallel',
+  'deviceSettings',
+  'nothingPrinted',
+  'update',
+] as const;
 export type NativeAppFeature = (typeof NATIVE_APP_FEATURES)[number];
 
 export const nativeInfoAnswerSchema = z.object({
@@ -223,3 +229,29 @@ export const nativeDiscoverAnswerSchema = z.object({
   ),
 });
 export type NativeDiscoverAnswer = z.infer<typeof nativeDiscoverAnswerSchema>;
+
+/** `{ version: 1, type: 'update' }`: is a newer app on the server (`/downloads/android/latest.json`)? Never installs. */
+export const nativeUpdateAnswerSchema = z.object({
+  type: z.literal('update'),
+  available: z.object({ versionCode: z.number().int(), versionName: z.string() }).nullable(),
+});
+export type NativeUpdateAnswer = z.infer<typeof nativeUpdateAnswerSchema>;
+
+export const NATIVE_INSTALL_RESULTS = [
+  /** Checked; Android's installer now asks the user to confirm. */
+  'installing',
+  /** Android first needs "allow installing apps from Durby" (its settings screen opened). */
+  'needs_permission',
+  'update.none',
+  'update.download',
+  'update.checksum',
+  'update.signature',
+  'update.invalid',
+] as const;
+
+/** `{ version: 1, type: 'installUpdate' }`: download, check and hand over to Android's installer. */
+export const nativeInstallUpdateAnswerSchema = z.object({
+  type: z.literal('installUpdate'),
+  result: z.enum(NATIVE_INSTALL_RESULTS),
+});
+export type NativeInstallResult = (typeof NATIVE_INSTALL_RESULTS)[number];

@@ -2,6 +2,7 @@ package tech.durby.pos.print
 
 import org.json.JSONArray
 import org.json.JSONObject
+import tech.durby.pos.update.AppUpdates
 
 /**
  * Answers the page's messages (protocol version 1). The same job id never prints twice once it was sent, while a
@@ -14,6 +15,7 @@ class PrintService internal constructor(
     private val scanner: () -> PrinterScanner.Result,
     private val settings: DeviceSettingsStore = InMemoryDeviceSettings(),
     private val onSettingsChanged: (DeviceSettings) -> Unit = {},
+    private val updates: AppUpdates? = null,
     private val allowLoopbackForTests: Boolean = false,
 ) {
     constructor(
@@ -21,7 +23,8 @@ class PrintService internal constructor(
         scanner: () -> PrinterScanner.Result,
         settings: DeviceSettingsStore,
         onSettingsChanged: (DeviceSettings) -> Unit,
-    ) : this(appVersion, scanner, settings, onSettingsChanged, false)
+        updates: AppUpdates,
+    ) : this(appVersion, scanner, settings, onSettingsChanged, updates, false)
 
     /** Job ids already sent, newest last; the oldest are forgotten past [REMEMBERED_JOBS]. Guarded by itself. */
     private val sent = object : LinkedHashMap<String, Unit>(16, 0.75f, false) {
@@ -36,7 +39,7 @@ class PrintService internal constructor(
             .put("type", "info")
             .put("appVersion", appVersion)
             .put("protocol", PrintRequest.PROTOCOL)
-            .put("features", JSONArray(FEATURES))
+            .put("features", JSONArray(if (updates != null) FEATURES + "update" else FEATURES))
             .toString()
 
         PrintRequest.Discover -> discover()
@@ -50,6 +53,20 @@ class PrintService internal constructor(
         }
 
         PrintRequest.SettingsRefused -> settingsAnswer(settings.load(), refused = true)
+
+        PrintRequest.CheckUpdate -> JSONObject()
+            .put("type", "update")
+            .put(
+                "available",
+                updates?.check()?.let { JSONObject().put("versionCode", it.versionCode).put("versionName", it.versionName) }
+                    ?: JSONObject.NULL,
+            )
+            .toString()
+
+        PrintRequest.InstallUpdate -> JSONObject()
+            .put("type", "installUpdate")
+            .put("result", updates?.install() ?: "update.none")
+            .toString()
 
         PrintRequest.Invalid -> answer(PrintRequest.jobIdOf(message), TcpPrinter.Sent("print.payload_invalid", nothingPrinted = true))
 
@@ -108,13 +125,14 @@ class PrintService internal constructor(
     companion object {
         const val REMEMBERED_JOBS = 500
 
-        /** `NATIVE_APP_FEATURES` in packages/shared/src/native-print.ts. */
+        /** `NATIVE_APP_FEATURES` in packages/shared/src/native-print.ts; `update` too when the app has an updater. */
         val FEATURES = listOf("parallel", "deviceSettings", "nothingPrinted")
 
         /** The lane a request runs in: one per printer address, so printers print at the same time. */
         fun laneOf(request: PrintRequest): String = when (request) {
             is PrintRequest.Print -> "printer ${request.printer.host}:${request.printer.port}"
             PrintRequest.Discover -> "discover"
+            PrintRequest.CheckUpdate, PrintRequest.InstallUpdate -> "update"
             else -> "control"
         }
     }

@@ -113,3 +113,7 @@ Later, its own step: stations as a list.
 - **Parallel sending in the app**: one thread per printer address (at most 16, the rest share one), so one printer's
   jobs stay in order while different printers print at the same time; `nothingPrinted` reports a job that failed
   before any of its bytes were written.
+- **The updater never installs by itself.** "Update available" is a small notice above the page with "Update now"
+  and "Later", never a dialog, so it doesn't interrupt service on a till; "Later" hides it until the next check
+  (each app start and every 6 hours). Before Android's installer asks the user, the app checks the SHA-256 from
+  `latest.json`, the package and version code, and that the APK is signed with the installed app's certificate.

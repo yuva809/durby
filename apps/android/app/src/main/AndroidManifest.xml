@@ -3,6 +3,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- The in-app updater (ADR 0033 §14): hands a checked APK to Android's installer, which asks the user. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- For the device check screen only: Chrome's version, and whether the Play Store can update the WebView
          (package visibility from Android 11). -->

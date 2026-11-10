@@ -282,11 +282,36 @@ till, which must have the app open): both ends of the `|<---->|` line must be on
 the install guide tells them the printer is set up remotely. Find printer on the till lists `192.168.64.20:9100` as
 Ready when the till is on the same network.
 
+## In-app updates (app 1.1, ADR 0033 §14)
+
+- **Never automatic.** The page asks the app (`update`) at each app start and every 6 hours; the app reads
+  `/downloads/android/latest.json` from its own server (`{ versionCode, versionName, apk, sha256 }`, strict: the APK
+  is a file name in the same folder, never an address). A newer version shows a small notice above the page,
+  "A new version of the app is ready", with **Update now** and **Later**. It is never a dialog, so it never stops
+  service on a till; **Later** hides it until the next check.
+- **Update now** (`installUpdate`): the first time, Android's "Install unknown apps" screen for Durby opens ("Dieser
+  Quelle vertrauen"); after that the app downloads the APK (at most 50 MB), checks its SHA-256, that it is this app
+  (package name, the version code in `latest.json`) and that it is signed with this app's own certificate, then hands
+  it to Android's installer (`PackageInstaller` session), which asks the user to confirm. Any failed check deletes
+  the download and answers an `update.*` code (`update.checksum`, `update.signature`, `update.invalid`,
+  `update.download`, `update.none`); the notice says to try later.
+- Permission `REQUEST_INSTALL_PACKAGES`. Android itself refuses an update signed with another key.
+- **Hosting:** Caddy serves `/downloads/android/*` read-only from `downloads/android/` next to
+  `docker-compose.staging.yml` (`/opt/durby/downloads/android/`), `latest.json` with `Cache-Control: no-cache`. No
+  listing.
+- **Publishing:** raise `versionCode`/`versionName` in `app/build.gradle.kts`, run
+  `apps/android/scripts/publish-update.sh` (signed release build, `release/downloads/durby-<version>.apk` and
+  `latest.json`), then upload the APK first and `latest.json` second (the script prints the `scp` commands; it never
+  uploads). Debug builds read the local web: put both files in `apps/web/public/downloads/android/` (git-ignored).
+- Version 1.1 itself is installed by hand once; the Server select and the paper-near-end warning come as the first
+  updates through it.
+
 ## Install guide
 
 `docs/android/installationsanleitung.html`: one A4 page in German for staff (link, allowing the install source on
-Android 9, install, sign in, the red check screen). Screenshots from the Android 9 emulator in German, in
-`docs/android/img/`. Before sending, replace `LINK` with the APK's Drive link and print it to PDF:
+Android 9, install, sign in, updates from 1.1, the red check screen). Screenshots from the Android 9 emulator in
+German, in `docs/android/img/`; `07-update-source.jpg` ("Dieser Quelle vertrauen" for Durby, step 5) from the
+Android 14 emulator with the Settings app in German. Before sending, replace `LINK` with the APK's Drive link and print it to PDF:
 
 ```bash
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --no-pdf-header-footer --print-to-pdf=docs/android/Durby-Installationsanleitung.pdf "file://$PWD/docs/android/installationsanleitung.html"

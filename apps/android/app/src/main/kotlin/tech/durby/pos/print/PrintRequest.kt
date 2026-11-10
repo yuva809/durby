@@ -16,6 +16,12 @@ sealed interface PrintRequest {
     /** Stores this device's settings, already checked against the shared schema (version 1.1). */
     class SetSettings(val settings: DeviceSettings) : PrintRequest
 
+    /** Asks whether a newer app version is on the server (version 1.1, `update` feature). */
+    data object CheckUpdate : PrintRequest
+
+    /** Downloads, checks and hands the newer version to Android's installer, which asks the user (version 1.1). */
+    data object InstallUpdate : PrintRequest
+
     /** A settings write the shared schema doesn't allow: nothing is stored, the stored settings are answered. */
     data object SettingsRefused : PrintRequest
 
@@ -50,6 +56,8 @@ sealed interface PrintRequest {
                     "print" -> print(json)
                     "deviceSettings" -> if (json.length() == 2) GetSettings else Invalid
                     "setDeviceSettings" -> setSettings(json)
+                    "update" -> if (json.length() == 2) CheckUpdate else Invalid
+                    "installUpdate" -> if (json.length() == 2) InstallUpdate else Invalid
                     else -> Invalid
                 }
             }
