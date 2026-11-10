@@ -28,6 +28,8 @@ describe('isOrgOverridable', () => {
     'inventory.nav.errors.x',
     'platform.app.name',
     'staff.nav.home',
+    // Printed on every bill until the fiscal module exists.
+    'pos.bill.interimNotice',
   ])('denies %s', (key) => {
     expect(isOrgOverridable(key)).toBe(false);
   });

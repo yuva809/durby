@@ -18,8 +18,12 @@ export interface ReceiptOrder {
  * the organization's **header** (logo, name, phone, email, website from `pos.billHeader`, empty
  * fields left out), the **middle** that is the same for everyone (waiter, table and guests, bill
  * number, items as "quantity × name" with their total, the TOTAL), and the **footer** (the lines of
- * `pos.billFooter` or a thank-you, "This is not a receipt.", "Powered by" the product, date and
+ * `pos.billFooter` or a thank-you, the interim-bill notice, "Powered by" the product, date and
  * time). No VAT breakdown and no TSE data (decision 2026-11-02).
+ *
+ * The notice "Interim bill – not a fiscal receipt" / "Zwischenrechnung – kein Kassenbeleg" is printed on every bill
+ * and no setting removes it: without a TSE, a bill printed here must never pass for a receipt (ADR 0016). The fiscal
+ * module replaces it with the TSE data.
  */
 export function Receipt({
   layout,
@@ -118,7 +122,10 @@ export function Receipt({
             {line}
           </p>
         ))}
-        <p className="mt-2">{t('pos.bill.poweredBy', { product: productName })}</p>
+        <p className="mt-2 font-bold" data-testid="bill-interim-notice">
+          {t('pos.bill.interimNotice')}
+        </p>
+        <p className="mt-1">{t('pos.bill.poweredBy', { product: productName })}</p>
         <p>{date}</p>
       </footer>
     </div>

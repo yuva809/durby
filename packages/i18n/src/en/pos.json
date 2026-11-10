@@ -148,7 +148,7 @@
   "pos.bill.sent": "Sent",
   "pos.bill.toSend": "To send",
   "pos.bill.total": "TOTAL",
-  "pos.bill.notReceipt": "This is not a receipt.",
+  "pos.bill.interimNotice": "Interim bill – not a fiscal receipt",
   "pos.bill.customer": "Customer bill",
   "pos.bill.kitchen": "Kitchen bill",
   "pos.bill.bar": "Bar bill",
