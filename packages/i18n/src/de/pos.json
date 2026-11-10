@@ -148,7 +148,7 @@
   "pos.bill.sent": "Gesendet",
   "pos.bill.toSend": "Zu senden",
   "pos.bill.total": "SUMME",
-  "pos.bill.notReceipt": "Dies ist kein Beleg.",
+  "pos.bill.interimNotice": "Zwischenrechnung – kein Kassenbeleg",
   "pos.bill.customer": "Kundenrechnung",
   "pos.bill.kitchen": "Küchenbon",
   "pos.bill.bar": "Barbon",

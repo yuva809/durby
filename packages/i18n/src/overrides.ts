@@ -30,6 +30,8 @@ export const NEVER_ORG_OVERRIDABLE = [
   'platform.app.name',
   // The Durby staff portal (ADR 0017): never rendered for an organization.
   'staff.**',
+  // The fixed notice on every printed bill until the fiscal/TSE module exists (docs/modules/pos.md → Printing).
+  'pos.bill.interimNotice',
 ] as const;
 
 function patternToRegExp(pattern: string): RegExp {

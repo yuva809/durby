@@ -238,8 +238,11 @@ would add them.
     name), phone, email, website; empty fields are left out.
   - **Middle**, the same for everyone: waiter, "Table n · Guests g" (guests when recorded), the bill number (the
     order number), each item as "quantity × name" with its line total (notes below), the TOTAL.
-  - **Footer**: the lines of `pos.billFooter` (else "Thank you for visiting!"), "This is not a receipt.",
-    "Powered by" the theme's product name, and the print date and time.
+  - **Footer**: the lines of `pos.billFooter` (else "Thank you for visiting!"), the notice "Interim bill – not a
+    fiscal receipt" / "Zwischenrechnung – kein Kassenbeleg" (`pos.bill.interimNotice`), "Powered by" the theme's
+    product name, and the print date and time. The notice is fixed until the fiscal/TSE module exists: it is printed
+    on every bill whatever `pos.billFooter` says, and organizations can't override its label (it is in
+    `NEVER_ORG_OVERRIDABLE`); the fiscal module replaces it with the TSE data.
 
   **No VAT breakdown and no TSE data** (decision 2026-11-02; the till's own screen still shows VAT per rate). A
   role without it (a custom role) prints the **order slip**: table,
