@@ -15,30 +15,35 @@ deploy.
 
 ## Feature registry (`packages/shared/src/features.ts`)
 
-Feature keys are `module.capability`. Each entry has a name and a description label (rule 3), `dependsOn`, and a Zod
-schema for its limits. Feature keys and limit shapes are never free-form: the api and the CLI reject unregistered keys
+Feature keys are `module.capability`. Each entry has a name and a description label (rule 3), `dependsOn`, a Zod
+schema for its limits, and `module` / `order` for the staff portal (a module key names itself; a sub-feature names
+its module and depends on it). Feature keys and limit shapes are never free-form: the api and the CLI reject unregistered keys
 and limits that don't match the feature's schema.
 
-| Key                    | Depends on     | Limits                                 |
-| ---------------------- | -------------- | -------------------------------------- |
-| `inventory`            |                | `maxLocations` (positive integer)      |
-| `inventory.counts`     | `inventory`    |                                        |
-| `inventory.purchasing` | `inventory`    |                                        |
-| `billing`              |                |                                        |
-| `billing.einvoice`     | `billing`      |                                        |
-| `pos`                  |                |                                        |
-| `pos.fiscal`           | `pos`          |                                        |
-| `reports`              |                |                                        |
-| `api.public`           |                | `requestsPerMinute` (positive integer) |
-| `whitelabel`           |                |                                        |
-| `catalog`              |                |                                        |
-| `reservations`         | `pos`          |                                        |
-| `reservations.online`  | `reservations` |                                        |
+| Key                    | Module (order)      | Depends on     | Limits                                 |
+| ---------------------- | ------------------- | -------------- | -------------------------------------- |
+| `inventory`            | `inventory` (30)    |                | `maxLocations` (positive integer)      |
+| `inventory.counts`     | `inventory` (1)     | `inventory`    |                                        |
+| `inventory.purchasing` | `inventory` (2)     | `inventory`    |                                        |
+| `billing`              | `billing` (50)      |                |                                        |
+| `billing.einvoice`     | `billing` (1)       | `billing`      |                                        |
+| `pos`                  | `pos` (20)          | `catalog`      |                                        |
+| `pos.fiscal`           | `pos` (1)           | `pos`          |                                        |
+| `reports`              | `reports` (60)      |                |                                        |
+| `api.public`           | `api.public` (70)   |                | `requestsPerMinute` (positive integer) |
+| `whitelabel`           | `whitelabel` (80)   |                |                                        |
+| `catalog`              | `catalog` (10)      |                |                                        |
+| `reservations`         | `reservations` (40) | `pos`          |                                        |
+| `reservations.online`  | `reservations` (1)  | `reservations` |                                        |
+
+POS is one module: service, kitchen, bar and tables all sit behind `pos`. `api.public` is a module of its own (there
+is no `api` key).
 
 - A limit that is absent means unlimited. Limits are integers (counts and rates, not money or stock: rule 6 doesn't
   apply), so JSON numbers.
 - A test fails on an unknown `dependsOn` key, a dependency cycle, a bad key shape, a limits schema that isn't strict,
-  or a missing label in `en` or `de`.
+  a `module` that isn't a module key, a sub-feature that doesn't depend on its module, two siblings with the same
+  `order`, or a missing label in any locale.
 - Labels: `platform.features.<camelCaseKey>.name` and `.description`, e.g. `platform.features.inventoryCounts.name`.
 
 ## Model
@@ -75,13 +80,16 @@ release from 1.5 on writes it). The resolver still treats a missing plan as "eve
 `tenant_feature_overrides` (tenant table, ADR 0005 block: `UNIQUE (tenant_id, id)`, `ENABLE` + `FORCE` RLS,
 `tenant_isolation` policy)
 
-| Column        | Type                   | Notes                                                    |
-| ------------- | ---------------------- | -------------------------------------------------------- |
-| `id`          | uuid v7                |                                                          |
-| `tenant_id`   | uuid                   | FK → organizations, `ON DELETE RESTRICT`                 |
-| `feature_key` | text                   | Registry key; SQL checks the shape only                  |
-| `enabled`     | boolean                | `true` enables, `false` disables, whatever the plan says |
-| `limits`      | jsonb object, nullable | Only with `enabled = true` (CHECK). Per-limit override   |
+| Column            | Type                   | Notes                                                    |
+| ----------------- | ---------------------- | -------------------------------------------------------- |
+| `id`              | uuid v7                |                                                          |
+| `tenant_id`       | uuid                   | FK → organizations, `ON DELETE RESTRICT`                 |
+| `feature_key`     | text                   | Registry key; SQL checks the shape only                  |
+| `enabled`         | boolean                | `true` enables, `false` disables, whatever the plan says |
+| `limits`          | jsonb object, nullable | Only with `enabled = true` (CHECK). Per-limit override   |
+| `reason`          | text, nullable         | Why it was set, 1–500 characters (CHECK). Step 1d        |
+| `expires_at`      | timestamptz, nullable  | From then on the override counts as absent. Step 1d      |
+| `set_by_staff_id` | uuid, nullable         | FK → staff_accounts (RESTRICT); null for CLI/migrations  |
 
 `UNIQUE (tenant_id, feature_key)`: at most one override per feature and organization. Overrides are configuration,
 not history: they are updated and deleted, and every change is audited.
@@ -90,8 +98,9 @@ not history: they are updated and deleted, and every change is audited.
 
 For the active organization, once per request (cached in the request's CLS scope by tenant id):
 
-1. **Own state** of each registered key: the override's `enabled` if there is one, else whether the plan has a
-   `plan_features` row, else disabled.
+1. **Own state** of each registered key: the override's `enabled` if there is one that hasn't expired
+   (`expires_at` null or in the future), else whether the plan has a `plan_features` row, else disabled. An expired
+   override stays stored (shown as expired in the portal) until changed or reset; nothing has to run at expiry.
 2. **Dependencies**: a key is enabled only if its own state is enabled and every key in `dependsOn` is enabled
    (transitively). Enabling `inventory.counts` by override on a plan without `inventory` leaves it disabled.
 3. **Limits** of an enabled key, per limit name: override limit → plan limit → unlimited (`null`).
@@ -149,16 +158,22 @@ Both are UI hints: they can be stale until the next refresh, and the api checks 
 
 ## Changing plans and overrides
 
-Platform staff isn't modelled yet (`@PlatformOnly` denies everything), so there are no HTTP write endpoints. Operators
-use a CLI that runs inside the api's application context (like `create-admin`):
+Through the **staff portal** ([admin-portal.md → Modules](admin-portal.md#modules-step-1d)) or the **CLI**. Both
+use `EntitlementsAdmin`: its public methods open their own tenant transaction (CLI), its `…In(tx, …)` cores run
+inside a caller's transaction (onboarding, staff endpoints, which add their platform audit row there). A plan
+change keeps the organization's overrides.
 
 ```
 pnpm --filter @durby/api entitlements show            --org <id>
-pnpm --filter @durby/api entitlements set-plan        --org <id> --plan <key>
-pnpm --filter @durby/api entitlements override        --org <id> --feature <key> --enable [--limits '<json>']
-pnpm --filter @durby/api entitlements override        --org <id> --feature <key> --disable
-pnpm --filter @durby/api entitlements clear-override  --org <id> --feature <key>
+pnpm --filter @durby/api entitlements set-plan        --org <id> --plan <key> [--reason <text>]
+pnpm --filter @durby/api entitlements override        --org <id> --feature <key> --enable [--limits '<json>'] [--reason <text>] [--expires <YYYY-MM-DD>]
+pnpm --filter @durby/api entitlements override        --org <id> --feature <key> --disable [--reason <text>] [--expires <YYYY-MM-DD>]
+pnpm --filter @durby/api entitlements clear-override  --org <id> --feature <key> [--reason <text>]
 ```
+
+- **Expiry** is a day: the override ends at the end of that day in Europe/Berlin (`berlinEndOfDay`, 23:59:59.999
+  local, DST-safe) and is shown as that day. A day before today (in Berlin) is refused.
+- **No-op**: same `enabled`, `limits` and expiry; a different reason alone changes nothing.
 
 - Keys, plans and limits are validated against the registry before anything is written.
 - Each change and its audit row (system actor `cli.entitlements`) are written in one tenant transaction. A no-op
@@ -184,11 +199,13 @@ Provisioning: `ensureOrganization` assigns a plan to a new organization in the s
 | `platform.feature_override.deleted`  | `feature_override` | `clear-override`                            |
 | `platform.plan.features_changed`     | `plan`             | migrations changing plan contents (per org) |
 
-Snapshots: `organization` gains `planId`; `feature_override`: `id`, `featureKey`, `enabled`, `limits`; `plan`:
+Snapshots: `organization` gains `planId`; `feature_override`: `id`, `featureKey`, `enabled`, `limits`, `expiresAt`,
+`reason`, `setByStaffId` (the last three from step 1d); `plan`:
 `id`, `key`, `features`. Snapshots hold only flat values, so `limits` is a canonical JSON string (sorted keys) and
 `features` a sorted list of keys (with limits as `key:<canonical json>` where present).
 
-System actor: `cli.entitlements`.
+System actors: `cli.entitlements`, `staff.admin_portal` (the staff portal; the platform audit log names the
+person), `migration`.
 
 ## Seeded plans
 
@@ -222,9 +239,20 @@ partner-level white-label is revisited in 1.10.
   write `plans` / `plan_features` (catalog guard).
 - Job path: `EntitlementService` inside `TenantContext.run` without a request.
 
+## Adding a new module
+
+1. Register the key in `packages/shared/src/features.ts` with `module` (the key itself for a module, its module for a
+   sub-feature), `order`, `dependsOn` (a sub-feature depends on its module) and a strict limits schema.
+2. Add `platform.features.<camelCaseKey>.name` and `.description` to every locale in `packages/i18n`.
+3. Put `@RequireFeature(key)` on its controllers (the api refuses to boot when a route behind the module's
+   permission keys lacks it) and `feature` on its nav items (a web test fails otherwise).
+4. Add it to plans in a reviewed migration if a plan should include it.
+
+It then appears in the onboarding Modules step and on every customer's Modules card, with no portal code change.
+
 ## Later
 
-- HTTP endpoints for platform staff (when `@PlatformOnly` is modelled).
+- `customization.*` feature keys (business rules, decision 4).
 - Redis cache with a `config.entitlements.changed` handler; usage counters to enforce limits; events from plan
   migrations (ADR 0013 §7).
 - Partner-level white-label (1.10).
