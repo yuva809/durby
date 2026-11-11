@@ -1,7 +1,7 @@
 import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import type { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
-import { isFeatureKey, isStaffPermissionKey } from '@durby/shared';
+import { FEATURE_MODULES, isFeatureKey, isStaffPermissionKey } from '@durby/shared';
 import { IS_AUTHENTICATED_KEY, IS_PUBLIC_KEY } from '../auth';
 import { featuresOf } from '../config/entitlements';
 import { API_PREFIX } from '../http';
@@ -93,8 +93,18 @@ export function listRoutes(
 }
 
 /**
+ * The module (a FEATURE_MODULES key) a permission key belongs to: `inventory.stock.read` →
+ * `inventory`. Null for platform keys. Read from the registry, so a new module is covered.
+ */
+export function moduleOfPermission(key: string): string | null {
+  return FEATURE_MODULES.find((module) => key.startsWith(`${module}.`)) ?? null;
+}
+
+/**
  * Problems that make the api refuse to boot: no marker, several, an unregistered permission,
- * staff permission or feature key, or @RequireFeature on a route without @RequirePermission.
+ * staff permission or feature key, @RequireFeature on a route without @RequirePermission, or a
+ * module route (its permission key belongs to a module) without @RequireFeature, so switching a
+ * module off for a customer really closes its api (admin portal 1d).
  */
 export function findRouteMarkerProblems(
   routes: readonly RouteInfo[],
@@ -122,6 +132,15 @@ export function findRouteMarkerProblems(
     }
     if (features.length > 0 && !markers.some((marker) => marker.kind === 'permission')) {
       problems.push(`${route}: @RequireFeature needs @RequirePermission (ADR 0009)`);
+    }
+    for (const marker of markers) {
+      if (marker.kind !== 'permission' || features.length > 0) continue;
+      const module = moduleOfPermission(marker.key);
+      if (module !== null) {
+        problems.push(
+          `${route}: module permission ${marker.key} needs @RequireFeature (${module})`,
+        );
+      }
     }
   }
   return problems;

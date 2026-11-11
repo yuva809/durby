@@ -78,6 +78,18 @@ class PlatformOnlyFeatureController {
   @PlatformOnly('staff.portal.access') @RequireFeature('inventory') @Get() list(): void {}
 }
 
+// A module route (its permission belongs to a module) must name the feature (admin portal 1d).
+@Controller('module-unfeatured')
+class ModuleRouteWithoutFeatureController {
+  @RequirePermission('inventory.stock.read') @Get() list(): void {}
+}
+
+@RequireFeature('inventory')
+@Controller('module-featured')
+class ModuleRouteWithFeatureController {
+  @RequirePermission('inventory.stock.read') @Get() list(): void {}
+}
+
 @Controller('unknown-staff')
 class UnknownStaffKeyController {
   @PlatformOnly('staff.everything' as never) @Get() list(): void {}
@@ -111,6 +123,10 @@ describe('route marker startup check', () => {
     await expect(boot([MarkedController, FeatureController])).resolves.toBeUndefined();
   });
 
+  it('boots a module route that names its feature', async () => {
+    await expect(boot([ModuleRouteWithFeatureController])).resolves.toBeUndefined();
+  });
+
   it.each([
     [UnmarkedController, 'GET /api/v1/unmarked: no access marker'],
     [TwiceController, 'GET /api/v1/twice: 2 access markers (public, authenticated)'],
@@ -141,6 +157,10 @@ describe('route marker startup check', () => {
     [
       CustomerKeyForStaffController,
       'GET /api/v1/customer-key-for-staff: unregistered staff permission key platform.org.manage',
+    ],
+    [
+      ModuleRouteWithoutFeatureController,
+      'GET /api/v1/module-unfeatured: module permission inventory.stock.read needs @RequireFeature (inventory)',
     ],
     [
       PlatformOnlyFeatureController,
