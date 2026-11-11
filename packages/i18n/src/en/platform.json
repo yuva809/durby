@@ -485,6 +485,7 @@
   "platform.audit.fields.featureKey": "Feature",
   "platform.audit.fields.enabled": "Enabled",
   "platform.audit.fields.limits": "Limits",
+  "platform.audit.fields.setByStaffId": "Set by (Durby staff)",
   "platform.audit.fields.key": "Key",
   "platform.audit.fields.features": "Features",
   "platform.audit.fields.scopeType": "Level",

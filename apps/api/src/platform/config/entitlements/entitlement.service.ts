@@ -47,6 +47,14 @@ export class EntitlementService {
     return entitlements;
   }
 
+  /**
+   * The current tenant's entitlements from `tx`, never cached: for writers that check them inside
+   * their own transaction (EntitlementsAdmin).
+   */
+  resolveIn(tx: TenantTransactionClient, now: Date = new Date()): Promise<ResolvedEntitlements> {
+    return loadIn(tx, this.tenantContext.require().tenantId, this.logger, now);
+  }
+
   /** Drops the cached entitlements of this scope (after changing them). */
   forget(): void {
     if (this.cls.isActive()) this.cls.set(CLS_KEY, undefined);
@@ -78,6 +86,7 @@ async function loadIn(
   tx: TenantTransactionClient,
   tenantId: string,
   logger: Logger,
+  now: Date = new Date(),
 ): Promise<ResolvedEntitlements> {
   const organization = await tx.organization.findUnique({
     where: { id: tenantId },
@@ -87,9 +96,11 @@ async function loadIn(
   });
   const overrides = await tx.tenantFeatureOverride.findMany({
     where: { tenantId },
-    select: { featureKey: true, enabled: true, limits: true },
+    select: { featureKey: true, enabled: true, limits: true, expiresAt: true },
   });
-  return resolveEntitlements({ plan: organization?.plan ?? null, overrides }, (problem) =>
-    logger.warn({ tenantId, problem }, 'Ignored stored entitlement'),
+  return resolveEntitlements(
+    { plan: organization?.plan ?? null, overrides },
+    (problem) => logger.warn({ tenantId, problem }, 'Ignored stored entitlement'),
+    now,
   );
 }

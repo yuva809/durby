@@ -149,6 +149,9 @@ describe('entitlements CLI', () => {
       featureKey: 'inventory',
       enabled,
       limits,
+      expiresAt: null,
+      reason: null,
+      setByStaffId: null,
     });
     expect(rows.map((r) => [r.before, r.after])).toEqual([
       [null, view(true, null)],
@@ -156,6 +159,124 @@ describe('entitlements CLI', () => {
       [view(true, '{"maxLocations":3}'), view(false, null)],
       [view(false, null), null],
     ]);
+  });
+
+  // Admin portal 1d: the CLI writes reason and expiry through the same code as the staff portal.
+  it('stores --reason and --expires (end of that day in Europe/Berlin)', async () => {
+    const org = await newOrg();
+    const result = await run(
+      'override',
+      '--org',
+      org,
+      '--feature',
+      'inventory',
+      '--disable',
+      '--reason',
+      ' Paused on request ',
+      '--expires',
+      '2099-03-29',
+    );
+    expect(result.state.overrides).toEqual([
+      expect.objectContaining({
+        featureKey: 'inventory',
+        enabled: false,
+        reason: 'Paused on request',
+        expiresAt: new Date('2099-03-29T21:59:59.999Z'),
+        setByStaffId: null,
+        expired: false,
+      }),
+    ]);
+    expect(result.state.features.find((f) => f.key === 'inventory')).toMatchObject({
+      enabled: false,
+      source: 'override',
+    });
+    expect(formatEntitlements(result)).toContain(
+      'override      inventory: disable until 2099-03-29 — Paused on request',
+    );
+    const [row] = await auditOf(org);
+    expect(row?.after).toMatchObject({
+      reason: 'Paused on request',
+      expiresAt: '2099-03-29T21:59:59.999Z',
+      setByStaffId: null,
+    });
+    // Only the expiry changes: that is a change (audited); the reason alone is not.
+    expect(
+      (
+        await run(
+          'override',
+          '--org',
+          org,
+          '--feature',
+          'inventory',
+          '--disable',
+          '--reason',
+          'x',
+          '--expires',
+          '2099-03-29',
+        )
+      ).changed,
+    ).toBe(false);
+    expect(
+      (
+        await run(
+          'override',
+          '--org',
+          org,
+          '--feature',
+          'inventory',
+          '--disable',
+          '--expires',
+          '2099-03-30',
+        )
+      ).changed,
+    ).toBe(true);
+  });
+
+  it('ignores an expired override: the plan applies, shown as expired', async () => {
+    const org = await newOrg();
+    await raw.$transaction([
+      raw.$executeRaw`SELECT set_config('app.tenant_id', ${org}, true)`,
+      raw.$executeRaw`
+        INSERT INTO tenant_feature_overrides (tenant_id, feature_key, enabled, expires_at, updated_at)
+        VALUES (${org}::uuid, 'inventory', false, now() - interval '1 second', now())`,
+    ]);
+    const { state } = await run('show', '--org', org);
+    expect(state.resolved.features.has('inventory')).toBe(true);
+    expect(state.features.find((f) => f.key === 'inventory')).toMatchObject({
+      enabled: true,
+      source: 'expired-override',
+    });
+  });
+
+  it.each([
+    [['--expires', '2020-01-01'], /--expires is in the past/],
+    [['--expires', '2099-02-30'], /--expires must be YYYY-MM-DD/],
+    [['--reason', '   '], /--reason must be 1–500 characters/],
+    [['--reason', 'x'.repeat(501)], /--reason must be 1–500 characters/],
+  ])('refuses %j', (extra, message) => {
+    expect(() =>
+      parseEntitlementsArgs([
+        'override',
+        '--org',
+        uuidv7(),
+        '--feature',
+        'pos',
+        '--enable',
+        ...extra,
+      ]),
+    ).toThrow(message);
+  });
+
+  it('checks the reason length in the database too', async () => {
+    const org = await newOrg();
+    await expect(
+      raw.$transaction([
+        raw.$executeRaw`SELECT set_config('app.tenant_id', ${org}, true)`,
+        raw.$executeRaw`
+          INSERT INTO tenant_feature_overrides (tenant_id, feature_key, enabled, reason, updated_at)
+          VALUES (${org}::uuid, 'inventory', false, '', now())`,
+      ]),
+    ).rejects.toThrow(/tenant_feature_overrides_reason_check/);
   });
 
   it('warns when an enabled feature stays off because of a dependency', async () => {

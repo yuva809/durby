@@ -8,7 +8,18 @@ export interface EntitlementRows {
     key: string;
     features: readonly { featureKey: string; limits: unknown }[];
   } | null;
-  overrides: readonly { featureKey: string; enabled: boolean; limits: unknown }[];
+  /** `expiresAt` at or before `now`: the override counts as absent (admin portal 1d). */
+  overrides: readonly {
+    featureKey: string;
+    enabled: boolean;
+    limits: unknown;
+    expiresAt?: Date | null;
+  }[];
+}
+
+/** Whether an override has expired at `now`: then it counts as absent and the plan applies. */
+export function isExpired(override: { expiresAt?: Date | null }, now: Date): boolean {
+  return override.expiresAt != null && override.expiresAt.getTime() <= now.getTime();
 }
 
 /** Every limit name of the feature's schema; null = unlimited. */
@@ -27,7 +38,7 @@ export const NO_ENTITLEMENTS: ResolvedEntitlements = Object.freeze({
 
 /**
  * Resolves an organization's entitlements (docs/platform/entitlements.md → Resolution):
- * own state override → plan → disabled; enabled only if every dependency is enabled
+ * own state override (unless expired at `now`) → plan → disabled; enabled only if every dependency is enabled
  * (transitively); limits per name override → plan → unlimited. Stored keys that aren't registered
  * and stored limits that don't match the feature's schema are ignored (fail closed) and reported
  * through `onIgnored`.
@@ -35,11 +46,14 @@ export const NO_ENTITLEMENTS: ResolvedEntitlements = Object.freeze({
 export function resolveEntitlements(
   rows: EntitlementRows,
   onIgnored: (problem: string) => void = () => undefined,
+  now: Date = new Date(),
 ): ResolvedEntitlements {
   const planRows = new Map<string, unknown>();
   for (const row of rows.plan?.features ?? []) planRows.set(row.featureKey, row.limits);
   const overrides = new Map<string, { enabled: boolean; limits: unknown }>();
-  for (const row of rows.overrides) overrides.set(row.featureKey, row);
+  for (const row of rows.overrides) {
+    if (!isExpired(row, now)) overrides.set(row.featureKey, row);
+  }
   for (const key of [...planRows.keys(), ...overrides.keys()]) {
     if (!Object.hasOwn(FEATURES, key)) onIgnored(`unregistered feature key ${key}`);
   }
