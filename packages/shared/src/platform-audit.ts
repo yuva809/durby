@@ -69,6 +69,8 @@ export const PLATFORM_AUDIT_ACTION_KEYS = Object.keys(
 /** Actors that are not staff members. */
 export const PLATFORM_AUDIT_SYSTEM_ACTORS = {
   'cli.create_staff': { label: 'staff.audit.actors.cliCreateStaff' },
+  /** The local/CI demo staff account (apps/api/src/cli/seed-dev.ts); never on staging or prod. */
+  'cli.seed_dev': { label: 'staff.audit.actors.cliSeedDev' },
 } as const satisfies Record<string, { label: string }>;
 
 export type PlatformAuditSystemActor = keyof typeof PLATFORM_AUDIT_SYSTEM_ACTORS;

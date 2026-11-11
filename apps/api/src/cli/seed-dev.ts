@@ -7,13 +7,17 @@ import { APP_CONFIG, type AppConfig } from '../platform/config';
 import { SystemRoles } from '../platform/rbac';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../platform/tenancy';
 import type { SystemRole } from '@durby/shared';
+import { PasswordHasher } from '../platform/auth';
+import { StaffService } from '../platform/staff';
 import { DEFAULT_PARTNER } from './create-admin';
+import { assertDevSeedAllowed } from './dev-seed-guard';
 import { runCommand } from './run-command';
 
 /**
  * Local development data: organizations on the default partner and on the demo partner (the
- * two-domain demo, docs/platform/web-shell.md), and users with a known password. LOCAL ONLY:
- * refuses to run with NODE_ENV=production. Idempotent.
+ * two-domain demo, docs/platform/web-shell.md), users with a known password, and a Durby staff
+ * super admin for the admin portal. LOCAL AND CI ONLY: refuses without DURBY_ALLOW_DEV_SEED=1 and
+ * always with NODE_ENV=production (cli/dev-seed-guard.ts). Idempotent.
  */
 export const DEV_PASSWORD = 'durby-dev-password';
 
@@ -35,6 +39,8 @@ export const DEV_SEED = {
     { email: 'host@durby.local', role: 'host', organizations: ['Demo Bistro'] },
     { email: 'owner@partner-demo.local', role: 'owner', organizations: ['Demo Trattoria'] },
   ],
+  /** Durby staff (admin portal, /platform): the Playwright smoke signs in as it. */
+  staff: [{ email: 'ops@durby.local', role: 'super_admin' }],
 } as const;
 
 /**
@@ -73,10 +79,14 @@ export const DEV_TABLE_SERVICE = {
   tables: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'Terrace 1', 'Terrace 2'],
 } as const;
 
-export async function seedDev(app: INestApplicationContext): Promise<void> {
+export async function seedDev(
+  app: INestApplicationContext,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Promise<void> {
   if (app.get<AppConfig>(APP_CONFIG).NODE_ENV === 'production') {
     throw new Error('seed-dev refuses to run with NODE_ENV=production');
   }
+  assertDevSeedAllowed(env);
   const provisioning = app.get(ProvisioningService);
   const partners = new Map<string, string>([
     [
@@ -118,6 +128,10 @@ export async function seedDev(app: INestApplicationContext): Promise<void> {
   for (const org of DEV_SEED.organizations) {
     if (org.plan !== 'full') continue;
     await seedTableService(app, orgIds.get(org.name) ?? '', owner.id);
+  }
+  const passwordHash = await app.get(PasswordHasher).hash(DEV_PASSWORD);
+  for (const member of DEV_SEED.staff) {
+    await app.get(StaffService).ensureDevAccount(member.email, member.role, passwordHash);
   }
 }
 
@@ -230,6 +244,9 @@ if (typeof require !== 'undefined' && require.main === module) {
       console.log(
         `${user.email} / ${DEV_PASSWORD}  ${user.role} (${user.organizations.join(', ')})`,
       );
+    }
+    for (const member of DEV_SEED.staff) {
+      console.log(`${member.email} / ${DEV_PASSWORD}  staff ${member.role} (/platform)`);
     }
   });
 }

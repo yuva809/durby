@@ -168,5 +168,6 @@
   "staff.modules.saved": "Module gespeichert.",
   "staff.modules.partlySaved": "Nicht alles wurde gespeichert. Gespeichert: {saved}. Nicht gespeichert: {failed}. Bitte prüfen und erneut versuchen.",
   "staff.modules.changePlanAction": "Tarif ändern",
-  "staff.modules.onboardingNote": "Vorbelegt aus dem Tarif. Änderungen werden als individuelle Schaltungen gespeichert."
+  "staff.modules.onboardingNote": "Vorbelegt aus dem Tarif. Änderungen werden als individuelle Schaltungen gespeichert.",
+  "staff.audit.actors.cliSeedDev": "seed-dev-Befehl (nur lokal)"
 }

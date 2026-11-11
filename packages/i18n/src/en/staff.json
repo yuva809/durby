@@ -168,5 +168,6 @@
   "staff.modules.saved": "Modules saved.",
   "staff.modules.partlySaved": "Not everything was saved. Saved: {saved}. Not saved: {failed}. Check and try again.",
   "staff.modules.changePlanAction": "Change plan",
-  "staff.modules.onboardingNote": "Pre-set from the plan. Changes are stored as custom settings."
+  "staff.modules.onboardingNote": "Pre-set from the plan. Changes are stored as custom settings.",
+  "staff.audit.actors.cliSeedDev": "seed-dev command (local only)"
 }

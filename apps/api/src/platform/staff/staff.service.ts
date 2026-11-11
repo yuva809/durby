@@ -110,6 +110,34 @@ export class StaffService {
     return member;
   }
 
+  /**
+   * seed-dev only (local and CI; the command refuses without DURBY_ALLOW_DEV_SEED=1): an active
+   * account with a known password, so the portal can be tried and smoke-tested without the
+   * invitation mail. Leaves an active account alone. Refuses with NODE_ENV=production.
+   */
+  async ensureDevAccount(email: string, role: StaffRole, passwordHash: string): Promise<void> {
+    if (this.config.NODE_ENV === 'production') {
+      throw new Error('Dev staff accounts are never created in production');
+    }
+    const address = normalizeEmail(email);
+    await this.db.$transaction(async (tx) => {
+      await lockStaff(tx);
+      const before = await tx.staffAccount.findUnique({ where: { email: address } });
+      if (before?.status === 'active') return;
+      const data = { role, status: 'active' as const, passwordHash, deactivatedAt: null };
+      const after = before
+        ? await tx.staffAccount.update({ where: { id: before.id }, data })
+        : await tx.staffAccount.create({ data: { email: address, ...data } });
+      await this.audit.record(tx, {
+        action: 'staff.account.activated',
+        actor: { system: 'cli.seed_dev' },
+        entityId: after.id,
+        before: before && platformSnapshot('staff_account', before),
+        after: platformSnapshot('staff_account', after),
+      });
+    });
+  }
+
   async changeRole(actorId: string, id: string, role: StaffRole): Promise<StaffMember> {
     return this.change(actorId, id, async (tx, before) => {
       if (before.role === role) return null;
