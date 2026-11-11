@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { CustomerEntitlements, FeatureCatalogResponse } from '@durby/shared';
+import { berlinDate, type CustomerEntitlements, type FeatureCatalogResponse } from '@durby/shared';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -111,6 +111,8 @@ describe('CustomerModules', () => {
     expect(till.textContent).toMatch('fake.till.name');
     expect(screen.getByTestId('module-pos.fiscal')).toBeTruthy();
     expect(within(screen.getByTestId('module-catalog')).getByText('Plan')).toBeTruthy();
+    // Each card is a group named by its module (its "Reset to plan" is announced with it).
+    expect(screen.getByRole('group', { name: 'fake.till.name' })).toBeTruthy();
   });
 
   it('is read-only without the manage permission', async () => {
@@ -144,6 +146,10 @@ describe('CustomerModules', () => {
     expect(within(dialog).getByRole('alert').textContent).toMatch('Enter a reason.');
     expect(calls.filter((c) => c.key.startsWith('PUT'))).toEqual([]);
 
+    // The picker offers no day before today in Berlin (the api answers staff.expiry_past).
+    expect(within(dialog).getByTestId('modules-expires').getAttribute('min')).toBe(
+      berlinDate(new Date()),
+    );
     await user.type(within(dialog).getByTestId('modules-reason'), 'Trial');
     await user.type(within(dialog).getByTestId('modules-expires'), '2099-10-25');
     await user.click(within(dialog).getByTestId('modules-save'));
@@ -211,15 +217,15 @@ describe('CustomerModules', () => {
     expect(calls.find((c) => c.key.endsWith('/reset'))?.body).toEqual({ reason: 'Back to normal' });
   });
 
-  it('lists the custom switches a plan change keeps', async () => {
+  it('lists the custom switches a plan change keeps, in catalog order, with their end day', async () => {
     const user = userEvent.setup();
     const custom = {
       ...ENTITLEMENTS,
       features: [
+        row('stock', true, { enabled: false, expiresOn: '2099-10-25' }),
         row('base', true),
         row('till', false, { enabled: true }),
         row('till.tax', false),
-        row('stock', true),
       ],
     };
     api({
@@ -229,8 +235,37 @@ describe('CustomerModules', () => {
     renderCard();
     await user.click(await screen.findByTestId('modules-change-plan'));
     const dialog = await screen.findByTestId('plan-dialog');
-    expect(within(dialog).getByTestId('plan-kept').textContent).toMatch(
-      'fake.till.name stays On (custom)',
+    const kept = within(within(dialog).getByTestId('plan-kept')).getAllByRole('listitem');
+    expect(kept.map((li) => li.textContent)).toEqual([
+      'fake.till.name stays On (custom)Reset fake.till.name',
+      `fake.stock.name stays Off (custom)Until ${new Date('2099-10-25T12:00:00Z').toLocaleDateString()}Reset fake.stock.name`,
+    ]);
+    // Same plan: nothing changes. Full adds the fiscal till (the till is already on, custom).
+    expect(within(dialog).queryByTestId('plan-effect')).toBeNull();
+    await user.selectOptions(within(dialog).getByTestId('plan-select'), 'full');
+    expect(within(dialog).getByTestId('plan-effect').textContent).toBe(
+      'With this plan, these switch on: fake.till.tax.name',
     );
+    // Resetting the stock override lets it follow Full too.
+    await user.click(within(dialog).getByRole('button', { name: 'Reset fake.stock.name' }));
+    expect(within(dialog).getByTestId('plan-effect').textContent).toBe(
+      'With this plan, these switch on: fake.till.tax.name, fake.stock.name',
+    );
+  });
+
+  it('Cancel in the save dialog keeps the pending changes', async () => {
+    const user = userEvent.setup();
+    api({
+      'GET /feature-catalog': [json(CATALOG)],
+      [`GET /customers/${ID}/entitlements`]: [json(ENTITLEMENTS)],
+    });
+    renderCard();
+    await user.click(within(await screen.findByTestId('module-pos')).getByRole('checkbox'));
+    await user.click(screen.getByTestId('modules-review'));
+    await user.click(
+      within(await screen.findByTestId('modules-dialog')).getByRole('button', { name: 'Cancel' }),
+    );
+    await waitFor(() => expect(screen.queryByTestId('modules-dialog')).toBeNull());
+    expect(screen.getByTestId('modules-review')).toBeTruthy();
   });
 });

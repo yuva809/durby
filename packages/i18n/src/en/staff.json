@@ -156,6 +156,8 @@
   "staff.modules.changeOff": "{module}: off",
   "staff.modules.changeReset": "{module}: back to the plan",
   "staff.modules.changePlan": "Plan: {plan}",
+  "staff.modules.planSwitchesOff": "With this plan, these switch off: {modules}",
+  "staff.modules.planSwitchesOn": "With this plan, these switch on: {modules}",
   "staff.modules.stays": "{module} stays {state} (custom)",
   "staff.modules.staysIntro": "The plan change keeps these custom settings:",
   "staff.modules.resetLink": "Reset {module}",

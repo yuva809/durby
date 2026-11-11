@@ -6,6 +6,7 @@ import {
   currentState,
   differencesFromPlan,
   keptOverrides,
+  planChangeEffect,
   planState,
   resetModule,
 } from './modules';
@@ -157,16 +158,38 @@ describe('changesFor', () => {
   it('treats an expired override as the plan', () => {
     const e = entitlements('full', { stock: { enabled: false, expired: true } });
     expect(currentState(e)[k('stock')]).toBe(true);
-    expect(keptOverrides(e)).toEqual([]);
+    expect(keptOverrides(catalog, e)).toEqual([]);
+  });
+});
+
+describe('planChangeEffect', () => {
+  it('lists what the new plan switches on and off, leaving kept overrides alone', () => {
+    const e = entitlements('full', { stock: { enabled: false } });
+    expect(planChangeEffect(catalog, e, 'inventory')).toEqual({
+      on: [],
+      off: ['till', 'till.tax', 'book', 'book.web'],
+    });
+  });
+
+  it('counts a reset override as following the new plan', () => {
+    const e = entitlements('full', { stock: { enabled: false } });
+    expect(planChangeEffect(catalog, e, 'inventory', [k('stock')]).on).toEqual(['stock']);
+  });
+
+  it('reports nothing for the same plan', () => {
+    const e = entitlements('full');
+    expect(planChangeEffect(catalog, e, 'full')).toEqual({ on: [], off: [] });
   });
 });
 
 describe('keptOverrides', () => {
-  it('lists the active overrides a plan change keeps', () => {
+  it('lists the active overrides a plan change keeps, in catalog order', () => {
     const e = entitlements('full', { stock: { enabled: false }, book: { enabled: true } });
-    expect(keptOverrides(e)).toEqual([
-      { key: 'book', enabled: true },
-      { key: 'stock', enabled: false },
+    // The response lists stock before book; the catalog puts book (module 3) first.
+    e.features.sort((a, b) => (a.key === k('stock') ? -1 : b.key === k('stock') ? 1 : 0));
+    expect(keptOverrides(catalog, e)).toEqual([
+      { key: 'book', enabled: true, expiresOn: null },
+      { key: 'stock', enabled: false, expiresOn: null },
     ]);
   });
 });

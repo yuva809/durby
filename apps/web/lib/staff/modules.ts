@@ -173,11 +173,39 @@ export function changesFor(
   return [...off, ...on].map(({ key, action }) => ({ key, action }));
 }
 
-/** Overrides that a plan change keeps (they stay whatever the new plan says). */
-export function keptOverrides(
+/**
+ * What a change to `plan` switches on and off, in catalog order: every key without a kept override
+ * follows the new plan (`resets` lose theirs with the change).
+ */
+export function planChangeEffect(
+  catalog: FeatureCatalogResponse,
   entitlements: CustomerEntitlements,
-): { key: FeatureKey; enabled: boolean }[] {
-  return entitlements.features
-    .filter((f) => f.override && !f.override.expired)
-    .map((f) => ({ key: f.key, enabled: f.override!.enabled }));
+  plan: PlanKey,
+  resets: readonly FeatureKey[] = [],
+): { on: FeatureKey[]; off: FeatureKey[] } {
+  const before = currentState(entitlements);
+  const next = planState(catalog, plan);
+  const kept = new Map(
+    keptOverrides(catalog, entitlements)
+      .filter((o) => !resets.includes(o.key))
+      .map((o) => [o.key, o.enabled]),
+  );
+  const effect = { on: [] as FeatureKey[], off: [] as FeatureKey[] };
+  for (const { key } of catalogFeatures(catalog)) {
+    const after = kept.get(key) ?? next[key] ?? false;
+    if (after !== (before[key] ?? false)) (after ? effect.on : effect.off).push(key);
+  }
+  return effect;
+}
+
+/** Overrides that a plan change keeps (they stay whatever the new plan says), in catalog order. */
+export function keptOverrides(
+  catalog: FeatureCatalogResponse,
+  entitlements: CustomerEntitlements,
+): { key: FeatureKey; enabled: boolean; expiresOn: string | null }[] {
+  const byKey = new Map(entitlements.features.map((f) => [f.key, f]));
+  return catalogFeatures(catalog).flatMap(({ key }) => {
+    const o = byKey.get(key)?.override;
+    return o && !o.expired ? [{ key, enabled: o.enabled, expiresOn: o.expiresOn }] : [];
+  });
 }

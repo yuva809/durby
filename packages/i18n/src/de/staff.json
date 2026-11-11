@@ -156,6 +156,8 @@
   "staff.modules.changeOff": "{module}: aus",
   "staff.modules.changeReset": "{module}: zurück zum Tarif",
   "staff.modules.changePlan": "Tarif: {plan}",
+  "staff.modules.planSwitchesOff": "Mit diesem Tarif werden ausgeschaltet: {modules}",
+  "staff.modules.planSwitchesOn": "Mit diesem Tarif werden eingeschaltet: {modules}",
   "staff.modules.stays": "{module} bleibt {state} (individuell)",
   "staff.modules.staysIntro": "Der Tarifwechsel behält diese individuellen Schaltungen:",
   "staff.modules.resetLink": "{module} zurücksetzen",

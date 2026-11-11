@@ -1,12 +1,13 @@
 'use client';
 
-import type {
-  CatalogFeature,
-  CustomerEntitlements,
-  CustomerFeature,
-  FeatureCatalogResponse,
-  FeatureKey,
-  PlanKey,
+import {
+  berlinDate,
+  type CatalogFeature,
+  type CustomerEntitlements,
+  type CustomerFeature,
+  type FeatureCatalogResponse,
+  type FeatureKey,
+  type PlanKey,
 } from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
 import { RotateCcw } from 'lucide-react';
@@ -23,6 +24,7 @@ import {
   keptOverrides,
   type ModuleChange,
   moduleKeys,
+  planChangeEffect,
   planState,
   resetModule,
   type SwitchState,
@@ -78,7 +80,7 @@ export function ModuleSwitches({
   onToggle: (key: FeatureKey, on: boolean) => void;
   disabled?: boolean;
   badges?: (key: FeatureKey) => ReactNode;
-  /** E.g. "Reset to plan", shown in the module's header. */
+  /** E.g. "Reset to plan", shown at the foot of the module's card. */
   moduleAction?: (module: FeatureKey) => ReactNode;
 }) {
   const id = useId();
@@ -99,7 +101,11 @@ export function ModuleSwitches({
           className="mt-0.5"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <label htmlFor={inputId} className={sub ? 'text-sm' : 'text-sm font-semibold'}>
+          <label
+            id={`${inputId}-label`}
+            htmlFor={inputId}
+            className={sub ? 'text-sm' : 'text-sm font-semibold'}
+          >
             {t(feature.label as LabelKey)}
           </label>
           <span id={`${inputId}-description`} className="text-xs text-muted-foreground">
@@ -113,12 +119,17 @@ export function ModuleSwitches({
   return (
     <div className="grid gap-3 sm:grid-cols-2" data-testid="module-switches">
       {catalog.modules.map((module) => (
-        <div key={module.key} className="rounded-md border p-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">{row(module, false)}</div>
-            {moduleAction?.(module.key)}
-          </div>
+        // A named group, so "Reset to plan" is announced with its module.
+        <div
+          key={module.key}
+          role="group"
+          aria-labelledby={`${id}-${module.key}-label`}
+          className="flex flex-col rounded-md border p-3"
+        >
+          {row(module, false)}
           {module.features.map((f) => row(f, true))}
+          {/* Below the switches, so it never squeezes the module's description. */}
+          {moduleAction?.(module.key)}
         </div>
       ))}
     </div>
@@ -154,6 +165,9 @@ export function OnboardModules({
   );
 }
 
+/** A YYYY-MM-DD day as the browser shows dates (noon UTC: the same day in every time zone). */
+const displayDay = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString();
+
 function sourceBadges(catalog: FeatureCatalogResponse, f: CustomerFeature | undefined) {
   if (!f) return null;
   const badges: ReactNode[] = [];
@@ -166,9 +180,7 @@ function sourceBadges(catalog: FeatureCatalogResponse, f: CustomerFeature | unde
     if (f.override.expiresOn) {
       badges.push(
         <Badge key="expires">
-          {t('staff.modules.badgeExpires', {
-            date: new Date(`${f.override.expiresOn}T12:00:00Z`).toLocaleDateString(),
-          })}
+          {t('staff.modules.badgeExpires', { date: displayDay(f.override.expiresOn) })}
         </Badge>,
       );
     }
@@ -283,6 +295,7 @@ export function CustomerModules({
           return (
             <Button
               variant="ghost"
+              className="mt-1 self-start"
               data-testid={`module-reset-${module}`}
               onClick={() => {
                 const toggled = resetModule(cat, state, plan, module);
@@ -482,6 +495,8 @@ function SaveDialog({
               <Input
                 name="expiresOn"
                 type="date"
+                // Today in Berlin is the earliest end day the api accepts (staff.expiry_past).
+                min={berlinDate(new Date())}
                 aria-describedby={`${id}-expiry-hint`}
                 data-testid="modules-expires"
               />
@@ -492,7 +507,7 @@ function SaveDialog({
           )}
           <DialogFooter>
             <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
-              {t('staff.modules.discard')}
+              {t('platform.common.cancel')}
             </Button>
             <Button type="submit" disabled={busy} data-testid="modules-save">
               {t('staff.modules.save')}
@@ -521,7 +536,8 @@ function PlanDialog({
   const [resets, setResets] = useState<FeatureKey[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const kept = keptOverrides(entitlements).filter((o) => !resets.includes(o.key));
+  const kept = keptOverrides(catalog, entitlements).filter((o) => !resets.includes(o.key));
+  const effect = planChangeEffect(catalog, entitlements, plan, resets);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const reason = formText(new FormData(event.currentTarget), 'reason').trim();
@@ -552,21 +568,43 @@ function PlanDialog({
               ))}
             </Select>
           </label>
+          {(effect.off.length > 0 || effect.on.length > 0) && (
+            <div className="mb-5 flex flex-col gap-1 text-sm" data-testid="plan-effect">
+              {effect.off.length > 0 && (
+                <p className="text-destructive">
+                  {t('staff.modules.planSwitchesOff', { modules: namesOf(catalog, effect.off) })}
+                </p>
+              )}
+              {effect.on.length > 0 && (
+                <p>{t('staff.modules.planSwitchesOn', { modules: namesOf(catalog, effect.on) })}</p>
+              )}
+            </div>
+          )}
           {kept.length > 0 && (
             <div className="mb-5 flex flex-col gap-2 text-sm" data-testid="plan-kept">
               <p>{t('staff.modules.staysIntro')}</p>
-              <ul className="flex flex-col gap-1">
+              {/* Stacked on phones (each reset link under its row), one line from sm up. */}
+              <ul className="flex flex-col divide-y">
                 {kept.map((o) => (
-                  <li key={o.key} className="flex flex-wrap items-center justify-between gap-2">
-                    <span>
+                  <li
+                    key={o.key}
+                    className="flex flex-col items-start gap-1 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                  >
+                    <span className="flex flex-wrap items-center gap-2">
                       {t('staff.modules.stays', {
                         module: nameOf(catalog, o.key),
                         state: t(o.enabled ? 'staff.modules.on' : 'staff.modules.off'),
                       })}
+                      {o.expiresOn && (
+                        <Badge>
+                          {t('staff.modules.badgeExpires', { date: displayDay(o.expiresOn) })}
+                        </Badge>
+                      )}
                     </span>
                     <Button
                       type="button"
                       variant="link"
+                      className="h-auto p-0"
                       onClick={() => setResets([...resets, o.key])}
                     >
                       {t('staff.modules.resetLink', { module: nameOf(catalog, o.key) })}
@@ -586,7 +624,7 @@ function PlanDialog({
           <ReasonField id={id} problem={problem} />
           <DialogFooter>
             <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
-              {t('staff.modules.discard')}
+              {t('platform.common.cancel')}
             </Button>
             <Button
               type="submit"
