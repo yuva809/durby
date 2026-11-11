@@ -14,7 +14,7 @@ export class StaffBrowser {
   constructor(private readonly kit: AuthTestKit) {}
 
   send(
-    method: 'get' | 'post' | 'patch',
+    method: 'get' | 'post' | 'patch' | 'put',
     path: string,
     body?: object,
     opts: { origin?: string; headers?: Record<string, string> } = {},

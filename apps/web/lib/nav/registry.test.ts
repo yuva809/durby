@@ -1,5 +1,5 @@
 import { dictionaries, isLabelKey } from '@durby/i18n';
-import { FEATURES, PERMISSIONS } from '@durby/shared';
+import { FEATURE_MODULES, FEATURES, PERMISSIONS } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import { activeNavItem, NAV_GROUPS, NAV_ITEMS, type NavItem, visibleNav } from './registry';
 import { SETTINGS_TABS } from './settings-tabs';
@@ -19,6 +19,18 @@ describe('NAV_ITEMS', () => {
     for (const group of NAV_GROUPS) {
       if (group.label) expect(dictionaries.de[group.label]).toBeTruthy();
     }
+  });
+
+  // A module that a customer doesn't have must vanish from the menu (admin portal 1d): every module
+  // item, and every item behind a module's permission, names its feature.
+  it('gives every module item a feature', () => {
+    const flat = (items: readonly NavItem[]): NavItem[] =>
+      items.flatMap((i) => [i, ...flat(i.children ?? [])]);
+    const missing = flat([...NAV_ITEMS, ...SETTINGS_TABS]).filter((item) => {
+      const modulePermission = FEATURE_MODULES.some((m) => item.permission?.startsWith(`${m}.`));
+      return (item.group === 'modules' || modulePermission) && item.feature === undefined;
+    });
+    expect(missing.map((i) => i.id)).toEqual([]);
   });
 
   it('has unique ids and hrefs', () => {

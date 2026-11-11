@@ -260,8 +260,8 @@ model RefreshToken {
   user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   organization    Organization?             @relation(fields: [organizationId], references: [id], onDelete: SetNull, onUpdate: Restrict)
 
-  parent          RefreshToken?             @relation("RefreshTokenParent", fields: [parentId], references: [id], onDelete: SetNull, onUpdate: Restrict)
-  children        RefreshToken[]            @relation("RefreshTokenParent")
+  parent   RefreshToken?  @relation("RefreshTokenParent", fields: [parentId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  children RefreshToken[] @relation("RefreshTokenParent")
 
   @@index([familyId])
   @@index([userId])
@@ -535,15 +535,22 @@ model PlanFeature {
 
 /// Enables or disables one feature for one organization, whatever its plan says. Audited.
 model TenantFeatureOverride {
-  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String       @map("tenant_id") @db.Uuid
-  featureKey   String       @map("feature_key")
+  id           String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String        @map("tenant_id") @db.Uuid
+  featureKey   String        @map("feature_key")
   enabled      Boolean
   /// Only with enabled = true (CHECK). Per-limit override of the plan's limits.
   limits       Json?
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Why it was set, 1–500 characters (tenant_feature_overrides_reason_check). Admin portal 1d.
+  reason       String?
+  /// From then on the override counts as absent and the plan applies (end of a day in Europe/Berlin).
+  expiresAt    DateTime?     @map("expires_at") @db.Timestamptz(6)
+  /// The staff member who set it last; null for CLI and migration writes.
+  setByStaffId String?       @map("set_by_staff_id") @db.Uuid
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  setBy        StaffAccount? @relation(fields: [setByStaffId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([tenantId, id])
   @@unique([tenantId, featureKey])
@@ -1078,20 +1085,22 @@ enum StaffStatus {
 
 /// A Durby staff member. Not a user: no link to `users`, own sessions.
 model StaffAccount {
-  id            String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id               String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
   /// Lower-case; a company domain (STAFF_EMAIL_DOMAINS) at invitation time.
-  email         String                @unique
+  email            String                  @unique
   /// argon2id. Null until the invitation is accepted.
-  passwordHash  String?               @map("password_hash")
-  role          StaffRole
-  status        StaffStatus           @default(invited)
-  lastLoginAt   DateTime?             @map("last_login_at") @db.Timestamptz(6)
-  deactivatedAt DateTime?             @map("deactivated_at") @db.Timestamptz(6)
-  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
-  tokens        StaffToken[]
-  sessions      StaffSession[]
-  idempotency   StaffIdempotencyKey[]
+  passwordHash     String?                 @map("password_hash")
+  role             StaffRole
+  status           StaffStatus             @default(invited)
+  lastLoginAt      DateTime?               @map("last_login_at") @db.Timestamptz(6)
+  deactivatedAt    DateTime?               @map("deactivated_at") @db.Timestamptz(6)
+  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tokens           StaffToken[]
+  sessions         StaffSession[]
+  idempotency      StaffIdempotencyKey[]
+  /// Feature overrides this staff member set last (admin portal 1d).
+  featureOverrides TenantFeatureOverride[]
 
   @@map("staff_accounts")
 }

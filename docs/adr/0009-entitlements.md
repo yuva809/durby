@@ -53,7 +53,7 @@ let `@Authenticated()` routes read tenant data. Spec: [docs/platform/entitlement
    every role must hold would add a key and per-role decisions for no protection. Like ADR 0007's amendment, platform
    /auth defines a lookup token that platform/config/entitlements provides; auth doesn't import it.
 
-7. **Writes through a CLI until platform staff exists.** `entitlements show | set-plan | override | clear-override`,
+7. **Writes through a CLI until platform staff exists** (_amended by admin portal 1d, below_). `entitlements show | set-plan | override | clear-override`,
    run in the api's application context like `create-admin`, validated against the registry, and audited with the
    system actor `cli.entitlements` in the change's own transaction. No HTTP write endpoints.
 
@@ -67,5 +67,23 @@ let `@Authenticated()` routes read tenant data. Spec: [docs/platform/entitlement
 - Switching plans or overriding features takes effect on the next request, without a deploy.
 - Changing a plan's contents needs a migration (review + deploy) and affects every organization on it.
 - One or two extra indexed queries per feature-checked request; a cache can come later behind `EntitlementService`.
-- Open: HTTP endpoints for platform staff, enforcing limits with usage counters,
-  partner-level white-label (1.10).
+- Open: enforcing limits with usage counters, partner-level white-label (1.10).
+
+## Amendment (2026-11-11, admin portal step 1d)
+
+- **Staff writes.** Durby staff change a customer's plan and overrides in the admin portal (ADR 0017):
+  `PUT /platform/customers/:id/plan`, `PUT …/features/:key`, `POST …/features/:key/reset`, each with a required
+  reason. Portal, onboarding and CLI share `EntitlementsAdmin`'s transaction cores; the customer's audit row keeps
+  the system actor (`staff.admin_portal`, ADR 0017 §8) and the platform audit row names the staff member.
+- **Override reason, expiry and author.** `tenant_feature_overrides` gains `reason` (1–500), `expires_at` and
+  `set_by_staff_id`. An override with `expires_at <= now` counts as absent: the plan applies again, with no job
+  needed. Staff pick a day; it ends at the end of that day in Europe/Berlin.
+- **Dependencies on staff writes.** Enabling a feature whose dependencies are off answers 409 with the missing keys
+  (never auto-enabled); disabling a dependency is allowed and the answer lists what it now blocks. The CLI keeps
+  warning instead.
+- **Registry groups.** Each key has `module` (a key that is its own module) and `order`; the portal renders its
+  module switches from the registry, so a new module needs no portal change. Guards: registry problems (bad group,
+  sub-feature not depending on its module, duplicate order), labels in every locale, module routes need
+  `@RequireFeature` (boot check), module nav items need a `feature`.
+- **`pos` depends on `catalog`.** The `…_pos_needs_catalog` migration gave catalog back to every customer that had
+  POS with catalog switched off (audited, actor `migration`).

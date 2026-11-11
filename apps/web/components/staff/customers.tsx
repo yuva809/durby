@@ -15,6 +15,7 @@ import { fieldClass, formText, Notice } from '../../app/auth-layout';
 import { errorLabel } from '../../lib/auth/errors';
 import { t } from '../../lib/i18n';
 import { staffApi } from '../../lib/staff/api';
+import { differencesFromPlan, planState, type SwitchState } from '../../lib/staff/modules';
 import { useResource } from '../../lib/use-resource';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -23,10 +24,12 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Skeleton } from '../ui/skeleton';
 import { StaffNoAccess } from './portal-shell';
+import { CustomerModules, OnboardModules } from './modules';
 import { useReauth } from './reauth';
 import { useStaffSession } from './staff-session';
 
 const planName = (plan: PlanKey) => t(planLabel(plan) as LabelKey);
+const DEFAULT_PLAN: PlanKey = 'full';
 const date = (iso: string) => new Date(iso).toLocaleDateString();
 
 function useHeld(key: string): boolean {
@@ -147,6 +150,11 @@ export function OnboardPage() {
   const [options] = useResource(canCreate ? 'onboarding-options' : null, () =>
     staffApi.onboardingOptions(),
   );
+  // Modules (step 1d): from the catalog, pre-ticked from the plan; without it the plan applies.
+  const [catalog] = useResource(canCreate ? 'feature-catalog' : null, () =>
+    staffApi.featureCatalog(),
+  );
+  const [switches, setSwitches] = useState<{ plan: PlanKey; state: SwitchState } | null>(null);
   const { guard, dialog } = useReauth();
   const [problems, setProblems] = useState<{ name?: string; email?: string }>({});
   const [error, setError] = useState<string | null>(null);
@@ -164,6 +172,7 @@ export function OnboardPage() {
         onAnother={() => {
           setDone(null);
           setDuplicate(null);
+          setSwitches(null);
           setFormKey((k) => k + 1);
         }}
       />
@@ -182,13 +191,19 @@ export function OnboardPage() {
     if (next.name || next.email) return;
     setBusy(true);
     setError(null);
+    const plan = formText(data, 'plan') as PlanKey;
+    const features =
+      catalog.status === 'ready' && switches?.plan === plan
+        ? differencesFromPlan(switches.state, planState(catalog.data, plan))
+        : {};
     const body = {
       name,
       ownerEmail,
       ownerLocale: formText(data, 'ownerLocale') as (typeof OWNER_LOCALES)[number],
-      plan: formText(data, 'plan') as PlanKey,
+      plan,
       partnerId: formText(data, 'partnerId') || undefined,
       confirmDuplicates,
+      ...(Object.keys(features).length > 0 && { features }),
     };
     // One key per submit; a retry after the password re-confirmation reuses it. So does a retry
     // after an answer we never saw (timeout, network error): the customer may exist already, and
@@ -228,7 +243,20 @@ export function OnboardPage() {
             problems={problems}
             busy={busy}
             onChange={() => setDuplicate(null)}
+            onPlan={(plan) =>
+              catalog.status === 'ready' &&
+              setSwitches({ plan, state: planState(catalog.data, plan) })
+            }
             onSubmit={(form) => void submit(form, false)}
+            modules={
+              catalog.status === 'ready' ? (
+                <OnboardModules
+                  catalog={catalog.data}
+                  state={switches?.state ?? planState(catalog.data, switches?.plan ?? DEFAULT_PLAN)}
+                  onChange={(state) => setSwitches({ plan: switches?.plan ?? DEFAULT_PLAN, state })}
+                />
+              ) : null
+            }
           >
             <Notice text={error} tone="error" />
             {duplicate && (
@@ -273,7 +301,9 @@ function OnboardForm({
   problems,
   busy,
   onChange,
+  onPlan,
   onSubmit,
+  modules,
   children,
 }: {
   id: string;
@@ -281,7 +311,10 @@ function OnboardForm({
   problems: { name?: string; email?: string };
   busy: boolean;
   onChange: () => void;
+  onPlan: (plan: PlanKey) => void;
   onSubmit: (form: HTMLFormElement) => void;
+  /** The Modules step (step 1d), after the plan. */
+  modules: React.ReactNode;
   children: React.ReactNode;
 }) {
   const problem = (text: string | undefined, field: string) =>
@@ -344,7 +377,12 @@ function OnboardForm({
         </label>
         <label className={fieldClass}>
           {t('staff.onboard.plan')}
-          <Select name="plan" defaultValue="full" data-testid="onboard-plan">
+          <Select
+            name="plan"
+            defaultValue={DEFAULT_PLAN}
+            onChange={(e) => onPlan(e.currentTarget.value as PlanKey)}
+            data-testid="onboard-plan"
+          >
             {options.plans.map((plan) => (
               <option key={plan} value={plan}>
                 {planName(plan)}
@@ -364,6 +402,7 @@ function OnboardForm({
           </Select>
         </label>
       </div>
+      {modules}
       {children}
       <Button type="submit" className="mt-1 min-h-11" disabled={busy} data-testid="onboard-submit">
         {t('staff.onboard.submit')}
@@ -397,10 +436,12 @@ function OnboardDone({ customer, onAnother }: { customer: CustomerDetail; onAnot
   );
 }
 
-/** /platform/customers/:id: metadata, the Owner and their invitation. */
+/** /platform/customers/:id: metadata, the Owner and their invitation, and the modules (1d). */
 export function CustomerPage({ id }: { id: string }) {
   const canRead = useHeld('staff.customers.read');
   const canInvite = useHeld('staff.customers.invite');
+  const canReadModules = useHeld('staff.entitlements.read');
+  const canManageModules = useHeld('staff.entitlements.manage');
   const [customer, reload] = useResource(canRead ? `customer:${id}` : null, () =>
     staffApi.customer(id),
   );
@@ -473,6 +514,14 @@ export function CustomerPage({ id }: { id: string }) {
             </dl>
           </Card>
           {notice && <Notice text={notice.text} tone={notice.tone} />}
+          {canReadModules && (
+            <CustomerModules
+              customerId={id}
+              canManage={canManageModules}
+              guard={guard}
+              onPlanChanged={reload}
+            />
+          )}
         </>
       )}
       {dialog}

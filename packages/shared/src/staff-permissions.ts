@@ -14,6 +14,9 @@ export const STAFF_PERMISSIONS = {
   'staff.customers.read': { label: 'staff.permissions.customersRead' },
   'staff.customers.create': { label: 'staff.permissions.customersCreate' },
   'staff.customers.invite': { label: 'staff.permissions.customersInvite' },
+  /** A customer's plan and modules (admin portal 1d). */
+  'staff.entitlements.read': { label: 'staff.permissions.entitlementsRead' },
+  'staff.entitlements.manage': { label: 'staff.permissions.entitlementsManage' },
 } as const satisfies Record<string, { label: string }>;
 
 export type StaffPermissionKey = keyof typeof STAFF_PERMISSIONS;
@@ -33,7 +36,8 @@ export type StaffRole = (typeof STAFF_ROLES)[number];
 
 /**
  * What each role holds (business rules → Staff roles). SuperAdmin holds every key, including future
- * ones; Onboarding creates customers; Support views them and resends invites.
+ * ones; Onboarding creates customers and switches their modules; Support views them (modules
+ * included) and resends invites.
  */
 export const STAFF_ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermissionKey[]> = {
   super_admin: STAFF_PERMISSION_KEYS,
@@ -42,8 +46,15 @@ export const STAFF_ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermissionK
     'staff.customers.read',
     'staff.customers.create',
     'staff.customers.invite',
+    'staff.entitlements.read',
+    'staff.entitlements.manage',
   ],
-  support: ['staff.portal.access', 'staff.customers.read', 'staff.customers.invite'],
+  support: [
+    'staff.portal.access',
+    'staff.customers.read',
+    'staff.customers.invite',
+    'staff.entitlements.read',
+  ],
 };
 
 export function staffRoleLabel(role: StaffRole): string {

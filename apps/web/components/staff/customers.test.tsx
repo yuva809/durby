@@ -9,6 +9,13 @@ import { CustomersPage, OnboardPage } from './customers';
 import { activeHref, PortalShell } from './portal-shell';
 import { StaffSessionProvider } from './staff-session';
 
+// jsdom has no ResizeObserver; Radix Checkbox measures itself with one.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 vi.mock('next/navigation', async () => (await import('../../test/mocks')).navigationMock());
 
 type Answer = () => Response;
@@ -107,6 +114,88 @@ describe('onboard a customer', () => {
       confirmDuplicates: false,
     });
     expect(post.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  // Step 1d: modules pre-ticked from the plan; only the differences are sent.
+  it('sends the modules that differ from the plan, keeping the set without gaps', async () => {
+    const catalog = {
+      modules: [
+        {
+          key: 'catalog',
+          label: 'platform.features.catalog.name',
+          description: 'x',
+          dependsOn: [],
+          order: 10,
+          limits: [],
+          features: [],
+        },
+        {
+          key: 'pos',
+          label: 'platform.features.pos.name',
+          description: 'x',
+          dependsOn: ['catalog'],
+          order: 20,
+          limits: [],
+          features: [
+            {
+              key: 'pos.fiscal',
+              label: 'platform.features.posFiscal.name',
+              description: 'x',
+              dependsOn: ['pos'],
+              order: 1,
+              limits: [],
+            },
+          ],
+        },
+        {
+          key: 'inventory',
+          label: 'platform.features.inventory.name',
+          description: 'x',
+          dependsOn: [],
+          order: 30,
+          limits: [],
+          features: [],
+        },
+      ],
+      plans: [
+        { key: 'inventory', label: 'platform.plans.inventory', features: ['catalog', 'inventory'] },
+        {
+          key: 'inventory_billing',
+          label: 'platform.plans.inventoryBilling',
+          features: ['catalog', 'inventory'],
+        },
+        {
+          key: 'full',
+          label: 'platform.plans.full',
+          features: ['catalog', 'pos', 'pos.fiscal', 'inventory'],
+        },
+      ],
+    };
+    api({
+      'GET /auth/me': me('onboarding'),
+      'GET /onboarding-options': OPTIONS,
+      'GET /feature-catalog': json(catalog),
+      'POST /customers': json(CUSTOMER, 201),
+    });
+    withSession(<OnboardPage />);
+    await fill('Cafe Nord', 'owner@cafe-nord.test');
+    const modules = await screen.findByTestId('onboard-modules');
+    // Pre-ticked from Full.
+    const box = (key: string) =>
+      within(within(modules).getByTestId(`module-${key}`)).getByRole('checkbox');
+    expect(box('inventory').getAttribute('data-state')).toBe('checked');
+    // Unticking the catalog unticks what needs it, with a note.
+    await userEvent.click(box('catalog'));
+    expect(modules.textContent).toContain('Also switched off: Point of sale');
+    // Ticking the fiscal sub-feature ticks POS and the catalog again.
+    await userEvent.click(box('pos.fiscal'));
+    await userEvent.click(box('inventory'));
+    await userEvent.click(screen.getByTestId('onboard-submit'));
+    await screen.findByTestId('onboard-done');
+    expect(calls.find((c) => c.key === 'POST /customers')?.body).toMatchObject({
+      plan: 'full',
+      features: { inventory: false },
+    });
   });
 
   it('retries an unanswered create with the same Idempotency-Key, and takes a new one when the form changes', async () => {

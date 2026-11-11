@@ -38,6 +38,15 @@ describe('staff permissions', () => {
       expect(STAFF_ROLE_PERMISSIONS[role]).not.toContain('staff.staff.manage');
     }
   });
+
+  // Admin portal 1d: everyone sees a customer's modules; onboarding and super admins change them.
+  it('lets onboarding manage modules and support only read them', () => {
+    for (const role of STAFF_ROLES) {
+      expect(STAFF_ROLE_PERMISSIONS[role]).toContain('staff.entitlements.read');
+    }
+    expect(STAFF_ROLE_PERMISSIONS.onboarding).toContain('staff.entitlements.manage');
+    expect(STAFF_ROLE_PERMISSIONS.support).not.toContain('staff.entitlements.manage');
+  });
 });
 
 describe('platform audit registry', () => {

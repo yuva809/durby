@@ -1,6 +1,11 @@
 import { Global, Module } from '@nestjs/common';
 import { ProvisioningModule } from '../provisioning';
 import { STAFF_AUTHENTICATOR } from '../rbac';
+import {
+  CustomerEntitlementsController,
+  FeatureCatalogController,
+} from './customer-entitlements.controller';
+import { CustomerEntitlementsService } from './customer-entitlements.service';
 import { CustomersController, OnboardingOptionsController } from './customers.controller';
 import { CustomersService } from './customers.service';
 import { PlatformAuditReader } from './platform-audit.reader';
@@ -26,8 +31,11 @@ import { StaffService } from './staff.service';
     PlatformAuditController,
     CustomersController,
     OnboardingOptionsController,
+    CustomerEntitlementsController,
+    FeatureCatalogController,
   ],
   providers: [
+    CustomerEntitlementsService,
     CustomersService,
     PlatformAuditReader,
     PlatformAuditService,

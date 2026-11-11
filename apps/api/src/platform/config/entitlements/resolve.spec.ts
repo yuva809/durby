@@ -11,11 +11,14 @@ const plan = (
   ),
 });
 
-const override = (featureKey: string, enabled: boolean, limits: unknown = null) => ({
-  featureKey,
-  enabled,
-  limits,
-});
+const override = (
+  featureKey: string,
+  enabled: boolean,
+  limits: unknown = null,
+  expiresAt: Date | null = null,
+) => ({ featureKey, enabled, limits, expiresAt });
+
+const NOW = new Date('2026-11-11T12:00:00Z');
 
 const keys = (rows: EntitlementRows) => [...resolveEntitlements(rows).features.keys()];
 
@@ -91,5 +94,58 @@ describe('resolveEntitlements', () => {
       'unregistered feature key inventory.everything',
       'unregistered feature key pos.anything',
     ]);
+  });
+
+  // Admin portal 1d: an expired override counts as absent, so the plan applies again.
+  describe('expiry', () => {
+    const resolveAt = (rows: EntitlementRows, now: Date) => [
+      ...resolveEntitlements(rows, undefined, now).features.keys(),
+    ];
+
+    it('ignores an override that expired (at or before now)', () => {
+      const rows = {
+        plan: plan('p', 'inventory'),
+        overrides: [
+          override('inventory', false, null, new Date('2026-11-10T22:59:59.999Z')),
+          override('reports', true, null, NOW),
+        ],
+      };
+      expect(resolveAt(rows, NOW)).toEqual(['inventory']);
+    });
+
+    it('applies an override until it expires', () => {
+      const rows = {
+        plan: plan('p', 'inventory'),
+        overrides: [
+          override('inventory', false, null, new Date('2026-11-12T22:59:59.999Z')),
+          override('reports', true, null, new Date('2026-11-12T22:59:59.999Z')),
+        ],
+      };
+      expect(resolveAt(rows, NOW)).toEqual(['reports']);
+      expect(resolveAt(rows, new Date('2026-11-12T23:00:00Z'))).toEqual(['inventory']);
+    });
+
+    it('drops the limits of an expired override too', () => {
+      const rows = {
+        plan: plan('p', ['inventory', { maxLocations: 2 }]),
+        overrides: [
+          override('inventory', true, { maxLocations: 9 }, new Date('2026-11-01T00:00:00Z')),
+        ],
+      };
+      expect(resolveEntitlements(rows, undefined, NOW).features.get('inventory')).toEqual({
+        maxLocations: 2,
+      });
+    });
+  });
+
+  // POS sells catalog products: pos stays off while catalog is (admin portal 1d).
+  it('enforces pos → catalog', () => {
+    expect(keys({ plan: plan('p', 'pos'), overrides: [] })).toEqual([]);
+    expect(keys({ plan: plan('p', 'pos', 'catalog'), overrides: [] })).toEqual(['pos', 'catalog']);
+    expect(
+      keys({ plan: plan('p', 'pos', 'catalog'), overrides: [override('catalog', false)] }),
+    ).toEqual([]);
+    // reservations → pos → catalog, transitively.
+    expect(keys({ plan: plan('p', 'pos', 'reservations'), overrides: [] })).toEqual([]);
   });
 });

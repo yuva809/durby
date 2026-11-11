@@ -4,12 +4,18 @@ import {
   customerDetailSchema,
   type CustomerListResponse,
   customerListResponseSchema,
+  type CustomerEntitlements,
+  customerEntitlementsSchema,
+  type FeatureCatalogResponse,
+  featureCatalogResponseSchema,
   IDEMPOTENCY_KEY_HEADER,
   type InviteStaffRequest,
   type OnboardCustomerRequest,
   type OnboardingOptionsResponse,
   onboardingOptionsResponseSchema,
+  type PlanKey,
   type PlatformAuditResponse,
+  type SetFeatureRequest,
   platformAuditResponseSchema,
   type StaffListResponse,
   staffListResponseSchema,
@@ -36,7 +42,7 @@ const BASE = '/api/v1/platform';
 async function call<T>(
   path: string,
   init: {
-    method?: 'GET' | 'POST' | 'PATCH';
+    method?: 'GET' | 'POST' | 'PATCH' | 'PUT';
     body?: unknown;
     headers?: Record<string, string>;
   } = {},
@@ -108,6 +114,43 @@ export const staffApi = {
     ),
   resendOwnerInvite: (id: string): Promise<StaffResult<CustomerDetail>> =>
     call(`/customers/${id}/owner-invite`, { method: 'POST' }, customerDetailSchema),
+
+  /** Modules (step 1d): the registry as the portal renders it, and one customer's switches. */
+  featureCatalog: (): Promise<StaffResult<FeatureCatalogResponse>> =>
+    call('/feature-catalog', {}, featureCatalogResponseSchema),
+  entitlements: (id: string): Promise<StaffResult<CustomerEntitlements>> =>
+    call(`/customers/${id}/entitlements`, {}, customerEntitlementsSchema),
+  setPlan: (
+    id: string,
+    plan: PlanKey,
+    reason: string,
+  ): Promise<StaffResult<CustomerEntitlements>> =>
+    call(
+      `/customers/${id}/plan`,
+      { method: 'PUT', body: { plan, reason } },
+      customerEntitlementsSchema,
+    ),
+  setFeature: (
+    id: string,
+    key: string,
+    body: SetFeatureRequest,
+  ): Promise<StaffResult<CustomerEntitlements>> =>
+    call(
+      `/customers/${id}/features/${encodeURIComponent(key)}`,
+      { method: 'PUT', body },
+      customerEntitlementsSchema,
+    ),
+  /** POST with the reason in the body (not DELETE: proxies may drop a DELETE body). */
+  resetFeature: (
+    id: string,
+    key: string,
+    reason: string,
+  ): Promise<StaffResult<CustomerEntitlements>> =>
+    call(
+      `/customers/${id}/features/${encodeURIComponent(key)}/reset`,
+      { method: 'POST', body: { reason } },
+      customerEntitlementsSchema,
+    ),
 
   audit: (cursor?: string): Promise<StaffResult<PlatformAuditResponse>> =>
     call(`/audit?limit=50${cursor ? `&cursor=${cursor}` : ''}`, {}, platformAuditResponseSchema),

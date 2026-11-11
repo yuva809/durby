@@ -17,6 +17,9 @@ import {
   type TenantPrismaClient,
 } from '../src/platform/tenancy';
 
+/** The opt-in local and CI runs have (apps/api/.env.example, ci.yml). */
+const DEV_ENV = { NODE_ENV: 'test', DURBY_ALLOW_DEV_SEED: '1' };
+
 describe('bootstrap commands', () => {
   let app: INestApplicationContext;
   let raw: PrismaService;
@@ -236,8 +239,8 @@ describe('bootstrap commands', () => {
 
   describe('seed-dev', () => {
     it('creates the demo organizations and users with a working password, idempotently', async () => {
-      await seedDev(app);
-      await seedDev(app);
+      await seedDev(app, DEV_ENV);
+      await seedDev(app, DEV_ENV);
       for (const seed of DEV_SEED.users) {
         const user = await raw.user.findUniqueOrThrow({ where: { email: seed.email } });
         expect(user.emailVerifiedAt).not.toBeNull();
@@ -264,8 +267,8 @@ describe('bootstrap commands', () => {
     });
 
     it('gives the full-plan organizations a location, a menu and tables, once', async () => {
-      await seedDev(app);
-      await seedDev(app);
+      await seedDev(app, DEV_ENV);
+      await seedDev(app, DEV_ENV);
       const products = DEV_TABLE_SERVICE.menu.reduce((n, c) => n + c.products.length, 0);
       for (const seed of DEV_SEED.organizations) {
         const org = await platformDb.organization.findFirstOrThrow({ where: { name: seed.name } });
@@ -294,7 +297,7 @@ describe('bootstrap commands', () => {
     });
 
     it('puts a seeded user back on its declared role and leaves other memberships alone', async () => {
-      await seedDev(app);
+      await seedDev(app, DEV_ENV);
       const staff = await raw.user.findUniqueOrThrow({ where: { email: 'staff@durby.local' } });
       const org = (name: string) => platformDb.organization.findFirstOrThrow({ where: { name } });
       const bistro = await org('Demo Bistro');
@@ -318,8 +321,8 @@ describe('bootstrap commands', () => {
       });
       expect(await roleOf(staff.id, bistro.id)).toBe('owner');
 
-      await seedDev(app);
-      await seedDev(app);
+      await seedDev(app, DEV_ENV);
+      await seedDev(app, DEV_ENV);
 
       expect(await roleOf(staff.id, bistro.id)).toBe('staff');
       expect(await roleOf(staff.id, cafe.id)).toBe('manager');
@@ -336,6 +339,28 @@ describe('bootstrap commands', () => {
       expect(aligned.map((r) => r.actor)).toEqual(['cli.seed_dev']);
     });
 
+    it('creates the demo staff super admin, active, once', async () => {
+      await seedDev(app, DEV_ENV);
+      await seedDev(app, DEV_ENV);
+      const staff = await app.get(PrismaService).staffAccount.findMany({
+        where: { email: { in: DEV_SEED.staff.map((s) => s.email) } },
+      });
+      expect(staff.map((s) => [s.email, s.role, s.status])).toEqual([
+        ['ops@durby.local', 'super_admin', 'active'],
+      ]);
+      expect(await app.get(PasswordHasher).verify(staff[0]!.passwordHash, DEV_PASSWORD)).toBe(true);
+    });
+
+    // Known passwords never reach staging or production (cli/dev-seed-guard.ts).
+    it('refuses to run without DURBY_ALLOW_DEV_SEED=1', async () => {
+      await expect(seedDev(app, { NODE_ENV: 'test' })).rejects.toThrow(
+        /without DURBY_ALLOW_DEV_SEED=1/,
+      );
+      await expect(
+        seedDev(app, { NODE_ENV: 'production', DURBY_ALLOW_DEV_SEED: '1' }),
+      ).rejects.toThrow(/NODE_ENV=production/);
+    });
+
     it('refuses to run in production', async () => {
       const config = app.get<AppConfig>(APP_CONFIG);
       const fake = {
@@ -344,7 +369,9 @@ describe('bootstrap commands', () => {
             ? { ...config, NODE_ENV: 'production' }
             : app.get<unknown>(token as never),
       } as unknown as INestApplicationContext;
-      await expect(seedDev(fake)).rejects.toThrow(/refuses to run with NODE_ENV=production/);
+      await expect(seedDev(fake, DEV_ENV)).rejects.toThrow(
+        /refuses to run with NODE_ENV=production/,
+      );
     });
   });
 });

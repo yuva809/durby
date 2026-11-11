@@ -108,7 +108,7 @@ jobs:
           pnpm --filter @durby/api db:generate
           pnpm --filter @durby/api db:deploy
           pnpm turbo run build --filter=@durby/api --filter=@durby/web
-          node apps/api/dist/cli/seed-dev.js
+          DURBY_ALLOW_DEV_SEED=1 node apps/api/dist/cli/seed-dev.js
       - name: Install Chromium
         run: pnpm --filter @durby/web exec playwright install --with-deps chromium
       - name: Run Playwright

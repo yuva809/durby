@@ -410,8 +410,20 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'revokedAt',
   ],
   session: ['organizationId', 'previousOrganizationId'],
-  /** `limits`: canonical JSON string (sorted keys); snapshots hold flat values only. */
-  feature_override: ['id', 'featureKey', 'enabled', 'limits'],
+  /**
+   * `limits`: canonical JSON string (sorted keys); snapshots hold flat values only. `reason`,
+   * `expiresAt` (ISO) and `setByStaffId` from admin portal 1d: the customer's log shows who at
+   * Durby set it and why, though the actor is `staff.admin_portal` (ADR 0017 §8).
+   */
+  feature_override: [
+    'id',
+    'featureKey',
+    'enabled',
+    'limits',
+    'expiresAt',
+    'reason',
+    'setByStaffId',
+  ],
   /** `features`: sorted keys, `key:<canonical limits json>` where a plan sets limits. */
   plan: ['id', 'key', 'features'],
   /** `value`: canonical JSON string (sorted keys). Settings never hold secrets (ADR 0010). */

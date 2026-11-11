@@ -57,4 +57,22 @@ export const staffErrors = {
     ),
   partnerNotFound: () =>
     new ApiError(HttpStatus.NOT_FOUND, 'staff.partner_not_found', 'Partner not found.'),
+  featureUnknown: () =>
+    new ApiError(HttpStatus.BAD_REQUEST, 'staff.feature_unknown', 'Unknown feature.'),
+  featureLimitsInvalid: () =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'staff.feature_limits_invalid',
+      'These limits are not valid for this feature.',
+    ),
+  expiryPast: () =>
+    new ApiError(HttpStatus.BAD_REQUEST, 'staff.expiry_past', 'The end date is in the past.'),
+  /** `missing`: the dependencies (transitive, registry order) that are off. */
+  featureDependencyMissing: (missing: readonly string[]) =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'staff.feature_dependency_missing',
+      'Switch on the features this one needs first.',
+      { missing: [...missing] },
+    ),
 };

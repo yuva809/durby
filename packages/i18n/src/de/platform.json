@@ -485,6 +485,7 @@
   "platform.audit.fields.featureKey": "Funktion",
   "platform.audit.fields.enabled": "Aktiviert",
   "platform.audit.fields.limits": "Grenzen",
+  "platform.audit.fields.setByStaffId": "Gesetzt von (Durby-Team)",
   "platform.audit.fields.key": "Schlüssel",
   "platform.audit.fields.features": "Funktionen",
   "platform.audit.fields.scopeType": "Ebene",
