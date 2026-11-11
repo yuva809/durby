@@ -91,14 +91,19 @@ describe('route markers', () => {
       'GET /api/v1/platform/auth/me staff.portal.access',
       'GET /api/v1/platform/customers staff.customers.read',
       'GET /api/v1/platform/customers/:id staff.customers.read',
+      'GET /api/v1/platform/customers/:id/entitlements staff.entitlements.read',
+      'GET /api/v1/platform/feature-catalog staff.entitlements.read',
       'GET /api/v1/platform/onboarding-options staff.customers.create',
       'GET /api/v1/platform/staff staff.staff.read',
       'PATCH /api/v1/platform/staff/:id staff.staff.manage (fresh)',
       'POST /api/v1/platform/auth/reauth staff.portal.access',
       'POST /api/v1/platform/customers staff.customers.create (fresh)',
+      'POST /api/v1/platform/customers/:id/features/:key/reset staff.entitlements.manage (fresh)',
       'POST /api/v1/platform/customers/:id/owner-invite staff.customers.invite (fresh)',
       'POST /api/v1/platform/staff/:id/deactivate staff.staff.manage (fresh)',
       'POST /api/v1/platform/staff/invitations staff.staff.manage (fresh)',
+      'PUT /api/v1/platform/customers/:id/features/:key staff.entitlements.manage (fresh)',
+      'PUT /api/v1/platform/customers/:id/plan staff.entitlements.manage (fresh)',
     ]);
   });
 
@@ -146,10 +151,14 @@ describe('route markers', () => {
       'POST /api/v1/platform/auth/reauth',
       // ADR 0017 §8: onboarding replays through the staff store; resending changes no data.
       'POST /api/v1/platform/customers',
+      // Admin portal 1d: set-state module writes (the same body again changes nothing).
+      'POST /api/v1/platform/customers/:id/features/:key/reset',
       'POST /api/v1/platform/customers/:id/owner-invite',
       // ADR 0017 §8 (with PATCH /platform/staff/:id above): replay-safe set-state staff writes.
       'POST /api/v1/platform/staff/:id/deactivate',
       'POST /api/v1/platform/staff/invitations',
+      'PUT /api/v1/platform/customers/:id/features/:key',
+      'PUT /api/v1/platform/customers/:id/plan',
     ]);
   });
 

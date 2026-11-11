@@ -26,6 +26,7 @@ import {
   type PlatformPrismaClient,
   type TenantPrismaClient,
 } from '../tenancy';
+import { CustomerEntitlementsService } from './customer-entitlements.service';
 import { PlatformAuditService, platformSnapshot } from './platform-audit.service';
 import { staffErrors } from './staff-errors';
 
@@ -72,6 +73,7 @@ export class CustomersService {
     private readonly audit: AuditService,
     private readonly platformAudit: PlatformAuditService,
     private readonly dispatcher: MailDispatcher,
+    private readonly entitlements: CustomerEntitlementsService,
   ) {}
 
   async list(query?: string): Promise<CustomerSummary[]> {
@@ -133,6 +135,9 @@ export class CustomersService {
       }
     }
 
+    // Modules (admin portal 1d): checked before anything is created; 409 on a missing dependency.
+    const overrides = await this.entitlements.onboardingOverrides(body.plan, body.features);
+
     const owner = await this.users.ensure(body.ownerEmail, { locale: body.ownerLocale });
     const hasPassword = (await this.users.withPassword([owner.id])).has(owner.id);
     const id = uuidv7();
@@ -167,6 +172,7 @@ export class CustomersService {
               locationIds: [],
             }),
           });
+          await this.entitlements.applyOnboardingOverrides(tx, staffId, id, overrides);
           await this.platformAudit.record(tx, {
             action: 'staff.customer.onboarded',
             actor: { staffId },

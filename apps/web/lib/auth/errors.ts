@@ -174,6 +174,10 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'staff.customer_not_found': 'staff.errors.customerNotFound',
   'staff.owner_active': 'staff.errors.ownerActive',
   'staff.partner_not_found': 'staff.errors.partnerNotFound',
+  'staff.feature_unknown': 'staff.errors.featureUnknown',
+  'staff.feature_limits_invalid': 'staff.errors.featureLimitsInvalid',
+  'staff.expiry_past': 'staff.errors.expiryPast',
+  'staff.feature_dependency_missing': 'staff.errors.featureDependencyMissing',
 };
 
 export function errorLabel(code: ApiErrorCode | 'unknown'): LabelKey {
