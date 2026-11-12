@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, development]
 
 # Superseded PR runs are cancelled; runs on main always finish.
 concurrency:

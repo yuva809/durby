@@ -4,6 +4,16 @@ Production is not set up yet. It will run on Hetzner like staging ([deploy.md](d
 **https://app.durby.tech**. This page collects what the production setup must do beyond the staging steps; it grows
 into the full guide when production is built.
 
+## Branch and deploys
+
+Production follows `main` ([ADR 0034](../adr/0034-branch-environments.md)); the dev server follows `development`.
+Set it up like the staging server ([deploy.md](deploy.md) → Server setup) with
+`STAGING_DOMAIN=app.durby.tech DEPLOY_BRANCH=main` for `server-setup.sh`, then follow the DNS order below. Deploy
+with `bin/release.sh` ([deploy.md](deploy.md) → Deploying from the server) after merging `development` into `main`.
+
+Before production goes live, change the `staging` environment's `STAGING_SSH_*` secrets in GitHub, or delete them.
+Otherwise, once Actions runs again, `deploy-staging.yml` deploys every push to `main` to the dev server.
+
 ## Moving app.durby.tech from Vercel to Hetzner
 
 `app.durby.tech` serves the previous version of Durby from a Vercel project today. It is on the Durby Android app's
