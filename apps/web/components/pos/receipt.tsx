@@ -33,6 +33,8 @@ export function Receipt({
   order,
   bill,
   printedAt,
+  banner = null,
+  cancelled = false,
 }: {
   /** Null while it loads or when it can't be read: the defaults (organization name, thanks). */
   layout: Pick<BillLayout, 'header' | 'footer'> | null;
@@ -42,6 +44,10 @@ export function Receipt({
   order: ReceiptOrder;
   bill: BillLine[];
   printedAt: Date;
+  /** Under the number, e.g. "Share 2 of 4" on a share of an equal split (ADR 0036). */
+  banner?: string | null;
+  /** A check of a cancelled bill: "CANCELLED" in large letters above the items. */
+  cancelled?: boolean;
 }) {
   const t = useT();
   const money = useMoney();
@@ -92,8 +98,21 @@ export function Receipt({
         <p className="font-bold" data-testid="bill-number">
           {t('pos.bill.billNo', { number: order.number })}
         </p>
+        {banner && (
+          <p className="font-bold" data-testid="bill-banner">
+            {banner}
+          </p>
+        )}
       </div>
       {rule}
+      {cancelled && (
+        <p
+          className="my-1 text-center text-lg font-bold tracking-widest print:text-xl"
+          data-testid="bill-cancelled"
+        >
+          {t('pos.bill.cancelledStamp')}
+        </p>
+      )}
       <ul className="flex flex-col gap-1">
         {bill.map((l) => (
           <li key={l.key} data-testid="bill-line" data-name={l.name}>

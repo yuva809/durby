@@ -89,6 +89,7 @@ describe('roles API', () => {
       'pos.orders.void',
       'pos.orders.close',
       'pos.bills.print',
+      'pos.bills.cancel',
       'pos.kitchen.use',
       'pos.bar.use',
       'reservations.bookings.read',

@@ -72,6 +72,8 @@ export const printJobResultRequestSchema = z.strictObject({
 export const queueBillPrintJobRequestSchema = z.strictObject({
   orderId: z.uuid(),
   printerId: z.uuid(),
+  /** The guest check to print, one of the order's (ADR 0036); missing: the bill prints from the order. */
+  checkId: z.uuid().optional(),
 });
 
 export const printJobSchema = z.object({
@@ -81,6 +83,8 @@ export const printJobSchema = z.object({
   kind: z.enum(PRINT_JOB_KINDS),
   orderId: z.uuid(),
   ticketId: z.uuid().nullable(),
+  /** The guest check a bill job prints; null: it prints from the order (ADR 0036). */
+  checkId: z.uuid().nullable(),
   status: z.enum(PRINT_JOB_STATUSES),
   /** Claimed and unanswered past PRINT_JOB_ANSWER_TIMEOUT_MS: shown as "check printer". */
   stale: z.boolean(),

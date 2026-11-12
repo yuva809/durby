@@ -99,6 +99,7 @@ describe('/api/v1/number-series', () => {
         'inventory.purchaseOrder',
         'billing.invoice',
         'pos.order',
+        'pos.guestCheck',
         'reservations.booking',
       ]);
       expect(body.data.find((s) => s.key === 'billing.invoice')).toEqual({

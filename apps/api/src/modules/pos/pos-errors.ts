@@ -95,6 +95,25 @@ export const posErrors = {
     new ApiError(HttpStatus.CONFLICT, 'pos.void_exceeds', 'More than is left of the item.', {
       lineId,
     }),
+  // Bills and guest checks (docs/modules/pos.md → Step 4, ADR 0036).
+  billNotFound: () => new ApiError(HttpStatus.NOT_FOUND, 'pos.bill_not_found', 'Bill not found.'),
+  checkNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'pos.check_not_found', 'Guest check not found.'),
+  nothingToBill: () =>
+    new ApiError(HttpStatus.CONFLICT, 'pos.nothing_to_bill', 'Nothing is left to bill.'),
+  lineBilled: (lineId: string) =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.line_billed',
+      'Part of the item is on a bill; cancel the bill first.',
+      { lineId },
+    ),
+  ordersNotSameLocation: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.orders_not_same_location',
+      'A bill covers orders of one location only.',
+    ),
 };
 
 /** Prisma's unique violation (here: the partial name index of the migration). */

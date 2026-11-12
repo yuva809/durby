@@ -61,6 +61,8 @@ export const orderLineSchema = z.object({
   voidsLineId: z.uuid().nullable(),
   /** What is left of a sent line after voids; 0 on void lines. */
   remaining: z.int(),
+  /** Portions of `remaining` on bills that are not cancelled (ADR 0036); 0 on void lines. */
+  billedQuantity: z.int(),
   /** unitPrice × quantity, gross. */
   total: z.string(),
   createdAt: z.iso.datetime(),
@@ -109,6 +111,27 @@ export const orderSummarySchema = z.object({
   gross: z.string(),
   /** Tickets ready to serve: on the station's screen as ready, not yet served (ADR 0026). */
   readyCount: z.int(),
+  /** Gross still to bill: items not on a bill that is not cancelled (ADR 0036). */
+  unbilled: z.string(),
+});
+
+/** A guest check of a bill, as the order lists it (docs/modules/pos.md → Step 4). */
+export const billCheckSchema = z.object({
+  id: z.uuid(),
+  number: z.string(),
+  /** 1..n on a share of an equal split; null on a whole bill. */
+  shareIndex: z.int().nullable(),
+  gross: z.string(),
+});
+
+/** A bill over this order (ADR 0036). */
+export const orderBillSchema = z.object({
+  id: z.uuid(),
+  kind: z.enum(['single', 'equal']),
+  shareCount: z.int().nullable(),
+  createdAt: z.iso.datetime(),
+  cancelled: z.boolean(),
+  checks: z.array(billCheckSchema),
 });
 
 export const orderSchema = orderSummarySchema.extend({
@@ -116,6 +139,8 @@ export const orderSchema = orderSummarySchema.extend({
   totals: orderTotalsSchema,
   /** Who opened the order, for the bill (ADR 0025); null when the member is gone. */
   waiterName: z.string().nullable(),
+  /** Bills over this order, oldest first, cancelled ones included. */
+  bills: z.array(orderBillSchema),
 });
 
 /**
@@ -171,6 +196,8 @@ export type UpdateOrderRequest = z.infer<typeof updateOrderRequestSchema>;
 export type OrderLine = z.infer<typeof orderLineSchema>;
 export type KitchenTicket = z.infer<typeof kitchenTicketSchema>;
 export type OrderTotals = z.infer<typeof orderTotalsSchema>;
+export type OrderBill = z.infer<typeof orderBillSchema>;
+export type BillCheck = z.infer<typeof billCheckSchema>;
 export type OrderSummary = z.infer<typeof orderSummarySchema>;
 export type Order = z.infer<typeof orderSchema>;
 export type SendTicketResponse = z.infer<typeof sendTicketResponseSchema>;

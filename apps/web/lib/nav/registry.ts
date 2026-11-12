@@ -6,6 +6,7 @@ import {
   ChefHat,
   ClipboardList,
   ConciergeBell,
+  ReceiptText,
   ChartLine,
   CreditCard,
   House,
@@ -103,6 +104,16 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: 'modules',
     feature: 'pos',
     permission: 'pos.orders.read',
+  },
+  {
+    // The billing counter: open tables and guest checks (docs/modules/pos.md → Step 4).
+    id: 'checkout',
+    href: '/checkout',
+    label: 'pos.nav.checkout',
+    icon: ReceiptText,
+    group: 'modules',
+    feature: 'pos',
+    permission: 'pos.bills.print',
   },
   {
     // The kitchen and bar screens (docs/modules/pos.md → Kitchen and bar screens, ADR 0026).
