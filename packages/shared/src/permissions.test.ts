@@ -58,6 +58,7 @@ describe('system roles', () => {
       'platform.users.invite',
       'platform.users.read',
       'pos.bar.use',
+      'pos.bills.cancel',
       'pos.bills.print',
       'pos.kitchen.use',
       'pos.orders.close',

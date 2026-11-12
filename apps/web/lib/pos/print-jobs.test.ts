@@ -32,6 +32,7 @@ const JOB = {
   kind: 'ticket' as const,
   orderId: '0190a000-0000-7000-8000-000000000601',
   ticketId: '0190a000-0000-7000-8000-000000000701',
+  checkId: null,
   status: 'claimed' as const,
   stale: false,
   expired: false,

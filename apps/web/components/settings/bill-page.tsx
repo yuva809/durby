@@ -510,6 +510,7 @@ function sampleTicket(station: PrepStation, productName: string, quantity: numbe
         note: null,
         voidsLineId: null,
         remaining: quantity,
+        billedQuantity: 0,
         total: '0.00',
         createdAt: at,
       },

@@ -71,6 +71,7 @@ const TICKET = {
       note: 'no onions',
       voidsLineId: null,
       remaining: 2,
+      billedQuantity: 0,
       total: '13.80',
       createdAt: AT,
     },
@@ -83,6 +84,7 @@ const JOB = {
   kind: 'ticket',
   orderId: id(7),
   ticketId: TICKET.id,
+  checkId: null,
   status: 'claimed',
   stale: false,
   expired: false,
@@ -148,6 +150,7 @@ const ORDER = {
   itemCount: 2,
   gross: '13.80',
   readyCount: 0,
+  unbilled: '13.80',
   tickets: [TICKET],
   totals: {
     itemCount: 2,
@@ -155,6 +158,7 @@ const ORDER = {
     byTaxRate: [{ taxRate: '7.00', gross: '13.80', net: '12.90', tax: '0.90' }],
   },
   waiterName: 'Priya',
+  bills: [],
 };
 
 beforeEach(() => {

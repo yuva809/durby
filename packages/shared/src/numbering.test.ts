@@ -35,6 +35,7 @@ describe('number series registry', () => {
       'inventory.purchaseOrder',
       'billing.invoice',
       'pos.order',
+      'pos.guestCheck',
       'reservations.booking',
     ]);
   });

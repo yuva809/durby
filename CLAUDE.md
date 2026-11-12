@@ -51,6 +51,7 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 - Start every task in plan mode: list files, tables, endpoints, events, tests. Wait for approval.
 - Write or update the spec in `docs/modules/<name>.md` before implementing.
 - Tests first for business logic. Every tenant-scoped feature gets a cross-tenant isolation test.
+- Branches (ADR 0034): feature branches merge into `development` (the dev stack, dev.durby.tech); merging `development` into `main` is a production release (staging.durby.tech).
 - Small steps. One feature per session. Commit after each green step.
 - Before saying "done": `pnpm lint && pnpm typecheck && pnpm test` must pass. Report what you ran.
 - Prisma migrations: generate, show me the SQL, never run against anything but local/test DBs.

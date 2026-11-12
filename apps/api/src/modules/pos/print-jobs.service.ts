@@ -33,6 +33,7 @@ const SELECT = {
   kind: true,
   orderId: true,
   ticketId: true,
+  checkId: true,
   status: true,
   attempts: true,
   lastCode: true,
@@ -50,6 +51,7 @@ interface Row {
   kind: PrintJob['kind'];
   orderId: string;
   ticketId: string | null;
+  checkId: string | null;
   status: PrintJob['status'];
   attempts: number;
   lastCode: string | null;
@@ -68,6 +70,7 @@ interface RawRow {
   kind: PrintJob['kind'];
   order_id: string;
   ticket_id: string | null;
+  check_id: string | null;
   status: PrintJob['status'];
   attempts: number;
   last_code: string | null;
@@ -85,6 +88,7 @@ const fromRaw = (r: RawRow): Row => ({
   kind: r.kind,
   orderId: r.order_id,
   ticketId: r.ticket_id,
+  checkId: r.check_id,
   status: r.status,
   attempts: r.attempts,
   lastCode: r.last_code,
@@ -212,12 +216,23 @@ export class PrintJobsService {
         select: { id: true },
       });
       if (!printer) throw posErrors.printerNotFound();
+      // A guest check of a bill over this order (ADR 0036).
+      const checkId = body.checkId ?? null;
+      if (checkId) {
+        const check = await tx.posGuestCheck.findFirst({
+          where: { id: checkId, bill: { orders: { some: { orderId: body.orderId } } } },
+          select: { id: true },
+        });
+        if (!check) throw posErrors.checkNotFound();
+      }
       const now = new Date();
       const expiresAt = await this.expiryAt(tx, order.locationId, now);
-      // One open bill per order and printer (pos_print_jobs_open_bill_key): a second tap gets the same job.
+      // One open bill per check (or, without one, per order) and printer (pos_print_jobs_open_check_key,
+      // pos_print_jobs_open_bill_key): a second tap gets the same job.
       const open = await tx.posPrintJob.findFirst({
         where: {
           orderId: body.orderId,
+          checkId,
           printerId: printer.id,
           kind: 'bill',
           status: { in: ['pending', 'claimed'] },
@@ -238,6 +253,7 @@ export class PrintJobsService {
             printerId: printer.id,
             kind: 'bill',
             orderId: body.orderId,
+            checkId,
             requestedByUserId: userId,
             expiresAt,
           },
@@ -291,7 +307,7 @@ export class PrintJobsService {
                   LIMIT 1
                )
            AND "status" = 'pending' AND "not_before" <= now() AND "expires_at" > now()
-        RETURNING "id", "location_id", "printer_id", "kind", "order_id", "ticket_id", "status", "attempts",
+        RETURNING "id", "location_id", "printer_id", "kind", "order_id", "ticket_id", "check_id", "status", "attempts",
                   "last_code", "not_before", "expires_at", "created_at", "claimed_at", "completed_at"`;
       const row = raw ? fromRaw(raw) : null;
       if (row) {
@@ -584,6 +600,7 @@ function toJob(row: Row, now: Date): PrintJob {
     kind: row.kind,
     orderId: row.orderId,
     ticketId: row.ticketId,
+    checkId: row.checkId,
     status: expired ? 'needs_check' : row.status,
     expired: expired || row.lastCode === EXPIRED,
     stale:
@@ -609,6 +626,7 @@ function jobSnapshot(
     | 'kind'
     | 'orderId'
     | 'ticketId'
+    | 'checkId'
     | 'status'
     | 'attempts'
     | 'lastCode'
@@ -621,6 +639,7 @@ function jobSnapshot(
     kind: row.kind,
     orderId: row.orderId,
     ticketId: row.ticketId,
+    checkId: row.checkId,
     status: row.status,
     attempts: row.attempts,
     lastCode: row.lastCode,

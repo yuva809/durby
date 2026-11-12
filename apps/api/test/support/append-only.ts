@@ -4,6 +4,12 @@ import type { Client } from 'pg';
 export const APPEND_ONLY_TABLES = [
   'audit_logs',
   'platform_audit_logs',
+  'pos_bill_cancellations',
+  'pos_bill_items',
+  'pos_bill_orders',
+  'pos_bills',
+  'pos_guest_check_shares',
+  'pos_guest_checks',
   'pos_kitchen_tickets',
   'pos_order_lines',
   'pos_ticket_status_changes',

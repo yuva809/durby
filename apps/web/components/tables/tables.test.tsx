@@ -65,6 +65,7 @@ const ORDER = {
   itemCount: 6,
   gross: '56.00',
   readyCount: 0,
+  unbilled: '0.00',
 };
 
 function signedInAs(role: SystemRole) {

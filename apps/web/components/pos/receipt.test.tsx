@@ -36,3 +36,40 @@ describe('Receipt: interim-bill notice (no TSE yet)', () => {
     }
   });
 });
+
+describe('Receipt: guest checks (ADR 0036)', () => {
+  it('prints the share under the number and CANCELLED for a cancelled bill', () => {
+    render(
+      <Receipt
+        layout={null}
+        organizationName="Bistro"
+        productName="Product"
+        tableName="T1, T2"
+        order={{ number: 'CHK-2026-000004', covers: null, waiterName: null, total: '9.20' }}
+        bill={[
+          {
+            key: 's',
+            name: 'Share 2 of 3',
+            quantity: 1,
+            unitPrice: '9.20',
+            total: '9.20',
+            note: null,
+          },
+        ]}
+        printedAt={new Date('2026-11-12T12:00:00Z')}
+        banner="Share 2 of 3"
+        cancelled
+      />,
+    );
+    expect(screen.getByTestId('bill-number').textContent).toBe('Bill no. CHK-2026-000004');
+    expect(screen.getByTestId('bill-banner').textContent).toBe('Share 2 of 3');
+    expect(screen.getByTestId('bill-cancelled').textContent).toBe('CANCELLED');
+    expect(screen.getByTestId('bill-interim-notice')).toBeTruthy();
+  });
+
+  it('prints no banner or stamp on a plain bill', () => {
+    render(bill([]));
+    expect(screen.queryByTestId('bill-banner')).toBeNull();
+    expect(screen.queryByTestId('bill-cancelled')).toBeNull();
+  });
+});

@@ -32,6 +32,7 @@ import {
   type TenantTransactionClient,
 } from '../../platform/tenancy';
 import { PricingService } from '../catalog';
+import { billedByLine, remainingOf, unbilledGross, unbilledOf } from './billing';
 import { lineTotal, orderTotals } from './order-totals';
 import { isUniqueViolation, posErrors } from './pos-errors';
 import { PrintJobsService } from './print-jobs.service';
@@ -314,6 +315,11 @@ export class OrdersService {
       }
       for (const [lineId, quantity] of requested) {
         if (quantity > (left.get(lineId) ?? 0)) throw posErrors.voidExceeds(lineId);
+      }
+      // Only unbilled portions: a billed item is voided after its bill is cancelled (ADR 0036).
+      const unbilled = unbilledOf(left, await this.billed(tx, orderId));
+      for (const [lineId, quantity] of requested) {
+        if (quantity > (unbilled.get(lineId) ?? 0)) throw posErrors.lineBilled(lineId);
       }
       // A void goes to the station that got the item, whatever its category says now.
       // A void goes where the item went: its ticket's station, and straight to the bill when the
@@ -614,7 +620,7 @@ export class OrdersService {
       where: { id: orderId },
       select: { ...ORDER_SELECT, openedByUserId: true },
     });
-    const [tickets, lines, names] = await Promise.all([
+    const [tickets, lines, names, billed, bills] = await Promise.all([
       db.posKitchenTicket.findMany({
         where: { orderId },
         select: {
@@ -630,13 +636,35 @@ export class OrdersService {
       }),
       db.posOrderLine.findMany({ where: { orderId }, select: LINE_SELECT, orderBy: { id: 'asc' } }),
       this.memberNames.forUsers(db, [openedByUserId]),
+      this.billed(db, orderId),
+      db.posBillOrder.findMany({
+        where: { orderId },
+        select: {
+          bill: {
+            select: {
+              id: true,
+              kind: true,
+              shareCount: true,
+              createdAt: true,
+              cancellation: { select: { createdAt: true } },
+              checks: {
+                select: { id: true, number: true, shareIndex: true, gross: true },
+                orderBy: { shareIndex: 'asc' },
+              },
+            },
+          },
+        },
+        orderBy: { billId: 'asc' },
+      }),
     ]);
     const left = remainingOf(lines);
+    const unbilled = unbilledOf(left, billed);
     const totals = orderTotals(lines.map(priced));
     const byTicket = new Map<string, OrderLine[]>();
     for (const line of lines) {
       const list = byTicket.get(line.ticketId) ?? [];
-      list.push(lineResponse(line, left.get(line.id) ?? 0));
+      const remaining = left.get(line.id) ?? 0;
+      list.push(lineResponse(line, remaining, remaining - (unbilled.get(line.id) ?? 0)));
       byTicket.set(line.ticketId, list);
     }
     const ticketList: KitchenTicket[] = tickets.map((t) => ({
@@ -650,11 +678,43 @@ export class OrdersService {
       lines: byTicket.get(t.id) ?? [],
     }));
     return {
-      ...summaryOf(order, totals.itemCount, totals.gross, readyCount(ticketList)),
+      ...summaryOf(
+        order,
+        totals.itemCount,
+        totals.gross,
+        readyCount(ticketList),
+        unbilledGross(
+          lines.map((l) => ({ id: l.id, unitPrice: l.unitPrice.toFixed(2) })),
+          unbilled,
+        ),
+      ),
       tickets: ticketList,
       totals,
       waiterName: names.get(openedByUserId) ?? null,
+      bills: bills.map(({ bill }) => ({
+        id: bill.id,
+        kind: bill.kind,
+        shareCount: bill.shareCount,
+        createdAt: bill.createdAt.toISOString(),
+        cancelled: bill.cancellation !== null,
+        checks: bill.checks.map((c) => ({
+          id: c.id,
+          number: c.number,
+          shareIndex: c.shareIndex === 0 ? null : c.shareIndex,
+          gross: c.gross.toFixed(2),
+        })),
+      })),
     };
+  }
+
+  /** Portions of each line of the order on bills that are not cancelled (ADR 0036). */
+  private async billed(db: Db, orderId: string): Promise<Map<string, number>> {
+    return billedByLine(
+      await db.posBillItem.findMany({
+        where: { orderId, bill: { cancellation: null } },
+        select: { orderLineId: true, quantity: true },
+      }),
+    );
   }
 
   /** Order summaries (newest first) with item count and gross total. */
@@ -671,28 +731,50 @@ export class OrdersService {
     });
     if (orders.length === 0) return [];
     const ids = orders.map((o) => o.id);
-    const [lines, tickets] = await Promise.all([
+    const [lines, tickets, billedItems] = await Promise.all([
       db.posOrderLine.findMany({
         where: { orderId: { in: ids } },
-        select: { orderId: true, unitPrice: true, taxRate: true, quantity: true },
+        select: {
+          id: true,
+          orderId: true,
+          unitPrice: true,
+          taxRate: true,
+          quantity: true,
+          voidsLineId: true,
+        },
       }),
       db.posKitchenTicket.findMany({
         where: { orderId: { in: ids } },
         select: { orderId: true, statusChanges: LATEST_STATUS },
       }),
+      db.posBillItem.findMany({
+        where: { orderId: { in: ids }, bill: { cancellation: null } },
+        select: { orderLineId: true, quantity: true },
+      }),
     ]);
+    const unbilled = unbilledOf(remainingOf(lines), billedByLine(billedItems));
     const ready = new Map<string, number>();
     for (const t of tickets) {
       if (statusOf(t.statusChanges) === 'ready')
         ready.set(t.orderId, (ready.get(t.orderId) ?? 0) + 1);
     }
-    const byOrder = new Map<string, ReturnType<typeof priced>[]>();
+    const byOrder = new Map<string, (typeof lines)[number][]>();
     for (const line of lines) {
-      byOrder.set(line.orderId, [...(byOrder.get(line.orderId) ?? []), priced(line)]);
+      byOrder.set(line.orderId, [...(byOrder.get(line.orderId) ?? []), line]);
     }
     return orders.map((order) => {
-      const totals = orderTotals(byOrder.get(order.id) ?? []);
-      return summaryOf(order, totals.itemCount, totals.gross, ready.get(order.id) ?? 0);
+      const own = byOrder.get(order.id) ?? [];
+      const totals = orderTotals(own.map(priced));
+      return summaryOf(
+        order,
+        totals.itemCount,
+        totals.gross,
+        ready.get(order.id) ?? 0,
+        unbilledGross(
+          own.map((l) => ({ id: l.id, unitPrice: l.unitPrice.toFixed(2) })),
+          unbilled,
+        ),
+      );
     });
   }
 
@@ -706,17 +788,6 @@ export class OrdersService {
   }
 }
 
-/** What is left of each sent line after its voids (void lines carry negative quantities). */
-function remainingOf(lines: readonly Pick<LineRow, 'id' | 'quantity' | 'voidsLineId'>[]) {
-  const left = new Map<string, number>();
-  for (const line of lines) if (line.quantity > 0) left.set(line.id, line.quantity);
-  for (const line of lines) {
-    if (line.voidsLineId)
-      left.set(line.voidsLineId, (left.get(line.voidsLineId) ?? 0) + line.quantity);
-  }
-  return left;
-}
-
 function priced(line: Pick<LineRow, 'unitPrice' | 'taxRate' | 'quantity'>) {
   return {
     unitPrice: line.unitPrice.toFixed(2),
@@ -725,7 +796,7 @@ function priced(line: Pick<LineRow, 'unitPrice' | 'taxRate' | 'quantity'>) {
   };
 }
 
-function lineResponse(line: LineRow, remaining: number): OrderLine {
+function lineResponse(line: LineRow, remaining: number, billedQuantity: number): OrderLine {
   const unitPrice = line.unitPrice.toFixed(2);
   return {
     id: line.id,
@@ -738,6 +809,7 @@ function lineResponse(line: LineRow, remaining: number): OrderLine {
     note: line.note,
     voidsLineId: line.voidsLineId,
     remaining: line.quantity > 0 ? remaining : 0,
+    billedQuantity: line.quantity > 0 ? billedQuantity : 0,
     total: lineTotal(unitPrice, line.quantity),
     createdAt: line.createdAt.toISOString(),
   };
@@ -748,7 +820,13 @@ function readyCount(tickets: readonly KitchenTicket[]): number {
   return tickets.filter((t) => t.status === 'ready').length;
 }
 
-function summaryOf(order: OrderRow, itemCount: number, gross: string, ready: number): OrderSummary {
+function summaryOf(
+  order: OrderRow,
+  itemCount: number,
+  gross: string,
+  ready: number,
+  unbilled: string,
+): OrderSummary {
   return {
     id: order.id,
     number: order.number,
@@ -762,6 +840,7 @@ function summaryOf(order: OrderRow, itemCount: number, gross: string, ready: num
     itemCount,
     gross,
     readyCount: ready,
+    unbilled,
   };
 }
 

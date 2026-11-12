@@ -89,13 +89,15 @@ export const queueBillPrintJob = (
   action: ActionKey,
   orderId: string,
   printerId: string,
+  /** The guest check to print (ADR 0036); without one the bill prints from the order. */
+  checkId?: string,
 ): Promise<Result<PrintJob | null>> =>
   write(
     store,
     action,
     '/api/v1/pos/print-jobs/bill',
     'POST',
-    { orderId, printerId },
+    checkId ? { orderId, printerId, checkId } : { orderId, printerId },
     printJobSchema,
   );
 
