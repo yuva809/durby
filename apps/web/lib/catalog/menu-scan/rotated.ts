@@ -88,3 +88,27 @@ export function pickHeadings(lines: readonly OcrLine[]): OcrLine[] {
     .sort((a, b) => a.box.y0 - b.box.y0)
     .map((l) => ({ ...l, box: { ...l.box, y1: l.box.y0 + thickness(l) } }));
 }
+
+/** Space left between a sideways heading and the text read beside it, in pixels. */
+const BESIDE_HEADING_GAP = 4;
+
+/**
+ * The strips to read once strip `index` turned out to hold a sideways heading ending at
+ * `headingRight`: the rest of that strip, right of the heading, is read with the strip after it.
+ * On a page with few lines of text the columns through the start of the names hold so little ink
+ * that they pass for a gutter, and the heading's strip takes in the item numbers and first words.
+ */
+export function besideHeading<S extends { x0: number; x1: number }>(
+  strips: readonly S[],
+  index: number,
+  headingRight: number,
+): S[] {
+  const strip = strips[index];
+  if (!strip) return [...strips];
+  const start = Math.ceil(headingRight) + BESIDE_HEADING_GAP;
+  if (start >= strip.x1) return [...strips];
+  const next = strips[index + 1];
+  return next
+    ? [...strips.slice(0, index + 1), { ...next, x0: start }, ...strips.slice(index + 2)]
+    : [...strips, { ...strip, x0: start }];
+}

@@ -345,12 +345,16 @@ export function suggest(board: Board, context: SuggestContext, base: Lexicon): S
     const fits = !headingGroup || !dominant || headingGroup === dominant;
     let name: string | null = firstKnown && fits ? corrected : null;
     if (!name) {
-      const home = board.categories.some(
-        (c) =>
-          c !== category &&
-          !doubtful(c) &&
-          (dishGroup(c.name) === dominant || fold(c.name) === fold(context.groupName(dominant!))),
-      );
+      // Products of mixed kinds (no dominant group) have no home category to move to.
+      const home =
+        dominant !== null &&
+        board.categories.some(
+          (c) =>
+            c !== category &&
+            !doubtful(c) &&
+            (dishGroup(c.name) === dominant ||
+              fold(c.name) === fold(context.groupName(dominant))),
+        );
       // Its dishes have a category already: they are moved there (below), not renamed.
       if (top && dominant && !(category.name === context.uncategorized && home)) {
         const label = context.groupName(top[0]);

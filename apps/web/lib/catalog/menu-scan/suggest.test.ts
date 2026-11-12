@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { type Board, boardFromParsed, historyReducer } from './board';
 import type { ParsedCategory, ParsedProduct } from './parse';
 import {
@@ -89,6 +89,22 @@ const context = (catalog: { name: string; category: string }[] = []): SuggestCon
 });
 
 describe('suggest', () => {
+  it('leaves a doubtful heading over dishes of mixed kinds alone, beside other categories', () => {
+    // No dominant dish group: there is no group name to look up (a scan crashed here once).
+    const b = board([
+      {
+        name: 'Vorspeisen-fleish',
+        suspect: true,
+        products: [product('Eral Varuthathu'), product('Chicken 65'), product('Mutton Sukka')],
+      },
+      { name: 'Breads', suspect: false, products: [product('Naan', '3.90')] },
+    ]);
+    const groupName = vi.fn((g: string) => g);
+    expect(() => suggest(b, { ...context(), groupName }, lexicon)).not.toThrow();
+    expect(groupName).not.toHaveBeenCalledWith(undefined);
+    expect(groupName).not.toHaveBeenCalledWith(null);
+  });
+
   it('suggests word fixes, existing products, heading names, moves and round prices', () => {
     const b = board([
       { name: null, suspect: false, products: [product('Garlic Naan', '4.50')] },
