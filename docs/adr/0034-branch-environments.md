@@ -18,8 +18,11 @@ pushed to GHCR and pulled by the server. Two things changed:
 
    | Branch        | Environment | Server                                                       | Domain               |
    | ------------- | ----------- | ------------------------------------------------------------ | -------------------- |
-   | `development` | dev         | the existing staging server (`/opt/durby`)                   | `staging.durby.tech` |
-   | `main`        | production  | a new Hetzner server, set up with the same `server-setup.sh` | `app.durby.tech`     |
+   | `main`        | production  | the existing server (`/opt/durby`)                           | `staging.durby.tech` |
+   | `development` | dev         | a new Hetzner server, set up with the same `server-setup.sh` | `dev.durby.tech`     |
+
+   `staging.durby.tech` keeps its name and data and now serves production. Each server needs its own demo domain
+   (`STAGING_DEMO_DOMAIN`) and its own backup folder on the Storage Box (`BACKUP_RCLONE_REMOTE`).
 
    Both run the same stack from `infra/staging/`. They differ only in `/opt/durby/.env` (domains, secrets, mail,
    `DEPLOY_BRANCH`), never in code. Separate servers keep each stack inside its memory budget, keep ports 80/443
@@ -43,9 +46,8 @@ pushed to GHCR and pulled by the server. Two things changed:
    and migrations, health checks, automatic rollback and image retention work as before.
 
 4. **The Actions workflows stay.** `ci.yml` also runs on pushes to `development`. `deploy-staging.yml` keeps
-   deploying `main` when Actions is available. Until production exists, it still targets the server in the
-   `STAGING_SSH_*` secrets, so those secrets must be removed or repointed before production goes live (see
-   docs/ops/production.md).
+   deploying `main` to the existing server when Actions is available, which is still correct. The dev server is
+   deployed only with `bin/release.sh`.
 
 ## Consequences
 

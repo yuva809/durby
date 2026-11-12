@@ -6,13 +6,10 @@ into the full guide when production is built.
 
 ## Branch and deploys
 
-Production follows `main` ([ADR 0034](../adr/0034-branch-environments.md)); the dev server follows `development`.
-Set it up like the staging server ([deploy.md](deploy.md) → Server setup) with
-`STAGING_DOMAIN=app.durby.tech DEPLOY_BRANCH=main` for `server-setup.sh`, then follow the DNS order below. Deploy
-with `bin/release.sh` ([deploy.md](deploy.md) → Deploying from the server) after merging `development` into `main`.
-
-Before production goes live, change the `staging` environment's `STAGING_SSH_*` secrets in GitHub, or delete them.
-Otherwise, once Actions runs again, `deploy-staging.yml` deploys every push to `main` to the dev server.
+Production follows `main` and runs on the existing server at `staging.durby.tech` ([ADR 0034](../adr/0034-branch-environments.md)).
+The dev server follows `development` ([deploy.md](deploy.md) → Environments and branches). Release by merging
+`development` into `main`, then run `bin/release.sh` on this server ([deploy.md](deploy.md) → Deploying from the
+server).
 
 ## Moving app.durby.tech from Vercel to Hetzner
 

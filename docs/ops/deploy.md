@@ -47,15 +47,24 @@ Server layout:
 Each long-lived branch has its own server, running this same stack. Only `/opt/durby/.env` differs
 ([ADR 0034](../adr/0034-branch-environments.md)).
 
-| Branch        | Environment | Server                                          | Domain               | `.env`                      |
-| ------------- | ----------- | ----------------------------------------------- | -------------------- | --------------------------- |
-| `development` | dev         | the existing staging server                     | `staging.durby.tech` | `DEPLOY_BRANCH=development` |
-| `main`        | production  | its own server ([production.md](production.md)) | `app.durby.tech`     | `DEPLOY_BRANCH=main`        |
+| Branch        | Environment | Server                      | Domain               | `.env`                      |
+| ------------- | ----------- | --------------------------- | -------------------- | --------------------------- |
+| `main`        | production  | the existing server         | `staging.durby.tech` | `DEPLOY_BRANCH=main`        |
+| `development` | dev         | a second server (see below) | `dev.durby.tech`     | `DEPLOY_BRANCH=development` |
 
 Feature branches merge into `development`. A production release is a merge of `development` into `main`, followed by
 `bin/release.sh` on the production server. Run `pnpm lint && pnpm typecheck && pnpm test` before each merge: a
 server build runs no checks.
 
+**Setting up the dev server:** a new Hetzner server, set up with the steps below and these values for
+`server-setup.sh`, so it never shares a name, certificate or backup folder with production:
+
+```bash
+STAGING_DOMAIN=dev.durby.tech STAGING_DEMO_DOMAIN=partner-dev.durby.tech DEPLOY_BRANCH=development ADMIN_USER=... ADMIN_SSH_KEY=... DEPLOY_SSH_KEY=... ACME_EMAIL=... BACKUP_AGE_RECIPIENT=... bash /root/server-setup.sh
+```
+
+DNS: `A` records for `dev.durby.tech` and `partner-dev.durby.tech` to the new server. The Storage Box folder is
+`durby-development`. Then deploy with `bin/release.sh` (below).
 ---
 
 ## Server setup (once)
