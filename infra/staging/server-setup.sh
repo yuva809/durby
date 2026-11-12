@@ -19,6 +19,9 @@ set -euo pipefail
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/durby}"
 STAGING_DOMAIN="${STAGING_DOMAIN:-staging.durby.tech}"
 STAGING_DEMO_DOMAIN="${STAGING_DEMO_DOMAIN:-partner-demo.durby.tech}"
+# The branch bin/release.sh deploys (ADR 0034): main for production. The dev stack is added next to it with
+# bin/add-stack.sh.
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 SWAP_SIZE="${SWAP_SIZE:-2G}"
 
 log() { printf '\n==> %s\n' "$*"; }
@@ -36,7 +39,7 @@ export DEBIAN_FRONTEND=noninteractive
 log "System packages"
 apt-get update -q
 apt-get upgrade -yq
-apt-get install -yq ca-certificates curl gnupg ufw unattended-upgrades openssl rclone age
+apt-get install -yq ca-certificates curl gnupg ufw unattended-upgrades openssl rclone age git
 
 log "Unattended security updates"
 cat >/etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
@@ -159,10 +162,11 @@ STAGING_DOMAIN=$STAGING_DOMAIN
 STAGING_DEMO_DOMAIN=$STAGING_DEMO_DOMAIN
 ACME_EMAIL=$ACME_EMAIL
 
+DEPLOY_BRANCH=$DEPLOY_BRANCH
 LOG_LEVEL=info
 IMAGE_PREFIX=ghcr.io/yuva809/durby
 
-BACKUP_RCLONE_REMOTE=storagebox:durby-staging
+BACKUP_RCLONE_REMOTE=storagebox:durby-$DEPLOY_BRANCH
 BACKUP_AGE_RECIPIENT=${BACKUP_AGE_RECIPIENT:-}
 BACKUP_HEARTBEAT_URL=
 EOF

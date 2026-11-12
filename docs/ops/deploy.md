@@ -5,9 +5,10 @@ at **https://staging.durby.tech**. Decisions and trade-offs: [ADR 0004](../adr/0
 Production is not set up yet; what it must do beyond these steps is in [production.md](production.md).
 
 ```
-GitHub: push to main ─► CI (lint, typecheck, test, build, images) ─► Deploy staging
-                                                                    ├─ build + push 3 images to GHCR (tag = commit SHA)
-                                                                    └─ SSH as deploy ─► /opt/durby/bin/deploy.sh <sha>
+GitHub: push to main / development ─► Deploy (no CI gate, ADR 0034)
+                                     └─ SSH as deploy ─► /opt/durby[-dev]/bin/release.sh
+                                                         ├─ git fetch + docker build 3 images (tag = commit SHA)
+                                                         └─ bin/deploy.sh <sha>
 
 Server /opt/durby (project "durby-staging"):
   Internet ─► :80/:443 Caddy ─┬─ /api/*  ─► api:4000 ─┐      (network "edge")
@@ -18,10 +19,10 @@ Server /opt/durby (project "durby-staging"):
 
 | Piece           | Where                                                                       |
 | --------------- | --------------------------------------------------------------------------- |
-| Images          | `ghcr.io/yuva809/durby-{api,api-migrate,web}:<sha>`                         |
+| Images          | built on the server: `<IMAGE_PREFIX>-{api,api-migrate,web}:<sha>`           |
 | Server config   | `infra/staging/` in the repo, copied on every deploy                        |
 | Secrets         | `/opt/durby/.env` on the server only (mode 600)                             |
-| Deploy workflow | `.github/workflows/deploy-staging.yml`                                      |
+| Deploy workflow | `.github/workflows/deploy.yml`                                              |
 | Backups         | `/opt/durby/backups` (7 days) + Hetzner Storage Box (7 days), age-encrypted |
 
 Server layout:
@@ -41,6 +42,48 @@ Server layout:
 
 `bin/dc` is `docker compose` with the right file, `.env` and the deployed image tag. Use it for everything:
 `bin/dc ps`, `bin/dc logs -f api`, `bin/dc exec postgres psql -U postgres durby`.
+
+## Environments and branches
+
+Both long-lived branches run on this one server, as two stacks from the same files that differ only in their `.env`
+([ADR 0034](../adr/0034-branch-environments.md)).
+
+| Branch        | Environment | Directory        | Compose project | Domain                                          | Mail UI port |
+| ------------- | ----------- | ---------------- | --------------- | ----------------------------------------------- | ------------ |
+| `main`        | production  | `/opt/durby`     | `durby-staging` | `staging.durby.tech`, `partner-demo.durby.tech` | 8025         |
+| `development` | dev         | `/opt/durby-dev` | `durby-dev`     | `dev.durby.tech`, `partner-dev.durby.tech`      | 8026         |
+
+Production's Caddy is the server's only edge and also serves the dev domains (`/opt/durby/caddy/extra/dev.caddy`),
+over the shared Docker network `durby-shared-edge`. The dev stack has no Caddy (`EDGE=false`).
+
+Feature branches merge into `development`. A production release is a merge of `development` into `main`, followed by
+`bin/release.sh` in `/opt/durby`. Run `pnpm lint && pnpm typecheck && pnpm test` before each merge: a server build
+runs no checks.
+
+### Adding the dev stack (once)
+
+1. Production must run the ADR 0034 version of the files first (shared network, Caddyfile with `extra/`): merge it
+   into `main`, add `DEPLOY_BRANCH=main` to `/opt/durby/.env` and run `bin/release.sh` there
+   ([Deploying from the server](#deploying-from-the-server-binreleasesh)).
+2. Resize the server to 8 GB RAM (Hetzner console → Rescale, CPX32; keep the disk size so you can scale back).
+3. DNS: `A` (and `AAAA`) records for `dev.durby.tech` and `partner-dev.durby.tech` → the server's IP.
+4. As root: create the stack (directory, `.env` with new secrets, Caddy site, backup timer):
+
+   ```bash
+   STACK=dev DEPLOY_BRANCH=development DOMAIN=dev.durby.tech DEMO_DOMAIN=partner-dev.durby.tech \
+     bash /opt/durby/bin/add-stack.sh
+   ```
+
+5. As deploy: build and start it, then let production's Caddy pick up the new site:
+
+   ```bash
+   cd /opt/durby-dev && bin/release.sh
+   cd /opt/durby && bin/dc exec caddy caddy reload --config /etc/caddy/Caddyfile
+   curl -fsS https://dev.durby.tech/api/v1/health
+   ```
+
+Everything in this guide works for the dev stack in `/opt/durby-dev` (`bin/dc`, `bin/backup.sh`, rollback), except
+Caddy, which is always production's. Dev mail: `ssh -L 8026:127.0.0.1:8026 <you>@<server>`.
 
 ---
 
@@ -159,8 +202,7 @@ reviewer to approve each deploy. Add these **environment secrets**:
 | `STAGING_SSH_KEY`         | contents of `~/.ssh/durby-staging-deploy` (private key)                                                                                       |
 | `STAGING_SSH_KNOWN_HOSTS` | output of `ssh-keyscan -t ed25519 <server-ip>`; compare its fingerprint with `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` on the server |
 
-No registry secret is needed: the workflow logs the server in to GHCR with the job's short-lived `GITHUB_TOKEN`
-and logs out afterwards.
+No registry secret is needed: the server builds the images itself (`bin/release.sh`).
 
 ### 8. First deploy
 
@@ -275,14 +317,18 @@ error type only (`invitation mail failed`); check `bin/dc logs api` and the prov
 
 ## Deploying
 
-Every push to `main` that passes CI deploys automatically. The workflow:
+Every push to `main` or `development` deploys that branch's stack (`.github/workflows/deploy.yml`, ADR 0034). There
+is no CI gate: run `pnpm lint && pnpm typecheck && pnpm test` and `pnpm format:check` before you push. The workflow:
 
-1. **Resolve release:** only a successful CI run for a `push` to `main`. It uses that run's `head_sha` (the commit
-   CI tested), never "current main".
-2. **Build:** pushes `durby-api`, `durby-api-migrate` and `durby-web` tagged `<sha>` and `staging`.
-3. **Deploy:** copies `infra/staging` from the same commit to `/opt/durby`, logs in to GHCR, runs
-   `bin/deploy.sh <sha>`, logs out.
-4. **Check:** `GET https://staging.durby.tech/api/v1/health` must return `status: ok` with `version: <sha>`.
+1. **Connect:** SSH as `deploy` with the `staging` environment secrets (`STAGING_SSH_*`).
+2. **Scripts:** uploads `infra/staging/bin` from the pushed commit into the stack (`/opt/durby` for `main`,
+   `/opt/durby-dev` for `development`); the stack's `.env` must already exist.
+3. **Release:** runs `bin/release.sh` there, which builds the branch head on the server and runs `bin/deploy.sh <sha>`
+   ([Deploying from the server](#deploying-from-the-server-binreleasesh)).
+4. **Check:** `GET <site>/api/v1/health` must return `status: ok`.
+
+Redeploy by hand from GitHub: Actions → **Deploy** → _Run workflow_ on the branch. Without Actions, run
+`bin/release.sh` on the server.
 
 `bin/deploy.sh <sha>` on the server:
 
@@ -311,15 +357,43 @@ Updating Postgres/Redis/Caddy images within their major version (e.g. after a se
 cd /opt/durby && bin/dc pull postgres redis caddy && bin/dc up -d --wait
 ```
 
+## Deploying from the server (`bin/release.sh`)
+
+Without GitHub Actions, deploy on the server itself. `bin/release.sh` builds the head of `DEPLOY_BRANCH` into the
+three images (tagged with the commit SHA), copies that commit's `infra/staging` files into `/opt/durby` and runs
+`bin/deploy.sh <sha>` (all the steps above). The release that is running keeps serving during the build, which
+takes a few minutes.
+
+```bash
+ssh deploy@<server>                # or ssh <you>@<server>, then: sudo -iu deploy
+cd /opt/durby
+bin/release.sh                     # build and deploy the head of DEPLOY_BRANCH
+bin/dc ps                          # api, web, worker healthy
+curl -fsS https://<domain>/api/v1/health
+```
+
+`bin/release.sh main` in `/opt/durby-dev` refuses: a stack deploys only its own branch.
+`--force-branch <branch>` overrides that, for example to try a feature branch on dev. Never use it on production.
+
+**First time on a server** (once, as deploy, in `/opt/durby`):
+
+1. Production: add `DEPLOY_BRANCH=main` to `/opt/durby/.env` (`bin/add-stack.sh` writes the dev stack's).
+2. Copy the script there; later releases update it themselves:
+   `curl -fsSLo bin/release.sh https://raw.githubusercontent.com/yuva809/durby/development/infra/staging/bin/release.sh && chmod +x bin/release.sh`.
+   For a private repository, use `scp infra/staging/bin/release.sh deploy@<server>:/opt/durby/bin/` from your
+   laptop instead.
+3. Private repository only: create a read-only deploy key, as deploy:
+   `ssh-keygen -t ed25519 -N '' -C durby-release -f ~/.ssh/id_ed25519`. Add `~/.ssh/id_ed25519.pub` under GitHub →
+   Settings → Deploy keys (read access only), then set `DEPLOY_REPO=git@github.com:yuva809/durby.git` in `.env`.
+   Run `ssh -T git@github.com` once to accept GitHub's host key.
+4. `bin/release.sh`. The first run clones the source into `/opt/durby/src` and builds without a layer cache, which
+   is the slowest build.
+
 ## Rollback
 
 Migrations are forward-only, so a rollback only swaps the app images. This is safe as long as **every migration is
 backward compatible with the previous release** (expand/contract: add columns/tables first, remove them in a later
 release once no deployed code uses them). That rule is in `CLAUDE.md`.
-
-**From GitHub:** Actions → **Deploy staging** → _Run workflow_ → `sha` = the release to go back to (see
-`state/history` or the previous successful deploy run), `skip_migrations` = on. It skips the build and redeploys
-the existing images.
 
 **On the server** (no registry access needed for the last 5 releases):
 
@@ -327,6 +401,17 @@ the existing images.
 cd /opt/durby
 cat state/previous.sha
 bin/deploy.sh --skip-migrations "$(cat state/previous.sha)"
+```
+
+**A release older than the last 5** has no images on the host and no registry copy to pull (with
+`bin/release.sh`). Build it from the source checkout, then deploy it:
+
+```bash
+cd /opt/durby/src && git fetch origin && git checkout --detach <sha>
+for t in "api apps/api/Dockerfile runtime" "api-migrate apps/api/Dockerfile migrate" "web apps/web/Dockerfile runtime"; do
+  set -- $t; docker build -f "$2" --target "$3" --build-arg APP_VERSION=<sha> -t "ghcr.io/yuva809/durby-$1:<sha>" .
+done
+cd /opt/durby && bin/deploy.sh --skip-migrations <sha>
 ```
 
 If a migration itself broke data, restore the last good backup (below) and then deploy the matching release.

@@ -11,7 +11,18 @@ if [[ -z "${IMAGE_TAG:-}" && -f "$DEPLOY_DIR/state/deployed.sha" ]]; then
 fi
 export IMAGE_TAG="${IMAGE_TAG:-none}"
 
+env_value() { sed -n "s/^$1=//p" "$DEPLOY_DIR/.env" 2>/dev/null | tail -n 1 | tr -d "'\""; }
+
+# A second stack on this host (ADR 0034) has its own project name and no edge (Caddy) of its own.
+project=()
+name="$(env_value COMPOSE_PROJECT_NAME)"
+[[ -n "$name" ]] && project=(-p "$name")
+if [[ -z "${COMPOSE_PROFILES:-}" && "$(env_value EDGE)" != false ]]; then
+  export COMPOSE_PROFILES=edge
+fi
+
 exec docker compose \
+  "${project[@]}" \
   --project-directory "$DEPLOY_DIR" \
   -f "$DEPLOY_DIR/docker-compose.staging.yml" \
   --env-file "$DEPLOY_DIR/.env" \
