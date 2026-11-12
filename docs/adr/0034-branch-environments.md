@@ -14,22 +14,32 @@ pushed to GHCR and pulled by the server. Two things changed:
 
 ## Decisions
 
-1. **One environment per long-lived branch, each on its own server.** Branches map to environments like this:
+1. **One environment per long-lived branch, both on the same server.** Branches map to environments like this:
 
-   | Branch        | Environment | Server                                                       | Domain               |
-   | ------------- | ----------- | ------------------------------------------------------------ | -------------------- |
-   | `main`        | production  | the existing server (`/opt/durby`)                           | `staging.durby.tech` |
-   | `development` | dev         | a new Hetzner server, set up with the same `server-setup.sh` | `dev.durby.tech`     |
+   | Branch        | Environment | Directory, compose project    | Domain               |
+   | ------------- | ----------- | ----------------------------- | -------------------- |
+   | `main`        | production  | `/opt/durby`, `durby-staging` | `staging.durby.tech` |
+   | `development` | dev         | `/opt/durby-dev`, `durby-dev` | `dev.durby.tech`     |
 
-   `staging.durby.tech` keeps its name and data and now serves production. Each server needs its own demo domain
-   (`STAGING_DEMO_DOMAIN`) and its own backup folder on the Storage Box (`BACKUP_RCLONE_REMOTE`).
+   `staging.durby.tech` keeps its name and data and now serves production. Both stacks run from the same
+   `infra/staging/` files and differ only in their `.env`, never in code. Each has its own Postgres, Redis, volumes,
+   secrets, Mailpit and backups, so a dev deploy can't touch production data.
 
-   Both run the same stack from `infra/staging/`. They differ only in `/opt/durby/.env` (domains, secrets, mail,
-   `DEPLOY_BRANCH`), never in code. Separate servers keep each stack inside its memory budget, keep ports 80/443
-   free for one Caddy each, and stop a dev deploy from touching production data. The compose project name stays
-   `durby-staging` on both servers: renaming it would orphan the existing Postgres volume.
+   - **One edge.** Only one Caddy can own ports 80/443, so production's Caddy serves both stacks. The dev stack sets
+     `EDGE=false`: `bin/dc` leaves out the `edge` profile, so it has no Caddy. Its site is
+     `/opt/durby/caddy/extra/dev.caddy`, written by `bin/add-stack.sh` and imported by the Caddyfile
+     (`import extra/*.caddy`); deploys never remove it.
+   - **Shared network.** Caddy reaches each stack's api and web over the external network `durby-shared-edge`, by
+     unique aliases (`prod-api`, `dev-web`, …, from `SHARED_ALIAS`). The plain service names `api`/`web` exist on
+     that network for both stacks, so nothing dials them there: Caddy and web's `API_URL` use the aliases. Postgres,
+     Redis and Mailpit stay on each stack's internal networks.
+   - **No shared names.** The dev `.env` sets its own project name (`COMPOSE_PROJECT_NAME=durby-dev`), Mailpit UI port
+     (8026), image prefix (`local/durby-dev`, so neither stack's image cleanup deletes the other's releases), Storage
+     Box folder (`durby-development`) and backup timer (`durby-backup-dev`, 03:30).
+   - **Memory.** Postgres limits are `.env` overrides; the dev stack uses half of production's. Two stacks plus a
+     build on the server need about 8 GB, so the server should be resized to that (Hetzner CPX32).
 
-2. **Code reaches production through `development`.** Feature branches merge into `development` (the dev server).
+2. **Code reaches production through `development`.** Feature branches merge into `development` (the dev stack).
    A production release is a merge of `development` into `main`. The expand/contract migration rule (ADR 0004)
    still applies: production can be a few releases behind dev.
 
@@ -46,7 +56,7 @@ pushed to GHCR and pulled by the server. Two things changed:
    and migrations, health checks, automatic rollback and image retention work as before.
 
 4. **The Actions workflows stay.** `ci.yml` also runs on pushes to `development`. `deploy-staging.yml` keeps
-   deploying `main` to the existing server when Actions is available, which is still correct. The dev server is
+   deploying `main` to the existing server when Actions is available, which is still correct. The dev stack is
    deployed only with `bin/release.sh`.
 
 ## Consequences

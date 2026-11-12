@@ -7,7 +7,7 @@
 #   bin/release.sh --force-branch <branch>
 #                                  deploy another branch anyway (never on production)
 #
-# Each server follows one branch: the dev server `development`, production `main` (docs/ops/deploy.md →
+# Each stack follows one branch: the dev stack `development`, production `main` (docs/ops/deploy.md →
 # Environments and branches). Run it as deploy, in /opt/durby.
 set -euo pipefail
 
@@ -28,11 +28,11 @@ if [[ "${1:-}" == "--force-branch" ]]; then
   shift
 fi
 configured="$(env_value DEPLOY_BRANCH)"
-[[ -n "$configured" ]] || die "set DEPLOY_BRANCH in $DEPLOY_DIR/.env (development on the dev server, main on production)"
+[[ -n "$configured" ]] || die "set DEPLOY_BRANCH in $DEPLOY_DIR/.env (main for production, development for the dev stack)"
 branch="${1:-$configured}"
 [[ "$branch" =~ ^[A-Za-z0-9._/-]+$ ]] || die "not a branch name: $branch"
 if [[ "$branch" != "$configured" && "$force" != true ]]; then
-  die "this server follows $configured, not $branch (use --force-branch to deploy it anyway)"
+  die "this stack follows $configured, not $branch (use --force-branch to deploy it anyway)"
 fi
 repo="$(env_value DEPLOY_REPO)"
 repo="${repo:-https://github.com/yuva809/durby.git}"

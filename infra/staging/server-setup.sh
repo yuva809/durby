@@ -19,8 +19,9 @@ set -euo pipefail
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/durby}"
 STAGING_DOMAIN="${STAGING_DOMAIN:-staging.durby.tech}"
 STAGING_DEMO_DOMAIN="${STAGING_DEMO_DOMAIN:-partner-demo.durby.tech}"
-# The branch bin/release.sh deploys (ADR 0034): development on the dev server, main on production.
-DEPLOY_BRANCH="${DEPLOY_BRANCH:-development}"
+# The branch bin/release.sh deploys (ADR 0034): main for production. The dev stack is added next to it with
+# bin/add-stack.sh.
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 SWAP_SIZE="${SWAP_SIZE:-2G}"
 
 log() { printf '\n==> %s\n' "$*"; }

@@ -44,27 +44,46 @@ Server layout:
 
 ## Environments and branches
 
-Each long-lived branch has its own server, running this same stack. Only `/opt/durby/.env` differs
+Both long-lived branches run on this one server, as two stacks from the same files that differ only in their `.env`
 ([ADR 0034](../adr/0034-branch-environments.md)).
 
-| Branch        | Environment | Server                      | Domain               | `.env`                      |
-| ------------- | ----------- | --------------------------- | -------------------- | --------------------------- |
-| `main`        | production  | the existing server         | `staging.durby.tech` | `DEPLOY_BRANCH=main`        |
-| `development` | dev         | a second server (see below) | `dev.durby.tech`     | `DEPLOY_BRANCH=development` |
+| Branch        | Environment | Directory        | Compose project | Domain                                          | Mail UI port |
+| ------------- | ----------- | ---------------- | --------------- | ----------------------------------------------- | ------------ |
+| `main`        | production  | `/opt/durby`     | `durby-staging` | `staging.durby.tech`, `partner-demo.durby.tech` | 8025         |
+| `development` | dev         | `/opt/durby-dev` | `durby-dev`     | `dev.durby.tech`, `partner-dev.durby.tech`      | 8026         |
+
+Production's Caddy is the server's only edge and also serves the dev domains (`/opt/durby/caddy/extra/dev.caddy`),
+over the shared Docker network `durby-shared-edge`. The dev stack has no Caddy (`EDGE=false`).
 
 Feature branches merge into `development`. A production release is a merge of `development` into `main`, followed by
-`bin/release.sh` on the production server. Run `pnpm lint && pnpm typecheck && pnpm test` before each merge: a
-server build runs no checks.
+`bin/release.sh` in `/opt/durby`. Run `pnpm lint && pnpm typecheck && pnpm test` before each merge: a server build
+runs no checks.
 
-**Setting up the dev server:** a new Hetzner server, set up with the steps below and these values for
-`server-setup.sh`, so it never shares a name, certificate or backup folder with production:
+### Adding the dev stack (once)
 
-```bash
-STAGING_DOMAIN=dev.durby.tech STAGING_DEMO_DOMAIN=partner-dev.durby.tech DEPLOY_BRANCH=development ADMIN_USER=... ADMIN_SSH_KEY=... DEPLOY_SSH_KEY=... ACME_EMAIL=... BACKUP_AGE_RECIPIENT=... bash /root/server-setup.sh
-```
+1. Production must run the ADR 0034 version of the files first (shared network, Caddyfile with `extra/`): merge it
+   into `main`, add `DEPLOY_BRANCH=main` to `/opt/durby/.env` and run `bin/release.sh` there
+   ([Deploying from the server](#deploying-from-the-server-binreleasesh)).
+2. Resize the server to 8 GB RAM (Hetzner console → Rescale, CPX32; keep the disk size so you can scale back).
+3. DNS: `A` (and `AAAA`) records for `dev.durby.tech` and `partner-dev.durby.tech` → the server's IP.
+4. As root: create the stack (directory, `.env` with new secrets, Caddy site, backup timer):
 
-DNS: `A` records for `dev.durby.tech` and `partner-dev.durby.tech` to the new server. The Storage Box folder is
-`durby-development`. Then deploy with `bin/release.sh` (below).
+   ```bash
+   STACK=dev DEPLOY_BRANCH=development DOMAIN=dev.durby.tech DEMO_DOMAIN=partner-dev.durby.tech \
+     bash /opt/durby/bin/add-stack.sh
+   ```
+
+5. As deploy: build and start it, then let production's Caddy pick up the new site:
+
+   ```bash
+   cd /opt/durby-dev && bin/release.sh
+   cd /opt/durby && bin/dc exec caddy caddy reload --config /etc/caddy/Caddyfile
+   curl -fsS https://dev.durby.tech/api/v1/health
+   ```
+
+Everything in this guide works for the dev stack in `/opt/durby-dev` (`bin/dc`, `bin/backup.sh`, rollback), except
+Caddy, which is always production's. Dev mail: `ssh -L 8026:127.0.0.1:8026 <you>@<server>`.
+
 ---
 
 ## Server setup (once)
@@ -349,12 +368,12 @@ bin/dc ps                          # api, web, worker healthy
 curl -fsS https://<domain>/api/v1/health
 ```
 
-`bin/release.sh main` on the dev server refuses: a server deploys only its own branch.
+`bin/release.sh main` in `/opt/durby-dev` refuses: a stack deploys only its own branch.
 `--force-branch <branch>` overrides that, for example to try a feature branch on dev. Never use it on production.
 
 **First time on a server** (once, as deploy, in `/opt/durby`):
 
-1. Add `DEPLOY_BRANCH=development` (dev) or `DEPLOY_BRANCH=main` (production) to `.env`.
+1. Production: add `DEPLOY_BRANCH=main` to `/opt/durby/.env` (`bin/add-stack.sh` writes the dev stack's).
 2. Copy the script there; later releases update it themselves:
    `curl -fsSLo bin/release.sh https://raw.githubusercontent.com/yuva809/durby/development/infra/staging/bin/release.sh && chmod +x bin/release.sh`.
    For a private repository, use `scp infra/staging/bin/release.sh deploy@<server>:/opt/durby/bin/` from your

@@ -6,10 +6,10 @@ into the full guide when production is built.
 
 ## Branch and deploys
 
-Production follows `main` and runs on the existing server at `staging.durby.tech` ([ADR 0034](../adr/0034-branch-environments.md)).
-The dev server follows `development` ([deploy.md](deploy.md) → Environments and branches). Release by merging
-`development` into `main`, then run `bin/release.sh` on this server ([deploy.md](deploy.md) → Deploying from the
-server).
+Production follows `main` and runs in `/opt/durby` at `staging.durby.tech`; the dev stack (`development`) runs next to
+it on the same server in `/opt/durby-dev` ([ADR 0034](../adr/0034-branch-environments.md), [deploy.md](deploy.md) →
+Environments and branches). Release by merging `development` into `main`, then run `bin/release.sh` in `/opt/durby`.
+Production's Caddy also serves the dev domains: changes to the edge (Caddyfile, ports) affect both.
 
 ## Moving app.durby.tech from Vercel to Hetzner
 
