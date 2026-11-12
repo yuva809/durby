@@ -2,8 +2,10 @@ import type { Order, OrderLine } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import {
   billLines,
+  checkLines,
   durationLabel,
   fromCents,
+  latestChecks,
   minutesSince,
   moneyFormat,
   rate,
@@ -73,6 +75,7 @@ describe('billLines', () => {
     note: null,
     voidsLineId: null,
     remaining: 1,
+    billedQuantity: 0,
     total: '6.90',
     createdAt: '2026-10-27T12:00:00.000Z',
     ...overrides,
@@ -120,5 +123,64 @@ describe('billLines', () => {
   it('keeps different prices of the same product apart', () => {
     const bill = billLines(order([line(1, {})], [line(2, { unitPrice: '7.40' })]));
     expect(bill.map((l) => l.unitPrice)).toEqual(['6.90', '7.40']);
+  });
+});
+
+describe('checkLines and latestChecks (docs/modules/pos.md → Step 4)', () => {
+  const item = (name: string, quantity: number, unitPrice = '6.90') => ({
+    kind: 'item' as const,
+    name,
+    quantity,
+    unitPrice,
+    taxRate: '7.00',
+    total: times(unitPrice, quantity),
+  });
+
+  it('combines the items of a check by name and price, in billing order', () => {
+    const lines = checkLines({
+      lines: [item('Soup', 1), item('Cola', 1, '3.80'), item('Soup', 2), item('Soup', 1, '7.40')],
+    });
+    expect(lines.map((l) => [l.name, l.quantity, l.total])).toEqual([
+      ['Soup', 3, '20.70'],
+      ['Cola', 1, '3.80'],
+      ['Soup', 1, '7.40'],
+    ]);
+  });
+
+  it('keeps other lines (discounts, shares) as they are', () => {
+    const lines = checkLines({
+      lines: [
+        item('Soup', 1),
+        {
+          kind: 'discount',
+          name: 'Complaint',
+          quantity: null,
+          unitPrice: null,
+          taxRate: '7.00',
+          total: '-1.00',
+        },
+      ],
+    });
+    expect(lines.map((l) => [l.name, l.total])).toEqual([
+      ['Soup', '6.90'],
+      ['Complaint', '-1.00'],
+    ]);
+  });
+
+  it("reprints the newest bill that isn't cancelled", () => {
+    const bill = (id: string, cancelled: boolean) => ({
+      id,
+      kind: 'single' as const,
+      shareCount: null,
+      createdAt: '2026-11-12T12:00:00.000Z',
+      cancelled,
+      checks: [{ id: `${id}-check`, number: id, shareIndex: null, gross: '1.00' }],
+    });
+    expect(latestChecks({ bills: [] })).toEqual([]);
+    expect(
+      latestChecks({ bills: [bill('a', false), bill('b', false), bill('c', true)] }).map(
+        (c) => c.id,
+      ),
+    ).toEqual(['b-check']);
   });
 });

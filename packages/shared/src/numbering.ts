@@ -87,6 +87,15 @@ export const NUMBER_SERIES = {
     pattern: '{prefix}-{YYYY}-{seq:6}',
     resetPolicy: 'yearly',
   },
+  /** Guest checks, printed from a bill (docs/modules/pos.md → Step 4, ADR 0036). */
+  'pos.guestCheck': {
+    label: 'platform.numbering.series.posGuestCheck.name',
+    description: 'platform.numbering.series.posGuestCheck.description',
+    feature: 'pos',
+    prefix: 'CHK',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
   // docs/modules/reservations.md → Number series: the guest-facing booking reference.
   'reservations.booking': {
     label: 'platform.numbering.series.reservationsBooking.name',

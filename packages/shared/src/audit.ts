@@ -39,6 +39,7 @@ export const AUDIT_ENTITY_TYPES = [
   'printer_command',
   'printer',
   'print_job',
+  'pos_bill',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -218,6 +219,8 @@ export const AUDIT_ACTIONS = {
   'pos.order.opened': { entityType: 'pos_order', label: 'pos.audit.actions.orderOpened' },
   'pos.order.closed': { entityType: 'pos_order', label: 'pos.audit.actions.orderClosed' },
   'pos.order.updated': { entityType: 'pos_order', label: 'pos.audit.actions.orderUpdated' },
+  'pos.bill.created': { entityType: 'pos_bill', label: 'pos.audit.actions.billCreated' },
+  'pos.bill.cancelled': { entityType: 'pos_bill', label: 'pos.audit.actions.billCancelled' },
   'pos.kitchen_ticket.created': {
     entityType: 'kitchen_ticket',
     label: 'pos.audit.actions.kitchenTicketCreated',
@@ -479,6 +482,17 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   /** Never line notes (free text). */
   kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'station', 'direct', 'status', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
+  /** `gross`: decimal string; `orderIds`, `checkNumbers`: string arrays. Never the cancel reason (free text). */
+  pos_bill: [
+    'id',
+    'locationId',
+    'kind',
+    'shareCount',
+    'orderIds',
+    'checkNumbers',
+    'gross',
+    'cancelled',
+  ],
   /** `resultCode`: the answer code, or `found` for a search; `printerCount`: printers a search found. */
   printer_command: [
     'id',
@@ -496,6 +510,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'kind',
     'orderId',
     'ticketId',
+    'checkId',
     'status',
     'attempts',
     'lastCode',

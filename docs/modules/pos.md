@@ -14,7 +14,9 @@ yet: they need a TSE (`pos.fiscal`, a later step).
 | 3    | Orders: a waiter picks a table, adds products, confirms → order number + kitchen ticket print view.                         |
 | 4    | Guest checks ("Zwischenrechnung", not a receipt): print from the table; billing counter lists open, recent and past checks. |
 
-Step 4 gets its own plan and updates this spec before it is built.
+Step 4 is built in parts (below, [ADR 0036](../adr/0036-guest-checks-splits-merges-discounts.md)): 4a guest checks
+and the billing counter, 4b discounts and comps, 4c split by item, 4d split equally, 4e merge. Tips wait for
+payments (the fiscal module).
 
 ## Step 1: dining tables
 
@@ -247,8 +249,8 @@ would add them.
   **No VAT breakdown and no TSE data** (decision 2026-11-02; the till's own screen still shows VAT per rate). A
   role without it (a custom role) prints the **order slip**: table,
   order number, time, the order's items (combined) with quantities and notes, item count; no prices, VAT or totals.
-  Waiters got `pos.bills.print` on 2026-10-29 (ADR 0016 §8 note): they bill and check out like the cashier. For now the key gates the web
-  print; step 4's guest-check endpoints will require it in the api.
+  Waiters got `pos.bills.print` on 2026-10-29 (ADR 0016 §8 note): they bill and check out like the cashier. It gates the web print and,
+  since step 4, the guest-check endpoints.
 
 - **Paper:** everything printed from the till (bill, order slip, kitchen ticket) is laid out for an **80 mm
   thermal roll**: `@page { size: 80mm 297mm; margin: 0 }` (the drivers' "roll paper 80 x 297 mm", cut after the
@@ -273,6 +275,116 @@ would add them.
 footer }`, the effective values there. An unknown or unreadable location → 404 `pos.location_not_found`.
 - Web: Settings → **Bill** edits both for the organization or one location, with a preview of the real bill. The
   logo is shrunk in the browser to at most 384 × 192 px, grayscale, before it is saved.
+
+## Step 4: billing & checkout (ADR 0036)
+
+A **bill** is one act of billing: items of 1–10 open orders at one location (more than one is a merge). What it
+prints is a **guest check**, numbered and reprinted with the same number. Still no payment and no receipt
+(ADR 0016 §3): every check carries the "Interim bill – not a fiscal receipt" notice.
+
+```
+PosBill                    pos_bills                 single | equal (share_count 2–20)
+ ├─ PosBillOrder           pos_bill_orders           the orders it covers
+ ├─ PosBillItem            pos_bill_items            billed portions of order lines (snapshot name, price, rate)
+ ├─ PosBillDiscount        pos_bill_discounts        order discounts it takes in, per VAT rate
+ ├─ PosGuestCheck          pos_guest_checks          numbered CHK-{YYYY}-{seq:6}; one, or one per share
+ │   └─ PosGuestCheckShare pos_guest_check_shares    a share's gross per VAT rate
+ └─ PosBillCancellation    pos_bill_cancellations    at most one; frees the items
+PosOrderDiscount           pos_order_discounts       line or whole order; percent | amount; reason; voids_discount_id
+ └─ PosOrderDiscountPart   pos_order_discount_parts  amount per VAT rate
+```
+
+All of these are append-only (no UPDATE/DELETE for `durby_app`, statement triggers) tenant tables with RLS.
+
+- **Billed quantity** of an order line = its portions on bills that are not cancelled; never more than the line's net
+  quantity (after voids). Bills, voids and discounts lock the order row(s), in id order.
+- **Voids** take only unbilled portions (`409 pos.line_billed`: cancel the bill first).
+- **Number series** `pos.guestCheck` (feature `pos`, `CHK-{YYYY}-{seq:6}`, yearly), allocated last in the bill's
+  transaction, one per check.
+- **Totals** of a bill: its items plus its discount rows, through `orderTotals` (gross per VAT rate). A share check's
+  gross per rate is the bill's divided by n in cents, the remainder cents on the first shares (4d).
+- **Discounts** (4b): a line or the whole order, `percent` (0 < v ≤ 100) or `amount` (0 < v ≤ what is left), with a
+  reason (1–40 characters). A comp is a 100 % line discount. The amount is fixed when given, from unbilled items: a
+  line discount on the line's unbilled gross at its rate, a whole-order discount spread over the rates pro rata
+  (leftover cent on the largest rate). Only unbilled items take discounts; a discounted line is billed whole; a
+  whole-order discount goes only onto a bill that takes everything unbilled (`409 pos.discount_needs_full_bill`).
+  Removing one writes a counter-row.
+- **Closing** an order stays separate from billing (no payments yet).
+
+### Permissions (location scope)
+
+| Key                   | Grants                                       | admin | manager | waiter | cashier | others |
+| --------------------- | -------------------------------------------- | ----- | ------- | ------ | ------- | ------ |
+| `pos.bills.print`     | bill, list and reprint checks (existing key) | ✓     | ✓       | ✓      | ✓       |        |
+| `pos.bills.cancel`    | cancel a bill                                | ✓     | ✓       |        |         |        |
+| `pos.orders.discount` | give or remove a discount or comp            | ✓     | ✓       |        |         |        |
+
+The owner holds every key. A bill's orders must be readable (`pos.orders.read`) at their location, else 404.
+
+### Setting
+
+`pos.discountReasons` `{ reasons }`: 0–20 reasons of 1–40 characters, organization or location scope, default none.
+With none, the till offers the built-in reasons (labels `pos.discount.reasons.*`: complaint, staff meal, regular
+guest, promotion, on the house).
+
+### API (`/api/v1`, `@RequireFeature('pos')`)
+
+| Method + path                                     | Permission            | Idempotency                 | Body / query                                                                  |
+| ------------------------------------------------- | --------------------- | --------------------------- | ----------------------------------------------------------------------------- |
+| `POST /pos/bills`                                 | `pos.bills.print`     | `completion: 'transaction'` | `{ orderIds: 1–10, items?: [{ orderLineId, quantity 1–99 }], shares?: 2–20 }` |
+| `GET /pos/bills/:id`                              | `pos.bills.print`     |                             |                                                                               |
+| `POST /pos/bills/:id/cancel`                      | `pos.bills.cancel`    | `completion: 'transaction'` | `{ reason: 1–200 }`; cancelling a cancelled bill changes nothing              |
+| `GET /pos/checks`                                 | `pos.bills.print`     |                             | `?locationId=&view=recent or history&from=&to=&q=&cursor=`; 50 per page       |
+| `GET /pos/checks/:id`                             | `pos.bills.print`     |                             | the printable check                                                           |
+| `POST /pos/orders/:id/discounts`                  | `pos.orders.discount` | `completion: 'transaction'` | `{ orderLineId?, kind: percent or amount, value, reason }`                    |
+| `POST /pos/orders/:id/discounts/:discountId/void` | `pos.orders.discount` | `completion: 'transaction'` | no body                                                                       |
+
+- `POST /pos/bills` without `items` bills everything unbilled on its orders; with `shares` it splits equally (then
+  `items` is not allowed). The response is the bill with its checks.
+- `recent` = checks of the last 24 hours, newest first; `history` = `from`/`to` (dates) and `q` (part of a check
+  number), newest first, `cursor` for the next page. A check carries its bill's orders (numbers, tables), its lines
+  (items or shares), discount lines, totals, `shareIndex`/`shareCount` and `cancelled`.
+- The order (`GET /pos/orders/:id`, the till) gains `billedQuantity` per line, `discounts`, `bills` (with their
+  checks) and `unbilled` (gross still to bill, after discounts); its totals include discounts.
+- `POST /pos/print-jobs/bill` takes an optional `checkId` (a check of that order); the job prints that check. Jobs
+  without one print from the order, as before.
+
+### Errors
+
+| Code                           | Status | When                                                                |
+| ------------------------------ | ------ | ------------------------------------------------------------------- |
+| `pos.bill_not_found`           | 404    | unknown bill, another tenant's, or a location the caller can't read |
+| `pos.check_not_found`          | 404    | the same, for a check                                               |
+| `pos.nothing_to_bill`          | 409    | nothing unbilled on the orders (or an empty item list)              |
+| `pos.line_billed`              | 409    | billing more of a line than is unbilled, or voiding billed portions |
+| `pos.orders_not_same_location` | 409    | a bill over orders of different locations                           |
+| `pos.discount_needs_full_bill` | 409    | a whole-order discount and a bill that leaves items unbilled        |
+| `pos.discount_line_whole`      | 409    | billing part of a discounted line                                   |
+| `pos.discount_not_found`       | 404    | voiding an unknown discount of this order                           |
+| `pos.discount_invalid`         | 409    | a value above 100 % or above what is left, or on billed items       |
+| `pos.order_closed`             | 409    | billing or discounting a closed order                               |
+
+### Audit
+
+| Action                | Entity      | Snapshot fields                                                               |
+| --------------------- | ----------- | ----------------------------------------------------------------------------- |
+| `pos.bill.created`    | `pos_bill`  | `id`, `locationId`, `kind`, `shareCount`, `orderIds`, `checkNumbers`, `gross` |
+| `pos.bill.cancelled`  | `pos_bill`  | the same                                                                      |
+| `pos.discount.added`  | `pos_order` | `id`, `orderId`, `orderLineId`, `kind`, `value`, `amount`                     |
+| `pos.discount.voided` | `pos_order` | the same                                                                      |
+
+Reasons are free text and stay out of snapshots.
+
+### Web
+
+- **Checkout** (`/checkout`, nav "Checkout", `pos.bills.print`): **Open tables** (table, order, total, unbilled;
+  opens the till), **Recent checks** (24 h), **History** (dates, number search, more pages). A check opens as its
+  receipt with **Reprint** (same number) and, with `pos.bills.cancel`, **Cancel bill** (with a reason).
+- **Till:** **Print bill** bills everything unbilled and prints the check (nothing unbilled: reprints the last
+  check); **Split** (by item: quantities per line; equally: number of guests, each share shown); **Merge** (other
+  open tables of the location into one bill); **Discount** (with `pos.orders.discount`: line or order, percent or
+  amount, reason); lines show how much is billed; the order's bills list their checks.
+- **Settings → Service:** the discount reasons.
 
 ## QR menu (ADR 0026)
 

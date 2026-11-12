@@ -2,6 +2,7 @@
 
 import {
   type BillLayout,
+  type GuestCheck,
   type Order,
   PRINT_JOB_POLL_MS,
   type Printer,
@@ -11,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useAuth } from '../../app/providers';
 import { loadBillLayout } from '../../lib/pos/api';
+import { loadCheck } from '../../lib/pos/bills';
 import { billLines } from '../../lib/pos/format';
 import { loadOrder, oneAtATime, pollPrintJobs } from '../../lib/pos/print-jobs';
 import { preloadBillRenderer, renderBillImage } from '../../lib/print/bill-image';
@@ -20,10 +22,17 @@ import { useTillLocation } from '../../lib/print/till-location';
 import { useBrand } from '../theme-provider';
 import { KitchenTicketView } from './kitchen-ticket';
 import { MoneyProvider } from './money';
+import { CheckReceipt } from './check-receipt';
 import { Receipt } from './receipt';
 
 /** What is drawn for the job being printed. */
-type Drawn = { job: PrintJob; order: Order; layout: BillLayout | null } | null;
+type Drawn = {
+  job: PrintJob;
+  order: Order;
+  /** The guest check a bill job prints (ADR 0036); null: the bill is drawn from the order. */
+  check: GuestCheck | null;
+  layout: BillLayout | null;
+} | null;
 
 /** The location's printers and bill layout are read again after this long (a printer switched on or moved). */
 const LAYOUT_TTL_MS = 30_000;
@@ -76,11 +85,13 @@ function Runner() {
       return layout?.data ?? null;
     };
     // One hidden page: jobs for different printers print at the same time, but are drawn one after another.
-    const draw = oneAtATime(async (job: PrintJob, order: Order, widthDots: number) => {
-      flushSync(() => setDrawn({ job, order, layout: layout?.data ?? null }));
-      if (!page.current) throw new Error('nothing drawn');
-      return renderBillImage(page.current, widthDots);
-    });
+    const draw = oneAtATime(
+      async (job: PrintJob, order: Order, check: GuestCheck | null, widthDots: number) => {
+        flushSync(() => setDrawn({ job, order, check, layout: layout?.data ?? null }));
+        if (!page.current) throw new Error('nothing drawn');
+        return renderBillImage(page.current, widthDots);
+      },
+    );
     const tick = async () => {
       if (busy || stopped) return;
       busy = true;
@@ -94,7 +105,9 @@ function Runner() {
           render: async (job, target) => {
             const order = await loadOrder(store, job.orderId);
             if (!order.ok) throw new Error('order not readable');
-            return draw(job, order.data, target.widthDots);
+            const check = job.checkId ? await loadCheck(store, job.checkId) : null;
+            if (check && !check.ok) throw new Error('check not readable');
+            return draw(job, order.data, check?.data ?? null, target.widthDots);
           },
         });
       } finally {
@@ -124,6 +137,14 @@ function Runner() {
             tableName={order.tableName}
             orderNumber={order.number}
             organizationName={organizationName}
+          />
+        ) : job.kind === 'bill' && drawn.check ? (
+          <CheckReceipt
+            check={drawn.check}
+            layout={drawn.layout}
+            organizationName={organizationName}
+            productName={productName}
+            printedAt={new Date()}
           />
         ) : job.kind === 'bill' ? (
           <Receipt

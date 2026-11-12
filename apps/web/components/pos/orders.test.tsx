@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { Order } from '@durby/shared';
+import type { GuestCheck, Order } from '@durby/shared';
 import { type SystemRole, systemRolePermissions } from '@durby/shared';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
@@ -94,6 +94,7 @@ const line = (
   note: null,
   voidsLineId: null,
   remaining,
+  billedQuantity: 0,
   total: times(p.price, quantity),
   createdAt: '2026-10-27T12:00:00.000Z',
 });
@@ -129,6 +130,8 @@ const ORDER: Order = {
     byTaxRate: [{ taxRate: '7.00', gross: '13.80', net: '12.90', tax: '0.90' }],
   },
   waiterName: 'Priya',
+  bills: [],
+  unbilled: '13.80',
 };
 
 function signedInAs(role: SystemRole, without: string[] = []) {
@@ -170,10 +173,71 @@ const menu = {
   'GET /api/v1/catalog/products': () => Response.json({ data: [SOUP, COLA] }),
 };
 
+/** The guest check a bill of the whole order prints (docs/modules/pos.md → Step 4). */
+const CHECK_ID = id(70);
+function checkOf(order: Order): GuestCheck {
+  const items = order.tickets.flatMap((x) => x.lines.filter((l) => l.remaining > 0));
+  return {
+    id: CHECK_ID,
+    number: 'CHK-2026-000001',
+    billId: id(71),
+    locationId: order.locationId,
+    shareIndex: null,
+    shareCount: null,
+    createdAt: '2026-10-27T12:30:00.000Z',
+    cancelled: false,
+    cancelledAt: null,
+    orders: [
+      {
+        id: order.id,
+        number: order.number,
+        tableId: order.tableId,
+        tableName: order.tableName,
+        covers: order.covers,
+        waiterName: order.waiterName,
+      },
+    ],
+    lines: items.map((l) => ({
+      kind: 'item' as const,
+      name: l.productName,
+      quantity: l.remaining,
+      unitPrice: l.unitPrice,
+      taxRate: l.taxRate,
+      total: times(l.unitPrice, l.remaining),
+    })),
+    totals: order.totals,
+  };
+}
+
 const withOrder = (order: Order | null) => ({
   ...menu,
   [`GET /api/v1/pos/tables/${TABLE.id}/order`]: () =>
     Response.json({ table: TABLE, order, processing: ON }),
+  ...(order && {
+    'POST /api/v1/pos/bills': () =>
+      Response.json(
+        {
+          id: id(71),
+          kind: 'single',
+          shareCount: null,
+          createdAt: '2026-10-27T12:30:00.000Z',
+          cancelled: false,
+          checks: [
+            {
+              id: CHECK_ID,
+              number: 'CHK-2026-000001',
+              shareIndex: null,
+              gross: order.totals.gross,
+            },
+          ],
+          locationId: order.locationId,
+          orderIds: [order.id],
+          gross: order.totals.gross,
+        },
+        { status: 201 },
+      ),
+    [`GET /api/v1/pos/checks/${CHECK_ID}`]: () => Response.json(checkOf(order)),
+  }),
 });
 
 describe('FloorPage', () => {
@@ -694,6 +758,42 @@ describe('OrderPage (till)', () => {
     expect(screen.getByTestId('close-order')).toBeTruthy();
   });
 
+  it('bills what is unbilled once; with everything billed it reprints the check, same number', async () => {
+    signedInAs('cashier');
+    const writes = api(withOrder(ORDER));
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    await userEvent.click(await screen.findByTestId('print-bill'));
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    expect(writes.filter((w) => w.path === '/api/v1/pos/bills').map((w) => w.body)).toEqual([
+      { orderIds: [ORDER.id] },
+    ]);
+    cleanup();
+
+    const billed: Order = {
+      ...ORDER,
+      unbilled: '0.00',
+      bills: [
+        {
+          id: id(71),
+          kind: 'single',
+          shareCount: null,
+          createdAt: '2026-10-27T12:30:00.000Z',
+          cancelled: false,
+          checks: [{ id: CHECK_ID, number: 'CHK-2026-000001', shareIndex: null, gross: '13.80' }],
+        },
+      ],
+    };
+    const again = api(withOrder(billed));
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    expect((await screen.findByTestId('print-bill')).textContent).toContain('Reprint bill');
+    expect(screen.getByTestId('order-check').textContent).toContain('CHK-2026-000001');
+    await userEvent.click(screen.getByTestId('print-bill'));
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(2));
+    expect(again.filter((w) => w.path === '/api/v1/pos/bills')).toEqual([]);
+    const printed = within(document.getElementById('print-root')!).getByTestId('printed-bill');
+    expect(within(printed).getByTestId('bill-number').textContent).toBe('Bill no. CHK-2026-000001');
+  });
+
   it('lets a cashier see and print the bill with prices, without the menu', async () => {
     signedInAs('cashier');
     api({
@@ -727,7 +827,7 @@ describe('OrderPage (till)', () => {
     expect(header.textContent).toBe('Bay Leaf+49 30 1234567www.bayleaf.example');
     expect(within(printed).getByTestId('bill-waiter').textContent).toBe('Waiter: Priya');
     expect(within(printed).getByTestId('bill-table').textContent).toBe('Table T1 · Guests 3');
-    expect(within(printed).getByTestId('bill-number').textContent).toBe(`Bill no. ${ORDER.number}`);
+    expect(within(printed).getByTestId('bill-number').textContent).toBe('Bill no. CHK-2026-000001');
     expect(within(printed).getAllByTestId('bill-line')[0]!.textContent).toBe(
       '2 × Soup€13.802 × €6.90',
     );
@@ -873,6 +973,7 @@ describe('OrderPage (till)', () => {
             kind: 'bill',
             orderId: ORDER.id,
             ticketId: null,
+            checkId: null,
             status: 'pending',
             stale: false,
             expired: false,
@@ -897,8 +998,8 @@ describe('OrderPage (till)', () => {
     await userEvent.click(screen.getByTestId('print-bill'));
     await waitFor(() => expect(writes.filter((w) => w.path.endsWith('/bill'))).toHaveLength(2));
     expect(writes.filter((w) => w.path.endsWith('/bill')).map((w) => w.body)).toEqual([
-      { orderId: ORDER.id, printerId: id(92) },
-      { orderId: ORDER.id, printerId: id(92) },
+      { orderId: ORDER.id, printerId: id(92), checkId: CHECK_ID },
+      { orderId: ORDER.id, printerId: id(92), checkId: CHECK_ID },
     ]);
     expect(print).not.toHaveBeenCalled();
   });

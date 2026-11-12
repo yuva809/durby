@@ -84,6 +84,7 @@ describe('visibleNav', () => {
       'inventory',
       'catalog',
       'service',
+      'checkout',
       'kitchen',
       'bar',
       'host',

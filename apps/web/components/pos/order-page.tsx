@@ -4,6 +4,7 @@ import {
   type EffectivePrice,
   type FloorTable,
   type KitchenTicket,
+  type GuestCheck,
   type Order,
   ORDER_LINE_MAX_QUANTITY,
   ORDER_MAX_COVERS,
@@ -52,6 +53,7 @@ import {
   type BillLine,
   billLines,
   durationLabel,
+  latestChecks,
   minutesSince,
   rate,
   sum,
@@ -63,6 +65,7 @@ import { printAs } from '../../lib/pos/print';
 import { renderBillImage } from '../../lib/print/bill-image';
 import { nativePrinter, type NativePrintOutcome } from '../../lib/print/native';
 import { queueBillPrintJob } from '../../lib/pos/print-jobs';
+import { createBill, loadCheck } from '../../lib/pos/bills';
 import { deviceBillPrinter, setDeviceBillPrinter } from '../../lib/print/device-printer';
 import { nativePrintMessage, printBillNatively } from '../../lib/print/native-bill';
 import { useBrand } from '../theme-provider';
@@ -80,7 +83,7 @@ import { KitchenTicketView, OrderSlip, PrintRoot } from './kitchen-ticket';
 import { MoneyProvider, useMoney } from './money';
 import { PrintWarnings } from './print-warnings';
 import { PrinterCommandRunner } from './printer-command-runner';
-import { Receipt } from './receipt';
+import { CheckReceipt } from './check-receipt';
 import { tableColors } from './table-icon';
 import { VoidDialog } from './void-dialog';
 
@@ -146,7 +149,8 @@ function sendLabels(
  */
 type PrintJob =
   | { kind: 'tickets'; tickets: KitchenTicket[]; orderNumber: string; seq: number }
-  | { kind: 'bill' | 'slip'; seq: number };
+  | { kind: 'bill'; check: GuestCheck; seq: number }
+  | { kind: 'slip'; seq: number };
 
 /**
  * Prints #print-root's parts (`data-print-part`) one print job at a time, hiding the others;
@@ -312,6 +316,7 @@ function TableOrder({
     null,
   );
   const orderId = view.status === 'ready' ? (view.data.order?.id ?? null) : null;
+  const printedCheckId = print?.kind === 'bill' ? print.check.id : undefined;
   const queueBill = async (chosen?: string) => {
     if (!locationId || !orderId) return;
     if (chosen) setDeviceBillPrinter(locationId, chosen);
@@ -325,7 +330,13 @@ function TableOrder({
       return;
     }
     setNativeJob(null);
-    const result = await queueBillPrintJob(store, billAction, orderId, target.printer.id);
+    const result = await queueBillPrintJob(
+      store,
+      billAction,
+      orderId,
+      target.printer.id,
+      printedCheckId,
+    );
     setQueuedBill(
       result.ok ? { printer: target.printer.name } : { error: t(errorLabel(result.code)) },
     );
@@ -362,6 +373,41 @@ function TableOrder({
       )}
     </>
   );
+
+  // Print bill (docs/modules/pos.md → Step 4): what is unbilled becomes a numbered guest check; with nothing
+  // unbilled the newest check is printed again, with its number.
+  const billKey = useActionKey();
+  const [billing, setBilling] = useState(false);
+  const printCheck = async (checkId: string) => {
+    const check = await loadCheck(store, checkId);
+    if (!check.ok) {
+      setError(t(errorLabel(check.code)));
+      return;
+    }
+    setPrint((prev) => ({ kind: 'bill', check: check.data, seq: (prev?.seq ?? 0) + 1 }));
+  };
+  async function printBill(order: Order) {
+    setError(null);
+    setQueuedBill(null);
+    setBilling(true);
+    try {
+      if (order.status === 'open' && order.unbilled !== '0.00') {
+        const bill = await createBill(store, billKey, { orderIds: [order.id] });
+        if (!bill.ok) {
+          setError(t(errorLabel(bill.code)));
+          return;
+        }
+        reload();
+        const first = bill.data?.checks[0];
+        if (first) await printCheck(first.id);
+        return;
+      }
+      const latest = latestChecks(order)[0];
+      if (latest) await printCheck(latest.id);
+    } finally {
+      setBilling(false);
+    }
+  }
 
   /** `sent`: right after a send or void, when items that went straight to the bill don't print. */
   const printTickets = (order: Order, ticketIds: readonly string[], sent = false) => {
@@ -458,13 +504,14 @@ function TableOrder({
                   ),
               }
             : null;
+        const reprint = order !== null && order.unbilled === '0.00';
         const printAction =
           order && order.totals.itemCount > 0
             ? access.canPrintBill
               ? {
-                  label: t('pos.order.printBill'),
-                  short: t('pos.order.printBill'),
-                  run: () => setPrint((prev) => ({ kind: 'bill', seq: (prev?.seq ?? 0) + 1 })),
+                  label: t(reprint ? 'pos.order.reprintBill' : 'pos.order.printBill'),
+                  short: t(reprint ? 'pos.order.reprintBill' : 'pos.order.printBill'),
+                  run: () => void printBill(order),
                   testId: 'print-bill',
                   icon: <Printer aria-hidden />,
                 }
@@ -559,6 +606,9 @@ function TableOrder({
                       ) : null
                     }
                   />
+                  {order && access.canPrintBill && order.bills.length > 0 && (
+                    <OrderBills order={order} onReprint={(id) => void printCheck(id)} />
+                  )}
                   {order && order.tickets.length > 0 && (
                     <TicketLog
                       order={order}
@@ -590,6 +640,7 @@ function TableOrder({
                       <Button
                         variant={sendAction ? 'outline' : 'default'}
                         className="min-h-11 gap-2"
+                        disabled={billing}
                         onClick={printAction.run}
                         data-testid={printAction.testId}
                       >
@@ -650,30 +701,69 @@ function TableOrder({
                     lines={bill}
                     printedAt={new Date(now)}
                   />
-                ) : order ? (
+                ) : (
                   <div key={print.seq} data-testid="printed-bill">
-                    <Receipt
+                    <CheckReceipt
+                      check={print.check}
                       layout={layout.status === 'ready' ? layout.data : null}
                       organizationName={organizationName}
                       productName={productName}
-                      tableName={table.name}
-                      order={{
-                        number: order.number,
-                        covers: order.covers,
-                        waiterName: order.waiterName,
-                        total: order.totals.gross,
-                      }}
-                      bill={bill}
                       printedAt={new Date(now)}
                     />
                   </div>
-                ) : null}
+                )}
               </PrintRoot>
             )}
           </div>
         );
       }}
     </Loaded>
+  );
+}
+
+/** The order's bills (ADR 0036): each check with its number and total, reprinted with the same number. */
+function OrderBills({ order, onReprint }: { order: Order; onReprint: (checkId: string) => void }) {
+  const t = useT();
+  const money = useMoney();
+  return (
+    <Card className="flex flex-col gap-2 p-4" data-testid="order-bills">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="text-sm font-semibold">{t('pos.order.bills')}</h2>
+        {order.unbilled !== '0.00' && (
+          <span className="text-sm text-muted-foreground" data-testid="order-unbilled">
+            {t('pos.order.unbilled')} ·{' '}
+            <span className="tabular-nums">{money(order.unbilled)}</span>
+          </span>
+        )}
+      </div>
+      <ul className="flex flex-col gap-1">
+        {order.bills.flatMap((bill) =>
+          bill.checks.map((check) => (
+            <li
+              key={check.id}
+              className="flex items-center justify-between gap-2 text-sm"
+              data-testid="order-check"
+            >
+              <span className={cn('tabular-nums', bill.cancelled && 'line-through')}>
+                {check.number}
+              </span>
+              <span className="flex items-center gap-2">
+                {bill.cancelled && <Badge>{t('pos.order.billCancelled')}</Badge>}
+                <span className="tabular-nums">{money(check.gross)}</span>
+                <Button
+                  variant="ghost"
+                  className="h-8 px-2"
+                  onClick={() => onReprint(check.id)}
+                  data-testid="reprint-check"
+                >
+                  {t('pos.order.reprint')}
+                </Button>
+              </span>
+            </li>
+          )),
+        )}
+      </ul>
+    </Card>
   );
 }
 

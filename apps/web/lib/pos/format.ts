@@ -1,4 +1,4 @@
-import type { Order } from '@durby/shared';
+import type { GuestCheck, Order, OrderBill } from '@durby/shared';
 
 /**
  * Display helpers of the POS screens (docs/modules/pos.md → Web). Money stays a decimal string
@@ -101,4 +101,43 @@ export function billLines(order: Pick<Order, 'tickets'>): BillLine[] {
     }
   }
   return [...lines.values()];
+}
+
+/**
+ * A guest check as bill lines (docs/modules/pos.md → Step 4): its items combined by name and unit price, in the
+ * order they were billed. Share checks and discounts come as lines of their own (labelled by the caller).
+ */
+export function checkLines(check: Pick<GuestCheck, 'lines'>): BillLine[] {
+  const lines = new Map<string, BillLine>();
+  check.lines.forEach((line, index) => {
+    if (line.kind !== 'item') {
+      const key = `${line.kind}|${index}`;
+      lines.set(key, {
+        key,
+        name: line.name ?? '',
+        note: null,
+        quantity: 1,
+        unitPrice: line.total,
+        total: line.total,
+      });
+      return;
+    }
+    const key = `item|${line.name}|${line.unitPrice}`;
+    const quantity = (lines.get(key)?.quantity ?? 0) + (line.quantity ?? 0);
+    lines.set(key, {
+      key,
+      name: line.name ?? '',
+      note: null,
+      quantity,
+      unitPrice: line.unitPrice ?? '0.00',
+      total: times(line.unitPrice ?? '0.00', quantity),
+    });
+  });
+  return [...lines.values()];
+}
+
+/** The checks to reprint for an order: those of its newest bill that is not cancelled (none: nothing billed). */
+export function latestChecks(order: Pick<Order, 'bills'>): OrderBill['checks'] {
+  const bill = [...order.bills].reverse().find((b) => !b.cancelled);
+  return bill?.checks ?? [];
 }
