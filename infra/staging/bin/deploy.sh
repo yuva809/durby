@@ -4,7 +4,7 @@
 #   bin/deploy.sh <sha>                    normal deploy: migrate, then start the new api/web
 #   bin/deploy.sh --skip-migrations <sha>  rollback to an older release (migrations are forward-only)
 #
-# Called by .github/workflows/deploy-staging.yml over SSH, or by hand on the server.
+# Called by bin/release.sh (which .github/workflows/deploy.yml runs over SSH), or by hand on the server.
 # Images are pulled only when missing locally, so a rollback to a recent release needs no registry login.
 set -euo pipefail
 

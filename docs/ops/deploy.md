@@ -5,9 +5,10 @@ at **https://staging.durby.tech**. Decisions and trade-offs: [ADR 0004](../adr/0
 Production is not set up yet; what it must do beyond these steps is in [production.md](production.md).
 
 ```
-GitHub: push to main ─► CI (lint, typecheck, test, build, images) ─► Deploy staging
-                                                                    ├─ build + push 3 images to GHCR (tag = commit SHA)
-                                                                    └─ SSH as deploy ─► /opt/durby/bin/deploy.sh <sha>
+GitHub: push to main / development ─► Deploy (no CI gate, ADR 0034)
+                                     └─ SSH as deploy ─► /opt/durby[-dev]/bin/release.sh
+                                                         ├─ git fetch + docker build 3 images (tag = commit SHA)
+                                                         └─ bin/deploy.sh <sha>
 
 Server /opt/durby (project "durby-staging"):
   Internet ─► :80/:443 Caddy ─┬─ /api/*  ─► api:4000 ─┐      (network "edge")
@@ -18,10 +19,10 @@ Server /opt/durby (project "durby-staging"):
 
 | Piece           | Where                                                                       |
 | --------------- | --------------------------------------------------------------------------- |
-| Images          | `ghcr.io/yuva809/durby-{api,api-migrate,web}:<sha>`                         |
+| Images          | built on the server: `<IMAGE_PREFIX>-{api,api-migrate,web}:<sha>`           |
 | Server config   | `infra/staging/` in the repo, copied on every deploy                        |
 | Secrets         | `/opt/durby/.env` on the server only (mode 600)                             |
-| Deploy workflow | `.github/workflows/deploy-staging.yml`                                      |
+| Deploy workflow | `.github/workflows/deploy.yml`                                              |
 | Backups         | `/opt/durby/backups` (7 days) + Hetzner Storage Box (7 days), age-encrypted |
 
 Server layout:
@@ -201,8 +202,7 @@ reviewer to approve each deploy. Add these **environment secrets**:
 | `STAGING_SSH_KEY`         | contents of `~/.ssh/durby-staging-deploy` (private key)                                                                                       |
 | `STAGING_SSH_KNOWN_HOSTS` | output of `ssh-keyscan -t ed25519 <server-ip>`; compare its fingerprint with `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` on the server |
 
-No registry secret is needed: the workflow logs the server in to GHCR with the job's short-lived `GITHUB_TOKEN`
-and logs out afterwards.
+No registry secret is needed: the server builds the images itself (`bin/release.sh`).
 
 ### 8. First deploy
 
@@ -317,14 +317,18 @@ error type only (`invitation mail failed`); check `bin/dc logs api` and the prov
 
 ## Deploying
 
-Every push to `main` that passes CI deploys automatically. The workflow:
+Every push to `main` or `development` deploys that branch's stack (`.github/workflows/deploy.yml`, ADR 0034). There
+is no CI gate: run `pnpm lint && pnpm typecheck && pnpm test` and `pnpm format:check` before you push. The workflow:
 
-1. **Resolve release:** only a successful CI run for a `push` to `main`. It uses that run's `head_sha` (the commit
-   CI tested), never "current main".
-2. **Build:** pushes `durby-api`, `durby-api-migrate` and `durby-web` tagged `<sha>` and `staging`.
-3. **Deploy:** copies `infra/staging` from the same commit to `/opt/durby`, logs in to GHCR, runs
-   `bin/deploy.sh <sha>`, logs out.
-4. **Check:** `GET https://staging.durby.tech/api/v1/health` must return `status: ok` with `version: <sha>`.
+1. **Connect:** SSH as `deploy` with the `staging` environment secrets (`STAGING_SSH_*`).
+2. **Scripts:** uploads `infra/staging/bin` from the pushed commit into the stack (`/opt/durby` for `main`,
+   `/opt/durby-dev` for `development`); the stack's `.env` must already exist.
+3. **Release:** runs `bin/release.sh` there, which builds the branch head on the server and runs `bin/deploy.sh <sha>`
+   ([Deploying from the server](#deploying-from-the-server-binreleasesh)).
+4. **Check:** `GET <site>/api/v1/health` must return `status: ok`.
+
+Redeploy by hand from GitHub: Actions → **Deploy** → _Run workflow_ on the branch. Without Actions, run
+`bin/release.sh` on the server.
 
 `bin/deploy.sh <sha>` on the server:
 
@@ -390,10 +394,6 @@ curl -fsS https://<domain>/api/v1/health
 Migrations are forward-only, so a rollback only swaps the app images. This is safe as long as **every migration is
 backward compatible with the previous release** (expand/contract: add columns/tables first, remove them in a later
 release once no deployed code uses them). That rule is in `CLAUDE.md`.
-
-**From GitHub:** Actions → **Deploy staging** → _Run workflow_ → `sha` = the release to go back to (see
-`state/history` or the previous successful deploy run), `skip_migrations` = on. It skips the build and redeploys
-the existing images.
 
 **On the server** (no registry access needed for the last 5 releases):
 

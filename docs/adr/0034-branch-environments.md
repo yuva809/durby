@@ -2,7 +2,8 @@
 
 - Status: accepted (2026-11-12)
 - Date: 2026-11-12
-- Step: hosting. Amends [ADR 0004](0004-staging-deployment.md) decision 1 ("the server never builds images").
+- Step: hosting. Amends [ADR 0004](0004-staging-deployment.md) decision 1 ("the server never builds images") and replaces the
+  CI workflow of [ADR 0003](0003-continuous-integration.md).
 
 ## Context
 
@@ -55,15 +56,17 @@ pushed to GHCR and pulled by the server. Two things changed:
    `deploy.sh` is unchanged. It pulls only images that are missing, so locally built images are used as they are,
    and migrations, health checks, automatic rollback and image retention work as before.
 
-4. **The Actions workflows stay.** `ci.yml` also runs on pushes to `development`. `deploy-staging.yml` keeps
-   deploying `main` to the existing server when Actions is available, which is still correct. The dev stack is
-   deployed only with `bin/release.sh`.
+4. **No CI pipeline; deploy on every push.** `ci.yml` (ADR 0003) and `deploy-staging.yml` are removed. The one
+   workflow, `.github/workflows/deploy.yml`, runs on every push to `main` or `development` (and by hand). It SSHes to
+   the server as `deploy` with the existing `STAGING_SSH_*` secrets, uploads `infra/staging/bin` into the branch's
+   stack (`/opt/durby` or `/opt/durby-dev`), runs `bin/release.sh` there and checks `/api/v1/health`. Without
+   Actions, the same `bin/release.sh` is run by hand.
 
 ## Consequences
 
 - A deploy takes several minutes of CPU on the server it deploys to. The Next.js build is the heaviest part, and
   the 2 GB swap from `server-setup.sh` covers its peak. The running release keeps serving during the build.
-- Nothing runs lint, typecheck or tests before a server build. Run `pnpm lint && pnpm typecheck && pnpm test` before
+- Nothing runs lint, typecheck, tests or the format check automatically any more. Run `pnpm lint && pnpm typecheck && pnpm test` before
   merging into `development` or `main`.
 - There is no registry copy of a release. Rollback uses the last 5 releases' images kept on the host
   (`deploy.sh --skip-migrations <sha>`). An older release must be checked out in `/opt/durby/src` and built by hand

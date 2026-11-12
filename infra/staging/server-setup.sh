@@ -39,7 +39,7 @@ export DEBIAN_FRONTEND=noninteractive
 log "System packages"
 apt-get update -q
 apt-get upgrade -yq
-apt-get install -yq ca-certificates curl gnupg ufw unattended-upgrades openssl rclone age
+apt-get install -yq ca-certificates curl gnupg ufw unattended-upgrades openssl rclone age git
 
 log "Unattended security updates"
 cat >/etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
