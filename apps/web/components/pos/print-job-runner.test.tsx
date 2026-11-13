@@ -159,6 +159,7 @@ const ORDER = {
   },
   waiterName: 'Priya',
   bills: [],
+  discounts: [],
 };
 
 beforeEach(() => {

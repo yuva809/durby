@@ -7,6 +7,8 @@ import { BillLayoutController } from './bill-layout.controller';
 import { BillLayoutService } from './bill-layout.service';
 import { BillsController } from './bills.controller';
 import { BillsService } from './bills.service';
+import { DiscountsController } from './discounts.controller';
+import { DiscountsService } from './discounts.service';
 import { PosFloorReader } from './floor-reader';
 import { KitchenController } from './kitchen.controller';
 import { KitchenService } from './kitchen.service';
@@ -35,6 +37,7 @@ import { TablesService } from './tables.service';
     AreasController,
     OrdersController,
     BillsController,
+    DiscountsController,
     BillLayoutController,
     KitchenController,
     PublicMenuController,
@@ -48,6 +51,7 @@ import { TablesService } from './tables.service';
     AreasService,
     OrdersService,
     BillsService,
+    DiscountsService,
     BillLayoutService,
     KitchenService,
     PublicMenuService,

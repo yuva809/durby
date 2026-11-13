@@ -85,6 +85,7 @@ import { PrintWarnings } from './print-warnings';
 import { PrinterCommandRunner } from './printer-command-runner';
 import { CheckReceipt } from './check-receipt';
 import { tableColors } from './table-icon';
+import { DiscountDialog, DiscountList } from './discount-dialog';
 import { VoidDialog } from './void-dialog';
 
 interface OrderAccess {
@@ -93,6 +94,8 @@ interface OrderAccess {
   canClose: boolean;
   /** pos.bills.print: the bill with prices; without it the till prints the order only. */
   canPrintBill: boolean;
+  /** pos.orders.discount: discounts and comps (ADR 0036 §5). */
+  canDiscount: boolean;
 }
 
 /** /service/[tableId]: the till for one table (docs/modules/pos.md → Web). */
@@ -113,6 +116,7 @@ export function OrderPage({ tableId }: { tableId: string }) {
           canVoid: permissions.has('pos.orders.void'),
           canClose: permissions.has('pos.orders.close'),
           canPrintBill: permissions.has('pos.bills.print'),
+          canDiscount: permissions.has('pos.orders.discount'),
         }}
       />
     </MoneyProvider>
@@ -606,6 +610,11 @@ function TableOrder({
                       ) : null
                     }
                   />
+                  {order &&
+                    order.status === 'open' &&
+                    access.canDiscount &&
+                    order.totals.itemCount > 0 && <DiscountDialog order={order} onDone={reload} />}
+                  {order && access.canDiscount && <DiscountList order={order} onChanged={reload} />}
                   {order && access.canPrintBill && order.bills.length > 0 && (
                     <OrderBills order={order} onReprint={(id) => void printCheck(id)} />
                   )}

@@ -32,6 +32,10 @@ export function CheckReceipt({
       ? t('pos.bill.share', { index: String(check.shareIndex), count: String(check.shareCount) })
       : null;
   // A share prints as one line, whatever VAT rates it spans.
+  // A discount line of the check prints under its own name (ADR 0036 §5).
+  const priced = checkLines(check).map((line) =>
+    line.key.startsWith('discount|') ? { ...line, name: t('pos.bill.discount') } : line,
+  );
   const lines = share
     ? [
         {
@@ -43,7 +47,7 @@ export function CheckReceipt({
           total: check.totals.gross,
         },
       ]
-    : checkLines(check);
+    : priced;
   return (
     <Receipt
       layout={layout}

@@ -131,6 +131,7 @@ const ORDER: Order = {
   },
   waiterName: 'Priya',
   bills: [],
+  discounts: [],
   unbilled: '13.80',
 };
 

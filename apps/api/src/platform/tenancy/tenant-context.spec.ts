@@ -105,6 +105,8 @@ describe('TENANT_MODELS', () => {
       'PosGuestCheckShare',
       'PosKitchenTicket',
       'PosOrder',
+      'PosOrderDiscount',
+      'PosOrderDiscountLine',
       'PosOrderLine',
       'PosPrintJob',
       'PosPrinter',
