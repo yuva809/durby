@@ -2,6 +2,7 @@ import { dictionaries, isLabelKey } from '@durby/i18n';
 import { FEATURE_MODULES, FEATURES, PERMISSIONS } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import { activeNavItem, NAV_GROUPS, NAV_ITEMS, type NavItem, visibleNav } from './registry';
+import { INVENTORY_PAGES } from './inventory-pages';
 import { SETTINGS_TABS } from './settings-tabs';
 
 const ids = (items: NavItem[]) => items.map((i) => i.id);
@@ -10,7 +11,7 @@ const moduleIds = (items: NavItem[]) => ids(items.filter((i) => i.group !== 'set
 
 describe('NAV_ITEMS', () => {
   it('uses registered features and permissions, and labels present in en and de', () => {
-    for (const item of [...NAV_ITEMS, ...SETTINGS_TABS]) {
+    for (const item of [...NAV_ITEMS, ...SETTINGS_TABS, ...INVENTORY_PAGES]) {
       if (item.feature) expect(Object.keys(FEATURES)).toContain(item.feature);
       if (item.permission) expect(Object.keys(PERMISSIONS)).toContain(item.permission);
       expect(isLabelKey(item.label)).toBe(true);
@@ -133,6 +134,38 @@ describe('table service items', () => {
         }),
       ),
     ).toEqual(['home', 'catalog', 'service', 'tables']);
+  });
+});
+
+describe('Inventory pages', () => {
+  const pages = (activePermissions: string[], activeFeatures = ['inventory', 'catalog']) =>
+    ids(visibleNav(INVENTORY_PAGES, { activeFeatures, activePermissions }));
+
+  it('lists its pages under Inventory, each behind its own key', () => {
+    expect(pages(['inventory.stock.read'])).toEqual([
+      'inventory-stock',
+      'inventory-variants',
+      'inventory-attributes',
+      'inventory-units',
+      'inventory-bom',
+      'inventory-production',
+    ]);
+    expect(
+      pages(['inventory.stock.read', 'inventory.stock.adjust', 'catalog.products.read']),
+    ).toEqual(INVENTORY_PAGES.map((p) => p.id));
+    // Products and categories are catalog's: gone without the catalog feature.
+    expect(pages(['inventory.stock.read', 'catalog.products.read'], ['inventory'])).not.toContain(
+      'inventory-products',
+    );
+  });
+
+  it.each([
+    ['/inventory', 'inventory-stock'],
+    ['/inventory/adjustments', 'inventory-adjustments'],
+    ['/inventory/units', 'inventory-units'],
+    ['/inventory/production', 'inventory-production'],
+  ])('%s → %s', (path, id) => {
+    expect(activeNavItem(INVENTORY_PAGES, path)?.id).toBe(id);
   });
 });
 
