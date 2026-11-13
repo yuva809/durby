@@ -137,7 +137,13 @@ export class BillsService {
       }
 
       const bill = await tx.posBill.create({
-        data: { tenantId, locationId, kind: 'single', createdByUserId: userId },
+        data: {
+          tenantId,
+          locationId,
+          kind: body.shares ? 'equal' : 'single',
+          shareCount: body.shares ?? null,
+          createdByUserId: userId,
+        },
         select: { id: true },
       });
       await tx.posBillOrder.createMany({
@@ -174,10 +180,45 @@ export class BillsService {
         itemCount: picks.reduce((n, p) => n + p.quantity, 0),
       };
       // The number last: the counter row stays locked until commit (ADR 0012).
-      const { number } = await this.numbering.next('pos.guestCheck', tx);
-      await tx.posGuestCheck.create({
-        data: { tenantId, billId: bill.id, number, shareIndex: 0, gross: totals.gross },
-      });
+      if (body.shares) {
+        // An equal split: each rate's gross in cents, divided by the shares; the cents left over go to the first
+        // shares, so the shares add up exactly (ADR 0036 §4). Each share is a check of its own.
+        const rates = totals.byTaxRate.map((r) => ({
+          taxRate: r.taxRate,
+          cents: new Decimal(r.gross).times(100).toNumber(),
+        }));
+        for (let index = 1; index <= body.shares; index++) {
+          const { number } = await this.numbering.next('pos.guestCheck', tx);
+          const parts = rates.map((r) => ({
+            taxRate: r.taxRate,
+            cents: Math.floor(r.cents / body.shares!) + (index <= r.cents % body.shares! ? 1 : 0),
+          }));
+          const check = await tx.posGuestCheck.create({
+            data: {
+              tenantId,
+              billId: bill.id,
+              number,
+              shareIndex: index,
+              gross: (parts.reduce((n, p) => n + p.cents, 0) / 100).toFixed(2),
+            },
+            select: { id: true },
+          });
+          await tx.posGuestCheckShare.createMany({
+            data: parts.map((p) => ({
+              tenantId,
+              checkId: check.id,
+              taxRate: p.taxRate,
+              gross: (p.cents / 100).toFixed(2),
+            })),
+          });
+        }
+      } else {
+        // The number last: the counter row stays locked until commit (ADR 0012).
+        const { number } = await this.numbering.next('pos.guestCheck', tx);
+        await tx.posGuestCheck.create({
+          data: { tenantId, billId: bill.id, number, shareIndex: 0, gross: totals.gross },
+        });
+      }
       const response = await this.loadBill(tx, bill.id);
       await this.audit.record(tx, {
         action: 'pos.bill.created',

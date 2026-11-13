@@ -22,27 +22,34 @@ export const CHECK_VIEWS = ['recent', 'history'] as const;
 /** What a check line is: a billed item, an order discount, or one share of an equal split per VAT rate. */
 export const CHECK_LINE_KINDS = ['item', 'discount', 'share'] as const;
 
-export const createBillRequestSchema = z.strictObject({
-  orderIds: z
-    .array(z.uuid())
-    .min(1)
-    .max(BILL_MAX_ORDERS)
-    .refine((ids) => new Set(ids).size === ids.length, { message: 'orderIds must be unique' }),
-  /** Portions to bill; missing = everything unbilled on the orders. */
-  items: z
-    .array(
-      z.strictObject({
-        orderLineId: z.uuid(),
-        quantity: z.int().min(1).max(ORDER_LINE_MAX_QUANTITY),
-      }),
-    )
-    .min(1)
-    .max(BILL_MAX_ITEMS)
-    .refine((items) => new Set(items.map((i) => i.orderLineId)).size === items.length, {
-      message: 'each orderLineId once',
-    })
-    .optional(),
-});
+export const createBillRequestSchema = z
+  .strictObject({
+    orderIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(BILL_MAX_ORDERS)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'orderIds must be unique' }),
+    /** Portions to bill; missing = everything unbilled on the orders. */
+    items: z
+      .array(
+        z.strictObject({
+          orderLineId: z.uuid(),
+          quantity: z.int().min(1).max(ORDER_LINE_MAX_QUANTITY),
+        }),
+      )
+      .min(1)
+      .max(BILL_MAX_ITEMS)
+      .refine((items) => new Set(items.map((i) => i.orderLineId)).size === items.length, {
+        message: 'each orderLineId once',
+      })
+      .optional(),
+    /** Split everything unbilled equally into this many guest checks (ADR 0036 §4). */
+    shares: z.int().min(BILL_MIN_SHARES).max(BILL_MAX_SHARES).optional(),
+  })
+  .refine((body) => !(body.items && body.shares), {
+    message: 'items and shares cannot be combined',
+    path: ['shares'],
+  });
 
 export const cancelBillRequestSchema = z.strictObject({
   reason: z.string().trim().min(1).max(BILL_CANCEL_REASON_MAX_LENGTH),
