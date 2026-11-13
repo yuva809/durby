@@ -364,6 +364,6 @@ the printer core, bill rendering, virtual printer and signing are done.
 
 The web changes need a staging deploy, so GitHub Actions must be running (or a manual deploy).
 
-Moving a customer to production needs a new APK in version 1 (the Server select comes in 1.1), once Hetzner production
-serves `app.durby.tech`. That move changes DNS before the old Vercel project is deleted
-([production.md](../ops/production.md)).
+Production moves to `app.durby.tech` on the same Hetzner VM (ADR 0039, [production.md](../ops/production.md)).
+`staging.durby.tech` then redirects there, and installed builds follow it: `app.durby.tech` is on their allow-list.
+New builds start at `app.durby.tech`.

@@ -24,22 +24,18 @@ Effects people notice:
 - Installed Android tills follow the redirect; `app.durby.tech` is on every build's allow-list, so printing keeps
   working. New builds start at `app.durby.tech` directly.
 
-`app.durby.tech` serves the previous version of Durby from a Vercel project today. It is on the Android app's server
-allow-list (ADR 0032), so whoever controls the page on that name can print through the app on the customer's network.
-A DNS record that still points at Vercel after the project is gone is a dangling record: anyone could create a Vercel
-project, claim the name and serve their own page there (subdomain takeover). Hence the order below, never reversed.
+Everything runs on the one Hetzner VM; nothing is hosted elsewhere, so only DNS and the server's `.env` change. Do it
+outside service hours: Caddy gets the `app.durby.tech` certificate during the redeploy (step 4), which takes a minute.
 
-Do it outside service hours: between steps 2 and 4 `app.durby.tech` has no certificate for a minute or two.
+`app.durby.tech` is on the Android app's server allow-list (ADR 0032): whoever serves that name can print through the
+app on the customer's network. Keep its DNS pointing at this server only.
 
-### 1. Lower the TTL (a day before)
+### 1. DNS
 
-At the DNS provider, set the TTL of the `app.durby.tech` record to 300 seconds, so the switch in step 2 spreads fast.
 Note the server's addresses: `ssh <you>@<server> 'curl -4s ifconfig.me; echo; curl -6s ifconfig.me'`.
 
-### 2. Change DNS
-
-- `app.durby.tech`: replace the `CNAME` to Vercel with `A` (and `AAAA`, if the server has IPv6) to the server. Remove
-  every record for the name that leads to Vercel, including `AAAA` and any wildcard `*.durby.tech`.
+- `app.durby.tech`: an `A` record (and `AAAA`, if the server has IPv6) to the server. Create it if it doesn't exist;
+  if it exists, check it points at this server and nowhere else (no `CNAME`, no other addresses).
 - `staging.durby.tech`: keep its `A`/`AAAA` records (the redirect needs them).
 - `partner-demo.durby.tech`: if it is a `CNAME` to `staging.durby.tech`, point it at `app.durby.tech` instead (same
   server, so nothing breaks either way).
@@ -52,13 +48,13 @@ dig +short app.durby.tech AAAA
 dig +short app.durby.tech CNAME     # must be empty
 ```
 
-### 3. Deploy the ADR 0039 release
+### 2. Deploy the ADR 0039 release
 
 The release with this change must be on `main` (merge `development` into `main`). Pushing to `main` deploys it, but the
-GitHub health check now calls `https://app.durby.tech`: merge only after step 2, or expect that one check to fail and
-re-run the workflow after step 5.
+GitHub health check now calls `https://app.durby.tech`: merge only after step 1, or expect that one check to fail and
+re-run the workflow after step 4.
 
-### 4. Change the server's .env
+### 3. Change the server's .env
 
 As your admin user, then as `deploy`:
 
@@ -74,7 +70,7 @@ grep -q '^REDIRECT_DOMAINS=' .env || echo 'REDIRECT_DOMAINS=staging.durby.tech' 
 grep -E '^(STAGING_DOMAIN|STAGING_DEMO_DOMAIN|REDIRECT_DOMAINS|MAIL_FROM)=' .env
 ```
 
-### 5. Redeploy
+### 4. Redeploy
 
 ```bash
 bin/release.sh                 # rebuilds if needed; bin/deploy.sh writes caddy/redirects/redirects.caddy
@@ -86,7 +82,7 @@ bin/dc logs --tail 50 caddy    # "certificate obtained successfully" for app.dur
 If nothing new is on `main`, `bin/release.sh` still redeploys the live release with the new `.env` (api and web pick up
 `WEB_BASE_URL` and `WEB_ORIGINS` on restart).
 
-### 6. Check
+### 5. Check
 
 ```bash
 curl -fsS https://app.durby.tech/api/v1/health                        # {"status":"ok",...}
@@ -100,16 +96,7 @@ In a browser: sign in at `https://app.durby.tech`; invite someone and check the 
 `https://app.durby.tech`; open an old `https://staging.durby.tech/...` link and land on the same page. On an Android
 till: restart the app, sign in again, print a test bill.
 
-### 7. Retire Vercel (only after step 6, and after the old TTL has passed)
-
-- [ ] No DNS record for `app.durby.tech` (or `*.durby.tech`) points to Vercel (`cname.vercel-dns.com`, `76.76.21.21`
-      or other Vercel addresses).
-- [ ] `https://app.durby.tech/api/v1/health` reports the production release.
-- [ ] Remove `app.durby.tech` from the Vercel project's domains, then delete the project.
-
-Do the same for any other `durby.tech` name before retiring the service it points to.
-
-### 8. Android
+### 6. Android
 
 Build and publish an app version with the new start URL (`Origins.APP`): raise `versionCode`/`versionName` in
 `apps/android/app/build.gradle.kts`, build the release APK and upload it with `latest.json` to `/opt/durby/downloads/
@@ -123,5 +110,6 @@ cp .env.before-app-domain .env
 bin/release.sh                         # STAGING_DOMAIN back to staging.durby.tech, redirect file removed
 ```
 
-Keep `app.durby.tech` pointing at the server (never back to a deleted Vercel project). Keep `staging.durby.tech` and
-its redirect as long as old links or Android builds from before ADR 0039 are in use.
+Keep `app.durby.tech` pointing at this server (it is on the Android allow-list). Keep `staging.durby.tech` and its
+redirect as long as old links or Android builds from before ADR 0039 are in use. Before retiring any `durby.tech` name,
+remove its DNS record first, so no record is left pointing at an address someone else could take over.

@@ -7,8 +7,8 @@
 ## Context
 
 Since ADR 0034 the `main` stack in `/opt/durby` is production, but it still answers at `staging.durby.tech`.
-`app.durby.tech` serves the previous version of Durby from Vercel and is already on every Android build's server
-allow-list (ADR 0032 §4). Installed tills start at `staging.durby.tech` and fetch their updates there (ADR 0033 §14).
+Everything runs on the one Hetzner VM; ADR 0032's note that `app.durby.tech` is on Vercel no longer holds: nothing is
+hosted there. `app.durby.tech` is already on every Android build's server allow-list (ADR 0032 §4). Installed tills start at `staging.durby.tech` and fetch their updates there (ADR 0033 §14).
 Links in sent mail (invitations, password resets) and bookmarks point at `staging.durby.tech`.
 
 ## Decisions
@@ -31,9 +31,9 @@ Links in sent mail (invitations, password resets) and bookmarks point at `stagin
    the allow-list for the redirect and old links. Older builds follow the redirect to an origin they already allow, so
    the print bridge keeps working without a new APK.
 
-5. **Order of the move** (docs/ops/production.md → Moving production to app.durby.tech): DNS to Hetzner, then the
-   `.env` change and redeploy, then checks, and only then the Vercel project is removed, so `app.durby.tech` never
-   points at a project someone else could claim.
+5. **Order of the move** (docs/ops/production.md → Moving production to app.durby.tech): DNS for `app.durby.tech`
+   to the VM first (Caddy needs it to get the certificate), then the `.env` change and redeploy, then checks. The name
+   only ever points at this server: it is on the Android allow-list.
 
 ## Consequences
 
