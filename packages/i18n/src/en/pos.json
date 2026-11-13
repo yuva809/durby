@@ -124,7 +124,7 @@
   "pos.bill.tickets": "Kitchen tickets ({count})",
   "pos.time.minutes": "{minutes} min",
   "pos.time.hoursMinutes": "{hours} h {minutes} min",
-  "pos.tablesPage.description": "Your floor plan. Tables are served and billed on the POS.",
+  "pos.tablesPage.description": "Place tables on a canvas matching the real room. Drag tables to arrange the floor plan.",
   "pos.tablesPage.kpiInService": "Tables in service",
   "pos.tablesPage.kpiAvailable": "Available",
   "pos.tablesPage.kpiOccupied": "Occupied",
