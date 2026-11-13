@@ -18,6 +18,7 @@ import {
   isSignedQuantity,
   isUnitCost,
   lineValue,
+  shortQuantity,
   sumValues,
 } from '../../lib/inventory/format';
 import { useActionKey } from '../../lib/use-action-key';
@@ -37,7 +38,17 @@ interface Line {
   itemId: string;
   quantity: string;
   unitCost: string;
+  /** A unit of measurement the receipt line is entered in; '' = the item's own unit (ADR 0038). */
+  unitId: string;
 }
+
+const emptyLine = (key: number): Line => ({
+  key,
+  itemId: '',
+  quantity: '',
+  unitCost: '',
+  unitId: '',
+});
 
 const KEYS: Record<Kind, PermissionKey> = {
   receive: 'inventory.stock.receive',
@@ -57,13 +68,17 @@ export function DocumentForm({ kind, data }: { kind: Kind; data: InventoryData }
   const { store } = useAuth();
   const action = useActionKey();
   const warehouses = data.warehouses.filter((w) => w.archivedAt === null);
-  const items = data.items.filter((i) => i.archivedAt === null);
+  // A parent with active variants holds no stock (ADR 0038): its variants are listed instead.
+  const parents = new Set(
+    data.items.filter((i) => i.parentItemId && i.archivedAt === null).map((i) => i.parentItemId),
+  );
+  const items = data.items.filter((i) => i.archivedAt === null && !parents.has(i.id));
   const [from, setFrom] = useState(warehouses[0]?.id ?? '');
   const [to, setTo] = useState(warehouses[1]?.id ?? '');
   const [reason, setReason] = useState<AdjustmentReason>('waste');
   const [supplier, setSupplier] = useState('');
   const [note, setNote] = useState('');
-  const [lines, setLines] = useState<Line[]>([{ key: 0, itemId: '', quantity: '', unitCost: '' }]);
+  const [lines, setLines] = useState<Line[]>([emptyLine(0)]);
   const [nextKey, setNextKey] = useState(1);
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -91,6 +106,11 @@ export function DocumentForm({ kind, data }: { kind: Kind; data: InventoryData }
       ? sumValues(filled.map((l) => lineValue(l.quantity.trim(), l.unitCost.trim()) ?? '0.00'))
       : null;
   const unitOf = (itemId: string) => items.find((i) => i.id === itemId)?.unit;
+  /** The units a receipt line for the item can be entered in: those of the item's unit. */
+  const unitsFor = (itemId: string) => {
+    const unit = unitOf(itemId);
+    return kind === 'receive' && unit ? data.units.filter((u) => u.baseUnit === unit) : [];
+  };
   const label = (warehouseId: string) => {
     const w = warehouses.find((x) => x.id === warehouseId);
     return w ? warehouseLabel(data, w) : '';
@@ -127,6 +147,7 @@ export function DocumentForm({ kind, data }: { kind: Kind; data: InventoryData }
               itemId: l.itemId,
               quantity: l.quantity.trim(),
               unitCost: l.unitCost.trim(),
+              ...(l.unitId ? { unitId: l.unitId } : {}),
             })),
           })
         : kind === 'adjust'
@@ -145,7 +166,7 @@ export function DocumentForm({ kind, data }: { kind: Kind; data: InventoryData }
     setBusy(false);
     if (result.ok && result.data) {
       setPosted(t('inventory.page.posted', { number: result.data.number }));
-      setLines([{ key: nextKey, itemId: '', quantity: '', unitCost: '' }]);
+      setLines([emptyLine(nextKey)]);
       setNextKey((k) => k + 1);
       setSupplier('');
       setNote('');
@@ -243,6 +264,8 @@ export function DocumentForm({ kind, data }: { kind: Kind; data: InventoryData }
               ? lineProblems(line)
               : { item: false, quantity: false, cost: false };
             const unit = unitOf(line.itemId);
+            const lineUnits = unitsFor(line.itemId);
+            const chosenUnit = lineUnits.find((u) => u.id === line.unitId);
             const value =
               kind === 'receive' ? lineValue(line.quantity.trim(), line.unitCost.trim()) : null;
             const itemName = items.find((i) => i.id === line.itemId)?.name ?? String(index + 1);
@@ -258,7 +281,7 @@ export function DocumentForm({ kind, data }: { kind: Kind; data: InventoryData }
                     id={`${id}-item-${line.key}`}
                     value={line.itemId}
                     aria-invalid={problems.item || undefined}
-                    onChange={(e) => change(line.key, { itemId: e.target.value })}
+                    onChange={(e) => change(line.key, { itemId: e.target.value, unitId: '' })}
                     data-testid="doc-item"
                   >
                     <option value="">{t('inventory.page.chooseItem')}</option>
@@ -272,24 +295,57 @@ export function DocumentForm({ kind, data }: { kind: Kind; data: InventoryData }
                 <div className="grid gap-1.5">
                   <Label htmlFor={`${id}-qty-${line.key}`}>
                     {t('inventory.fields.quantity')}
-                    {unit && ` (${t(`inventory.units.${unit}`)})`}
+                    {chosenUnit
+                      ? ` (${chosenUnit.symbol})`
+                      : unit && ` (${t(`inventory.units.${unit}`)})`}
                   </Label>
-                  <Input
-                    id={`${id}-qty-${line.key}`}
-                    inputMode="decimal"
-                    value={line.quantity}
-                    aria-invalid={problems.quantity || undefined}
-                    className={cn('tabular-nums', problems.quantity && 'border-destructive')}
-                    onChange={(e) =>
-                      change(line.key, { quantity: e.target.value.replace(',', '.') })
-                    }
-                    data-testid="doc-quantity"
-                  />
+                  <div className="flex gap-1.5">
+                    <Input
+                      id={`${id}-qty-${line.key}`}
+                      inputMode="decimal"
+                      value={line.quantity}
+                      aria-invalid={problems.quantity || undefined}
+                      className={cn(
+                        'min-w-0 tabular-nums',
+                        problems.quantity && 'border-destructive',
+                      )}
+                      onChange={(e) =>
+                        change(line.key, { quantity: e.target.value.replace(',', '.') })
+                      }
+                      data-testid="doc-quantity"
+                    />
+                    {lineUnits.length > 0 && unit && (
+                      <Select
+                        value={line.unitId}
+                        aria-label={t('inventory.uom.lineUnit')}
+                        className="w-24 shrink-0"
+                        onChange={(e) => change(line.key, { unitId: e.target.value })}
+                        data-testid="doc-unit"
+                      >
+                        <option value="">{t(`inventory.units.${unit}`)}</option>
+                        {lineUnits.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.symbol}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                  </div>
+                  {chosenUnit && unit && (
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {t('inventory.uom.equals', {
+                        symbol: chosenUnit.symbol,
+                        factor: shortQuantity(chosenUnit.factor),
+                        base: t(`inventory.units.${unit}`),
+                      })}
+                    </p>
+                  )}
                 </div>
                 {kind === 'receive' ? (
                   <div className="grid gap-1.5">
                     <Label htmlFor={`${id}-cost-${line.key}`}>
                       {t('inventory.fields.unitCost')}
+                      {chosenUnit && ` (${t('inventory.uom.per', { symbol: chosenUnit.symbol })})`}
                     </Label>
                     <Input
                       id={`${id}-cost-${line.key}`}
@@ -333,7 +389,7 @@ export function DocumentForm({ kind, data }: { kind: Kind; data: InventoryData }
             variant="outline"
             className="gap-2"
             onClick={() => {
-              setLines((ls) => [...ls, { key: nextKey, itemId: '', quantity: '', unitCost: '' }]);
+              setLines((ls) => [...ls, emptyLine(nextKey)]);
               setNextKey((k) => k + 1);
             }}
             data-testid="doc-add-line"

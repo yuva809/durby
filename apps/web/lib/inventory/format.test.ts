@@ -1,12 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import {
+  compareQuantities,
   isQuantity,
   isSignedQuantity,
   isUnitCost,
   lineValue,
+  scaledQuantity,
   shortQuantity,
   sumValues,
 } from './format';
+
+describe('production preview math (ADR 0038)', () => {
+  it('scales a bill quantity by wanted ÷ output, to 3 decimals half up like the api', () => {
+    expect(scaledQuantity('2.000', '3', '1.000')).toBe('6.000');
+    expect(scaledQuantity('0.100', '3', '1.000')).toBe('0.300');
+    expect(scaledQuantity('0.001', '1.5', '1')).toBe('0.002');
+    expect(scaledQuantity('1', '1', '3')).toBe('0.333');
+  });
+
+  it('refuses entries that are not quantities, or an output of zero', () => {
+    expect(scaledQuantity('1', 'x', '1')).toBeNull();
+    expect(scaledQuantity('1', '1', '0')).toBeNull();
+  });
+
+  it('compares quantities exactly', () => {
+    expect(compareQuantities('4.500', '6.000')).toBeLessThan(0);
+    expect(compareQuantities('6', '6.000')).toBe(0);
+    expect(compareQuantities('10.001', '10')).toBeGreaterThan(0);
+  });
+});
 
 describe('inventory form math', () => {
   it('values a line exactly, to cents, half away from zero', () => {

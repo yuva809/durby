@@ -81,10 +81,13 @@ export const stockItemSchema = z.object({
   unit: z.enum(STOCK_UNITS),
   /** Reorder level, 3 decimals; null = none. */
   minQuantity: z.string().nullable(),
-  /** A variant's parent item (ADR 0038); null for other items. */
-  parentItemId: z.uuid().nullable(),
+  /**
+   * A variant's parent item (ADR 0038); null for other items. Defaults keep the web working against an api from
+   * before ADR 0038 during a deploy.
+   */
+  parentItemId: z.uuid().nullable().default(null),
   /** A variant's attribute values in attribute order, e.g. ["Large", "0.5 l"]; empty for other items. */
-  variantValues: z.array(z.string()),
+  variantValues: z.array(z.string()).default([]),
   archivedAt: z.iso.datetime().nullable(),
 });
 
