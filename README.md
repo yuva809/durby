@@ -42,5 +42,5 @@ role), run `pnpm db:roles` before `pnpm db:migrate`; the scripts are idempotent.
 If 5432/6379 are already taken, set `DURBY_POSTGRES_PORT` / `DURBY_REDIS_PORT` in a root `.env`
 and use the same ports in `apps/api/.env`.
 
-Decisions are recorded in `docs/adr/`. Staging (https://staging.durby.tech): setup, deploy, rollback and
-backups are in `docs/ops/deploy.md`.
+Decisions are recorded in `docs/adr/`. Production (https://app.durby.tech; the former https://staging.durby.tech
+redirects there): setup, deploy, rollback and backups are in `docs/ops/deploy.md` and `docs/ops/production.md`.

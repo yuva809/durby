@@ -44,6 +44,19 @@ done
 (($(env_value JWT_ACCESS_SECRET | wc -c) > 32)) ||
   die "JWT_ACCESS_SECRET must be at least 32 characters (openssl rand -hex 32)"
 
+# Former domains that redirect to STAGING_DOMAIN (ADR 0039): comma-separated host names, never the main domain.
+redirect_domains=()
+IFS=',' read -ra _domains <<<"$(env_value REDIRECT_DOMAINS)"
+for domain in "${_domains[@]}"; do
+  domain="$(tr -d '[:space:]' <<<"$domain" | tr '[:upper:]' '[:lower:]')"
+  [[ -z "$domain" ]] && continue
+  [[ "$domain" =~ ^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$ ]] ||
+    die "REDIRECT_DOMAINS: '$domain' is not a host name (example: staging.durby.tech)"
+  [[ "$domain" != "$(env_value STAGING_DOMAIN)" && "$domain" != "$(env_value STAGING_DEMO_DOMAIN)" ]] ||
+    die "REDIRECT_DOMAINS: '$domain' is served by this stack; it can't also redirect"
+  redirect_domains+=("$domain")
+done
+
 current="$(cat "$STATE/deployed.sha" 2>/dev/null || true)"
 prefix="$(sed -n 's/^IMAGE_PREFIX=//p' "$DEPLOY_DIR/.env" | tr -d "'\"")"
 prefix="${prefix:-ghcr.io/yuva809/durby}"
@@ -125,8 +138,23 @@ fi
 # 5. Edge. Reload picks up a changed Caddyfile without dropping connections. A stack without its own edge
 #    (EDGE=false, ADR 0034) is served by the edge stack's Caddy instead.
 if [[ "$(env_value EDGE)" != false ]]; then
+  # Redirect sites for former domains (ADR 0039), rewritten on every deploy so .env stays the one source.
+  redirects="$DEPLOY_DIR/caddy/redirects"
+  install -d -m 755 "$redirects"
+  if ((${#redirect_domains[@]} > 0)); then
+    {
+      echo "# Written by bin/deploy.sh from REDIRECT_DOMAINS in .env (ADR 0039). Edit .env, not this file."
+      echo "$(IFS=','; echo "${redirect_domains[*]}" | sed 's/,/, /g') {"
+      printf '\timport redirect_to_main\n'
+      echo "}"
+    } >"$redirects/redirects.caddy"
+    log "redirecting ${redirect_domains[*]} to $(env_value STAGING_DOMAIN)"
+  else
+    rm -f "$redirects/redirects.caddy"
+  fi
   dc up -d --wait --wait-timeout "$WAIT_SECONDS" caddy
-  dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1
+  dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1 ||
+    die "caddy reload failed; the old edge config stays live (check: bin/dc exec caddy caddy validate --config /etc/caddy/Caddyfile)"
 fi
 
 # 6. Record the release and keep images for the last few, for fast rollbacks.
