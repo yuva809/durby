@@ -67,7 +67,7 @@ describe('inventory items setup (ADR 0038)', () => {
     withIdempotencyKey(
       auth(request(server)[method](`/api/v1/inventory${path}`), token),
       uuidv7(),
-    ).send((body ?? {}));
+    ).send(body ?? {});
   const post = (token: string, path: string, body: unknown) => send('post', token, path, body);
 
   async function setup() {
