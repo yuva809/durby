@@ -59,7 +59,7 @@ import { BookingDialog, TablesDialog, WalkInDialog } from './host-dialogs';
 export const HOST_REFRESH_MS = 30_000;
 
 const READ = 'reservations.bookings.read';
-const MANAGE = 'reservations.bookings.manage';
+const MANAGE = 'reservations.bookings.edit';
 
 /** /host: the door of one location (docs/modules/reservations.md → Web, R1.8b). */
 export function HostPage() {

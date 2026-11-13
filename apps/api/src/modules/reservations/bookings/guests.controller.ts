@@ -17,7 +17,7 @@ import { GuestsService } from './guests.service';
 export class GuestsController {
   constructor(private readonly guests: GuestsService) {}
 
-  @RequirePermission('reservations.setup.manage')
+  @RequirePermission('reservations.setup.delete')
   @Idempotent({ completion: 'transaction' })
   @Post(':id/anonymise')
   anonymise(

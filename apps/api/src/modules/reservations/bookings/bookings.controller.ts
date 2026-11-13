@@ -59,7 +59,7 @@ export class BookingsController {
     return { data: await this.bookings.list(query) };
   }
 
-  @RequirePermission('reservations.bookings.manage')
+  @RequirePermission('reservations.bookings.create')
   @Idempotent({ completion: 'transaction' })
   @Post()
   create(
@@ -77,7 +77,7 @@ export class BookingsController {
     return this.bookings.get(id);
   }
 
-  @RequirePermission('reservations.bookings.manage')
+  @RequirePermission('reservations.bookings.edit')
   @Idempotent()
   @Patch(':id')
   update(
@@ -90,7 +90,7 @@ export class BookingsController {
 
   // Status actions (R1.6c): each appends a status change.
 
-  @RequirePermission('reservations.bookings.manage')
+  @RequirePermission('reservations.bookings.create')
   @Idempotent({ completion: 'transaction' })
   @Post('walk-ins')
   walkIn(
@@ -99,14 +99,14 @@ export class BookingsController {
     return this.status.walkIn(body);
   }
 
-  @RequirePermission('reservations.bookings.manage')
+  @RequirePermission('reservations.bookings.edit')
   @Idempotent({ completion: 'transaction' })
   @Post(':id/arrive')
   arrive(@Param('id', reservationId()) id: string): Promise<Reservation> {
     return this.status.act(id, 'arrive');
   }
 
-  @RequirePermission('reservations.bookings.manage')
+  @RequirePermission('reservations.bookings.edit')
   @Idempotent({ completion: 'transaction' })
   @Post(':id/seat')
   seat(
@@ -116,28 +116,28 @@ export class BookingsController {
     return this.status.act(id, 'seat', body);
   }
 
-  @RequirePermission('reservations.bookings.manage')
+  @RequirePermission('reservations.bookings.edit')
   @Idempotent({ completion: 'transaction' })
   @Post(':id/finish')
   finish(@Param('id', reservationId()) id: string): Promise<Reservation> {
     return this.status.act(id, 'finish');
   }
 
-  @RequirePermission('reservations.bookings.manage')
+  @RequirePermission('reservations.bookings.edit')
   @Idempotent({ completion: 'transaction' })
   @Post(':id/no-show')
   noShow(@Param('id', reservationId()) id: string): Promise<Reservation> {
     return this.status.act(id, 'no_show');
   }
 
-  @RequirePermission('reservations.bookings.manage')
+  @RequirePermission('reservations.bookings.edit')
   @Idempotent({ completion: 'transaction' })
   @Post(':id/cancel')
   cancel(@Param('id', reservationId()) id: string): Promise<Reservation> {
     return this.status.act(id, 'cancel');
   }
 
-  @RequirePermission('reservations.bookings.manage')
+  @RequirePermission('reservations.bookings.edit')
   @Idempotent({ completion: 'transaction' })
   @Post(':id/undo')
   undo(

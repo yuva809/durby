@@ -168,11 +168,11 @@ describe('POST /api/v1/catalog/products/import', () => {
     expect(await seed.as(org.id, (db) => db.product.count())).toBe(3);
   });
 
-  it('needs catalog.products.manage and the catalog feature', async () => {
+  it('needs catalog.products.create and the catalog feature', async () => {
     for (const role of ['staff', 'waiter', 'cashier', 'manager'] as const) {
       const { token } = await orgWith(role);
       const res = await upload(token, MENU).expect(403);
-      expect(res.body).toMatchObject({ details: { permission: 'catalog.products.manage' } });
+      expect(res.body).toMatchObject({ details: { permission: 'catalog.products.create' } });
     }
     const { org } = await orgWith('owner');
     await entitlements.setOverride(org.id, 'catalog', false, undefined, 'cli.entitlements');

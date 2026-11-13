@@ -185,7 +185,7 @@ describe('/api/v1/pos/tables', () => {
       }).expect(403);
       expect(denied.body).toMatchObject({
         code: 'rbac.permission_denied',
-        details: { permission: 'pos.tables.manage' },
+        details: { permission: 'pos.tables.create' },
       });
       await patch(staff, t.id, { seats: 3 }).expect(403);
       for (const role of ['manager', 'admin'] as const) {

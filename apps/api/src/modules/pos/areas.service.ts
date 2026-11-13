@@ -57,7 +57,7 @@ export class AreasService {
       select: { id: true },
     });
     if (!location) throw posErrors.locationNotFound();
-    await this.access.assert('pos.tables.manage', { locationId: body.locationId });
+    await this.access.assert('pos.tables.create', { locationId: body.locationId });
     return this.unique(() =>
       this.db.$transaction(async (tx) => {
         const row = await tx.diningArea.create({
@@ -84,7 +84,7 @@ export class AreasService {
 
   async update(id: string, body: UpdateDiningAreaRequest): Promise<DiningArea> {
     const { userId } = this.tenantContext.require();
-    const found = await this.manageable(id);
+    const found = await this.manageable(id, 'edit');
     return this.unique(() =>
       this.db.$transaction(async (tx) => {
         const current = await tx.diningArea.findUnique({ where: { id }, select: AREA_SELECT });
@@ -122,7 +122,7 @@ export class AreasService {
   /** Deletes an area no table uses (also no table out of service); 409 otherwise. */
   async remove(id: string): Promise<void> {
     const { userId } = this.tenantContext.require();
-    await this.manageable(id);
+    await this.manageable(id, 'delete');
     await this.db.$transaction(async (tx) => {
       const current = await tx.diningArea.findUnique({ where: { id }, select: AREA_SELECT });
       if (!current) throw posErrors.areaNotFound();
@@ -140,7 +140,7 @@ export class AreasService {
   }
 
   /** The area, if the caller may read tables at its location (else 404) and manage them (else 403). */
-  private async manageable(id: string) {
+  private async manageable(id: string, verb: 'edit' | 'delete') {
     const area = await this.db.diningArea.findUnique({
       where: { id },
       select: { locationId: true },
@@ -148,7 +148,7 @@ export class AreasService {
     if (!area || !(await this.access.can('pos.tables.read', { locationId: area.locationId }))) {
       throw posErrors.areaNotFound();
     }
-    await this.access.assert('pos.tables.manage', { locationId: area.locationId });
+    await this.access.assert(`pos.tables.${verb}`, { locationId: area.locationId });
     return area;
   }
 

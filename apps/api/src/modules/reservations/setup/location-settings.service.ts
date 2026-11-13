@@ -16,7 +16,7 @@ import { AccessService } from '../../../platform/rbac';
 import { asTenantDb, TENANT_PRISMA, type TenantPrismaClient } from '../../../platform/tenancy';
 import { readableLocation } from './table-rules.service';
 
-const SETUP = 'reservations.setup.manage';
+const SETUP = 'reservations.setup.edit';
 
 /**
  * The location's own reservations.* settings (docs/modules/reservations.md → R1.5c, ADR 0020):

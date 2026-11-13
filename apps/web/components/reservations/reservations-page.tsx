@@ -39,8 +39,8 @@ import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { BookingDialog } from './host-dialogs';
 
 const READ = 'reservations.bookings.read';
-const MANAGE = 'reservations.bookings.manage';
-const ERASE = 'reservations.setup.manage';
+const MANAGE = 'reservations.bookings.edit';
+const ERASE = 'reservations.setup.delete';
 /** Statuses PATCH accepts (R1.6b). */
 const EDITABLE = new Set<Reservation['status']>(['pending', 'booked', 'arrived', 'seated']);
 /** The list refreshes like /host while visible. */

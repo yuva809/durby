@@ -331,7 +331,7 @@ describe('POST /api/v1/catalog/{products,categories}/bulk', () => {
         ['categories', { ids: [uuidv7()], action: 'delete' }],
       ] as const) {
         const res = await post(token, path, body).expect(403);
-        expect(res.body).toMatchObject({ details: { permission: 'catalog.products.manage' } });
+        expect(res.body).toMatchObject({ details: { permission: 'catalog.products.edit' } });
       }
     }
     const { org } = await orgWith('owner');

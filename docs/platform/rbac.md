@@ -330,3 +330,10 @@ enforces every permission per request.
   insert); every granting rule; last Owner incl. concurrent demotions and transfer; removal ends the access token at
   once; invitation flows incl. forged org id with another tenant's secret, single use, expiry, rate limit, no tokens
   in logs; migration backfill commits on a database with an existing membership.
+
+## Create, edit and delete keys (ADR 0037)
+
+Business entities have `module.entity.create`, `module.entity.edit` and `module.entity.delete` instead of one `*.manage`
+key. Routes map POST (create) to `create`, PATCH, PUT and state changes to `edit`, and DELETE and erasure to `delete`.
+Stored `*.manage` keys still mean all three (`LEGACY_PERMISSION_ALIASES`, expanded on resolution). Bulk endpoints check
+`edit`, and `delete` for a delete action.

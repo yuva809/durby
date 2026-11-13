@@ -127,7 +127,7 @@ async function scan() {
 }
 
 describe('ScanPage', () => {
-  it('needs catalog.products.manage', () => {
+  it('needs catalog.products.edit', () => {
     mockState.session = sessionFixture({
       activePermissions: ['catalog.products.read'],
       activeFeatures: ['catalog'],

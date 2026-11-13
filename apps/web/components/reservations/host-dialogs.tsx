@@ -172,7 +172,7 @@ export function BookingDialog({
   tables: readonly ReservationsFloorTable[];
   /** Edit this booking instead of creating one. */
   booking?: Reservation;
-  /** reservations.setup.manage: the edit offers "Erase guest data". */
+  /** reservations.setup.delete: the edit offers "Erase guest data". */
   canErase?: boolean;
   /** The saved booking; null after the guest's data was erased. */
   onDone: (booking: Reservation | null) => void;

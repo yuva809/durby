@@ -59,7 +59,7 @@ export class TableRulesService {
     ) {
       throw reservationErrors.tableNotFound();
     }
-    await this.access.assert('reservations.setup.manage', { locationId: table.locationId });
+    await this.access.assert('reservations.setup.edit', { locationId: table.locationId });
     const next: Rule = {
       bookingMode: body.bookingMode,
       minParty: body.minParty,

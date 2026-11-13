@@ -80,7 +80,7 @@ export class TablesService {
       select: { id: true },
     });
     if (!location) throw posErrors.locationNotFound();
-    await this.access.assert('pos.tables.manage', { locationId: body.locationId });
+    await this.access.assert('pos.tables.create', { locationId: body.locationId });
     return this.unique(() =>
       this.db.$transaction(async (tx) => {
         const area = body.areaId ? await areaAt(tx, body.areaId, body.locationId) : null;
@@ -125,7 +125,7 @@ export class TablesService {
     if (!found || !(await this.access.can('pos.tables.read', { locationId: found.locationId }))) {
       throw posErrors.tableNotFound();
     }
-    await this.access.assert('pos.tables.manage', { locationId: found.locationId });
+    await this.access.assert('pos.tables.edit', { locationId: found.locationId });
     return this.unique(() =>
       this.db.$transaction(async (tx) => {
         const current = await tx.diningTable.findUnique({ where: { id }, select: TABLE_SELECT });
@@ -178,7 +178,7 @@ export class TablesService {
     if (!found || !(await this.access.can('pos.tables.read', { locationId: found.locationId }))) {
       throw posErrors.tableNotFound();
     }
-    await this.access.assert('pos.tables.manage', { locationId: found.locationId });
+    await this.access.assert('pos.tables.edit', { locationId: found.locationId });
     return this.db.$transaction(async (tx) => {
       const row = await tx.diningTable.update({
         where: { id },

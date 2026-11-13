@@ -69,7 +69,7 @@ export class CatalogController {
     return { data: await this.catalog.listCategories(query) };
   }
 
-  @RequirePermission('catalog.products.manage')
+  @RequirePermission('catalog.products.create')
   @Idempotent({ completion: 'transaction' })
   @Post('categories')
   createCategory(
@@ -78,7 +78,7 @@ export class CatalogController {
     return this.catalog.createCategory(body);
   }
 
-  @RequirePermission('catalog.products.manage')
+  @RequirePermission('catalog.products.edit')
   @Idempotent()
   @Patch('categories/:id')
   updateCategory(
@@ -96,7 +96,7 @@ export class CatalogController {
     return { data: await this.catalog.listProducts(query) };
   }
 
-  @RequirePermission('catalog.products.manage')
+  @RequirePermission('catalog.products.create')
   @Idempotent({ completion: 'transaction' })
   @Post('products')
   createProduct(
@@ -109,7 +109,7 @@ export class CatalogController {
    * Many products at once (docs/modules/catalog.md → Bulk actions). Deletes append audit rows and
    * remove rows, so the result is stored with the key in the transaction (rule 8).
    */
-  @RequirePermission('catalog.products.manage')
+  @RequirePermission('catalog.products.edit')
   @Idempotent({ completion: 'transaction' })
   @Post('products/bulk')
   @HttpCode(HttpStatus.OK)
@@ -119,7 +119,7 @@ export class CatalogController {
     return this.bulk.products(body);
   }
 
-  @RequirePermission('catalog.products.manage')
+  @RequirePermission('catalog.products.edit')
   @Idempotent({ completion: 'transaction' })
   @Post('categories/bulk')
   @HttpCode(HttpStatus.OK)
@@ -130,7 +130,7 @@ export class CatalogController {
   }
 
   /** Appends products and categories: the result is stored with the key (rule 8). */
-  @RequirePermission('catalog.products.manage')
+  @RequirePermission('catalog.products.create')
   @Idempotent({ completion: 'transaction' })
   @Post('products/import')
   @HttpCode(HttpStatus.OK)
@@ -141,7 +141,7 @@ export class CatalogController {
   }
 
   /** Fill missing numbers (ADR 0029): writes many products, so the result goes with the key. */
-  @RequirePermission('catalog.products.manage')
+  @RequirePermission('catalog.products.create')
   @Idempotent({ completion: 'transaction' })
   @Post('products/number')
   @HttpCode(HttpStatus.OK)
@@ -149,7 +149,7 @@ export class CatalogController {
     return this.catalog.numberProducts();
   }
 
-  @RequirePermission('catalog.products.manage')
+  @RequirePermission('catalog.products.edit')
   @Idempotent()
   @Patch('products/:id')
   updateProduct(

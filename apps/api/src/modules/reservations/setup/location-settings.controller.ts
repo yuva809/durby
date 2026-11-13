@@ -34,7 +34,7 @@ import { LocationSettingsService } from './location-settings.service';
 export class LocationSettingsController {
   constructor(private readonly settings: LocationSettingsService) {}
 
-  @RequirePermission('reservations.setup.manage')
+  @RequirePermission('reservations.setup.edit')
   @Get()
   list(
     @Query(new ZodQuery(reservationSettingsQuerySchema)) query: ReservationSettingsQuery,
@@ -42,7 +42,7 @@ export class LocationSettingsController {
     return this.settings.list(query.locationId);
   }
 
-  @RequirePermission('reservations.setup.manage')
+  @RequirePermission('reservations.setup.edit')
   @Idempotent()
   @Put(':key')
   set(
@@ -53,7 +53,7 @@ export class LocationSettingsController {
     return this.settings.set(key, query.locationId, body.value);
   }
 
-  @RequirePermission('reservations.setup.manage')
+  @RequirePermission('reservations.setup.delete')
   @Idempotent()
   @Delete(':key')
   @HttpCode(HttpStatus.NO_CONTENT)

@@ -69,7 +69,7 @@ export class CombinationsService {
   async create(body: CreateCombinationRequest): Promise<ReservationCombination> {
     const { tenantId, userId } = this.tenantContext.require();
     await readableLocation(asTenantDb(this.db), this.access, body.locationId);
-    await this.access.assert('reservations.setup.manage', { locationId: body.locationId });
+    await this.access.assert('reservations.setup.create', { locationId: body.locationId });
     checkRange(body.minParty, body.maxParty);
     await this.assertTablesInService(body.locationId, body.tableIds);
     return this.db.$transaction(async (tx) => {
@@ -110,7 +110,7 @@ export class CombinationsService {
     ) {
       throw reservationErrors.combinationNotFound();
     }
-    await this.access.assert('reservations.setup.manage', { locationId: found.locationId });
+    await this.access.assert('reservations.setup.edit', { locationId: found.locationId });
     if (body.tableIds) await this.assertTablesInService(found.locationId, body.tableIds);
 
     return this.db.$transaction(async (tx) => {

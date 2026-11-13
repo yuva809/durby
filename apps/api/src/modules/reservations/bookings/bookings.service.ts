@@ -37,7 +37,8 @@ import { shortLockWaits } from './busy';
 import { readableLocation } from '../setup/table-rules.service';
 import { correctGuest, type GuestDetails, resolveGuest } from './guests';
 
-const MANAGE = 'reservations.bookings.manage';
+const CREATE = 'reservations.bookings.create';
+const EDIT = 'reservations.bookings.edit';
 const READ = 'reservations.bookings.read';
 /** How far back a booking may start (Q4): parties already here are walk-ins. */
 const PAST_GRACE_MS = 15 * 60_000;
@@ -152,7 +153,7 @@ export class BookingsService {
     return this.db.$transaction(async (tx) => {
       await shortLockWaits(tx);
       await readableLocation(tx, this.access, body.locationId);
-      await this.access.assert(MANAGE, { locationId: body.locationId });
+      await this.access.assert(CREATE, { locationId: body.locationId });
       if (start.getTime() < now.getTime() - PAST_GRACE_MS) throw reservationErrors.startsInPast();
       const { input, settings } = await this.load(tx, body.locationId, start, body.partySize, now);
       const end = body.endsAt
@@ -439,7 +440,7 @@ export class BookingsService {
   /** …and manages them there (else 403). */
   async manageable(id: string, tx?: TenantTransactionClient) {
     const found = await this.readable(id, tx);
-    await this.access.assert(MANAGE, { locationId: found.locationId });
+    await this.access.assert(EDIT, { locationId: found.locationId });
     return found;
   }
 }

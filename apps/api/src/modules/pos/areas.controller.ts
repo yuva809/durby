@@ -46,7 +46,7 @@ export class AreasController {
     return { data: await this.areas.list(query) };
   }
 
-  @RequirePermission('pos.tables.manage')
+  @RequirePermission('pos.tables.create')
   @Idempotent({ completion: 'transaction' })
   @Post()
   create(
@@ -55,7 +55,7 @@ export class AreasController {
     return this.areas.create(body);
   }
 
-  @RequirePermission('pos.tables.manage')
+  @RequirePermission('pos.tables.edit')
   @Idempotent()
   @Patch(':id')
   update(
@@ -65,7 +65,7 @@ export class AreasController {
     return this.areas.update(id, body);
   }
 
-  @RequirePermission('pos.tables.manage')
+  @RequirePermission('pos.tables.delete')
   @Idempotent()
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)

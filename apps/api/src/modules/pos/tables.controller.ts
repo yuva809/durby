@@ -34,7 +34,7 @@ export class TablesController {
     return { data: await this.tables.list(query) };
   }
 
-  @RequirePermission('pos.tables.manage')
+  @RequirePermission('pos.tables.create')
   @Idempotent({ completion: 'transaction' })
   @Post()
   create(
@@ -43,7 +43,7 @@ export class TablesController {
     return this.tables.create(body);
   }
 
-  @RequirePermission('pos.tables.manage')
+  @RequirePermission('pos.tables.edit')
   @Idempotent()
   @Patch(':id')
   update(
@@ -54,7 +54,7 @@ export class TablesController {
   }
 
   /** A new QR menu token; a replay returns the same one (ADR 0026). */
-  @RequirePermission('pos.tables.manage')
+  @RequirePermission('pos.tables.edit')
   @Idempotent()
   @Post(':id/menu-token')
   rotateMenuToken(

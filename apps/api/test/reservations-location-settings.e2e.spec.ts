@@ -171,7 +171,7 @@ describe('reservations: location settings', () => {
   it('refuses delegated writes outside the module or the location (ADR 0020)', async () => {
     const r = await restaurant();
     const admin = app.get(SettingsAdmin);
-    const delegated = { permission: 'reservations.setup.manage' as const };
+    const delegated = { permission: 'reservations.setup.edit' as const };
     await app.get(TenantContext).run({ tenantId: r.org.id, userId: uuidv7() }, async () => {
       await expect(
         admin.set('openingHours', { locationId: r.here }, DEFAULT_OPENING_HOURS, delegated),
@@ -203,7 +203,7 @@ describe('reservations: location settings', () => {
       for (const role of ['waiter', 'host', 'staff', 'cashier'] as const) {
         const token = await memberToken(r.org, role);
         const res = await get(token, `/reservations/settings?locationId=${r.here}`).expect(403);
-        expect(res.body).toMatchObject({ details: { permission: 'reservations.setup.manage' } });
+        expect(res.body).toMatchObject({ details: { permission: 'reservations.setup.edit' } });
         await put(token, 'reservations.holdMinutes', r.here, 6).expect(403);
       }
       const limited = await memberToken(r.org, 'manager', [r.there]);
