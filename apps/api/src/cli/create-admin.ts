@@ -76,7 +76,8 @@ export async function createAdmin(
     'owner',
     'cli.create_admin',
   );
-  await app.get(PasswordService).sendPasswordSetMail(user.id);
+  // The link opens on the partner's own domain when it has one (ADR 0041), else WEB_BASE_URL.
+  await app.get(PasswordService).sendPasswordSetMail(user.id, { partnerId: partner.id });
   return { partner, organization, user, membership };
 }
 

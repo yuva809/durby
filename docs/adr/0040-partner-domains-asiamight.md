@@ -38,8 +38,8 @@ only knew `STAGING_DOMAIN` and `STAGING_DEMO_DOMAIN`.
 ## Consequences
 
 - Adding another partner domain is a migration (partner, theme, domain rows) plus one `.env` entry and a DNS record.
-- Password reset and email verification links still use `WEB_BASE_URL` (`app.durby.tech`), so they open Durby's
-  branding (open since ADR 0015).
+- Password and onboarding links opened `app.durby.tech` with Durby's branding; ADR 0041 moves them to the partner's
+  domain.
 - Sessions are per host: an AsiaMight user signs in on `app.asiamight.site`.
 - Users see the organizations they belong to, whatever the domain; AsiaMight's users belong only to AsiaMight's
   organization.

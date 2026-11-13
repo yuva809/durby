@@ -237,9 +237,10 @@ empty states) and `platform.nav.*` (group names), in `en` and `de`. All user-fac
 - **Staging:** one Caddy site block with both addresses (`{$STAGING_DOMAIN}, {$STAGING_DEMO_DOMAIN}`), no basic
   auth since ADR 0018; `WEB_ORIGINS` lists both (the CSRF Origin check, ADR 0006 §6). DNS: `CNAME partner-demo.durby.tech →
 app.durby.tech` (docs/ops/deploy.md; `staging.durby.tech` redirects to `app.durby.tech` since ADR 0039). Cookies are host-only, so each domain has its own session.
-- Email links: **invitation** links use the organization's partner domain since (b) (→ Invitation links). Password
-  reset and email verification links still use `WEB_BASE_URL`: they are user-level (a user can belong to
-  organizations of several partners), so a demo-partner user's reset link opens the Durby domain. Open, see ADR 0015.
+- Email links: **invitation** links use the organization's partner domain since (b) (→ Invitation links). Since
+  ADR 0041 so do a new Owner's set-password and sign-in links (`create-admin`, admin portal onboarding). Password
+  reset and email verification are user-level (a user can belong to organizations of several partners): their link
+  opens on the site the request came from when its `Origin` is exactly one of `WEB_ORIGINS`, else `WEB_BASE_URL`.
 
 ## Users, roles, invitations (PR b)
 

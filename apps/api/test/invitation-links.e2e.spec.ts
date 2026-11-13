@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PasswordService } from '../src/platform/auth';
 import { PLATFORM_PRISMA, type PlatformPrismaClient } from '../src/platform/tenancy';
 import { startAuthApp, WEB_ORIGIN, type AuthTestKit } from './support/auth-app';
 import { withIdempotencyKey } from './support/idempotency';
@@ -60,5 +61,42 @@ describe('invitation links', () => {
 
   it("ignores the request's Host and X-Forwarded-Host", async () => {
     expect(await linkOf(durby, 'partner-demo.localhost:3000')).toBe(WEB_ORIGIN);
+  });
+
+  // ADR 0041: password links open on the user's own site too.
+  describe('password links', () => {
+    /** Asks for a reset link with `origin` and returns the origin of the link in the mail. */
+    async function resetLinkOf(origin?: string): Promise<string> {
+      const user = await kit.createUser();
+      let req = request(kit.server).post('/api/v1/auth/password/forgot');
+      if (origin) req = req.set('Origin', origin);
+      await req.send({ email: user.email }).expect(202);
+      await kit.settle();
+      const match = /(\S+)\/reset-password#token=/.exec(
+        kit.mailer.to(user.email).at(-1)?.text ?? '',
+      );
+      expect(match, 'reset link in mail').not.toBeNull();
+      return match?.[1] ?? '';
+    }
+
+    it('opens a reset link on the allowed site it was asked from', async () => {
+      expect(await resetLinkOf(DEMO_ORIGIN)).toBe(DEMO_ORIGIN);
+      expect(await resetLinkOf(WEB_ORIGIN)).toBe(WEB_ORIGIN);
+    });
+
+    it('never puts an unknown origin into the mail', async () => {
+      expect(await resetLinkOf('https://evil.example.com')).toBe(WEB_ORIGIN);
+      expect(await resetLinkOf()).toBe(WEB_ORIGIN);
+    });
+
+    it("opens a new admin's set-password link on the partner's domain", async () => {
+      const platform = kit.app.get<PlatformPrismaClient>(PLATFORM_PRISMA);
+      const partner = await platform.partner.findUniqueOrThrow({ where: { slug: 'demo' } });
+      const user = await kit.createUser();
+      await kit.app.get(PasswordService).sendPasswordSetMail(user.id, { partnerId: partner.id });
+      expect(kit.mailer.to(user.email).at(-1)?.text).toContain(
+        `${DEMO_ORIGIN}/reset-password#token=`,
+      );
+    });
   });
 });

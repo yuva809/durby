@@ -4,6 +4,7 @@ import { PrismaService } from '../database';
 import type { UserTokenPurpose } from '../database/generated/client';
 import { authErrors } from './auth-errors';
 import { AuthMailer } from './auth-mailer';
+import type { MailLinkTarget } from './link-base';
 import { AuthRateLimits } from './auth-rate-limits';
 import { Clock } from './clock';
 import { emailKey, generateToken, hashToken, normalizeEmail } from './crypto';
@@ -19,6 +20,12 @@ const TOKEN_TTL_MS: Record<UserTokenPurpose, number> = {
 };
 /** A new Owner's first password link (admin portal onboarding): days, not minutes. */
 const OWNER_WELCOME_TTL_MS = 72 * 60 * MIN;
+
+/** Where a mail's link opens (ADR 0041): the partner's domain, or the asking browser's site. */
+interface LinkOptions {
+  partnerId?: string;
+  requestOrigin?: string;
+}
 
 /**
  * Forgot/reset password and email verification (docs/platform/auth.md). Responses never reveal
@@ -40,8 +47,11 @@ export class PasswordService {
     this.logger.setContext(PasswordService.name);
   }
 
-  /** Rate-limited; the reset mail (if the user exists) is sent in the background. */
-  async requestPasswordReset(email: string, ip: string): Promise<void> {
+  /**
+   * Rate-limited; the reset mail (if the user exists) is sent in the background. `requestOrigin`: the asking
+   * browser's Origin; the link opens on that site when it is an allowed web origin (ADR 0041).
+   */
+  async requestPasswordReset(email: string, ip: string, requestOrigin?: string): Promise<void> {
     await this.limits.enforce(
       [this.limits.rules.mailIp, ip],
       [this.limits.rules.mailEmail, emailKey(email)],
@@ -49,35 +59,71 @@ export class PasswordService {
     this.inBackground('password reset mail', async () => {
       const user = await this.db.user.findUnique({ where: { email: normalizeEmail(email) } });
       if (!user) return;
-      await this.sendPasswordSetMail(user.id);
+      await this.sendPasswordSetMail(user.id, { requestOrigin });
       this.security.event('auth.password.reset_requested', { userId: user.id, ip });
     });
   }
 
   /**
    * Issues a reset token (cancelling older ones) and mails the link. Also used by create-admin to
-   * let a new admin set their first password.
+   * let a new admin set their first password; with `partnerId` the link opens on that partner's domain.
    */
-  async sendPasswordSetMail(userId: string): Promise<void> {
+  async sendPasswordSetMail(userId: string, link: LinkOptions = {}): Promise<void> {
     const user = await this.db.user.findUniqueOrThrow({ where: { id: userId } });
     const token = await this.issueToken(userId, 'password_reset');
-    await this.mailer.send('reset', user.email, user.locale, token);
+    await this.mailer.send('reset', user.email, user.locale, token, await this.linkTarget(link));
   }
 
   /**
    * A new customer's Owner (admin portal onboarding, docs/platform/admin-portal.md): a set-password
-   * link valid for 72 hours, through the usual reset page. Older open links stop working.
+   * link valid for 72 hours, through the usual reset page. Older open links stop working. The link opens on the
+   * customer's partner domain when it has one (ADR 0041).
    */
-  async sendOwnerWelcomeMail(userId: string, organization: string): Promise<void> {
+  async sendOwnerWelcomeMail(
+    userId: string,
+    organization: string,
+    partnerId?: string,
+  ): Promise<void> {
     const user = await this.db.user.findUniqueOrThrow({ where: { id: userId } });
     const token = await this.issueToken(userId, 'password_reset', OWNER_WELCOME_TTL_MS);
-    await this.mailer.sendOwner('ownerWelcome', user.email, user.locale, organization, token);
+    await this.mailer.sendOwner(
+      'ownerWelcome',
+      user.email,
+      user.locale,
+      organization,
+      token,
+      await this.linkTarget({ partnerId }),
+    );
   }
 
   /** An existing user made Owner of a new customer: a sign-in link, the password stays as it is. */
-  async sendOwnerAddedMail(userId: string, organization: string): Promise<void> {
+  async sendOwnerAddedMail(
+    userId: string,
+    organization: string,
+    partnerId?: string,
+  ): Promise<void> {
     const user = await this.db.user.findUniqueOrThrow({ where: { id: userId } });
-    await this.mailer.sendOwner('ownerAdded', user.email, user.locale, organization);
+    await this.mailer.sendOwner(
+      'ownerAdded',
+      user.email,
+      user.locale,
+      organization,
+      undefined,
+      await this.linkTarget({ partnerId }),
+    );
+  }
+
+  /** The partner's domains (partner_domains: platform table, no tenant data) or the request origin. */
+  private async linkTarget(link: LinkOptions): Promise<MailLinkTarget> {
+    if (link.partnerId) {
+      const domains = await this.db.partnerDomain.findMany({
+        where: { partnerId: link.partnerId },
+        select: { hostname: true },
+        orderBy: { hostname: 'asc' },
+      });
+      return { partnerHostnames: domains.map((d) => d.hostname) };
+    }
+    return link.requestOrigin === undefined ? {} : { requestOrigin: link.requestOrigin };
   }
 
   /**
@@ -132,7 +178,7 @@ export class PasswordService {
   }
 
   /** Rate-limited; mails a new link only to an existing, unverified user. */
-  async resendVerification(email: string, ip: string): Promise<void> {
+  async resendVerification(email: string, ip: string, requestOrigin?: string): Promise<void> {
     await this.limits.enforce(
       [this.limits.rules.mailIp, ip],
       [this.limits.rules.mailEmail, emailKey(email)],
@@ -141,7 +187,13 @@ export class PasswordService {
       const user = await this.db.user.findUnique({ where: { email: normalizeEmail(email) } });
       if (!user || user.emailVerifiedAt !== null) return;
       const token = await this.issueToken(user.id, 'email_verification');
-      await this.mailer.send('verify', user.email, user.locale, token);
+      await this.mailer.send(
+        'verify',
+        user.email,
+        user.locale,
+        token,
+        await this.linkTarget({ requestOrigin }),
+      );
       this.security.event('auth.email.verification_requested', { userId: user.id, ip });
     });
   }

@@ -3,6 +3,7 @@ import { createTranslator, DEFAULT_LOCALE, isLocale, type LabelKey } from '@durb
 import { PinoLogger } from 'nestjs-pino';
 import { APP_CONFIG, type AppConfig } from '../config';
 import { MAILER, type Mailer } from '../mail';
+import { mailLinkBase, type MailLinkTarget } from './link-base';
 
 export type AuthMailTemplate = 'reset' | 'verify';
 
@@ -27,9 +28,19 @@ export class AuthMailer {
     this.logger.setContext(AuthMailer.name);
   }
 
-  async send(template: AuthMailTemplate, to: string, locale: string, token: string): Promise<void> {
+  /**
+   * `target`: the partner domains or the asking browser's origin, so a partner's users land on their own site
+   * (ADR 0041); WEB_BASE_URL otherwise.
+   */
+  async send(
+    template: AuthMailTemplate,
+    to: string,
+    locale: string,
+    token: string,
+    target: MailLinkTarget = {},
+  ): Promise<void> {
     const t = createTranslator(isLocale(locale) ? locale : DEFAULT_LOCALE);
-    const link = `${new URL(PAGES[template], this.config.WEB_BASE_URL).toString()}#token=${token}`;
+    const link = `${new URL(PAGES[template], this.base(target)).toString()}#token=${token}`;
     const { messageId } = await this.mailer.send({
       to,
       subject: t(`auth.email.${template}.subject` as LabelKey),
@@ -48,17 +59,23 @@ export class AuthMailer {
     locale: string,
     organization: string,
     token?: string,
+    target: MailLinkTarget = {},
   ): Promise<void> {
     const t = createTranslator(isLocale(locale) ? locale : DEFAULT_LOCALE);
+    const base = this.base(target);
     const link =
       template === 'ownerWelcome'
-        ? `${new URL(PAGES.reset, this.config.WEB_BASE_URL).toString()}#token=${token ?? ''}`
-        : new URL('/login', this.config.WEB_BASE_URL).toString();
+        ? `${new URL(PAGES.reset, base).toString()}#token=${token ?? ''}`
+        : new URL('/login', base).toString();
     const { messageId } = await this.mailer.send({
       to,
       subject: t(`auth.email.${template}.subject` as LabelKey, { organization }),
       text: t(`auth.email.${template}.body` as LabelKey, { organization, link }),
     });
     this.logger.info({ template: `auth.${template}`, messageId }, 'auth mail sent');
+  }
+
+  private base(target: MailLinkTarget): string {
+    return mailLinkBase(this.config.WEB_ORIGINS, this.config.WEB_BASE_URL, target);
   }
 }

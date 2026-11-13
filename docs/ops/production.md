@@ -153,8 +153,9 @@ bin/dc run --rm --no-deps api node dist/cli/create-admin.js \
 ```
 
 The owner gets an email to set their password (Mailpit unless `SMTP_URL` is set: `ssh -L 8025:127.0.0.1:8025` and open
-http://localhost:8025). That password link opens `app.durby.tech` (ADR 0040, Consequences); after setting it they sign
-in at **https://app.asiamight.site**. Staff they invite get links on `app.asiamight.site`.
+http://localhost:8025). The link opens on `app.asiamight.site` (ADR 0041); after setting the password they sign in
+at **https://app.asiamight.site**. Staff they invite, and "Forgot your password?" asked there, get links on
+`app.asiamight.site` too.
 
 ### 5. Check
 

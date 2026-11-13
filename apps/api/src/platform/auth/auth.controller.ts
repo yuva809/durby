@@ -163,7 +163,8 @@ export class AuthController {
     @Body(new ZodBody(emailRequestSchema)) body: EmailRequest,
     @Req() req: Request,
   ): Promise<void> {
-    await this.passwords.requestPasswordReset(body.email, clientIp(req));
+    // The Origin only picks which of our own sites the link opens on (ADR 0041); anything else gets WEB_BASE_URL.
+    await this.passwords.requestPasswordReset(body.email, clientIp(req), req.headers.origin);
   }
 
   @Public()
@@ -196,7 +197,7 @@ export class AuthController {
     @Body(new ZodBody(emailRequestSchema)) body: EmailRequest,
     @Req() req: Request,
   ): Promise<void> {
-    await this.passwords.resendVerification(body.email, clientIp(req));
+    await this.passwords.resendVerification(body.email, clientIp(req), req.headers.origin);
   }
 
   private cookie(req: Request): string | undefined {
