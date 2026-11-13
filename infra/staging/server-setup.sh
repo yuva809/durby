@@ -17,7 +17,8 @@
 set -euo pipefail
 
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/durby}"
-STAGING_DOMAIN="${STAGING_DOMAIN:-staging.durby.tech}"
+# Production's main domain since ADR 0039 (the name STAGING_DOMAIN is kept for existing servers).
+STAGING_DOMAIN="${STAGING_DOMAIN:-app.durby.tech}"
 STAGING_DEMO_DOMAIN="${STAGING_DEMO_DOMAIN:-partner-demo.durby.tech}"
 # The branch bin/release.sh deploys (ADR 0034): main for production. The dev stack is added next to it with
 # bin/add-stack.sh.

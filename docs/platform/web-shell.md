@@ -214,10 +214,10 @@ empty states) and `platform.nav.*` (group names), in `en` and `de`. All user-fac
 
 ## Two-domain demo
 
-| Where   | Durby (default)               | Demo partner                         |
-| ------- | ----------------------------- | ------------------------------------ |
-| Local   | `http://durby.localhost:3000` | `http://partner-demo.localhost:3000` |
-| Staging | `https://staging.durby.tech`  | `https://partner-demo.durby.tech`    |
+| Where  | Durby (default)               | Demo partner                         |
+| ------ | ----------------------------- | ------------------------------------ |
+| Local  | `http://durby.localhost:3000` | `http://partner-demo.localhost:3000` |
+| Server | `https://app.durby.tech`      | `https://partner-demo.durby.tech`    |
 
 - **Demo partner** (slug `demo`) with its theme, both hostnames and a few partner label overrides (e.g.
   `inventory.nav.title` → "Stock" / "Bestand") is created **by a migration**, like the plans. Durby's hostnames need
@@ -233,7 +233,7 @@ empty states) and `platform.nav.*` (group names), in `en` and `de`. All user-fac
   `X-Forwarded-Host`, which the api otherwise ignores.
 - **Staging:** one Caddy site block with both addresses (`{$STAGING_DOMAIN}, {$STAGING_DEMO_DOMAIN}`), no basic
   auth since ADR 0018; `WEB_ORIGINS` lists both (the CSRF Origin check, ADR 0006 §6). DNS: `CNAME partner-demo.durby.tech →
-staging.durby.tech` (docs/ops/deploy.md). Cookies are host-only, so each domain has its own session.
+app.durby.tech` (docs/ops/deploy.md; `staging.durby.tech` redirects to `app.durby.tech` since ADR 0039). Cookies are host-only, so each domain has its own session.
 - Email links: **invitation** links use the organization's partner domain since (b) (→ Invitation links). Password
   reset and email verification links still use `WEB_BASE_URL`: they are user-level (a user can belong to
   organizations of several partners), so a demo-partner user's reset link opens the Durby domain. Open, see ADR 0015.

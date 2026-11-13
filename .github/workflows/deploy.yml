@@ -25,10 +25,11 @@ jobs:
     timeout-minutes: 45
     environment:
       name: staging
-      url: ${{ github.ref_name == 'main' && 'https://staging.durby.tech' || 'https://dev.durby.tech' }}
+      url: ${{ github.ref_name == 'main' && 'https://app.durby.tech' || 'https://dev.durby.tech' }}
     env:
       DEPLOY_DIR: ${{ github.ref_name == 'main' && '/opt/durby' || '/opt/durby-dev' }}
-      SITE_URL: ${{ github.ref_name == 'main' && 'https://staging.durby.tech' || 'https://dev.durby.tech' }}
+      # Production's main domain since ADR 0039 (staging.durby.tech redirects to it).
+      SITE_URL: ${{ github.ref_name == 'main' && 'https://app.durby.tech' || 'https://dev.durby.tech' }}
       SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
     steps:
       # Only the server scripts are needed here; the server fetches and builds the code itself.
