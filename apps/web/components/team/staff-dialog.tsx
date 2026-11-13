@@ -5,6 +5,7 @@ import {
   INVITATION_TTL_DAYS,
   type LocationSummary,
   PASSWORD_MIN_LENGTH,
+  type PermissionKey,
   type Role,
   type TeamMember,
 } from '@durby/shared';
@@ -18,6 +19,8 @@ import { roleName } from '../../lib/rbac/roles';
 import { createTeamMember, updateTeamMember } from '../../lib/team/api';
 import {
   canToggle,
+  CRUD_COLUMNS,
+  crudRow,
   generatePassword,
   overridesOf,
   selectedOf,
@@ -36,6 +39,10 @@ import { Select } from '../ui/select';
 import { ShareLink } from './share-link';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** The matrix columns: the area, then View, Create, Edit and Delete (ADR 0037). */
+const MATRIX_GRID =
+  'grid grid-cols-[minmax(0,1fr)_repeat(4,2.75rem)] items-center gap-x-1 sm:grid-cols-[minmax(0,1fr)_repeat(4,4rem)]';
 
 type Result =
   | { kind: 'created'; name: string }
@@ -500,48 +507,45 @@ function StaffForm({
                   {t('platform.team.dialog.clear')}
                 </Button>
               </div>
-              <div className="flex flex-col divide-y rounded-lg border" data-testid="team-matrix">
-                {groups.map((group) => (
-                  <div
-                    key={group.area}
-                    className="grid gap-x-4 gap-y-1 px-3 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)]"
-                  >
-                    <div className="pt-2.5 text-sm font-medium">{t(areaLabel(group.area))}</div>
-                    <div className="flex flex-wrap gap-x-4">
-                      {group.keys.map((key) => {
-                        const locked = !canToggle(access, key);
-                        return (
-                          <label
-                            key={key}
-                            className={cn(
-                              'flex min-h-11 items-center gap-2 text-sm',
-                              locked && 'text-muted-foreground',
-                            )}
-                            title={locked ? t('platform.team.dialog.locked') : undefined}
-                          >
-                            <Checkbox
-                              checked={selected.has(key)}
-                              disabled={locked}
-                              onCheckedChange={(v) => toggle(key, v === true)}
-                              data-testid="team-permission"
-                              data-key={key}
-                            />
-                            {t(permissionLabel(key))}
-                            {locked && <Lock aria-hidden className="size-3.5" />}
-                            {changed(key) && (
-                              <span
-                                className="size-2 rounded-full bg-primary"
-                                title={t('platform.team.dialog.changed')}
-                                aria-label={t('platform.team.dialog.changed')}
-                                data-testid="team-permission-changed"
-                              />
-                            )}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex flex-col rounded-lg border" data-testid="team-matrix">
+                <div
+                  className={cn(
+                    MATRIX_GRID,
+                    'border-b px-3 py-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase',
+                  )}
+                  aria-hidden
+                >
+                  <span>{t('platform.team.dialog.column.module')}</span>
+                  {CRUD_COLUMNS.map((verb) => (
+                    <span key={verb} className="text-center">
+                      {t(`platform.team.dialog.column.${verb}`)}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex flex-col divide-y">
+                  {groups.map((group) => (
+                    <MatrixRow
+                      key={group.area}
+                      area={group.area}
+                      keys={group.keys}
+                      selected={selected}
+                      access={access}
+                      changed={changed}
+                      onToggle={toggle}
+                      onToggleAll={(on) =>
+                        setSelected((current) => {
+                          const next = new Set(current);
+                          for (const key of group.keys) {
+                            if (!canToggle(access, key)) continue;
+                            if (on) next.add(key);
+                            else next.delete(key);
+                          }
+                          return next;
+                        })
+                      }
+                    />
+                  ))}
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">
                 {t('platform.team.dialog.matrixNote')}
@@ -570,6 +574,142 @@ function StaffForm({
         </div>
       </div>
     </form>
+  );
+}
+
+/**
+ * One area of the matrix. An entity with create, edit or delete keys is a row of View, Create, Edit and Delete
+ * cells (blank where the key doesn't exist) with its other keys listed under it; any other area lists its keys.
+ * The box in front ticks or clears the whole area (only the keys you may change).
+ */
+function MatrixRow({
+  area,
+  keys,
+  selected,
+  access,
+  changed,
+  onToggle,
+  onToggleAll,
+}: {
+  area: string;
+  keys: readonly PermissionKey[];
+  selected: ReadonlySet<string>;
+  access: UsersAccess;
+  changed: (key: string) => boolean;
+  onToggle: (key: string, on: boolean) => void;
+  onToggleAll: (on: boolean) => void;
+}) {
+  const t = useT();
+  const areaName = t(areaLabel(area));
+  const row = crudRow(keys);
+  const ticked = keys.filter((key) => selected.has(key)).length;
+  const anyToggleable = keys.some((key) => canToggle(access, key));
+  const listed = (row ? row.extra : keys) as PermissionKey[];
+
+  return (
+    <div className="px-3 py-1.5" data-testid="team-matrix-row" data-area={area}>
+      <div className={MATRIX_GRID}>
+        <label className="flex min-h-11 min-w-0 items-center gap-2 text-sm font-medium">
+          <Checkbox
+            checked={ticked === 0 ? false : ticked === keys.length ? true : 'indeterminate'}
+            disabled={!anyToggleable}
+            onCheckedChange={(v) => onToggleAll(v === true)}
+            aria-label={t('platform.team.dialog.wholeArea', { area: areaName })}
+            data-testid="team-permission-area"
+            data-area={area}
+          />
+          <span className="truncate" title={areaName}>
+            {areaName}
+          </span>
+        </label>
+        {row &&
+          CRUD_COLUMNS.map((verb) => {
+            const key = row.cells[verb] as PermissionKey | null;
+            return (
+              <div key={verb} className="flex justify-center">
+                {key && (
+                  <PermissionBox
+                    permission={key}
+                    selected={selected}
+                    access={access}
+                    changed={changed}
+                    onToggle={onToggle}
+                    labelled={false}
+                  />
+                )}
+              </div>
+            );
+          })}
+      </div>
+      {listed.length > 0 && (
+        <div className="flex flex-wrap gap-x-4 pl-7">
+          {listed.map((key) => (
+            <PermissionBox
+              key={key}
+              permission={key}
+              selected={selected}
+              access={access}
+              changed={changed}
+              onToggle={onToggle}
+              labelled
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One permission's box: its label beside it in lists, only as the accessible name in a CRUD cell. */
+function PermissionBox({
+  permission,
+  selected,
+  access,
+  changed,
+  onToggle,
+  labelled,
+}: {
+  permission: PermissionKey;
+  selected: ReadonlySet<string>;
+  access: UsersAccess;
+  changed: (key: string) => boolean;
+  onToggle: (key: string, on: boolean) => void;
+  labelled: boolean;
+}) {
+  const t = useT();
+  const locked = !canToggle(access, permission);
+  const name = t(permissionLabel(permission));
+  return (
+    <label
+      className={cn(
+        'relative flex min-h-11 items-center gap-2 text-sm',
+        !labelled && 'min-w-11 justify-center',
+        locked && 'text-muted-foreground',
+      )}
+      title={locked ? `${name}: ${t('platform.team.dialog.locked')}` : name}
+    >
+      <Checkbox
+        checked={selected.has(permission)}
+        disabled={locked}
+        onCheckedChange={(v) => onToggle(permission, v === true)}
+        aria-label={labelled ? undefined : name}
+        data-testid="team-permission"
+        data-key={permission}
+      />
+      {labelled && name}
+      {labelled && locked && <Lock aria-hidden className="size-3.5" />}
+      {changed(permission) && (
+        <span
+          className={cn(
+            'size-2 rounded-full bg-primary',
+            !labelled && 'absolute top-1.5 right-0.5',
+          )}
+          title={t('platform.team.dialog.changed')}
+          aria-label={t('platform.team.dialog.changed')}
+          data-testid="team-permission-changed"
+        />
+      )}
+    </label>
   );
 }
 
