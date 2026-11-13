@@ -43,16 +43,20 @@ describe('system roles', () => {
   it('keeps admin below owner, and staff to reading settings, products and tables', () => {
     expect(systemRolePermissions('admin').has('platform.org.manage')).toBe(false);
     expect(systemRolePermissions('admin').has('platform.roles.manage')).toBe(true);
-    expect(systemRolePermissions('admin').has('catalog.products.manage')).toBe(true);
+    expect(systemRolePermissions('admin').has('catalog.products.edit')).toBe(true);
     expect([...systemRolePermissions('manager')].sort()).toEqual([
       'catalog.products.read',
       'inventory.costs.read',
-      'inventory.recipes.manage',
+      'inventory.recipes.create',
+      'inventory.recipes.delete',
+      'inventory.recipes.edit',
       'inventory.stock.adjust',
       'inventory.stock.read',
       'inventory.stock.receive',
       'inventory.stock.transfer',
-      'inventory.warehouses.manage',
+      'inventory.warehouses.create',
+      'inventory.warehouses.delete',
+      'inventory.warehouses.edit',
       'platform.roles.read',
       'platform.settings.read',
       'platform.users.invite',
@@ -66,12 +70,20 @@ describe('system roles', () => {
       'pos.orders.read',
       'pos.orders.take',
       'pos.orders.void',
-      'pos.tables.manage',
+      'pos.tables.create',
+      'pos.tables.delete',
+      'pos.tables.edit',
       'pos.tables.read',
-      'reservations.bookings.manage',
+      'reservations.bookings.create',
+      'reservations.bookings.delete',
+      'reservations.bookings.edit',
       'reservations.bookings.read',
-      'reservations.setup.manage',
-      'reservations.waitlist.manage',
+      'reservations.setup.create',
+      'reservations.setup.delete',
+      'reservations.setup.edit',
+      'reservations.waitlist.create',
+      'reservations.waitlist.delete',
+      'reservations.waitlist.edit',
     ]);
     expect([...systemRolePermissions('staff')].sort()).toEqual([
       'catalog.products.read',
@@ -91,9 +103,13 @@ describe('system roles', () => {
       'pos.orders.read',
       'pos.orders.take',
       'pos.tables.read',
-      'reservations.bookings.manage',
+      'reservations.bookings.create',
+      'reservations.bookings.delete',
+      'reservations.bookings.edit',
       'reservations.bookings.read',
-      'reservations.waitlist.manage',
+      'reservations.waitlist.create',
+      'reservations.waitlist.delete',
+      'reservations.waitlist.edit',
     ]);
     expect([...systemRolePermissions('cashier')].sort()).toEqual([
       'catalog.products.read',
@@ -111,10 +127,16 @@ describe('system roles', () => {
       expect(PERMISSIONS[key].scope).toBe('location');
     }
     expect(PERMISSION_KEYS.filter((k) => k.startsWith('reservations.')).sort()).toEqual([
-      'reservations.bookings.manage',
+      'reservations.bookings.create',
+      'reservations.bookings.delete',
+      'reservations.bookings.edit',
       'reservations.bookings.read',
-      'reservations.setup.manage',
-      'reservations.waitlist.manage',
+      'reservations.setup.create',
+      'reservations.setup.delete',
+      'reservations.setup.edit',
+      'reservations.waitlist.create',
+      'reservations.waitlist.delete',
+      'reservations.waitlist.edit',
     ]);
   });
 
@@ -128,21 +150,21 @@ describe('system roles', () => {
       'waiter',
       'host',
     ]);
-    expect(holders('reservations.bookings.manage')).toEqual([
+    expect(holders('reservations.bookings.edit')).toEqual([
       'owner',
       'admin',
       'manager',
       'waiter',
       'host',
     ]);
-    expect(holders('reservations.waitlist.manage')).toEqual([
+    expect(holders('reservations.waitlist.edit')).toEqual([
       'owner',
       'admin',
       'manager',
       'waiter',
       'host',
     ]);
-    expect(holders('reservations.setup.manage')).toEqual(['owner', 'admin', 'manager']);
+    expect(holders('reservations.setup.edit')).toEqual(['owner', 'admin', 'manager']);
   });
 
   // ADR 0026: a station's screen only; no prices, orders or menu editing.
@@ -170,9 +192,13 @@ describe('system roles', () => {
     expect([...systemRolePermissions('host')].sort()).toEqual([
       'platform.settings.read',
       'pos.tables.read',
-      'reservations.bookings.manage',
+      'reservations.bookings.create',
+      'reservations.bookings.delete',
+      'reservations.bookings.edit',
       'reservations.bookings.read',
-      'reservations.waitlist.manage',
+      'reservations.waitlist.create',
+      'reservations.waitlist.delete',
+      'reservations.waitlist.edit',
     ]);
   });
 });
