@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRUD permission keys: technical and test notes</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#b4441d; --ok:#1f7a3d; --warn:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; } }
+  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  h3 { font-size: 15px; margin: 20px 0 6px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .done { color: var(--ok); } .open { color: var(--warn); }
+  nav a { color: var(--accent); margin-right: 14px; }
+  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="#status">Status</a><a href="#keys">Keys</a><a href="#routes">Routes</a><a href="#resolution">Resolution</a><a href="#web">Web</a><a href="#tests">Tests</a><a href="#gaps">Gaps</a></nav>
+
+  <h1>CRUD permission keys</h1>
+  <p class="lead">Business entities guard writes with separate <code>create</code>, <code>edit</code> and <code>delete</code> keys instead of one <code>*.manage</code> key, and Add Staff shows them as View / Create / Edit / Delete columns. Code: <code>packages/shared/src/permissions.ts</code>, <code>apps/api/src/platform/rbac/access.ts</code>, module controllers, <code>apps/web/components/team/staff-dialog.tsx</code>, <code>apps/web/lib/team/matrix.ts</code>. Spec: <code>docs/platform/rbac.md</code>. Decision: ADR 0037 (with ADR 0007, 0023). Branch: <code>feature/crud-permissions</code>.</p>
+
+  <h2 id="status">Status</h2>
+  <div class="scroll"><table>
+    <tr><th>Part</th><th>Where</th><th>State</th></tr>
+    <tr><td>Registry: 24 create/edit/delete keys for 8 entities, labels, system role grants</td><td><code>permissions.ts</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Retired <code>*.manage</code> keys keep their meaning in stored rows</td><td><code>LEGACY_PERMISSION_ALIASES</code>, <code>expandLegacyKeys</code>, <code>access.ts</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Routes check the key of their verb</td><td>catalog, inventory, pos, reservations controllers</td><td class="done">Built; API e2e need Docker</td></tr>
+    <tr><td>Bulk archive/restore/delete: route checks edit, delete also needs delete</td><td><code>catalog-bulk.service.ts</code></td><td class="done">Built</td></tr>
+    <tr><td>Add Staff matrix with View / Create / Edit / Delete columns, whole-row box with partial state</td><td><code>staff-dialog.tsx</code>, <code>checkbox.tsx</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Pages gate their actions on the matching key</td><td>catalog, inventory, tables, reservations pages</td><td class="open">Mostly; catalog "New product" still gates on edit</td></tr>
+  </table></div>
+
+  <h2 id="keys">Keys</h2>
+  <div class="scroll"><table>
+    <tr><th>Entity</th><th>Keys</th><th>Scope</th><th>Replaces</th></tr>
+    <tr><td>Menu products and categories</td><td><code>catalog.products.create|edit|delete</code></td><td>organization</td><td><code>catalog.products.manage</code></td></tr>
+    <tr><td>Warehouses</td><td><code>inventory.warehouses.create|edit|delete</code></td><td>location</td><td><code>inventory.warehouses.manage</code></td></tr>
+    <tr><td>Stock items (and units, attributes, variants: ADR 0038)</td><td><code>inventory.items.create|edit|delete</code></td><td>organization</td><td><code>inventory.items.manage</code></td></tr>
+    <tr><td>Recipes (and bills of materials: ADR 0038)</td><td><code>inventory.recipes.create|edit|delete</code></td><td>organization</td><td><code>inventory.recipes.manage</code></td></tr>
+    <tr><td>Tables and dining areas</td><td><code>pos.tables.create|edit|delete</code></td><td>location</td><td><code>pos.tables.manage</code></td></tr>
+    <tr><td>Bookings</td><td><code>reservations.bookings.create|edit|delete</code></td><td>location</td><td><code>reservations.bookings.manage</code></td></tr>
+    <tr><td>Waitlist</td><td><code>reservations.waitlist.create|edit|delete</code></td><td>location</td><td><code>reservations.waitlist.manage</code></td></tr>
+    <tr><td>Reservation setup (also stands in for <code>platform.settings.manage</code>, ADR 0020)</td><td><code>reservations.setup.create|edit|delete</code></td><td>location</td><td><code>reservations.setup.manage</code></td></tr>
+  </table></div>
+  <p>Reads keep their <code>.read</code> key. Platform keys and action keys (<code>pos.orders.take</code>, <code>inventory.stock.receive</code>, <code>inventory.stock.produce</code>, …) are unchanged. Every system role states grant or deny for each new key, so the typecheck forces the decision: admin and manager keep what <code>manage</code> gave them (managers still have no <code>inventory.items.*</code>), staff and operational roles get none, owner holds all keys.</p>
+
+  <h2 id="routes">Route verbs (ADR 0037 §2–3)</h2>
+  <div class="scroll"><table>
+    <tr><th>Route kind</th><th>Key</th><th>Examples</th></tr>
+    <tr><td>POST that creates, imports, numbers, walk-ins</td><td><code>create</code></td><td><code>POST /catalog/products</code>, <code>/catalog/products/import</code>, <code>/pos/tables</code>, <code>/reservations/walk-ins</code></td></tr>
+    <tr><td>PATCH, PUT, state changes, menu-code rotation, setup settings</td><td><code>edit</code></td><td><code>PATCH /pos/tables/:id</code>, <code>POST /reservations/:id/seat|arrive|finish|cancel|undo</code>, <code>PUT /inventory/recipes/:productId</code></td></tr>
+    <tr><td>DELETE, archive by delete, erasing guest data</td><td><code>delete</code></td><td><code>DELETE /pos/areas/:id</code>, <code>DELETE /catalog/price-rules/:id</code>, <code>POST /reservations/guests/:id/anonymise</code></td></tr>
+    <tr><td>Bulk (<code>products/bulk</code>, <code>categories/bulk</code>)</td><td><code>edit</code>; a delete action also <code>delete</code> (checked in the service)</td><td>archive, restore, delete</td></tr>
+  </table></div>
+  <p>The guard checks the key for some location; location-scoped services check it again at the entity's location. Each route's key is written next to it in its controller.</p>
+
+  <h2 id="resolution">Resolution and stored data</h2>
+<pre>stored role keys / member grants / member denies
+        │  expandLegacyKeys(): 'pos.tables.manage' → pos.tables.create, .edit, .delete
+        ▼
+effective keys = role keys ∪ grants − denies       (access.ts; system roles from SYSTEM_ROLE_GRANTS)</pre>
+  <ul>
+    <li>No migration: custom roles and member overrides that store a <code>*.manage</code> key keep working (expand/contract, ADR 0004). A later release rewrites rows and removes the aliases.</li>
+    <li>New writes can't use a retired key: the team and roles APIs answer <code>rbac.permission_unknown</code>.</li>
+    <li>Granting rules unchanged: a member can give or take only keys they hold (ADR 0007 §6, ADR 0023 §2).</li>
+  </ul>
+
+  <h2 id="web">Web: Add Staff matrix</h2>
+  <ul>
+    <li>Header row Module · View · Create · Edit · Delete. One row per area (<code>crudRow</code> in <code>lib/team/matrix.ts</code>); a cell is blank where the key doesn't exist.</li>
+    <li>Other keys of the area (for example "Take orders") are listed under its row; areas with no create/edit/delete key are listed as before.</li>
+    <li>The box in front of a row ticks or clears the whole area and shows a dash when only part is ticked. It changes only keys the signed-in user holds; others stay locked.</li>
+    <li>"Changed from the role" dot per cell; Role defaults, Select all, Clear; grants and denies are computed against the role (<code>overridesOf</code>).</li>
+    <li>Labels: <code>platform.team.dialog.column.*</code>, <code>platform.team.dialog.wholeArea</code> (en, de).</li>
+  </ul>
+
+  <h2 id="tests">Testing</h2>
+  <h3>Automated</h3>
+  <div class="scroll"><table>
+    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
+    <tr><td>Shared</td><td><code>packages/shared/src/permissions.test.ts</code></td><td>registry, labels, role grants, alias expansion</td><td class="done">Pass</td></tr>
+    <tr><td>API e2e</td><td><code>test/crud-permissions.e2e.spec.ts</code></td><td>edit-only role changes a table but can't create one; stored <code>catalog.products.manage</code> acts as all three; denying one key leaves the others; every create/edit/delete triple exists with labels</td><td class="open">Needs Docker</td></tr>
+    <tr><td>API e2e</td><td><code>test/rbac-roles.e2e.spec.ts</code>, <code>team.e2e.spec.ts</code>, <code>pos-tables</code>, <code>catalog-bulk</code>, <code>catalog-import</code>, <code>reservations-setup</code>, <code>reservations-location-settings</code></td><td>role key lists, team overrides, per-route keys</td><td class="open">Needs Docker</td></tr>
+    <tr><td>Web</td><td><code>lib/team/matrix.test.ts</code></td><td><code>crudRow</code> cells and extras; visible permissions; overrides</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/team/team.test.tsx</code></td><td>add staff with a changed permission; locked keys for managers; create/edit/delete columns and whole-area tick and clear</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td>page tests (<code>catalog</code>, <code>inventory</code>, <code>tables</code>, <code>reservations</code>)</td><td>actions shown only with the matching key</td><td class="done">Pass (tables: see gaps)</td></tr>
+  </table></div>
+<pre>cd packages/shared &amp;&amp; npx vitest run src/permissions.test.ts
+cd apps/web &amp;&amp; npx vitest run components/team lib/team lib/users
+cd apps/api &amp;&amp; npx vitest run test/crud-permissions.e2e.spec.ts test/rbac-roles.e2e.spec.ts test/team.e2e.spec.ts   # Docker</pre>
+
+  <h3>Manual (browser)</h3>
+  <div class="scroll"><table>
+    <tr><th>Step</th><th>Expected</th></tr>
+    <tr><td>Owner: Manage Staff → Add Staff, choose Manager</td><td>Columns View / Create / Edit / Delete; rows ticked from the role</td></tr>
+    <tr><td>Untick Delete on Tables, save</td><td>Member gets a deny for <code>pos.tables.delete</code> only; dot marks the change</td></tr>
+    <tr><td>Sign in as that member: Tables page</td><td>Can add and rename tables, can't delete an area (button hidden; API 403)</td></tr>
+    <tr><td>Click a row's front box with a partial row</td><td>Whole row ticked; again clears it; locked keys untouched</td></tr>
+    <tr><td>Sign in as Manager, open Add Staff</td><td>Stock item keys locked (managers don't hold them)</td></tr>
+    <tr><td>Existing custom role saved with <code>*.manage</code> before this release</td><td>Still acts with create, edit and delete; editing it shows the three keys ticked</td></tr>
+  </table></div>
+
+  <h2 id="gaps">Known gaps and notes</h2>
+  <div class="callout">
+    <ul>
+      <li>API e2e tests were not run on the development laptop (no Docker).</li>
+      <li>The catalog page gates all editing on <code>catalog.products.edit</code>; hiding "New product" for members without <code>create</code> is a follow-up (ADR 0037).</li>
+      <li>Stored rows still hold retired keys until a later release rewrites them and removes <code>LEGACY_PERMISSION_ALIASES</code>.</li>
+      <li>Unrelated, already failing: <code>components/tables/tables.test.tsx</code> (timeouts), <code>lib/audit/diff.test.ts</code> (<code>floorX</code>, <code>floorY</code> labels).</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>

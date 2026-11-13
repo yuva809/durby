@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventory: technical and test notes</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#b4441d; --ok:#1f7a3d; --warn:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; } }
+  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  h3 { font-size: 15px; margin: 20px 0 6px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .done { color: var(--ok); } .open { color: var(--warn); }
+  nav a { color: var(--accent); margin-right: 14px; }
+  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="#status">Status</a><a href="#model">Data model</a><a href="#api">API</a><a href="#rules">Rules</a><a href="#web">Web</a><a href="#tests">Tests</a><a href="#gaps">Gaps</a></nav>
+
+  <h1>Inventory</h1>
+  <p class="lead">Warehouses, stock items, the stock ledger (receipts, adjustments, transfers), recipes and sales consumption, and Step 5: units of measurement, variant attributes and variants, bills of materials and production orders, under one Inventory sidebar group. Code: <code>apps/api/src/modules/inventory/</code>, <code>apps/web/components/inventory/</code>, <code>apps/web/lib/inventory/</code>, <code>apps/web/lib/nav/inventory-pages.ts</code>. Spec: <code>docs/modules/inventory.md</code> (Steps 1, 2, 5). Decisions: ADR 0027, ADR 0028, ADR 0037, ADR 0038. Branch: <code>feature/inventory-extension</code> (on top of <code>feature/crud-permissions</code>).</p>
+
+  <h2 id="status">Status</h2>
+  <div class="scroll"><table>
+    <tr><th>Part</th><th>Where</th><th>State</th></tr>
+    <tr><td>Sidebar group: Stock, Products, Variant Products, Variant Attributes, Product Category, Units of Measurement, Inventory Adjustment, Bills of Materials, Production Order</td><td><code>sidebar-nav.tsx</code>, <code>inventory-pages.ts</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Warehouses, stock items, receipts, adjustments, transfers, stock levels (weighted average)</td><td><code>/inventory</code>, <code>stock.service.ts</code>, <code>setup.service.ts</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Recipes, dish cost, sales consumption</td><td><code>recipes.service.ts</code>, <code>consumption.handler.ts</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Units of measurement; receipts entered in a unit</td><td><code>/inventory/units</code>, <code>units.service.ts</code></td><td class="open">Built; API e2e not run (no Docker)</td></tr>
+    <tr><td>Variant attributes</td><td><code>/inventory/attributes</code>, <code>variants.service.ts</code></td><td class="open">Built; API e2e not run</td></tr>
+    <tr><td>Variant products (Generate variants)</td><td><code>/inventory/variants</code>, <code>variants.service.ts</code></td><td class="open">Built; API e2e not run</td></tr>
+    <tr><td>Bills of materials</td><td><code>/inventory/bom</code>, <code>boms.service.ts</code></td><td class="open">Built; API e2e not run</td></tr>
+    <tr><td>Production orders (<code>PRD-…</code>)</td><td><code>/inventory/production</code>, <code>StockService.produce</code></td><td class="open">Built; API e2e not run</td></tr>
+    <tr><td>Products and Product Category</td><td>open the catalog page (<code>/catalog</code>, <code>/catalog#categories</code>)</td><td class="done">Linked</td></tr>
+    <tr><td>Inventory Adjustment</td><td><code>/inventory/adjustments</code> opens the Adjust tab</td><td class="done">Linked</td></tr>
+  </table></div>
+
+  <h2 id="model">Data model</h2>
+<pre>Location
+ └─ Warehouse             warehouses           archived, never deleted; supplies_station (Step 2)
+Organization
+ ├─ StockItem             stock_items          name, sku, unit (kg g l ml pc), min_quantity
+ │   │                                         + parent_item_id, variant_values text[]      (Step 5)
+ │   └─ variants          stock_items          one level; one row per combination (unique)
+ ├─ UnitOfMeasure         units_of_measure     name, symbol, base_unit, factor numeric(14,6) &gt; 0      (Step 5)
+ ├─ VariantAttribute      variant_attributes   name, values text[] (1–50, display order)              (Step 5)
+ ├─ Bom                   boms                 item_id (unique), output_quantity &gt; 0                   (Step 5)
+ │   └─ BomLine           bom_lines            item_id, quantity &gt; 0; never the bill's own item
+ └─ RecipeLine            recipe_lines         catalog product → stock item (Step 2)
+StockDocument             stock_documents      append-only; receipt | adjustment | transfer | consumption | production
+ └─ StockMovement         stock_movements      append-only ledger: signed quantity, unit cost, value
+StockLevel                stock_levels         projection per warehouse and item: quantity, average cost</pre>
+  <p>Migrations: <code>20261113110000_stock_document_kind_production</code> (enum value on its own) and <code>20261113110100_inventory_units_variants_boms</code> (expand only, RLS on every new table). The second was written by hand because <code>prisma migrate diff</code> printed nothing on the development laptop; <code>test/migration-drift.int.spec.ts</code> must confirm it.</p>
+
+  <h2 id="api">API (<code>/api/v1/inventory</code>, feature <code>inventory</code>)</h2>
+  <div class="scroll"><table>
+    <tr><th>Method and path</th><th>Permission</th><th>Purpose</th></tr>
+    <tr><td><code>GET/POST /warehouses</code>, <code>PATCH /warehouses/:id</code></td><td>stock.read / warehouses.create / warehouses.edit</td><td>Warehouses</td></tr>
+    <tr><td><code>GET/POST /items</code>, <code>PATCH /items/:id</code></td><td>stock.read / items.create / items.edit</td><td>Stock items (with <code>parentItemId</code>, <code>variantValues</code>)</td></tr>
+    <tr><td><code>POST /receipts</code></td><td>stock.receive</td><td>Delivery; a line may carry <code>unitId</code></td></tr>
+    <tr><td><code>POST /adjustments</code>, <code>POST /transfers</code></td><td>stock.adjust / stock.transfer</td><td>Waste, counts; moves between warehouses</td></tr>
+    <tr><td><code>GET /stock</code>, <code>GET /documents</code>, <code>GET /documents/:id</code></td><td>stock.read</td><td>Levels, document list and detail</td></tr>
+    <tr><td><code>GET/PUT /recipes/:productId</code>, <code>GET /costs</code></td><td>stock.read / recipes.edit / costs.read</td><td>Dish recipes and costs</td></tr>
+    <tr><td><code>GET/POST /units</code>, <code>PATCH /units/:id</code></td><td>stock.read / items.create / items.edit</td><td>Units of measurement</td></tr>
+    <tr><td><code>GET/POST /attributes</code>, <code>PATCH /attributes/:id</code></td><td>stock.read / items.create / items.edit</td><td>Variant attributes</td></tr>
+    <tr><td><code>POST /items/:id/variants</code></td><td>items.create</td><td>Generate missing combinations → <code>{ created, skipped }</code></td></tr>
+    <tr><td><code>GET /boms</code>, <code>GET /boms/:itemId</code></td><td>stock.read</td><td>Bills with item names and units</td></tr>
+    <tr><td><code>PUT /boms/:itemId</code>, <code>DELETE /boms/:itemId</code></td><td>recipes.edit / recipes.delete</td><td>Replace (same bill again changes nothing), delete (204)</td></tr>
+    <tr><td><code>POST /productions</code></td><td>stock.produce</td><td>Production order → the stock document</td></tr>
+  </table></div>
+  <p>Writes that append rows use <code>@Idempotent({ completion: 'transaction' })</code>; PATCH, PUT and DELETE use <code>@Idempotent()</code>. New errors: <code>inventory.unit_not_found</code>, <code>unit_name_taken</code>, <code>unit_mismatch</code>, <code>attribute_not_found</code>, <code>attribute_name_taken</code>, <code>item_has_variants</code>, <code>variant_not_allowed</code>, <code>too_many_variants</code>, <code>bom_not_found</code>, <code>bom_invalid</code>. New audit actions: <code>inventory.unit.created|updated</code>, <code>inventory.variant_attribute.created|updated</code>, <code>inventory.bom.updated|deleted</code>. New number series <code>inventory.stockProduction</code> (<code>PRD-{YYYY}-{seq:6}</code>).</p>
+
+  <h2 id="rules">Business rules and where they live</h2>
+  <div class="scroll"><table>
+    <tr><th>Rule</th><th>Enforced in</th></tr>
+    <tr><td>Weighted average per warehouse and item; costs 4 decimals, quantities 3, values 2</td><td><code>valuation.ts</code>, <code>valuation.spec.ts</code></td></tr>
+    <tr><td>A document locks its levels in a fixed order and refuses negative stock unless <code>inventory.allowNegativeStock</code></td><td><code>stock.service.ts</code> (<code>post</code>, <code>lockLevels</code>)</td></tr>
+    <tr><td>Receipt in a unit: quantity × factor (3 dp), cost ÷ factor (4 dp); the unit's base unit must be the item's unit</td><td><code>item-rules.ts</code> (<code>toBaseUnits</code>), <code>StockService.receive</code></td></tr>
+    <tr><td>Units and attributes: names unique among active ones; archived, never deleted; a unit's base unit never changes</td><td>partial unique indexes, <code>units.service.ts</code>, <code>variants.service.ts</code></td></tr>
+    <tr><td>Variants: every combination of picked values (1–3 attributes, ≤ 100), in attribute order, named <code>Parent · v1 / v2</code>, existing ones skipped</td><td><code>item-rules.ts</code> (<code>combinations</code>, <code>variantName</code>), <code>VariantsService.generate</code></td></tr>
+    <tr><td>A parent must have no movements, recipe lines or bills before its first variants; a variant gets no variants</td><td><code>VariantsService.generate</code> → <code>variant_not_allowed</code></td></tr>
+    <tr><td>A parent with active variants holds no stock: documents, recipes and bills refuse it</td><td><code>usableItems</code> in <code>stock.service.ts</code>, <code>recipes.service.ts</code>, <code>boms.service.ts</code></td></tr>
+    <tr><td>Bill: one per item, never containing itself, replaced as a whole</td><td><code>boms.service.ts</code>, <code>boms_tenant_id_item_id_key</code></td></tr>
+    <tr><td>Production: component = bill qty × wanted ÷ output (3 dp, zeros skipped), out at average cost; item in at Σ component value ÷ wanted (4 dp)</td><td><code>item-rules.ts</code> (<code>componentNeeds</code>, <code>outputUnitCost</code>), <code>StockService.produce</code></td></tr>
+    <tr><td>Everything reads inside the write's transaction (units, bills)</td><td><code>post({ prepare })</code></td></tr>
+    <tr><td>Tenant isolation</td><td>RLS on every new table; composite FKs <code>(tenant_id, …)</code></td></tr>
+  </table></div>
+
+  <h2 id="web">Web</h2>
+  <ul>
+    <li><strong>Sidebar:</strong> Inventory opens and closes a list of its pages; it opens by itself on an Inventory page and marks the current one. Each page shows only with its feature and key.</li>
+    <li><strong>Stock</strong> (<code>/inventory</code>): tabs Stock, Receive, Adjust, Transfer, Documents, Items, Warehouses. Receive lines offer the units of the item's unit (<code>doc-unit</code>) and show "1 cs = 24 pc"; parents with variants are not offered on any document.</li>
+    <li><strong>Units of Measurement</strong> (<code>units-page.tsx</code>): list, add, edit (base unit locked), archive.</li>
+    <li><strong>Variant Attributes</strong> (<code>attributes-page.tsx</code>): values comma-separated, checked for empty, duplicates, length.</li>
+    <li><strong>Variant Products</strong> (<code>variants-page.tsx</code>): items with their variants; Generate variants with attribute and value checkboxes, live combination count, article number prefix.</li>
+    <li><strong>Bills of Materials</strong> (<code>boms-page.tsx</code>): card per bill; editor with output quantity and ingredient lines; delete behind a confirmation.</li>
+    <li><strong>Production Order</strong> (<code>production-page.tsx</code>): warehouse, item, quantity; preview of ingredients needed vs on hand (shortages marked); recent orders.</li>
+    <li>Exact decimals in the browser: <code>lib/inventory/format.ts</code> (<code>scaledQuantity</code>, <code>compareQuantities</code>), never JS numbers.</li>
+  </ul>
+
+  <h2 id="tests">Testing</h2>
+  <h3>Automated</h3>
+  <div class="scroll"><table>
+    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
+    <tr><td>API e2e</td><td><code>test/inventory.e2e.spec.ts</code></td><td>warehouses, items, receipts, adjustments, transfers, stock, numbering</td><td class="open">Needs Docker</td></tr>
+    <tr><td>API int</td><td><code>test/inventory-recipes.int.spec.ts</code></td><td>recipes, costs, consumption</td><td class="open">Needs Docker</td></tr>
+    <tr><td>API e2e</td><td><code>test/inventory-items-setup.e2e.spec.ts</code></td><td>units and conversion, mismatch, names, archive, manager read-only; variants generate/skip/order, parent refused, variant of variant; bills replace/self/delete; production costs, PRD number, insufficient stock, kitchen yes / staff no; cross-tenant isolation</td><td class="open">Written, not run (no Docker)</td></tr>
+    <tr><td>API e2e</td><td><code>test/authenticated-routes.e2e.spec.ts</code>, <code>rbac-roles.e2e.spec.ts</code>, <code>numbering.e2e.spec.ts</code></td><td>new routes listed with their idempotency marker; manager holds <code>stock.produce</code>; PRD series listed</td><td class="open">Updated, not run</td></tr>
+    <tr><td>API unit</td><td><code>src/modules/inventory/item-rules.spec.ts</code>, <code>valuation.spec.ts</code></td><td>conversion and rounding, combinations, variant names, component scaling, output cost</td><td class="done">Pass</td></tr>
+    <tr><td>API unit</td><td><code>src/platform/tenancy/tenant-context.spec.ts</code></td><td>new tenant tables are tenant-scoped</td><td class="done">Pass</td></tr>
+    <tr><td>Shared</td><td><code>packages/shared/src/permissions.test.ts</code>, <code>numbering.test.ts</code></td><td>role grants with <code>stock.produce</code>; series list</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/inventory/items-setup.test.tsx</code></td><td>units list/add, manager read-only; attributes add and duplicate check; variants grouping and generate body; bills list/add, staff read-only; production preview, shortage, post, staff disabled; receive with a unit</td><td class="done">Pass (18)</td></tr>
+    <tr><td>Web</td><td><code>components/inventory/inventory.test.tsx</code>, <code>lib/inventory/format.test.ts</code></td><td>existing tabs; preview math</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>lib/nav/registry.test.ts</code></td><td>Inventory pages: keys, features, labels, current page</td><td class="done">Pass</td></tr>
+  </table></div>
+<pre>cd apps/api &amp;&amp; npx vitest run --project unit src/modules/inventory src/platform/tenancy
+cd apps/api &amp;&amp; npx vitest run test/inventory-items-setup.e2e.spec.ts test/inventory.e2e.spec.ts test/migration-drift.int.spec.ts   # Docker
+cd apps/web &amp;&amp; npx vitest run components/inventory lib/inventory lib/nav
+cd packages/shared &amp;&amp; npx vitest run</pre>
+
+  <h3>Manual (browser)</h3>
+  <div class="scroll"><table>
+    <tr><th>Step</th><th>Expected</th></tr>
+    <tr><td>Open the sidebar, click Inventory</td><td>The nine pages listed; Stock marked on <code>/inventory</code></td></tr>
+    <tr><td>Units: add Case, symbol cs, contains 24, base pc</td><td>Row "1 cs = 24 pc"; editing keeps the base unit locked</td></tr>
+    <tr><td>Receive: Cola, unit cs, quantity 2, cost 12</td><td>Booked as 48 pc at 0.50; a kg item offers no cs</td></tr>
+    <tr><td>Attributes: add Size with "S, M, L"; try "S, s"</td><td>Saved in order; duplicates refused inline</td></tr>
+    <tr><td>Variant Products: Generate for Shirt, Size S and L, prefix SH</td><td>Shirt · S (SH-1), Shirt · L (SH-2); generating again with M adds only M</td></tr>
+    <tr><td>Receive Shirt itself</td><td>Not offered; the variants are</td></tr>
+    <tr><td>Bills: Tomato sauce makes 1 l from 2 kg tomatoes, 0.1 l oil</td><td>Card shows both; the sauce can't be its own ingredient</td></tr>
+    <tr><td>Production: 3 l sauce with 10 kg tomatoes at 2.00 and 2 l oil at 8.00 in stock</td><td>Preview 6 kg / 0.3 l; booked PRD-…; stock 4 kg, 1.7 l, sauce 3 l at 4.80</td></tr>
+    <tr><td>Production: 10 l</td><td>Tomatoes marked Short; booking refused (not enough stock)</td></tr>
+    <tr><td>Sign in as Staff</td><td>Lists visible, no add/edit/delete; Produce disabled</td></tr>
+    <tr><td>Sign in as Kitchen</td><td>Can produce; can't edit bills or units</td></tr>
+  </table></div>
+
+  <h2 id="gaps">Known gaps and notes</h2>
+  <div class="callout">
+    <ul>
+      <li>API e2e and the migration drift check were not run: the development laptop has no Docker. Run them before merging.</li>
+      <li>Production is one step (no drafts or in-progress state); a correction is an adjustment (ADR 0038 §5).</li>
+      <li>Variants are stock items; menu sizes with their own prices stay in Catalog.</li>
+      <li>Products and Product Category open the one catalog page; the catalog's "New product" button still shows for members without <code>catalog.products.create</code> (ADR 0037 follow-up).</li>
+      <li>Unrelated, already failing on this branch: <code>components/tables/tables.test.tsx</code> (timeouts) and <code>lib/audit/diff.test.ts</code> (no labels for <code>floorX</code>, <code>floorY</code>).</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>
