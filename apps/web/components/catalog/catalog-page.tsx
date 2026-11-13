@@ -226,7 +226,11 @@ function Catalog({
       <Loaded resource={categories} reload={reloadCategories}>
         {(categoryList) => (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
-            <section className="flex min-w-0 flex-col gap-2" aria-labelledby={`${id}-categories`}>
+            <section
+              id="categories"
+              className="flex min-w-0 scroll-mt-20 flex-col gap-2"
+              aria-labelledby={`${id}-categories`}
+            >
               <h2 id={`${id}-categories`} className="text-lg font-medium">
                 {t('catalog.page.categories')}
               </h2>

@@ -19,6 +19,7 @@ import {
   UtensilsCrossed,
   Wine,
 } from 'lucide-react';
+import { INVENTORY_PAGES } from './inventory-pages';
 import { SETTINGS_TABS } from './settings-tabs';
 
 export type NavGroup = 'main' | 'modules' | 'settings';
@@ -42,6 +43,8 @@ export interface NavItem {
   appOnly?: true;
   /** Pages behind this item (e.g. the Settings tabs): shown while at least one of them is. */
   children?: readonly NavItem[];
+  /** The children are listed under the item in the sidebar (Inventory), not as tabs of one page. */
+  submenu?: true;
 }
 
 /** Group headings in display order; `main` has none. */
@@ -65,8 +68,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: Package,
     group: 'modules',
     feature: 'inventory',
-    // Stock, documents and setup (docs/modules/inventory.md → Web).
+    // Stock, documents and setup (docs/modules/inventory.md → Web), with its pages listed under it.
     permission: 'inventory.stock.read',
+    children: INVENTORY_PAGES,
+    submenu: true,
   },
   {
     id: 'catalog',
