@@ -203,7 +203,7 @@ export class CustomersService {
     }
 
     // After the commit: a failed send leaves a complete customer; staff can resend the invitation.
-    await this.mailOwner(owner.id, body.name, hasPassword);
+    await this.mailOwner(owner.id, body.name, hasPassword, partnerId);
     return detail;
   }
 
@@ -221,8 +221,13 @@ export class CustomersService {
         organizationId: id,
       }),
     );
+    // organizations holds no tenant-private data (no RLS): its partner picks the link's domain (ADR 0041).
+    const organization = await this.platformDb.organization.findUnique({
+      where: { id },
+      select: { partnerId: true },
+    });
     await this.dispatcher.dispatch('staff.customer.owner_mail_failed', () =>
-      this.passwords.sendOwnerWelcomeMail(ownerId, customer.name),
+      this.passwords.sendOwnerWelcomeMail(ownerId, customer.name, organization?.partnerId),
     );
     return customer;
   }
@@ -255,11 +260,16 @@ export class CustomersService {
   }
 
   /** Never throws: a failed send is logged by the dispatcher and the invitation can be resent. */
-  private async mailOwner(userId: string, organization: string, hasPassword: boolean) {
+  private async mailOwner(
+    userId: string,
+    organization: string,
+    hasPassword: boolean,
+    partnerId: string,
+  ) {
     await this.dispatcher.dispatch('staff.customer.owner_mail_failed', () =>
       hasPassword
-        ? this.passwords.sendOwnerAddedMail(userId, organization)
-        : this.passwords.sendOwnerWelcomeMail(userId, organization),
+        ? this.passwords.sendOwnerAddedMail(userId, organization, partnerId)
+        : this.passwords.sendOwnerWelcomeMail(userId, organization, partnerId),
     );
   }
 

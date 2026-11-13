@@ -10,6 +10,7 @@ export { Authenticated, IS_AUTHENTICATED_KEY } from '../markers';
 export { Clock } from './clock';
 export { emailKey, generateToken, hashToken, normalizeEmail } from './crypto';
 export { IS_PUBLIC_KEY, Public } from '../markers';
+export { inviteLinkBase, mailLinkBase, type MailLinkTarget } from './link-base';
 export { LockoutService, LockoutUnavailableError } from './lockout.service';
 export { RequireOrigin } from './origin.guard';
 export { PasswordHasher } from './password-hasher';
