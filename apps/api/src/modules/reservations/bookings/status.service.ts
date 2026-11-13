@@ -191,7 +191,7 @@ export class BookingStatusService {
     return this.db.$transaction(async (tx) => {
       await shortLockWaits(tx);
       await readableLocation(tx, this.access, body.locationId);
-      await this.access.assert('reservations.bookings.manage', { locationId: body.locationId });
+      await this.access.assert('reservations.bookings.create', { locationId: body.locationId });
       if (body.endsAt) {
         const minutes = (Date.parse(body.endsAt) - now.getTime()) / 60_000;
         if (minutes < MIN_WALK_IN_MINUTES || minutes > MAX_BOOKING_MINUTES) {

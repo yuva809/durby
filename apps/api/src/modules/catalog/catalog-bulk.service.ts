@@ -10,6 +10,7 @@ import {
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
+import { AccessService } from '../../platform/rbac';
 import {
   TENANT_PRISMA,
   TenantContext,
@@ -76,10 +77,13 @@ export class CatalogBulkService {
     private readonly tenantContext: TenantContext,
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
+    private readonly access: AccessService,
   ) {}
 
   async products(body: ProductBulkRequest): Promise<ProductBulkResponse> {
     const { userId } = this.tenantContext.require();
+    // The route needs `edit` (archive, restore); deleting also needs `delete` (ADR 0037).
+    if (body.action.kind === 'delete') await this.access.assert('catalog.products.delete');
     const actor = auditActor.user(userId);
     const ids = [...new Set(body.ids)];
     const run = () =>
@@ -106,6 +110,7 @@ export class CatalogBulkService {
 
   async categories(body: CategoryBulkRequest): Promise<CategoryBulkResponse> {
     const { userId } = this.tenantContext.require();
+    if (body.action === 'delete') await this.access.assert('catalog.products.delete');
     const actor = auditActor.user(userId);
     const ids = [...new Set(body.ids)];
     try {

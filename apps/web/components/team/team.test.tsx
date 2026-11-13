@@ -71,7 +71,7 @@ const TEAM: TeamListResponse = {
     teamMember(1, {
       name: 'Rabindra Thanet',
       phone: '9887809998',
-      grants: ['catalog.products.manage'],
+      grants: ['catalog.products.edit'],
       denies: ['pos.bills.print'],
     }),
     teamMember(2, { name: 'Kritish Devkota', status: 'inactive' }),
@@ -195,7 +195,7 @@ describe('TeamPage', () => {
         .getAllByTestId('team-permission')
         .find((c) => c.dataset.key === key)!;
     await userEvent.click(box('pos.bills.print'));
-    await userEvent.click(box('catalog.products.manage'));
+    await userEvent.click(box('catalog.products.edit'));
     expect(within(dialog).getAllByTestId('team-permission-changed')).toHaveLength(2);
     await userEvent.click(within(dialog).getByTestId('team-save'));
 
@@ -207,7 +207,7 @@ describe('TeamPage', () => {
       phone: '+49 151 1234567',
       roleId: WAITER.id,
       locationIds: null,
-      grants: ['catalog.products.manage'],
+      grants: ['catalog.products.edit'],
       denies: ['pos.bills.print'],
       sendEmail: false,
     });
@@ -254,7 +254,7 @@ describe('TeamPage', () => {
       within(dialog)
         .getAllByTestId('team-permission')
         .find((c) => c.dataset.key === key)!;
-    expect(box('catalog.products.manage').hasAttribute('disabled')).toBe(true);
+    expect(box('catalog.products.edit').hasAttribute('disabled')).toBe(true);
     expect(box('pos.bills.print').hasAttribute('disabled')).toBe(false);
     // Reservations are switched off for this organization: not listed.
     expect(dialog.textContent).toContain('switched off');

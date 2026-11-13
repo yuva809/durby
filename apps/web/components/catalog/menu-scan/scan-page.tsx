@@ -38,11 +38,11 @@ import { ReviewBoard } from './review-board';
 const DEFAULT_RATES = { food: '7', drinks: '19' };
 const ACCEPT = 'image/*,application/pdf,.pdf,.jfif,.heic,.heif';
 
-/** /catalog/scan (docs/modules/catalog.md → Menu scan). Needs `catalog.products.manage`. */
+/** /catalog/scan (docs/modules/catalog.md → Menu scan). Needs `catalog.products.create`. */
 export function ScanPage() {
   const { session } = useAuth();
   if (!session) return null;
-  if (!session.activePermissions.includes('catalog.products.manage')) {
+  if (!session.activePermissions.includes('catalog.products.create')) {
     return <NoAccess title="catalog.scan.title" />;
   }
   return (

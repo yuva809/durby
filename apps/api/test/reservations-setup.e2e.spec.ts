@@ -341,7 +341,7 @@ describe('reservations setup: table rules and combinations', () => {
         await tables(token, r.here);
         await combinations(token, r.here);
         const res = await putRule(token, r.t2, rule).expect(403);
-        expect(res.body).toMatchObject({ details: { permission: 'reservations.setup.manage' } });
+        expect(res.body).toMatchObject({ details: { permission: 'reservations.setup.edit' } });
         await combine(token, {
           locationId: r.here,
           name: 'X',

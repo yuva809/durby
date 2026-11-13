@@ -47,7 +47,7 @@ export class GuestsService {
       if (!guest || !readable.some(Boolean)) throw reservationErrors.guestNotFound();
       // Data other branches use too is not one branch manager's to erase.
       for (const locationId of locations) {
-        await this.access.assert('reservations.setup.manage', { locationId });
+        await this.access.assert('reservations.setup.delete', { locationId });
       }
 
       let anonymisedAt = guest.anonymised_at;

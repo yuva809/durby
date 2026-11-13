@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Floor and tables: technical and test notes</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#b4441d; --ok:#1f7a3d; --warn:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; } }
+  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  h3 { font-size: 15px; margin: 20px 0 6px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .done { color: var(--ok); } .open { color: var(--warn); }
+  nav a { color: var(--accent); margin-right: 14px; }
+  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="#status">Status</a><a href="#model">Data model</a><a href="#api">API</a><a href="#rules">Rules</a><a href="#web">Web</a><a href="#tests">Tests</a><a href="#gaps">Gaps</a></nav>
+
+  <h1>Floor and tables</h1>
+  <p class="lead">Table service steps 1 and 3: dining areas and tables per location, the floor view, orders with tickets, covers, voids, closing, kitchen and bar screens, and the QR menu. Code: <code>apps/api/src/modules/pos/</code>, <code>apps/web/components/pos/</code>, <code>apps/web/components/tables/</code>. Spec: <code>docs/modules/pos.md</code> (Steps 1, 3). Decisions: ADR 0016, ADR 0025, ADR 0026, ADR 0031.</p>
+
+  <h2 id="status">Status</h2>
+  <table>
+    <tr><th>Part</th><th>Where</th><th>State</th></tr>
+    <tr><td>Dining areas and tables (archive, not delete)</td><td><code>/tables</code>, <code>areas.service.ts</code>, <code>tables.service.ts</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Floor view per location (free and open tables)</td><td><code>/service</code>, <code>floor-page.tsx</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Orders: send, void, covers, close, one open order per table</td><td><code>orders.service.ts</code>, <code>order-page.tsx</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Kitchen and bar screens (ticket status)</td><td><code>/kitchen</code>, <code>/bar</code>, <code>kitchen.service.ts</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Stations and processing switches (ADR 0025, 0031)</td><td>Settings → Service, <code>processing-page.tsx</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>QR menu per table</td><td><code>public-menu.service.ts</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Printing (ticket print jobs, print queue, till app)</td><td><code>print-jobs.service.ts</code>, ADR 0032, 0033</td><td class="done">Built, tested</td></tr>
+    <tr><td>Guest checks and billing</td><td>see billing document</td><td class="done">Built, tested</td></tr>
+  </table>
+
+  <h2 id="model">Data model</h2>
+<pre>Location
+ ├─ DiningArea        dining_areas        name, sort order (table service area; replaces the free-text area)
+ └─ DiningTable       dining_tables       name, seats, shape, colour, area, menu token, archived_at
+     └─ PosOrder      pos_orders          one open order per table (partial unique index), number ORD-{YYYY}-{seq:6},
+         │                                covers 1–100, opened/closed by user, status open | closed
+         ├─ PosKitchenTicket  pos_kitchen_tickets   append-only; sequence per order; kind order | void;
+         │                                          station kitchen | bar; direct (ADR 0031)
+         │   └─ PosTicketStatusChange  pos_ticket_status_changes   append-only; preparing | ready | served
+         └─ PosOrderLine      pos_order_lines       append-only; name, gross unit price and VAT rate
+                                                    snapshot; quantity &lt; 0 on voids
+
+PosPrinter / PosPrinterStation / PosPrintJob / PosPrinterCommand   printers and queued jobs (ADR 0032, 0033)</pre>
+  <p>Tables and areas are archived, not deleted, because orders and checks reference them. Orders, tickets, lines and status changes are append-only (rule 7): a correction is a void ticket with negative lines.</p>
+
+  <h2 id="api">API</h2>
+  <table>
+    <tr><th>Method and path</th><th>Permission</th><th>Purpose</th></tr>
+    <tr><td><code>GET/POST/PATCH /pos/tables</code>, <code>POST /pos/tables/:id/menu-token</code></td><td>pos.tables.read / manage</td><td>Tables, QR menu code</td></tr>
+    <tr><td><code>GET/POST/PATCH /pos/areas</code></td><td>pos.tables.read / manage</td><td>Dining areas</td></tr>
+    <tr><td><code>GET /pos/floor?locationId=</code></td><td>pos.orders.read</td><td>Tables with their open order summary</td></tr>
+    <tr><td><code>GET /pos/tables/:tableId/order</code></td><td>pos.orders.read</td><td>Table and its order, with processing switches</td></tr>
+    <tr><td><code>POST /pos/tables/:tableId/tickets</code></td><td>pos.orders.take</td><td>Send items: opens the order if needed, one ticket per station (idempotent)</td></tr>
+    <tr><td><code>POST /pos/orders/:id/voids</code></td><td>pos.orders.void</td><td>Void sent items (negative lines); refused for billed or discounted items</td></tr>
+    <tr><td><code>PATCH /pos/orders/:id</code></td><td>pos.orders.take</td><td>Set or clear covers on an open order</td></tr>
+    <tr><td><code>POST /pos/orders/:id/close</code></td><td>pos.orders.close</td><td>Close and free the table; emits <code>pos.order.closed</code></td></tr>
+    <tr><td><code>GET /pos/orders</code>, <code>GET /pos/orders/:id</code></td><td>pos.orders.read</td><td>Lists and full order</td></tr>
+    <tr><td><code>GET /pos/stations/kitchen/tickets</code> (and <code>bar</code>)</td><td>pos.kitchen.use / pos.bar.use</td><td>Station screen tickets</td></tr>
+    <tr><td><code>POST /pos/stations/{kitchen|bar}/tickets/:id/status</code>; <code>POST /pos/orders/:orderId/tickets/:id/served</code></td><td>pos.kitchen.use / pos.bar.use; pos.orders.take</td><td>Move a ticket on its screen; serve from the till</td></tr>
+    <tr><td><code>GET /public/menu/:token</code></td><td>public (token)</td><td>QR menu for a table</td></tr>
+  </table>
+  <p>Errors include <code>pos.table_not_found</code>, <code>pos.table_name_taken</code>, <code>pos.area_not_empty</code>, <code>pos.order_not_found</code>, <code>pos.order_closed</code>, <code>pos.product_unavailable</code>, <code>pos.line_not_found</code>, <code>pos.void_exceeds</code>, <code>pos.ticket_status_invalid</code>. A table or order outside the caller's readable locations answers 404.</p>
+
+  <h2 id="rules">Business rules and where they live</h2>
+  <table>
+    <tr><th>Rule</th><th>Enforced in</th></tr>
+    <tr><td>One open order per table; first send to a free table races on the partial unique index, the loser retries once</td><td>migration <code>pos_orders_one_open_per_table_key</code>, <code>orders.service.ts</code></td></tr>
+    <tr><td>A send writes one ticket per station (kitchen first), in one transaction</td><td><code>orders.service.ts</code> (<code>writeTickets</code>)</td></tr>
+    <tr><td>Void goes to the station that received the item, even if the category moved</td><td><code>orders.service.ts</code></td></tr>
+    <tr><td>Products must be orderable at the location (not archived, price rules applied)</td><td><code>catalog</code> <code>PricingService</code>, <code>pos.product_unavailable</code></td></tr>
+    <tr><td>Prices and VAT are snapshots; later menu edits don't change past orders</td><td><code>pos_order_lines</code> columns</td></tr>
+    <tr><td>Totals: gross; per-rate split net = gross / (1 + rate), rounded to cents</td><td><code>order-totals.ts</code>, <code>order-totals.spec.ts</code></td></tr>
+    <tr><td>Station processing off: items go straight to the bill (ADR 0031)</td><td><code>orders.service.ts</code> (<code>processing</code>)</td></tr>
+    <tr><td>Ticket status moves: new → preparing → ready → served, only forward</td><td><code>ticket-status.ts</code>, <code>ticket-status.spec.ts</code></td></tr>
+    <tr><td>Location-limited roles only see their locations</td><td><code>AccessService.locationIdsFor</code></td></tr>
+  </table>
+
+  <h2 id="web">Web</h2>
+  <ul>
+    <li><strong>Tables page</strong> (<code>/tables</code>, <code>components/tables/</code>): areas as tabs, tables with status and look, create, edit, archive, QR code.</li>
+    <li><strong>Floor</strong> (<code>/service</code>, <code>floor-page.tsx</code>): tables of the chosen location grouped by area, free or open, refreshed every 30 s; open tables link to the till.</li>
+    <li><strong>Till</strong> (<code>/service/[tableId]</code>, <code>order-page.tsx</code>): menu with search and categories, cart with notes, Send to kitchen, guests field, order panel (bill, tickets with reprint and serve), Cancel items (void dialog), Close order.</li>
+    <li><strong>Kitchen and bar screens</strong> (<code>/kitchen</code>, <code>/bar</code>): tickets by status, one action per move.</li>
+    <li><strong>Printing:</strong> kitchen tickets are print-styled pages; on the Android till app, jobs go to the LAN printer queue (ADR 0033).</li>
+  </ul>
+
+  <h2 id="tests">Testing</h2>
+  <h3>Automated</h3>
+  <table>
+    <tr><th>Layer</th><th>File</th><th>Covers</th></tr>
+    <tr><td>API e2e</td><td><code>test/pos-tables.e2e.spec.ts</code></td><td>table CRUD, archive, names, permissions, isolation</td></tr>
+    <tr><td>API e2e</td><td><code>test/pos-areas.e2e.spec.ts</code></td><td>areas, empty-area rule, table move</td></tr>
+    <tr><td>API e2e</td><td><code>test/pos-orders.e2e.spec.ts</code></td><td>send, numbering, price snapshots, stations, voids, closing, covers, floor, access, audit, isolation</td></tr>
+    <tr><td>API e2e</td><td><code>test/pos-kitchen.e2e.spec.ts</code></td><td>station boards, ticket status, processing switches</td></tr>
+    <tr><td>API e2e</td><td><code>test/pos-qr-menu.e2e.spec.ts</code></td><td>QR menu token, public menu, rotation</td></tr>
+    <tr><td>API e2e</td><td><code>test/pos-print-jobs.e2e.spec.ts</code>, <code>pos-printers</code>, <code>pos-printer-commands</code></td><td>print queue, claims, answers, reprints, printer setup</td></tr>
+    <tr><td>API e2e</td><td><code>test/pos-floor-reader.e2e.spec.ts</code>, <code>pos-bill-layout.e2e.spec.ts</code></td><td>reservations' floor read, bill header and footer</td></tr>
+    <tr><td>API unit</td><td><code>order-totals.spec.ts</code>, <code>ticket-status.spec.ts</code></td><td>totals and VAT split; status transitions</td></tr>
+    <tr><td>Web</td><td><code>components/pos/orders.test.tsx</code></td><td>floor, till: send, void, covers, close, bill and reprint, station routing</td></tr>
+    <tr><td>Web</td><td><code>components/tables/tables.test.tsx</code></td><td>areas tabs, tables list, status and look</td></tr>
+    <tr><td>Web</td><td><code>components/pos/print-job-runner.test.tsx</code>, <code>print-warnings.test.tsx</code>, <code>printer-command-runner.test.tsx</code></td><td>till app print runner, warnings, remote commands</td></tr>
+    <tr><td>Web</td><td><code>lib/pos/menu-search.test.ts</code>, <code>print-jobs.test.ts</code>, <code>printer-commands.test.ts</code></td><td>menu search, job helpers, command helpers</td></tr>
+  </table>
+  <pre>cd apps/api &amp;&amp; npx vitest run test/pos-tables.e2e.spec.ts test/pos-areas.e2e.spec.ts test/pos-orders.e2e.spec.ts test/pos-kitchen.e2e.spec.ts test/pos-qr-menu.e2e.spec.ts
+cd apps/web &amp;&amp; npx vitest run components/pos components/tables lib/pos</pre>
+
+  <h3>Manual (browser)</h3>
+  <table>
+    <tr><th>Step</th><th>Expected</th></tr>
+    <tr><td>Create an area and two tables in it (Tables page)</td><td>Both appear under the area tab on the floor</td></tr>
+    <tr><td>Waiter opens a free table, sends 2 items</td><td>Order number, table turns open; kitchen ticket prints or appears on the kitchen screen</td></tr>
+    <tr><td>Send again</td><td>Ticket 2; order total grows</td></tr>
+    <tr><td>Void one item (manager)</td><td>Void ticket with a negative line; remaining quantity drops</td></tr>
+    <tr><td>Set guests, then clear them</td><td>Covers shown on the bill; a closed order rejects changes</td></tr>
+    <tr><td>Close the order</td><td>Table free on the floor; next send opens a new order number</td></tr>
+    <tr><td>Kitchen screen: mark a ticket ready, then served</td><td>Moves forward only; Checkout unaffected</td></tr>
+    <tr><td>Staff opens the floor</td><td>No access page</td></tr>
+  </table>
+
+  <h2 id="gaps">Known gaps and notes</h2>
+  <div class="callout">
+    <ul>
+      <li>Reservations pre-fill covers from a seated booking (web only); no server-side link yet.</li>
+      <li>A new order's first send can race another waiter's first send; the second one lands on the same order (tested).</li>
+      <li>The full root <code>pnpm test</code> has not been rerun on this branch; an unrelated timing test in <code>tools/virtual-printer</code> fails on the development laptop.</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>

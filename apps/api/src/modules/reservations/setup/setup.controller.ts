@@ -53,7 +53,7 @@ export class SetupController {
     return { data: await this.rules.list(query.locationId) };
   }
 
-  @RequirePermission('reservations.setup.manage')
+  @RequirePermission('reservations.setup.edit')
   @Idempotent()
   @Put('tables/:tableId/rule')
   putRule(
@@ -72,7 +72,7 @@ export class SetupController {
     return { data: await this.combinations.list(query.locationId, query.includeArchived) };
   }
 
-  @RequirePermission('reservations.setup.manage')
+  @RequirePermission('reservations.setup.create')
   @Idempotent({ completion: 'transaction' })
   @Post('combinations')
   createCombination(
@@ -81,7 +81,7 @@ export class SetupController {
     return this.combinations.create(body);
   }
 
-  @RequirePermission('reservations.setup.manage')
+  @RequirePermission('reservations.setup.edit')
   @Idempotent()
   @Patch('combinations/:id')
   updateCombination(

@@ -1,4 +1,4 @@
-import { SYSTEM_ROLE_GRANTS, type SystemRole } from '@durby/shared';
+import { expandLegacyKeys, SYSTEM_ROLE_GRANTS, type SystemRole } from '@durby/shared';
 import type { PermissionRegistry } from './permission-registry';
 
 /** What the caller may do in the active organization, resolved from their membership. */
@@ -61,9 +61,12 @@ export function effectiveKeysOf(
   if (systemKey === 'owner' || overrides.length === 0) return roleKeys;
   const keys = new Set(roleKeys);
   for (const { permissionKey, effect } of overrides) {
-    if (!Object.hasOwn(registry, permissionKey)) continue;
-    if (effect === 'grant') keys.add(permissionKey);
-    else keys.delete(permissionKey);
+    // A stored key retired by ADR 0037 (`x.manage`) stands for its create, edit and delete keys.
+    for (const key of expandLegacyKeys([permissionKey])) {
+      if (!Object.hasOwn(registry, key)) continue;
+      if (effect === 'grant') keys.add(key);
+      else keys.delete(key);
+    }
   }
   return keys;
 }
@@ -100,7 +103,7 @@ export function resolveAccess(
     ? roleKeysOf(
         registry,
         row.role.systemKey,
-        row.role.permissions.map((p) => p.permissionKey),
+        expandLegacyKeys(row.role.permissions.map((p) => p.permissionKey)),
       )
     : new Set<string>();
   const effectiveKeys = row.role

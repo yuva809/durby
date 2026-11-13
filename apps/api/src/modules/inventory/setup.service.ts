@@ -84,7 +84,7 @@ export class InventorySetupService {
       select: { id: true },
     });
     if (!location) throw inventoryErrors.locationNotFound();
-    await this.access.assert('inventory.warehouses.manage', { locationId: body.locationId });
+    await this.access.assert('inventory.warehouses.create', { locationId: body.locationId });
     return this.unique(inventoryErrors.warehouseNameTaken, () =>
       this.db.$transaction(async (tx) => {
         const row = await tx.warehouse.create({
@@ -121,7 +121,7 @@ export class InventorySetupService {
     ) {
       throw inventoryErrors.warehouseNotFound();
     }
-    await this.access.assert('inventory.warehouses.manage', { locationId: found.locationId });
+    await this.access.assert('inventory.warehouses.edit', { locationId: found.locationId });
     return this.unique(inventoryErrors.warehouseNameTaken, () =>
       this.db.$transaction(async (tx) => {
         const current = await tx.warehouse.findUniqueOrThrow({

@@ -16,11 +16,11 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import type { InventoryData } from './inventory-page';
 
-/** Stock items: name, article number, unit and reorder level; managed with inventory.items.manage. */
+/** Stock items: name, article number, unit and reorder level; managed with inventory.items.edit. */
 export function ItemsTab({ data }: { data: InventoryData }) {
   const t = useT();
   const [showArchived, setShowArchived] = useState(false);
-  const canManage = data.can('inventory.items.manage');
+  const canManage = data.can('inventory.items.edit');
   const shown = data.items.filter((i) => showArchived || i.archivedAt === null);
   return (
     <div className="flex flex-col gap-4">

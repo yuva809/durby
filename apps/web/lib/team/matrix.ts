@@ -103,3 +103,24 @@ export function generatePassword(
 /** A WhatsApp share link for `text` (the user picks the chat). */
 export const whatsappUrl = (text: string): string =>
   `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+/** The columns of a business entity's row in the matrix (ADR 0037). */
+export const CRUD_COLUMNS = ['read', 'create', 'edit', 'delete'] as const;
+export type CrudColumn = (typeof CRUD_COLUMNS)[number];
+
+/**
+ * An entity's keys as matrix cells: its read, create, edit and delete keys (a column is null where the key doesn't
+ * exist), and the other keys of the entity. Null when the entity has no create, edit or delete key (a list then).
+ */
+export function crudRow(keys: readonly string[]): {
+  cells: Record<CrudColumn, string | null>;
+  extra: string[];
+} | null {
+  const isWrite = keys.some((key) => /\.(create|edit|delete)$/.test(key));
+  if (!isWrite) return null;
+  const cells = Object.fromEntries(
+    CRUD_COLUMNS.map((verb) => [verb, keys.find((key) => key.endsWith(`.${verb}`)) ?? null]),
+  ) as Record<CrudColumn, string | null>;
+  const used = new Set(Object.values(cells));
+  return { cells, extra: keys.filter((key) => !used.has(key)) };
+}

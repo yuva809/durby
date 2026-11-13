@@ -72,7 +72,7 @@ export class InventoryController {
     return { data: await this.setup.listWarehouses(query) };
   }
 
-  @RequirePermission('inventory.warehouses.manage')
+  @RequirePermission('inventory.warehouses.create')
   @Idempotent({ completion: 'transaction' })
   @Post('warehouses')
   createWarehouse(
@@ -81,7 +81,7 @@ export class InventoryController {
     return this.setup.createWarehouse(body);
   }
 
-  @RequirePermission('inventory.warehouses.manage')
+  @RequirePermission('inventory.warehouses.edit')
   @Idempotent()
   @Patch('warehouses/:id')
   updateWarehouse(
@@ -99,7 +99,7 @@ export class InventoryController {
     return { data: await this.setup.listItems(query) };
   }
 
-  @RequirePermission('inventory.items.manage')
+  @RequirePermission('inventory.items.create')
   @Idempotent({ completion: 'transaction' })
   @Post('items')
   createItem(
@@ -108,7 +108,7 @@ export class InventoryController {
     return this.setup.createItem(body);
   }
 
-  @RequirePermission('inventory.items.manage')
+  @RequirePermission('inventory.items.edit')
   @Idempotent()
   @Patch('items/:id')
   updateItem(
@@ -174,7 +174,7 @@ export class InventoryController {
   }
 
   /** Replaces the recipe: configuration, not history, so a replay just writes the same lines. */
-  @RequirePermission('inventory.recipes.manage')
+  @RequirePermission('inventory.recipes.edit')
   @Idempotent()
   @Put('recipes/:productId')
   putRecipe(

@@ -43,7 +43,7 @@ export class PricingController {
   }
 
   /** Appends a rule: the result is stored with the key in the transaction (rule 8). */
-  @RequirePermission('catalog.products.manage')
+  @RequirePermission('catalog.products.create')
   @Idempotent({ completion: 'transaction' })
   @Post('price-rules')
   createRule(
@@ -52,7 +52,7 @@ export class PricingController {
     return this.pricing.createRule(body);
   }
 
-  @RequirePermission('catalog.products.manage')
+  @RequirePermission('catalog.products.edit')
   @Idempotent()
   @Patch('price-rules/:id')
   updateRule(
@@ -62,7 +62,7 @@ export class PricingController {
     return this.pricing.updateRule(id, body);
   }
 
-  @RequirePermission('catalog.products.manage')
+  @RequirePermission('catalog.products.delete')
   @Idempotent()
   @Delete('price-rules/:id')
   @HttpCode(HttpStatus.NO_CONTENT)

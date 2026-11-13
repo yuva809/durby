@@ -66,7 +66,7 @@ function api(bulk: Record<string, unknown> = {}) {
 const pick = async (name: string) => userEvent.click(await screen.findByLabelText(name));
 
 describe('bulk actions on the catalog page', () => {
-  it('offers no selection without catalog.products.manage', async () => {
+  it('offers no selection without catalog.products.edit', async () => {
     signedInAs('staff');
     api();
     render(<CatalogPage />);

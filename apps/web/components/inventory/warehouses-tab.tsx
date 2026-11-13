@@ -19,7 +19,7 @@ import type { InventoryData } from './inventory-page';
 export function WarehousesTab({ data }: { data: InventoryData }) {
   const t = useT();
   const [showArchived, setShowArchived] = useState(false);
-  const canManage = data.can('inventory.warehouses.manage');
+  const canManage = data.can('inventory.warehouses.edit');
   const locations =
     data.locations.length > 0
       ? data.locations

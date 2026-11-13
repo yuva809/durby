@@ -49,7 +49,7 @@ import { ArchiveToggle, Field, FormDialog } from '../form-dialog';
 import { BulkBar, type KeptRows } from './bulk-bar';
 import { ImportDialog } from './import-dialog';
 
-/** /catalog (docs/modules/catalog.md → Web). Editing needs `catalog.products.manage`. */
+/** /catalog (docs/modules/catalog.md → Web). Editing needs `catalog.products.edit`. */
 export function CatalogPage() {
   const { session } = useAuth();
   if (!session) return null;
@@ -58,7 +58,7 @@ export function CatalogPage() {
   return (
     <Catalog
       organizationId={session.activeOrganizationId}
-      canManage={permissions.has('catalog.products.manage')}
+      canManage={permissions.has('catalog.products.edit')}
       canReadCosts={permissions.has('inventory.costs.read')}
     />
   );

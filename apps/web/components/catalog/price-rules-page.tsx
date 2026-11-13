@@ -54,7 +54,7 @@ const PROBLEM: Record<PriceRuleProblem, LabelKey> = {
 
 /**
  * /catalog/prices (docs/modules/catalog.md → Price rules, ADR 0030): the organization's price rules
- * and a price check. Reading needs `catalog.products.read`, changing `catalog.products.manage`.
+ * and a price check. Reading needs `catalog.products.read`, changing `catalog.products.edit`.
  */
 export function PriceRulesPage() {
   const { session } = useAuth();
@@ -65,7 +65,7 @@ export function PriceRulesPage() {
     <MoneyProvider>
       <PriceRules
         organizationId={session.activeOrganizationId}
-        canManage={permissions.has('catalog.products.manage')}
+        canManage={permissions.has('catalog.products.edit')}
       />
     </MoneyProvider>
   );

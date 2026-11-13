@@ -70,7 +70,7 @@ function partySize(text: string): number | '' | null {
 
 /**
  * /settings/reservations (docs/modules/reservations.md → Web, R1.5b): per location, the table rules
- * and the table combinations. For holders of reservations.setup.manage with the feature; the api
+ * and the table combinations. For holders of reservations.setup.edit with the feature; the api
  * checks the key again at the location.
  */
 export function ReservationsSetupPage() {
@@ -80,7 +80,7 @@ export function ReservationsSetupPage() {
   );
   if (!session) return null;
   if (
-    !session.activePermissions.includes('reservations.setup.manage') ||
+    !session.activePermissions.includes('reservations.setup.edit') ||
     !session.activeFeatures.includes('reservations')
   ) {
     return <NoAccess title="reservations.settingsPage.title" />;

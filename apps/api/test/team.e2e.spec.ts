@@ -146,14 +146,14 @@ describe('manage staff', () => {
     const id = list.members.find((m) => m.userId === waiter.id)!.membershipId;
     const updated = (
       await api(ownerA.token)
-        .patch(id, { grants: ['catalog.products.manage'], denies: ['pos.bills.print'] })
+        .patch(id, { grants: ['catalog.products.edit'], denies: ['pos.bills.print'] })
         .expect(200)
     ).body as TeamMember;
     expect(updated).toMatchObject({
-      grants: ['catalog.products.manage'],
+      grants: ['catalog.products.edit'],
       denies: ['pos.bills.print'],
     });
-    expect(updated.permissions).toContain('catalog.products.manage');
+    expect(updated.permissions).toContain('catalog.products.edit');
     expect(updated.permissions).not.toContain('pos.bills.print');
 
     const me = await request(kit.server)
@@ -161,7 +161,7 @@ describe('manage staff', () => {
       .auth(waiter.token, { type: 'bearer' })
       .expect(200);
     const permissions = (me.body as { activePermissions: string[] }).activePermissions;
-    expect(permissions).toContain('catalog.products.manage');
+    expect(permissions).toContain('catalog.products.edit');
     expect(permissions).not.toContain('pos.bills.print');
     expect((await api(ownerA.token).list()).stats.customPermissions).toBeGreaterThanOrEqual(1);
 
@@ -181,7 +181,7 @@ describe('manage staff', () => {
         name: 'Lee',
         email: newEmail(),
         roleId: a.roles.waiter,
-        grants: ['catalog.products.manage'],
+        grants: ['catalog.products.edit'],
         temporaryPassword: TEMP,
       })
       .expect(403);

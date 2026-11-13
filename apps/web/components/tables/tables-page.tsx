@@ -69,7 +69,7 @@ export function TablesPage() {
     <Tables
       organizationId={session.activeOrganizationId}
       access={{
-        canManage: permissions.has('pos.tables.manage'),
+        canManage: permissions.has('pos.tables.edit'),
         canSeeOrders: permissions.has('pos.orders.read'),
       }}
     />
