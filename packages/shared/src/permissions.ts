@@ -52,12 +52,12 @@ export const PERMISSIONS = {
   'pos.orders.take': { scope: 'location', label: 'pos.permissions.ordersTake' },
   'pos.orders.void': { scope: 'location', label: 'pos.permissions.ordersVoid' },
   'pos.orders.close': { scope: 'location', label: 'pos.permissions.ordersClose' },
+  // Discounts and comps on an order (ADR 0036 §5): managers, like voids.
+  'pos.orders.discount': { scope: 'location', label: 'pos.permissions.ordersDiscount' },
   // The bill with prices; waiters print the order only (docs/modules/pos.md → Printing).
   'pos.bills.print': { scope: 'location', label: 'pos.permissions.billsPrint' },
   // Cancel a bill so its items can be billed again (ADR 0036): a fraud risk, like voids.
   'pos.bills.cancel': { scope: 'location', label: 'pos.permissions.billsCancel' },
-  // Discounts and comps on an order (ADR 0036 §5): managers, like voids.
-  'pos.orders.discount': { scope: 'location', label: 'pos.permissions.ordersDiscount' },
   // The kitchen and bar screens (docs/modules/pos.md → Kitchen and bar screens, ADR 0026).
   'pos.kitchen.use': { scope: 'location', label: 'pos.permissions.kitchenUse' },
   'pos.bar.use': { scope: 'location', label: 'pos.permissions.barUse' },
