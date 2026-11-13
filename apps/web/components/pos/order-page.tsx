@@ -86,6 +86,7 @@ import { PrinterCommandRunner } from './printer-command-runner';
 import { CheckReceipt } from './check-receipt';
 import { tableColors } from './table-icon';
 import { DiscountDialog, DiscountList } from './discount-dialog';
+import { SplitDialog } from './split-dialog';
 import { VoidDialog } from './void-dialog';
 
 interface OrderAccess {
@@ -614,6 +615,19 @@ function TableOrder({
                     order.status === 'open' &&
                     access.canDiscount &&
                     order.totals.itemCount > 0 && <DiscountDialog order={order} onDone={reload} />}
+                  {order &&
+                    access.canPrintBill &&
+                    order.status === 'open' &&
+                    order.unbilled !== '0.00' && (
+                      <SplitDialog
+                        order={order}
+                        locationId={table.locationId}
+                        onBilled={(checkId) => {
+                          reload();
+                          void printCheck(checkId);
+                        }}
+                      />
+                    )}
                   {order && access.canDiscount && <DiscountList order={order} onChanged={reload} />}
                   {order && access.canPrintBill && order.bills.length > 0 && (
                     <OrderBills order={order} onReprint={(id) => void printCheck(id)} />
