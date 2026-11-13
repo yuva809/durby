@@ -40,6 +40,8 @@ export const diningTableSchema = z.object({
   shape,
   color,
   sortOrder: z.int(),
+  floorX: z.int().min(0).max(1000),
+  floorY: z.int().min(0).max(1000),
   archivedAt: z.iso.datetime().nullable(),
   /**
    * The table's QR menu code (docs/modules/pos.md → QR menu); the QR links to /menu/<org>.<code>.
@@ -57,6 +59,8 @@ export const createDiningTableRequestSchema = z.strictObject({
   shape: shape.optional(),
   color: color.optional(),
   sortOrder: sortOrder.optional(),
+  floorX: z.int().min(0).max(1000).optional(),
+  floorY: z.int().min(0).max(1000).optional(),
 });
 
 export const updateDiningTableRequestSchema = z
@@ -67,6 +71,8 @@ export const updateDiningTableRequestSchema = z
     shape: shape.optional(),
     color: color.optional(),
     sortOrder: sortOrder.optional(),
+    floorX: z.int().min(0).max(1000).optional(),
+    floorY: z.int().min(0).max(1000).optional(),
     archived: z.boolean().optional(),
   })
   .refine((body) => Object.values(body).some((v) => v !== undefined), {

@@ -871,6 +871,9 @@ model DiningTable {
   /// The QR menu link's secret part (ADR 0026): 24 URL-safe characters; rotated by staff.
   menuToken               String                        @default(dbgenerated("pos_new_menu_token()")) @map("menu_token")
   sortOrder               Int                           @default(0) @map("sort_order")
+  /// Normalized position on the location floor canvas (0..1000).
+  floorX                  Int                           @default(100) @map("floor_x")
+  floorY                  Int                           @default(100) @map("floor_y")
   archivedAt              DateTime?                     @map("archived_at") @db.Timestamptz(6)
   createdAt               DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime                      @updatedAt @map("updated_at") @db.Timestamptz(6)

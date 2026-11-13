@@ -124,7 +124,7 @@
   "pos.bill.tickets": "Küchenbons ({count})",
   "pos.time.minutes": "{minutes} Min.",
   "pos.time.hoursMinutes": "{hours} Std. {minutes} Min.",
-  "pos.tablesPage.description": "Dein Grundriss. Tische werden an der Kasse bedient und abgerechnet.",
+  "pos.tablesPage.description": "Platziere Tische auf einer Fläche, die dem echten Raum entspricht. Ziehe Tische, um den Grundriss anzupassen.",
   "pos.tablesPage.kpiInService": "Tische in Betrieb",
   "pos.tablesPage.kpiAvailable": "Frei",
   "pos.tablesPage.kpiOccupied": "Belegt",

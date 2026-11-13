@@ -467,6 +467,8 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'price',
     'taxRate',
     'sortOrder',
+    'floorX',
+    'floorY',
     'archivedAt',
   ],
   dining_table: [

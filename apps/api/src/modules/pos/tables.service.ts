@@ -28,6 +28,8 @@ const TABLE_SELECT = {
   shape: true,
   color: true,
   sortOrder: true,
+  floorX: true,
+  floorY: true,
   archivedAt: true,
   menuToken: true,
 } as const;
@@ -82,6 +84,9 @@ export class TablesService {
     return this.unique(() =>
       this.db.$transaction(async (tx) => {
         const area = body.areaId ? await areaAt(tx, body.areaId, body.locationId) : null;
+        const existing = await tx.diningTable.count({
+          where: { tenantId, locationId: body.locationId },
+        });
         const row = await tx.diningTable.create({
           data: {
             tenantId,
@@ -93,6 +98,8 @@ export class TablesService {
             shape: body.shape ?? 'square',
             color: body.color ?? 'neutral',
             sortOrder: body.sortOrder ?? 0,
+            floorX: body.floorX ?? 100 + (existing % 6) * 160,
+            floorY: body.floorY ?? 120 + (Math.floor(existing / 6) % 5) * 170,
           },
           select: TABLE_SELECT,
         });
@@ -137,6 +144,8 @@ export class TablesService {
           shape: body.shape ?? current.shape,
           color: body.color ?? current.color,
           sortOrder: body.sortOrder ?? current.sortOrder,
+          floorX: body.floorX ?? current.floorX,
+          floorY: body.floorY ?? current.floorY,
           archivedAt: archivedAt(current.archivedAt, body.archived),
         };
         const before = tableSnapshot(current);

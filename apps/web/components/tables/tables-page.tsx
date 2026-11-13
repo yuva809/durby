@@ -14,7 +14,7 @@ import {
   type TableShape,
 } from '@durby/shared';
 import { Eye, EyeOff, MoreHorizontal, Pencil, Search, Trash2 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import {
@@ -101,6 +101,7 @@ type AreaFilter = { kind: 'all' } | { kind: 'none' } | { kind: 'area'; id: strin
 function LocationTables({ locations, access }: { locations: LocationSummary[]; access: Access }) {
   const t = useT();
   const { store } = useAuth();
+  const action = useActionKey();
   const id = useId();
   const [locationId, setLocationId] = useState(locations[0]!.id);
   const [query, setQuery] = useState('');
@@ -134,6 +135,7 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">{t('pos.nav.tables')}</h1>
+          <p className="text-sm text-muted-foreground">{t('pos.tablesPage.description')}</p>
           <p
             className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground"
             data-testid="table-kpis"
@@ -262,6 +264,11 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
             access={access}
             areas={areaList}
             onDone={reload}
+            canManage={access.canManage}
+            onMove={async (table, floorX, floorY) => {
+              const result = await updateTable(store, action, table.id, { floorX, floorY });
+              if (result.ok) reloadTables();
+            }}
           />
         )}
       </Loaded>
@@ -381,6 +388,8 @@ function FloorGrid({
   access,
   areas,
   onDone,
+  canManage,
+  onMove,
 }: {
   tables: DiningTable[];
   emptyArea: boolean;
@@ -389,8 +398,11 @@ function FloorGrid({
   access: Access;
   areas: DiningArea[];
   onDone: () => void;
+  canManage: boolean;
+  onMove: (table: DiningTable, floorX: number, floorY: number) => Promise<void>;
 }) {
   const t = useT();
+  const canvas = useRef<HTMLUListElement>(null);
   if (tables.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-muted-foreground">
@@ -399,7 +411,14 @@ function FloorGrid({
     );
   }
   return (
-    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+    <ul
+      ref={canvas}
+      className="relative min-h-[620px] overflow-hidden rounded-2xl border border-border bg-card/50"
+      style={{
+        backgroundImage: 'radial-gradient(hsl(var(--border)) 1px, transparent 1px)',
+        backgroundSize: '24px 24px',
+      }}
+    >
       {tables.map((table) => (
         <TableTile
           key={table.id}
@@ -409,6 +428,9 @@ function FloorGrid({
           access={access}
           areas={areas}
           onDone={onDone}
+          canManage={canManage}
+          onMove={onMove}
+          canvas={canvas}
         />
       ))}
     </ul>
@@ -422,6 +444,9 @@ function TableTile({
   access,
   areas,
   onDone,
+  canManage,
+  onMove,
+  canvas,
 }: {
   table: DiningTable;
   order: FloorTable['order'];
@@ -429,6 +454,9 @@ function TableTile({
   access: Access;
   areas: DiningArea[];
   onDone: () => void;
+  canManage: boolean;
+  onMove: (table: DiningTable, floorX: number, floorY: number) => Promise<void>;
+  canvas: React.RefObject<HTMLUListElement | null>;
 }) {
   const t = useT();
   const { store } = useAuth();
@@ -442,6 +470,23 @@ function TableTile({
   }[status];
   const duration = order ? durationLabel(minutesSince(order.openedAt, now)) : null;
   const { stroke, fill } = tableColors(table.color);
+  const drag = useRef<{ pointer: number; moved: boolean } | null>(null);
+
+  function move(event: React.PointerEvent<HTMLLIElement>) {
+    if (!drag.current || !canvas.current) return;
+    drag.current.moved = true;
+    const bounds = canvas.current.getBoundingClientRect();
+    const floorX = Math.max(
+      0,
+      Math.min(1000, Math.round(((event.clientX - bounds.left) / bounds.width) * 1000)),
+    );
+    const floorY = Math.max(
+      0,
+      Math.min(1000, Math.round(((event.clientY - bounds.top) / bounds.height) * 1000)),
+    );
+    event.currentTarget.style.left = `${floorX / 10}%`;
+    event.currentTarget.style.top = `${floorY / 10}%`;
+  }
 
   async function toggleService() {
     const result = await updateTable(store, action, table.id, { archived: !out });
@@ -449,7 +494,43 @@ function TableTile({
   }
 
   return (
-    <li data-testid="table-card" data-name={table.name} data-status={status}>
+    <li
+      data-testid="table-card"
+      data-name={table.name}
+      data-status={status}
+      style={{
+        position: 'absolute',
+        left: `${table.floorX / 10}%`,
+        top: `${table.floorY / 10}%`,
+        transform: 'translate(-50%, -50%)',
+        width: 148,
+        touchAction: 'none',
+        cursor: canManage ? 'grab' : undefined,
+      }}
+      onPointerDown={(event) => {
+        if (!canManage || (event.target as HTMLElement).closest('button')) return;
+        drag.current = { pointer: event.pointerId, moved: false };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={move}
+      onPointerUp={(event) => {
+        if (!drag.current || !drag.current.moved) {
+          drag.current = null;
+          return;
+        }
+        const bounds = event.currentTarget.parentElement!.getBoundingClientRect();
+        const floorX = Math.max(
+          0,
+          Math.min(1000, Math.round(((event.clientX - bounds.left) / bounds.width) * 1000)),
+        );
+        const floorY = Math.max(
+          0,
+          Math.min(1000, Math.round(((event.clientY - bounds.top) / bounds.height) * 1000)),
+        );
+        drag.current = null;
+        void onMove(table, floorX, floorY);
+      }}
+    >
       <div
         className={cn(
           'relative flex aspect-square flex-col items-center justify-center gap-1 rounded-2xl border-2 bg-card p-3 text-center transition-shadow hover:shadow-md',
