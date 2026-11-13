@@ -90,3 +90,5 @@
 import extra/*.caddy
 # Former domains redirected to this stack's main domain (ADR 0039), written by bin/deploy.sh.
 import redirects/*.caddy
+# Partners' own domains on this stack (ADR 0040), written by bin/deploy.sh from PARTNER_ORIGINS.
+import partners/*.caddy

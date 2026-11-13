@@ -113,3 +113,66 @@ bin/release.sh                         # STAGING_DOMAIN back to staging.durby.te
 Keep `app.durby.tech` pointing at this server (it is on the Android allow-list). Keep `staging.durby.tech` and its
 redirect as long as old links or Android builds from before ADR 0039 are in use. Before retiring any `durby.tech` name,
 remove its DNS record first, so no record is left pointing at an address someone else could take over.
+
+## Partner domains (AsiaMight)
+
+A partner sells Durby under its own name on its own domain, served by production with the same api and database
+([ADR 0040](../adr/0040-partner-domains-asiamight.md)). A domain needs two things: a `partner_domains` row (a
+migration: theme and name) and an entry in `PARTNER_ORIGINS` in `/opt/durby/.env` (routing, certificate, sign-in
+origin). AsiaMight's partner, theme and `dev.asiamight.site` come with migration `20261114100000_partner_asiamight`.
+
+### 1. DNS (AsiaMight's DNS provider)
+
+`dev.asiamight.site`: an `A` record (and `AAAA`, if the server has IPv6) to the server's address. Check:
+`dig +short dev.asiamight.site A` shows only the server.
+
+### 2. Release the code
+
+The ADR 0040 release must be on `main` (it runs the migration). The push to `main` deploys it.
+
+### 3. Add the domain to the server's .env and redeploy
+
+```bash
+ssh <you>@<server>
+sudo -iu deploy
+cd /opt/durby
+grep -q '^PARTNER_ORIGINS=' .env || echo 'PARTNER_ORIGINS=https://dev.asiamight.site' >> .env
+grep '^PARTNER_ORIGINS=' .env          # more partners later: comma-separated, lower case, https://, no path
+bin/release.sh                         # writes caddy/partners/partners.caddy; Caddy gets the certificate
+cat caddy/partners/partners.caddy
+bin/dc logs --tail 30 caddy            # "certificate obtained successfully" for dev.asiamight.site
+```
+
+### 4. Create AsiaMight's organization and first owner
+
+On the `inventory` plan (Inventory, Manage Staff, audit log, Settings; no POS, billing, tables or reservations):
+
+```bash
+bin/dc run --rm --no-deps api node dist/cli/create-admin.js \
+  --email <owner@asiamight-company> --org "AsiaMight" --partner asiamight --plan inventory
+```
+
+The owner gets an email to set their password (Mailpit unless `SMTP_URL` is set: `ssh -L 8025:127.0.0.1:8025` and open
+http://localhost:8025). That password link opens `app.durby.tech` (ADR 0040, Consequences); after setting it they sign
+in at **https://dev.asiamight.site**. Staff they invite get links on `dev.asiamight.site`.
+
+### 5. Check
+
+```bash
+curl -fsS https://dev.asiamight.site/api/v1/health      # {"status":"ok",...}
+curl -fsS https://dev.asiamight.site/api/v1/theme       # "productName":"AsiaMight", primary #1f7a3d
+```
+
+In a browser at `https://dev.asiamight.site`: the title and sign-in say AsiaMight in green; after sign-in the sidebar
+shows Home, Inventory (with its pages), Catalog, Manage Staff, Settings and Audit log, and nothing for POS, billing,
+tables or reservations.
+
+### Branding later
+
+When AsiaMight sends its logo (SVG, PNG or WebP) and colours: put the file in `apps/web/public/brand/asiamight/` and add
+a migration that updates its `partner_themes` row (`logo_path` `/brand/asiamight/<file>`, `color_primary`, optionally
+`color_ink`/`color_paper`). Wording (e.g. "Manage Staffs") is a `partner_label_overrides` row in the same migration.
+
+### Removing a partner domain
+
+Remove it from `PARTNER_ORIGINS` and run `bin/release.sh` (its Caddy site goes away), then delete its DNS record.

@@ -101,6 +101,9 @@ Dark mode is not part of this step.
 - No RLS: these hold no tenant data, only what any visitor of the domain sees anyway.
 - Brand-level theming (an organization's brand on its own domain) comes later; the `whitelabel` feature key is kept
   for it.
+- Partners on their own domains outside `durby.tech` (AsiaMight on `dev.asiamight.site`, ADR 0040): the
+  `partner_domains` row gives the theme; the server's `PARTNER_ORIGINS` gives routing, TLS and the sign-in origin
+  (docs/ops/production.md → Partner domains).
 
 ### Resolution: `GET /api/v1/theme`
 

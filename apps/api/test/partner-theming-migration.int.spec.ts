@@ -136,6 +136,40 @@ describe('partner_themes and partner_domains at the database', () => {
       { locale: 'en', key: 'platform.app.name', value: 'Gastro Demo' },
     ]);
   });
+
+  // ADR 0040: AsiaMight, a partner on its own domain with placeholder branding.
+  it('seeds the AsiaMight partner with its theme, domains and product name', async () => {
+    const theme = await migrator.query(
+      `SELECT p.name, t.product_name, t.logo_path, t.color_primary, t.color_ink, t.color_paper
+       FROM partner_themes t JOIN partners p ON p.id = t.partner_id WHERE p.slug = 'asiamight'`,
+    );
+    expect(theme.rows).toEqual([
+      {
+        name: 'AsiaMight',
+        product_name: 'AsiaMight',
+        logo_path: null,
+        color_primary: '#1f7a3d',
+        color_ink: null,
+        color_paper: null,
+      },
+    ]);
+    const domains = await migrator.query(
+      `SELECT d.hostname FROM partner_domains d JOIN partners p ON p.id = d.partner_id
+       WHERE p.slug = 'asiamight' ORDER BY d.hostname`,
+    );
+    expect(domains.rows.map((r: { hostname: string }) => r.hostname)).toEqual([
+      'asiamight.localhost',
+      'dev.asiamight.site',
+    ]);
+    const labels = await migrator.query(
+      `SELECT o.locale, o.key, o.value FROM partner_label_overrides o
+       JOIN partners p ON p.id = o.partner_id WHERE p.slug = 'asiamight' ORDER BY o.key, o.locale`,
+    );
+    expect(labels.rows).toEqual([
+      { locale: 'de', key: 'platform.app.name', value: 'AsiaMight' },
+      { locale: 'en', key: 'platform.app.name', value: 'AsiaMight' },
+    ]);
+  });
 });
 
 // ADR 0015 §3: themes and domains change only through reviewed migrations.

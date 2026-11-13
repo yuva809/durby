@@ -57,6 +57,26 @@ for domain in "${_domains[@]}"; do
   redirect_domains+=("$domain")
 done
 
+# Partners' own domains on this stack (ADR 0040): comma-separated https origins, also part of WEB_ORIGINS (compose).
+# Each needs a partner_domains row (a migration) for its theme, and a DNS record to this server.
+partner_domains=()
+IFS=',' read -ra _origins <<<"$(env_value PARTNER_ORIGINS)"
+for origin in "${_origins[@]}"; do
+  # Lower case only: compose passes the raw value to the api, whose WEB_ORIGINS check wants exact origins.
+  origin="$(tr -d '[:space:]' <<<"$origin")"
+  [[ -z "$origin" ]] && continue
+  [[ "$origin" =~ ^https://(([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,})$ ]] ||
+    die "PARTNER_ORIGINS: '$origin' is not a lower-case https origin (example: https://dev.asiamight.site)"
+  host="${BASH_REMATCH[1]}"
+  for taken in "$(env_value STAGING_DOMAIN)" "$(env_value STAGING_DEMO_DOMAIN)" "${redirect_domains[@]}"; do
+    [[ "$host" != "$taken" ]] || die "PARTNER_ORIGINS: '$host' is already served by this stack"
+  done
+  partner_domains+=("$host")
+done
+if ((${#partner_domains[@]} > 0)) && [[ "$(env_value EDGE)" == false ]]; then
+  die "PARTNER_ORIGINS needs this stack's own Caddy (EDGE=false here): add partner domains on the edge stack"
+fi
+
 current="$(cat "$STATE/deployed.sha" 2>/dev/null || true)"
 prefix="$(sed -n 's/^IMAGE_PREFIX=//p' "$DEPLOY_DIR/.env" | tr -d "'\"")"
 prefix="${prefix:-ghcr.io/yuva809/durby}"
@@ -151,6 +171,21 @@ if [[ "$(env_value EDGE)" != false ]]; then
     log "redirecting ${redirect_domains[*]} to $(env_value STAGING_DOMAIN)"
   else
     rm -f "$redirects/redirects.caddy"
+  fi
+  # Partners' own domains (ADR 0040): same routes as the main site; the theme comes from the Host.
+  partners="$DEPLOY_DIR/caddy/partners"
+  install -d -m 755 "$partners"
+  if ((${#partner_domains[@]} > 0)); then
+    {
+      echo "# Written by bin/deploy.sh from PARTNER_ORIGINS in .env (ADR 0040). Edit .env, not this file."
+      echo "$(IFS=','; echo "${partner_domains[*]}" | sed 's/,/, /g') {"
+      # shellcheck disable=SC2016 # Caddy reads {$SHARED_ALIAS} from its environment.
+      printf '\timport durby {$SHARED_ALIAS}-api:4000 {$SHARED_ALIAS}-web:3000\n'
+      echo "}"
+    } >"$partners/partners.caddy"
+    log "serving partner domains ${partner_domains[*]}"
+  else
+    rm -f "$partners/partners.caddy"
   fi
   dc up -d --wait --wait-timeout "$WAIT_SECONDS" caddy
   dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1 ||
