@@ -17,7 +17,8 @@ import { ItemsTab } from './items-tab';
 import { StockTab } from './stock-tab';
 import { WarehousesTab } from './warehouses-tab';
 
-type Tab = 'stock' | 'receive' | 'adjust' | 'transfer' | 'documents' | 'items' | 'warehouses';
+export type Tab =
+  'stock' | 'receive' | 'adjust' | 'transfer' | 'documents' | 'items' | 'warehouses';
 
 /** Tabs in display order; a tab with a key shows only to holders of it (the api checks again). */
 const TABS: readonly { id: Tab; label: LabelKey; permission?: PermissionKey }[] = [
@@ -46,8 +47,11 @@ export function warehouseLabel(data: InventoryData, warehouse: Warehouse): strin
   return location ? `${location.name} · ${warehouse.name}` : warehouse.name;
 }
 
-/** /inventory (docs/modules/inventory.md → Web): stock, documents and setup in tabs. */
-export function InventoryPage() {
+/**
+ * /inventory (docs/modules/inventory.md → Web): stock, documents and setup in tabs. `tab` opens another tab first
+ * (Inventory → Inventory Adjustment opens Adjust); one the user may not see falls back to Stock.
+ */
+export function InventoryPage({ tab = 'stock' }: { tab?: Tab }) {
   const { session } = useAuth();
   if (!session) return null;
   if (
@@ -58,15 +62,26 @@ export function InventoryPage() {
   }
   return (
     <MoneyProvider>
-      <Inventory organizationId={session.activeOrganizationId} />
+      <Inventory organizationId={session.activeOrganizationId} initialTab={tab} />
     </MoneyProvider>
   );
 }
 
-function Inventory({ organizationId }: { organizationId: string | null }) {
+function Inventory({
+  organizationId,
+  initialTab,
+}: {
+  organizationId: string | null;
+  initialTab: Tab;
+}) {
   const t = useT();
   const { store, session } = useAuth();
-  const [tab, setTab] = useState<Tab>('stock');
+  const [tab, setTab] = useState<Tab>(() => {
+    const wanted = TABS.find((x) => x.id === initialTab);
+    const allowed =
+      !wanted?.permission || (session?.activePermissions ?? []).includes(wanted.permission);
+    return allowed ? initialTab : 'stock';
+  });
   const [locations, reloadLocations] = useResource(organizationId, () => loadLocations(store));
   const [warehouses, reloadWarehouses] = useResource(organizationId, () =>
     loadWarehouses(store, true),
