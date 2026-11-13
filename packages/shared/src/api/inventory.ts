@@ -11,7 +11,13 @@ export const STOCK_DOCUMENT_MAX_LINES = 200;
 export const STOCK_UNITS = ['kg', 'g', 'l', 'ml', 'pc'] as const;
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
-export const STOCK_DOCUMENT_KINDS = ['receipt', 'adjustment', 'transfer', 'consumption'] as const;
+export const STOCK_DOCUMENT_KINDS = [
+  'receipt',
+  'adjustment',
+  'transfer',
+  'consumption',
+  'production',
+] as const;
 export type StockDocumentKind = (typeof STOCK_DOCUMENT_KINDS)[number];
 
 /** Why stock was adjusted. */
@@ -75,6 +81,10 @@ export const stockItemSchema = z.object({
   unit: z.enum(STOCK_UNITS),
   /** Reorder level, 3 decimals; null = none. */
   minQuantity: z.string().nullable(),
+  /** A variant's parent item (ADR 0038); null for other items. */
+  parentItemId: z.uuid().nullable(),
+  /** A variant's attribute values in attribute order, e.g. ["Large", "0.5 l"]; empty for other items. */
+  variantValues: z.array(z.string()),
   archivedAt: z.iso.datetime().nullable(),
 });
 
@@ -120,7 +130,14 @@ export const receiptRequestSchema = z.strictObject({
   supplier: z.string().trim().min(1).max(INVENTORY_NAME_MAX_LENGTH).optional(),
   note: note.optional(),
   lines: lines(
-    z.strictObject({ itemId: z.uuid(), quantity: stockQuantitySchema, unitCost: unitCostSchema }),
+    z.strictObject({
+      itemId: z.uuid(),
+      /** In `unitId` when given (converted to the item's unit, ADR 0038), else in the item's unit. */
+      quantity: stockQuantitySchema,
+      /** Per `unitId` when given, else per the item's unit. */
+      unitCost: unitCostSchema,
+      unitId: z.uuid().optional(),
+    }),
   ),
 });
 
@@ -268,6 +285,179 @@ export type PutRecipeRequest = z.infer<typeof putRecipeRequestSchema>;
 export type Recipe = z.infer<typeof recipeSchema>;
 export type DishCost = z.infer<typeof dishCostSchema>;
 
+// ---------------------------------------------------------------------------------------------------------------
+// Inventory sub-modules (docs/modules/inventory.md → Step 5, ADR 0038)
+// ---------------------------------------------------------------------------------------------------------------
+
+const includeArchived = z
+  .enum(['true', 'false'])
+  .optional()
+  .transform((v) => v === 'true');
+const nothingToUpdate = {
+  message: 'Nothing to update',
+};
+
+/** Base units per unit: up to 8 digits and 6 decimals, positive (a case of 24 → "24"). */
+export const unitFactorSchema = z
+  .string()
+  .regex(/^\d{1,8}(\.\d{1,6})?$/, 'Invalid factor')
+  .refine((v) => /[1-9]/.test(v), 'Factor must be positive');
+
+/** A unit of measurement: `factor` of `baseUnit` (Case = 24 pc, Sack = 25 kg). */
+export const unitOfMeasureSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  symbol: z.string(),
+  baseUnit: z.enum(STOCK_UNITS),
+  /** 6 decimals. */
+  factor: z.string(),
+  archivedAt: z.iso.datetime().nullable(),
+});
+
+export const createUnitOfMeasureRequestSchema = z.strictObject({
+  name,
+  symbol: z.string().trim().min(1).max(20),
+  baseUnit: z.enum(STOCK_UNITS),
+  factor: unitFactorSchema,
+});
+
+/** The base unit never changes: receipts already converted with it. */
+export const updateUnitOfMeasureRequestSchema = z
+  .strictObject({
+    name: name.optional(),
+    symbol: z.string().trim().min(1).max(20).optional(),
+    factor: unitFactorSchema.optional(),
+    archived: z.boolean().optional(),
+  })
+  .refine((body) => Object.values(body).some((v) => v !== undefined), nothingToUpdate);
+
+export const listUnitsQuerySchema = z.object({ includeArchived });
+export const unitOfMeasureListResponseSchema = z.object({ data: z.array(unitOfMeasureSchema) });
+
+export const VARIANT_ATTRIBUTE_MAX_VALUES = 50;
+export const VARIANT_VALUE_MAX_LENGTH = 40;
+/** Combinations one "Generate variants" may create. */
+export const MAX_VARIANTS_PER_ITEM = 100;
+
+const attributeValues = z
+  .array(z.string().trim().min(1).max(VARIANT_VALUE_MAX_LENGTH))
+  .min(1)
+  .max(VARIANT_ATTRIBUTE_MAX_VALUES)
+  .refine((values) => new Set(values.map((v) => v.toLowerCase())).size === values.length, {
+    message: 'Values must be unique',
+  });
+
+/** An attribute variants differ in, with its values in display order (Size: Small, Medium, Large). */
+export const variantAttributeSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  values: z.array(z.string()),
+  archivedAt: z.iso.datetime().nullable(),
+});
+
+export const createVariantAttributeRequestSchema = z.strictObject({
+  name,
+  values: attributeValues,
+});
+
+export const updateVariantAttributeRequestSchema = z
+  .strictObject({
+    name: name.optional(),
+    values: attributeValues.optional(),
+    archived: z.boolean().optional(),
+  })
+  .refine((body) => Object.values(body).some((v) => v !== undefined), nothingToUpdate);
+
+export const listVariantAttributesQuerySchema = z.object({ includeArchived });
+export const variantAttributeListResponseSchema = z.object({
+  data: z.array(variantAttributeSchema),
+});
+
+/**
+ * Generate an item's variants: every combination of the picked values (one list per attribute, in that order),
+ * as new stock items in the parent's unit. Combinations that already exist are skipped.
+ */
+export const generateVariantsRequestSchema = z.strictObject({
+  attributes: z
+    .array(
+      z.strictObject({
+        attributeId: z.uuid(),
+        values: z.array(z.string().trim().min(1).max(VARIANT_VALUE_MAX_LENGTH)).min(1),
+      }),
+    )
+    .min(1)
+    .max(3)
+    .refine((list) => new Set(list.map((a) => a.attributeId)).size === list.length, {
+      message: 'An attribute can be picked only once',
+    }),
+  /** The variants' article numbers start with it: `COLA` → `COLA-1`, `COLA-2`, … */
+  skuPrefix: z.string().trim().min(1).max(40).optional(),
+});
+
+export const generateVariantsResponseSchema = z.object({
+  created: z.array(stockItemSchema),
+  /** Combinations that already had a variant. */
+  skipped: z.int(),
+});
+
+export const BOM_MAX_LINES = 50;
+
+/** What `outputQuantity` of a prepared item takes (1 l tomato sauce = 2 kg tomatoes + 0.1 l oil). */
+export const putBomRequestSchema = z.strictObject({
+  outputQuantity: stockQuantitySchema,
+  lines: z
+    .array(z.strictObject({ itemId: z.uuid(), quantity: stockQuantitySchema }))
+    .min(1)
+    .max(BOM_MAX_LINES)
+    .refine(uniqueItems, { message: 'An item can be in a bill of materials only once' }),
+});
+
+export const bomSchema = z.object({
+  /** The item it makes. */
+  itemId: z.uuid(),
+  itemName: z.string(),
+  unit: z.enum(STOCK_UNITS),
+  /** 3 decimals. */
+  outputQuantity: z.string(),
+  lines: z.array(
+    z.object({
+      itemId: z.uuid(),
+      itemName: z.string(),
+      unit: z.enum(STOCK_UNITS),
+      /** 3 decimals. */
+      quantity: z.string(),
+    }),
+  ),
+  updatedAt: z.iso.datetime(),
+});
+
+export const bomListResponseSchema = z.object({ data: z.array(bomSchema) });
+
+/**
+ * Make `quantity` of an item with a bill of materials in a warehouse: its components go out at their average cost
+ * (scaled by quantity ÷ the bill's output quantity) and the item comes in at their total cost.
+ */
+export const productionRequestSchema = z.strictObject({
+  warehouseId: z.uuid(),
+  itemId: z.uuid(),
+  quantity: stockQuantitySchema,
+  note: note.optional(),
+});
+
+export type UnitOfMeasure = z.infer<typeof unitOfMeasureSchema>;
+export type CreateUnitOfMeasureRequest = z.infer<typeof createUnitOfMeasureRequestSchema>;
+export type UpdateUnitOfMeasureRequest = z.infer<typeof updateUnitOfMeasureRequestSchema>;
+export type ListUnitsQuery = z.infer<typeof listUnitsQuerySchema>;
+export type VariantAttribute = z.infer<typeof variantAttributeSchema>;
+export type CreateVariantAttributeRequest = z.infer<typeof createVariantAttributeRequestSchema>;
+export type UpdateVariantAttributeRequest = z.infer<typeof updateVariantAttributeRequestSchema>;
+export type ListVariantAttributesQuery = z.infer<typeof listVariantAttributesQuerySchema>;
+export type GenerateVariantsRequest = z.infer<typeof generateVariantsRequestSchema>;
+export type GenerateVariantsResponse = z.infer<typeof generateVariantsResponseSchema>;
+export type PutBomRequest = z.infer<typeof putBomRequestSchema>;
+export type Bom = z.infer<typeof bomSchema>;
+export type ProductionRequest = z.infer<typeof productionRequestSchema>;
+
 /** Stable error codes of the inventory endpoints; the web app shows the matching label. */
 export const INVENTORY_ERROR_CODES = [
   'inventory.warehouse_not_found',
@@ -282,6 +472,16 @@ export const INVENTORY_ERROR_CODES = [
   'inventory.same_warehouse',
   'inventory.product_not_found',
   'inventory.station_taken',
+  'inventory.unit_not_found',
+  'inventory.unit_name_taken',
+  'inventory.unit_mismatch',
+  'inventory.attribute_not_found',
+  'inventory.attribute_name_taken',
+  'inventory.item_has_variants',
+  'inventory.variant_not_allowed',
+  'inventory.too_many_variants',
+  'inventory.bom_not_found',
+  'inventory.bom_invalid',
 ] as const;
 
 export type InventoryErrorCode = (typeof INVENTORY_ERROR_CODES)[number];

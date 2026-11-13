@@ -43,11 +43,14 @@ export class RecipesService {
       const itemIds = body.lines.map((l) => l.itemId);
       const items = await tx.stockItem.findMany({
         where: { id: { in: itemIds }, archivedAt: null },
-        select: { id: true },
+        select: { id: true, _count: { select: { variants: { where: { archivedAt: null } } } } },
       });
       const found = new Set(items.map((i) => i.id));
       const missing = itemIds.filter((id) => !found.has(id));
       if (missing.length > 0) throw inventoryErrors.itemNotFound(missing);
+      // A parent holds no stock once it has variants (ADR 0038): sales would book nothing real.
+      const parents = items.filter((i) => i._count.variants > 0).map((i) => i.id);
+      if (parents.length > 0) throw inventoryErrors.itemHasVariants(parents);
 
       const before = await tx.recipeLine.findMany({
         where: { productId },

@@ -41,6 +41,9 @@ export const AUDIT_ENTITY_TYPES = [
   'print_job',
   'pos_bill',
   'pos_discount',
+  'unit_of_measure',
+  'variant_attribute',
+  'bom',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -258,6 +261,31 @@ export const AUDIT_ACTIONS = {
   'inventory.recipe.updated': {
     entityType: 'recipe',
     label: 'inventory.audit.actions.recipeUpdated',
+  },
+  /** Units of measurement, variant attributes and bills of materials (ADR 0038). */
+  'inventory.unit.created': {
+    entityType: 'unit_of_measure',
+    label: 'inventory.audit.actions.unitCreated',
+  },
+  'inventory.unit.updated': {
+    entityType: 'unit_of_measure',
+    label: 'inventory.audit.actions.unitUpdated',
+  },
+  'inventory.variant_attribute.created': {
+    entityType: 'variant_attribute',
+    label: 'inventory.audit.actions.variantAttributeCreated',
+  },
+  'inventory.variant_attribute.updated': {
+    entityType: 'variant_attribute',
+    label: 'inventory.audit.actions.variantAttributeUpdated',
+  },
+  'inventory.bom.updated': {
+    entityType: 'bom',
+    label: 'inventory.audit.actions.bomUpdated',
+  },
+  'inventory.bom.deleted': {
+    entityType: 'bom',
+    label: 'inventory.audit.actions.bomDeleted',
   },
   /** A receipt, adjustment or transfer was posted (docs/modules/inventory.md → Audit). */
   'inventory.stock_document.created': {
@@ -539,8 +567,23 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   warehouse: ['id', 'locationId', 'name', 'sortOrder', 'suppliesStation', 'archivedAt'],
   /** `itemIds`: sorted, joined with commas; snapshots hold flat values only. */
   recipe: ['productId', 'lineCount', 'itemIds'],
-  /** `minQuantity`: decimal string. */
-  stock_item: ['id', 'name', 'sku', 'unit', 'minQuantity', 'archivedAt'],
+  /** `minQuantity`: decimal string; `variantValues`: joined with ' / ' (ADR 0038). */
+  stock_item: [
+    'id',
+    'name',
+    'sku',
+    'unit',
+    'minQuantity',
+    'parentItemId',
+    'variantValues',
+    'archivedAt',
+  ],
+  /** `factor`: decimal string, base units per unit. */
+  unit_of_measure: ['id', 'name', 'symbol', 'baseUnit', 'factor', 'archivedAt'],
+  /** `values`: joined with ', '. */
+  variant_attribute: ['id', 'name', 'values', 'archivedAt'],
+  /** `itemIds`: the components, sorted and joined with commas. */
+  bom: ['itemId', 'outputQuantity', 'lineCount', 'itemIds'],
   /** Never `note` or `supplier` (free text). */
   stock_document: ['id', 'number', 'kind', 'warehouseId', 'toWarehouseId', 'reason', 'lineCount'],
   location: ['id', 'brandId', 'name'],

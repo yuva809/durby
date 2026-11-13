@@ -96,6 +96,7 @@ describe('/api/v1/number-series', () => {
         'inventory.stockAdjustment',
         'inventory.stockTransfer',
         'inventory.stockConsumption',
+        'inventory.stockProduction',
         'inventory.purchaseOrder',
         'billing.invoice',
         'pos.order',
@@ -125,6 +126,7 @@ describe('/api/v1/number-series', () => {
         'inventory.stockAdjustment',
         'inventory.stockTransfer',
         'inventory.stockConsumption',
+        'inventory.stockProduction',
         'inventory.purchaseOrder',
       ]);
     });

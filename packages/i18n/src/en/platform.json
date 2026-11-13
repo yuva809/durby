@@ -748,5 +748,10 @@
   "platform.team.result.whatsapp": "Share on WhatsApp",
   "platform.team.result.newLinkNote": "A new link replaces the previous one.",
   "platform.team.result.done": "Done",
-  "platform.team.shareText": "You’re invited to join {organization}. Open this link to set your password: {link}"
+  "platform.team.shareText": "You’re invited to join {organization}. Open this link to set your password: {link}",
+  "platform.audit.entities.unitOfMeasure": "Unit of measurement",
+  "platform.audit.entities.variantAttribute": "Variant attribute",
+  "platform.audit.entities.bom": "Bill of materials",
+  "platform.numbering.series.inventoryStockProduction.name": "Production orders",
+  "platform.numbering.series.inventoryStockProduction.description": "Numbers of production orders: ingredients out, prepared item in."
 }

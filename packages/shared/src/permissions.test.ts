@@ -51,6 +51,7 @@ describe('system roles', () => {
       'inventory.recipes.delete',
       'inventory.recipes.edit',
       'inventory.stock.adjust',
+      'inventory.stock.produce',
       'inventory.stock.read',
       'inventory.stock.receive',
       'inventory.stock.transfer',
@@ -169,8 +170,13 @@ describe('system roles', () => {
 
   // ADR 0026: a station's screen only; no prices, orders or menu editing.
   it('gives Kitchen and Bar their screen, the settings and their stores, nothing else', () => {
-    // Inventory (docs/modules/inventory.md): their stores' stock, deliveries and waste.
-    const store = ['inventory.stock.adjust', 'inventory.stock.read', 'inventory.stock.receive'];
+    // Inventory (docs/modules/inventory.md): their stores' stock, deliveries, waste and production (ADR 0038).
+    const store = [
+      'inventory.stock.adjust',
+      'inventory.stock.produce',
+      'inventory.stock.read',
+      'inventory.stock.receive',
+    ];
     expect([...systemRolePermissions('kitchen')].sort()).toEqual([
       ...store,
       'platform.settings.read',

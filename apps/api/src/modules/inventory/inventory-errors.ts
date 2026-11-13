@@ -61,6 +61,72 @@ export const inventoryErrors = {
       'inventory.same_warehouse',
       'A transfer needs two different warehouses.',
     ),
+  // Step 5 (ADR 0038): units, variants, bills of materials and production.
+  unitNotFound: (unitIds: string[] = []) =>
+    new ApiError(
+      HttpStatus.NOT_FOUND,
+      'inventory.unit_not_found',
+      'Some units are unknown or archived.',
+      { unitIds },
+    ),
+  unitNameTaken: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'inventory.unit_name_taken',
+      'A unit with this name already exists.',
+    ),
+  unitMismatch: (itemIds: string[]) =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'inventory.unit_mismatch',
+      "A unit's base unit must be the item's unit, and the converted quantity must not be zero.",
+      { itemIds },
+    ),
+  attributeNotFound: (attributeIds: string[] = []) =>
+    new ApiError(
+      HttpStatus.NOT_FOUND,
+      'inventory.attribute_not_found',
+      'Some variant attributes or values are unknown or archived.',
+      { attributeIds },
+    ),
+  attributeNameTaken: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'inventory.attribute_name_taken',
+      'A variant attribute with this name already exists.',
+    ),
+  itemHasVariants: (itemIds: string[]) =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'inventory.item_has_variants',
+      'Items with variants hold no stock themselves: use their variants.',
+      { itemIds },
+    ),
+  variantNotAllowed: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'inventory.variant_not_allowed',
+      'A variant cannot have variants of its own.',
+    ),
+  tooManyVariants: (max: number) =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'inventory.too_many_variants',
+      `At most ${max} variants can be generated at once.`,
+      { max },
+    ),
+  bomNotFound: () =>
+    new ApiError(
+      HttpStatus.NOT_FOUND,
+      'inventory.bom_not_found',
+      'This item has no bill of materials.',
+    ),
+  bomInvalid: () =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'inventory.bom_invalid',
+      'An item cannot be a component of its own bill of materials.',
+    ),
 };
 
 /** Prisma's unique violation (here: the partial name indexes of the migration). */
