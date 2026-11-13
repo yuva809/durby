@@ -64,6 +64,11 @@ describe('splitPrices and cleanName', () => {
     expect(menuNumberOf('(8 Naan')).toBe('8');
     expect(menuNumberOf('Watalappan')).toBeNull();
     expect(menuNumberOf('1dly')).toBeNull();
+    // A leading zero read as the letter O; a name starting with O stays a name.
+    expect(menuNumberOf('O4. ERAL VARUTHATHU')).toBe('04');
+    expect(cleanName('O4. ERAL VARUTHATHU')).toBe('ERAL VARUTHATHU');
+    expect(menuNumberOf('Onion Bhaji')).toBeNull();
+    expect(cleanName('O2 Bar')).toBe('O2 Bar');
     expect(menuNumberOf('$7 Naan')).toBeNull();
   });
 });
@@ -226,6 +231,23 @@ describe('menus read from screenshots', () => {
     expect(
       read([at('ERAL', 260, 100, 23), at('11,90 €', 900, 126, 22)])[0]?.products[0]?.description,
     ).toBe('');
+  });
+
+  it('gives the price to the numbered name above a description set under its text', () => {
+    // The description starts under the name, right of the item number in front of it.
+    expect(
+      products([
+        at('05. CHICKEN 65 (MITTEL-SCHARF)', 200, 100, 23),
+        at('HÜHNERBRUST MARINIERT MIT GEWÜRZEN', 245, 130, 15),
+        at('10,90 €', 900, 126, 22),
+        at('06. CHICKEN VARUTHATHU (MITTEL-SCHARF)', 200, 200, 23),
+        at('GEBRATENES HÄHNCHEN UND GEMÜSE', 245, 230, 15),
+        at('10,90 €', 900, 226, 22),
+      ]),
+    ).toEqual([
+      ['CHICKEN 65 (MITTEL-SCHARF)', '10.90'],
+      ['CHICKEN VARUTHATHU (MITTEL-SCHARF)', '10.90'],
+    ]);
   });
 
   it('joins a price column read as its own strip to the name, not to the item number', () => {

@@ -1,8 +1,10 @@
 import { findStrips, prepareForOcr } from './image';
+import { loadReader } from './paddle';
 import { joinRows, type OcrLine, orderColumns, segmentLine } from './parse';
 import { hasText, type TextItem } from './pdf-text';
 import { readingScore } from './reading-score';
 import {
+  besideHeading,
   isReadable,
   mayHoldSidewaysText,
   pickHeadings,
@@ -14,9 +16,9 @@ import {
 
 /**
  * Menu photos and PDFs → text, entirely in the browser (docs/modules/catalog.md → Menu scan). A
- * PDF's own text is read exactly; photos and image-only PDF pages go through OCR. Tesseract and
- * pdf.js are loaded on first use only. Their worker, engine and language files come
- * from jsDelivr (version-pinned) and are cached by the browser; the images never leave the device.
+ * PDF's own text is read exactly; photos and image-only PDF pages go through OCR (PaddleOCR,
+ * `paddle.ts`, ADR 0035). The OCR engine and pdf.js are loaded on first use only, from
+ * version-pinned copies cached by the browser; the images never leave the device.
  */
 
 /** Photos and image-only PDF pages per scan: each is read by OCR, which takes a few seconds. */
@@ -32,7 +34,6 @@ const MAX_EDGE = 2400;
 const MIN_EDGE = 2400;
 /** Below this long edge the original is likely too small to read (a thumbnail or chat preview). */
 const SMALL_EDGE = 1000;
-const LANGUAGES = ['eng', 'deu'];
 /** Image-only PDF pages are rendered this large for OCR… */
 const PDF_SCALE = 2;
 /** …PDF pages with text only for the "Original" preview. */
@@ -252,7 +253,7 @@ export interface OcrProgress {
 }
 
 /**
- * Reads every page in one Tesseract worker. `signal` stops early (the worker is terminated).
+ * Reads every page with one PaddleOCR reader (`paddle.ts`). `signal` stops early (between strips).
  * Each page is read twice, prepared (`prepareForOcr`, made for photos) and plain (clean
  * screenshots lose their small print to the preparation), and the reading with the higher
  * `readingScore` is kept. The page is cut into column strips at gutters (`findStrips`) and each
@@ -267,20 +268,12 @@ export async function recognizePages(
   // PDF pages that carry their text are read by `parseTextPages`, not here.
   const images = pages.filter((p) => p.canvas !== null);
   if (images.length === 0) return [];
-  const { createWorker, PSM } = await import('tesseract.js');
   let current = 1;
-  /** Which of the page's two readings, and which strip of it, is being read. */
-  let share = { variant: 0, index: 0, count: 1 };
-  const worker = await createWorker(LANGUAGES, 1, {
-    logger: (m: { status: string; progress: number }) => {
-      if (m.status === 'recognizing text') {
-        const strip = (share.index + m.progress) / share.count;
-        onProgress({ page: current, pages: images.length, progress: (share.variant + strip) / 2 });
-      }
-    },
-  });
-  const abort = () => void worker.terminate();
-  signal?.addEventListener('abort', abort, { once: true });
+  onProgress({ page: current, pages: images.length, progress: 0 });
+  const reader = await loadReader();
+  /** Progress through the page: which of its two readings, and which strip of it, is being read. */
+  const report = (variant: number, index: number, count: number) =>
+    onProgress({ page: current, pages: images.length, progress: (variant + index / count) / 2 });
 
   /**
    * The category headings set sideways down a narrow strip, read from copies of the strip turned
@@ -309,33 +302,27 @@ export async function recognizePages(
         ctx.rotate(-Math.PI / 2);
       }
       ctx.drawImage(source, -strip.x0, 0);
-      const { data } = await worker.recognize(turned, {}, { blocks: true });
       const words: RotatedWord[] = [];
       const lines: OcrLine[] = [];
-      for (const block of data.blocks ?? []) {
-        for (const paragraph of block.paragraphs) {
-          for (const line of paragraph.lines) {
-            const read = line.words
-              .map((w) => ({ text: w.text.trim(), confidence: w.confidence, box: w.bbox }))
-              // Marks on their own (`|`, `[`, `+`) are the speck beside a heading, not part of it.
-              .filter((w) => /[\p{L}\d]|^[-–—&]$/u.test(w.text));
-            if (read.length === 0) continue;
-            words.push(...read);
-            const boxes = read.map((w) => unrotateBox(w.box, rotation, size, strip.x0));
-            lines.push({
-              text: read.map((w) => w.text).join(' '),
-              confidence: Math.min(...read.map((w) => w.confidence)),
-              page: page.number,
-              strip: index,
-              box: {
-                x0: Math.min(...boxes.map((b) => b.x0)),
-                x1: Math.max(...boxes.map((b) => b.x1)),
-                y0: Math.min(...boxes.map((b) => b.y0)),
-                y1: Math.max(...boxes.map((b) => b.y1)),
-              },
-            });
-          }
-        }
+      for (const line of await reader.read(turned)) {
+        const read = line
+          // Marks on their own (`|`, `[`, `+`) are the speck beside a heading, not part of it.
+          .filter((w) => /[\p{L}\d]|^[-–—&]$/u.test(w.text));
+        if (read.length === 0) continue;
+        words.push(...read);
+        const boxes = read.map((w) => unrotateBox(w.box, rotation, size, strip.x0));
+        lines.push({
+          text: read.map((w) => w.text).join(' '),
+          confidence: Math.min(...read.map((w) => w.confidence)),
+          page: page.number,
+          strip: index,
+          box: {
+            x0: Math.min(...boxes.map((b) => b.x0)),
+            x1: Math.max(...boxes.map((b) => b.x1)),
+            y0: Math.min(...boxes.map((b) => b.y0)),
+            y1: Math.max(...boxes.map((b) => b.y1)),
+          },
+        });
       }
       const score = sidewaysScore(words);
       if (!best || score > best.score) best = { score, lines, words };
@@ -350,33 +337,27 @@ export async function recognizePages(
     variant: number,
     headings: Map<number, OcrLine[] | null>,
   ) {
-    // Prepared pages are read by layout analysis; plain ones in sparse mode, which finds the small
-    // print of a screenshot that layout analysis skips.
-    await worker.setParameters({
-      tessedit_pageseg_mode: variant === 0 ? PSM.AUTO : PSM.SPARSE_TEXT,
-    });
     // Each column strip is read on its own, so side-by-side menu columns don't mix. The gutters
     // are found on the prepared page (ink on white), for either reading.
     const ctx = page.canvas!.getContext('2d', { willReadFrequently: true });
     const pixels = ctx?.getImageData(0, 0, page.width, page.height).data;
-    const strips = pixels
+    let strips = pixels
       ? findStrips(pixels, page.width, page.height, 4)
       : [{ x0: 0, x1: page.width }];
     const segments: OcrLine[] = [];
-    for (const [index, strip] of strips.entries()) {
+    for (let index = 0; index < strips.length; index++) {
+      const strip = strips[index]!;
       if (signal?.aborted) break;
-      share = { variant, index, count: strips.length };
+      report(variant, index, strips.length);
       if (mayHoldSidewaysText(strip.x1 - strip.x0, page.height)) {
         if (!headings.has(index)) {
-          await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
           headings.set(index, await sidewaysHeadings(page, source, strip, index));
-          await worker.setParameters({
-            tessedit_pageseg_mode: variant === 0 ? PSM.AUTO : PSM.SPARSE_TEXT,
-          });
         }
         const found = headings.get(index);
         if (found) {
           segments.push(...found);
+          // The text beside the heading (item numbers, first words) is read with the next strip.
+          strips = besideHeading(strips, index, Math.max(...found.map((l) => l.box.x1)));
           continue;
         }
       }
@@ -384,21 +365,10 @@ export async function recognizePages(
       crop.width = strip.x1 - strip.x0;
       crop.height = page.height;
       crop.getContext('2d')?.drawImage(source, -strip.x0, 0);
-      const { data } = await worker.recognize(crop, {}, { blocks: true });
-      for (const block of data.blocks ?? []) {
-        for (const paragraph of block.paragraphs) {
-          for (const line of paragraph.lines) {
-            const words = line.words
-              .map((w) => ({
-                text: w.text.trim(),
-                confidence: w.confidence,
-                box: { ...w.bbox, x0: w.bbox.x0 + strip.x0, x1: w.bbox.x1 + strip.x0 },
-              }))
-              .filter((w) => w.text);
-            segments.push(...segmentLine(words, page.number, index));
-          }
-        }
+      for (const words of await reader.read(crop, strip.x0)) {
+        segments.push(...segmentLine(words, page.number, index));
       }
+      crop.width = 0;
     }
     return orderColumns(joinRows(segments), page.width);
   }
@@ -424,7 +394,6 @@ export async function recognizePages(
     }
     return lines;
   } finally {
-    signal?.removeEventListener('abort', abort);
-    if (!signal?.aborted) await worker.terminate();
+    await reader.close();
   }
 }

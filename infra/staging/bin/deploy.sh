@@ -4,7 +4,7 @@
 #   bin/deploy.sh <sha>                    normal deploy: migrate, then start the new api/web
 #   bin/deploy.sh --skip-migrations <sha>  rollback to an older release (migrations are forward-only)
 #
-# Called by .github/workflows/deploy-staging.yml over SSH, or by hand on the server.
+# Called by bin/release.sh (which .github/workflows/deploy.yml runs over SSH), or by hand on the server.
 # Images are pulled only when missing locally, so a rollback to a recent release needs no registry login.
 set -euo pipefail
 
@@ -74,6 +74,9 @@ for ref in "${missing[@]}"; do
   docker pull --quiet "$ref" >/dev/null || die "cannot pull $ref (registry login? image built?)"
 done
 
+# 1b. The network the host's one Caddy shares with every stack's api and web (ADR 0034).
+docker network inspect durby-shared-edge >/dev/null 2>&1 || docker network create durby-shared-edge >/dev/null
+
 # 2. Data services (no-op when already running and unchanged).
 log "starting postgres and redis"
 dc up -d --wait --wait-timeout "$WAIT_SECONDS" postgres redis
@@ -119,9 +122,12 @@ if ! start_worker "$release"; then
   die "release $release worker did not become healthy"
 fi
 
-# 5. Edge. Reload picks up a changed Caddyfile without dropping connections.
-dc up -d --wait --wait-timeout "$WAIT_SECONDS" caddy
-dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1
+# 5. Edge. Reload picks up a changed Caddyfile without dropping connections. A stack without its own edge
+#    (EDGE=false, ADR 0034) is served by the edge stack's Caddy instead.
+if [[ "$(env_value EDGE)" != false ]]; then
+  dc up -d --wait --wait-timeout "$WAIT_SECONDS" caddy
+  dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1
+fi
 
 # 6. Record the release and keep images for the last few, for fast rollbacks.
 if [[ "$current" != "$release" ]]; then

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { OcrLine } from './parse';
 import {
+  besideHeading,
   isReadable,
   mayHoldSidewaysText,
   pickHeadings,
@@ -104,5 +105,30 @@ describe('pickHeadings', () => {
     expect(
       pickHeadings([line('[ HAUPTGERICHT - MEERESFRUCHTE', 46, 120, 769, 2033)])[0]!.text,
     ).toBe('HAUPTGERICHT - MEERESFRUCHTE');
+  });
+});
+
+describe('besideHeading', () => {
+  const strips = [
+    { x0: 0, x1: 431 },
+    { x0: 524, x1: 1697 },
+  ];
+
+  it('reads the rest of the heading strip with the next strip', () => {
+    expect(besideHeading(strips, 0, 233.4)).toEqual([
+      { x0: 0, x1: 431 },
+      { x0: 238, x1: 1697 },
+    ]);
+  });
+
+  it('adds the rest as a strip of its own when the heading strip is the last', () => {
+    expect(besideHeading([{ x0: 0, x1: 431 }], 0, 233)).toEqual([
+      { x0: 0, x1: 431 },
+      { x0: 237, x1: 431 },
+    ]);
+  });
+
+  it('changes nothing when the heading fills its strip', () => {
+    expect(besideHeading(strips, 0, 430)).toEqual(strips);
   });
 });

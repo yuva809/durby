@@ -1,6 +1,6 @@
 # ADR 0003: Continuous integration
 
-- Status: accepted
+- Status: accepted; CI workflow removed by [ADR 0034](0034-branch-environments.md)
 - Date: 2026-10-21
 - Step: Phase 0.3 (CI)
 

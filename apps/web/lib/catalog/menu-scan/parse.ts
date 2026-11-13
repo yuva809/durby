@@ -64,7 +64,12 @@ const ROW_SHIFT = 0.4;
 const PRICE_STRIP = 0.6;
 
 /** A name line is at least this much taller than the description line under it. */
-const NAME_RATIO = 1.25;
+const NAME_RATIO = 1.1;
+/**
+ * A description may start this many name heights right of its name: set under the name's text,
+ * past the item number in front of it (`04. ERAL VARUTHATHU` / `GEBRATENE GARNELEN …`).
+ */
+const DESCRIPTION_INDENT = 3;
 /** A price with no line on its row joins the line above if its centre is this many line heights away. */
 const ABOVE_REACH = 2;
 
@@ -221,7 +226,8 @@ export function joinRows(lines: readonly OcrLine[]): OcrLine[] {
           (above.strip ?? 0) === (row.strip ?? 0) &&
           splitPrices(above.text).prices.length === 0 &&
           height(above) >= NAME_RATIO * height(row) &&
-          Math.abs(above.box.x0 - row.box.x0) <= 1.5 * height(above) &&
+          row.box.x0 - above.box.x0 >= -1.5 * height(above) &&
+          row.box.x0 - above.box.x0 <= DESCRIPTION_INDENT * height(above) &&
           row.box.y0 - above.box.y1 <= 0.8 * height(above) &&
           row.box.y0 >= above.box.y0,
       );
@@ -376,8 +382,11 @@ const ITEM_NUMBER =
  * The item number before a product name, digits only (`7 2.Poori` → `72`). null when there is none,
  * or when OCR read a digit as `¢`, `$` or `§`: a wrong number is worse than none.
  */
+/** An item number whose leading zero was read as the letter O (`O4.` is `04.`). */
+const zeroForO = (text: string) => text.replace(/^(\s*)[Oo](?=\d[.)])/, (_, space: string) => `${space}0`);
+
 export function menuNumberOf(text: string): string | null {
-  const match = ITEM_NUMBER.exec(text)?.[0];
+  const match = ITEM_NUMBER.exec(zeroForO(text))?.[0];
   if (!match || /[¢$§]/.test(match)) return null;
   const digits = match.replace(/\D/g, '');
   return digits === '' ? null : digits;
@@ -385,7 +394,7 @@ export function menuNumberOf(text: string): string | null {
 
 /** Item numbers, dot leaders and trailing separators off a product name. */
 export function cleanName(text: string): string {
-  return text
+  return zeroForO(text)
     .replace(ITEM_NUMBER, '')
     .replace(/^[\s.,:;|•*·-]+(?=[\p{L}\d(])/u, '')
     .replace(/[.·…_]{2,}/g, ' ')

@@ -1,6 +1,6 @@
 # ADR 0004: Staging deployment
 
-- Status: accepted
+- Status: accepted; deploys build on the server since [ADR 0034](0034-branch-environments.md)
 - Date: 2026-10-21
 - Step: Phase 0.4 (staging deploy)
 

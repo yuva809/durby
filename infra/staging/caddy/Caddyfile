@@ -4,9 +4,9 @@
 	email {$ACME_EMAIL}
 }
 
-# Both domains of the two-domain demo (ADR 0015 §10): same routes, one certificate each. Web and api
-# read the original Host (Caddy passes it on and sets X-Forwarded-Host) to pick the partner theme.
-{$STAGING_DOMAIN}, {$STAGING_DEMO_DOMAIN} {
+# One Durby stack behind this edge: `import durby <api host:port> <web host:port>`. The same routes serve every
+# stack on this host (ADR 0034).
+(durby) {
 	encode zstd gzip
 
 	# One id per request, shared with the api logs. Client-supplied ids are overwritten.
@@ -35,7 +35,7 @@
 	}
 
 	handle /api/* {
-		reverse_proxy api:4000
+		reverse_proxy {args[0]}
 	}
 
 	# The Android app's updates (ADR 0033 §14): latest.json and the APKs it names, uploaded by hand to
@@ -51,6 +51,19 @@
 
 	# Web: no basic auth since ADR 0018; the app's own sign-in protects it.
 	handle {
-		reverse_proxy web:3000
+		reverse_proxy {args[1]}
 	}
 }
+
+# This stack. Both domains of the two-domain demo (ADR 0015 §10): same routes, one certificate each. Web and api
+# read the original Host (Caddy passes it on and sets X-Forwarded-Host) to pick the partner theme.
+{$STAGING_DOMAIN}, {$STAGING_DEMO_DOMAIN} {
+	# Unique names on the shared network: there the plain `api`/`web` would also match another stack's.
+	import durby {$SHARED_ALIAS}-api:4000 {$SHARED_ALIAS}-web:3000
+}
+
+# Other stacks on this host (ADR 0034), one file each, written by bin/add-stack.sh; for example extra/dev.caddy:
+#   dev.durby.tech, partner-dev.durby.tech {
+#   	import durby dev-api:4000 dev-web:3000
+#   }
+import extra/*.caddy

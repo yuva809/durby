@@ -1,0 +1,75 @@
+name: Deploy
+
+# Every push to main or development deploys that branch's stack on the server (ADR 0034): main → production in
+# /opt/durby, development → dev in /opt/durby-dev. No CI gate: run `pnpm lint && pnpm typecheck && pnpm test`
+# before merging. The server builds the images itself (bin/release.sh), so this job only connects over SSH.
+on:
+  push:
+    branches: [main, development]
+  # Redeploy the branch head by hand (e.g. after changing .env on the server).
+  workflow_dispatch:
+
+# One deploy per branch at a time; a queued deploy waits instead of cancelling the running one.
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy ${{ github.ref_name }}
+    if: github.ref_name == 'main' || github.ref_name == 'development'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: staging
+      url: ${{ github.ref_name == 'main' && 'https://staging.durby.tech' || 'https://dev.durby.tech' }}
+    env:
+      DEPLOY_DIR: ${{ github.ref_name == 'main' && '/opt/durby' || '/opt/durby-dev' }}
+      SITE_URL: ${{ github.ref_name == 'main' && 'https://staging.durby.tech' || 'https://dev.durby.tech' }}
+      SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+    steps:
+      # Only the server scripts are needed here; the server fetches and builds the code itself.
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: infra/staging/bin
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" >~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Pinned host key: never trust on first use.
+          printf '%s\n' "$KNOWN_HOSTS" >~/.ssh/known_hosts
+          printf 'Host durby\n  HostName %s\n  User deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  ServerAliveInterval 30\n' \
+            "$SSH_HOST" >~/.ssh/config
+
+      # The current scripts first, so release.sh is there even on a stack's first deploy.
+      - name: Upload server scripts
+        run: |
+          ssh durby "test -f '$DEPLOY_DIR/.env'" ||
+            { echo "::error::$DEPLOY_DIR/.env is missing (docs/ops/deploy.md → Environments and branches)"; exit 1; }
+          tar -C infra/staging -cz bin | ssh durby "tar -C '$DEPLOY_DIR' -xz"
+
+      - name: Build and deploy on the server
+        run: ssh durby "'$DEPLOY_DIR/bin/release.sh'"
+
+      # Readiness through Caddy: DB + Redis up and the api answering.
+      - name: Check /api/v1/health
+        run: |
+          for attempt in $(seq 1 12); do
+            body="$(curl -fsS --max-time 5 "$SITE_URL/api/v1/health" || true)"
+            if [[ "$(jq -r '.status' <<<"$body" 2>/dev/null)" == "ok" ]]; then
+              echo "healthy: $body"
+              exit 0
+            fi
+            echo "attempt $attempt: ${body:-no response}"
+            sleep 5
+          done
+          echo "::error::$SITE_URL is not healthy"
+          exit 1
