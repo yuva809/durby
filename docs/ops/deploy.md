@@ -1,8 +1,9 @@
 # Staging deployment
 
-Staging runs on one Hetzner Cloud CPX22 (2 vCPU, 4 GB RAM, 80 GB NVMe, Ubuntu 24.04) with Docker Compose,
-at **https://staging.durby.tech**. Decisions and trade-offs: [ADR 0004](../adr/0004-staging-deployment.md).
-Production is not set up yet; what it must do beyond these steps is in [production.md](production.md).
+The server runs on one Hetzner Cloud CPX22 (2 vCPU, 4 GB RAM, 80 GB NVMe, Ubuntu 24.04) with Docker Compose.
+Production is at **https://app.durby.tech** since [ADR 0039](../adr/0039-app-domain.md); the former
+`staging.durby.tech` redirects there. Decisions and trade-offs: [ADR 0004](../adr/0004-staging-deployment.md).
+Moving an existing server to the new domain: [production.md](production.md) → Moving production to app.durby.tech.
 
 ```
 GitHub: push to main / development ─► Deploy (no CI gate, ADR 0034)
@@ -48,10 +49,13 @@ Server layout:
 Both long-lived branches run on this one server, as two stacks from the same files that differ only in their `.env`
 ([ADR 0034](../adr/0034-branch-environments.md)).
 
-| Branch        | Environment | Directory        | Compose project | Domain                                          | Mail UI port |
-| ------------- | ----------- | ---------------- | --------------- | ----------------------------------------------- | ------------ |
-| `main`        | production  | `/opt/durby`     | `durby-staging` | `staging.durby.tech`, `partner-demo.durby.tech` | 8025         |
-| `development` | dev         | `/opt/durby-dev` | `durby-dev`     | `dev.durby.tech`, `partner-dev.durby.tech`      | 8026         |
+| Branch        | Environment | Directory        | Compose project | Domain                                      | Mail UI port |
+| ------------- | ----------- | ---------------- | --------------- | ------------------------------------------- | ------------ |
+| `main`        | production  | `/opt/durby`     | `durby-staging` | `app.durby.tech`, `partner-demo.durby.tech` | 8025         |
+| `development` | dev         | `/opt/durby-dev` | `durby-dev`     | `dev.durby.tech`, `partner-dev.durby.tech`  | 8026         |
+
+`staging.durby.tech` (`REDIRECT_DOMAINS` in `/opt/durby/.env`) redirects to `app.durby.tech` with 308, except
+`/downloads/android/`, which installed Android apps still update from (ADR 0039).
 
 Production's Caddy is the server's only edge and also serves the dev domains (`/opt/durby/caddy/extra/dev.caddy`),
 over the shared Docker network `durby-shared-edge`. The dev stack has no Caddy (`EDGE=false`).
@@ -103,10 +107,11 @@ age-keygen -o durby-backup.key        # prints "Public key: age1..."
 
 ### 2. DNS
 
-Create an `A` record `staging.durby.tech` pointing to the server's IPv4 address (and `AAAA` for IPv6 if you want it).
-Caddy gets the certificate on the first deploy, so the record must resolve before then.
+Create an `A` record `app.durby.tech` pointing to the server's IPv4 address (and `AAAA` for IPv6 if you want it).
+Caddy gets the certificate on the first deploy, so the record must resolve before then. A former domain listed in
+`REDIRECT_DOMAINS` (`staging.durby.tech`) needs its own `A` record to the same server.
 
-For the two-domain demo (ADR 0015 §10) add a `CNAME` record `partner-demo.durby.tech` → `staging.durby.tech` (or an
+For the two-domain demo (ADR 0015 §10) add a `CNAME` record `partner-demo.durby.tech` → `app.durby.tech` (or an
 `A`/`AAAA` record to the same addresses). It serves the same stack with the demo partner's theme.
 
 ### 3. Hetzner Cloud Firewall (console)
@@ -211,8 +216,8 @@ start Postgres initializes its volume and `postgres-init/01-roles.sh` creates `d
 the passwords from `.env`. Then:
 
 ```bash
-curl -fsS https://staging.durby.tech/api/v1/health      # {"status":"ok",...,"checks":{"database":"up","redis":"up"}}
-open https://staging.durby.tech                          # Durby sign-in page (no basic auth, ADR 0018)
+curl -fsS https://app.durby.tech/api/v1/health      # {"status":"ok",...,"checks":{"database":"up","redis":"up"}}
+open https://app.durby.tech                              # Durby sign-in page (no basic auth, ADR 0018)
 ```
 
 Then run a backup by hand and a restore check (see [Backups](#backups)).
@@ -533,7 +538,7 @@ grants as the init script, restores, starts api and web. It asks you to type `re
 ```bash
 ls backups/; sudo -u deploy rclone ls storagebox:durby-staging     # pick a backup
 sudo -u deploy bin/restore.sh live durby-20261021T030512Z.dump.age backup.key
-curl -fsS https://staging.durby.tech/api/v1/health
+curl -fsS https://app.durby.tech/api/v1/health
 ```
 
 A backup name that is not in `backups/` is fetched from the Storage Box. Finally:

@@ -5,10 +5,11 @@ import org.junit.Test
 
 class OriginsTest {
     @Test
-    fun aReleaseBuildAllowsOnlyStagingAndProductionAndStartsAtStaging() {
+    fun aReleaseBuildAllowsOnlyProductionAndItsFormerDomainAndStartsAtApp() {
         val release = Origins("")
-        assertEquals(setOf("https://staging.durby.tech", "https://app.durby.tech"), release.allowed)
-        assertEquals("https://staging.durby.tech/", release.startUrl)
+        assertEquals(setOf("https://app.durby.tech", "https://staging.durby.tech"), release.allowed)
+        // ADR 0039: staging.durby.tech redirects here; it stays allowed for the redirect and older links.
+        assertEquals("https://app.durby.tech/", release.startUrl)
     }
 
     @Test

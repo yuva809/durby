@@ -4,6 +4,35 @@
 	email {$ACME_EMAIL}
 }
 
+# The Android app's updates (ADR 0033 §14): latest.json and the APKs it names, uploaded by hand to
+# downloads/android/ next to docker-compose.staging.yml. Read-only, no directory listing.
+(android_downloads) {
+	handle /downloads/android/* {
+		root * /srv
+		@manifest path /downloads/android/latest.json
+		header @manifest Cache-Control "no-cache"
+		@apk path *.apk
+		header @apk Content-Type "application/vnd.android.package-archive"
+		file_server
+	}
+}
+
+# A former domain of this stack (ADR 0039): everything moves permanently to the main domain, path and query kept;
+# 308 keeps the method and body. Installed Android apps check for updates on the domain they were built with, so
+# their downloads stay served here. Sites using it are written by bin/deploy.sh from REDIRECT_DOMAINS in .env
+# (caddy/extra/redirects.caddy).
+(redirect_to_main) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+	import android_downloads
+	handle {
+		redir https://{$STAGING_DOMAIN}{uri} 308
+	}
+}
+
 # One Durby stack behind this edge: `import durby <api host:port> <web host:port>`. The same routes serve every
 # stack on this host (ADR 0034).
 (durby) {
@@ -38,16 +67,7 @@
 		reverse_proxy {args[0]}
 	}
 
-	# The Android app's updates (ADR 0033 §14): latest.json and the APKs it names, uploaded by hand to
-	# downloads/android/ next to docker-compose.staging.yml. Read-only, no directory listing.
-	handle /downloads/android/* {
-		root * /srv
-		@manifest path /downloads/android/latest.json
-		header @manifest Cache-Control "no-cache"
-		@apk path *.apk
-		header @apk Content-Type "application/vnd.android.package-archive"
-		file_server
-	}
+	import android_downloads
 
 	# Web: no basic auth since ADR 0018; the app's own sign-in protects it.
 	handle {
@@ -56,7 +76,8 @@
 }
 
 # This stack. Both domains of the two-domain demo (ADR 0015 §10): same routes, one certificate each. Web and api
-# read the original Host (Caddy passes it on and sets X-Forwarded-Host) to pick the partner theme.
+# read the original Host (Caddy passes it on and sets X-Forwarded-Host) to pick the partner theme. For production
+# STAGING_DOMAIN is app.durby.tech (ADR 0039); the name is kept so existing servers' .env files stay valid.
 {$STAGING_DOMAIN}, {$STAGING_DEMO_DOMAIN} {
 	# Unique names on the shared network: there the plain `api`/`web` would also match another stack's.
 	import durby {$SHARED_ALIAS}-api:4000 {$SHARED_ALIAS}-web:3000
@@ -67,3 +88,5 @@
 #   	import durby dev-api:4000 dev-web:3000
 #   }
 import extra/*.caddy
+# Former domains redirected to this stack's main domain (ADR 0039), written by bin/deploy.sh.
+import redirects/*.caddy
