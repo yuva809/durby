@@ -6,7 +6,7 @@
 
 ## Context
 
-AsiaMight is a new customer who sells Durby under its own name on its own domain, `dev.asiamight.site`, using only
+AsiaMight is a new customer who sells Durby under its own name on its own domain, `app.asiamight.site`, using only
 inventory, Manage Staff and the audit log. The white-label pieces exist since ADR 0015: a partner has a theme
 (product name, logo, colours), hostnames and label overrides, all from migrations, and the web picks the theme from the
 request's host. What was missing is serving a hostname outside `durby.tech` from a stack: Caddy and `WEB_ORIGINS`
@@ -40,6 +40,6 @@ only knew `STAGING_DOMAIN` and `STAGING_DEMO_DOMAIN`.
 - Adding another partner domain is a migration (partner, theme, domain rows) plus one `.env` entry and a DNS record.
 - Password reset and email verification links still use `WEB_BASE_URL` (`app.durby.tech`), so they open Durby's
   branding (open since ADR 0015).
-- Sessions are per host: an AsiaMight user signs in on `dev.asiamight.site`.
+- Sessions are per host: an AsiaMight user signs in on `app.asiamight.site`.
 - Users see the organizations they belong to, whatever the domain; AsiaMight's users belong only to AsiaMight's
   organization.

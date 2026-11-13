@@ -119,12 +119,12 @@ remove its DNS record first, so no record is left pointing at an address someone
 A partner sells Durby under its own name on its own domain, served by production with the same api and database
 ([ADR 0040](../adr/0040-partner-domains-asiamight.md)). A domain needs two things: a `partner_domains` row (a
 migration: theme and name) and an entry in `PARTNER_ORIGINS` in `/opt/durby/.env` (routing, certificate, sign-in
-origin). AsiaMight's partner, theme and `dev.asiamight.site` come with migration `20261114100000_partner_asiamight`.
+origin). AsiaMight's partner, theme and `app.asiamight.site` come with migration `20261114100000_partner_asiamight`.
 
 ### 1. DNS (AsiaMight's DNS provider)
 
-`dev.asiamight.site`: an `A` record (and `AAAA`, if the server has IPv6) to the server's address. Check:
-`dig +short dev.asiamight.site A` shows only the server.
+`app.asiamight.site`: an `A` record (and `AAAA`, if the server has IPv6) to the server's address. Check:
+`dig +short app.asiamight.site A` shows only the server.
 
 ### 2. Release the code
 
@@ -136,11 +136,11 @@ The ADR 0040 release must be on `main` (it runs the migration). The push to `mai
 ssh <you>@<server>
 sudo -iu deploy
 cd /opt/durby
-grep -q '^PARTNER_ORIGINS=' .env || echo 'PARTNER_ORIGINS=https://dev.asiamight.site' >> .env
+grep -q '^PARTNER_ORIGINS=' .env || echo 'PARTNER_ORIGINS=https://app.asiamight.site' >> .env
 grep '^PARTNER_ORIGINS=' .env          # more partners later: comma-separated, lower case, https://, no path
 bin/release.sh                         # writes caddy/partners/partners.caddy; Caddy gets the certificate
 cat caddy/partners/partners.caddy
-bin/dc logs --tail 30 caddy            # "certificate obtained successfully" for dev.asiamight.site
+bin/dc logs --tail 30 caddy            # "certificate obtained successfully" for app.asiamight.site
 ```
 
 ### 4. Create AsiaMight's organization and first owner
@@ -154,16 +154,16 @@ bin/dc run --rm --no-deps api node dist/cli/create-admin.js \
 
 The owner gets an email to set their password (Mailpit unless `SMTP_URL` is set: `ssh -L 8025:127.0.0.1:8025` and open
 http://localhost:8025). That password link opens `app.durby.tech` (ADR 0040, Consequences); after setting it they sign
-in at **https://dev.asiamight.site**. Staff they invite get links on `dev.asiamight.site`.
+in at **https://app.asiamight.site**. Staff they invite get links on `app.asiamight.site`.
 
 ### 5. Check
 
 ```bash
-curl -fsS https://dev.asiamight.site/api/v1/health      # {"status":"ok",...}
-curl -fsS https://dev.asiamight.site/api/v1/theme       # "productName":"AsiaMight", primary #1f7a3d
+curl -fsS https://app.asiamight.site/api/v1/health      # {"status":"ok",...}
+curl -fsS https://app.asiamight.site/api/v1/theme       # "productName":"AsiaMight", primary #1f7a3d
 ```
 
-In a browser at `https://dev.asiamight.site`: the title and sign-in say AsiaMight in green; after sign-in the sidebar
+In a browser at `https://app.asiamight.site`: the title and sign-in say AsiaMight in green; after sign-in the sidebar
 shows Home, Inventory (with its pages), Catalog, Manage Staff, Settings and Audit log, and nothing for POS, billing,
 tables or reservations.
 

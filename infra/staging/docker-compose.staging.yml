@@ -30,7 +30,7 @@ x-api-env: &api-env
   # Auth (docs/platform/auth.md). Web and api share the origin behind Caddy, on both demo domains
   # (ADR 0015 §10); email links use the first one.
   JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set in .env (see docs/ops/deploy.md, Upgrading the existing server)}
-  # PARTNER_ORIGINS (optional, ADR 0040): partners' own domains on this stack, e.g. https://dev.asiamight.site. Empty
+  # PARTNER_ORIGINS (optional, ADR 0040): partners' own domains on this stack, e.g. https://app.asiamight.site. Empty
   # entries are ignored, so the trailing comma is harmless when it is unset.
   WEB_ORIGINS: https://${STAGING_DOMAIN},https://${STAGING_DEMO_DOMAIN:?set in .env},${PARTNER_ORIGINS:-}
   WEB_BASE_URL: https://${STAGING_DOMAIN}

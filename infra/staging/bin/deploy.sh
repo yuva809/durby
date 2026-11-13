@@ -66,7 +66,7 @@ for origin in "${_origins[@]}"; do
   origin="$(tr -d '[:space:]' <<<"$origin")"
   [[ -z "$origin" ]] && continue
   [[ "$origin" =~ ^https://(([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,})$ ]] ||
-    die "PARTNER_ORIGINS: '$origin' is not a lower-case https origin (example: https://dev.asiamight.site)"
+    die "PARTNER_ORIGINS: '$origin' is not a lower-case https origin (example: https://app.asiamight.site)"
   host="${BASH_REMATCH[1]}"
   for taken in "$(env_value STAGING_DOMAIN)" "$(env_value STAGING_DEMO_DOMAIN)" "${redirect_domains[@]}"; do
     [[ "$host" != "$taken" ]] || die "PARTNER_ORIGINS: '$host' is already served by this stack"

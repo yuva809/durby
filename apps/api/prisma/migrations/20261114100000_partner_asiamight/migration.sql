@@ -12,12 +12,12 @@ SELECT "id", 'AsiaMight', NULL, '#1f7a3d', NULL, NULL, now()
 FROM "partners" WHERE "slug" = 'asiamight'
 ON CONFLICT ("partner_id") DO NOTHING;
 
--- dev.asiamight.site: their site on production (served when the server's PARTNER_ORIGINS lists it).
+-- app.asiamight.site: their site on production (served when the server's PARTNER_ORIGINS lists it).
 -- asiamight.localhost: local development, like partner-demo.localhost.
 INSERT INTO "partner_domains" ("partner_id", "hostname")
 SELECT p."id", d."hostname"
 FROM "partners" p
-CROSS JOIN (VALUES ('dev.asiamight.site'), ('asiamight.localhost')) AS d("hostname")
+CROSS JOIN (VALUES ('app.asiamight.site'), ('asiamight.localhost')) AS d("hostname")
 WHERE p."slug" = 'asiamight'
 ON CONFLICT ("hostname") DO NOTHING;
 

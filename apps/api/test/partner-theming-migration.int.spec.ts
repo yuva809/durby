@@ -159,7 +159,7 @@ describe('partner_themes and partner_domains at the database', () => {
     );
     expect(domains.rows.map((r: { hostname: string }) => r.hostname)).toEqual([
       'asiamight.localhost',
-      'dev.asiamight.site',
+      'app.asiamight.site',
     ]);
     const labels = await migrator.query(
       `SELECT o.locale, o.key, o.value FROM partner_label_overrides o
