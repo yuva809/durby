@@ -208,6 +208,8 @@ describe('route markers', () => {
       'POST /api/v1/pos/bills',
       'POST /api/v1/pos/bills/:id/cancel',
       'POST /api/v1/pos/orders/:id/close',
+      'POST /api/v1/pos/orders/:id/discounts',
+      'POST /api/v1/pos/orders/:id/discounts/:discountId/void',
       'POST /api/v1/pos/orders/:id/voids',
       'POST /api/v1/pos/orders/:orderId/tickets/:id/served',
       'POST /api/v1/pos/print-jobs/:id/reprint',

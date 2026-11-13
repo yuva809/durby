@@ -231,6 +231,45 @@ describe('pos bills and guest checks', () => {
     });
   });
 
+  describe('equal split (step 4d)', () => {
+    it('splits the bill into one numbered check per share, the cents adding up exactly', async () => {
+      const r = await restaurant();
+      const o = await sent(r.owner, r.table, [
+        { productId: r.soup, quantity: 1 },
+        { productId: r.cola, quantity: 1 },
+      ]);
+      const bill = billSchema.parse(
+        (await post(r.owner, '/pos/bills', { orderIds: [o.id], shares: 3 }).expect(201)).body,
+      );
+      expect(bill).toMatchObject({ kind: 'equal', shareCount: 3, gross: '10.70' });
+      expect(bill.checks.map((c) => [c.number, c.shareIndex, c.gross])).toEqual([
+        [`CHK-${year}-000001`, 1, '3.57'],
+        [`CHK-${year}-000002`, 2, '3.57'],
+        [`CHK-${year}-000003`, 3, '3.56'],
+      ]);
+      const first = await check(r.owner, bill.checks[0]!.id);
+      expect(first).toMatchObject({ shareIndex: 1, shareCount: 3 });
+      expect(first.lines.map((l) => [l.kind, l.taxRate, l.total])).toEqual([
+        ['share', '7.00', '2.30'],
+        ['share', '19.00', '1.27'],
+      ]);
+      expect(first.totals.gross).toBe('3.57');
+      expect((await order(r.owner, o.id)).unbilled).toBe('0.00');
+      await post(r.owner, '/pos/bills', { orderIds: [o.id], shares: 2 }).expect(409);
+    });
+
+    it('refuses a split together with chosen items', async () => {
+      const r = await restaurant();
+      const o = await sent(r.owner, r.table, [{ productId: r.soup, quantity: 2 }]);
+      const line = o.tickets[0]!.lines[0]!.id;
+      await post(r.owner, '/pos/bills', {
+        orderIds: [o.id],
+        items: [{ orderLineId: line, quantity: 1 }],
+        shares: 2,
+      }).expect(400);
+    });
+  });
+
   describe('voids and cancelling', () => {
     it('voids billed items only after their bill is cancelled; the items can be billed again', async () => {
       const r = await restaurant();

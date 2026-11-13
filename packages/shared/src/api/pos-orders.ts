@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PREP_STATIONS } from './catalog';
+import { discountSchema } from './pos-discounts';
 import { TABLE_COLORS, TABLE_SHAPES } from './pos-tables';
 
 /** Request and response bodies of the order endpoints (docs/modules/pos.md → Step 3). */
@@ -141,6 +142,8 @@ export const orderSchema = orderSummarySchema.extend({
   waiterName: z.string().nullable(),
   /** Bills over this order, oldest first, cancelled ones included. */
   bills: z.array(orderBillSchema),
+  /** Discounts and comps not removed (ADR 0036 §5). */
+  discounts: z.array(discountSchema),
 });
 
 /**

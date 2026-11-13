@@ -108,6 +108,32 @@ export const posErrors = {
       'Part of the item is on a bill; cancel the bill first.',
       { lineId },
     ),
+  discountNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'pos.discount_not_found', 'Discount not found.'),
+  discountInvalid: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.discount_invalid',
+      'The discount does not fit the items still to bill.',
+    ),
+  discountExists: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.discount_exists',
+      'The item or order already has a discount.',
+    ),
+  discountLineWhole: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.discount_line_whole',
+      'A discounted item is billed whole, all of it at once.',
+    ),
+  discountActive: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.discount_active',
+      'Remove the discount before voiding a discounted item.',
+    ),
   ordersNotSameLocation: () =>
     new ApiError(
       HttpStatus.CONFLICT,

@@ -62,6 +62,7 @@ describe('system roles', () => {
       'pos.bills.print',
       'pos.kitchen.use',
       'pos.orders.close',
+      'pos.orders.discount',
       'pos.orders.read',
       'pos.orders.take',
       'pos.orders.void',

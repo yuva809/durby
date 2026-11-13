@@ -40,6 +40,7 @@ export const AUDIT_ENTITY_TYPES = [
   'printer',
   'print_job',
   'pos_bill',
+  'pos_discount',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -221,6 +222,8 @@ export const AUDIT_ACTIONS = {
   'pos.order.updated': { entityType: 'pos_order', label: 'pos.audit.actions.orderUpdated' },
   'pos.bill.created': { entityType: 'pos_bill', label: 'pos.audit.actions.billCreated' },
   'pos.bill.cancelled': { entityType: 'pos_bill', label: 'pos.audit.actions.billCancelled' },
+  'pos.discount.added': { entityType: 'pos_discount', label: 'pos.audit.actions.discountAdded' },
+  'pos.discount.voided': { entityType: 'pos_discount', label: 'pos.audit.actions.discountVoided' },
   'pos.kitchen_ticket.created': {
     entityType: 'kitchen_ticket',
     label: 'pos.audit.actions.kitchenTicketCreated',
@@ -483,6 +486,8 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'station', 'direct', 'status', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
   /** `gross`: decimal string; `orderIds`, `checkNumbers`: string arrays. Never the cancel reason (free text). */
+  /** `value`, `amount`: decimal strings; `reason` (free text) never appears. */
+  pos_discount: ['id', 'orderId', 'orderLineId', 'kind', 'value', 'amount', 'voidsDiscountId'],
   pos_bill: [
     'id',
     'locationId',

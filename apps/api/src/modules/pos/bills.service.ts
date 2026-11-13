@@ -23,7 +23,9 @@ import {
   type TenantPrismaClient,
   type TenantTransactionClient,
 } from '../../platform/tenancy';
+import Decimal from 'decimal.js';
 import { billedByLine, remainingOf, unbilledOf } from './billing';
+import { activeDiscounts } from './discounts.service';
 import { orderTotals } from './order-totals';
 import { posErrors } from './pos-errors';
 
@@ -121,9 +123,27 @@ export class BillsService {
         }
       }
       if (picks.length === 0) throw posErrors.nothingToBill();
+      // A discounted line is billed whole, all of it at once (ADR 0036 §5).
+      const discounts = new Map<string, Decimal>();
+      for (const orderId of orderIds) {
+        for (const [lineId, amount] of (await activeDiscounts(tx, orderId)).lineAmount) {
+          discounts.set(lineId, amount);
+        }
+      }
+      for (const { line, quantity } of picks) {
+        if (discounts.has(line.id) && quantity !== (unbilled.get(line.id) ?? 0)) {
+          throw posErrors.discountLineWhole();
+        }
+      }
 
       const bill = await tx.posBill.create({
-        data: { tenantId, locationId, kind: 'single', createdByUserId: userId },
+        data: {
+          tenantId,
+          locationId,
+          kind: body.shares ? 'equal' : 'single',
+          shareCount: body.shares ?? null,
+          createdByUserId: userId,
+        },
         select: { id: true },
       });
       await tx.posBillOrder.createMany({
@@ -139,20 +159,66 @@ export class BillsService {
           unitPrice: line.unitPrice.toFixed(2),
           taxRate: line.taxRate.toFixed(2),
           quantity,
+          discountAmount: (discounts.get(line.id) ?? new Decimal(0)).toFixed(2),
         })),
       });
-      const totals = orderTotals(
-        picks.map(({ line, quantity }) => ({
-          unitPrice: line.unitPrice.toFixed(2),
+      const priced = picks.map(({ line, quantity }) => ({
+        unitPrice: line.unitPrice.toFixed(2),
+        taxRate: line.taxRate.toFixed(2),
+        quantity,
+      }));
+      const discountLines = picks
+        .filter(({ line }) => discounts.has(line.id))
+        .map(({ line }) => ({
+          unitPrice: discounts.get(line.id)!.toFixed(2),
           taxRate: line.taxRate.toFixed(2),
-          quantity,
-        })),
-      );
+          quantity: 1,
+        }));
+      const computed = orderTotals([...priced, ...discountLines]);
+      const totals = {
+        ...computed,
+        itemCount: picks.reduce((n, p) => n + p.quantity, 0),
+      };
       // The number last: the counter row stays locked until commit (ADR 0012).
-      const { number } = await this.numbering.next('pos.guestCheck', tx);
-      await tx.posGuestCheck.create({
-        data: { tenantId, billId: bill.id, number, shareIndex: 0, gross: totals.gross },
-      });
+      if (body.shares) {
+        // An equal split: each rate's gross in cents, divided by the shares; the cents left over go to the first
+        // shares, so the shares add up exactly (ADR 0036 §4). Each share is a check of its own.
+        const rates = totals.byTaxRate.map((r) => ({
+          taxRate: r.taxRate,
+          cents: new Decimal(r.gross).times(100).toNumber(),
+        }));
+        for (let index = 1; index <= body.shares; index++) {
+          const { number } = await this.numbering.next('pos.guestCheck', tx);
+          const parts = rates.map((r) => ({
+            taxRate: r.taxRate,
+            cents: Math.floor(r.cents / body.shares!) + (index <= r.cents % body.shares! ? 1 : 0),
+          }));
+          const check = await tx.posGuestCheck.create({
+            data: {
+              tenantId,
+              billId: bill.id,
+              number,
+              shareIndex: index,
+              gross: (parts.reduce((n, p) => n + p.cents, 0) / 100).toFixed(2),
+            },
+            select: { id: true },
+          });
+          await tx.posGuestCheckShare.createMany({
+            data: parts.map((p) => ({
+              tenantId,
+              checkId: check.id,
+              taxRate: p.taxRate,
+              gross: (p.cents / 100).toFixed(2),
+            })),
+          });
+        }
+      } else {
+        // The number last: the counter row stays locked until commit (ADR 0012).
+        const { number } = await this.numbering.next('pos.guestCheck', tx);
+        await tx.posGuestCheck.create({
+          data: { tenantId, billId: bill.id, number, shareIndex: 0, gross: totals.gross },
+        });
+      }
       const response = await this.loadBill(tx, bill.id);
       await this.audit.record(tx, {
         action: 'pos.bill.created',
@@ -290,7 +356,13 @@ export class BillsService {
             shareCount: true,
             cancellation: { select: { createdAt: true } },
             items: {
-              select: { productName: true, unitPrice: true, taxRate: true, quantity: true },
+              select: {
+                productName: true,
+                unitPrice: true,
+                taxRate: true,
+                quantity: true,
+                discountAmount: true,
+              },
               orderBy: { id: 'asc' },
             },
             orders: {
@@ -333,9 +405,9 @@ export class BillsService {
           taxRate: s.taxRate.toFixed(2),
           total: s.gross.toFixed(2),
         }))
-      : check.bill.items.map((item) => {
+      : check.bill.items.flatMap((item): CheckLine[] => {
           const unitPrice = item.unitPrice.toFixed(2);
-          return {
+          const line: CheckLine = {
             kind: 'item',
             name: item.productName,
             quantity: item.quantity,
@@ -343,14 +415,33 @@ export class BillsService {
             taxRate: item.taxRate.toFixed(2),
             total: orderTotals([{ unitPrice, taxRate: '0', quantity: item.quantity }]).gross,
           };
+          if (item.discountAmount.isZero()) return [line];
+          return [
+            line,
+            {
+              kind: 'discount',
+              name: null,
+              quantity: null,
+              unitPrice: null,
+              taxRate: item.taxRate.toFixed(2),
+              total: item.discountAmount.toFixed(2),
+            },
+          ];
         });
-    const totals = orderTotals(
+    const computed = orderTotals(
       lines.map((line) =>
         line.kind === 'item'
           ? { unitPrice: line.unitPrice!, taxRate: line.taxRate, quantity: line.quantity! }
           : { unitPrice: line.total, taxRate: line.taxRate, quantity: 1 },
       ),
     );
+    const totals = {
+      ...computed,
+      itemCount: lines.reduce(
+        (n, line) => (line.kind === 'item' ? n + (line.quantity ?? 0) : n),
+        0,
+      ),
+    };
     return {
       id: check.id,
       number: check.number,

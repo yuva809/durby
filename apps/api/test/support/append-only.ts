@@ -8,6 +8,8 @@ export const APPEND_ONLY_TABLES = [
   'pos_bill_items',
   'pos_bill_orders',
   'pos_bills',
+  'pos_order_discounts',
+  'pos_order_discount_lines',
   'pos_guest_check_shares',
   'pos_guest_checks',
   'pos_kitchen_tickets',

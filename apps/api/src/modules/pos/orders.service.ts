@@ -32,7 +32,9 @@ import {
   type TenantTransactionClient,
 } from '../../platform/tenancy';
 import { PricingService } from '../catalog';
+import Decimal from 'decimal.js';
 import { billedByLine, remainingOf, unbilledGross, unbilledOf } from './billing';
+import { activeDiscounts } from './discounts.service';
 import { lineTotal, orderTotals } from './order-totals';
 import { isUniqueViolation, posErrors } from './pos-errors';
 import { PrintJobsService } from './print-jobs.service';
@@ -320,6 +322,11 @@ export class OrdersService {
       const unbilled = unbilledOf(left, await this.billed(tx, orderId));
       for (const [lineId, quantity] of requested) {
         if (quantity > (unbilled.get(lineId) ?? 0)) throw posErrors.lineBilled(lineId);
+      }
+      // A discounted item can't be voided until its discount is removed (ADR 0036 §5).
+      const discounted = (await activeDiscounts(tx, orderId)).lineAmount;
+      for (const lineId of requested.keys()) {
+        if (discounted.has(lineId)) throw posErrors.discountActive();
       }
       // A void goes to the station that got the item, whatever its category says now.
       // A void goes where the item went: its ticket's station, and straight to the bill when the
@@ -659,6 +666,8 @@ export class OrdersService {
     ]);
     const left = remainingOf(lines);
     const unbilled = unbilledOf(left, billed);
+    const active = await activeDiscounts(db, orderId);
+    const discounts = active.lineAmount;
     const totals = orderTotals(lines.map(priced));
     const byTicket = new Map<string, OrderLine[]>();
     for (const line of lines) {
@@ -683,14 +692,28 @@ export class OrdersService {
         totals.itemCount,
         totals.gross,
         readyCount(ticketList),
-        unbilledGross(
-          lines.map((l) => ({ id: l.id, unitPrice: l.unitPrice.toFixed(2) })),
+        discountedUnbilled(
+          unbilledGross(
+            lines.map((l) => ({ id: l.id, unitPrice: l.unitPrice.toFixed(2) })),
+            unbilled,
+          ),
           unbilled,
+          discounts,
         ),
       ),
       tickets: ticketList,
       totals,
       waiterName: names.get(openedByUserId) ?? null,
+      discounts: active.rows.map((d) => ({
+        id: d.id,
+        orderLineId: d.orderLineId,
+        kind: d.kind,
+        value: d.value,
+        reason: d.reason,
+        amount: d.amount,
+        voided: false,
+        createdAt: d.createdAt.toISOString(),
+      })),
       bills: bills.map(({ bill }) => ({
         id: bill.id,
         kind: bill.kind,
@@ -753,6 +776,11 @@ export class OrdersService {
       }),
     ]);
     const unbilled = unbilledOf(remainingOf(lines), billedByLine(billedItems));
+    const discountsOf = new Map(
+      await Promise.all(
+        ids.map(async (id) => [id, (await activeDiscounts(db, id)).lineAmount] as const),
+      ),
+    );
     const ready = new Map<string, number>();
     for (const t of tickets) {
       if (statusOf(t.statusChanges) === 'ready')
@@ -770,9 +798,13 @@ export class OrdersService {
         totals.itemCount,
         totals.gross,
         ready.get(order.id) ?? 0,
-        unbilledGross(
-          own.map((l) => ({ id: l.id, unitPrice: l.unitPrice.toFixed(2) })),
+        discountedUnbilled(
+          unbilledGross(
+            own.map((l) => ({ id: l.id, unitPrice: l.unitPrice.toFixed(2) })),
+            unbilled,
+          ),
           unbilled,
+          discountsOf.get(order.id) ?? new Map(),
         ),
       );
     });
@@ -854,4 +886,17 @@ function orderSnapshot(order: OrderRow) {
     covers: order.covers,
     closedAt: order.closedAt,
   });
+}
+
+/** The gross still to bill, less the discounts on the lines still to bill (ADR 0036 §5). */
+function discountedUnbilled(
+  gross: string,
+  unbilled: ReadonlyMap<string, number>,
+  discounts: ReadonlyMap<string, Decimal>,
+): string {
+  let total = new Decimal(gross);
+  for (const [lineId, amount] of discounts) {
+    if ((unbilled.get(lineId) ?? 0) > 0) total = total.plus(amount);
+  }
+  return total.toFixed(2);
 }
