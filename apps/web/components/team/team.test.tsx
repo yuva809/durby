@@ -260,6 +260,40 @@ describe('TeamPage', () => {
     expect(dialog.textContent).toContain('switched off');
   });
 
+  it('shows create, edit and delete as columns and ticks a whole area at once (ADR 0037)', async () => {
+    signedInAs('owner');
+    api();
+    render(<TeamPage />);
+    await userEvent.click(await screen.findByTestId('team-add'));
+    const dialog = await screen.findByTestId('team-dialog');
+    const waiter = within(dialog)
+      .getAllByTestId('team-role')
+      .find((b) => b.dataset.role === 'waiter')!;
+    await userEvent.click(waiter);
+    const row = within(dialog)
+      .getAllByTestId('team-matrix-row')
+      .find((r) => r.dataset.area === 'catalog.products')!;
+    const keys = within(row)
+      .getAllByTestId('team-permission')
+      .map((c) => c.dataset.key);
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        'catalog.products.create',
+        'catalog.products.edit',
+        'catalog.products.delete',
+      ]),
+    );
+    const whole = within(row).getByTestId('team-permission-area');
+    await userEvent.click(whole);
+    for (const box of within(row).getAllByTestId('team-permission')) {
+      expect(box.getAttribute('data-state')).toBe('checked');
+    }
+    await userEvent.click(whole);
+    for (const box of within(row).getAllByTestId('team-permission')) {
+      expect(box.getAttribute('data-state')).toBe('unchecked');
+    }
+  });
+
   it('deactivates a member after confirming', async () => {
     signedInAs('owner');
     const sent = api({
