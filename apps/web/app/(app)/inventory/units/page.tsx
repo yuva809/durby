@@ -1,5 +1,5 @@
-import { ModulePlaceholder } from '../../../../components/module-placeholder';
+import { UnitsPage } from '../../../../components/inventory/units-page';
 
 export default function Page() {
-  return <ModulePlaceholder feature="inventory" title="inventory.nav.units" />;
+  return <UnitsPage />;
 }

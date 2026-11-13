@@ -62,6 +62,15 @@ export const NUMBER_SERIES = {
     pattern: '{prefix}-{YYYY}-{seq:6}',
     resetPolicy: 'yearly',
   },
+  /** Production orders: ingredients out, the prepared item in (ADR 0038). */
+  'inventory.stockProduction': {
+    label: 'platform.numbering.series.inventoryStockProduction.name',
+    description: 'platform.numbering.series.inventoryStockProduction.description',
+    feature: 'inventory',
+    prefix: 'PRD',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
   'inventory.purchaseOrder': {
     label: 'platform.numbering.series.inventoryPurchaseOrder.name',
     description: 'platform.numbering.series.inventoryPurchaseOrder.description',

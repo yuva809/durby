@@ -1,11 +1,17 @@
 'use client';
 
 import type { LabelKey } from '@durby/i18n';
-import type { LocationSummary, PermissionKey, StockItem, Warehouse } from '@durby/shared';
+import type {
+  LocationSummary,
+  PermissionKey,
+  StockItem,
+  UnitOfMeasure,
+  Warehouse,
+} from '@durby/shared';
 import { useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
-import { loadStockItems, loadWarehouses } from '../../lib/inventory/api';
+import { loadStockItems, loadUnits, loadWarehouses } from '../../lib/inventory/api';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
 import { cn } from '../../lib/utils';
@@ -36,6 +42,8 @@ export interface InventoryData {
   locations: LocationSummary[];
   warehouses: Warehouse[];
   items: StockItem[];
+  /** Active units of measurement receipts can be entered in (ADR 0038). */
+  units: UnitOfMeasure[];
   can: (key: PermissionKey) => boolean;
   reload: () => void;
 }
@@ -87,6 +95,7 @@ function Inventory({
     loadWarehouses(store, true),
   );
   const [items, reloadItems] = useResource(organizationId, () => loadStockItems(store, true));
+  const [units] = useResource(organizationId, () => loadUnits(store));
   const permissions = new Set(session?.activePermissions ?? []);
   const can = (key: PermissionKey) => permissions.has(key);
   const tabs = TABS.filter((x) => !x.permission || can(x.permission));
@@ -130,6 +139,7 @@ function Inventory({
                 locations: locations.status === 'ready' ? locations.data : [],
                 warehouses: warehouseList,
                 items: itemList,
+                units: units.status === 'ready' ? units.data : [],
                 can,
                 reload,
               };

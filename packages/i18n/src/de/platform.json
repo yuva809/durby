@@ -748,5 +748,18 @@
   "platform.team.result.whatsapp": "Über WhatsApp teilen",
   "platform.team.result.newLinkNote": "Ein neuer Link ersetzt den vorherigen.",
   "platform.team.result.done": "Fertig",
-  "platform.team.shareText": "Sie sind zu {organization} eingeladen. Öffnen Sie diesen Link, um Ihr Passwort festzulegen: {link}"
+  "platform.team.shareText": "Sie sind zu {organization} eingeladen. Öffnen Sie diesen Link, um Ihr Passwort festzulegen: {link}",
+  "platform.audit.entities.unitOfMeasure": "Maßeinheit",
+  "platform.audit.entities.variantAttribute": "Variantenmerkmal",
+  "platform.audit.entities.bom": "Stückliste",
+  "platform.numbering.series.inventoryStockProduction.name": "Fertigungsaufträge",
+  "platform.numbering.series.inventoryStockProduction.description": "Nummern der Fertigungsaufträge: Zutaten raus, Halbfertigprodukt rein.",
+  "platform.audit.fields.parentItemId": "Variante von",
+  "platform.audit.fields.variantValues": "Variantenwerte",
+  "platform.audit.fields.symbol": "Kürzel",
+  "platform.audit.fields.baseUnit": "Basiseinheit",
+  "platform.audit.fields.factor": "Enthält",
+  "platform.audit.fields.values": "Werte",
+  "platform.audit.fields.outputQuantity": "Ergibt",
+  "platform.audit.fields.itemId": "Artikel"
 }

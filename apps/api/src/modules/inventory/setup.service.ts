@@ -25,24 +25,32 @@ const WAREHOUSE_SELECT = {
   archivedAt: true,
 } as const;
 
-const ITEM_SELECT = {
+export const ITEM_SELECT = {
   id: true,
   name: true,
   sku: true,
   unit: true,
   minQuantity: true,
+  parentItemId: true,
+  variantValues: true,
   archivedAt: true,
 } as const;
 
 type WarehouseRow = Omit<Warehouse, 'archivedAt'> & { archivedAt: Date | null };
-type ItemRow = {
+export type ItemRow = {
   id: string;
   name: string;
   sku: string | null;
   unit: StockUnit;
   minQuantity: { toFixed(digits: number): string } | null;
+  parentItemId: string | null;
+  variantValues: string[];
   archivedAt: Date | null;
 };
+
+/** The audit snapshot of an item: variant values joined in order (snapshots sort string arrays). */
+export const itemSnapshot = (item: StockItem) =>
+  snapshot('stock_item', { ...item, variantValues: item.variantValues.join(' / ') });
 
 /**
  * Warehouses per location and organization-wide stock items (docs/modules/inventory.md). Archived,
@@ -195,7 +203,7 @@ export class InventorySetupService {
           action: 'inventory.stock_item.created',
           actor: auditActor.user(userId),
           entityId: row.id,
-          after: snapshot('stock_item', response),
+          after: itemSnapshot(response),
         });
         await this.idempotency.completeInTransaction(tx, response);
         return response;
@@ -230,10 +238,7 @@ export class InventorySetupService {
                 : fixed3(body.minQuantity),
           archivedAt: archivedAt(current.archivedAt, body.archived)?.toISOString() ?? null,
         };
-        if (
-          JSON.stringify(snapshot('stock_item', before)) ===
-          JSON.stringify(snapshot('stock_item', next))
-        ) {
+        if (JSON.stringify(itemSnapshot(before)) === JSON.stringify(itemSnapshot(next))) {
           return before;
         }
         const row = await tx.stockItem.update({
@@ -252,8 +257,8 @@ export class InventorySetupService {
           action: 'inventory.stock_item.updated',
           actor: auditActor.user(userId),
           entityId: id,
-          before: snapshot('stock_item', before),
-          after: snapshot('stock_item', after),
+          before: itemSnapshot(before),
+          after: itemSnapshot(after),
         });
         return after;
       }),
@@ -287,13 +292,15 @@ function warehouseResponse(row: WarehouseRow): Warehouse {
   return { ...row, archivedAt: row.archivedAt?.toISOString() ?? null };
 }
 
-function itemResponse(row: ItemRow): StockItem {
+export function itemResponse(row: ItemRow): StockItem {
   return {
     id: row.id,
     name: row.name,
     sku: row.sku,
     unit: row.unit,
     minQuantity: row.minQuantity?.toFixed(3) ?? null,
+    parentItemId: row.parentItemId,
+    variantValues: row.variantValues,
     archivedAt: row.archivedAt?.toISOString() ?? null,
   };
 }

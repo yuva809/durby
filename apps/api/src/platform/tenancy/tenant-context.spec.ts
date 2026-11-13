@@ -82,6 +82,8 @@ describe('TENANT_MODELS', () => {
   it('lists exactly the models with a tenantId field', () => {
     expect([...TENANT_MODELS].sort()).toEqual([
       'AuditLog',
+      'Bom',
+      'BomLine',
       'Brand',
       'DiningArea',
       'DiningTable',
@@ -133,6 +135,8 @@ describe('TENANT_MODELS', () => {
       'StockLevel',
       'StockMovement',
       'TenantFeatureOverride',
+      'UnitOfMeasure',
+      'VariantAttribute',
       'Warehouse',
     ]);
   });

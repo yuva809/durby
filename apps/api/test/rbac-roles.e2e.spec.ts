@@ -79,6 +79,7 @@ describe('roles API', () => {
       'inventory.stock.receive',
       'inventory.stock.adjust',
       'inventory.stock.transfer',
+      'inventory.stock.produce',
       'inventory.warehouses.create',
       'inventory.warehouses.edit',
       'inventory.warehouses.delete',

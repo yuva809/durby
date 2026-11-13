@@ -1,5 +1,22 @@
 import {
   type AdjustmentRequest,
+  type Bom,
+  bomListResponseSchema,
+  bomSchema,
+  type CreateUnitOfMeasureRequest,
+  type CreateVariantAttributeRequest,
+  type GenerateVariantsRequest,
+  generateVariantsResponseSchema,
+  type ProductionRequest,
+  type PutBomRequest,
+  type UnitOfMeasure,
+  unitOfMeasureListResponseSchema,
+  unitOfMeasureSchema,
+  type UpdateUnitOfMeasureRequest,
+  type UpdateVariantAttributeRequest,
+  type VariantAttribute,
+  variantAttributeListResponseSchema,
+  variantAttributeSchema,
   type CreateStockItemRequest,
   type CreateWarehouseRequest,
   type DishCost,
@@ -101,3 +118,68 @@ export const putRecipe = (
 
 export const loadCosts = (store: Api): Promise<Result<DishCost[]>> =>
   read(store, `${BASE}/costs`, list(dishCostListResponseSchema));
+
+// Step 5 (docs/modules/inventory.md → Step 5, ADR 0038).
+
+export const loadUnits = (store: Api, includeArchived = false): Promise<Result<UnitOfMeasure[]>> =>
+  read(store, `${BASE}/units${query({ includeArchived })}`, list(unitOfMeasureListResponseSchema));
+
+export const createUnit = (store: Api, action: ActionKey, body: CreateUnitOfMeasureRequest) =>
+  write(store, action, `${BASE}/units`, 'POST', body, unitOfMeasureSchema);
+
+export const updateUnit = (
+  store: Api,
+  action: ActionKey,
+  id: string,
+  body: UpdateUnitOfMeasureRequest,
+) => write(store, action, `${BASE}/units/${id}`, 'PATCH', body, unitOfMeasureSchema);
+
+export const loadAttributes = (
+  store: Api,
+  includeArchived = false,
+): Promise<Result<VariantAttribute[]>> =>
+  read(
+    store,
+    `${BASE}/attributes${query({ includeArchived })}`,
+    list(variantAttributeListResponseSchema),
+  );
+
+export const createAttribute = (
+  store: Api,
+  action: ActionKey,
+  body: CreateVariantAttributeRequest,
+) => write(store, action, `${BASE}/attributes`, 'POST', body, variantAttributeSchema);
+
+export const updateAttribute = (
+  store: Api,
+  action: ActionKey,
+  id: string,
+  body: UpdateVariantAttributeRequest,
+) => write(store, action, `${BASE}/attributes/${id}`, 'PATCH', body, variantAttributeSchema);
+
+export const generateVariants = (
+  store: Api,
+  action: ActionKey,
+  itemId: string,
+  body: GenerateVariantsRequest,
+) =>
+  write(
+    store,
+    action,
+    `${BASE}/items/${itemId}/variants`,
+    'POST',
+    body,
+    generateVariantsResponseSchema,
+  );
+
+export const loadBoms = (store: Api): Promise<Result<Bom[]>> =>
+  read(store, `${BASE}/boms`, list(bomListResponseSchema));
+
+export const putBom = (store: Api, action: ActionKey, itemId: string, body: PutBomRequest) =>
+  write(store, action, `${BASE}/boms/${itemId}`, 'PUT', body, bomSchema);
+
+export const deleteBom = (store: Api, action: ActionKey, itemId: string) =>
+  write(store, action, `${BASE}/boms/${itemId}`, 'DELETE');
+
+export const postProduction = (store: Api, action: ActionKey, body: ProductionRequest) =>
+  write(store, action, `${BASE}/productions`, 'POST', body, stockDocumentSchema);

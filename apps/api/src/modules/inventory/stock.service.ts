@@ -8,6 +8,7 @@ import type {
   ListStockDocumentsQuery,
   NumberSeriesKey,
   PermissionKey,
+  ProductionRequest,
   ReceiptRequest,
   StockDocument,
   StockDocumentKind,
@@ -29,6 +30,7 @@ import {
   type TenantTransactionClient,
 } from '../../platform/tenancy';
 import { inventoryErrors } from './inventory-errors';
+import { componentNeeds, outputUnitCost, toBaseUnits } from './item-rules';
 import { bookIn, bookOut, costText, type Level, quantityText, valueOf } from './valuation';
 
 /** Prisma returns `numeric` columns as Decimal objects; only their exact text is used here. */
@@ -39,6 +41,7 @@ const SERIES: Record<StockDocumentKind, NumberSeriesKey> = {
   adjustment: 'inventory.stockAdjustment',
   transfer: 'inventory.stockTransfer',
   consumption: 'inventory.stockConsumption',
+  production: 'inventory.stockProduction',
 };
 
 const DOCUMENT_LIST_LIMIT = 200;
@@ -123,21 +126,63 @@ export class StockService {
     private readonly settings: SettingsService,
   ) {}
 
+  /**
+   * A delivery. Lines with a unit of measurement are converted to the item's unit first (ADR 0038): the unit's base
+   * unit must be the item's unit.
+   */
   receive(body: ReceiptRequest): Promise<StockDocument> {
+    let lines = body.lines.map((l) => ({
+      itemId: l.itemId,
+      quantity: new Decimal(l.quantity),
+      unitCost: new Decimal(l.unitCost),
+    }));
     return this.post({
       kind: 'receipt',
       key: 'inventory.stock.receive',
       warehouseId: body.warehouseId,
       itemIds: body.lines.map((l) => l.itemId),
+      prepare: async (tx) => {
+        const unitIds = [...new Set(body.lines.flatMap((l) => (l.unitId ? [l.unitId] : [])))];
+        if (unitIds.length === 0) return;
+        const [units, items] = await Promise.all([
+          tx.unitOfMeasure.findMany({
+            where: { id: { in: unitIds }, archivedAt: null },
+            select: { id: true, baseUnit: true, factor: true },
+          }),
+          tx.stockItem.findMany({
+            where: { id: { in: body.lines.map((l) => l.itemId) } },
+            select: { id: true, unit: true },
+          }),
+        ]);
+        const unitById = new Map(units.map((u) => [u.id, u]));
+        const missing = unitIds.filter((id) => !unitById.has(id));
+        if (missing.length > 0) throw inventoryErrors.unitNotFound(missing);
+        const itemUnit = new Map(items.map((i) => [i.id, i.unit]));
+        const mismatched: string[] = [];
+        lines = body.lines.map((line, i) => {
+          const unit = line.unitId ? unitById.get(line.unitId)! : null;
+          if (!unit) return lines[i]!;
+          const base =
+            unit.baseUnit === itemUnit.get(line.itemId)
+              ? toBaseUnits(
+                  new Decimal(line.quantity),
+                  new Decimal(line.unitCost),
+                  new Decimal(unit.factor.toFixed(6)),
+                )
+              : null;
+          if (!base) {
+            mismatched.push(line.itemId);
+            return lines[i]!;
+          }
+          return { itemId: line.itemId, ...base };
+        });
+        if (mismatched.length > 0) throw inventoryErrors.unitMismatch(mismatched);
+      },
       header: { supplier: body.supplier ?? null, note: body.note || null },
       plan: (levels) =>
-        body.lines.map((line) => {
-          const quantity = new Decimal(line.quantity);
-          const booked = bookIn(
-            levels.get(body.warehouseId, line.itemId),
-            quantity,
-            new Decimal(line.unitCost),
-          );
+        lines.map((line) => {
+          const quantity = line.quantity;
+          const booked = bookIn(levels.get(body.warehouseId, line.itemId), quantity, line.unitCost);
           levels.set(body.warehouseId, line.itemId, booked.level);
           return {
             warehouseId: body.warehouseId,
@@ -207,6 +252,68 @@ export class StockService {
             },
           ];
         }),
+    });
+  }
+
+  /**
+   * A production order (ADR 0038): makes `quantity` of an item with a bill of materials in one warehouse. Each
+   * component goes out at its average cost (bill quantity × quantity ÷ output quantity), and the item comes in at
+   * the components' total value ÷ quantity. Refused like any document that would take a component below zero.
+   */
+  produce(body: ProductionRequest): Promise<StockDocument> {
+    const wanted = new Decimal(body.quantity);
+    let needs: { itemId: string; quantity: Decimal }[] = [];
+    return this.post({
+      kind: 'production',
+      key: 'inventory.stock.produce',
+      warehouseId: body.warehouseId,
+      itemIds: [body.itemId],
+      prepare: async (tx) => {
+        const bill = await tx.bom.findFirst({
+          where: { itemId: body.itemId },
+          select: { outputQuantity: true, lines: { select: { itemId: true, quantity: true } } },
+        });
+        if (!bill) throw inventoryErrors.bomNotFound();
+        needs = componentNeeds(
+          {
+            outputQuantity: new Decimal(bill.outputQuantity.toFixed(3)),
+            lines: bill.lines.map((l) => ({
+              itemId: l.itemId,
+              quantity: new Decimal(l.quantity.toFixed(3)),
+            })),
+          },
+          wanted,
+        );
+        return needs.map((n) => n.itemId);
+      },
+      header: { note: body.note || null },
+      plan: (levels) => {
+        const out = needs.map((need) => {
+          const booked = bookOut(levels.get(body.warehouseId, need.itemId), need.quantity);
+          levels.set(body.warehouseId, need.itemId, booked.level);
+          return {
+            warehouseId: body.warehouseId,
+            itemId: need.itemId,
+            quantity: need.quantity.negated(),
+            unitCost: booked.unitCost,
+          };
+        });
+        const cost = outputUnitCost(
+          out.map((m) => valueOf(m.quantity.negated(), m.unitCost)),
+          wanted,
+        );
+        const made = bookIn(levels.get(body.warehouseId, body.itemId), wanted, cost);
+        levels.set(body.warehouseId, body.itemId, made.level);
+        return [
+          ...out,
+          {
+            warehouseId: body.warehouseId,
+            itemId: body.itemId,
+            quantity: wanted,
+            unitCost: made.unitCost,
+          },
+        ];
+      },
     });
   }
 
@@ -311,6 +418,11 @@ export class StockService {
     warehouseId: string;
     toWarehouseId?: string;
     itemIds: string[];
+    /**
+     * Reads what the document needs inside its transaction (units, a bill of materials) after the items are
+     * checked; returns more item ids to check and lock (a bill's components).
+     */
+    prepare?: (tx: TenantTransactionClient) => Promise<string[] | void>;
     header: { supplier?: string | null; note: string | null; reason?: AdjustmentReason };
     plan: (levels: Levels) => PlannedMovement[];
   }): Promise<StockDocument> {
@@ -323,20 +435,18 @@ export class StockService {
       if ((await this.settings.get('inventory.valuationMethod', {}, tx)) !== 'weighted_average') {
         throw inventoryErrors.valuationUnsupported();
       }
-      const items = await tx.stockItem.findMany({
-        where: { id: { in: input.itemIds }, archivedAt: null },
-        select: { id: true },
-      });
-      const found = new Set(items.map((i) => i.id));
-      const missing = input.itemIds.filter((id) => !found.has(id));
-      if (missing.length > 0) throw inventoryErrors.itemNotFound(missing);
+      await usableItems(tx, input.itemIds);
+      const more = (await input.prepare?.(tx)) ?? [];
+      const extra = more.filter((id) => !input.itemIds.includes(id));
+      if (extra.length > 0) await usableItems(tx, extra);
+      const itemIds = [...input.itemIds, ...extra];
 
       const warehouses = [from, ...(to ? [to] : [])];
       const levels = await lockLevels(
         tx,
         tenantId,
         warehouses.map((w) => w.id),
-        input.itemIds,
+        itemIds,
       );
       const movements = input.plan(levels);
 
@@ -348,7 +458,7 @@ export class StockService {
         );
         if (allowed) continue;
         // Only lines that end below zero and went down: a delivery into a negative level is fine.
-        const short = input.itemIds.filter((itemId) => {
+        const short = itemIds.filter((itemId) => {
           const after = levels.get(warehouse.id, itemId).quantity;
           return after.isNegative() && after.lessThan(levels.before(warehouse.id, itemId).quantity);
         });
@@ -518,6 +628,22 @@ export class StockService {
     });
     return response;
   }
+}
+
+/**
+ * Items a document may move: known, not archived, and without active variants (a parent holds no stock once it has
+ * variants, ADR 0038).
+ */
+async function usableItems(tx: TenantTransactionClient, itemIds: string[]): Promise<void> {
+  const items = await tx.stockItem.findMany({
+    where: { id: { in: itemIds }, archivedAt: null },
+    select: { id: true, _count: { select: { variants: { where: { archivedAt: null } } } } },
+  });
+  const found = new Map(items.map((i) => [i.id, i]));
+  const missing = itemIds.filter((id) => !found.has(id));
+  if (missing.length > 0) throw inventoryErrors.itemNotFound(missing);
+  const parents = itemIds.filter((id) => found.get(id)!._count.variants > 0);
+  if (parents.length > 0) throw inventoryErrors.itemHasVariants(parents);
 }
 
 /** The locked levels of a document, keyed by warehouse and item, and which ones it changed. */

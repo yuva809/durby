@@ -112,6 +112,10 @@ model Organization {
   stockMovements               StockMovement[]
   stockLevels                  StockLevel[]
   recipeLines                  RecipeLine[]
+  unitsOfMeasure               UnitOfMeasure[]
+  variantAttributes            VariantAttribute[]
+  boms                         Bom[]
+  bomLines                     BomLine[]
   posOrderLines                PosOrderLine[]
   posBills                     PosBill[]
   posBillOrders                PosBillOrder[]
@@ -1589,6 +1593,7 @@ enum StockDocumentKind {
   adjustment
   transfer
   consumption
+  production
 
   @@map("stock_document_kind")
 }
@@ -1628,22 +1633,32 @@ model Warehouse {
 
 /// An ingredient or good kept in stock, organization-wide. The unit is fixed once the item has movements.
 model StockItem {
-  id           String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String          @map("tenant_id") @db.Uuid
-  name         String
-  sku          String?
-  unit         StockUnit
+  id            String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String          @map("tenant_id") @db.Uuid
+  name          String
+  sku           String?
+  unit          StockUnit
   /// Reorder level; null = none.
-  minQuantity  Decimal?        @map("min_quantity") @db.Decimal(14, 3)
-  archivedAt   DateTime?       @map("archived_at") @db.Timestamptz(6)
-  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  movements    StockMovement[]
-  levels       StockLevel[]
-  recipeLines  RecipeLine[]
+  minQuantity   Decimal?        @map("min_quantity") @db.Decimal(14, 3)
+  /// A variant's parent (ADR 0038): one level only, checked by the service.
+  parentItemId  String?         @map("parent_item_id") @db.Uuid
+  /// A variant's attribute values in attribute order; empty for other items.
+  variantValues String[]        @default([]) @map("variant_values")
+  archivedAt    DateTime?       @map("archived_at") @db.Timestamptz(6)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization  Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  parent        StockItem?      @relation("StockItemVariants", fields: [tenantId, parentItemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  variants      StockItem[]     @relation("StockItemVariants")
+  movements     StockMovement[]
+  levels        StockLevel[]
+  recipeLines   RecipeLine[]
+  boms          Bom[]           @relation("BomOutput")
+  bomLines      BomLine[]       @relation("BomComponent")
 
   @@unique([tenantId, id])
+  /// One variant per combination of values (NULL parents never collide).
+  @@unique([tenantId, parentItemId, variantValues])
   @@map("stock_items")
 }
 
@@ -1729,6 +1744,76 @@ model RecipeLine {
   @@unique([tenantId, id])
   @@unique([tenantId, productId, itemId])
   @@map("recipe_lines")
+}
+
+/// A unit of measurement: `factor` of a base unit (Case = 24 pc, Sack = 25 kg). Receipts may be entered in it and are
+/// converted to the item's unit. Archived, never deleted; the base unit never changes (ADR 0038).
+model UnitOfMeasure {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  name         String
+  symbol       String
+  baseUnit     StockUnit    @map("base_unit")
+  factor       Decimal      @db.Decimal(14, 6)
+  archivedAt   DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@map("units_of_measure")
+}
+
+/// An attribute variants differ in, with its values in display order (Size: Small, Medium, Large). Archived, never
+/// deleted; variants keep the values they were generated with (ADR 0038).
+model VariantAttribute {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  name         String
+  values       String[]
+  archivedAt   DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@map("variant_attributes")
+}
+
+/// A bill of materials: what `outputQuantity` of a prepared stock item takes. Configuration: replaced as a whole,
+/// deleted freely, audited (ADR 0038).
+model Bom {
+  id             String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String       @map("tenant_id") @db.Uuid
+  itemId         String       @map("item_id") @db.Uuid
+  outputQuantity Decimal      @map("output_quantity") @db.Decimal(14, 3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  item           StockItem    @relation("BomOutput", fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  lines          BomLine[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, itemId])
+  @@map("boms")
+}
+
+/// One component of a bill of materials, in the component's unit.
+model BomLine {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  bomId        String       @map("bom_id") @db.Uuid
+  itemId       String       @map("item_id") @db.Uuid
+  quantity     Decimal      @db.Decimal(14, 3)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  bom          Bom          @relation(fields: [tenantId, bomId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  item         StockItem    @relation("BomComponent", fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, bomId, itemId])
+  @@index([tenantId, itemId])
+  @@map("bom_lines")
 }
 
 /// Price rules (docs/modules/catalog.md → Price rules, ADR 0030).

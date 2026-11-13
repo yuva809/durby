@@ -20,8 +20,8 @@ const page = (
 });
 
 /**
- * The pages under Inventory in the sidebar, in display order. Products and categories live on the catalog page
- * today; variants, attributes, units, bills of materials and production orders show "coming soon" until they ship.
+ * The pages under Inventory in the sidebar, in display order (docs/modules/inventory.md → Step 5, ADR 0038). Products
+ * and categories live on the catalog page; Inventory Adjustment opens the Adjust tab.
  */
 export const INVENTORY_PAGES: readonly NavItem[] = [
   page('stock', '/inventory', 'inventory.nav.stock', 'inventory.stock.read'),

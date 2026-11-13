@@ -123,3 +123,73 @@ puts the quantities back at the unit cost the cancelled items went out at. A red
 | -------------------------- | ------------ | ----- | ------- | ------ |
 | `inventory.recipes.manage` | organization | ✓     | ✓       |        |
 | `inventory.costs.read`     | organization | ✓     | ✓       |        |
+
+## Step 5: units, variants, bills of materials and production (ADR 0038)
+
+The Inventory sidebar group lists Stock, Products, Variant Products, Variant Attributes, Product Category, Units of
+Measurement, Inventory Adjustment, Bills of Materials and Production Order. Products and Product Category open the
+catalog page; Inventory Adjustment opens the Adjust tab.
+
+### Entities
+
+| Table                | Columns                                                                                                                | Notes                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `units_of_measure`   | `id`, `tenant_id`, `name`, `symbol`, `base_unit` (`stock_unit`), `factor numeric(14,6) > 0`, `archived_at`, timestamps | name unique among active; base unit fixed; archived, never deleted        |
+| `variant_attributes` | `id`, `tenant_id`, `name`, `values text[]` (1–50, unique, display order), `archived_at`, timestamps                    | name unique among active; archived, never deleted                         |
+| `stock_items` (+)    | `parent_item_id?` (FK to `stock_items`), `variant_values text[]`                                                       | values exactly when a parent; one variant per combination; one level only |
+| `boms`               | `id`, `tenant_id`, `item_id` (unique), `output_quantity numeric(14,3) > 0`, timestamps                                 | configuration: replaced as a whole, deleted freely                        |
+| `bom_lines`          | `id`, `tenant_id`, `bom_id` (cascade), `item_id`, `quantity numeric(14,3) > 0`                                         | unique per bill and item; never the bill's own item                       |
+
+`stock_document_kind` gains `production` (`PRD-…`, series `inventory.stockProduction`).
+
+### Rules
+
+- **Units.** A receipt line may carry `unitId`: its quantity and cost are in that unit and are converted to the item's
+  unit (`quantity × factor`, 3 decimals; `unitCost ÷ factor`, 4 decimals, half up). The unit's base unit must be the
+  item's unit and the converted quantity must not be zero (`inventory.unit_mismatch`). Stored movements are always in
+  the item's unit.
+- **Variants.** `POST /items/:id/variants` creates one stock item per combination of the picked values (1–3
+  attributes, values in the attribute's order, at most 100), named `Parent · v1 / v2`, in the parent's unit, with
+  optional article numbers `PREFIX-n`. Existing combinations are skipped. The parent must be active, not a variant, and
+  without movements, recipe lines or bills (`inventory.variant_not_allowed`). Once it has active variants it holds no
+  stock: stock documents, recipes and bills refuse it (`inventory.item_has_variants`). Changing an attribute's values
+  never touches existing variants.
+- **Bills of materials.** One per stock item: `outputQuantity` of the item takes the lines' quantities. `PUT` replaces
+  it (the same bill again changes nothing), `DELETE` removes it; both audited (`inventory.bom.updated|deleted`).
+- **Production.** `POST /productions { warehouseId, itemId, quantity, note? }` books one document in one warehouse:
+  each component out at its average cost (bill quantity × quantity ÷ output quantity, 3 decimals; components that
+  round to zero are skipped), then the item in at the components' total value ÷ quantity (4 decimals). Refused like
+  any document that would take a component below zero (`inventory.allowNegativeStock`). One step: no drafts; a
+  correction is an adjustment.
+
+### API (`/api/v1/inventory`)
+
+| Method + path                | Permission                 | Idempotency                 | Body                                                       |
+| ---------------------------- | -------------------------- | --------------------------- | ---------------------------------------------------------- |
+| `GET /units`                 | `inventory.stock.read`     |                             | `?includeArchived=true`                                    |
+| `POST /units`                | `inventory.items.create`   | `completion: 'transaction'` | `{ name, symbol, baseUnit, factor }`                       |
+| `PATCH /units/:id`           | `inventory.items.edit`     | response                    | `{ name?, symbol?, factor?, archived? }`                   |
+| `GET /attributes`            | `inventory.stock.read`     |                             | `?includeArchived=true`                                    |
+| `POST /attributes`           | `inventory.items.create`   | `completion: 'transaction'` | `{ name, values }`                                         |
+| `PATCH /attributes/:id`      | `inventory.items.edit`     | response                    | `{ name?, values?, archived? }`                            |
+| `POST /items/:id/variants`   | `inventory.items.create`   | `completion: 'transaction'` | `{ attributes: [{ attributeId, values }], skuPrefix? }`    |
+| `GET /boms`, `/boms/:itemId` | `inventory.stock.read`     |                             | → bills with item names and units                          |
+| `PUT /boms/:itemId`          | `inventory.recipes.edit`   | response                    | `{ outputQuantity, lines: [{ itemId, quantity }] }` (1–50) |
+| `DELETE /boms/:itemId`       | `inventory.recipes.delete` | response                    | 204                                                        |
+| `POST /productions`          | `inventory.stock.produce`  | `completion: 'transaction'` | `{ warehouseId, itemId, quantity, note? }` → the document  |
+
+`inventory.stock.produce` (location scope, at the warehouse's location): admin, manager, kitchen and bar.
+
+Errors: `inventory.unit_not_found` (404), `inventory.unit_name_taken` (409), `inventory.unit_mismatch` (400),
+`inventory.attribute_not_found` (404), `inventory.attribute_name_taken` (409), `inventory.item_has_variants` (409),
+`inventory.variant_not_allowed` (409), `inventory.too_many_variants` (400), `inventory.bom_not_found` (404),
+`inventory.bom_invalid` (400).
+
+Audit: `inventory.unit.created|updated`, `inventory.variant_attribute.created|updated`, `inventory.bom.updated|deleted`;
+each variant is an `inventory.stock_item.created`; a production order is an `inventory.stock_document.created`.
+
+### Web
+
+Inventory → **Units of Measurement**, **Variant Attributes**, **Variant Products** (items with variants, Generate
+variants), **Bills of Materials** (edit per prepared item) and **Production Order** (make an item in a warehouse, with
+the components and their stock); receipts offer each line's matching units.

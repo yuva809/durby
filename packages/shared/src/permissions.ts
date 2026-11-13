@@ -37,6 +37,8 @@ export const PERMISSIONS = {
   'inventory.stock.receive': { scope: 'location', label: 'inventory.permissions.stockReceive' },
   'inventory.stock.adjust': { scope: 'location', label: 'inventory.permissions.stockAdjust' },
   'inventory.stock.transfer': { scope: 'location', label: 'inventory.permissions.stockTransfer' },
+  // Production orders (ADR 0038): ingredients out, the prepared item in, at the warehouse.
+  'inventory.stock.produce': { scope: 'location', label: 'inventory.permissions.stockProduce' },
   'inventory.warehouses.create': {
     scope: 'location',
     label: 'inventory.permissions.warehousesCreate',
@@ -167,6 +169,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'inventory.stock.receive': 'grant',
     'inventory.stock.adjust': 'grant',
     'inventory.stock.transfer': 'grant',
+    'inventory.stock.produce': 'grant',
     'inventory.warehouses.create': 'grant',
     'inventory.warehouses.edit': 'grant',
     'inventory.warehouses.delete': 'grant',
@@ -220,6 +223,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'inventory.stock.receive': 'grant',
     'inventory.stock.adjust': 'grant',
     'inventory.stock.transfer': 'grant',
+    'inventory.stock.produce': 'grant',
     'inventory.warehouses.create': 'grant',
     'inventory.warehouses.edit': 'grant',
     'inventory.warehouses.delete': 'grant',
@@ -273,6 +277,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'inventory.stock.receive': 'deny',
     'inventory.stock.adjust': 'deny',
     'inventory.stock.transfer': 'deny',
+    'inventory.stock.produce': 'deny',
     'inventory.warehouses.create': 'deny',
     'inventory.warehouses.edit': 'deny',
     'inventory.warehouses.delete': 'deny',
@@ -329,6 +334,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'inventory.stock.receive': 'deny',
     'inventory.stock.adjust': 'deny',
     'inventory.stock.transfer': 'deny',
+    'inventory.stock.produce': 'deny',
     'inventory.warehouses.create': 'deny',
     'inventory.warehouses.edit': 'deny',
     'inventory.warehouses.delete': 'deny',
@@ -383,6 +389,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'inventory.stock.receive': 'deny',
     'inventory.stock.adjust': 'deny',
     'inventory.stock.transfer': 'deny',
+    'inventory.stock.produce': 'deny',
     'inventory.warehouses.create': 'deny',
     'inventory.warehouses.edit': 'deny',
     'inventory.warehouses.delete': 'deny',
@@ -438,6 +445,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'inventory.stock.receive': 'deny',
     'inventory.stock.adjust': 'deny',
     'inventory.stock.transfer': 'deny',
+    'inventory.stock.produce': 'deny',
     'inventory.warehouses.create': 'deny',
     'inventory.warehouses.edit': 'deny',
     'inventory.warehouses.delete': 'deny',
@@ -492,6 +500,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'inventory.stock.receive': 'grant',
     'inventory.stock.adjust': 'grant',
     'inventory.stock.transfer': 'deny',
+    'inventory.stock.produce': 'grant',
     'inventory.warehouses.create': 'deny',
     'inventory.warehouses.edit': 'deny',
     'inventory.warehouses.delete': 'deny',
@@ -546,6 +555,7 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'inventory.stock.receive': 'grant',
     'inventory.stock.adjust': 'grant',
     'inventory.stock.transfer': 'deny',
+    'inventory.stock.produce': 'grant',
     'inventory.warehouses.create': 'deny',
     'inventory.warehouses.edit': 'deny',
     'inventory.warehouses.delete': 'deny',
@@ -594,14 +604,26 @@ export function systemRolePermissions(role: SystemRole): ReadonlySet<PermissionK
  * meant: it covers all three of its replacements. Only resolution reads them; new writes use the registry keys.
  */
 export const LEGACY_PERMISSION_ALIASES: Readonly<Record<string, readonly PermissionKey[]>> = {
-  'catalog.products.manage': ['catalog.products.create', 'catalog.products.edit', 'catalog.products.delete'],
+  'catalog.products.manage': [
+    'catalog.products.create',
+    'catalog.products.edit',
+    'catalog.products.delete',
+  ],
   'inventory.warehouses.manage': [
     'inventory.warehouses.create',
     'inventory.warehouses.edit',
     'inventory.warehouses.delete',
   ],
-  'inventory.items.manage': ['inventory.items.create', 'inventory.items.edit', 'inventory.items.delete'],
-  'inventory.recipes.manage': ['inventory.recipes.create', 'inventory.recipes.edit', 'inventory.recipes.delete'],
+  'inventory.items.manage': [
+    'inventory.items.create',
+    'inventory.items.edit',
+    'inventory.items.delete',
+  ],
+  'inventory.recipes.manage': [
+    'inventory.recipes.create',
+    'inventory.recipes.edit',
+    'inventory.recipes.delete',
+  ],
   'pos.tables.manage': ['pos.tables.create', 'pos.tables.edit', 'pos.tables.delete'],
   'reservations.bookings.manage': [
     'reservations.bookings.create',
@@ -613,7 +635,11 @@ export const LEGACY_PERMISSION_ALIASES: Readonly<Record<string, readonly Permiss
     'reservations.waitlist.edit',
     'reservations.waitlist.delete',
   ],
-  'reservations.setup.manage': ['reservations.setup.create', 'reservations.setup.edit', 'reservations.setup.delete'],
+  'reservations.setup.manage': [
+    'reservations.setup.create',
+    'reservations.setup.edit',
+    'reservations.setup.delete',
+  ],
 };
 
 /** Replaces each legacy key by the keys it stands for; other keys stay as they are, in order, without repeats. */
