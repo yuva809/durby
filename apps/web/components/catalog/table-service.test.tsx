@@ -199,6 +199,33 @@ describe('CatalogPage', () => {
   });
 
   // ADR 0043: Renumber menu gives every active product 1…N after confirming.
+  // ADR 0043: the table lists products by menu number; categories get a drag handle for editors.
+  it('lists products by menu number, and offers category drag handles to editors only', async () => {
+    signedInAs('owner');
+    api({
+      ...catalogAnswers,
+      'GET /api/v1/catalog/products': () =>
+        Response.json({
+          data: [
+            { ...SOUP, menuNumber: '10' },
+            { ...WATER, menuNumber: '2' },
+            { ...SOUP, id: '0190a000-0000-7000-8000-000000000301', name: 'Tea', menuNumber: null },
+          ],
+        }),
+    });
+    render(<CatalogPage />);
+    expect(await productNames()).toEqual(['Water', 'Soup', 'Tea']);
+    expect(screen.getAllByTestId('category-drag').map((h) => h.getAttribute('aria-label'))).toEqual(
+      ['Move Food', 'Move Drinks'],
+    );
+    cleanup();
+    signedInAs('staff');
+    api(catalogAnswers);
+    render(<CatalogPage />);
+    await productNames();
+    expect(screen.queryByTestId('category-drag')).toBeNull();
+  });
+
   it('renumbers the whole menu after confirming, only for editors', async () => {
     signedInAs('owner');
     const writes = api({

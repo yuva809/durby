@@ -383,7 +383,8 @@ const ITEM_NUMBER =
  * or when OCR read a digit as `¢`, `$` or `§`: a wrong number is worse than none.
  */
 /** An item number whose leading zero was read as the letter O (`O4.` is `04.`). */
-const zeroForO = (text: string) => text.replace(/^(\s*)[Oo](?=\d[.)])/, (_, space: string) => `${space}0`);
+const zeroForO = (text: string) =>
+  text.replace(/^(\s*)[Oo](?=\d[.)])/, (_, space: string) => `${space}0`);
 
 export function menuNumberOf(text: string): string | null {
   const match = ITEM_NUMBER.exec(zeroForO(text))?.[0];

@@ -9,6 +9,7 @@ import {
   type ListProductCategoriesQuery,
   type ListProductsQuery,
   type NumberProductsResponse,
+  type OrderCategoriesRequest,
   type RenumberProductsResponse,
   type PrepStation,
   type Product,
@@ -150,6 +151,46 @@ export class CatalogService {
         return categoryResponse(row);
       }),
     );
+  }
+
+  /**
+   * Drag-and-drop order (ADR 0043): the listed categories get positions 0, 10, 20 … in that order. Only categories
+   * whose position changes are written and audited. Answers the active categories in their new order.
+   */
+  async orderCategories(body: OrderCategoriesRequest): Promise<ProductCategory[]> {
+    const { userId } = this.tenantContext.require();
+    const actor = auditActor.user(userId);
+    return this.db.$transaction(async (tx) => {
+      const rows = await tx.productCategory.findMany({
+        where: { id: { in: body.categoryIds } },
+        select: CATEGORY_SELECT,
+      });
+      if (rows.length !== body.categoryIds.length) throw catalogErrors.categoryNotFound();
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      for (const [index, categoryId] of body.categoryIds.entries()) {
+        const current = byId.get(categoryId)!;
+        const sortOrder = index * 10;
+        if (current.sortOrder === sortOrder) continue;
+        const row = await tx.productCategory.update({
+          where: { id: categoryId },
+          data: { sortOrder },
+          select: CATEGORY_SELECT,
+        });
+        await this.audit.record(tx, {
+          action: 'catalog.product_category.updated',
+          actor,
+          entityId: categoryId,
+          before: categorySnapshot(current),
+          after: categorySnapshot(row),
+        });
+      }
+      const ordered = await tx.productCategory.findMany({
+        where: { archivedAt: null },
+        select: CATEGORY_SELECT,
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+      });
+      return ordered.map(categoryResponse);
+    });
   }
 
   /** Products by id, archived ones too, for other modules (inventory recipes, ADR 0028). */

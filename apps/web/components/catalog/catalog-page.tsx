@@ -13,7 +13,25 @@ import {
   CATALOG_NAME_MAX_LENGTH,
   PRODUCT_DESCRIPTION_MAX_LENGTH,
 } from '@durby/shared';
-import { ScanText, Tags } from 'lucide-react';
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, ScanText, Tags } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
@@ -27,17 +45,20 @@ import {
   loadCategories,
   loadProducts,
   numberProducts,
+  orderCategories,
   renumberProducts,
   updateCategory,
   updateProduct,
 } from '../../lib/catalog/api';
 import { marginPercent } from '../../lib/catalog/margin';
+import { byMenuNumber, inOrder } from '../../lib/catalog/menu-order';
 import { loadPrices } from '../../lib/catalog/prices-api';
 import { loadCosts } from '../../lib/inventory/api';
 import { loadLocations } from '../../lib/users/api';
 import { errorLabel } from '../../lib/auth/errors';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
+import { cn } from '../../lib/utils';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -108,6 +129,34 @@ function Catalog({
     categories.status === 'ready' ? categories.data.filter((c) => c.archivedAt === null) : [];
   const numberAction = useActionKey();
   const renumberAction = useActionKey();
+  // Drag-and-drop category order (ADR 0043): shown at once, saved in the background.
+  const orderAction = useActionKey();
+  const [categoryOrder, setCategoryOrder] = useState<string[] | null>(null);
+  const [orderProblem, setOrderProblem] = useState<string | null>(null);
+  const canReorder = canManage && !showArchived;
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const categoryName = (id: string | number) =>
+    categories.status === 'ready'
+      ? (categories.data.find((c) => c.id === String(id))?.name ?? '')
+      : '';
+  const onCategoryDrop = ({ active, over }: DragEndEvent, shown: ProductCategory[]) => {
+    if (!over || active.id === over.id) return;
+    const ids = shown.map((c) => c.id);
+    const next = arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
+    setCategoryOrder(next);
+    setOrderProblem(null);
+    void orderCategories(store, orderAction, next).then((result) => {
+      if (!result.ok) {
+        setCategoryOrder(null);
+        setOrderProblem(t(errorLabel(result.code)));
+        reloadCategories();
+      }
+    });
+  };
   // Active products: Renumber menu gives them 1…N (ADR 0043).
   const active =
     products.status === 'ready' ? products.data.filter((p) => p.archivedAt === null).length : 0;
@@ -240,68 +289,114 @@ function Catalog({
         />
       )}
       <Loaded resource={categories} reload={reloadCategories}>
-        {(categoryList) => (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
-            <section
-              id="categories"
-              className="flex min-w-0 scroll-mt-20 flex-col gap-2"
-              aria-labelledby={`${id}-categories`}
-            >
-              <h2 id={`${id}-categories`} className="text-lg font-medium">
-                {t('catalog.page.categories')}
-              </h2>
-              {categoryList.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {t(canManage ? 'catalog.page.noCategoryHint' : 'catalog.page.emptyCategories')}
-                </p>
-              ) : (
-                <ul className="flex flex-row items-start gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
-                  <li className="shrink-0 lg:shrink">
-                    <Button
-                      variant={filter === null ? 'outline' : 'ghost'}
-                      className="w-full justify-start"
-                      aria-pressed={filter === null}
-                      onClick={() => setFilter(null)}
+        {(loadedCategories) => {
+          const categoryList = inOrder(loadedCategories, categoryOrder);
+          return (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+              <section
+                id="categories"
+                className="flex min-w-0 scroll-mt-20 flex-col gap-2"
+                aria-labelledby={`${id}-categories`}
+              >
+                <h2 id={`${id}-categories`} className="text-lg font-medium">
+                  {t('catalog.page.categories')}
+                </h2>
+                {canReorder && categoryList.length > 1 && (
+                  <p className="text-xs text-muted-foreground">{t('catalog.page.dragHint')}</p>
+                )}
+                <Notice text={orderProblem} tone="error" />
+                {categoryList.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {t(canManage ? 'catalog.page.noCategoryHint' : 'catalog.page.emptyCategories')}
+                  </p>
+                ) : (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={(event) => onCategoryDrop(event, categoryList)}
+                    accessibility={{
+                      screenReaderInstructions: { draggable: t('catalog.scan.dnd.instructions') },
+                      announcements: {
+                        onDragStart: ({ active }) =>
+                          t('catalog.scan.dnd.picked', { name: categoryName(active.id) }),
+                        onDragOver: ({ active, over }) =>
+                          over
+                            ? t('catalog.scan.dnd.over', {
+                                name: categoryName(active.id),
+                                target: categoryName(over.id),
+                              })
+                            : undefined,
+                        onDragEnd: ({ active, over }) =>
+                          over
+                            ? t('catalog.scan.dnd.dropped', {
+                                name: categoryName(active.id),
+                                target: categoryName(over.id),
+                              })
+                            : undefined,
+                        onDragCancel: ({ active }) =>
+                          t('catalog.scan.dnd.cancelled', { name: categoryName(active.id) }),
+                      },
+                    }}
+                  >
+                    <SortableContext
+                      items={categoryList.map((c) => c.id)}
+                      strategy={rectSortingStrategy}
+                      disabled={!canReorder}
                     >
-                      {t('catalog.page.allCategories')}
-                    </Button>
-                  </li>
-                  {categoryList.map((category) => (
-                    <CategoryRow
-                      key={category.id}
-                      category={category}
-                      selected={filter === category.id}
-                      onSelect={() => setFilter(category.id)}
+                      <ul className="flex flex-row items-start gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
+                        <li className="shrink-0 lg:shrink">
+                          <Button
+                            variant={filter === null ? 'outline' : 'ghost'}
+                            className="w-full justify-start"
+                            aria-pressed={filter === null}
+                            onClick={() => setFilter(null)}
+                          >
+                            {t('catalog.page.allCategories')}
+                          </Button>
+                        </li>
+                        {categoryList.map((category) => (
+                          <CategoryRow
+                            key={category.id}
+                            category={category}
+                            selected={filter === category.id}
+                            onSelect={() => setFilter(category.id)}
+                            canManage={canManage}
+                            picked={pickedCategories.has(category.id)}
+                            onPick={(on) =>
+                              toggle(pickedCategories, setPickedCategories)([category.id], on)
+                            }
+                            onDone={reload}
+                            draggable={canReorder}
+                          />
+                        ))}
+                      </ul>
+                    </SortableContext>
+                  </DndContext>
+                )}
+              </section>
+              <section className="flex min-w-0 flex-col gap-2" aria-label={t('catalog.nav.title')}>
+                <Loaded resource={products} reload={reloadProducts}>
+                  {(productList) => (
+                    <ProductTable
+                      // By menu number: 1, 2, 3 …, then other numbers, then unnumbered (ADR 0043).
+                      products={byMenuNumber(
+                        productList.filter((p) => filter === null || p.categoryId === filter),
+                      )}
+                      categories={categoryList}
                       canManage={canManage}
-                      picked={pickedCategories.has(category.id)}
-                      onPick={(on) =>
-                        toggle(pickedCategories, setPickedCategories)([category.id], on)
-                      }
+                      picked={pickedProducts}
+                      onPick={toggle(pickedProducts, setPickedProducts)}
+                      costs={costs.status === 'ready' ? costs.data : []}
+                      canReadCosts={canReadCosts}
+                      priceOf={priceOf}
                       onDone={reload}
                     />
-                  ))}
-                </ul>
-              )}
-            </section>
-            <section className="flex min-w-0 flex-col gap-2" aria-label={t('catalog.nav.title')}>
-              <Loaded resource={products} reload={reloadProducts}>
-                {(productList) => (
-                  <ProductTable
-                    products={productList.filter((p) => filter === null || p.categoryId === filter)}
-                    categories={categoryList}
-                    canManage={canManage}
-                    picked={pickedProducts}
-                    onPick={toggle(pickedProducts, setPickedProducts)}
-                    costs={costs.status === 'ready' ? costs.data : []}
-                    canReadCosts={canReadCosts}
-                    priceOf={priceOf}
-                    onDone={reload}
-                  />
-                )}
-              </Loaded>
-            </section>
-          </div>
-        )}
+                  )}
+                </Loaded>
+              </section>
+            </div>
+          );
+        }}
       </Loaded>
     </div>
   );
@@ -315,6 +410,7 @@ function CategoryRow({
   picked,
   onPick,
   onDone,
+  draggable,
 }: {
   category: ProductCategory;
   selected: boolean;
@@ -323,15 +419,38 @@ function CategoryRow({
   picked: boolean;
   onPick: (on: boolean) => void;
   onDone: () => void;
+  /** Its handle drags it to a new place in the menu (ADR 0043). */
+  draggable: boolean;
 }) {
   const t = useT();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: category.id,
+    disabled: !draggable,
+  });
   return (
     <li
-      className="flex shrink-0 flex-col gap-1 lg:shrink"
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn(
+        'flex shrink-0 flex-col gap-1 rounded-md lg:shrink',
+        isDragging && 'relative z-10 bg-card shadow-md',
+      )}
       data-testid="category-row"
       data-name={category.name}
     >
       <div className="flex items-center gap-1">
+        {draggable && (
+          <button
+            type="button"
+            className="flex size-11 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground hover:bg-muted active:cursor-grabbing"
+            aria-label={t('catalog.page.dragCategory', { name: category.name })}
+            data-testid="category-drag"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical aria-hidden className="size-4" />
+          </button>
+        )}
         {canManage && (
           <Checkbox
             checked={picked}

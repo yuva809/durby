@@ -309,5 +309,7 @@
   "catalog.page.renumber": "Karte neu nummerieren",
   "catalog.page.renumberTitle": "Alle {count} Produkte ab 1 neu nummerieren?",
   "catalog.page.renumberDescription": "Jedes aktive Produkt erhält 1, 2, 3 … in der Reihenfolge der Karte (Kategorien, dann Produkte) statt seiner bisherigen Nummer. Gedruckte Karten und die Eingabe an der Kasse ändern sich.",
-  "catalog.page.renumberConfirm": "Neu nummerieren"
+  "catalog.page.renumberConfirm": "Neu nummerieren",
+  "catalog.page.dragHint": "Ziehen Sie Kategorien am Griff, um die Reihenfolge der Karte festzulegen. Neu nummerieren folgt ihr.",
+  "catalog.page.dragCategory": "{name} verschieben"
 }

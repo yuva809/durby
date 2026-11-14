@@ -20,6 +20,8 @@ import {
   type ImportProductsRequest,
   importProductsRequestSchema,
   type NumberProductsResponse,
+  type OrderCategoriesRequest,
+  orderCategoriesRequestSchema,
   type RenumberProductsResponse,
   type ImportProductsResponse,
   createProductCategoryRequestSchema,
@@ -118,6 +120,17 @@ export class CatalogController {
     @Body(new ZodBody(productBulkRequestSchema)) body: ProductBulkRequest,
   ): Promise<ProductBulkResponse> {
     return this.bulk.products(body);
+  }
+
+  /** Drag-and-drop order (ADR 0043): sets positions, so a replay writes the same order again. */
+  @RequirePermission('catalog.products.edit')
+  @Idempotent()
+  @Post('categories/order')
+  @HttpCode(HttpStatus.OK)
+  async orderCategories(
+    @Body(new ZodBody(orderCategoriesRequestSchema)) body: OrderCategoriesRequest,
+  ): Promise<ProductCategoryListResponse> {
+    return { data: await this.catalog.orderCategories(body) };
   }
 
   @RequirePermission('catalog.products.edit')

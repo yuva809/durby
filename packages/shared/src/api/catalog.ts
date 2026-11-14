@@ -70,6 +70,21 @@ export const updateProductCategoryRequestSchema = z
     message: 'Nothing to update',
   });
 
+/**
+ * Drag-and-drop order of the categories (ADR 0043): the active categories' ids, first to last. Each gets position
+ * 0, 10, 20 … in that order; send them all, since unlisted ones keep their position.
+ */
+export const orderCategoriesRequestSchema = z.strictObject({
+  categoryIds: z
+    .array(z.uuid())
+    .min(1)
+    .max(1000)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'A category can be listed only once',
+    }),
+});
+export type OrderCategoriesRequest = z.infer<typeof orderCategoriesRequestSchema>;
+
 const description = z.string().trim().max(PRODUCT_DESCRIPTION_MAX_LENGTH);
 
 export const createProductRequestSchema = z.strictObject({

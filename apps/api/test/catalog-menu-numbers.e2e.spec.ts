@@ -279,6 +279,43 @@ describe('catalog menu numbers', () => {
     expect(await numbers(b.token)).toEqual({ Pizza: '50' });
   });
 
+  // ADR 0043: drag-and-drop category order, which Renumber menu follows.
+  it('orders categories by drag and drop, and renumbers in that order', async () => {
+    const { org, token } = await orgWith('owner');
+    const starters = await category(token, 'Starters', 0);
+    const mains = await category(token, 'Mains', 1);
+    const drinks = await category(token, 'Drinks', 2);
+    await product(token, starters, 'Samosa');
+    await product(token, mains, 'Curry');
+    await product(token, drinks, 'Lassi');
+
+    const res = await send(token, 'post', 'categories/order', {
+      categoryIds: [drinks, starters, mains],
+    }).expect(200);
+    const ordered = productCategoryListResponseSchema.parse(res.body).data;
+    expect(ordered.map((c) => [c.name, c.sortOrder])).toEqual([
+      ['Drinks', 0],
+      ['Starters', 10],
+      ['Mains', 20],
+    ]);
+    await send(token, 'post', 'products/renumber').expect(200);
+    expect(await numbers(token)).toEqual({ Lassi: '1', Samosa: '2', Curry: '3' });
+
+    // The same order again changes nothing; an unknown id is 404; staff can't reorder.
+    await send(token, 'post', 'categories/order', {
+      categoryIds: [drinks, starters, mains],
+    }).expect(200);
+    const audited = await seed.as(org.id, (db) =>
+      db.auditLog.count({ where: { action: 'catalog.product_category.updated' } }),
+    );
+    expect(audited).toBe(3);
+    await send(token, 'post', 'categories/order', {
+      categoryIds: [drinks, '0190a000-0000-7000-8000-00000000dead'],
+    }).expect(404);
+    const staff = await memberToken(org, 'staff');
+    await send(staff, 'post', 'categories/order', { categoryIds: [mains] }).expect(403);
+  });
+
   it('lets two organizations use the same number', async () => {
     const a = await orgWith('owner');
     const b = await orgWith('owner');

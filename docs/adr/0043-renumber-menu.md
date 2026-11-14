@@ -23,6 +23,11 @@ dishes get `106`, `107`). Customers want plain `1, 2, 3 …` across the menu, fo
    `catalog.product.updated` audit entry. The response (`{ renumbered }`) is stored with the idempotency key.
 4. **Explicit.** No automatic renumbering on create or reorder: printed menus and what staff type at the till would
    change unannounced. The web asks for confirmation and says so.
+5. **Drag-and-drop category order.** `POST /catalog/categories/order` saves the order editors drag (positions
+   `0, 10, 20 …`, one transaction, changed ones audited); Renumber menu then follows it. `@Idempotent()`: it sets
+   positions, so a replay writes the same order.
+6. **Product table by number.** The catalog page lists products by menu number (1, 2, 3 …, then letter codes, then
+   unnumbered), so the list matches what staff type at the till.
 
 ## Consequences
 

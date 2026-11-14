@@ -106,6 +106,17 @@ export const numberProducts = (
     numberProductsResponseSchema,
   );
 
+/** Saves the drag-and-drop order of the categories (ADR 0043); answers them in the new order. */
+export const orderCategories = (store: Api, action: ActionKey, categoryIds: string[]) =>
+  write(
+    store,
+    action,
+    '/api/v1/catalog/categories/order',
+    'POST',
+    { categoryIds },
+    list(productCategoryListResponseSchema),
+  );
+
 /** Renumber the whole menu 1…N in menu order (ADR 0043). */
 export const renumberProducts = (
   store: Api,
