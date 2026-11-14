@@ -47,6 +47,17 @@ describe('buildThemeSnapshot / themeForHost', () => {
     expect(snapshot.size).toBe(rows.length);
   });
 
+  // ADR 0044: the sidebar layout comes from the theme; anything unknown is Durby's menu.
+  it('carries the sidebar layout, unknown or missing values as default', () => {
+    expect(themeForHost(snapshot, 'partner-demo.localhost').navLayout).toBe('default');
+    const s = buildThemeSnapshot([
+      { hostname: 'ops.example.com', partnerId: 'p4', theme: { ...demo, navLayout: 'operations' } },
+      { hostname: 'odd.example.com', partnerId: 'p5', theme: { ...demo, navLayout: 'fancy' } },
+    ]);
+    expect(themeForHost(s, 'ops.example.com').navLayout).toBe('operations');
+    expect(themeForHost(s, 'odd.example.com').navLayout).toBe('default');
+  });
+
   it('reports a contrast fallback once per partner and keeps the primary', () => {
     const onFallback = vi.fn();
     const bad = { ...demo, colorInk: '#999999', colorPaper: '#ffffff' };

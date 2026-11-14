@@ -57,9 +57,25 @@ describe('GET /api/v1/theme', () => {
     expect(res.body).toEqual(DEFAULT_THEME);
   });
 
+  // ADR 0044: AsiaMight's migration picks the operations sidebar; other partners keep the default.
+  it('returns the partner sidebar layout', async () => {
+    expect((await theme({ Host: 'app.asiamight.site' })).body).toMatchObject({
+      productName: 'AsiaMight',
+      navLayout: 'operations',
+    });
+    expect((await theme({ Host: 'partner-demo.localhost' })).body).toMatchObject({
+      navLayout: 'default',
+    });
+  });
+
   it('carries no partner or tenant identifiers', async () => {
     const res = await theme({ Host: 'partner-demo.localhost' });
-    expect(Object.keys(res.body as object).sort()).toEqual(['logoUrl', 'productName', 'tokens']);
+    expect(Object.keys(res.body as object).sort()).toEqual([
+      'logoUrl',
+      'navLayout',
+      'productName',
+      'tokens',
+    ]);
     expect(JSON.stringify(res.body)).not.toMatch(
       /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
     );

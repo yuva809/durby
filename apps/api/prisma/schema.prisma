@@ -48,6 +48,8 @@ model PartnerTheme {
   colorPrimary String   @map("color_primary")
   colorInk     String?  @map("color_ink")
   colorPaper   String?  @map("color_paper")
+  /// Sidebar layout (ADR 0044): `default` or `operations` (CHECK).
+  navLayout    String   @default("default") @map("nav_layout")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   partner      Partner  @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)

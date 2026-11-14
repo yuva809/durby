@@ -88,10 +88,10 @@ Dark mode is not part of this step.
 
 ### Model (platform tables, not tenant-scoped)
 
-| Table             | Columns                                                                                                                 | Notes                                       |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| `partner_themes`  | `partner_id` (PK, FK partners), `product_name`, `logo_path?`, `color_primary`, `color_ink?`, `color_paper?`, timestamps | 1:1 with partners; null ink/paper = default |
-| `partner_domains` | `id`, `partner_id` (FK partners), `hostname` (unique), `created_at`                                                     | one partner, many hostnames                 |
+| Table             | Columns                                                                                                                               | Notes                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `partner_themes`  | `partner_id` (PK, FK partners), `product_name`, `logo_path?`, `color_primary`, `color_ink?`, `color_paper?`, `nav_layout`, timestamps | 1:1 with partners; null ink/paper = default; `nav_layout` `default` or `operations` (ADR 0044) |
+| `partner_domains` | `id`, `partner_id` (FK partners), `hostname` (unique), `created_at`                                                                   | one partner, many hostnames                                                                    |
 
 - **Read-only for the app** (`REVOKE INSERT, UPDATE, DELETE, TRUNCATE` from `durby_app`), like `plans`. Themes and
   domains change only through reviewed migrations (ADR 0015 §3). A partner without a theme row uses the default theme.
@@ -112,7 +112,7 @@ Dark mode is not part of this step.
   `normalizeHost` lowercases, strips a port and a trailing dot, and checks the hostname shape; IP literals, empty,
   oversized or malformed hosts resolve to the default theme. Never an error: the endpoint always answers 200.
 - **Response** (`themeResponseSchema`): `{ productName, logoUrl: string | null, tokens: { background, foreground,
-card, muted, mutedForeground, border, input, primary, primaryForeground, primaryText, ring, destructive } }`. No
+card, muted, mutedForeground, border, input, primary, primaryForeground, primaryText, ring, destructive }, navLayout }`. No
   partner id, slug or name, and no tenant data.
 - **Cache:** the service loads **all** partner domains with their themes in one query into an immutable snapshot
   (`Map<hostname, ThemeResponse>`), refreshed every 5 minutes (one refresh at a time; on a failed refresh the old
@@ -209,6 +209,11 @@ interface NavItem {
   series, Labels, Plan, each with its former permission rule; `/settings` opens the first tab the user may
   see.
 - Labels via `useT()`, so organization and partner overrides apply (e.g. "Stock" instead of "Inventory").
+- **Layouts** (`lib/nav/layouts.ts`, ADR 0044): the theme's `navLayout` picks the sidebar. `default` is the menu above.
+  `operations` (AsiaMight) groups it as Business operations (Inventory, Product Category `/catalog/categories`,
+  Order History, Picking, Branches `/branches`, Delivery Tracking), Administration & reports (Audit log, Manage
+  Staff, Settings) and Tools & utilities (Import Data, Feedback). Items keep their feature and permission; Order
+  History, Picking, Delivery Tracking, Import Data and Feedback are `planned` until their step ships.
 
 ### Labels
 

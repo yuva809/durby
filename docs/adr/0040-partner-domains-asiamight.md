@@ -28,7 +28,7 @@ only knew `STAGING_DOMAIN` and `STAGING_DEMO_DOMAIN`.
 3. **Modules by plan.** AsiaMight's organization uses the existing `inventory` plan: Inventory (with Products and
    Product Category from Catalog), Manage Staff, the audit log and Settings. No new plan.
 
-4. **Layout = branding and menu.** The sidebar shows only the modules the plan and the user's role allow; product name,
+4. **Layout = branding and menu.** (Menu shape changed by ADR 0044: a theme can pick the `operations` layout.) The sidebar shows only the modules the plan and the user's role allow; product name,
    colour and logo come from the theme; wording can be changed with partner label overrides (`*.nav.*` etc.). No
    per-partner screens or menu order.
 

@@ -157,7 +157,22 @@ export const DEFAULT_THEME = {
   productName: 'Durby',
   logoUrl: null,
   tokens: DEFAULT_TOKENS,
-} as const satisfies { productName: string; logoUrl: string | null; tokens: ThemeTokens };
+  navLayout: 'default',
+} as const satisfies {
+  productName: string;
+  logoUrl: string | null;
+  tokens: ThemeTokens;
+  navLayout: NavLayout;
+};
+
+/**
+ * Sidebar layouts a partner theme can pick (ADR 0044): `default` is Durby's menu, `operations` the
+ * grouped menu of a distribution business (Business operations, Administration, Tools). Same shape as
+ * `partner_themes_nav_layout_check`.
+ */
+export const NAV_LAYOUTS = ['default', 'operations'] as const;
+
+export type NavLayout = (typeof NAV_LAYOUTS)[number];
 
 const HOST_LABEL = '[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?';
 /** Same shape as the `partner_domains_hostname_check` constraint. */

@@ -633,7 +633,13 @@ function ProductTable({
   );
 }
 
-function ArchiveCategory({ category, onDone }: { category: ProductCategory; onDone: () => void }) {
+export function ArchiveCategory({
+  category,
+  onDone,
+}: {
+  category: ProductCategory;
+  onDone: () => void;
+}) {
   const t = useT();
   const { store } = useAuth();
   const action = useActionKey();
@@ -671,8 +677,14 @@ function ArchiveProduct({ product, onDone }: { product: Product; onDone: () => v
   );
 }
 
-/** Create (no `category`) or edit a category. */
-function CategoryDialog({ category, onDone }: { category?: ProductCategory; onDone: () => void }) {
+/** Create (no `category`) or edit a category. Also used by /catalog/categories. */
+export function CategoryDialog({
+  category,
+  onDone,
+}: {
+  category?: ProductCategory;
+  onDone: () => void;
+}) {
   const t = useT();
   const { store } = useAuth();
   const action = useActionKey();

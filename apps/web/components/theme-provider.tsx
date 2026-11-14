@@ -1,9 +1,10 @@
 'use client';
 
-import type { ThemeResponse } from '@durby/shared';
+import type { NavLayout, ThemeResponse } from '@durby/shared';
 import { createContext, type ReactNode, useContext } from 'react';
 
-export type Brand = Pick<ThemeResponse, 'productName' | 'logoUrl'>;
+/** `navLayout`: the sidebar layout (ADR 0044); absent means `default`. */
+export type Brand = Pick<ThemeResponse, 'productName' | 'logoUrl'> & { navLayout?: NavLayout };
 
 const BrandContext = createContext<Brand | null>(null);
 
@@ -19,4 +20,9 @@ export function useBrand(): Brand {
   const brand = useContext(BrandContext);
   if (!brand) throw new Error('useBrand needs <BrandProvider>');
   return brand;
+}
+
+/** The sidebar layout of the request's partner (ADR 0044); `default` outside a BrandProvider. */
+export function useNavLayout(): NavLayout {
+  return useContext(BrandContext)?.navLayout ?? 'default';
 }

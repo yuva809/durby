@@ -792,5 +792,15 @@
   "platform.auditPage.wholeOrganization": "Ganze Organisation",
   "platform.auditPage.detailSet": "Felder: {fields}",
   "platform.auditPage.detailChanged": "Geändert: {fields}",
-  "platform.auditPage.detailDeleted": "Gelöscht"
+  "platform.auditPage.detailDeleted": "Gelöscht",
+  "platform.nav.groups.operations": "Geschäftsbetrieb",
+  "platform.nav.groups.administration": "Verwaltung & Berichte",
+  "platform.nav.groups.tools": "Werkzeuge",
+  "platform.nav.productCategories": "Produktkategorien",
+  "platform.nav.orderHistory": "Bestellverlauf",
+  "platform.nav.picking": "Kommissionierung",
+  "platform.nav.branches": "Filialen",
+  "platform.nav.deliveries": "Lieferverfolgung",
+  "platform.nav.importData": "Daten importieren",
+  "platform.nav.feedback": "Feedback"
 }
