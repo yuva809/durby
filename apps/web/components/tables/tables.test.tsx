@@ -12,8 +12,11 @@ vi.mock('../../app/labels-provider', async () => (await import('../../test/mocks
 vi.mock('next/navigation', async () => (await import('../../test/mocks')).navigationMock());
 
 // jsdom has no pointer capture; the floor plan captures the pointer while a table is dragged.
-Element.prototype.setPointerCapture ??= () => undefined;
-Element.prototype.releasePointerCapture ??= () => undefined;
+for (const name of ['setPointerCapture', 'releasePointerCapture'] as const) {
+  if (!(name in Element.prototype)) {
+    Object.defineProperty(Element.prototype, name, { value: () => undefined, configurable: true });
+  }
+}
 
 beforeEach(resetMocks);
 afterEach(cleanup);

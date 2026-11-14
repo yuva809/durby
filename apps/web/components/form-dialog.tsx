@@ -50,10 +50,16 @@ export function FormDialog({
   onOpen,
   submit,
   onDone,
+  submitLabel,
+  wide,
   children,
 }: {
   trigger: string;
   triggerVariant: 'default' | 'outline' | 'ghost';
+  /** The submit button's text when "Save" doesn't say what happens (e.g. "Create bill"). */
+  submitLabel?: string;
+  /** A wider dialog for lists (the split bill). */
+  wide?: boolean;
   /** An icon-only trigger; `trigger` becomes its accessible name. */
   triggerIcon?: ReactNode;
   triggerClassName?: string;
@@ -113,7 +119,11 @@ export function FormDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent closeLabel={t('platform.common.close')} aria-describedby={undefined}>
+      <DialogContent
+        closeLabel={t('platform.common.close')}
+        aria-describedby={undefined}
+        className={wide ? 'sm:max-w-xl' : undefined}
+      >
         <DialogTitle>{title}</DialogTitle>
         <form className="flex flex-col gap-4" onSubmit={(e) => void onSubmit(e)} noValidate>
           {children}
@@ -123,7 +133,7 @@ export function FormDialog({
               {t('platform.common.cancel')}
             </Button>
             <Button type="submit" disabled={busy} data-testid="form-save">
-              {t('platform.common.save')}
+              {submitLabel ?? t('platform.common.save')}
             </Button>
           </DialogFooter>
         </form>
