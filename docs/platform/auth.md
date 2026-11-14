@@ -146,6 +146,14 @@ during service. There is no renewal without the password.
 Active organization on login: `last_organization_id` if the user is still a member, else the first organization by
 name, else `null`. On refresh the membership is re-checked; if it is gone, the new token has `org: null`.
 
+**Organizations by site** (ADR 0042): one account can belong to organizations of several partners, and each site
+offers only its own. On a partner's own domain (a `partner_domains` row for the request's host): that partner's
+organizations. On any other host (the main site, `app.durby.tech`): every organization except those of partners
+served on a domain of their own (a partner domain in `WEB_ORIGINS`). Login, refresh, `/me` and `/switch-organization`
+apply it: the list shows only the site's organizations, login opens the last used one among them (else the first), a
+refreshed session holding another site's organization moves to this site's, and switching to another site's
+organization answers `403 auth.not_a_member`. A user with none on a site gets `activeOrganizationId: null`.
+
 ### Error codes
 
 | Code                       | Status | When                                                                                       |
