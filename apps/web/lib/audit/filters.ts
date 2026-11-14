@@ -1,6 +1,7 @@
 import {
   addDays,
   AUDIT_ACTION_KEYS,
+  AUDIT_MODULES,
   AUDIT_ENTITY_TYPES,
   type AuditAction,
   type AuditEntityType,
@@ -17,11 +18,19 @@ export interface AuditFilters {
   entityType?: AuditEntityType;
   /** A user id (actorUserId). */
   actor?: string;
+  /** An action's module (`inventory`, `pos`, …). */
+  module?: string;
+  /** A location (branch) id: entries whose record is there. */
+  location?: string;
+  /** Search text, matched in the page against record, person, email and detail (not sent to the api). */
+  q?: string;
   /** First day, inclusive. */
   from?: string;
   /** Last day, inclusive. */
   to?: string;
 }
+
+const SEARCH_MAX_LENGTH = 100;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -48,6 +57,12 @@ export function filtersFromParams(params: URLSearchParams): AuditFilters {
   }
   const actor = params.get('actor');
   if (actor && UUID.test(actor)) filters.actor = actor.toLowerCase();
+  const moduleKey = params.get('module');
+  if (moduleKey && AUDIT_MODULES.includes(moduleKey)) filters.module = moduleKey;
+  const location = params.get('location');
+  if (location && UUID.test(location)) filters.location = location.toLowerCase();
+  const q = params.get('q')?.trim();
+  if (q) filters.q = q.slice(0, SEARCH_MAX_LENGTH);
   const from = params.get('from');
   if (from && isDay(from)) filters.from = from;
   const to = params.get('to');
@@ -58,7 +73,16 @@ export function filtersFromParams(params: URLSearchParams): AuditFilters {
 /** The URL query of `filters`, in a stable order; empty filters are left out. */
 export function paramsFromFilters(filters: AuditFilters): URLSearchParams {
   const params = new URLSearchParams();
-  for (const name of ['action', 'entityType', 'actor', 'from', 'to'] as const) {
+  for (const name of [
+    'action',
+    'entityType',
+    'actor',
+    'module',
+    'location',
+    'q',
+    'from',
+    'to',
+  ] as const) {
     const value = filters[name];
     if (value) params.set(name, value);
   }
@@ -81,6 +105,8 @@ export function apiQuery(filters: AuditFilters, timeZone: string): URLSearchPara
   if (filters.action) query.set('action', filters.action);
   if (filters.entityType) query.set('entityType', filters.entityType);
   if (filters.actor) query.set('actorUserId', filters.actor);
+  if (filters.module) query.set('module', filters.module);
+  if (filters.location) query.set('locationId', filters.location);
   if (filters.from) query.set('from', dayStart(filters.from, timeZone));
   if (filters.to) query.set('to', dayStart(nextDay(filters.to), timeZone));
   return query;

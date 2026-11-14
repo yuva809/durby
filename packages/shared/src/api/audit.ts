@@ -6,6 +6,14 @@ import { AUDIT_ACTION_KEYS, AUDIT_ENTITY_TYPES, AUDIT_SYSTEM_ACTOR_KEYS } from '
 export const AUDIT_PAGE_DEFAULT_LIMIT = 50;
 export const AUDIT_PAGE_MAX_LIMIT = 200;
 
+/** The modules actions belong to: an action key's first segment (`inventory.unit.created` → `inventory`). */
+export const AUDIT_MODULES: readonly string[] = [
+  ...new Set(AUDIT_ACTION_KEYS.map((action) => action.split('.')[0]!)),
+];
+
+/** An action's module. */
+export const auditModuleOf = (action: string): string => action.split('.')[0] ?? '';
+
 /** `?action=a` arrives as a string, `?action=a&action=b` as an array. */
 const oneOrMany = <T extends z.ZodType>(item: T) =>
   z.preprocess(
@@ -19,6 +27,13 @@ export const auditLogQuerySchema = z
     entityType: z.enum(AUDIT_ENTITY_TYPES).optional(),
     entityId: z.uuid().optional(),
     actorUserId: z.uuid().optional(),
+    /** Only actions of this module (the action key's first segment), e.g. `inventory`. */
+    module: z
+      .string()
+      .refine((value) => AUDIT_MODULES.includes(value), { message: 'Unknown module' })
+      .optional(),
+    /** Only entries whose record is at this location (`locationId` in the before or after snapshot). */
+    locationId: z.uuid().optional(),
     /** Inclusive lower bound on created_at. */
     from: z.iso.datetime({ offset: true }).optional(),
     /** Exclusive upper bound on created_at. */

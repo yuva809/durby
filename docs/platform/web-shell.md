@@ -480,9 +480,15 @@ Route `/audit` (`/settings/audit` redirects there, filters kept), nav item `plat
 
 - `GET /audit-logs`, newest first, 50 per page; **Load more** fetches `meta.nextCursor` and appends. Changing a
   filter starts over. `audit.cursor_invalid` (a stale link) starts over from the first page.
-- Each entry: **who** (the user's email, or the system actor's label, e.g. "Command line: create admin"), **what**
-  (the action's label), **when** (in the organization's `timezone` setting, from `GET /settings`; if that is denied
-  or fails, the registry default, like the settings page), and the entity type.
+- A table, one row per entry (cards below 1024 px): **When** (`YYYY-MM-DD` and the time, in the organization's
+  `timezone` setting, from `GET /settings`; if that is denied or fails, the registry default), **What** (the action's
+  label, its module, and one line: "Fields: …" on a create, "Changed: …" on an update, "Deleted"), **Record** (the
+  snapshot's name, number, email or symbol, else —), **By** (the member's name, email and role from `GET /staff` when
+  readable, else the user's email; system actors by label) and **Where** (the location in the snapshot, else "Whole
+  organization"). The row's chevron opens the diff and details below it.
+- **Export CSV** fetches every page of the current filters (200 per request, newest 5,000 at most, with a note when
+  cut), applies the search, and downloads When, What, Module, Detail, Record, By, Email, Role, Where, IP and request
+  id (UTF-8 with BOM; cells starting with `= + - @` are prefixed with `'` against formula injection).
 - **Diff** of the allow-listed snapshot fields (`AUDIT_SNAPSHOT_FIELDS`, now in `packages/shared`): one row per
   field with its label (`platform.audit.fields.<camelCaseField>`), the value before and after; changed rows are
   marked (text and color, not color alone). A create shows only "after", a delete only "before". Values are made
@@ -494,10 +500,14 @@ Route `/audit` (`/settings/audit` redirects there, filters kept), nav item `plat
 
 ### Filters (kept in the URL)
 
-`?action=<key>&entityType=<type>&actor=<userId>&from=YYYY-MM-DD&to=YYYY-MM-DD`, so a filtered view can be shared or
-reloaded; invalid values in the URL are ignored (unknown keys, malformed ids or dates).
+`?action=<key>&entityType=<type>&actor=<userId>&module=<module>&location=<id>&q=<text>&from=YYYY-MM-DD&to=YYYY-MM-DD`,
+so a filtered view can be shared or reloaded; invalid values in the URL are ignored (unknown keys, malformed ids or
+dates). Filters apply as soon as they change (one row: search, module, record, action, branch, from, to; Clear).
 
-- **Action** (grouped by entity type) and **entity type**: selects from the registries.
+- **Search** matches record, person, email, role, detail, action, module and place in the **loaded** entries (it is
+  not sent to the api; a note says so while more pages exist). Typing never reloads.
+- **Module** (`module`) and **branch** (`locationId`, the record's location) are api filters over the whole log.
+- **Action** (narrowed to the chosen module and record type) and **record type**: selects from the registries.
 - **Actor**: the members (`GET /members`, if readable) or "only this actor" on an entry (works for former members
   too). The api filters by `actorUserId`.
 - **Date range** in the organization's time zone: `from` is the start of that day, `to` the start of the day after

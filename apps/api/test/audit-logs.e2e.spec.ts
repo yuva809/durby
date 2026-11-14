@@ -127,6 +127,36 @@ describe('audit logs API', () => {
     expect(ids(await list(adminA, { from: '2000-01-01T00:00:00Z' }))).toHaveLength(6);
   });
 
+  // The audit page's module and branch filters.
+  it('filters by module and by the location in either snapshot', async () => {
+    const org = await seed.org('Modules');
+    const admin = await tokenAs(org, org.roles.admin);
+    const [l1, l2] = org.locations;
+    const table = (locationId: string, before: boolean) =>
+      seed.as(org.id, (db) =>
+        db.auditLog.create({
+          data: {
+            tenantId: org.id,
+            actorType: 'system',
+            actorSystem: 'cli.create_admin',
+            action: before ? 'pos.dining_table.updated' : 'pos.dining_table.created',
+            entityType: 'dining_table',
+            entityId: uuidv7(),
+            ...(before && { before: { locationId } }),
+            after: { locationId, name: 'T1' },
+          },
+        }),
+      );
+    await table(l1, false);
+    await table(l2, true);
+    await write(org, 'platform.role.created', uuidv7());
+    expect(ids(await list(admin, { module: 'pos' }))).toHaveLength(2);
+    expect(ids(await list(admin, { module: 'platform' }))).toHaveLength(1);
+    expect(ids(await list(admin, { locationId: l1 }))).toHaveLength(1);
+    expect(ids(await list(admin, { module: 'pos', locationId: l2 }))).toHaveLength(1);
+    await list(admin, { module: 'billingz' }).expect(400);
+  });
+
   it('rejects malformed queries and cursors', async () => {
     const bad = await list(adminA, { action: 'platform.role.renamed' }).expect(400);
     expect((bad.body as { code: string }).code).toBe('validation.failed');

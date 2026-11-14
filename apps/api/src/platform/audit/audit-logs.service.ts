@@ -59,6 +59,21 @@ export class AuditLogsService {
         ...(query.entityType && { entityType: query.entityType }),
         ...(query.entityId && { entityId: query.entityId }),
         ...(query.actorUserId && { actorUserId: query.actorUserId }),
+        // Module and branch (the audit page's filters): the action's prefix, and the record's location in either
+        // snapshot (snapshots carry `locationId` for location-bound records).
+        AND: [
+          ...(query.module ? [{ action: { startsWith: `${query.module}.` } }] : []),
+          ...(query.locationId
+            ? [
+                {
+                  OR: [
+                    { after: { path: ['locationId'], equals: query.locationId } },
+                    { before: { path: ['locationId'], equals: query.locationId } },
+                  ],
+                },
+              ]
+            : []),
+        ],
         ...((query.from ?? query.to) !== undefined && {
           createdAt: {
             ...(query.from && { gte: new Date(query.from) }),
