@@ -20,6 +20,9 @@ import {
   type ImportProductsRequest,
   importProductsRequestSchema,
   type NumberProductsResponse,
+  type OrderCategoriesRequest,
+  orderCategoriesRequestSchema,
+  type RenumberProductsResponse,
   type ImportProductsResponse,
   createProductCategoryRequestSchema,
   type CreateProductCategoryRequest,
@@ -119,6 +122,17 @@ export class CatalogController {
     return this.bulk.products(body);
   }
 
+  /** Drag-and-drop order (ADR 0043): sets positions, so a replay writes the same order again. */
+  @RequirePermission('catalog.products.edit')
+  @Idempotent()
+  @Post('categories/order')
+  @HttpCode(HttpStatus.OK)
+  async orderCategories(
+    @Body(new ZodBody(orderCategoriesRequestSchema)) body: OrderCategoriesRequest,
+  ): Promise<ProductCategoryListResponse> {
+    return { data: await this.catalog.orderCategories(body) };
+  }
+
   @RequirePermission('catalog.products.edit')
   @Idempotent({ completion: 'transaction' })
   @Post('categories/bulk')
@@ -147,6 +161,15 @@ export class CatalogController {
   @HttpCode(HttpStatus.OK)
   numberProducts(): Promise<NumberProductsResponse> {
     return this.catalog.numberProducts();
+  }
+
+  /** Renumber the menu 1…N (ADR 0043): changes existing numbers, so edit; many writes, so the result goes with the key. */
+  @RequirePermission('catalog.products.edit')
+  @Idempotent({ completion: 'transaction' })
+  @Post('products/renumber')
+  @HttpCode(HttpStatus.OK)
+  renumberProducts(): Promise<RenumberProductsResponse> {
+    return this.catalog.renumberProducts();
   }
 
   @RequirePermission('catalog.products.edit')

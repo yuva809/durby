@@ -352,8 +352,7 @@ export function suggest(board: Board, context: SuggestContext, base: Lexicon): S
           (c) =>
             c !== category &&
             !doubtful(c) &&
-            (dishGroup(c.name) === dominant ||
-              fold(c.name) === fold(context.groupName(dominant))),
+            (dishGroup(c.name) === dominant || fold(c.name) === fold(context.groupName(dominant))),
         );
       // Its dishes have a category already: they are moved there (below), not renamed.
       if (top && dominant && !(category.name === context.uncategorized && home)) {

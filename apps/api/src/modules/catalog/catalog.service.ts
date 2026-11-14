@@ -9,6 +9,8 @@ import {
   type ListProductCategoriesQuery,
   type ListProductsQuery,
   type NumberProductsResponse,
+  type OrderCategoriesRequest,
+  type RenumberProductsResponse,
   type PrepStation,
   type Product,
   type ProductCategory,
@@ -149,6 +151,46 @@ export class CatalogService {
         return categoryResponse(row);
       }),
     );
+  }
+
+  /**
+   * Drag-and-drop order (ADR 0043): the listed categories get positions 0, 10, 20 … in that order. Only categories
+   * whose position changes are written and audited. Answers the active categories in their new order.
+   */
+  async orderCategories(body: OrderCategoriesRequest): Promise<ProductCategory[]> {
+    const { userId } = this.tenantContext.require();
+    const actor = auditActor.user(userId);
+    return this.db.$transaction(async (tx) => {
+      const rows = await tx.productCategory.findMany({
+        where: { id: { in: body.categoryIds } },
+        select: CATEGORY_SELECT,
+      });
+      if (rows.length !== body.categoryIds.length) throw catalogErrors.categoryNotFound();
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      for (const [index, categoryId] of body.categoryIds.entries()) {
+        const current = byId.get(categoryId)!;
+        const sortOrder = index * 10;
+        if (current.sortOrder === sortOrder) continue;
+        const row = await tx.productCategory.update({
+          where: { id: categoryId },
+          data: { sortOrder },
+          select: CATEGORY_SELECT,
+        });
+        await this.audit.record(tx, {
+          action: 'catalog.product_category.updated',
+          actor,
+          entityId: categoryId,
+          before: categorySnapshot(current),
+          after: categorySnapshot(row),
+        });
+      }
+      const ordered = await tx.productCategory.findMany({
+        where: { archivedAt: null },
+        select: CATEGORY_SELECT,
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+      });
+      return ordered.map(categoryResponse);
+    });
   }
 
   /** Products by id, archived ones too, for other modules (inventory recipes, ADR 0028). */
@@ -444,6 +486,58 @@ export class CatalogService {
         },
         { maxWait: 10_000, timeout: 60_000 },
       ),
+    );
+  }
+
+  /**
+   * "Renumber menu" (ADR 0043): every non-archived product gets 1, 2, 3 … in menu order (category position and name,
+   * then product position and name), replacing its number. Only products whose number changes are written and
+   * audited; they are cleared first so the unique index never sees two products with one number mid-way.
+   */
+  async renumberProducts(): Promise<RenumberProductsResponse> {
+    const { userId } = this.tenantContext.require();
+    const actor = auditActor.user(userId);
+    return this.db.$transaction(
+      async (tx) => {
+        const products = await tx.product.findMany({
+          where: { archivedAt: null },
+          select: PRODUCT_SELECT,
+          orderBy: [
+            { category: { sortOrder: 'asc' } },
+            { category: { name: 'asc' } },
+            { sortOrder: 'asc' },
+            { name: 'asc' },
+            { id: 'asc' },
+          ],
+        });
+        const changes = products
+          .map((product, index) => ({ product, target: String(index + 1) }))
+          .filter(({ product, target }) => product.menuNumber !== target);
+        if (changes.length > 0) {
+          await tx.product.updateMany({
+            where: { id: { in: changes.map((c) => c.product.id) } },
+            data: { menuNumber: null },
+          });
+        }
+        for (const { product, target } of changes) {
+          const row = await tx.product.update({
+            where: { id: product.id },
+            data: { menuNumber: target },
+            select: PRODUCT_SELECT,
+          });
+          await this.audit.record(tx, {
+            action: 'catalog.product.updated',
+            actor,
+            entityId: row.id,
+            before: productSnapshot(product),
+            after: productSnapshot(row),
+          });
+        }
+        const response: RenumberProductsResponse = { renumbered: changes.length };
+        await this.idempotency.completeInTransaction(tx, response);
+        return response;
+      },
+      { maxWait: 10_000, timeout: 60_000 },
     );
   }
 

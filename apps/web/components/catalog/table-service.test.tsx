@@ -198,6 +198,58 @@ describe('CatalogPage', () => {
     expect(screen.queryByTestId('fill-numbers')).toBeNull();
   });
 
+  // ADR 0043: Renumber menu gives every active product 1…N after confirming.
+  // ADR 0043: the table lists products by menu number; categories get a drag handle for editors.
+  it('lists products by menu number, and offers category drag handles to editors only', async () => {
+    signedInAs('owner');
+    api({
+      ...catalogAnswers,
+      'GET /api/v1/catalog/products': () =>
+        Response.json({
+          data: [
+            { ...SOUP, menuNumber: '10' },
+            { ...WATER, menuNumber: '2' },
+            { ...SOUP, id: '0190a000-0000-7000-8000-000000000301', name: 'Tea', menuNumber: null },
+          ],
+        }),
+    });
+    render(<CatalogPage />);
+    expect(await productNames()).toEqual(['Water', 'Soup', 'Tea']);
+    expect(screen.getAllByTestId('category-drag').map((h) => h.getAttribute('aria-label'))).toEqual(
+      ['Move Food', 'Move Drinks'],
+    );
+    cleanup();
+    signedInAs('staff');
+    api(catalogAnswers);
+    render(<CatalogPage />);
+    await productNames();
+    expect(screen.queryByTestId('category-drag')).toBeNull();
+  });
+
+  it('renumbers the whole menu after confirming, only for editors', async () => {
+    signedInAs('owner');
+    const writes = api({
+      ...catalogAnswers,
+      'POST /api/v1/catalog/products/renumber': () => Response.json({ renumbered: 2 }),
+    });
+    render(<CatalogPage />);
+    await productNames();
+    await userEvent.click(screen.getByTestId('renumber-menu'));
+    expect(await screen.findByText('Renumber all 2 products from 1?')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Renumber' }));
+    await waitFor(() =>
+      expect(writes).toEqual([
+        { method: 'POST', path: '/api/v1/catalog/products/renumber', body: undefined },
+      ]),
+    );
+    cleanup();
+    signedInAs('waiter');
+    api(catalogAnswers);
+    render(<CatalogPage />);
+    await productNames();
+    expect(screen.queryByTestId('renumber-menu')).toBeNull();
+  });
+
   // ADR 0025: a category's station decides which ticket its items print on.
   it('creates a bar category and marks it in the list', async () => {
     signedInAs('owner');
