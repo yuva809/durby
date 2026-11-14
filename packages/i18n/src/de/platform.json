@@ -761,5 +761,7 @@
   "platform.audit.fields.factor": "Enthält",
   "platform.audit.fields.values": "Werte",
   "platform.audit.fields.outputQuantity": "Ergibt",
-  "platform.audit.fields.itemId": "Artikel"
+  "platform.audit.fields.itemId": "Artikel",
+  "platform.audit.fields.floorX": "Position im Raumplan (waagerecht)",
+  "platform.audit.fields.floorY": "Position im Raumplan (senkrecht)"
 }

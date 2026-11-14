@@ -761,5 +761,7 @@
   "platform.audit.fields.factor": "Contains",
   "platform.audit.fields.values": "Values",
   "platform.audit.fields.outputQuantity": "Makes",
-  "platform.audit.fields.itemId": "Item"
+  "platform.audit.fields.itemId": "Item",
+  "platform.audit.fields.floorX": "Floor plan position (across)",
+  "platform.audit.fields.floorY": "Floor plan position (down)"
 }
