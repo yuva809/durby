@@ -9,6 +9,7 @@ import {
   type ListProductCategoriesQuery,
   type ListProductsQuery,
   type NumberProductsResponse,
+  type RenumberProductsResponse,
   type PrepStation,
   type Product,
   type ProductCategory,
@@ -444,6 +445,58 @@ export class CatalogService {
         },
         { maxWait: 10_000, timeout: 60_000 },
       ),
+    );
+  }
+
+  /**
+   * "Renumber menu" (ADR 0043): every non-archived product gets 1, 2, 3 … in menu order (category position and name,
+   * then product position and name), replacing its number. Only products whose number changes are written and
+   * audited; they are cleared first so the unique index never sees two products with one number mid-way.
+   */
+  async renumberProducts(): Promise<RenumberProductsResponse> {
+    const { userId } = this.tenantContext.require();
+    const actor = auditActor.user(userId);
+    return this.db.$transaction(
+      async (tx) => {
+        const products = await tx.product.findMany({
+          where: { archivedAt: null },
+          select: PRODUCT_SELECT,
+          orderBy: [
+            { category: { sortOrder: 'asc' } },
+            { category: { name: 'asc' } },
+            { sortOrder: 'asc' },
+            { name: 'asc' },
+            { id: 'asc' },
+          ],
+        });
+        const changes = products
+          .map((product, index) => ({ product, target: String(index + 1) }))
+          .filter(({ product, target }) => product.menuNumber !== target);
+        if (changes.length > 0) {
+          await tx.product.updateMany({
+            where: { id: { in: changes.map((c) => c.product.id) } },
+            data: { menuNumber: null },
+          });
+        }
+        for (const { product, target } of changes) {
+          const row = await tx.product.update({
+            where: { id: product.id },
+            data: { menuNumber: target },
+            select: PRODUCT_SELECT,
+          });
+          await this.audit.record(tx, {
+            action: 'catalog.product.updated',
+            actor,
+            entityId: row.id,
+            before: productSnapshot(product),
+            after: productSnapshot(row),
+          });
+        }
+        const response: RenumberProductsResponse = { renumbered: changes.length };
+        await this.idempotency.completeInTransaction(tx, response);
+        return response;
+      },
+      { maxWait: 10_000, timeout: 60_000 },
     );
   }
 

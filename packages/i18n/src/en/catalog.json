@@ -305,5 +305,9 @@
   "catalog.bulk.dismiss": "Dismiss",
   "catalog.stations.kitchen": "Kitchen",
   "catalog.stations.bar": "Bar",
-  "catalog.stations.hint": "Where its items are prepared: each station gets its own ticket."
+  "catalog.stations.hint": "Where its items are prepared: each station gets its own ticket.",
+  "catalog.page.renumber": "Renumber menu",
+  "catalog.page.renumberTitle": "Renumber all {count} products from 1?",
+  "catalog.page.renumberDescription": "Every active product gets 1, 2, 3 … in menu order (categories, then products), replacing its current number. Printed menus and what staff type at the till change.",
+  "catalog.page.renumberConfirm": "Renumber"
 }

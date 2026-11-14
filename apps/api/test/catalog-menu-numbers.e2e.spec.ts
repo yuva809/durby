@@ -7,6 +7,7 @@ import {
   productCategoryListResponseSchema,
   productListResponseSchema,
   productSchema,
+  renumberProductsResponseSchema,
   type SystemRole,
 } from '@durby/shared';
 import request from 'supertest';
@@ -229,6 +230,53 @@ describe('catalog menu numbers', () => {
     const { org } = await orgWith('owner');
     const waiter = await memberToken(org, 'waiter');
     await send(waiter, 'post', 'products/number').expect(403);
+  });
+
+  // ADR 0043: "Renumber menu" gives every active product 1…N in menu order.
+  it('renumbers the whole menu 1…N in menu order, swapping numbers safely, and audits changes', async () => {
+    const { org, token } = await orgWith('owner');
+    const starters = await category(token, 'Starters', 0);
+    const mains = await category(token, 'Mains', 1);
+    // Numbers that collide with the new ones on the way: Samosa must become 1 while Curry still has it.
+    await product(token, starters, 'Samosa', { menuNumber: '105' });
+    await product(token, starters, 'Pakora', { menuNumber: '2', sortOrder: 1 });
+    await product(token, mains, 'Curry', { menuNumber: '1', sortOrder: 1 });
+    await product(token, mains, 'Biryani', { menuNumber: 'M-4', sortOrder: 0 });
+    const old = await product(token, mains, 'Old', { menuNumber: '7' });
+    await send(token, 'patch', `products/${old.id}`, { archived: true }).expect(200);
+
+    const first = await send(token, 'post', 'products/renumber').expect(200);
+    expect(renumberProductsResponseSchema.parse(first.body)).toEqual({ renumbered: 3 });
+    // Starters (Samosa, Pakora), then Mains by position (Biryani, Curry); Pakora already had 2.
+    expect(await numbers(token)).toEqual({ Samosa: '1', Pakora: '2', Biryani: '3', Curry: '4' });
+    // Archived products keep their number; a second run changes nothing.
+    const archived = await request(server)
+      .get('/api/v1/catalog/products?includeArchived=true')
+      .auth(token, { type: 'bearer' });
+    expect(
+      productListResponseSchema.parse(archived.body).data.find((p) => p.name === 'Old')?.menuNumber,
+    ).toBe('7');
+    expect((await send(token, 'post', 'products/renumber').expect(200)).body).toEqual({
+      renumbered: 0,
+    });
+
+    const audited = await seed.as(org.id, (db) =>
+      db.auditLog.count({ where: { action: 'catalog.product.updated' } }),
+    );
+    // The archive above, plus one per renumbered product.
+    expect(audited).toBe(4);
+  });
+
+  it('needs catalog.products.edit to renumber, and touches only its own organization', async () => {
+    const a = await orgWith('owner');
+    const b = await orgWith('owner');
+    const waiter = await memberToken(a.org, 'waiter');
+    await send(waiter, 'post', 'products/renumber').expect(403);
+    await product(b.token, await category(b.token, 'Mains'), 'Pizza', { menuNumber: '50' });
+    await product(a.token, await category(a.token, 'Mains'), 'Curry', { menuNumber: '9' });
+    await send(a.token, 'post', 'products/renumber').expect(200);
+    expect(await numbers(a.token)).toEqual({ Curry: '1' });
+    expect(await numbers(b.token)).toEqual({ Pizza: '50' });
   });
 
   it('lets two organizations use the same number', async () => {

@@ -198,6 +198,31 @@ describe('CatalogPage', () => {
     expect(screen.queryByTestId('fill-numbers')).toBeNull();
   });
 
+  // ADR 0043: Renumber menu gives every active product 1…N after confirming.
+  it('renumbers the whole menu after confirming, only for editors', async () => {
+    signedInAs('owner');
+    const writes = api({
+      ...catalogAnswers,
+      'POST /api/v1/catalog/products/renumber': () => Response.json({ renumbered: 2 }),
+    });
+    render(<CatalogPage />);
+    await productNames();
+    await userEvent.click(screen.getByTestId('renumber-menu'));
+    expect(await screen.findByText('Renumber all 2 products from 1?')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Renumber' }));
+    await waitFor(() =>
+      expect(writes).toEqual([
+        { method: 'POST', path: '/api/v1/catalog/products/renumber', body: undefined },
+      ]),
+    );
+    cleanup();
+    signedInAs('waiter');
+    api(catalogAnswers);
+    render(<CatalogPage />);
+    await productNames();
+    expect(screen.queryByTestId('renumber-menu')).toBeNull();
+  });
+
   // ADR 0025: a category's station decides which ticket its items print on.
   it('creates a bar category and marks it in the list', async () => {
     signedInAs('owner');

@@ -132,6 +132,11 @@ Labels: `catalog.errors.<camelCase>`.
 - `POST /catalog/products/number` (`catalog.products.manage`, idempotent in the transaction): every
   non-archived product without a number gets the next integer above the highest numeric number in use, in
   menu order (category position and name, then product position and name). Response `{ numbered }`.
+- `POST /catalog/products/renumber` (`catalog.products.edit`, idempotent in the transaction, ADR 0043): every
+  non-archived product gets `1`, `2`, `3` … in the same menu order, replacing its number (letters such as `M-4`
+  too). Archived products keep theirs. Only changed products are written and audited (`catalog.product.updated`);
+  they are cleared first, so numbers can swap without hitting the unique index. Response `{ renumbered }`. Web:
+  **Renumber menu** on the catalog page, behind a confirmation that printed menus change.
 - Import rows take an optional `station` (`kitchen` | `bar`), used only when the import creates the category.
 - Web: the product dialog and table show the number; the order screen finds dishes by number, exact match
   first, Enter adds it; the menu scan keeps printed numbers and sends drink sections as bar categories.

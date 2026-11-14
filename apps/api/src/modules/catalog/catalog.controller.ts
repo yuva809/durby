@@ -20,6 +20,7 @@ import {
   type ImportProductsRequest,
   importProductsRequestSchema,
   type NumberProductsResponse,
+  type RenumberProductsResponse,
   type ImportProductsResponse,
   createProductCategoryRequestSchema,
   type CreateProductCategoryRequest,
@@ -147,6 +148,15 @@ export class CatalogController {
   @HttpCode(HttpStatus.OK)
   numberProducts(): Promise<NumberProductsResponse> {
     return this.catalog.numberProducts();
+  }
+
+  /** Renumber the menu 1…N (ADR 0043): changes existing numbers, so edit; many writes, so the result goes with the key. */
+  @RequirePermission('catalog.products.edit')
+  @Idempotent({ completion: 'transaction' })
+  @Post('products/renumber')
+  @HttpCode(HttpStatus.OK)
+  renumberProducts(): Promise<RenumberProductsResponse> {
+    return this.catalog.renumberProducts();
   }
 
   @RequirePermission('catalog.products.edit')

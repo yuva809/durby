@@ -185,6 +185,10 @@ export const importProductsResponseSchema = z.object({
 export const numberProductsResponseSchema = z.object({ numbered: z.int() });
 export type NumberProductsResponse = z.infer<typeof numberProductsResponseSchema>;
 
+/** Renumber the menu 1…N (ADR 0043): how many products got a different number. */
+export const renumberProductsResponseSchema = z.object({ renumbered: z.int() });
+export type RenumberProductsResponse = z.infer<typeof renumberProductsResponseSchema>;
+
 export type ImportProductRow = z.infer<typeof importProductRowSchema>;
 export type ImportProductsRequest = z.infer<typeof importProductsRequestSchema>;
 export type ImportRowProblem = z.infer<typeof importRowProblemSchema>;

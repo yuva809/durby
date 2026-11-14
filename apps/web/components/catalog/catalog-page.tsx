@@ -27,6 +27,7 @@ import {
   loadCategories,
   loadProducts,
   numberProducts,
+  renumberProducts,
   updateCategory,
   updateProduct,
 } from '../../lib/catalog/api';
@@ -106,6 +107,10 @@ function Catalog({
   const openCategories =
     categories.status === 'ready' ? categories.data.filter((c) => c.archivedAt === null) : [];
   const numberAction = useActionKey();
+  const renumberAction = useActionKey();
+  // Active products: Renumber menu gives them 1…N (ADR 0043).
+  const active =
+    products.status === 'ready' ? products.data.filter((p) => p.archivedAt === null).length : 0;
   const unnumbered =
     products.status === 'ready'
       ? products.data.filter((p) => p.archivedAt === null && p.menuNumber === null).length
@@ -159,6 +164,17 @@ function Catalog({
                   run={() => numberProducts(store, numberAction)}
                   onDone={reload}
                   testId="fill-numbers"
+                />
+              )}
+              {active > 0 && (
+                <ConfirmAction
+                  trigger={t('catalog.page.renumber')}
+                  title={t('catalog.page.renumberTitle', { count: String(active) })}
+                  description={t('catalog.page.renumberDescription')}
+                  confirm={t('catalog.page.renumberConfirm')}
+                  run={() => renumberProducts(store, renumberAction)}
+                  onDone={reload}
+                  testId="renumber-menu"
                 />
               )}
               <CategoryDialog onDone={reload} />

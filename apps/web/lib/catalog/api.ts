@@ -9,6 +9,8 @@ import {
   importProductsResponseSchema,
   type NumberProductsResponse,
   numberProductsResponseSchema,
+  type RenumberProductsResponse,
+  renumberProductsResponseSchema,
   type Product,
   type ProductBulkRequest,
   type ProductBulkResponse,
@@ -102,6 +104,20 @@ export const numberProducts = (
     'POST',
     undefined,
     numberProductsResponseSchema,
+  );
+
+/** Renumber the whole menu 1…N in menu order (ADR 0043). */
+export const renumberProducts = (
+  store: Api,
+  action: ActionKey,
+): Promise<Result<RenumberProductsResponse | null>> =>
+  write(
+    store,
+    action,
+    '/api/v1/catalog/products/renumber',
+    'POST',
+    undefined,
+    renumberProductsResponseSchema,
   );
 
 /** Bulk actions on the selected products or categories (docs/modules/catalog.md → Bulk actions). */
