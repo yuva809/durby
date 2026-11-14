@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Split bill and floor plan: technical and test notes</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#b4441d; --ok:#1f7a3d; --warn:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; } }
+  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  h3 { font-size: 15px; margin: 20px 0 6px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .done { color: var(--ok); } .open { color: var(--warn); }
+  nav a { color: var(--accent); margin-right: 14px; }
+  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="#status">Status</a><a href="#flow">How it works</a><a href="#api">API</a><a href="#rules">Rules</a><a href="#web">Web</a><a href="#floor">Floor plan fix</a><a href="#tests">Tests</a><a href="#gaps">Gaps</a></nav>
+
+  <h1>Split bill and floor plan</h1>
+  <p class="lead">Guest checks on the till: split by item, split equally, join tables (Step 4c–4e), the redesigned split dialog, and the fix for tables that went back to their old place on the floor plan after a refresh. Code: <code>apps/api/src/modules/pos/bills.service.ts</code>, <code>apps/web/components/pos/split-dialog.tsx</code>, <code>apps/web/lib/pos/split.ts</code>, <code>apps/web/components/tables/tables-page.tsx</code>. Spec: <code>docs/modules/pos.md</code> (Step 4). Decisions: ADR 0036 (guest checks, splits, merges, discounts). Branch: <code>feature/floor-and-split</code>.</p>
+
+  <h2 id="status">Status</h2>
+  <div class="scroll"><table>
+    <tr><th>Part</th><th>Where</th><th>State</th></tr>
+    <tr><td>Bills and guest checks (single, equal shares), cancel bill, reprint</td><td><code>bills.service.ts</code>, ADR 0036</td><td class="done">Built, tested</td></tr>
+    <tr><td>Split dialog: three big choices, steppers, live totals, clear button text</td><td><code>split-dialog.tsx</code></td><td class="done">Built, tested (web)</td></tr>
+    <tr><td>Exact-cent previews (BigInt)</td><td><code>lib/pos/split.ts</code></td><td class="done">Built, tested</td></tr>
+    <tr><td>Floor plan: a dragged table keeps its place after a refresh</td><td><code>packages/shared/src/audit.ts</code>, <code>tables-page.tsx</code></td><td class="done">Fixed; API e2e needs Docker</td></tr>
+  </table></div>
+
+  <h2 id="flow">How it works</h2>
+<pre>Till (order page) ── Split bill ──► dialog
+   ├─ By item     pick portions per line (− / + / All)   ─► POST /pos/bills { orderIds:[order], items:[{orderLineId, quantity}] }
+   ├─ Equally     n guests (2–20)                         ─► POST /pos/bills { orderIds:[order], shares:n }
+   └─ Join tables other open orders of the location       ─► POST /pos/bills { orderIds:[order, …others] }
+                                                              │
+                         bill (single | equal) ◄──────────────┘
+                           └─ guest checks CHK-YYYY-nnnnnn (one, or one per share) ─► first check printed</pre>
+  <p>A bill covers what is still unbilled; items on a bill that is not cancelled count as billed (<code>billedQuantity</code>), so the dialog only offers what is left. Cancelling a bill (with <code>pos.bills.cancel</code>) frees its items again.</p>
+
+  <h2 id="api">API</h2>
+  <div class="scroll"><table>
+    <tr><th>Method and path</th><th>Permission</th><th>Body / purpose</th></tr>
+    <tr><td><code>POST /pos/bills</code></td><td>pos.bills.print</td><td><code>{ orderIds, items? }</code> by item (missing = everything unbilled), <code>{ orderIds, shares }</code> equal split, <code>{ orderIds:[a,b,…] }</code> join tables. Idempotent in the transaction.</td></tr>
+    <tr><td><code>POST /pos/bills/:id/cancel</code></td><td>pos.bills.cancel</td><td>Cancel with a reason; items become unbilled again</td></tr>
+    <tr><td><code>GET /pos/floor?locationId=</code></td><td>pos.orders.read</td><td>Open tables with <code>order.unbilled</code> (the join list and amounts)</td></tr>
+    <tr><td><code>PATCH /pos/tables/:id</code></td><td>pos.tables.edit</td><td><code>{ floorX, floorY }</code> (0–1000): a table's place on the floor plan</td></tr>
+  </table></div>
+
+  <h2 id="rules">Rules and where they live</h2>
+  <div class="scroll"><table>
+    <tr><th>Rule</th><th>Enforced in</th></tr>
+    <tr><td>Only unbilled portions can be billed: <code>remaining − billedQuantity</code> per line</td><td><code>bills.service.ts</code>; the dialog shows the same number and stops <b>+</b> there</td></tr>
+    <tr><td>Equal split: each VAT rate's gross in cents ÷ shares; left-over cents go to the first shares, so the checks add up exactly</td><td><code>bills.service.ts</code> (lines with <code>body.shares</code>)</td></tr>
+    <tr><td>The dialog's "about X each" is total ÷ shares (floor), with a note when it doesn't divide evenly</td><td><code>lib/pos/split.ts</code> (<code>equalShare</code>)</td></tr>
+    <tr><td>Money in the browser is exact cents (BigInt), never JS numbers</td><td><code>lib/pos/split.ts</code> (CLAUDE.md rule 6)</td></tr>
+    <tr><td>Join tables: only other <em>open</em> orders of the same location</td><td><code>split-dialog.tsx</code> (floor list), <code>bills.service.ts</code></td></tr>
+    <tr><td>The first check of a new bill prints; the till reloads the order</td><td><code>order-page.tsx</code> (<code>onBilled</code>)</td></tr>
+  </table></div>
+
+  <h2 id="web">Web: the split dialog</h2>
+  <ul>
+    <li><strong>Three choices</strong> as large buttons (radio group): <em>By item</em>, <em>Equally</em>, <em>Join tables</em>, each with a one-line hint.</li>
+    <li><strong>By item:</strong> each unbilled line with its unit price and how many are left; <b>−</b>, count, <b>+</b> and <b>All</b> (44 px targets); <b>Select all</b> / <b>Clear</b>; footer "N items on this bill · total". Nothing picked → "Tap + on at least one item." (nothing sent).</li>
+    <li><strong>Equally:</strong> one tap for 2–6 (starts at the table's guests), <b>−</b>/<b>+</b> up to 20; "About €X each" and "N checks for €Y", plus "Some pay a cent more" when needed.</li>
+    <li><strong>Join tables:</strong> other open tables with order number and amount; footer "N tables on one bill · combined total".</li>
+    <li><strong>Button text says the result:</strong> "Create bill", "Create 3 checks". API errors show in the dialog once (FormDialog).</li>
+    <li>Labels: <code>pos.split.*</code> (en, de). <code>FormDialog</code> gained <code>submitLabel</code> and <code>wide</code>.</li>
+  </ul>
+
+  <h2 id="floor">Floor plan fix: tables went back after a refresh</h2>
+  <div class="callout">
+    <p><strong>Cause.</strong> <code>TablesService.update</code> skips the write when the audit snapshot before and after is the same (a no-op). <code>floorX</code>/<code>floorY</code> had been added to the <em>product</em> snapshot list instead of <em>dining_table</em>'s, so a move that changed only the position looked like a no-op: the api answered 200 and saved nothing. The screen kept the table where it was dropped until a reload.</p>
+    <p><strong>Fix.</strong> The fields are in <code>AUDIT_SNAPSHOT_FIELDS.dining_table</code> (with audit labels). A failed move now puts the table back and shows the error instead of failing silently.</p>
+  </div>
+
+  <h2 id="tests">Testing</h2>
+  <h3>Automated</h3>
+  <div class="scroll"><table>
+    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
+    <tr><td>Web</td><td><code>components/pos/split-dialog.test.tsx</code></td><td>by item (+, All, total, max), empty pick refused, equal split from the guests with preview, join tables with combined total</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>lib/pos/split.test.ts</code></td><td>cents parsing, picked total, equal share and uneven note, sums</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/tables/tables.test.tsx</code></td><td>tables page (fixtures now carry <code>floorX</code>/<code>floorY</code>; pointer-capture stub)</td><td class="done">Pass (11)</td></tr>
+    <tr><td>Web</td><td><code>lib/audit/diff.test.ts</code></td><td>every snapshot field has labels (floorX/floorY added)</td><td class="done">Pass</td></tr>
+    <tr><td>API e2e</td><td><code>test/pos-tables.e2e.spec.ts</code></td><td>a position-only move is saved and survives a reload; out-of-range refused</td><td class="open">Needs Docker</td></tr>
+    <tr><td>API e2e</td><td><code>test/pos-bills.e2e.spec.ts</code></td><td>bills, equal split cents, merge, cancel</td><td class="open">Needs Docker</td></tr>
+  </table></div>
+<pre>cd apps/web &amp;&amp; npx vitest run components/pos lib/pos components/tables lib/audit
+cd apps/api &amp;&amp; npx vitest run test/pos-tables.e2e.spec.ts   # Docker</pre>
+
+  <h3>Manual (browser, till)</h3>
+  <div class="scroll"><table>
+    <tr><th>Step</th><th>Expected</th></tr>
+    <tr><td>Order 2 Soup (6.90) and 3 Water (2.50) at a table, then <b>Split bill</b></td><td>Three large choices; By item selected; both lines with price and "left"</td></tr>
+    <tr><td>Tap <b>+</b> on Soup once, <b>All</b> on Water</td><td>Footer: 4 items · €14.40; <b>Create bill</b> prints one check</td></tr>
+    <tr><td>Open Split bill again</td><td>Soup shows 1 left, Water is gone</td></tr>
+    <tr><td><b>Equally</b> on an order of €20.30 with 3 guests</td><td>3 preselected; "About €6.76 each", "Some pay a cent more"; <b>Create 3 checks</b>; the checks add up to €20.30</td></tr>
+    <tr><td><b>Join tables</b> with another open table of €12.00</td><td>Combined total €32.30 on one bill</td></tr>
+    <tr><td>Tables page: drag T1 to a new place, refresh the browser</td><td>T1 stays where it was dropped</td></tr>
+    <tr><td>Drag a table as a member without <code>pos.tables.edit</code></td><td>Not draggable (cursor); a refused save would put it back with an error</td></tr>
+  </table></div>
+
+  <h2 id="gaps">Known gaps and notes</h2>
+  <div class="callout">
+    <ul>
+      <li>The equal-split preview is an approximation ("about"): the api splits per VAT rate, so a share can differ by a cent from total ÷ shares.</li>
+      <li>Splitting the same order into named seats ("seat 1, seat 2") is not built: by item creates one bill at a time.</li>
+      <li>API e2e tests were not run on the development laptop (no Docker).</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>
