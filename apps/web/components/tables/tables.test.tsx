@@ -11,6 +11,13 @@ vi.mock('../../app/providers', async () => (await import('../../test/mocks')).pr
 vi.mock('../../app/labels-provider', async () => (await import('../../test/mocks')).labelsMock());
 vi.mock('next/navigation', async () => (await import('../../test/mocks')).navigationMock());
 
+// jsdom has no pointer capture; the floor plan captures the pointer while a table is dragged.
+for (const name of ['setPointerCapture', 'releasePointerCapture'] as const) {
+  if (!(name in Element.prototype)) {
+    Object.defineProperty(Element.prototype, name, { value: () => undefined, configurable: true });
+  }
+}
+
 beforeEach(resetMocks);
 afterEach(cleanup);
 
@@ -36,6 +43,9 @@ const table = (n: number, name: string, extra: object = {}) => ({
   shape: 'square',
   color: 'neutral',
   sortOrder: 0,
+  // The table's place on the floor plan (0–1000), which the api always sends.
+  floorX: 100 + n * 100,
+  floorY: 120,
   archivedAt: null,
   menuCode: `code${String(n).padStart(20, '0')}`,
   ...extra,

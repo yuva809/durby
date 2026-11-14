@@ -41,6 +41,15 @@ describe('audit filters in the URL', () => {
     expect(paramsFromFilters({}).toString()).toBe('');
   });
 
+  it('keeps module, branch and search in the URL; sends module and branch, never the search', () => {
+    const location = '0190a000-0000-7000-8000-000000000002';
+    const params = new URLSearchParams(`module=inventory&location=${location}&q=%20tomato%20`);
+    const filters = filtersFromParams(params);
+    expect(filters).toEqual({ module: 'inventory', location, q: 'tomato' });
+    expect(apiQuery(filters, 'UTC').toString()).toBe(`module=inventory&locationId=${location}`);
+    expect(filtersFromParams(new URLSearchParams('module=billingz&location=x'))).toEqual({});
+  });
+
   it('knows real calendar days', () => {
     expect(isDay('2028-02-29')).toBe(true);
     expect(isDay('2026-02-29')).toBe(false);

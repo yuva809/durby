@@ -147,6 +147,22 @@ describe('/api/v1/pos/tables', () => {
     await patch(token, plain.id, { color: '#ff0000' }).expect(400);
   });
 
+  // The floor plan: a move that changes only the position must be saved (it was skipped as a no-op while the audit
+  // snapshot left floorX/floorY out).
+  it('saves a table moved on the floor plan, and keeps it after a reload', async () => {
+    const { org, token } = await orgWith('owner');
+    const t1 = await table(token, org.locations[0]);
+    const moved = diningTableSchema.parse(
+      (await patch(token, t1.id, { floorX: 640, floorY: 275 }).expect(200)).body,
+    );
+    expect(moved).toMatchObject({ floorX: 640, floorY: 275 });
+    const reloaded = diningTableListResponseSchema
+      .parse((await list(token, `?locationId=${org.locations[0]}`).expect(200)).body)
+      .data.find((t) => t.id === t1.id);
+    expect(reloaded).toMatchObject({ floorX: 640, floorY: 275 });
+    await patch(token, t1.id, { floorX: 1001 }).expect(400);
+  });
+
   it('validates the body and the location', async () => {
     const { token } = await orgWith('owner');
     const { org: other } = await orgWith('owner');

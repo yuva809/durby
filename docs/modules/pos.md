@@ -381,8 +381,11 @@ Reasons are free text and stay out of snapshots.
   opens the till), **Recent checks** (24 h), **History** (dates, number search, more pages). A check opens as its
   receipt with **Reprint** (same number) and, with `pos.bills.cancel`, **Cancel bill** (with a reason).
 - **Till:** **Print bill** bills everything unbilled and prints the check (nothing unbilled: reprints the last
-  check); **Split** (by item: quantities per line; equally: number of guests, each share shown); **Merge** (other
-  open tables of the location into one bill); **Discount** (with `pos.orders.discount`: line or order, percent or
+  check); **Split bill**: one dialog with three big choices. **By item**: each unbilled line with its price and
+  what is left, − / + and All per line, Select all / Clear, and the new bill's item count and total; **Equally**:
+  2–6 at one tap (starting from the table's guests) or − / + up to 20, with "about … each" (the api gives left-over
+  cents to the first checks); **Join tables**: other open tables of the location with their amounts and the
+  combined total. The button says what it creates ("Create bill", "Create 3 checks"). **Discount** (with `pos.orders.discount`: line or order, percent or
   amount, reason); lines show how much is billed; the order's bills list their checks.
 - **Settings → Service:** the discount reasons.
 

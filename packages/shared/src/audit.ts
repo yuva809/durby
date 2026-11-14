@@ -495,10 +495,12 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'price',
     'taxRate',
     'sortOrder',
-    'floorX',
-    'floorY',
     'archivedAt',
   ],
+  /**
+   * `floorX`, `floorY`: the table's place on the floor plan (0–1000). They must be listed here: the update compares
+   * snapshots to skip no-op writes, so a field missing from this list is never saved on its own.
+   */
   dining_table: [
     'id',
     'locationId',
@@ -509,6 +511,8 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'shape',
     'color',
     'sortOrder',
+    'floorX',
+    'floorY',
     'archivedAt',
   ],
   pos_order: ['id', 'number', 'tableId', 'locationId', 'status', 'covers', 'closedAt'],

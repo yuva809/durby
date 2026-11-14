@@ -98,20 +98,20 @@ describe('AuditPage', () => {
     expect(within(card).getByTestId('audit-what').textContent).toBe('Setting changed');
     expect(within(card).getByTestId('audit-who').textContent).toBe('owner@example.test');
     // 23:30 UTC is 00:30 the next day in Berlin (winter time from 25 Oct).
-    expect(within(card).getByText('Oct 26, 2026, 12:30:00 AM')).toBeTruthy();
-    const value = within(card)
-      .getAllByTestId('audit-diff-row')
-      .find((r) => r.dataset.field === 'value')!;
+    expect(within(card).getByText('2026-10-26 12:30 AM')).toBeTruthy();
+    // The one-line detail names the changed field; the full before/after opens below the row.
+    expect(within(card).getByTestId('audit-detail').textContent).toContain('Changed:');
+    expect(screen.queryByTestId('audit-diff')).toBeNull();
+    await userEvent.click(within(card).getByTestId('audit-toggle'));
+    const value = screen.getAllByTestId('audit-diff-row').find((r) => r.dataset.field === 'value')!;
     expect(value.dataset.changed).toBe('true');
     expect(within(value).getByTestId('audit-before').textContent).toBe('Before: Europe/Berlin');
     expect(within(value).getByTestId('audit-after').textContent).toBe('After: Europe/Vienna');
     expect(within(value).getByText('Changed')).toBeTruthy();
-    const key = within(card)
-      .getAllByTestId('audit-diff-row')
-      .find((r) => r.dataset.field === 'key')!;
+    const key = screen.getAllByTestId('audit-diff-row').find((r) => r.dataset.field === 'key')!;
     expect(key.dataset.changed).toBe('false');
-    expect(within(card).getByTestId('audit-details').textContent).toContain('203.0.113.7');
-    expect(within(card).getByTestId('audit-details').textContent).toContain('req-123');
+    expect(screen.getByTestId('audit-details').textContent).toContain('203.0.113.7');
+    expect(screen.getByTestId('audit-details').textContent).toContain('req-123');
   });
 
   it('labels system actors and users that no longer exist', async () => {
@@ -144,16 +144,27 @@ describe('AuditPage', () => {
     ]);
   });
 
-  it('applies filters by updating the URL', async () => {
+  it('applies filters as soon as they change, by updating the URL', async () => {
     signedInAs('owner');
     api(() => page([entry(1)]));
     render(<AuditPage />);
     await screen.findByTestId('audit-entry');
     await userEvent.selectOptions(screen.getByTestId('filter-entity'), 'setting_value');
-    await userEvent.click(screen.getByTestId('filter-apply'));
     expect(mockState.router.replace).toHaveBeenCalledWith('/audit?entityType=setting_value');
+    await userEvent.selectOptions(screen.getByTestId('filter-module'), 'platform');
+    expect(mockState.router.replace).toHaveBeenLastCalledWith('/audit?module=platform');
+    await userEvent.click(screen.getByTestId('audit-toggle'));
     await userEvent.click(screen.getByTestId('audit-only-actor'));
     expect(mockState.router.replace).toHaveBeenLastCalledWith(`/audit?actor=${USER}`);
+  });
+
+  it('searches the loaded entries without asking the api again', async () => {
+    signedInAs('owner');
+    api(() => page([entry(1)]));
+    mockState.search = 'q=nobody-matches-this';
+    render(<AuditPage />);
+    expect(await screen.findByTestId('audit-empty')).toBeTruthy();
+    expect(auditQueries()).toEqual([{}]);
   });
 
   it('loads more with the cursor and appends', async () => {

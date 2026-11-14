@@ -101,15 +101,17 @@ Users are referenced by id.
 
 `GET /api/v1/audit-logs`, `@RequirePermission('platform.audit.read')` (Owner, Admin).
 
-| Query         | Notes                                              |
-| ------------- | -------------------------------------------------- |
-| `action`      | Registered action key; repeatable                  |
-| `entityType`  | Registered entity type                             |
-| `entityId`    | uuid                                               |
-| `actorUserId` | uuid                                               |
-| `from`, `to`  | ISO timestamps on `created_at` (`from` ≤ x < `to`) |
-| `limit`       | 1–200, default 50                                  |
-| `cursor`      | Opaque; `meta.nextCursor` of the previous page     |
+| Query         | Notes                                               |
+| ------------- | --------------------------------------------------- |
+| `action`      | Registered action key; repeatable                   |
+| `entityType`  | Registered entity type                              |
+| `entityId`    | uuid                                                |
+| `actorUserId` | uuid                                                |
+| `module`      | An action key's first segment (`inventory`, `pos`…) |
+| `locationId`  | uuid; `locationId` in the before or after snapshot  |
+| `from`, `to`  | ISO timestamps on `created_at` (`from` ≤ x < `to`)  |
+| `limit`       | 1–200, default 50                                   |
+| `cursor`      | Opaque; `meta.nextCursor` of the previous page      |
 
 Newest first by `id` (`WHERE id < :cursor ORDER BY id DESC LIMIT limit + 1`). No offset pagination.
 

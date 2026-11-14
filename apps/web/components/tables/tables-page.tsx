@@ -15,8 +15,10 @@ import {
 } from '@durby/shared';
 import { Eye, EyeOff, MoreHorizontal, Pencil, Search, Trash2 } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
+import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
+import { errorLabel } from '../../lib/auth/errors';
 import {
   createArea,
   createTable,
@@ -107,6 +109,8 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
   const [query, setQuery] = useState('');
   const [showOut, setShowOut] = useState(false);
   const [filter, setFilter] = useState<AreaFilter>({ kind: 'all' });
+  // A move that didn't save: the table goes back to its saved place and this says why.
+  const [moveProblem, setMoveProblem] = useState<string | null>(null);
   const [tables, reloadTables] = useResource(locationId, () => loadTables(store, locationId, true));
   const [areas, reloadAreas] = useResource(locationId, () => loadAreas(store, locationId));
   const [floor, reloadFloor] = useResource(access.canSeeOrders ? locationId : null, () =>
@@ -245,6 +249,7 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
         </Button>
       </div>
 
+      <Notice text={moveProblem} tone="error" />
       <Loaded resource={tables} reload={reloadTables}>
         {(list) => (
           <FloorGrid
@@ -267,7 +272,8 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
             canManage={access.canManage}
             onMove={async (table, floorX, floorY) => {
               const result = await updateTable(store, action, table.id, { floorX, floorY });
-              if (result.ok) reloadTables();
+              setMoveProblem(result.ok ? null : t(errorLabel(result.code)));
+              reloadTables();
             }}
           />
         )}
