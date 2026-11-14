@@ -16,7 +16,7 @@ import { AuthRateLimits } from './auth-rate-limits';
 import { Clock } from './clock';
 import { emailKey, normalizeEmail } from './crypto';
 import { LockoutService, LockoutUnavailableError } from './lockout.service';
-import { MembershipLookup } from './membership-lookup';
+import { MembershipLookup, type OrganizationScope } from './membership-lookup';
 import { PasswordHasher } from './password-hasher';
 import type { IssuedRefreshToken, RefreshSession } from './refresh-token.store';
 import { RefreshTokenStore } from './refresh-token.store';
@@ -49,7 +49,12 @@ export class SessionService {
     private readonly audit: AuditService,
   ) {}
 
-  async login(input: { email: string; password: string }, ip: string): Promise<IssuedSession> {
+  /** `host`: the request's host; it picks which organizations the session offers (ADR 0042). */
+  async login(
+    input: { email: string; password: string },
+    ip: string,
+    host?: string,
+  ): Promise<IssuedSession> {
     const key = emailKey(input.email);
     await this.limits.enforce([this.limits.rules.loginIp, ip], [this.limits.rules.loginEmail, key]);
 
@@ -74,7 +79,10 @@ export class SessionService {
       throw authErrors.emailNotVerified();
     }
 
-    const organizations = await this.memberships.organizationsOf(user.id);
+    // Only the organizations of this site (ADR 0042): a partner's domain shows its organizations, the main site the
+    // others. The last one used wins when it is among them.
+    const scope = await this.memberships.scopeForHost(host);
+    const organizations = await this.memberships.organizationsOf(user.id, scope);
     const active =
       organizations.find((org) => org.id === user.lastOrganizationId) ?? organizations[0] ?? null;
     const refresh = await this.refreshTokens.startFamily(user.id, active?.id ?? null);
@@ -87,17 +95,39 @@ export class SessionService {
     return this.issue(user.id, active?.id ?? null, refresh, organizations);
   }
 
-  /** Rotates the refresh token; the organization is kept only while the user is still a member. */
-  async refresh(token: string | undefined, ip: string): Promise<IssuedSession> {
+  /**
+   * Rotates the refresh token; the organization is kept only while the user is still a member. One of another site
+   * (ADR 0042) is replaced by this site's last used or first organization.
+   */
+  async refresh(token: string | undefined, ip: string, host?: string): Promise<IssuedSession> {
     await this.limits.enforce([this.limits.rules.refreshIp, ip]);
     if (!token) throw authErrors.refreshInvalid();
-    const result = await this.refreshTokens.rotate(token, async (session) =>
-      session.organizationId !== null &&
-      (await this.memberships.isMember(session.userId, session.organizationId))
+    const scope = await this.memberships.scopeForHost(host);
+    const result = await this.refreshTokens.rotate(token, async (session) => {
+      if (
+        session.organizationId === null ||
+        !(await this.memberships.isMember(session.userId, session.organizationId))
+      ) {
+        return null;
+      }
+      return (await this.memberships.inScope(session.organizationId, scope))
         ? session.organizationId
-        : null,
+        : this.siteDefault(session.userId, scope);
+    });
+    return this.afterRotation(result, ip, scope);
+  }
+
+  /** The site's organization to open: the last one used when it is among them, else the first (ADR 0042). */
+  private async siteDefault(userId: string, scope: OrganizationScope): Promise<string | null> {
+    const [user, organizations] = await Promise.all([
+      this.db.user.findUnique({ where: { id: userId }, select: { lastOrganizationId: true } }),
+      this.memberships.organizationsOf(userId, scope),
+    ]);
+    return (
+      organizations.find((org) => org.id === user?.lastOrganizationId)?.id ??
+      organizations[0]?.id ??
+      null
     );
-    return this.afterRotation(result, ip);
   }
 
   /** Ends the cookie's session, whatever state its token is in. Idempotent. */
@@ -119,8 +149,14 @@ export class SessionService {
     organizationId: string,
     token: string | undefined,
     ip: string,
+    host?: string,
   ): Promise<IssuedSession> {
-    if (!(await this.memberships.isMember(auth.userId, organizationId))) {
+    // Another site's organization is switched to on that site (ADR 0042): answered like a non-member.
+    const scope = await this.memberships.scopeForHost(host);
+    if (
+      !(await this.memberships.isMember(auth.userId, organizationId)) ||
+      !(await this.memberships.inScope(organizationId, scope))
+    ) {
       throw authErrors.notAMember();
     }
     if (!token) throw authErrors.refreshInvalid();
@@ -128,7 +164,7 @@ export class SessionService {
       userId: auth.userId,
       familyId: auth.sessionId,
     });
-    const session = await this.afterRotation(result, ip);
+    const session = await this.afterRotation(result, ip, scope);
     // Audited in the organization switched to (ADR 0008 §8), with the remembered organization.
     await this.tenantContext.run({ tenantId: organizationId, userId: auth.userId }, () =>
       this.tenantDb.$transaction(async (tx) => {
@@ -151,12 +187,16 @@ export class SessionService {
     return session;
   }
 
-  async me(auth: Readonly<AuthContextValue>): Promise<MeResponse> {
+  /** `host`: the request's host; the organization list is this site's (ADR 0042). */
+  async me(auth: Readonly<AuthContextValue>, host?: string): Promise<MeResponse> {
     const user = await this.db.user.findUnique({ where: { id: auth.userId } });
     if (!user) throw authErrors.unauthenticated();
     return {
       user: { id: user.id, email: user.email, locale: user.locale },
-      organizations: await this.memberships.organizationsOf(user.id),
+      organizations: await this.memberships.organizationsOf(
+        user.id,
+        await this.memberships.scopeForHost(host),
+      ),
       activeOrganizationId: auth.organizationId,
       ...(await this.accessIn(auth.organizationId, user.id)),
       passwordChangeRequired: user.mustChangePassword,
@@ -164,7 +204,11 @@ export class SessionService {
   }
 
   /** Sets the caller's own language (users row only); the answer is GET /me's. */
-  async updateMe(auth: Readonly<AuthContextValue>, body: { locale: string }): Promise<MeResponse> {
+  async updateMe(
+    auth: Readonly<AuthContextValue>,
+    body: { locale: string },
+    host?: string,
+  ): Promise<MeResponse> {
     const { count } = await this.db.user.updateMany({
       where: { id: auth.userId },
       data: { locale: body.locale },
@@ -177,7 +221,7 @@ export class SessionService {
       sessionId: auth.sessionId,
       locale: body.locale,
     });
-    return this.me(auth);
+    return this.me(auth, host);
   }
 
   /**
@@ -189,6 +233,7 @@ export class SessionService {
     auth: Readonly<AuthContextValue>,
     input: { currentPassword: string; newPassword: string },
     ip: string,
+    host?: string,
   ): Promise<IssuedSession> {
     await this.limits.enforce([this.limits.rules.loginIp, ip]);
     const user = await this.db.user.findUnique({ where: { id: auth.userId } });
@@ -216,18 +261,25 @@ export class SessionService {
       sessionId: auth.sessionId,
       ip,
     });
+    const scope = await this.memberships.scopeForHost(host);
     const organizationId =
       auth.organizationId !== null &&
       (await this.memberships.isMember(user.id, auth.organizationId))
         ? auth.organizationId
         : null;
     const refresh = await this.refreshTokens.startFamily(user.id, organizationId);
-    return this.issue(user.id, organizationId, refresh);
+    return this.issue(
+      user.id,
+      organizationId,
+      refresh,
+      await this.memberships.organizationsOf(user.id, scope),
+    );
   }
 
   private async afterRotation(
     result: Awaited<ReturnType<RefreshTokenStore['rotate']>>,
     ip: string,
+    scope: OrganizationScope,
   ): Promise<IssuedSession> {
     if (result.kind === 'invalid') throw authErrors.refreshInvalid();
     if (result.kind === 'reused') {
@@ -241,7 +293,12 @@ export class SessionService {
         ip,
       });
     }
-    return this.issue(result.session.userId, result.session.organizationId, result.next);
+    return this.issue(
+      result.session.userId,
+      result.session.organizationId,
+      result.next,
+      await this.memberships.organizationsOf(result.session.userId, scope),
+    );
   }
 
   private async revokeReusedFamily(session: RefreshSession, ip: string): Promise<void> {
@@ -258,7 +315,7 @@ export class SessionService {
     userId: string,
     organizationId: string | null,
     refresh: IssuedRefreshToken,
-    organizations?: OrganizationSummary[],
+    organizations: OrganizationSummary[],
   ): Promise<IssuedSession> {
     const user = await this.db.user.findUniqueOrThrow({ where: { id: userId } });
     const accessToken = await this.accessTokens.sign(
@@ -277,7 +334,7 @@ export class SessionService {
         expiresIn: this.accessTokens.ttlSeconds,
         sessionExpiresAt: refresh.familyExpiresAt.toISOString(),
         user: { id: user.id, email: user.email, locale: user.locale },
-        organizations: organizations ?? (await this.memberships.organizationsOf(userId)),
+        organizations,
         activeOrganizationId: organizationId,
         ...(await this.accessIn(organizationId, userId)),
         passwordChangeRequired: user.mustChangePassword,

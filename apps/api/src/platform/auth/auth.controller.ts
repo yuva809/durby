@@ -67,7 +67,8 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SessionResponse> {
-    return this.respond(res, await this.sessions.login(body, clientIp(req)));
+    // The host picks which organizations the session offers (ADR 0042).
+    return this.respond(res, await this.sessions.login(body, clientIp(req), req.hostname));
   }
 
   @Public()
@@ -83,7 +84,7 @@ export class AuthController {
     return this.respond(
       res,
       await this.clearCookieOnFailure(res, () =>
-        this.sessions.refresh(this.cookie(req), clientIp(req)),
+        this.sessions.refresh(this.cookie(req), clientIp(req), req.hostname),
       ),
     );
   }
@@ -115,6 +116,7 @@ export class AuthController {
       body.organizationId,
       this.cookie(req),
       clientIp(req),
+      req.hostname,
     );
     return this.respond(res, session);
   }
@@ -123,8 +125,8 @@ export class AuthController {
   @AllowDuringPasswordChange()
   @Get('me')
   @Header('Cache-Control', 'no-store')
-  me(): Promise<MeResponse> {
-    return this.sessions.me(this.auth.require());
+  me(@Req() req: Request): Promise<MeResponse> {
+    return this.sessions.me(this.auth.require(), req.hostname);
   }
 
   /** Your own language (UI and mails); setting the same one twice changes nothing. */
@@ -132,8 +134,11 @@ export class AuthController {
   @IdempotencyExempt('sets one value: replaying it changes nothing')
   @Patch('me')
   @Header('Cache-Control', 'no-store')
-  updateMe(@Body(new ZodBody(updateMeRequestSchema)) body: UpdateMeRequest): Promise<MeResponse> {
-    return this.sessions.updateMe(this.auth.require(), body);
+  updateMe(
+    @Body(new ZodBody(updateMeRequestSchema)) body: UpdateMeRequest,
+    @Req() req: Request,
+  ): Promise<MeResponse> {
+    return this.sessions.updateMe(this.auth.require(), body, req.hostname);
   }
 
   /** Your own password; the one route a temporary-password session may use (ADR 0023 §3). */
@@ -151,7 +156,7 @@ export class AuthController {
   ): Promise<SessionResponse> {
     return this.respond(
       res,
-      await this.sessions.changePassword(this.auth.require(), body, clientIp(req)),
+      await this.sessions.changePassword(this.auth.require(), body, clientIp(req), req.hostname),
     );
   }
 
