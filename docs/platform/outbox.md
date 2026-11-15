@@ -74,7 +74,7 @@ the tenant from the tenant context. The insert is raw SQL, so the database clock
 
 ## Dispatcher
 
-Runs in the worker every `OUTBOX_POLL_MS` (1000; up to 5 s while idle):
+Runs in the worker every `OUTBOX_POLL_MS` (1000; up to 5 s while idle), and at once when an event commits (ADR 0044 §5: `OutboxService.add` notifies `durby_outbox` in the insert, the worker `LISTEN`s on its own connection):
 
 1. `outbox_due_tenants(<known types>, 500)`: **only tenants with due events** (available now, of a known type),
    oldest due event first, at most 500. Tenants whose events are all in backoff or of unknown types take no slot, so

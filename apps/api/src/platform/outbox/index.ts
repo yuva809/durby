@@ -16,3 +16,4 @@ export { type HandlerJobData, handlerJobId, OutboxPublisher } from './outbox-que
 export { HEARTBEAT_FILE, OutboxWorker } from './outbox-worker';
 export { OutboxPayloadInvalidError, OutboxService } from './outbox.service';
 export { OutboxModule } from './outbox.module';
+export { OUTBOX_CHANNEL, OutboxWakeup } from './wakeup';

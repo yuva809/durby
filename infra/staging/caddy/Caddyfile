@@ -36,7 +36,11 @@
 # One Durby stack behind this edge: `import durby <api host:port> <web host:port>`. The same routes serve every
 # stack on this host (ADR 0034).
 (durby) {
-	encode zstd gzip
+	# Live-update streams (ADR 0044, docs/platform/realtime.md) are never compressed: an encoder
+	# would hold messages back until its buffer fills.
+	@stream path /api/v1/*/stream
+	@compressible not path /api/v1/*/stream
+	encode @compressible zstd gzip
 
 	# One id per request, shared with the api logs. Client-supplied ids are overwritten.
 	request_header X-Request-Id {http.request.uuid}
@@ -60,6 +64,13 @@
 			fields {
 				request>uri regexp "\?.*$" "?[REDACTED]"
 			}
+		}
+	}
+
+	# Streams: every message goes out as soon as the api writes it.
+	handle @stream {
+		reverse_proxy {args[0]} {
+			flush_interval -1
 		}
 	}
 

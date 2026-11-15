@@ -23,7 +23,15 @@ describe('OutboxService.add', () => {
     expect(strings.join('?')).toContain(
       'INSERT INTO outbox_events (tenant_id, type, version, payload)',
     );
-    expect(values).toEqual([tenantId, 'config.settings.changed', 1, JSON.stringify(payload)]);
+    // ADR 0044 §5: the same statement wakes the worker, delivered only if the change commits.
+    expect(strings.join('?')).toContain('pg_notify(?');
+    expect(values).toEqual([
+      tenantId,
+      'config.settings.changed',
+      1,
+      JSON.stringify(payload),
+      'durby_outbox',
+    ]);
   });
 
   it('rejects a payload the schema rejects, without writing', async () => {

@@ -538,6 +538,29 @@ describe('today (live)', () => {
     });
     await waitFor(() => expect(floors()).toBe(before + 1));
   });
+
+  it("reloads on the reservations stream's hints, without waiting for the 30 s poll", async () => {
+    let push: (text: string) => void = () => undefined;
+    const stream = () => {
+      const body = new ReadableStream<Uint8Array>({
+        start: (c) => {
+          push = (text) => c.enqueue(new TextEncoder().encode(text));
+        },
+      });
+      return new Response(body, { headers: { 'Content-Type': 'text/event-stream' } });
+    };
+    const { reads } = api({ ...BASE, 'GET /api/v1/reservations/stream': stream });
+    render(<HostPage />);
+    await rowOf('Weber');
+    expect(reads).toContain(`/api/v1/reservations/stream?locationId=${MAIN.id}`);
+    const floors = () => reads.filter((r) => r.includes('/floor')).length;
+    await waitFor(() => expect(floors()).toBeGreaterThan(0));
+    push('event: ready\ndata: {"heartbeatMs":15000,"expiresAt":"2027-03-06T18:10:00.000Z"}\n\n');
+    // `ready` reloads once (changes while connecting), then each hint does.
+    await waitFor(() => expect(floors()).toBe(2));
+    push(`event: changed\ndata: {"topic":"reservations","ids":["${WEBER.id}"]}\n\n`);
+    await waitFor(() => expect(floors()).toBe(3));
+  });
 });
 
 describe('another day (plan)', () => {

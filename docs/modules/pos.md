@@ -183,16 +183,17 @@ A table or order at a location where the caller can't read orders doesn't exist 
 
 ### API (`/api/v1`, `@RequireFeature('pos')`)
 
-| Method + path                       | Permission         | Idempotency                 | Body / query                                                      |
-| ----------------------------------- | ------------------ | --------------------------- | ----------------------------------------------------------------- |
-| `GET /pos/floor`                    | `pos.orders.read`  |                             | `?locationId=`: non-archived tables with their open order summary |
-| `GET /pos/tables/:tableId/order`    | `pos.orders.read`  |                             | the table and its open order (or `null`)                          |
-| `POST /pos/tables/:tableId/tickets` | `pos.orders.take`  | `completion: 'transaction'` | `{ lines: [{ productId, quantity 1–99, note? }] }`, 1–100 lines   |
-| `GET /pos/orders`                   | `pos.orders.read`  |                             | `?locationId=&status=open\|closed`, newest first, at most 100     |
-| `GET /pos/orders/:id`               | `pos.orders.read`  |                             |                                                                   |
-| `POST /pos/orders/:id/voids`        | `pos.orders.void`  | `completion: 'transaction'` | `{ lines: [{ lineId, quantity 1–99 }] }`                          |
-| `PATCH /pos/orders/:id`             | `pos.orders.take`  | response                    | `{ covers: 1–100 \| null }` on an open order (else 409)           |
-| `POST /pos/orders/:id/close`        | `pos.orders.close` | response                    | no body; closing a closed order changes nothing                   |
+| Method + path                       | Permission         | Idempotency                 | Body / query                                                                                                                                          |
+| ----------------------------------- | ------------------ | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /pos/floor`                    | `pos.orders.read`  |                             | `?locationId=`: non-archived tables with their open order summary                                                                                     |
+| `GET /pos/stream`                   | `pos.orders.read`  |                             | `?locationId=`: server-sent events, topic `pos.floor` (orders opened/closed, tickets sent) for `/service` (RT.1, ADR 0044, docs/platform/realtime.md) |
+| `GET /pos/tables/:tableId/order`    | `pos.orders.read`  |                             | the table and its open order (or `null`)                                                                                                              |
+| `POST /pos/tables/:tableId/tickets` | `pos.orders.take`  | `completion: 'transaction'` | `{ lines: [{ productId, quantity 1–99, note? }] }`, 1–100 lines                                                                                       |
+| `GET /pos/orders`                   | `pos.orders.read`  |                             | `?locationId=&status=open\|closed`, newest first, at most 100                                                                                         |
+| `GET /pos/orders/:id`               | `pos.orders.read`  |                             |                                                                                                                                                       |
+| `POST /pos/orders/:id/voids`        | `pos.orders.void`  | `completion: 'transaction'` | `{ lines: [{ lineId, quantity 1–99 }] }`                                                                                                              |
+| `PATCH /pos/orders/:id`             | `pos.orders.take`  | response                    | `{ covers: 1–100 \| null }` on an open order (else 409)                                                                                               |
+| `POST /pos/orders/:id/close`        | `pos.orders.close` | response                    | no body; closing a closed order changes nothing                                                                                                       |
 
 Products must exist, not be archived, and not be in an archived category; the table must not be archived.
 

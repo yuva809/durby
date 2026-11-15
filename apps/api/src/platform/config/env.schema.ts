@@ -118,6 +118,9 @@ export const appEnvSchema = z
     OUTBOX_LAG_WARN_SECONDS: z.coerce.number().int().min(1).default(60),
     WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
 
+    // Live updates (docs/platform/realtime.md, ADR 0044): ping interval of open streams.
+    REALTIME_HEARTBEAT_MS: z.coerce.number().int().min(100).max(60_000).default(15_000),
+
     // Auth rate limits (counts per window).
     RATE_LIMIT_LOGIN_IP: rateLimit(RATE_LIMIT_DEFAULTS.RATE_LIMIT_LOGIN_IP),
     RATE_LIMIT_LOGIN_EMAIL: rateLimit(RATE_LIMIT_DEFAULTS.RATE_LIMIT_LOGIN_EMAIL),

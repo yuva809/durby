@@ -3,6 +3,7 @@ import { EVENT_PAYLOAD_MAX_BYTES, EVENTS, type NewEvent } from '@durby/shared';
 import type { z } from 'zod';
 import type { Prisma } from '../database/generated/client';
 import { TenantContext, type TenantTransactionClient } from '../tenancy';
+import { OUTBOX_CHANNEL } from './wakeup';
 
 /** A writer passed a payload its event's schema rejects: a programming error, never user input. */
 export class OutboxPayloadInvalidError extends Error {
@@ -45,10 +46,15 @@ export class OutboxService {
     }
     // Raw insert: the database sets occurred_at and available_at. Prisma fills @default(now())
     // on the client, and an app clock ahead of the database would delay the event's dispatch.
+    // The same statement notifies OUTBOX_CHANNEL; Postgres delivers it only if the transaction
+    // commits (once per transaction), which wakes the worker (ADR 0044 §5).
     const [row] = await tx.$queryRaw<{ id: string }[]>`
-      INSERT INTO outbox_events (tenant_id, type, version, payload)
-      VALUES (${tenantId}::uuid, ${event.type}, ${definition.current}, ${JSON.stringify(payload)}::jsonb)
-      RETURNING id::text AS id`;
+      WITH inserted AS (
+        INSERT INTO outbox_events (tenant_id, type, version, payload)
+        VALUES (${tenantId}::uuid, ${event.type}, ${definition.current}, ${JSON.stringify(payload)}::jsonb)
+        RETURNING id
+      ), notified AS (SELECT pg_notify(${OUTBOX_CHANNEL}, ''))
+      SELECT inserted.id::text AS id FROM inserted, notified`;
     if (!row) throw new Error('outbox insert returned no row');
     return row.id;
   }
