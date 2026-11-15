@@ -97,6 +97,57 @@ start_worker() {
 
 log "release $release (current: ${current:-none})"
 
+# 0a. The network the host's one Caddy shares with every stack's api and web (ADR 0034). Before step 0b:
+#     Caddy's service needs it even for a one-off validate.
+docker network inspect durby-shared-edge >/dev/null 2>&1 || docker network create durby-shared-edge >/dev/null
+
+# 0b. Edge config, before anything is pulled, migrated or switched: write the generated sites, then let Caddy
+#     validate the uploaded Caddyfile with them. An invalid one stops the deploy here; the running Caddy
+#     keeps the config it has loaded. A stack without its own edge (EDGE=false, ADR 0034) has no Caddyfile.
+if [[ "$(env_value EDGE)" != false ]]; then
+  # Redirect sites for former domains (ADR 0039), rewritten on every deploy so .env stays the one source.
+  redirects="$DEPLOY_DIR/caddy/redirects"
+  install -d -m 755 "$redirects"
+  if ((${#redirect_domains[@]} > 0)); then
+    {
+      echo "# Written by bin/deploy.sh from REDIRECT_DOMAINS in .env (ADR 0039). Edit .env, not this file."
+      echo "$(IFS=','; echo "${redirect_domains[*]}" | sed 's/,/, /g') {"
+      printf '\timport redirect_to_main\n'
+      echo "}"
+    } >"$redirects/redirects.caddy"
+    log "redirecting ${redirect_domains[*]} to $(env_value STAGING_DOMAIN)"
+  else
+    rm -f "$redirects/redirects.caddy"
+  fi
+  # Partners' own domains (ADR 0040): same routes as the main site; the theme comes from the Host.
+  partners="$DEPLOY_DIR/caddy/partners"
+  install -d -m 755 "$partners"
+  if ((${#partner_domains[@]} > 0)); then
+    {
+      echo "# Written by bin/deploy.sh from PARTNER_ORIGINS in .env (ADR 0040). Edit .env, not this file."
+      echo "$(IFS=','; echo "${partner_domains[*]}" | sed 's/,/, /g') {"
+      # shellcheck disable=SC2016 # Caddy reads {$SHARED_ALIAS} from its environment.
+      printf '\timport durby {$SHARED_ALIAS}-api:4000 {$SHARED_ALIAS}-web:3000\n'
+      echo "}"
+    } >"$partners/partners.caddy"
+    log "serving partner domains ${partner_domains[*]}"
+  else
+    rm -f "$partners/partners.caddy"
+  fi
+  log "validating the Caddyfile"
+  # In the running Caddy when there is one (same image, same environment); on a first deploy in a
+  # one-off container of the same service.
+  if [[ -n "$(dc ps -q --status running caddy 2>/dev/null || true)" ]]; then
+    validate=(dc exec -T caddy caddy validate --config /etc/caddy/Caddyfile)
+  else
+    validate=(dc run --rm --no-deps -T caddy caddy validate --config /etc/caddy/Caddyfile)
+  fi
+  if ! validate_output="$("${validate[@]}" 2>&1)"; then
+    printf '%s\n' "$validate_output"
+    die "the Caddyfile is invalid (output above); nothing was deployed, still serving ${current:-nothing}"
+  fi
+fi
+
 # 1. Images: pull only what is not on the host yet.
 missing=()
 for image in api api-migrate web; do
@@ -106,9 +157,6 @@ for ref in "${missing[@]}"; do
   log "pulling $ref"
   docker pull --quiet "$ref" >/dev/null || die "cannot pull $ref (registry login? image built?)"
 done
-
-# 1b. The network the host's one Caddy shares with every stack's api and web (ADR 0034).
-docker network inspect durby-shared-edge >/dev/null 2>&1 || docker network create durby-shared-edge >/dev/null
 
 # 2. Data services (no-op when already running and unchanged).
 log "starting postgres and redis"
@@ -155,41 +203,18 @@ if ! start_worker "$release"; then
   die "release $release worker did not become healthy"
 fi
 
-# 5. Edge. Reload picks up a changed Caddyfile without dropping connections. A stack without its own edge
-#    (EDGE=false, ADR 0034) is served by the edge stack's Caddy instead.
+# 5. Edge. Reload picks up the Caddyfile validated in step 0b without dropping connections; its output is
+#    logged. A stack without its own edge (EDGE=false, ADR 0034) is served by the edge stack's Caddy instead.
 if [[ "$(env_value EDGE)" != false ]]; then
-  # Redirect sites for former domains (ADR 0039), rewritten on every deploy so .env stays the one source.
-  redirects="$DEPLOY_DIR/caddy/redirects"
-  install -d -m 755 "$redirects"
-  if ((${#redirect_domains[@]} > 0)); then
-    {
-      echo "# Written by bin/deploy.sh from REDIRECT_DOMAINS in .env (ADR 0039). Edit .env, not this file."
-      echo "$(IFS=','; echo "${redirect_domains[*]}" | sed 's/,/, /g') {"
-      printf '\timport redirect_to_main\n'
-      echo "}"
-    } >"$redirects/redirects.caddy"
-    log "redirecting ${redirect_domains[*]} to $(env_value STAGING_DOMAIN)"
+  dc up -d --wait --wait-timeout "$WAIT_SECONDS" caddy ||
+    die "caddy did not start; release $release's api and web are already running (check: bin/dc logs --tail 50 caddy)"
+  log "reloading caddy"
+  if reload_output="$(dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile 2>&1)"; then
+    [[ -z "$reload_output" ]] || printf '%s\n' "$reload_output"
   else
-    rm -f "$redirects/redirects.caddy"
+    printf '%s\n' "$reload_output"
+    die "caddy reload failed (output above); the old edge config stays live, release $release's api and web are already running"
   fi
-  # Partners' own domains (ADR 0040): same routes as the main site; the theme comes from the Host.
-  partners="$DEPLOY_DIR/caddy/partners"
-  install -d -m 755 "$partners"
-  if ((${#partner_domains[@]} > 0)); then
-    {
-      echo "# Written by bin/deploy.sh from PARTNER_ORIGINS in .env (ADR 0040). Edit .env, not this file."
-      echo "$(IFS=','; echo "${partner_domains[*]}" | sed 's/,/, /g') {"
-      # shellcheck disable=SC2016 # Caddy reads {$SHARED_ALIAS} from its environment.
-      printf '\timport durby {$SHARED_ALIAS}-api:4000 {$SHARED_ALIAS}-web:3000\n'
-      echo "}"
-    } >"$partners/partners.caddy"
-    log "serving partner domains ${partner_domains[*]}"
-  else
-    rm -f "$partners/partners.caddy"
-  fi
-  dc up -d --wait --wait-timeout "$WAIT_SECONDS" caddy
-  dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1 ||
-    die "caddy reload failed; the old edge config stays live (check: bin/dc exec caddy caddy validate --config /etc/caddy/Caddyfile)"
 fi
 
 # 6. Record the release and keep images for the last few, for fast rollbacks.
