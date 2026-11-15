@@ -157,9 +157,10 @@ describe('partner_themes and partner_domains at the database', () => {
       `SELECT d.hostname FROM partner_domains d JOIN partners p ON p.id = d.partner_id
        WHERE p.slug = 'asiamight' ORDER BY d.hostname`,
     );
+    // ORDER BY hostname: 'app.' sorts before 'asiamight.'.
     expect(domains.rows.map((r: { hostname: string }) => r.hostname)).toEqual([
-      'asiamight.localhost',
       'app.asiamight.site',
+      'asiamight.localhost',
     ]);
     const labels = await migrator.query(
       `SELECT o.locale, o.key, o.value FROM partner_label_overrides o

@@ -1,52 +1,207 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Billing and checkout: technical and test notes</title>
-<style>
-  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#b4441d; --ok:#1f7a3d; --warn:#8a5a00; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; } }
-  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
-  h1 { font-size: 26px; margin: 0 0 4px; }
-  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
-  h3 { font-size: 15px; margin: 20px 0 6px; }
-  p.lead { color: var(--muted); margin-top: 0; }
-  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
-  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; }
-  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
-  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; }
-  .tag { display:inline-block; font-size:12px; padding:1px 7px; border-radius:10px; border:1px solid var(--line); color:var(--muted); }
-  .done { color: var(--ok); } .open { color: var(--warn); }
-  nav a { color: var(--accent); margin-right: 14px; }
-  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
-</style>
-</head>
-<body>
-<main>
-  <nav><a href="#status">Status</a><a href="#model">Data model</a><a href="#api">API</a><a href="#rules">Rules</a><a href="#web">Web</a><a href="#tests">Tests</a><a href="#gaps">Gaps</a></nav>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Billing and checkout: technical and test notes</title>
+    <style>
+      :root {
+        --fg: #1b1f24;
+        --muted: #5b6670;
+        --line: #d9dee3;
+        --bg: #ffffff;
+        --panel: #f5f7f9;
+        --accent: #b4441d;
+        --ok: #1f7a3d;
+        --warn: #8a5a00;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --fg: #e8ecef;
+          --muted: #9aa5ae;
+          --line: #2e363e;
+          --bg: #14181c;
+          --panel: #1c2228;
+          --accent: #f08a5d;
+          --ok: #5fcf85;
+          --warn: #f0c060;
+        }
+      }
+      :root[data-theme='dark'] {
+        --fg: #e8ecef;
+        --muted: #9aa5ae;
+        --line: #2e363e;
+        --bg: #14181c;
+        --panel: #1c2228;
+        --accent: #f08a5d;
+        --ok: #5fcf85;
+        --warn: #f0c060;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.55 system-ui,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+      }
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+      h1 {
+        font-size: 26px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 19px;
+        margin: 36px 0 10px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 6px;
+      }
+      h3 {
+        font-size: 15px;
+        margin: 20px 0 6px;
+      }
+      p.lead {
+        color: var(--muted);
+        margin-top: 0;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 13px;
+      }
+      code {
+        background: var(--panel);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      pre {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 12px;
+        border-radius: 6px;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8px 0 16px;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+        padding: 7px 8px;
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 12px;
+        padding: 1px 7px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        color: var(--muted);
+      }
+      .done {
+        color: var(--ok);
+      }
+      .open {
+        color: var(--warn);
+      }
+      nav a {
+        color: var(--accent);
+        margin-right: 14px;
+      }
+      .callout {
+        border-left: 3px solid var(--accent);
+        background: var(--panel);
+        padding: 10px 14px;
+        margin: 14px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav>
+        <a href="#status">Status</a><a href="#model">Data model</a><a href="#api">API</a
+        ><a href="#rules">Rules</a><a href="#web">Web</a><a href="#tests">Tests</a
+        ><a href="#gaps">Gaps</a>
+      </nav>
 
-  <h1>Billing and checkout</h1>
-  <p class="lead">Table service step 4: guest checks, billing counter, discounts and comps, split by item, split equally, merge. Branch <code>feature/billing-checkout</code>. Spec: <code>docs/modules/pos.md</code> → Step 4. Decision: <code>docs/adr/0036-guest-checks-splits-merges-discounts.md</code>.</p>
+      <h1>Billing and checkout</h1>
+      <p class="lead">
+        Table service step 4: guest checks, billing counter, discounts and comps, split by item,
+        split equally, merge. Branch <code>feature/billing-checkout</code>. Spec:
+        <code>docs/modules/pos.md</code> → Step 4. Decision:
+        <code>docs/adr/0036-guest-checks-splits-merges-discounts.md</code>.
+      </p>
 
-  <h2 id="status">Status</h2>
-  <table>
-    <tr><th>Row</th><th>Feature</th><th>Commit</th><th>State</th></tr>
-    <tr><td>71</td><td>Guest checks, numbering, reprint, cancel, Checkout page</td><td><code>9fa33f9</code></td><td class="done">Built, tested</td></tr>
-    <tr><td>75</td><td>Discounts and comps with a reason</td><td><code>cc81462</code></td><td class="done">Built, tested (the reasons editor in Settings is not built)</td></tr>
-    <tr><td>73</td><td>Split equally into n checks</td><td><code>98bcce7</code> (API), <code>b82653e</code> (till)</td><td class="done">Built, tested</td></tr>
-    <tr><td>72</td><td>Split by item</td><td><code>b82653e</code></td><td class="done">Built, API tested, till not browser-tested</td></tr>
-    <tr><td>74</td><td>Merge tables into one bill</td><td><code>b82653e</code></td><td class="done">Built, API tested, till not browser-tested</td></tr>
-    <tr><td>76</td><td>Tips</td><td>—</td><td class="open">Deferred: needs payments (fiscal module)</td></tr>
-  </table>
+      <h2 id="status">Status</h2>
+      <table>
+        <tr>
+          <th>Row</th>
+          <th>Feature</th>
+          <th>Commit</th>
+          <th>State</th>
+        </tr>
+        <tr>
+          <td>71</td>
+          <td>Guest checks, numbering, reprint, cancel, Checkout page</td>
+          <td><code>9fa33f9</code></td>
+          <td class="done">Built, tested</td>
+        </tr>
+        <tr>
+          <td>75</td>
+          <td>Discounts and comps with a reason</td>
+          <td><code>cc81462</code></td>
+          <td class="done">Built, tested (the reasons editor in Settings is not built)</td>
+        </tr>
+        <tr>
+          <td>73</td>
+          <td>Split equally into n checks</td>
+          <td><code>98bcce7</code> (API), <code>b82653e</code> (till)</td>
+          <td class="done">Built, tested</td>
+        </tr>
+        <tr>
+          <td>72</td>
+          <td>Split by item</td>
+          <td><code>b82653e</code></td>
+          <td class="done">Built, API tested, till not browser-tested</td>
+        </tr>
+        <tr>
+          <td>74</td>
+          <td>Merge tables into one bill</td>
+          <td><code>b82653e</code></td>
+          <td class="done">Built, API tested, till not browser-tested</td>
+        </tr>
+        <tr>
+          <td>76</td>
+          <td>Tips</td>
+          <td>—</td>
+          <td class="open">Deferred: needs payments (fiscal module)</td>
+        </tr>
+      </table>
 
-  <h2 id="model">Data model</h2>
-  <p>Every table is tenant-scoped (RLS, <code>FORCE ROW LEVEL SECURITY</code>, <code>tenant_isolation</code> policy) and append-only: <code>durby_app</code> has no UPDATE/DELETE/TRUNCATE, and a statement trigger <code>&lt;table&gt;_append_only</code> blocks the owner too. A catalog test fails if a trigger is dropped.</p>
-<pre>PosBill                    pos_bills                 kind single | equal, share_count 2–20
+      <h2 id="model">Data model</h2>
+      <p>
+        Every table is tenant-scoped (RLS, <code>FORCE ROW LEVEL SECURITY</code>,
+        <code>tenant_isolation</code> policy) and append-only: <code>durby_app</code> has no
+        UPDATE/DELETE/TRUNCATE, and a statement trigger
+        <code>&lt;table&gt;_append_only</code> blocks the owner too. A catalog test fails if a
+        trigger is dropped.
+      </p>
+      <pre>
+PosBill                    pos_bills                 kind single | equal, share_count 2–20
  ├─ PosBillOrder           pos_bill_orders           orders the bill covers (1–10, one location)
  ├─ PosBillItem            pos_bill_items            billed portions: name, unit price, rate,
  │                                                   quantity, discount_amount (≤ 0)
@@ -57,90 +212,346 @@
 PosOrderDiscount           pos_order_discounts       line or whole order; percent | amount; reason;
                                                      voids_discount_id (removal = counter-row)
  └─ PosOrderDiscountLine   pos_order_discount_lines  amount per line, negative, at the line's rate</pre>
-  <p>Migrations: <code>20261112100000_pos_guest_checks</code> (tables, print job <code>check_id</code>, per-check open-job index), <code>20261113100000_pos_order_discounts</code> (discount tables, <code>discount_amount</code>). Both expand-only.</p>
-  <p>Number series <code>pos.guestCheck</code> (feature <code>pos</code>, prefix <code>CHK</code>, yearly). Audit actions <code>pos.bill.created</code>, <code>pos.bill.cancelled</code>, <code>pos.discount.added</code>, <code>pos.discount.voided</code>; snapshots hold ids, amounts and kinds, never reasons or cancel reasons.</p>
+      <p>
+        Migrations: <code>20261112100000_pos_guest_checks</code> (tables, print job
+        <code>check_id</code>, per-check open-job index),
+        <code>20261113100000_pos_order_discounts</code> (discount tables,
+        <code>discount_amount</code>). Both expand-only.
+      </p>
+      <p>
+        Number series <code>pos.guestCheck</code> (feature <code>pos</code>, prefix
+        <code>CHK</code>, yearly). Audit actions <code>pos.bill.created</code>,
+        <code>pos.bill.cancelled</code>, <code>pos.discount.added</code>,
+        <code>pos.discount.voided</code>; snapshots hold ids, amounts and kinds, never reasons or
+        cancel reasons.
+      </p>
 
-  <h2 id="api">API</h2>
-  <table>
-    <tr><th>Method and path</th><th>Permission</th><th>Idempotent</th><th>Purpose</th></tr>
-    <tr><td><code>POST /pos/bills</code></td><td>pos.bills.print</td><td>transaction</td><td>Bill chosen items (<code>items</code>), everything unbilled, one order or several (<code>orderIds</code>), or split equally (<code>shares</code>)</td></tr>
-    <tr><td><code>GET /pos/bills/:id</code></td><td>pos.bills.print</td><td>—</td><td>Bill with its checks</td></tr>
-    <tr><td><code>POST /pos/bills/:id/cancel</code></td><td>pos.bills.cancel</td><td>transaction</td><td>Cancel with reason; a repeat changes nothing</td></tr>
-    <tr><td><code>GET /pos/checks</code></td><td>pos.bills.print</td><td>—</td><td>List: <code>view=recent</code> (24 h) or <code>history</code> (from, to, q, cursor; 50 per page)</td></tr>
-    <tr><td><code>GET /pos/checks/:id</code></td><td>pos.bills.print</td><td>—</td><td>Printable check: lines (item, discount, share), totals, orders</td></tr>
-    <tr><td><code>POST /pos/orders/:id/discounts</code></td><td>pos.orders.discount</td><td>transaction</td><td>Give percent or amount discount to a line or the whole order</td></tr>
-    <tr><td><code>POST /pos/orders/:id/discounts/:discountId/void</code></td><td>pos.orders.discount</td><td>transaction</td><td>Remove a discount (counter-row)</td></tr>
-    <tr><td><code>POST /pos/print-jobs/bill</code></td><td>pos.bills.print</td><td>—</td><td>Queue a bill job; optional <code>checkId</code> prints that check</td></tr>
-  </table>
-  <p>Order responses gain <code>discounts</code>, <code>bills</code> (with checks), <code>unbilled</code> (still to bill, after discounts), and per line <code>billedQuantity</code>. Errors: <code>pos.bill_not_found</code>, <code>pos.check_not_found</code>, <code>pos.nothing_to_bill</code>, <code>pos.line_billed</code>, <code>pos.orders_not_same_location</code>, <code>pos.discount_not_found</code>, <code>pos.discount_invalid</code>, <code>pos.discount_exists</code>, <code>pos.discount_line_whole</code>, <code>pos.discount_active</code>. Full table: <code>docs/modules/pos.md</code>.</p>
+      <h2 id="api">API</h2>
+      <table>
+        <tr>
+          <th>Method and path</th>
+          <th>Permission</th>
+          <th>Idempotent</th>
+          <th>Purpose</th>
+        </tr>
+        <tr>
+          <td><code>POST /pos/bills</code></td>
+          <td>pos.bills.print</td>
+          <td>transaction</td>
+          <td>
+            Bill chosen items (<code>items</code>), everything unbilled, one order or several
+            (<code>orderIds</code>), or split equally (<code>shares</code>)
+          </td>
+        </tr>
+        <tr>
+          <td><code>GET /pos/bills/:id</code></td>
+          <td>pos.bills.print</td>
+          <td>—</td>
+          <td>Bill with its checks</td>
+        </tr>
+        <tr>
+          <td><code>POST /pos/bills/:id/cancel</code></td>
+          <td>pos.bills.cancel</td>
+          <td>transaction</td>
+          <td>Cancel with reason; a repeat changes nothing</td>
+        </tr>
+        <tr>
+          <td><code>GET /pos/checks</code></td>
+          <td>pos.bills.print</td>
+          <td>—</td>
+          <td>
+            List: <code>view=recent</code> (24 h) or <code>history</code> (from, to, q, cursor; 50
+            per page)
+          </td>
+        </tr>
+        <tr>
+          <td><code>GET /pos/checks/:id</code></td>
+          <td>pos.bills.print</td>
+          <td>—</td>
+          <td>Printable check: lines (item, discount, share), totals, orders</td>
+        </tr>
+        <tr>
+          <td><code>POST /pos/orders/:id/discounts</code></td>
+          <td>pos.orders.discount</td>
+          <td>transaction</td>
+          <td>Give percent or amount discount to a line or the whole order</td>
+        </tr>
+        <tr>
+          <td><code>POST /pos/orders/:id/discounts/:discountId/void</code></td>
+          <td>pos.orders.discount</td>
+          <td>transaction</td>
+          <td>Remove a discount (counter-row)</td>
+        </tr>
+        <tr>
+          <td><code>POST /pos/print-jobs/bill</code></td>
+          <td>pos.bills.print</td>
+          <td>—</td>
+          <td>Queue a bill job; optional <code>checkId</code> prints that check</td>
+        </tr>
+      </table>
+      <p>
+        Order responses gain <code>discounts</code>, <code>bills</code> (with checks),
+        <code>unbilled</code> (still to bill, after discounts), and per line
+        <code>billedQuantity</code>. Errors: <code>pos.bill_not_found</code>,
+        <code>pos.check_not_found</code>, <code>pos.nothing_to_bill</code>,
+        <code>pos.line_billed</code>, <code>pos.orders_not_same_location</code>,
+        <code>pos.discount_not_found</code>, <code>pos.discount_invalid</code>,
+        <code>pos.discount_exists</code>, <code>pos.discount_line_whole</code>,
+        <code>pos.discount_active</code>. Full table: <code>docs/modules/pos.md</code>.
+      </p>
 
-  <h2 id="rules">Business rules and where they live</h2>
-  <table>
-    <tr><th>Rule</th><th>Enforced in</th></tr>
-    <tr><td>Billed quantity = portions on non-cancelled bills; never more than what is left after voids</td><td><code>billing.ts</code> (pure), <code>bills.service.ts</code></td></tr>
-    <tr><td>Orders lock (<code>FOR UPDATE</code>) in id order around bill, void and discount writes</td><td><code>bills.service.ts</code>, <code>discounts.service.ts</code>, <code>orders.service.ts</code></td></tr>
-    <tr><td>Void only unbilled portions (<code>pos.line_billed</code>); a discounted line can't be voided (<code>pos.discount_active</code>)</td><td><code>orders.service.ts</code></td></tr>
-    <tr><td>Discount amount fixed when given, from items still to bill; percent rounded per line; a whole-order amount spread pro rata with leftover cents to the largest remainders</td><td><code>discounts.ts</code> (pure)</td></tr>
-    <tr><td>A discounted line is billed whole, in one bill</td><td><code>bills.service.ts</code> (<code>pos.discount_line_whole</code>)</td></tr>
-    <tr><td>One discount per line; a whole-order discount can't overlap</td><td><code>discounts.service.ts</code> (<code>pos.discount_exists</code>)</td></tr>
-    <tr><td>Equal split: each VAT rate's gross in cents divided by n; leftover cents to the first shares; shares sum exactly to the bill</td><td><code>bills.service.ts</code> (shares branch)</td></tr>
-    <tr><td>Orders of one bill must share a location; at most 10 orders</td><td><code>bills.service.ts</code></td></tr>
-    <tr><td>Checks always carry "Interim bill – not a fiscal receipt"; no payment is recorded</td><td><code>receipt.tsx</code>, ADR 0016 §3</td></tr>
-  </table>
+      <h2 id="rules">Business rules and where they live</h2>
+      <table>
+        <tr>
+          <th>Rule</th>
+          <th>Enforced in</th>
+        </tr>
+        <tr>
+          <td>
+            Billed quantity = portions on non-cancelled bills; never more than what is left after
+            voids
+          </td>
+          <td><code>billing.ts</code> (pure), <code>bills.service.ts</code></td>
+        </tr>
+        <tr>
+          <td>
+            Orders lock (<code>FOR UPDATE</code>) in id order around bill, void and discount writes
+          </td>
+          <td>
+            <code>bills.service.ts</code>, <code>discounts.service.ts</code>,
+            <code>orders.service.ts</code>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            Void only unbilled portions (<code>pos.line_billed</code>); a discounted line can't be
+            voided (<code>pos.discount_active</code>)
+          </td>
+          <td><code>orders.service.ts</code></td>
+        </tr>
+        <tr>
+          <td>
+            Discount amount fixed when given, from items still to bill; percent rounded per line; a
+            whole-order amount spread pro rata with leftover cents to the largest remainders
+          </td>
+          <td><code>discounts.ts</code> (pure)</td>
+        </tr>
+        <tr>
+          <td>A discounted line is billed whole, in one bill</td>
+          <td><code>bills.service.ts</code> (<code>pos.discount_line_whole</code>)</td>
+        </tr>
+        <tr>
+          <td>One discount per line; a whole-order discount can't overlap</td>
+          <td><code>discounts.service.ts</code> (<code>pos.discount_exists</code>)</td>
+        </tr>
+        <tr>
+          <td>
+            Equal split: each VAT rate's gross in cents divided by n; leftover cents to the first
+            shares; shares sum exactly to the bill
+          </td>
+          <td><code>bills.service.ts</code> (shares branch)</td>
+        </tr>
+        <tr>
+          <td>Orders of one bill must share a location; at most 10 orders</td>
+          <td><code>bills.service.ts</code></td>
+        </tr>
+        <tr>
+          <td>Checks always carry "Interim bill – not a fiscal receipt"; no payment is recorded</td>
+          <td><code>receipt.tsx</code>, ADR 0016 §3</td>
+        </tr>
+      </table>
 
-  <h2 id="web">Web</h2>
-  <ul>
-    <li><strong>Till</strong> (<code>components/pos/order-page.tsx</code>): <em>Print bill</em> bills what is unbilled and prints the new check; with nothing unbilled it reprints the newest check (<em>Reprint bill</em>). The order panel lists bills with reprint buttons, discounts with <em>Remove</em>, and the unbilled amount.</li>
-    <li><strong>Split dialog</strong> (<code>split-dialog.tsx</code>): modes by item, equally (2–20 guests), merge (other open tables at the location, loaded from the floor).</li>
-    <li><strong>Discount dialog</strong> (<code>discount-dialog.tsx</code>): target (whole order or one item), percent or amount, value, reason from five built-in options. Shown only with <code>pos.orders.discount</code>.</li>
-    <li><strong>Checkout</strong> (<code>/checkout</code>, <code>checkout-page.tsx</code>): tabs Open tables, Recent checks, History. A check opens as its receipt; Reprint keeps the number; Cancel bill needs <code>pos.bills.cancel</code>.</li>
-    <li><strong>Receipt</strong> (<code>check-receipt.tsx</code> → <code>receipt.tsx</code>): shows "Share n of m", discount lines and a CANCELLED stamp.</li>
-    <li><strong>Printing:</strong> bill jobs carry a <code>checkId</code>; the Android till draws that check (<code>print-job-runner.tsx</code>).</li>
-  </ul>
-  <p>Permissions: <code>pos.bills.print</code> (admin, manager, waiter, cashier); <code>pos.bills.cancel</code> and <code>pos.orders.discount</code> (admin, manager; owner has all).</p>
+      <h2 id="web">Web</h2>
+      <ul>
+        <li>
+          <strong>Till</strong> (<code>components/pos/order-page.tsx</code>):
+          <em>Print bill</em> bills what is unbilled and prints the new check; with nothing unbilled
+          it reprints the newest check (<em>Reprint bill</em>). The order panel lists bills with
+          reprint buttons, discounts with <em>Remove</em>, and the unbilled amount.
+        </li>
+        <li>
+          <strong>Split dialog</strong> (<code>split-dialog.tsx</code>): modes by item, equally
+          (2–20 guests), merge (other open tables at the location, loaded from the floor).
+        </li>
+        <li>
+          <strong>Discount dialog</strong> (<code>discount-dialog.tsx</code>): target (whole order
+          or one item), percent or amount, value, reason from five built-in options. Shown only with
+          <code>pos.orders.discount</code>.
+        </li>
+        <li>
+          <strong>Checkout</strong> (<code>/checkout</code>, <code>checkout-page.tsx</code>): tabs
+          Open tables, Recent checks, History. A check opens as its receipt; Reprint keeps the
+          number; Cancel bill needs <code>pos.bills.cancel</code>.
+        </li>
+        <li>
+          <strong>Receipt</strong> (<code>check-receipt.tsx</code> → <code>receipt.tsx</code>):
+          shows "Share n of m", discount lines and a CANCELLED stamp.
+        </li>
+        <li>
+          <strong>Printing:</strong> bill jobs carry a <code>checkId</code>; the Android till draws
+          that check (<code>print-job-runner.tsx</code>).
+        </li>
+      </ul>
+      <p>
+        Permissions: <code>pos.bills.print</code> (admin, manager, waiter, cashier);
+        <code>pos.bills.cancel</code> and <code>pos.orders.discount</code> (admin, manager; owner
+        has all).
+      </p>
 
-  <h2 id="tests">Testing</h2>
-  <h3>Automated</h3>
-  <table>
-    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Tests</th></tr>
-    <tr><td>API unit</td><td><code>modules/pos/billing.spec.ts</code></td><td>remaining, billed, unbilled quantities and gross</td><td>4</td></tr>
-    <tr><td>API unit</td><td><code>modules/pos/discounts.spec.ts</code></td><td>percent, comp, amount, whole-order cent split, refusals</td><td>5</td></tr>
-    <tr><td>API e2e</td><td><code>test/pos-bills.e2e.spec.ts</code></td><td>billing, merge, replay, concurrency, cancel, checks list, print job check, equal split, access, audit, isolation</td><td>18</td></tr>
-    <tr><td>API e2e</td><td><code>test/pos-discounts.e2e.spec.ts</code></td><td>discount on line and order, billing whole, removal, void refusal, roles, audit, isolation</td><td>7</td></tr>
-    <tr><td>API registry</td><td><code>authenticated-routes</code>, <code>rbac-roles</code>, <code>numbering</code>, <code>tenant-context</code>, <code>append-only</code>, <code>migration-drift</code></td><td>new routes, permissions, number series, models, append-only tables, schema drift</td><td>existing</td></tr>
-    <tr><td>Web</td><td><code>components/pos/checkout.test.tsx</code></td><td>tabs, reprint, cancel with reason, history search and paging, access</td><td>5</td></tr>
-    <tr><td>Web</td><td><code>components/pos/split-dialog.test.tsx</code></td><td>equal split sends <code>shares</code> and reports the first check</td><td>1</td></tr>
-    <tr><td>Web</td><td><code>components/pos/discount-dialog.test.tsx</code></td><td>discount list and removal call</td><td>2</td></tr>
-    <tr><td>Web</td><td><code>components/pos/orders.test.tsx</code>, <code>receipt.test.tsx</code>, <code>lib/pos/format.test.ts</code></td><td>till billing and reprint, receipt banner and stamp, check lines and reprint choice</td><td>existing + new</td></tr>
-  </table>
-  <p>Last run on this branch: web suite 79 files, 677 tests passing; API targeted suites passing (billing 18, discounts 7, registry snapshots). Lint, typecheck and Prettier pass. The full root <code>pnpm test</code> has not been rerun (an unrelated timing test in <code>tools/virtual-printer</code> fails on the development laptop).</p>
-  <pre>cd apps/api &amp;&amp; npx vitest run test/pos-bills.e2e.spec.ts test/pos-discounts.e2e.spec.ts src/modules/pos
+      <h2 id="tests">Testing</h2>
+      <h3>Automated</h3>
+      <table>
+        <tr>
+          <th>Layer</th>
+          <th>File</th>
+          <th>Covers</th>
+          <th>Tests</th>
+        </tr>
+        <tr>
+          <td>API unit</td>
+          <td><code>modules/pos/billing.spec.ts</code></td>
+          <td>remaining, billed, unbilled quantities and gross</td>
+          <td>4</td>
+        </tr>
+        <tr>
+          <td>API unit</td>
+          <td><code>modules/pos/discounts.spec.ts</code></td>
+          <td>percent, comp, amount, whole-order cent split, refusals</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>API e2e</td>
+          <td><code>test/pos-bills.e2e.spec.ts</code></td>
+          <td>
+            billing, merge, replay, concurrency, cancel, checks list, print job check, equal split,
+            access, audit, isolation
+          </td>
+          <td>18</td>
+        </tr>
+        <tr>
+          <td>API e2e</td>
+          <td><code>test/pos-discounts.e2e.spec.ts</code></td>
+          <td>
+            discount on line and order, billing whole, removal, void refusal, roles, audit,
+            isolation
+          </td>
+          <td>7</td>
+        </tr>
+        <tr>
+          <td>API registry</td>
+          <td>
+            <code>authenticated-routes</code>, <code>rbac-roles</code>, <code>numbering</code>,
+            <code>tenant-context</code>, <code>append-only</code>, <code>migration-drift</code>
+          </td>
+          <td>new routes, permissions, number series, models, append-only tables, schema drift</td>
+          <td>existing</td>
+        </tr>
+        <tr>
+          <td>Web</td>
+          <td><code>components/pos/checkout.test.tsx</code></td>
+          <td>tabs, reprint, cancel with reason, history search and paging, access</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>Web</td>
+          <td><code>components/pos/split-dialog.test.tsx</code></td>
+          <td>equal split sends <code>shares</code> and reports the first check</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>Web</td>
+          <td><code>components/pos/discount-dialog.test.tsx</code></td>
+          <td>discount list and removal call</td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Web</td>
+          <td>
+            <code>components/pos/orders.test.tsx</code>, <code>receipt.test.tsx</code>,
+            <code>lib/pos/format.test.ts</code>
+          </td>
+          <td>
+            till billing and reprint, receipt banner and stamp, check lines and reprint choice
+          </td>
+          <td>existing + new</td>
+        </tr>
+      </table>
+      <p>
+        Last run on this branch: web suite 79 files, 677 tests passing; API targeted suites passing
+        (billing 18, discounts 7, registry snapshots). Lint, typecheck and Prettier pass. The full
+        root <code>pnpm test</code> has not been rerun (an unrelated timing test in
+        <code>tools/virtual-printer</code> fails on the development laptop).
+      </p>
+      <pre>
+cd apps/api &amp;&amp; npx vitest run test/pos-bills.e2e.spec.ts test/pos-discounts.e2e.spec.ts src/modules/pos
 cd apps/web &amp;&amp; npx vitest run components/pos lib/pos</pre>
 
-  <h3>Manual (browser)</h3>
-  <table>
-    <tr><th>Step</th><th>Expected</th></tr>
-    <tr><td>Waiter sends 2 Soup + 1 Cola, Print bill</td><td>CHK-…000001, items and total, interim notice</td></tr>
-    <tr><td>Manager gives 10 % on Soup</td><td>Discount listed; Still to bill drops; void of Soup refused until Remove</td></tr>
-    <tr><td>Split bill → by item, 1 Soup</td><td>Check with 1 Soup; rest still to bill</td></tr>
-    <tr><td>Split bill → equally, 3 guests</td><td>Three checks whose amounts add to the bill</td></tr>
-    <tr><td>Split bill → merge a second table</td><td>One check lists both tables</td></tr>
-    <tr><td>Checkout → Recent → View → Reprint</td><td>Same number</td></tr>
-    <tr><td>Owner cancels a bill</td><td>CANCELLED on the check; items billable again</td></tr>
-    <tr><td>Staff opens Checkout</td><td>No access page</td></tr>
-  </table>
+      <h3>Manual (browser)</h3>
+      <table>
+        <tr>
+          <th>Step</th>
+          <th>Expected</th>
+        </tr>
+        <tr>
+          <td>Waiter sends 2 Soup + 1 Cola, Print bill</td>
+          <td>CHK-…000001, items and total, interim notice</td>
+        </tr>
+        <tr>
+          <td>Manager gives 10 % on Soup</td>
+          <td>Discount listed; Still to bill drops; void of Soup refused until Remove</td>
+        </tr>
+        <tr>
+          <td>Split bill → by item, 1 Soup</td>
+          <td>Check with 1 Soup; rest still to bill</td>
+        </tr>
+        <tr>
+          <td>Split bill → equally, 3 guests</td>
+          <td>Three checks whose amounts add to the bill</td>
+        </tr>
+        <tr>
+          <td>Split bill → merge a second table</td>
+          <td>One check lists both tables</td>
+        </tr>
+        <tr>
+          <td>Checkout → Recent → View → Reprint</td>
+          <td>Same number</td>
+        </tr>
+        <tr>
+          <td>Owner cancels a bill</td>
+          <td>CANCELLED on the check; items billable again</td>
+        </tr>
+        <tr>
+          <td>Staff opens Checkout</td>
+          <td>No access page</td>
+        </tr>
+      </table>
 
-  <h2 id="gaps">Known gaps and open decisions</h2>
-  <div class="callout">
-    <ul>
-      <li>Settings → Service reasons editor (<code>pos.discountReasons</code>) not built; five fixed reasons are used.</li>
-      <li>Order totals (gross, per rate) show the amount before discounts; only the unbilled figure and the bills include them.</li>
-      <li>Merge leaves each table's order open; closing is separate.</li>
-      <li>Print bill prints one check; the other shares are printed from the order list or Checkout.</li>
-      <li>Tips (row 76) wait for payments and the fiscal module (TSE). Until then no payment or receipt is recorded.</li>
-      <li>Spec and ADR 0036 do not yet describe the discount and split details in this document (whole-line rule, rounding); update before merge.</li>
-    </ul>
-  </div>
-</main>
-</body>
+      <h2 id="gaps">Known gaps and open decisions</h2>
+      <div class="callout">
+        <ul>
+          <li>
+            Settings → Service reasons editor (<code>pos.discountReasons</code>) not built; five
+            fixed reasons are used.
+          </li>
+          <li>
+            Order totals (gross, per rate) show the amount before discounts; only the unbilled
+            figure and the bills include them.
+          </li>
+          <li>Merge leaves each table's order open; closing is separate.</li>
+          <li>
+            Print bill prints one check; the other shares are printed from the order list or
+            Checkout.
+          </li>
+          <li>
+            Tips (row 76) wait for payments and the fiscal module (TSE). Until then no payment or
+            receipt is recorded.
+          </li>
+          <li>
+            Spec and ADR 0036 do not yet describe the discount and split details in this document
+            (whole-line rule, rounding); update before merge.
+          </li>
+        </ul>
+      </div>
+    </main>
+  </body>
 </html>

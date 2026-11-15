@@ -90,10 +90,8 @@ describe('teamRowActions and canToggle', () => {
     const manager = access(['platform.users.manage', 'pos.orders.read']);
     expect(teamRowActions(manager, member()).canManage).toBe(true);
     expect(
-      teamRowActions(
-        manager,
-        member({ permissions: ['pos.orders.read', 'catalog.products.edit'] }),
-      ).canManage,
+      teamRowActions(manager, member({ permissions: ['pos.orders.read', 'catalog.products.edit'] }))
+        .canManage,
     ).toBe(false);
   });
 
