@@ -813,5 +813,9 @@
   "platform.audit.fields.customerId": "Kunde",
   "platform.audit.fields.total": "Summe",
   "platform.audit.fields.salePrice": "Verkaufspreis",
-  "platform.auditPage.modules.orders": "Aufträge"
+  "platform.auditPage.modules.orders": "Aufträge",
+  "platform.numbering.series.inventoryGoodsIssue.name": "Warenausgänge",
+  "platform.numbering.series.inventoryGoodsIssue.description": "Nummern der Ware, die für kommissionierte Aufträge das Lager verlässt.",
+  "platform.numbering.series.inventoryGoodsRestock.name": "Rücknahmen",
+  "platform.numbering.series.inventoryGoodsRestock.description": "Nummern der Ware, die von stornierten oder zurückgekommenen Aufträgen zurückkommt."
 }

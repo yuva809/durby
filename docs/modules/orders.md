@@ -95,7 +95,47 @@ Lines refuse unknown or archived items and parents with variants (`orders.item_n
   items / customers / warehouses, staff read-only, other organizations see nothing.
 - Web: `components/orders/orders.test.tsx`, `lib/orders/form.test.ts`.
 
-## Later (step 3)
+## Step 3: picking and delivery
 
-Picking (a stock issue document on confirm of the pick list), packing, dispatch with driver details, delivery and
-returns.
+| Route                     | Key                   | From → to                                                                         |
+| ------------------------- | --------------------- | --------------------------------------------------------------------------------- |
+| `POST /:id/start-picking` | `orders.picking.use`  | confirmed → picking                                                               |
+| `POST /:id/pick`          | `orders.picking.use`  | confirmed / picking → packed; `lines[]` = every line once, `0` ≤ picked ≤ ordered |
+| `POST /:id/dispatch`      | `orders.delivery.use` | packed → dispatched; `driverName?`, `driverPhone?`, `vehicle?`, `note?`           |
+| `POST /:id/deliver`       | `orders.delivery.use` | dispatched → delivered; `note?` (who received it)                                 |
+| `POST /:id/return`        | `orders.delivery.use` | dispatched → returned; `note?` (why)                                              |
+
+Both keys are location-scoped (admin and manager by default; give them to warehouse staff in Add Staff). All five
+complete their idempotency key in the business transaction.
+
+- **Stock.** Picking books one `issue` stock document (`GI-YYYY-000001`) for the picked quantities at the average
+  cost, refused below zero unless the branch allows negative stock (`inventory.insufficient_stock`; the order stays
+  where it was). A return, or a cancel after picking, books one `restock` document (`RS-…`) at the cost the goods
+  went out at. Both name the order (`stock_documents.source_order_id`) and show in Inventory → Documents.
+- **Short picks.** A line can be picked below what was ordered (0 = nothing on the shelf); the order ships what was
+  picked. `sales_order_lines.picked_quantity` keeps it.
+- **Delivery details** (`driver_name`, `driver_phone`, `vehicle`, `dispatched_at`, `delivered_at`) live on the order,
+  never in audit snapshots (personal data).
+- **Statuses** now: draft → confirmed → (picking) → packed → dispatched → delivered | returned; cancel up to packed.
+
+### Web
+
+- **Picking** (`/picking`): confirmed and picking orders, oldest first, filter by warehouse. "Start picking"; "Pick"
+  opens the lines with the ordered quantities filled in ("All as ordered"), shows short lines, refuses more than
+  ordered, and "Picked and packed" books the stock.
+- **Delivery Tracking** (`/deliveries`): three columns, Ready to dispatch (packed), On the way (dispatched, with driver
+  and time), Delivered (last 7 days). Dispatch asks for driver, phone, vehicle and a note; Delivered asks who received
+  it; Came back asks why and books the goods back in.
+- The order panel shows picked quantities and the delivery details.
+
+### Tests
+
+- Web: `components/orders/fulfilment.test.tsx` (queue order, pick with prefilled and short quantities, over-pick
+  refused, board columns, dispatch body, return with reason).
+- API e2e (Docker): `test/orders.e2e.spec.ts` → picking and delivery: stock after pick, issue numbering, full
+  timeline, driver phone kept out of the audit log, returns and cancels booking back at issue cost, insufficient
+  stock refused, keys enforced.
+
+## Later
+
+Partial re-picks of short lines, proof of delivery (photo or signature), delivery notes to print.

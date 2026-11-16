@@ -47,16 +47,11 @@ describe('nav layouts (ADR 0044)', () => {
     );
     expect(byGroup).toEqual({
       main: ['home'],
-      operations: ['inventory', 'categories', 'orders', 'branches'],
+      operations: ['inventory', 'categories', 'orders', 'picking', 'branches', 'deliveries'],
       administration: ['audit', 'staff', 'settings'],
       tools: [],
     });
-    expect(ids(items.filter((i) => i.planned === true))).toEqual([
-      'picking',
-      'deliveries',
-      'import',
-      'feedback',
-    ]);
+    expect(ids(items.filter((i) => i.planned === true))).toEqual(['import', 'feedback']);
   });
 
   it('lists Product Category on its own, not again under Inventory', () => {

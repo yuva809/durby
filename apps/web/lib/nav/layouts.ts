@@ -69,8 +69,8 @@ const OPERATIONS: NavLayoutDefinition = {
       label: 'platform.nav.picking',
       icon: Truck,
       group: 'operations',
-      feature: 'inventory',
-      planned: true,
+      feature: 'orders',
+      permission: 'orders.picking.use',
     },
     {
       // Settings → Locations as its own page.
@@ -87,8 +87,8 @@ const OPERATIONS: NavLayoutDefinition = {
       label: 'platform.nav.deliveries',
       icon: MapPin,
       group: 'operations',
-      feature: 'inventory',
-      planned: true,
+      feature: 'orders',
+      permission: 'orders.delivery.use',
     },
     { ...item('audit'), group: 'administration' },
     { ...item('staff'), group: 'administration' },

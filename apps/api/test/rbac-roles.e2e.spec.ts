@@ -116,6 +116,8 @@ describe('roles API', () => {
       'orders.customers.read',
       'orders.customers.create',
       'orders.customers.edit',
+      'orders.picking.use',
+      'orders.delivery.use',
     ]);
     expect(data[3]?.permissions).toEqual([
       'platform.settings.read',

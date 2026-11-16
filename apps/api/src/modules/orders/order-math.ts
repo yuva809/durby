@@ -14,14 +14,22 @@ export function orderTotal(lineTotals: readonly string[]): string {
   return lineTotals.reduce((sum, t) => sum.plus(t), new Decimal(0)).toFixed(2);
 }
 
-/**
- * The moves step 2 allows (ADR 0044 §3): a draft is confirmed; anything up to packed can be cancelled. Picking,
- * packing and delivery add theirs in step 3.
- */
+/** Where each status may go next (ADR 0044 §3–5); delivered, returned and cancelled are final. */
+const NEXT: Readonly<Record<SalesOrderStatus, readonly SalesOrderStatus[]>> = {
+  draft: ['confirmed'],
+  confirmed: ['picking', 'packed'],
+  picking: ['packed'],
+  packed: ['dispatched'],
+  dispatched: ['delivered', 'returned'],
+  delivered: [],
+  returned: [],
+  cancelled: [],
+};
+
+/** Whether an order may move; cancel works up to packed (SALES_ORDER_CANCELLABLE). */
 export function canMove(from: SalesOrderStatus, to: SalesOrderStatus): boolean {
-  if (to === 'confirmed') return from === 'draft';
   if (to === 'cancelled') return SALES_ORDER_CANCELLABLE.includes(from);
-  return false;
+  return NEXT[from].includes(to);
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

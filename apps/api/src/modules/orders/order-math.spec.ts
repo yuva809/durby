@@ -25,6 +25,14 @@ describe('order maths', () => {
     expect(canMove('dispatched', 'cancelled')).toBe(false);
     expect(canMove('cancelled', 'cancelled')).toBe(false);
     expect(canMove('draft', 'delivered')).toBe(false);
+    expect(canMove('confirmed', 'picking')).toBe(true);
+    expect(canMove('confirmed', 'packed')).toBe(true);
+    expect(canMove('picking', 'packed')).toBe(true);
+    expect(canMove('packed', 'dispatched')).toBe(true);
+    expect(canMove('dispatched', 'delivered')).toBe(true);
+    expect(canMove('dispatched', 'returned')).toBe(true);
+    expect(canMove('delivered', 'returned')).toBe(false);
+    expect(canMove('packed', 'delivered')).toBe(false);
   });
 });
 

@@ -118,7 +118,21 @@ function Detail({
     [t('orders.detail.requestedDate'), order.requestedDate ?? none],
     [t('orders.detail.deliveryAddress'), order.deliveryAddress ?? none],
     [t('orders.detail.note'), order.note ?? none],
+    ...(order.dispatchedAt
+      ? ([
+          [t('orders.detail.dispatchedAt'), formatTime(order.dispatchedAt)],
+          [
+            t('orders.detail.driver'),
+            [order.driverName, order.driverPhone].filter(Boolean).join(' · ') || none,
+          ],
+          [t('orders.detail.vehicle'), order.vehicle ?? none],
+        ] as [string, string][])
+      : []),
+    ...(order.deliveredAt
+      ? ([[t('orders.detail.deliveredAt'), formatTime(order.deliveredAt)]] as [string, string][])
+      : []),
   ];
+  const picked = order.lines.some((l) => l.pickedQuantity !== null);
 
   return (
     <div className="flex flex-col gap-5 pr-8">
@@ -170,6 +184,9 @@ function Detail({
             <tr className="border-b text-left text-muted-foreground">
               <th className="py-1 font-medium">{t('orders.detail.item')}</th>
               <th className="py-1 text-right font-medium">{t('orders.detail.quantity')}</th>
+              {picked && (
+                <th className="py-1 text-right font-medium">{t('orders.detail.picked')}</th>
+              )}
               <th className="py-1 text-right font-medium">{t('orders.detail.unitPrice')}</th>
               <th className="py-1 text-right font-medium">{t('orders.detail.lineTotal')}</th>
             </tr>
@@ -181,6 +198,13 @@ function Detail({
                 <td className="py-1.5 text-right tabular-nums">
                   {`${line.quantity.replace(/\.?0+$/, '')} ${line.unit}`}
                 </td>
+                {picked && (
+                  <td className="py-1.5 text-right tabular-nums" data-testid="order-line-picked">
+                    {line.pickedQuantity === null
+                      ? none
+                      : line.pickedQuantity.replace(/\.?0+$/, '') || '0'}
+                  </td>
+                )}
                 <td className="py-1.5 text-right tabular-nums">{money(line.unitPrice)}</td>
                 <td className="py-1.5 text-right tabular-nums">{money(line.lineTotal)}</td>
               </tr>
@@ -188,7 +212,7 @@ function Detail({
           </tbody>
           <tfoot>
             <tr className="font-medium">
-              <td className="pt-2" colSpan={3}>
+              <td className="pt-2" colSpan={picked ? 4 : 3}>
                 {t('orders.detail.total')}
               </td>
               <td className="pt-2 text-right tabular-nums" data-testid="order-detail-total">

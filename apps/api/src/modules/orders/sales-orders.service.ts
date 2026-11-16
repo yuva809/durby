@@ -1,12 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
+import Decimal from 'decimal.js';
 import type {
   CancelSalesOrderRequest,
   CreateSalesOrderRequest,
+  DispatchSalesOrderRequest,
   ListSalesOrdersQuery,
   PermissionKey,
+  PickSalesOrderRequest,
   SalesOrder,
   SalesOrderLineRequest,
   SalesOrderListResponse,
+  SalesOrderNoteRequest,
   SalesOrderStatus,
   SalesOrderSummary,
   StockUnit,
@@ -16,6 +20,7 @@ import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
 import { NumberingService } from '../../platform/numbering';
 import { AccessService } from '../../platform/rbac';
+import { StockService } from '../inventory';
 import {
   TENANT_PRISMA,
   TenantContext,
@@ -36,6 +41,10 @@ const SUMMARY_SELECT = {
   warehouseId: true,
   requestedDate: true,
   total: true,
+  deliveryAddress: true,
+  driverName: true,
+  dispatchedAt: true,
+  deliveredAt: true,
   createdAt: true,
   updatedAt: true,
   customer: { select: { name: true } },
@@ -46,8 +55,9 @@ const SUMMARY_SELECT = {
 
 const ORDER_SELECT = {
   ...SUMMARY_SELECT,
-  deliveryAddress: true,
   note: true,
+  driverPhone: true,
+  vehicle: true,
   lines: {
     select: {
       id: true,
@@ -55,6 +65,7 @@ const ORDER_SELECT = {
       quantity: true,
       unitPrice: true,
       lineTotal: true,
+      pickedQuantity: true,
       item: { select: { name: true, unit: true } },
     },
     // Lines are written in one createMany in form order: sortOrder is unique per order.
@@ -75,6 +86,10 @@ interface SummaryRow {
   warehouseId: string;
   requestedDate: Date | null;
   total: Money;
+  deliveryAddress: string | null;
+  driverName: string | null;
+  dispatchedAt: Date | null;
+  deliveredAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   customer: { name: string };
@@ -84,14 +99,16 @@ interface SummaryRow {
 }
 
 interface OrderRow extends SummaryRow {
-  deliveryAddress: string | null;
   note: string | null;
+  driverPhone: string | null;
+  vehicle: string | null;
   lines: {
     id: string;
     itemId: string;
     quantity: Money;
     unitPrice: Money;
     lineTotal: Money;
+    pickedQuantity: Money | null;
     item: { name: string; unit: StockUnit };
   }[];
   events: {
@@ -106,7 +123,8 @@ interface OrderRow extends SummaryRow {
 /**
  * Sales orders (docs/modules/orders.md, ADR 0044): stock items for a customer, leaving from one warehouse; the order's
  * branch is the warehouse's location and every key is checked there. Drafts can be edited (lines replaced as a
- * whole); confirm and cancel move the status. Each change writes a timeline row and an audit row in its transaction.
+ * whole); confirm and cancel move the status; picking books the goods out of the warehouse (step 3), a cancel after
+ * picking or a return books them back. Each change writes a timeline row and an audit row in its transaction.
  */
 @Injectable()
 export class SalesOrdersService {
@@ -117,6 +135,7 @@ export class SalesOrdersService {
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
     private readonly numbering: NumberingService,
+    private readonly stock: StockService,
   ) {}
 
   async list(query: ListSalesOrdersQuery): Promise<SalesOrderListResponse> {
@@ -255,22 +274,131 @@ export class SalesOrdersService {
   }
 
   confirm(id: string): Promise<SalesOrder> {
-    return this.move(id, 'confirmed', null);
+    return this.move(id, 'confirmed', { key: 'orders.orders.edit', note: null });
   }
 
+  /** Up to packed; after picking the goods go back into the warehouse. */
   cancel(id: string, body: CancelSalesOrderRequest): Promise<SalesOrder> {
-    return this.move(id, 'cancelled', body.reason || null);
+    return this.move(id, 'cancelled', {
+      key: 'orders.orders.edit',
+      note: body.reason || null,
+      apply: async (tx, before) => {
+        if (before.status === 'packed') await this.restock(tx, before);
+        return {};
+      },
+    });
   }
 
-  /** A status change: checked against canMove inside the transaction (the row is locked first). */
-  private async move(id: string, to: SalesOrderStatus, note: string | null): Promise<SalesOrder> {
+  /** Someone is at the shelves: the order shows as picking. */
+  startPicking(id: string): Promise<SalesOrder> {
+    return this.move(id, 'picking', { key: 'orders.picking.use', note: null });
+  }
+
+  /**
+   * The picked quantity of every line (at most what was ordered; 0 = none on the shelf): one goods issue for what was
+   * picked, and the order is packed. Refused below zero stock unless the branch allows negative stock.
+   */
+  pick(id: string, body: PickSalesOrderRequest): Promise<SalesOrder> {
+    const { userId } = this.tenantContext.require();
+    return this.move(id, 'packed', {
+      key: 'orders.picking.use',
+      note: null,
+      apply: async (tx, before) => {
+        const picked = new Map(body.lines.map((l) => [l.lineId, l.quantity]));
+        const valid =
+          picked.size === body.lines.length &&
+          picked.size === before.lines.length &&
+          before.lines.every((line) => {
+            const quantity = picked.get(line.id);
+            return quantity !== undefined && new Decimal(quantity).lte(line.quantity);
+          });
+        if (!valid) throw ordersErrors.pickInvalid();
+        for (const line of before.lines) {
+          await tx.salesOrderLine.update({
+            where: { id: line.id },
+            data: { pickedQuantity: new Decimal(picked.get(line.id)!).toFixed(3) },
+          });
+        }
+        await this.stock.bookForOrder(tx, {
+          kind: 'issue',
+          warehouseId: before.warehouseId,
+          orderId: before.id,
+          lines: before.lines.map((l) => ({ itemId: l.itemId, quantity: picked.get(l.id)! })),
+          userId,
+        });
+        return {};
+      },
+    });
+  }
+
+  /** On the way: who drives it (personal data: kept on the order, never in the audit log). */
+  dispatch(id: string, body: DispatchSalesOrderRequest): Promise<SalesOrder> {
+    return this.move(id, 'dispatched', {
+      key: 'orders.delivery.use',
+      note: body.note ?? null,
+      apply: () =>
+        Promise.resolve({
+          driverName: body.driverName ?? null,
+          driverPhone: body.driverPhone ?? null,
+          vehicle: body.vehicle ?? null,
+          dispatchedAt: new Date(),
+        }),
+    });
+  }
+
+  deliver(id: string, body: SalesOrderNoteRequest): Promise<SalesOrder> {
+    return this.move(id, 'delivered', {
+      key: 'orders.delivery.use',
+      note: body.note || null,
+      apply: () => Promise.resolve({ deliveredAt: new Date() }),
+    });
+  }
+
+  /** Not delivered: the goods come back into the warehouse they left. */
+  returnOrder(id: string, body: SalesOrderNoteRequest): Promise<SalesOrder> {
+    return this.move(id, 'returned', {
+      key: 'orders.delivery.use',
+      note: body.note || null,
+      apply: async (tx, before) => {
+        await this.restock(tx, before);
+        return {};
+      },
+    });
+  }
+
+  private async restock(tx: TenantTransactionClient, order: SalesOrder): Promise<void> {
+    const { userId } = this.tenantContext.require();
+    await this.stock.bookForOrder(tx, {
+      kind: 'restock',
+      warehouseId: order.warehouseId,
+      orderId: order.id,
+      lines: order.lines.map((l) => ({ itemId: l.itemId, quantity: l.pickedQuantity ?? '0' })),
+      userId,
+    });
+  }
+
+  /**
+   * A status change: checked against canMove inside the transaction (the row is locked first); `apply` does the
+   * step's own work in the same transaction (stock, picked quantities) and returns columns to set with the status.
+   */
+  private async move(
+    id: string,
+    to: SalesOrderStatus,
+    step: {
+      key: PermissionKey;
+      note: string | null;
+      apply?: (tx: TenantTransactionClient, before: SalesOrder) => Promise<StatusColumns>;
+    },
+  ): Promise<SalesOrder> {
     const { tenantId, userId } = this.tenantContext.require();
-    await this.visible(id, 'orders.orders.edit');
+    const note = step.note;
+    await this.visible(id, step.key);
     return this.db.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM sales_orders WHERE id = ${id}::uuid FOR UPDATE`;
       const before = await readOrder(tx, id);
       if (!canMove(before.status, to)) throw ordersErrors.invalidTransition(before.status, to);
-      await tx.salesOrder.update({ where: { id }, data: { status: to } });
+      const extra = (await step.apply?.(tx, before)) ?? {};
+      await tx.salesOrder.update({ where: { id }, data: { status: to, ...extra } });
       await tx.salesOrderEvent.create({
         data: { tenantId, orderId: id, status: to, note, userId },
       });
@@ -326,6 +454,15 @@ export class SalesOrdersService {
     await this.access.assert(key, { locationId: warehouse.locationId });
     return warehouse;
   }
+}
+
+/** Columns a status step sets with the status (delivery details and times). */
+interface StatusColumns {
+  driverName?: string | null;
+  driverPhone?: string | null;
+  vehicle?: string | null;
+  dispatchedAt?: Date;
+  deliveredAt?: Date;
 }
 
 interface PricedLine extends SalesOrderLineRequest {
@@ -404,6 +541,10 @@ function summaryResponse(row: SummaryRow): SalesOrderSummary {
     requestedDate: row.requestedDate?.toISOString().slice(0, 10) ?? null,
     lineCount: row._count.lines,
     total: row.total.toFixed(2),
+    deliveryAddress: row.deliveryAddress,
+    driverName: row.driverName,
+    dispatchedAt: row.dispatchedAt?.toISOString() ?? null,
+    deliveredAt: row.deliveredAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -412,8 +553,9 @@ function summaryResponse(row: SummaryRow): SalesOrderSummary {
 function orderResponse(row: OrderRow): SalesOrder {
   return {
     ...summaryResponse(row),
-    deliveryAddress: row.deliveryAddress,
     note: row.note,
+    driverPhone: row.driverPhone,
+    vehicle: row.vehicle,
     lines: row.lines.map((l) => ({
       id: l.id,
       itemId: l.itemId,
@@ -422,6 +564,7 @@ function orderResponse(row: OrderRow): SalesOrder {
       quantity: l.quantity.toFixed(3),
       unitPrice: l.unitPrice.toFixed(2),
       lineTotal: l.lineTotal.toFixed(2),
+      pickedQuantity: l.pickedQuantity?.toFixed(3) ?? null,
     })),
     events: row.events.map((e) => ({
       id: e.id,

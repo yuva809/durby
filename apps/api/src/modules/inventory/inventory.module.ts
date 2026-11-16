@@ -26,5 +26,7 @@ import { VariantsService } from './variants.service';
     VariantsService,
     BomsService,
   ],
+  // Sales orders book their goods out and back in through it (orders module, ADR 0044).
+  exports: [StockService],
 })
 export class InventoryModule {}

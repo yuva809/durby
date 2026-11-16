@@ -2,11 +2,14 @@ import {
   type CancelSalesOrderRequest,
   type CreateOrderCustomerRequest,
   type CreateSalesOrderRequest,
+  type DispatchSalesOrderRequest,
   type OrderCustomer,
+  type PickSalesOrderRequest,
   orderCustomerListResponseSchema,
   orderCustomerSchema,
   type SalesOrder,
   type SalesOrderListResponse,
+  type SalesOrderNoteRequest,
   salesOrderListResponseSchema,
   salesOrderSchema,
   type SalesOrderStatus,
@@ -41,7 +44,7 @@ export const updateCustomer = (
 ) => write(store, action, `${BASE}/customers/${id}`, 'PATCH', body, orderCustomerSchema);
 
 export interface OrderFilter {
-  status?: SalesOrderStatus;
+  status?: SalesOrderStatus | readonly SalesOrderStatus[];
   locationId?: string;
   /** ISO instants. */
   from?: string;
@@ -51,7 +54,8 @@ export interface OrderFilter {
 /** The list query: filters, page size and the next page's cursor. */
 export function ordersQuery(filter: OrderFilter, cursor?: string, limit = 50): string {
   const search = new URLSearchParams();
-  if (filter.status) search.set('status', filter.status);
+  for (const status of typeof filter.status === 'string' ? [filter.status] : (filter.status ?? []))
+    search.append('status', status);
   if (filter.locationId) search.set('locationId', filter.locationId);
   if (filter.from) search.set('from', filter.from);
   if (filter.to) search.set('to', filter.to);
@@ -64,8 +68,9 @@ export const loadOrders = (
   store: Api,
   filter: OrderFilter,
   cursor?: string,
+  limit?: number,
 ): Promise<Result<SalesOrderListResponse>> =>
-  read(store, `${BASE}${ordersQuery(filter, cursor)}`, salesOrderListResponseSchema);
+  read(store, `${BASE}${ordersQuery(filter, cursor, limit)}`, salesOrderListResponseSchema);
 
 export const loadOrder = (store: Api, id: string): Promise<Result<SalesOrder>> =>
   read(store, `${BASE}/${id}`, salesOrderSchema);
@@ -89,3 +94,31 @@ export const cancelOrder = (
   id: string,
   body: CancelSalesOrderRequest,
 ) => write(store, action, `${BASE}/${id}/cancel`, 'POST', body, salesOrderSchema);
+
+/** Picking and delivery (step 3). */
+export const startPicking = (store: Api, action: ActionKey, id: string) =>
+  write(store, action, `${BASE}/${id}/start-picking`, 'POST', {}, salesOrderSchema);
+
+export const pickOrder = (store: Api, action: ActionKey, id: string, body: PickSalesOrderRequest) =>
+  write(store, action, `${BASE}/${id}/pick`, 'POST', body, salesOrderSchema);
+
+export const dispatchOrder = (
+  store: Api,
+  action: ActionKey,
+  id: string,
+  body: DispatchSalesOrderRequest,
+) => write(store, action, `${BASE}/${id}/dispatch`, 'POST', body, salesOrderSchema);
+
+export const deliverOrder = (
+  store: Api,
+  action: ActionKey,
+  id: string,
+  body: SalesOrderNoteRequest,
+) => write(store, action, `${BASE}/${id}/deliver`, 'POST', body, salesOrderSchema);
+
+export const returnOrder = (
+  store: Api,
+  action: ActionKey,
+  id: string,
+  body: SalesOrderNoteRequest,
+) => write(store, action, `${BASE}/${id}/return`, 'POST', body, salesOrderSchema);

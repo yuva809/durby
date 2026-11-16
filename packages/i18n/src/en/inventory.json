@@ -235,5 +235,7 @@
   "inventory.production.noOrders": "No production orders in this warehouse yet.",
   "inventory.production.lines": "{count} items",
   "inventory.fields.salePrice": "Sale price (optional)",
-  "inventory.page.salePriceInvalid": "Enter a price with up to 2 decimals."
+  "inventory.page.salePriceInvalid": "Enter a price with up to 2 decimals.",
+  "inventory.kinds.issue": "Goods issue",
+  "inventory.kinds.restock": "Goods back in"
 }

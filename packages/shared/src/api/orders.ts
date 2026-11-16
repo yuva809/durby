@@ -15,8 +15,9 @@ export const SALES_ORDER_MAX_LINES = 200;
 export const SALES_ORDER_LIST_MAX = 200;
 
 /**
- * A sales order's life (ADR 0044 §3). Draft orders can be edited; confirmed ones wait for picking; `cancelled` is
- * possible until dispatch. Picking, packing and delivery arrive with step 3.
+ * A sales order's life (ADR 0044 §3–5). Draft orders can be edited; confirmed ones wait for picking; picking the goods
+ * takes them out of stock (packed); a dispatched order is delivered or comes back (`returned`, stock back in).
+ * `cancelled` is possible until dispatch; after picking it puts the goods back.
  */
 export const SALES_ORDER_STATUSES = [
   'draft',
@@ -25,6 +26,7 @@ export const SALES_ORDER_STATUSES = [
   'packed',
   'dispatched',
   'delivered',
+  'returned',
   'cancelled',
 ] as const;
 export type SalesOrderStatus = (typeof SALES_ORDER_STATUSES)[number];
@@ -144,6 +146,29 @@ export const cancelSalesOrderRequestSchema = z.strictObject({
   reason: optionalText(ORDER_TEXT_MAX_LENGTH).optional(),
 });
 
+/** A quantity that may be zero (nothing found on the shelf): 3 decimals. */
+export const pickedQuantitySchema = z.string().regex(/^\d{1,10}(\.\d{1,3})?$/, 'Invalid quantity');
+
+/** The picked quantity of every line; the order goes to packed and the goods leave the warehouse. */
+export const pickSalesOrderRequestSchema = z.strictObject({
+  lines: z
+    .array(z.strictObject({ lineId: z.uuid(), quantity: pickedQuantitySchema }))
+    .min(1)
+    .max(SALES_ORDER_MAX_LINES),
+});
+
+export const dispatchSalesOrderRequestSchema = z.strictObject({
+  driverName: text(80).optional(),
+  driverPhone: text(40).optional(),
+  vehicle: text(40).optional(),
+  note: text(ORDER_TEXT_MAX_LENGTH).optional(),
+});
+
+/** Delivered (`note`: who received it) or returned (`note`: why). */
+export const salesOrderNoteRequestSchema = z.strictObject({
+  note: optionalText(ORDER_TEXT_MAX_LENGTH).optional(),
+});
+
 /** `?status=a` arrives as a string, `?status=a&status=b` as an array. */
 const statuses = z.preprocess(
   (value) => (typeof value === 'string' ? [value] : value),
@@ -174,6 +199,8 @@ export const salesOrderLineSchema = z.object({
   unitPrice: z.string(),
   /** quantity × unit price, rounded half up to cents. */
   lineTotal: z.string(),
+  /** What was picked, 3 decimals; null until the order is picked. Default for older apis. */
+  pickedQuantity: z.string().nullable().default(null),
 });
 
 export const salesOrderEventSchema = z.object({
@@ -199,13 +226,20 @@ export const salesOrderSummarySchema = z.object({
   lineCount: z.int(),
   /** Sum of the line totals, 2 decimals. */
   total: z.string(),
+  /** For the delivery board (step 3). Defaults for older apis. */
+  deliveryAddress: z.string().nullable().default(null),
+  driverName: z.string().nullable().default(null),
+  dispatchedAt: z.iso.datetime().nullable().default(null),
+  deliveredAt: z.iso.datetime().nullable().default(null),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
 
 export const salesOrderSchema = salesOrderSummarySchema.extend({
-  deliveryAddress: z.string().nullable(),
   note: z.string().nullable(),
+  /** Delivery details (step 3); null until dispatched. Defaults for older apis. */
+  driverPhone: z.string().nullable().default(null),
+  vehicle: z.string().nullable().default(null),
   lines: z.array(salesOrderLineSchema),
   /** Oldest first. */
   events: z.array(salesOrderEventSchema),
@@ -220,6 +254,9 @@ export type SalesOrderLineRequest = z.infer<typeof salesOrderLineRequestSchema>;
 export type CreateSalesOrderRequest = z.infer<typeof createSalesOrderRequestSchema>;
 export type UpdateSalesOrderRequest = z.infer<typeof updateSalesOrderRequestSchema>;
 export type CancelSalesOrderRequest = z.infer<typeof cancelSalesOrderRequestSchema>;
+export type PickSalesOrderRequest = z.infer<typeof pickSalesOrderRequestSchema>;
+export type DispatchSalesOrderRequest = z.infer<typeof dispatchSalesOrderRequestSchema>;
+export type SalesOrderNoteRequest = z.infer<typeof salesOrderNoteRequestSchema>;
 export type ListSalesOrdersQuery = z.infer<typeof listSalesOrdersQuerySchema>;
 export type SalesOrderLine = z.infer<typeof salesOrderLineSchema>;
 export type SalesOrderEvent = z.infer<typeof salesOrderEventSchema>;
@@ -236,6 +273,7 @@ export const ORDERS_ERROR_CODES = [
   'orders.item_not_found',
   'orders.not_editable',
   'orders.invalid_transition',
+  'orders.pick_invalid',
 ] as const;
 
 export type OrdersErrorCode = (typeof ORDERS_ERROR_CODES)[number];

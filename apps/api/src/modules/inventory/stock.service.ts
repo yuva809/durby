@@ -42,6 +42,8 @@ const SERIES: Record<StockDocumentKind, NumberSeriesKey> = {
   transfer: 'inventory.stockTransfer',
   consumption: 'inventory.stockConsumption',
   production: 'inventory.stockProduction',
+  issue: 'inventory.goodsIssue',
+  restock: 'inventory.goodsRestock',
 };
 
 const DOCUMENT_LIST_LIMIT = 200;
@@ -473,6 +475,7 @@ export class StockService {
         supplier: input.header.supplier ?? null,
         note: input.header.note,
         sourceTicketId: null,
+        sourceOrderId: null,
         createdByUserId: userId,
         actor: auditActor.user(userId),
         movements,
@@ -553,12 +556,98 @@ export class StockService {
       supplier: null,
       note: null,
       sourceTicketId: payload.ticketId,
+      sourceOrderId: null,
       createdByUserId: payload.createdByUserId,
       actor: auditActor.system('job.outbox'),
       movements,
       levels,
     });
     return 'booked';
+  }
+
+  /**
+   * Goods out to a customer (`issue`) or back in (`restock`) for a sales order (docs/modules/orders.md → Step 3, ADR
+   * 0044), in the orders module's transaction; the caller checks the order and its keys. An issue goes out at the
+   * average cost and is refused below zero unless the location allows negative stock; a restock comes back at the
+   * cost the order's goods went out at (else the current average). Lines with nothing to move are skipped; null when
+   * none is left.
+   */
+  async bookForOrder(
+    tx: TenantTransactionClient,
+    input: {
+      kind: 'issue' | 'restock';
+      warehouseId: string;
+      orderId: string;
+      lines: readonly { itemId: string; quantity: string }[];
+      userId: string;
+    },
+  ): Promise<StockDocument | null> {
+    const { tenantId } = this.tenantContext.require();
+    const totals = new Map<string, Decimal>();
+    for (const line of input.lines) {
+      const quantity = new Decimal(line.quantity);
+      if (quantity.isZero()) continue;
+      totals.set(line.itemId, (totals.get(line.itemId) ?? new Decimal(0)).plus(quantity));
+    }
+    const itemIds = [...totals.keys()].sort();
+    if (itemIds.length === 0) return null;
+    const warehouse = await tx.warehouse.findUniqueOrThrow({
+      where: { id: input.warehouseId },
+      select: { id: true, locationId: true },
+    });
+    const issuedAt = new Map<string, Decimal>();
+    if (input.kind === 'restock') {
+      const issued = await tx.stockMovement.findMany({
+        where: {
+          document: { sourceOrderId: input.orderId, kind: 'issue' },
+          itemId: { in: itemIds },
+        },
+        select: { itemId: true, unitCost: true },
+        orderBy: { id: 'asc' },
+      });
+      for (const m of issued) issuedAt.set(m.itemId, new Decimal(m.unitCost.toFixed(4)));
+    }
+    const levels = await lockLevels(tx, tenantId, [warehouse.id], itemIds);
+    const movements: PlannedMovement[] = itemIds.map((itemId) => {
+      const quantity = totals.get(itemId)!;
+      const current = levels.get(warehouse.id, itemId);
+      const booked =
+        input.kind === 'issue'
+          ? bookOut(current, quantity)
+          : bookIn(current, quantity, issuedAt.get(itemId) ?? current.averageCost);
+      levels.set(warehouse.id, itemId, booked.level);
+      return {
+        warehouseId: warehouse.id,
+        itemId,
+        quantity: input.kind === 'issue' ? quantity.negated() : quantity,
+        unitCost: booked.unitCost,
+      };
+    });
+    if (input.kind === 'issue') {
+      const allowed = await this.settings.get(
+        'inventory.allowNegativeStock',
+        { locationId: warehouse.locationId },
+        tx,
+      );
+      const short = itemIds.filter((itemId) =>
+        levels.get(warehouse.id, itemId).quantity.isNegative(),
+      );
+      if (!allowed && short.length > 0) throw inventoryErrors.insufficientStock(short);
+    }
+    return this.book(tx, {
+      kind: input.kind,
+      warehouseId: warehouse.id,
+      toWarehouseId: null,
+      reason: null,
+      supplier: null,
+      note: null,
+      sourceTicketId: null,
+      sourceOrderId: input.orderId,
+      createdByUserId: input.userId,
+      actor: auditActor.user(input.userId),
+      movements,
+      levels,
+    });
   }
 
   /** Numbers and writes a document, its movements and the changed levels, and audits it. */
@@ -572,6 +661,7 @@ export class StockService {
       supplier: string | null;
       note: string | null;
       sourceTicketId: string | null;
+      sourceOrderId: string | null;
       createdByUserId: string;
       actor: AuditActor;
       movements: PlannedMovement[];
@@ -592,6 +682,7 @@ export class StockService {
         supplier: input.supplier,
         note: input.note,
         sourceTicketId: input.sourceTicketId,
+        sourceOrderId: input.sourceOrderId,
         createdByUserId: input.createdByUserId,
       },
       select: { id: true },

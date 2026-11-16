@@ -127,6 +127,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'orders.item_not_found': 'orders.errors.itemNotFound',
   'orders.not_editable': 'orders.errors.notEditable',
   'orders.invalid_transition': 'orders.errors.invalidTransition',
+  'orders.pick_invalid': 'orders.errors.pickInvalid',
   'catalog.category_not_found': 'catalog.errors.categoryNotFound',
   'catalog.product_not_found': 'catalog.errors.productNotFound',
   'catalog.category_name_taken': 'catalog.errors.categoryNameTaken',

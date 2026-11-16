@@ -3,6 +3,8 @@ import { Test } from '@nestjs/testing';
 import {
   orderCustomerListResponseSchema,
   orderCustomerSchema,
+  stockDocumentListResponseSchema,
+  stockLevelListResponseSchema,
   salesOrderListResponseSchema,
   salesOrderSchema,
   stockItemSchema,
@@ -269,6 +271,161 @@ describe('orders (ADR 0044)', () => {
         (await get(other.owner, '/orders').expect(200)).body,
       );
       expect(list.data).toEqual([]);
+    });
+  });
+
+  describe('picking and delivery (step 3)', () => {
+    async function packedOrder() {
+      const s = await setup();
+      const rice = await s.item('Rice', '12.90');
+      const oil = await s.item('Oil');
+      await post(s.owner, '/inventory/receipts', {
+        warehouseId: s.warehouse,
+        lines: [
+          { itemId: rice.id, quantity: '10', unitCost: '8.00' },
+          { itemId: oil.id, quantity: '2', unitCost: '5.00' },
+        ],
+      }).expect(201);
+      const order = salesOrderSchema.parse(
+        (
+          await post(s.owner, '/orders', {
+            customerId: s.customer.id,
+            warehouseId: s.warehouse,
+            confirm: true,
+            lines: [
+              { itemId: rice.id, quantity: '3', unitPrice: '12.90' },
+              { itemId: oil.id, quantity: '1', unitPrice: '9.00' },
+            ],
+          }).expect(201)
+        ).body,
+      );
+      return { ...s, rice, oil, order };
+    }
+    const stock = async (token: string, warehouseId: string) =>
+      Object.fromEntries(
+        stockLevelListResponseSchema
+          .parse((await get(token, `/inventory/stock?warehouseId=${warehouseId}`).expect(200)).body)
+          .data.map((l) => [l.itemName, l.quantity]),
+      );
+
+    it('picks (short lines allowed), books one goods issue, dispatches and delivers', async () => {
+      const s = await packedOrder();
+      await post(s.owner, `/orders/${s.order.id}/start-picking`).expect(201);
+      const [rice, oil] = s.order.lines;
+      // More than ordered, or a line missing: refused.
+      await post(s.owner, `/orders/${s.order.id}/pick`, {
+        lines: [
+          { lineId: rice!.id, quantity: '4' },
+          { lineId: oil!.id, quantity: '1' },
+        ],
+      }).expect(400);
+      await post(s.owner, `/orders/${s.order.id}/pick`, {
+        lines: [{ lineId: rice!.id, quantity: '3' }],
+      }).expect(400);
+      const packed = salesOrderSchema.parse(
+        (
+          await post(s.owner, `/orders/${s.order.id}/pick`, {
+            lines: [
+              { lineId: rice!.id, quantity: '3' },
+              { lineId: oil!.id, quantity: '0' },
+            ],
+          }).expect(201)
+        ).body,
+      );
+      expect(packed.status).toBe('packed');
+      expect(packed.lines.map((l) => l.pickedQuantity)).toEqual(['3.000', '0.000']);
+      expect(await stock(s.owner, s.warehouse)).toEqual({ Oil: '2.000', Rice: '7.000' });
+      const issues = stockDocumentListResponseSchema.parse(
+        (await get(s.owner, '/inventory/documents?kind=issue').expect(200)).body,
+      );
+      expect(issues.data).toHaveLength(1);
+      expect(issues.data[0]?.number).toMatch(/^GI-\d{4}-\d{6}$/);
+
+      const dispatched = salesOrderSchema.parse(
+        (
+          await post(s.owner, `/orders/${s.order.id}/dispatch`, {
+            driverName: 'Ali',
+            driverPhone: '+60 12 000 1111',
+            vehicle: 'WXY 1234',
+          }).expect(201)
+        ).body,
+      );
+      expect(dispatched).toMatchObject({ status: 'dispatched', driverName: 'Ali' });
+      expect(dispatched.dispatchedAt).not.toBeNull();
+      await post(s.owner, `/orders/${s.order.id}/cancel`).expect(409);
+      const delivered = salesOrderSchema.parse(
+        (await post(s.owner, `/orders/${s.order.id}/deliver`, { note: 'Mr Tan' }).expect(201)).body,
+      );
+      expect(delivered.events.map((e) => e.status)).toEqual([
+        'draft',
+        'confirmed',
+        'picking',
+        'packed',
+        'dispatched',
+        'delivered',
+      ]);
+      // The driver's phone stays out of the audit log.
+      const rows = await auditActions(s.org, s.order.id);
+      expect(JSON.stringify(rows)).not.toContain('000 1111');
+    });
+
+    it('books the goods back in at their issue cost when an order comes back or is cancelled after picking', async () => {
+      const s = await packedOrder();
+      const pickAll = (order: typeof s.order) =>
+        post(s.owner, `/orders/${order.id}/pick`, {
+          lines: order.lines.map((l) => ({ lineId: l.id, quantity: l.quantity })),
+        }).expect(201);
+      await pickAll(s.order);
+      expect(await stock(s.owner, s.warehouse)).toEqual({ Oil: '1.000', Rice: '7.000' });
+      await post(s.owner, `/orders/${s.order.id}/dispatch`, {}).expect(201);
+      await post(s.owner, `/orders/${s.order.id}/return`, { note: 'Shop closed' }).expect(201);
+      expect(await stock(s.owner, s.warehouse)).toEqual({ Oil: '2.000', Rice: '10.000' });
+      const restock = stockDocumentListResponseSchema.parse(
+        (await get(s.owner, '/inventory/documents?kind=restock').expect(200)).body,
+      );
+      expect(restock.data.map((d) => d.value)).toEqual(['29.00']);
+
+      const second = salesOrderSchema.parse(
+        (
+          await post(s.owner, '/orders', {
+            customerId: s.customer.id,
+            warehouseId: s.warehouse,
+            confirm: true,
+            lines: [{ itemId: s.rice.id, quantity: '2', unitPrice: '12.90' }],
+          }).expect(201)
+        ).body,
+      );
+      await pickAll(second);
+      await post(s.owner, `/orders/${second.id}/cancel`, { reason: 'Changed mind' }).expect(201);
+      expect(await stock(s.owner, s.warehouse)).toEqual({ Oil: '2.000', Rice: '10.000' });
+    });
+
+    it('refuses to pick more than is in stock', async () => {
+      const s = await packedOrder();
+      const big = salesOrderSchema.parse(
+        (
+          await post(s.owner, '/orders', {
+            customerId: s.customer.id,
+            warehouseId: s.warehouse,
+            confirm: true,
+            lines: [{ itemId: s.oil.id, quantity: '5', unitPrice: '9' }],
+          }).expect(201)
+        ).body,
+      );
+      const res = await post(s.owner, `/orders/${big.id}/pick`, {
+        lines: [{ lineId: big.lines[0]!.id, quantity: '5' }],
+      }).expect(409);
+      expect((res.body as { code: string }).code).toBe('inventory.insufficient_stock');
+      expect(
+        salesOrderSchema.parse((await get(s.owner, `/orders/${big.id}`).expect(200)).body).status,
+      ).toBe('confirmed');
+    });
+
+    it('keeps picking and delivery to their keys', async () => {
+      const s = await packedOrder();
+      const staff = await memberToken(s.org, 'staff');
+      await post(staff, `/orders/${s.order.id}/start-picking`).expect(403);
+      await post(staff, `/orders/${s.order.id}/dispatch`, {}).expect(403);
     });
   });
 });

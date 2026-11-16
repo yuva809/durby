@@ -113,3 +113,11 @@ export function matchesOrder(
     order.customerName.toLowerCase().includes(q)
   );
 }
+
+/** Exact comparison of two quantities (3 decimals): negative, 0 or positive; null if either isn't one. */
+export function compareQuantity(a: string, b: string): number | null {
+  const x = thousandths(a);
+  const y = thousandths(b);
+  if (x === null || y === null) return null;
+  return x === y ? 0 : x < y ? -1 : 1;
+}

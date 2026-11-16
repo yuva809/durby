@@ -6,13 +6,19 @@ import {
   createOrderCustomerRequestSchema,
   type CreateSalesOrderRequest,
   createSalesOrderRequestSchema,
+  type DispatchSalesOrderRequest,
+  dispatchSalesOrderRequestSchema,
   type ListOrderCustomersQuery,
   listOrderCustomersQuerySchema,
   type ListSalesOrdersQuery,
   listSalesOrdersQuerySchema,
   type OrderCustomer,
+  type PickSalesOrderRequest,
+  pickSalesOrderRequestSchema,
   type SalesOrder,
   type SalesOrderListResponse,
+  type SalesOrderNoteRequest,
+  salesOrderNoteRequestSchema,
   type UpdateOrderCustomerRequest,
   updateOrderCustomerRequestSchema,
   type UpdateSalesOrderRequest,
@@ -117,5 +123,54 @@ export class OrdersController {
     @Body(new ZodBody(cancelSalesOrderRequestSchema)) body: CancelSalesOrderRequest,
   ): Promise<SalesOrder> {
     return this.orders.cancel(orderId, body);
+  }
+
+  @RequirePermission('orders.picking.use')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/start-picking')
+  startPicking(
+    @Param('id', id(() => ordersErrors.orderNotFound())) orderId: string,
+  ): Promise<SalesOrder> {
+    return this.orders.startPicking(orderId);
+  }
+
+  @RequirePermission('orders.picking.use')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/pick')
+  pick(
+    @Param('id', id(() => ordersErrors.orderNotFound())) orderId: string,
+    @Body(new ZodBody(pickSalesOrderRequestSchema)) body: PickSalesOrderRequest,
+  ): Promise<SalesOrder> {
+    return this.orders.pick(orderId, body);
+  }
+
+  @RequirePermission('orders.delivery.use')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/dispatch')
+  dispatch(
+    @Param('id', id(() => ordersErrors.orderNotFound())) orderId: string,
+    @Body(new ZodBody(dispatchSalesOrderRequestSchema)) body: DispatchSalesOrderRequest,
+  ): Promise<SalesOrder> {
+    return this.orders.dispatch(orderId, body);
+  }
+
+  @RequirePermission('orders.delivery.use')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/deliver')
+  deliver(
+    @Param('id', id(() => ordersErrors.orderNotFound())) orderId: string,
+    @Body(new ZodBody(salesOrderNoteRequestSchema)) body: SalesOrderNoteRequest,
+  ): Promise<SalesOrder> {
+    return this.orders.deliver(orderId, body);
+  }
+
+  @RequirePermission('orders.delivery.use')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/return')
+  returnOrder(
+    @Param('id', id(() => ordersErrors.orderNotFound())) orderId: string,
+    @Body(new ZodBody(salesOrderNoteRequestSchema)) body: SalesOrderNoteRequest,
+  ): Promise<SalesOrder> {
+    return this.orders.returnOrder(orderId, body);
   }
 }

@@ -39,6 +39,12 @@ export const ordersErrors = {
       `An order cannot go from ${from} to ${to}.`,
       { from, to },
     ),
+  pickInvalid: () =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'orders.pick_invalid',
+      'Give every line of the order once, picking at most what was ordered.',
+    ),
 };
 
 /** Prisma's unique violation (here: the active customer code index). */

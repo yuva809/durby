@@ -813,5 +813,9 @@
   "platform.audit.fields.customerId": "Customer",
   "platform.audit.fields.total": "Total",
   "platform.audit.fields.salePrice": "Sale price",
-  "platform.auditPage.modules.orders": "Orders"
+  "platform.auditPage.modules.orders": "Orders",
+  "platform.numbering.series.inventoryGoodsIssue.name": "Goods issues",
+  "platform.numbering.series.inventoryGoodsIssue.description": "Numbers of the goods that leave for picked sales orders.",
+  "platform.numbering.series.inventoryGoodsRestock.name": "Goods back in",
+  "platform.numbering.series.inventoryGoodsRestock.description": "Numbers of goods back from cancelled or returned sales orders."
 }
