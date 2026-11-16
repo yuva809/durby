@@ -17,6 +17,9 @@ export const STAFF_PERMISSIONS = {
   /** A customer's plan and modules (admin portal 1d). */
   'staff.entitlements.read': { label: 'staff.permissions.entitlementsRead' },
   'staff.entitlements.manage': { label: 'staff.permissions.entitlementsManage' },
+  /** Customers' feedback (ADR 0044 step 5): read, and mark seen or done. */
+  'staff.feedback.read': { label: 'staff.permissions.feedbackRead' },
+  'staff.feedback.manage': { label: 'staff.permissions.feedbackManage' },
 } as const satisfies Record<string, { label: string }>;
 
 export type StaffPermissionKey = keyof typeof STAFF_PERMISSIONS;
@@ -48,12 +51,15 @@ export const STAFF_ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermissionK
     'staff.customers.invite',
     'staff.entitlements.read',
     'staff.entitlements.manage',
+    'staff.feedback.read',
   ],
   support: [
     'staff.portal.access',
     'staff.customers.read',
     'staff.customers.invite',
     'staff.entitlements.read',
+    'staff.feedback.read',
+    'staff.feedback.manage',
   ],
 };
 

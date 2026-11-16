@@ -202,6 +202,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'staff.feature_limits_invalid': 'staff.errors.featureLimitsInvalid',
   'staff.expiry_past': 'staff.errors.expiryPast',
   'staff.feature_dependency_missing': 'staff.errors.featureDependencyMissing',
+  'staff.feedback_not_found': 'staff.errors.feedbackNotFound',
 };
 
 export function errorLabel(code: ApiErrorCode | 'unknown'): LabelKey {

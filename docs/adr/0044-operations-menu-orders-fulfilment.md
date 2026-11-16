@@ -41,8 +41,10 @@ has no customer orders, picking, delivery tracking, a general import or in-app f
    module and needs that module's create key (no separate import key: one key per route keeps the access model as
    it is). See docs/platform/import.md.
 
-7. **Feedback goes to the platform team**: staff send a category, a message and an optional screenshot; the staff
-   portal lists it with a status.
+7. **Feedback goes to the platform team**: staff send a category and a message (and the page it is about); the
+   staff portal lists it with a status. It is platform data (the operator's support inbox, read across customers),
+   so the `feedback` table has no tenant id or RLS; the customer side only writes and reads its own organization's
+   rows. Screenshots wait for object storage (bodies are limited to 100 kB). See docs/platform/feedback.md.
 
 The modules ship one step at a time (step 1: menu, Product Category, Branches; step 2: orders and customers;
 step 3: picking and delivery; step 4: import; step 5: feedback); until a module ships its menu item is `planned`

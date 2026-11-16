@@ -176,6 +176,7 @@ describe('custom-role editor', () => {
       'platform.settings',
       'platform.labels',
       'platform.audit',
+      'platform.feedback',
       'catalog.products',
       'inventory.stock',
       'inventory.warehouses',

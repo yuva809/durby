@@ -300,7 +300,7 @@ describe('sidebar', () => {
         within(sidebar)
           .getAllByTestId('staff-nav-item')
           .map((a) => a.textContent),
-      ).toEqual(['Home', 'Customers']),
+      ).toEqual(['Home', 'Customers', 'Feedback']),
     );
     expect(
       within(sidebar).getByText('Customers', { selector: 'a' }).getAttribute('aria-current'),

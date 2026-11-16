@@ -74,6 +74,7 @@ describe('roles API', () => {
       'platform.users.invite',
       'platform.roles.read',
       'platform.settings.read',
+      'platform.feedback.send',
       'catalog.products.read',
       'inventory.stock.read',
       'inventory.stock.receive',
@@ -121,6 +122,7 @@ describe('roles API', () => {
     ]);
     expect(data[3]?.permissions).toEqual([
       'platform.settings.read',
+      'platform.feedback.send',
       'catalog.products.read',
       'inventory.stock.read',
       'pos.tables.read',

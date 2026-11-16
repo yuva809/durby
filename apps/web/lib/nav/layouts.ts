@@ -121,7 +121,7 @@ const OPERATIONS: NavLayoutDefinition = {
       label: 'platform.nav.feedback',
       icon: Heart,
       group: 'tools',
-      planned: true,
+      permission: 'platform.feedback.send',
     },
   ],
 };

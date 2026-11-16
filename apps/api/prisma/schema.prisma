@@ -143,6 +143,7 @@ model Organization {
   salesOrders                  SalesOrder[]
   salesOrderLines              SalesOrderLine[]
   salesOrderEvents             SalesOrderEvent[]
+  feedback                     Feedback[]
 
   @@index([partnerId])
   @@index([planId])
@@ -2126,4 +2127,40 @@ model SalesOrderEvent {
   @@unique([tenantId, id])
   @@index([tenantId, orderId, id])
   @@map("sales_order_events")
+}
+
+enum FeedbackCategory {
+  bug
+  idea
+  question
+
+  @@map("feedback_category")
+}
+
+enum FeedbackStatus {
+  new
+  seen
+  done
+
+  @@map("feedback_status")
+}
+
+/// Feedback to the Durby team (ADR 0044 step 5). Platform data, not tenant data: no tenantId, no RLS; the app inserts an
+/// organization's feedback and reads it back filtered by the session's organization; the admin portal reads all.
+model Feedback {
+  id             String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  /// No FK: feedback outlives users (like audit rows).
+  userId         String           @map("user_id") @db.Uuid
+  category       FeedbackCategory
+  message        String
+  pagePath       String?          @map("page_path")
+  status         FeedbackStatus   @default(new)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([organizationId, id])
+  @@index([status, id])
+  @@map("feedback")
 }

@@ -76,6 +76,9 @@ async function call<T>(
   }
 }
 
+/** One call to /api/v1/platform (pages with a single call of their own use it directly). */
+export const staffCall = call;
+
 export const staffApi = {
   me: (): Promise<StaffResult<StaffMeResponse>> => call('/auth/me', {}, staffMeResponseSchema),
   login: (email: string, password: string): Promise<StaffResult<null>> =>

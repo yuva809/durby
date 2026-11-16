@@ -93,8 +93,10 @@ describe('route markers', () => {
       'GET /api/v1/platform/customers/:id staff.customers.read',
       'GET /api/v1/platform/customers/:id/entitlements staff.entitlements.read',
       'GET /api/v1/platform/feature-catalog staff.entitlements.read',
+      'GET /api/v1/platform/feedback staff.feedback.read',
       'GET /api/v1/platform/onboarding-options staff.customers.create',
       'GET /api/v1/platform/staff staff.staff.read',
+      'PATCH /api/v1/platform/feedback/:id staff.feedback.manage',
       'PATCH /api/v1/platform/staff/:id staff.staff.manage (fresh)',
       'POST /api/v1/platform/auth/reauth staff.portal.access',
       'POST /api/v1/platform/customers staff.customers.create (fresh)',
@@ -131,6 +133,7 @@ describe('route markers', () => {
     expect(idempotency.filter((r) => r.exempt !== undefined).map((r) => r.route)).toEqual([
       // Sets one value on the caller's own users row (no tenant for the idempotency store).
       'PATCH /api/v1/auth/me',
+      'PATCH /api/v1/platform/feedback/:id',
       'PATCH /api/v1/platform/staff/:id',
       'POST /api/v1/auth/login',
       'POST /api/v1/auth/logout',
@@ -205,6 +208,7 @@ describe('route markers', () => {
       'POST /api/v1/catalog/products/import',
       'POST /api/v1/catalog/products/number',
       'POST /api/v1/catalog/products/renumber',
+      'POST /api/v1/feedback',
       'POST /api/v1/inventory/adjustments',
       'POST /api/v1/inventory/attributes',
       'POST /api/v1/inventory/items',

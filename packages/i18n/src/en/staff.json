@@ -171,5 +171,17 @@
   "staff.modules.partlySaved": "Not everything was saved. Saved: {saved}. Not saved: {failed}. Check and try again.",
   "staff.modules.changePlanAction": "Change plan",
   "staff.modules.onboardingNote": "Pre-set from the plan. Changes are stored as custom settings.",
-  "staff.audit.actors.cliSeedDev": "seed-dev command (local only)"
+  "staff.audit.actors.cliSeedDev": "seed-dev command (local only)",
+  "staff.permissions.feedbackRead": "Read customers' feedback",
+  "staff.permissions.feedbackManage": "Mark customers' feedback seen or done",
+  "staff.audit.actions.feedbackStatusChanged": "Feedback status changed",
+  "staff.audit.entities.feedback": "Feedback",
+  "staff.errors.feedbackNotFound": "This feedback no longer exists.",
+  "staff.nav.feedback": "Feedback",
+  "staff.feedbackPage.filter": "Show",
+  "staff.feedbackPage.all": "All",
+  "staff.feedbackPage.empty": "No feedback here.",
+  "staff.feedbackPage.mark.new": "Mark new",
+  "staff.feedbackPage.mark.seen": "Mark seen",
+  "staff.feedbackPage.mark.done": "Mark done"
 }

@@ -10,6 +10,7 @@ export const PLATFORM_AUDIT_ENTITY_TYPES = [
   'staff_account',
   'organization',
   'feature_override',
+  'feedback',
 ] as const;
 
 export type PlatformAuditEntityType = (typeof PLATFORM_AUDIT_ENTITY_TYPES)[number];
@@ -58,6 +59,11 @@ export const PLATFORM_AUDIT_ACTIONS = {
     entityType: 'feature_override',
     label: 'staff.audit.actions.featureOverrideDeleted',
   },
+  /** A customer's feedback marked seen or done (ADR 0044 step 5). */
+  'staff.feedback.status_changed': {
+    entityType: 'feedback',
+    label: 'staff.audit.actions.feedbackStatusChanged',
+  },
 } as const satisfies Record<string, { entityType: PlatformAuditEntityType; label: string }>;
 
 export type PlatformAuditAction = keyof typeof PLATFORM_AUDIT_ACTIONS;
@@ -81,4 +87,6 @@ export const PLATFORM_AUDIT_SNAPSHOT_FIELDS = {
   organization: ['id', 'partnerId', 'name', 'planId'],
   /** `limits`: canonical JSON string; `expiresAt`: ISO. The reason goes in the row's `reason`. */
   feature_override: ['id', 'featureKey', 'enabled', 'limits', 'expiresAt'],
+  /** Never the message (free text from the customer). */
+  feedback: ['id', 'category', 'status'],
 } as const satisfies Record<PlatformAuditEntityType, readonly string[]>;
