@@ -1,5 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import type { PermissionKey } from '@durby/shared';
 import type { TenantDb } from '../tenancy';
+import { holds, resolveAccess } from './access';
+import { PERMISSION_REGISTRY, type PermissionRegistry } from './permission-registry';
 
 /**
  * Display names of the current organization's members, for modules that print who did something
@@ -9,6 +12,8 @@ import type { TenantDb } from '../tenancy';
  */
 @Injectable()
 export class MemberNames {
+  constructor(@Inject(PERMISSION_REGISTRY) private readonly registry: PermissionRegistry) {}
+
   /** userId → display name; users without a membership here or without a name are left out. */
   async forUsers(db: TenantDb, userIds: readonly string[]): Promise<Map<string, string>> {
     const ids = [...new Set(userIds)];
@@ -18,5 +23,39 @@ export class MemberNames {
       select: { userId: true, displayName: true },
     });
     return new Map(rows.map((r) => [r.userId, r.displayName!]));
+  }
+
+  /**
+   * The active members who hold `key` at `locationId` (role, per-member grants and denies, location scope), with
+   * their display name when they have one: e.g. who can drive for a warehouse (ADR 0045). Owners hold every key.
+   */
+  async holders(
+    db: TenantDb,
+    key: PermissionKey,
+    locationId: string,
+  ): Promise<{ userId: string; name: string | null }[]> {
+    const rows = await db.membership.findMany({
+      where: { deactivatedAt: null },
+      select: {
+        id: true,
+        userId: true,
+        displayName: true,
+        allLocations: true,
+        deactivatedAt: true,
+        permissions: { select: { permissionKey: true, effect: true } },
+        role: {
+          select: {
+            id: true,
+            systemKey: true,
+            name: true,
+            permissions: { select: { permissionKey: true } },
+          },
+        },
+        locations: { select: { locationId: true } },
+      },
+    });
+    return rows
+      .filter((row) => holds(resolveAccess(this.registry, row), this.registry, key, locationId))
+      .map((row) => ({ userId: row.userId, name: row.displayName }));
   }
 }

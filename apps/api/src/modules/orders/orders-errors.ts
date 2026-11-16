@@ -40,6 +40,30 @@ export const ordersErrors = {
       `An order cannot go from ${from} to ${to}.`,
       { from, to },
     ),
+  // Branch stock requests (ADR 0045).
+  requestNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'orders.request_not_found', 'Stock request not found.'),
+  requestInvalid: () =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'orders.request_invalid',
+      'Give every line once, within its quantity, and at least one above zero.',
+    ),
+  requestTransition: (from: string, to: string) =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'orders.request_transition',
+      'The request has moved on meanwhile.',
+      { from, to },
+    ),
+  requestNotYours: () =>
+    new ApiError(
+      HttpStatus.FORBIDDEN,
+      'orders.request_not_yours',
+      'This delivery is assigned to another driver.',
+    ),
+  driverNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'orders.driver_not_found', 'This person cannot drive here.'),
   /** Import Data (ADR 0044 step 4): the rows' problems, refused as a whole. */
   importInvalid: (rows: DataImportProblemRow[]) =>
     new ApiError(HttpStatus.BAD_REQUEST, 'orders.import_invalid', 'Some import rows are invalid.', {

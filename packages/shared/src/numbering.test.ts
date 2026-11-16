@@ -36,6 +36,8 @@ describe('number series registry', () => {
       'inventory.purchaseOrder',
       'inventory.goodsIssue',
       'inventory.goodsRestock',
+      'orders.stockRequest',
+      'orders.stockTransfer',
       'orders.salesOrder',
       'billing.invoice',
       'pos.order',

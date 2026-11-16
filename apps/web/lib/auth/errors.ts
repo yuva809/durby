@@ -2,6 +2,7 @@ import type {
   AuditErrorCode,
   AuthErrorCode,
   CatalogErrorCode,
+  StockRequestErrorCode,
   DataImportErrorCode,
   EntitlementErrorCode,
   IdempotencyErrorCode,
@@ -32,6 +33,7 @@ export type ApiErrorCode =
   | EntitlementErrorCode
   | AuditErrorCode
   | CatalogErrorCode
+  | StockRequestErrorCode
   | DataImportErrorCode
   | InventoryErrorCode
   | OrdersErrorCode
@@ -130,6 +132,11 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'orders.not_editable': 'orders.errors.notEditable',
   'orders.invalid_transition': 'orders.errors.invalidTransition',
   'orders.pick_invalid': 'orders.errors.pickInvalid',
+  'orders.request_not_found': 'orders.errors.requestNotFound',
+  'orders.request_invalid': 'orders.errors.requestInvalid',
+  'orders.request_transition': 'orders.errors.requestTransition',
+  'orders.request_not_yours': 'orders.errors.requestNotYours',
+  'orders.driver_not_found': 'orders.errors.driverNotFound',
   'orders.import_invalid': 'orders.errors.importInvalid',
   'inventory.import_invalid': 'inventory.errors.importInvalid',
   'catalog.category_not_found': 'catalog.errors.categoryNotFound',

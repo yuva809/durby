@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  SYSTEM_ROLE_FEATURES,
   isPermissionKey,
   PERMISSION_KEYS,
   PERMISSIONS,
@@ -61,11 +62,15 @@ describe('system roles', () => {
       'orders.customers.create',
       'orders.customers.edit',
       'orders.customers.read',
+      'orders.delivery.assign',
       'orders.delivery.use',
       'orders.orders.create',
       'orders.orders.edit',
       'orders.orders.read',
       'orders.picking.use',
+      'orders.requests.create',
+      'orders.requests.read',
+      'orders.requests.receive',
       'platform.feedback.send',
       'platform.roles.read',
       'platform.settings.read',
@@ -104,6 +109,41 @@ describe('system roles', () => {
       'platform.settings.read',
       'pos.tables.read',
     ]);
+  });
+
+  // ADR 0045: the branch roles of a distribution business, each to its part of the flow.
+  it('gives Branch, Warehouse and Driver their part of the stock request flow, nothing else', () => {
+    expect([...systemRolePermissions('branch')].sort()).toEqual([
+      'inventory.stock.read',
+      'orders.requests.create',
+      'orders.requests.read',
+      'orders.requests.receive',
+      'platform.feedback.send',
+      'platform.settings.read',
+    ]);
+    expect([...systemRolePermissions('warehouse')].sort()).toEqual([
+      'inventory.stock.adjust',
+      'inventory.stock.read',
+      'inventory.stock.receive',
+      'orders.delivery.assign',
+      'orders.orders.read',
+      'orders.picking.use',
+      'orders.requests.read',
+      'platform.feedback.send',
+      'platform.settings.read',
+    ]);
+    expect([...systemRolePermissions('driver')].sort()).toEqual([
+      'orders.delivery.use',
+      'platform.feedback.send',
+    ]);
+    const holders = (key: PermissionKey) =>
+      SYSTEM_ROLES.filter((role) => systemRolePermissions(role).has(key));
+    expect(holders('orders.requests.approve')).toEqual(['owner', 'admin']);
+    expect(SYSTEM_ROLE_FEATURES).toEqual({
+      branch: 'orders',
+      warehouse: 'orders',
+      driver: 'orders',
+    });
   });
 
   // docs/modules/pos.md → Step 3: voids are for managers; the counter reads and closes.

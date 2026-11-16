@@ -1,5 +1,11 @@
 import { dictionaries, isLabelKey } from '@durby/i18n';
-import { FEATURES, NAV_LAYOUTS, PERMISSIONS } from '@durby/shared';
+import {
+  FEATURES,
+  NAV_LAYOUTS,
+  PERMISSIONS,
+  type SystemRole,
+  systemRolePermissions,
+} from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import { NAV_LAYOUT_DEFINITIONS, navLayout } from './layouts';
 import { activeNavItem, NAV_ITEMS, type NavItem, visibleNav } from './registry';
@@ -47,7 +53,17 @@ describe('nav layouts (ADR 0044)', () => {
     );
     expect(byGroup).toEqual({
       main: ['home'],
-      operations: ['inventory', 'categories', 'orders', 'picking', 'branches', 'deliveries'],
+      operations: [
+        'inventory',
+        'categories',
+        'orders',
+        'request-stock',
+        'stock-requests',
+        'picking',
+        'branches',
+        'deliveries',
+        'my-deliveries',
+      ],
       administration: ['audit', 'staff', 'settings'],
       tools: ['import', 'feedback'],
     });
@@ -68,5 +84,42 @@ describe('nav layouts (ADR 0044)', () => {
       activePermissions: ['inventory.stock.read', 'catalog.products.read'],
     });
     expect(ids(visible)).toEqual(['home', 'inventory', 'categories', 'settings']);
+  });
+});
+
+describe('the operations menu per branch role (ADR 0045)', () => {
+  const menu = (role: SystemRole) =>
+    ids(
+      visibleNav(navLayout('operations').items, {
+        activeFeatures: ['inventory', 'catalog', 'orders'],
+        activePermissions: [...systemRolePermissions(role)],
+      }),
+    );
+
+  it('gives each role its part of the flow', () => {
+    expect(menu('branch')).toEqual([
+      'home',
+      'inventory',
+      'request-stock',
+      'stock-requests',
+      'branches',
+      'settings',
+      'feedback',
+    ]);
+    expect(menu('warehouse')).toEqual([
+      'home',
+      'inventory',
+      'orders',
+      'stock-requests',
+      'picking',
+      'branches',
+      'deliveries',
+      'settings',
+      // Booking goods in includes importing opening stock.
+      'import',
+      'feedback',
+    ]);
+    expect(menu('driver')).toEqual(['home', 'my-deliveries', 'settings', 'feedback']);
+    expect(activeNavItem(navLayout('operations').items, '/requests/new')?.id).toBe('request-stock');
   });
 });

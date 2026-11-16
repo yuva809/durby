@@ -13,6 +13,7 @@ import { Field, FormDialog } from '../form-dialog';
 import { MoneyProvider } from '../pos/money';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
+import { TransfersPicking } from '../requests/transfers-picking';
 import { Loaded, NoAccess } from '../users/common';
 
 const BOARD_LIMIT = 200;
@@ -26,16 +27,35 @@ const RECENT_DAYS = 7;
 export function DeliveriesPage() {
   const { session } = useAuth();
   if (!session) return null;
-  if (!session.activePermissions.includes('orders.delivery.use'))
+  const permissions = session.activePermissions;
+  if (
+    !permissions.includes('orders.delivery.use') &&
+    !permissions.includes('orders.delivery.assign')
+  )
     return <NoAccess title="platform.nav.deliveries" />;
   return (
     <MoneyProvider>
-      <Deliveries organizationId={session.activeOrganizationId} />
+      {permissions.includes('orders.delivery.assign') && (
+        <div className="mb-6">
+          <TransfersPicking organizationId={session.activeOrganizationId} initialTab="packed" />
+        </div>
+      )}
+      <Deliveries
+        organizationId={session.activeOrganizationId}
+        canDeliver={permissions.includes('orders.delivery.use')}
+      />
     </MoneyProvider>
   );
 }
 
-function Deliveries({ organizationId }: { organizationId: string | null }) {
+function Deliveries({
+  organizationId,
+  canDeliver,
+}: {
+  organizationId: string | null;
+  /** Sales-order steps (dispatch, delivered, came back) need orders.delivery.use. */
+  canDeliver: boolean;
+}) {
   const t = useT();
   const { store } = useAuth();
   // Fixed per visit, so the board's key (and its request) stays the same between renders.
@@ -77,7 +97,7 @@ function Deliveries({ organizationId }: { organizationId: string | null }) {
               >
                 {ready.map((order) => (
                   <DeliveryCard key={order.id} order={order}>
-                    <DispatchDialog order={order} onDone={reload} />
+                    {canDeliver && <DispatchDialog order={order} onDone={reload} />}
                   </DeliveryCard>
                 ))}
               </Column>
@@ -97,8 +117,8 @@ function Deliveries({ organizationId }: { organizationId: string | null }) {
                       t('orders.delivery.since', { time: formatTime(order.dispatchedAt) }),
                     ]}
                   >
-                    <NoteDialog kind="deliver" order={order} onDone={reload} />
-                    <NoteDialog kind="return" order={order} onDone={reload} />
+                    {canDeliver && <NoteDialog kind="deliver" order={order} onDone={reload} />}
+                    {canDeliver && <NoteDialog kind="return" order={order} onDone={reload} />}
                   </DeliveryCard>
                 ))}
               </Column>

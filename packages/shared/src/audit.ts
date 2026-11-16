@@ -46,6 +46,7 @@ export const AUDIT_ENTITY_TYPES = [
   'bom',
   'customer',
   'sales_order',
+  'stock_request',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -315,6 +316,15 @@ export const AUDIT_ACTIONS = {
   'orders.sales_order.status_changed': {
     entityType: 'sales_order',
     label: 'orders.audit.actions.salesOrderStatusChanged',
+  },
+  /** Branch stock requests (ADR 0045): created, then each step of their life. */
+  'orders.stock_request.created': {
+    entityType: 'stock_request',
+    label: 'orders.audit.actions.stockRequestCreated',
+  },
+  'orders.stock_request.status_changed': {
+    entityType: 'stock_request',
+    label: 'orders.audit.actions.stockRequestStatusChanged',
   },
   'pos.dining_area.created': {
     entityType: 'dining_area',
@@ -655,5 +665,17 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'warehouseId',
     'lineCount',
     'total',
+  ],
+  /** Never the note (free text). */
+  stock_request: [
+    'id',
+    'number',
+    'transferNumber',
+    'status',
+    'locationId',
+    'fromWarehouseId',
+    'toWarehouseId',
+    'lineCount',
+    'driverUserId',
   ],
 } as const satisfies Record<AuditEntityType, readonly string[]>;

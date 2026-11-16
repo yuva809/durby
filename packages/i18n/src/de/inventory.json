@@ -238,5 +238,6 @@
   "inventory.page.salePriceInvalid": "Geben Sie einen Preis mit bis zu 2 Nachkommastellen ein.",
   "inventory.kinds.issue": "Warenausgang",
   "inventory.kinds.restock": "Rücknahme",
-  "inventory.errors.importInvalid": "Einige Zeilen können nicht importiert werden. Prüfen Sie die Vorschau, korrigieren Sie die Datei und versuchen Sie es erneut."
+  "inventory.errors.importInvalid": "Einige Zeilen können nicht importiert werden. Prüfen Sie die Vorschau, korrigieren Sie die Datei und versuchen Sie es erneut.",
+  "inventory.warehouses.transit": "Unterwegs"
 }

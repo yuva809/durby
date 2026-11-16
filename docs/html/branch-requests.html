@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Branch stock requests: technical and test notes</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#1f7a3d; --ok:#1f7a3d; --warn:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; } }
+  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  h3 { font-size: 15px; margin: 20px 0 6px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .done { color: var(--ok); } .open { color: var(--warn); }
+  nav a { color: var(--accent); margin-right: 14px; }
+  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="#flow">Flow</a><a href="#roles">Roles</a><a href="#stock">Stock</a><a href="#api">API</a><a href="#tests">Tests</a><a href="#deploy">Deploy</a></nav>
+
+  <h1>Branch stock requests</h1>
+  <p class="lead">Branches restock from the main warehouse: request → approval → picking → driver → receipt, each person seeing only their part. Decision: ADR 0045. Spec: <code>docs/modules/orders.md</code> → Branch requests. Branch: <code>feature/branch-requests</code>.</p>
+
+  <h2 id="flow">Flow</h2>
+<pre>Branch ──Request Stock (SRQ-2026-000047)──▶ Owner/Admin: Approve (quantities may change) / Reject
+                                                │ becomes TRF-2026-000047
+Warehouse (Lager): Picking → Pick (short allowed) → Packed  [+ driver]   stock: Main ▶ In transit
+Driver: My Deliveries → Picked up → Delivered
+Branch: Stock Requests → Confirm receipt (≤ packed)                      stock: In transit ▶ Branch, rest = shortage</pre>
+
+  <h2 id="roles">Roles and menus</h2>
+  <div class="scroll"><table>
+    <tr><th>Role</th><th>Sidebar (operations layout)</th><th>Key points</th></tr>
+    <tr><td>Owner / Admin</td><td>Everything, incl. Stock Requests (approve)</td><td>Only they hold <code>orders.requests.approve</code></td></tr>
+    <tr><td>Branch</td><td>Inventory (own stock), Request Stock, Stock Requests, Branches, Settings, Feedback</td><td>Limited to their branch location; sees main warehouse quantities only in Request Stock</td></tr>
+    <tr><td>Warehouse (Lager)</td><td>Inventory, Order History, Stock Requests, Picking, Branches, Delivery Tracking, Import Data, Feedback</td><td>Picks, packs, assigns drivers, books goods in</td></tr>
+    <tr><td>Driver</td><td>My Deliveries, Settings, Feedback</td><td>Sees only deliveries assigned to them</td></tr>
+  </table></div>
+  <div class="callout">The three roles exist in every organization but only show where the organization has the <code>orders</code> module, so app.durby.tech restaurants never see them. Onboard: Manage Staff → Add staff → role Branch / Warehouse (Lager) / Driver → for a Branch pick its location.</div>
+
+  <h2 id="stock">Stock</h2>
+  <ul>
+    <li><strong>Packed:</strong> one transfer document from the source warehouse to <em>In transit</em> (created automatically, one per organization) for the picked quantities, at average cost. Refused when stock would go below zero, unless the location allows negative stock.</li>
+    <li><strong>Received:</strong> a transfer from In transit to the branch's warehouse for what arrived, and an adjustment out of In transit for the rest (shortage).</li>
+    <li>All documents carry the request (<code>source_request_id</code>) and show in Inventory → Documents.</li>
+  </ul>
+
+  <h2 id="api">API</h2>
+<pre>GET  /api/v1/stock-requests?status=submitted,approved&amp;mine=true
+GET  /api/v1/stock-requests/:id
+GET  /api/v1/stock-requests/warehouses              orders.requests.create
+GET  /api/v1/stock-requests/availability/:warehouse orders.requests.create
+GET  /api/v1/stock-requests/drivers/:warehouse      orders.delivery.assign
+POST /api/v1/stock-requests                         { fromWarehouseId, toWarehouseId, lines[{itemId, quantity}], note? }
+POST /api/v1/stock-requests/:id/approve             { lines[{lineId, quantity}], note? }
+POST /api/v1/stock-requests/:id/reject | /cancel    { note? }
+POST /api/v1/stock-requests/:id/start-picking
+POST /api/v1/stock-requests/:id/pack                { lines[{lineId, quantity}], driverUserId? }
+POST /api/v1/stock-requests/:id/driver              { driverUserId }
+POST /api/v1/stock-requests/:id/pick-up | /deliver
+POST /api/v1/stock-requests/:id/receive             { lines[{lineId, quantity}], note? }</pre>
+
+  <h2 id="tests">Testing</h2>
+  <h3>Automated</h3>
+  <div class="scroll"><table>
+    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
+    <tr><td>Shared</td><td><code>permissions.test.ts</code></td><td>the three roles' keys, approvers are owner and admin</td><td class="done">Pass</td></tr>
+    <tr><td>API unit</td><td><code>stock-requests.spec.ts</code></td><td>allowed status moves</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/requests/requests.test.tsx</code></td><td>request form, approve with changes, receive capped at packed, pack with driver, driver's list</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>lib/nav/layouts.test.ts</code></td><td>sidebar per role</td><td class="done">Pass</td></tr>
+    <tr><td>API e2e</td><td><code>test/stock-requests.e2e.spec.ts</code>, <code>test/rbac-roles.e2e.spec.ts</code></td><td>full flow with stock levels, visibility, other driver refused, insufficient stock, roles hidden without orders</td><td class="open">Needs Docker / CI</td></tr>
+  </table></div>
+
+  <h3>Manual (app.asiamight.site)</h3>
+  <div class="scroll"><table>
+    <tr><th>Step</th><th>Expected</th></tr>
+    <tr><td>Owner: add a warehouse at the branch location (Inventory → Warehouses)</td><td>Branch has somewhere to receive into</td></tr>
+    <tr><td>Owner: Add staff ×3 with roles Branch (branch location), Warehouse (main location), Driver</td><td>Roles listed; restaurants on app.durby.tech don't list them</td></tr>
+    <tr><td>Branch: Request Stock → Rice 6 → Send</td><td>"Request SRQ-… sent"; Stock Requests shows it waiting</td></tr>
+    <tr><td>Owner: Stock Requests → open → Approve (Rice 5)</td><td>Status Approved, transfer number TRF-…</td></tr>
+    <tr><td>Warehouse: Picking → To pick → Pick → 4, driver → Packed</td><td>Main stock −4; In transit +4; row under Packed</td></tr>
+    <tr><td>Driver: My Deliveries → Picked up → Delivered</td><td>Status On the way, then Delivered</td></tr>
+    <tr><td>Branch: open → Confirm receipt 3</td><td>Branch +3; In transit 0; timeline complete; one shortage document</td></tr>
+  </table></div>
+
+  <h2 id="deploy">Deploy</h2>
+  <ul>
+    <li>Migrations: <code>20261117100000_system_roles_branch</code>, <code>20261117100001_system_roles_branch_backfill</code>, <code>20261117110000_stock_requests</code>. Expand only.</li>
+    <li>Merge, then <code>bin/release.sh</code>.</li>
+    <li>Later: batches and expiry (pick soonest expiry first), notifications.</li>
+  </ul>
+</main>
+</body>
+</html>

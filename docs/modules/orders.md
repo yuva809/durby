@@ -136,6 +136,51 @@ complete their idempotency key in the business transaction.
   timeline, driver phone kept out of the audit log, returns and cancels booking back at issue cost, insufficient
   stock refused, keys enforced.
 
+## Branch requests (ADR 0045)
+
+A branch asks a warehouse for goods; the owner or an admin decides; the warehouse picks and packs; a driver delivers;
+the branch confirms what arrived. One `stock_requests` row carries the request number `SRQ-…` and, from approval, the
+transfer number `TRF-…`.
+
+| Who               | Role key         | Does                                                        |
+| ----------------- | ---------------- | ----------------------------------------------------------- |
+| Branch            | `branch`         | Request Stock, follows its requests, confirms receipt       |
+| Owner, Admin      | `owner`, `admin` | Approves (quantities may change, 0 drops a line) or rejects |
+| Warehouse (Lager) | `warehouse`      | Picks and packs on the Picking page, assigns a driver       |
+| Driver            | `driver`         | My Deliveries: Picked up, Delivered                         |
+
+The three roles exist in every organization but are listed only with the `orders` module.
+
+**Statuses:** `submitted → approved → (picking) → packed → in_transit → delivered → received`; `rejected` or
+`cancelled` before approval only; receipt can be confirmed from `packed` on.
+
+**Stock:** packing moves the picked goods from the source into **In transit** (`warehouses.is_transit`, one per
+organization); receiving moves what arrived into the branch's warehouse and books the rest out of In transit as a
+shortage. Packing is refused below zero stock unless the location allows it.
+
+| Route (`/api/v1/stock-requests`)                    | Key (where)                                                                                              |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `GET /`, `GET /:id`                                 | signed in; the service shows a branch its own, a warehouse its own, approvers all, a driver `?mine=true` |
+| `GET /warehouses`, `GET /availability/:warehouseId` | `orders.requests.create` (quantities only, no costs)                                                     |
+| `GET /drivers/:warehouseId`                         | `orders.delivery.assign` at the warehouse                                                                |
+| `POST /`, `POST /:id/cancel`                        | `orders.requests.create` at the branch                                                                   |
+| `POST /:id/approve`, `/reject`                      | `orders.requests.approve`                                                                                |
+| `POST /:id/start-picking`, `/pack`                  | `orders.picking.use` at the source (+ `orders.delivery.assign` to name a driver)                         |
+| `POST /:id/driver`                                  | `orders.delivery.assign` at the source                                                                   |
+| `POST /:id/pick-up`, `/deliver`                     | `orders.delivery.use`, the assigned driver (or someone who assigns drivers)                              |
+| `POST /:id/receive`                                 | `orders.requests.receive` at the branch                                                                  |
+
+Every step: row lock, timeline row (append-only `stock_request_events`), audit row (`orders.stock_request.*`, no
+notes), idempotency key completed in the transaction. Errors: `orders.request_not_found`, `orders.request_invalid`,
+`orders.request_transition`, `orders.request_not_yours`, `orders.driver_not_found`, `inventory.insufficient_stock`.
+
+**Web:** Request Stock (`/requests/new`), Stock Requests (`/requests`, with approve, reject, cancel, receive), the
+transfers section of Picking (To pick / Packed / Received, pick with a driver, assign later), My Deliveries
+(`/my-deliveries`); Delivery Tracking shows transfers to those who assign drivers.
+
+**Tests:** `apps/api/src/modules/orders/stock-requests.spec.ts`, `apps/api/test/stock-requests.e2e.spec.ts` (Docker),
+`apps/web/components/requests/requests.test.tsx`, `apps/web/lib/nav/layouts.test.ts` (menus per role).
+
 ## Later
 
 Partial re-picks of short lines, proof of delivery (photo or signature), delivery notes to print.

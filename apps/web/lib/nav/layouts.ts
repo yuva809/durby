@@ -3,11 +3,13 @@ import type { FeatureKey, NavLayout, PermissionKey } from '@durby/shared';
 import {
   Archive,
   Building2,
+  ClipboardList,
   Download,
   Heart,
   LayoutGrid,
   MapPin,
   Package,
+  PackagePlus,
   Truck,
 } from 'lucide-react';
 import { NAV_GROUPS, NAV_ITEMS, type NavGroup, type NavItem } from './registry';
@@ -64,6 +66,26 @@ const OPERATIONS: NavLayoutDefinition = {
       permission: 'orders.orders.read',
     },
     {
+      // A branch asks the main warehouse for goods (ADR 0045).
+      id: 'request-stock',
+      href: '/requests/new',
+      label: 'platform.nav.requestStock',
+      icon: PackagePlus,
+      group: 'operations',
+      feature: 'orders',
+      permission: 'orders.requests.create',
+    },
+    {
+      // Branch requests by stage; owners and admins approve here.
+      id: 'stock-requests',
+      href: '/requests',
+      label: 'platform.nav.stockRequests',
+      icon: ClipboardList,
+      group: 'operations',
+      feature: 'orders',
+      permission: 'orders.requests.read',
+    },
+    {
       id: 'picking',
       href: '/picking',
       label: 'platform.nav.picking',
@@ -86,6 +108,17 @@ const OPERATIONS: NavLayoutDefinition = {
       href: '/deliveries',
       label: 'platform.nav.deliveries',
       icon: MapPin,
+      group: 'operations',
+      feature: 'orders',
+      // The overview of every delivery: those who assign drivers (owner, admin, manager, warehouse), not drivers.
+      permission: 'orders.delivery.assign',
+    },
+    {
+      // A driver's own deliveries (ADR 0045).
+      id: 'my-deliveries',
+      href: '/my-deliveries',
+      label: 'platform.nav.myDeliveries',
+      icon: Truck,
       group: 'operations',
       feature: 'orders',
       permission: 'orders.delivery.use',

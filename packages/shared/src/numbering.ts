@@ -97,6 +97,23 @@ export const NUMBER_SERIES = {
     pattern: '{prefix}-{YYYY}-{seq:6}',
     resetPolicy: 'yearly',
   },
+  /** Branch stock requests and the transfers they become (ADR 0045). */
+  'orders.stockRequest': {
+    label: 'platform.numbering.series.ordersStockRequest.name',
+    description: 'platform.numbering.series.ordersStockRequest.description',
+    feature: 'orders',
+    prefix: 'SRQ',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
+  'orders.stockTransfer': {
+    label: 'platform.numbering.series.ordersStockTransfer.name',
+    description: 'platform.numbering.series.ordersStockTransfer.description',
+    feature: 'orders',
+    prefix: 'TRF',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
   /** Sales orders of a distribution business (ADR 0044). */
   'orders.salesOrder': {
     label: 'platform.numbering.series.ordersSalesOrder.name',

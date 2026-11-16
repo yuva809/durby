@@ -117,7 +117,7 @@ describe('rbac migration backfill', { timeout: 180_000 }, () => {
           .sort()
           // waiter and cashier: system_roles_backfill (ADR 0016); host: system_role_host_backfill
           // (reservations, ADR 0007 amendment); kitchen and bar: qr_menu_ticket_status (ADR 0026);
-          // on the same existing organizations.
+          // branch, warehouse and driver: system_roles_branch_backfill (ADR 0045); on the same existing organizations.
           .map((id) => ({
             tenant_id: id,
             keys: [
@@ -130,6 +130,9 @@ describe('rbac migration backfill', { timeout: 180_000 }, () => {
               'host',
               'kitchen',
               'bar',
+              'branch',
+              'warehouse',
+              'driver',
             ],
           })),
       );

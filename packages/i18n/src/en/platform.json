@@ -873,5 +873,19 @@
   "platform.settings.posBillText.name": "Bill text size",
   "platform.settings.posBillText.description": "How large the printed bill is: overall, and per part.",
   "platform.settings.posTicketText.name": "Ticket text size",
-  "platform.settings.posTicketText.description": "How large kitchen and bar tickets print."
+  "platform.settings.posTicketText.description": "How large kitchen and bar tickets print.",
+  "platform.roles.branch": "Branch",
+  "platform.roles.warehouse": "Warehouse (Lager)",
+  "platform.roles.driver": "Driver",
+  "platform.numbering.series.ordersStockRequest.name": "Stock requests",
+  "platform.numbering.series.ordersStockRequest.description": "Numbers of branch stock requests.",
+  "platform.numbering.series.ordersStockTransfer.name": "Stock transfers",
+  "platform.numbering.series.ordersStockTransfer.description": "Numbers of approved requests on their way to a branch.",
+  "platform.audit.entities.stockRequest": "Stock request",
+  "platform.audit.fields.transferNumber": "Transfer",
+  "platform.audit.fields.fromWarehouseId": "From warehouse",
+  "platform.audit.fields.driverUserId": "Driver",
+  "platform.nav.requestStock": "Request Stock",
+  "platform.nav.stockRequests": "Stock Requests",
+  "platform.nav.myDeliveries": "My Deliveries"
 }

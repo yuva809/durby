@@ -111,7 +111,9 @@ describe('Picking (/picking)', () => {
     ]);
     expect(within(cards[0]!).getByTestId('picking-start')).toBeTruthy();
     expect(within(cards[1]!).queryByTestId('picking-start')).toBeNull();
-    expect(calls[0]?.path).toContain('status=confirmed&status=picking');
+    expect(calls.some((c) => c.path.includes('/orders?status=confirmed&status=picking'))).toBe(
+      true,
+    );
   });
 
   it('picks with the ordered quantities filled in, short lines allowed, over-picking refused', async () => {
