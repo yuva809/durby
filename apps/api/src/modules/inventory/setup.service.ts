@@ -23,6 +23,7 @@ const WAREHOUSE_SELECT = {
   name: true,
   sortOrder: true,
   suppliesStation: true,
+  isTransit: true,
   archivedAt: true,
 } as const;
 

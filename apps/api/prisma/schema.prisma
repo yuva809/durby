@@ -144,6 +144,9 @@ model Organization {
   salesOrderLines              SalesOrderLine[]
   salesOrderEvents             SalesOrderEvent[]
   feedback                     Feedback[]
+  stockRequests                StockRequest[]
+  stockRequestLines            StockRequestLine[]
+  stockRequestEvents           StockRequestEvent[]
 
   @@index([partnerId])
   @@index([planId])
@@ -188,6 +191,7 @@ model Location {
   posPrinters             PosPrinter[]
   posPrintJobs            PosPrintJob[]
   salesOrders             SalesOrder[]
+  stockRequests           StockRequest[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -1629,6 +1633,8 @@ model Warehouse {
   sortOrder       Int             @default(0) @map("sort_order")
   /// Sales of this station at the location take their stock from here (warehouses_supplies_station_key).
   suppliesStation PrepStation?    @map("supplies_station")
+  /// The organization's "In transit" warehouse (ADR 0045): one at most (partial unique index).
+  isTransit       Boolean         @default(false) @map("is_transit")
   archivedAt      DateTime?       @map("archived_at") @db.Timestamptz(6)
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1639,6 +1645,8 @@ model Warehouse {
   movements       StockMovement[]
   levels          StockLevel[]
   salesOrders     SalesOrder[]
+  requestsFrom    StockRequest[]  @relation("StockRequestFrom")
+  requestsTo      StockRequest[]  @relation("StockRequestTo")
 
   @@unique([tenantId, id])
   @@index([tenantId, locationId])
@@ -1647,31 +1655,32 @@ model Warehouse {
 
 /// An ingredient or good kept in stock, organization-wide. The unit is fixed once the item has movements.
 model StockItem {
-  id            String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId      String           @map("tenant_id") @db.Uuid
+  id            String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String             @map("tenant_id") @db.Uuid
   name          String
   sku           String?
   unit          StockUnit
   /// Reorder level; null = none.
-  minQuantity   Decimal?         @map("min_quantity") @db.Decimal(14, 3)
+  minQuantity   Decimal?           @map("min_quantity") @db.Decimal(14, 3)
   /// A variant's parent (ADR 0038): one level only, checked by the service.
-  parentItemId  String?          @map("parent_item_id") @db.Uuid
+  parentItemId  String?            @map("parent_item_id") @db.Uuid
   /// A variant's attribute values in attribute order; empty for other items.
-  variantValues String[]         @default([]) @map("variant_values")
+  variantValues String[]           @default([]) @map("variant_values")
   /// Default unit price on sales orders (ADR 0044); null = none.
-  salePrice     Decimal?         @map("sale_price") @db.Decimal(12, 2)
-  archivedAt    DateTime?        @map("archived_at") @db.Timestamptz(6)
-  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization  Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  parent        StockItem?       @relation("StockItemVariants", fields: [tenantId, parentItemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  variants      StockItem[]      @relation("StockItemVariants")
+  salePrice     Decimal?           @map("sale_price") @db.Decimal(12, 2)
+  archivedAt    DateTime?          @map("archived_at") @db.Timestamptz(6)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization  Organization       @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  parent        StockItem?         @relation("StockItemVariants", fields: [tenantId, parentItemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  variants      StockItem[]        @relation("StockItemVariants")
   movements     StockMovement[]
   levels        StockLevel[]
   recipeLines   RecipeLine[]
-  boms          Bom[]            @relation("BomOutput")
-  bomLines      BomLine[]        @relation("BomComponent")
+  boms          Bom[]              @relation("BomOutput")
+  bomLines      BomLine[]          @relation("BomComponent")
   salesLines    SalesOrderLine[]
+  requestLines  StockRequestLine[]
 
   @@unique([tenantId, id])
   /// One variant per combination of values (NULL parents never collide).
@@ -1696,6 +1705,8 @@ model StockDocument {
   sourceTicketId  String?                @map("source_ticket_id") @db.Uuid
   /// The sales order an issue or restock was booked for (no FK: the orders module's table, ADR 0044).
   sourceOrderId   String?                @map("source_order_id") @db.Uuid
+  /// The branch stock request a transfer or shortage was booked for (no FK: the orders module's table, ADR 0045).
+  sourceRequestId String?                @map("source_request_id") @db.Uuid
   createdByUserId String                 @map("created_by_user_id") @db.Uuid
   createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   organization    Organization           @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -1708,6 +1719,7 @@ model StockDocument {
   @@unique([tenantId, sourceTicketId])
   @@index([tenantId, warehouseId, createdAt])
   @@index([tenantId, sourceOrderId])
+  @@index([tenantId, sourceRequestId])
   @@map("stock_documents")
 }
 
@@ -2166,4 +2178,88 @@ model Feedback {
   @@index([organizationId, id])
   @@index([status, id])
   @@map("feedback")
+}
+
+enum StockRequestStatus {
+  submitted
+  approved
+  picking
+  packed
+  in_transit
+  delivered
+  received
+  rejected
+  cancelled
+
+  @@map("stock_request_status")
+}
+
+/// A branch's request for goods from a warehouse (ADR 0045); becomes a transfer (transferNumber) when approved.
+model StockRequest {
+  id                String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.Uuid
+  number            String
+  transferNumber    String?             @map("transfer_number")
+  status            StockRequestStatus  @default(submitted)
+  /// The branch: the destination warehouse's location.
+  locationId        String              @map("location_id") @db.Uuid
+  /// The source warehouse's location (the warehouse's keys are checked there).
+  fromLocationId    String              @map("from_location_id") @db.Uuid
+  fromWarehouseId   String              @map("from_warehouse_id") @db.Uuid
+  toWarehouseId     String              @map("to_warehouse_id") @db.Uuid
+  note              String?
+  requestedByUserId String              @map("requested_by_user_id") @db.Uuid
+  driverUserId      String?             @map("driver_user_id") @db.Uuid
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization      Organization        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location          Location            @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  fromWarehouse     Warehouse           @relation("StockRequestFrom", fields: [tenantId, fromWarehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  toWarehouse       Warehouse           @relation("StockRequestTo", fields: [tenantId, toWarehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  lines             StockRequestLine[]
+  events            StockRequestEvent[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, number])
+  @@unique([tenantId, transferNumber])
+  @@index([tenantId, status, id])
+  @@index([tenantId, driverUserId])
+  @@map("stock_requests")
+}
+
+/// One item of a request: asked, approved, picked and received quantities.
+model StockRequestLine {
+  id               String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String       @map("tenant_id") @db.Uuid
+  requestId        String       @map("request_id") @db.Uuid
+  itemId           String       @map("item_id") @db.Uuid
+  quantity         Decimal      @db.Decimal(14, 3)
+  approvedQuantity Decimal?     @map("approved_quantity") @db.Decimal(14, 3)
+  pickedQuantity   Decimal?     @map("picked_quantity") @db.Decimal(14, 3)
+  receivedQuantity Decimal?     @map("received_quantity") @db.Decimal(14, 3)
+  sortOrder        Int          @default(0) @map("sort_order")
+  organization     Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  request          StockRequest @relation(fields: [tenantId, requestId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  item             StockItem    @relation(fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, requestId, itemId])
+  @@map("stock_request_lines")
+}
+
+/// The timeline of a request: one row per status it reached. Append-only.
+model StockRequestEvent {
+  id           String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String             @map("tenant_id") @db.Uuid
+  requestId    String             @map("request_id") @db.Uuid
+  status       StockRequestStatus
+  note         String?
+  userId       String?            @map("user_id") @db.Uuid
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization       @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  request      StockRequest       @relation(fields: [tenantId, requestId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, requestId, id])
+  @@map("stock_request_events")
 }

@@ -746,6 +746,104 @@ export class StockService {
     });
   }
 
+  /**
+   * The organization's "In transit" warehouse (ADR 0045), created at `locationId` the first time goods go on the road.
+   * Its name is data; the web shows a label for it (`isTransit`).
+   */
+  async transitWarehouse(tx: TenantTransactionClient, locationId: string): Promise<string> {
+    const { tenantId } = this.tenantContext.require();
+    const existing = await tx.warehouse.findFirst({
+      where: { isTransit: true },
+      select: { id: true },
+    });
+    if (existing) return existing.id;
+    await tx.$executeRaw`
+      INSERT INTO warehouses (tenant_id, location_id, name, is_transit, sort_order, updated_at)
+      VALUES (${tenantId}::uuid, ${locationId}::uuid, 'In transit', true, 1000000, now())
+      ON CONFLICT DO NOTHING`;
+    const created = await tx.warehouse.findFirstOrThrow({
+      where: { isTransit: true },
+      select: { id: true },
+    });
+    return created.id;
+  }
+
+  /**
+   * Goods of a branch stock request (ADR 0045), in the orders module's transaction; the caller checks the request and
+   * its keys. `transfer`: out of `fromWarehouseId` at the average cost and into `toWarehouseId` at that cost
+   * (refused below zero unless the location allows negative stock, never for the transit warehouse). `shortage`:
+   * out of `fromWarehouseId` as an adjustment (goods that never arrived). Lines with nothing to move are skipped;
+   * null when none is left.
+   */
+  async bookForRequest(
+    tx: TenantTransactionClient,
+    input: {
+      kind: 'transfer' | 'shortage';
+      fromWarehouseId: string;
+      toWarehouseId?: string;
+      requestId: string;
+      lines: readonly { itemId: string; quantity: string }[];
+      userId: string;
+    },
+  ): Promise<StockDocument | null> {
+    const { tenantId } = this.tenantContext.require();
+    const totals = new Map<string, Decimal>();
+    for (const line of input.lines) {
+      const quantity = new Decimal(line.quantity);
+      if (quantity.isZero()) continue;
+      totals.set(line.itemId, (totals.get(line.itemId) ?? new Decimal(0)).plus(quantity));
+    }
+    const itemIds = [...totals.keys()].sort();
+    if (itemIds.length === 0) return null;
+    const from = await tx.warehouse.findUniqueOrThrow({
+      where: { id: input.fromWarehouseId },
+      select: { id: true, locationId: true, isTransit: true },
+    });
+    const toId = input.kind === 'transfer' ? input.toWarehouseId! : null;
+    const levels = await lockLevels(tx, tenantId, toId ? [from.id, toId] : [from.id], itemIds);
+    const movements: PlannedMovement[] = itemIds.flatMap((itemId) => {
+      const quantity = totals.get(itemId)!;
+      const out = bookOut(levels.get(from.id, itemId), quantity);
+      levels.set(from.id, itemId, out.level);
+      const moves: PlannedMovement[] = [
+        { warehouseId: from.id, itemId, quantity: quantity.negated(), unitCost: out.unitCost },
+      ];
+      if (toId) {
+        const into = bookIn(levels.get(toId, itemId), quantity, out.unitCost);
+        levels.set(toId, itemId, into.level);
+        moves.push({ warehouseId: toId, itemId, quantity, unitCost: out.unitCost });
+      }
+      return moves;
+    });
+    if (input.kind === 'transfer' && !from.isTransit) {
+      const allowed = await this.settings.get(
+        'inventory.allowNegativeStock',
+        { locationId: from.locationId },
+        tx,
+      );
+      const short = itemIds.filter((itemId) => {
+        const after = levels.get(from.id, itemId).quantity;
+        return after.isNegative() && after.lessThan(levels.before(from.id, itemId).quantity);
+      });
+      if (!allowed && short.length > 0) throw inventoryErrors.insufficientStock(short);
+    }
+    return this.book(tx, {
+      kind: input.kind === 'transfer' ? 'transfer' : 'adjustment',
+      warehouseId: from.id,
+      toWarehouseId: toId,
+      reason: input.kind === 'shortage' ? 'other' : null,
+      supplier: null,
+      note: null,
+      sourceTicketId: null,
+      sourceOrderId: null,
+      sourceRequestId: input.requestId,
+      createdByUserId: input.userId,
+      actor: auditActor.user(input.userId),
+      movements,
+      levels,
+    });
+  }
+
   /** Numbers and writes a document, its movements and the changed levels, and audits it. */
   private async book(
     tx: TenantTransactionClient,
@@ -758,6 +856,8 @@ export class StockService {
       note: string | null;
       sourceTicketId: string | null;
       sourceOrderId: string | null;
+      /** The branch stock request it was booked for (ADR 0045). */
+      sourceRequestId?: string | null;
       createdByUserId: string;
       actor: AuditActor;
       movements: PlannedMovement[];
@@ -779,6 +879,7 @@ export class StockService {
         note: input.note,
         sourceTicketId: input.sourceTicketId,
         sourceOrderId: input.sourceOrderId,
+        sourceRequestId: input.sourceRequestId ?? null,
         createdByUserId: input.createdByUserId,
       },
       select: { id: true },

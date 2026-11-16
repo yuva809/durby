@@ -50,6 +50,8 @@ export const warehouseSchema = z.object({
   sortOrder: z.int(),
   /** Sales of this station at the location take their stock from here (Step 2). */
   suppliesStation: z.enum(PREP_STATIONS).nullable(),
+  /** Goods between warehouses (ADR 0045): created by the app, one per organization. Default for older apis. */
+  isTransit: z.boolean().default(false),
   archivedAt: z.iso.datetime().nullable(),
 });
 

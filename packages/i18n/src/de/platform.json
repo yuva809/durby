@@ -876,5 +876,16 @@
   "platform.settings.posTicketText.description": "Wie groß Küchen- und Barbons gedruckt werden.",
   "platform.roles.branch": "Filiale",
   "platform.roles.warehouse": "Lager",
-  "platform.roles.driver": "Fahrer"
+  "platform.roles.driver": "Fahrer",
+  "platform.numbering.series.ordersStockRequest.name": "Warenanforderungen",
+  "platform.numbering.series.ordersStockRequest.description": "Nummern der Warenanforderungen der Filialen.",
+  "platform.numbering.series.ordersStockTransfer.name": "Umlagerungen",
+  "platform.numbering.series.ordersStockTransfer.description": "Nummern genehmigter Anforderungen auf dem Weg zur Filiale.",
+  "platform.audit.entities.stockRequest": "Warenanforderung",
+  "platform.audit.fields.transferNumber": "Umlagerung",
+  "platform.audit.fields.fromWarehouseId": "Von Lager",
+  "platform.audit.fields.driverUserId": "Fahrer",
+  "platform.nav.requestStock": "Ware anfordern",
+  "platform.nav.stockRequests": "Warenanforderungen",
+  "platform.nav.myDeliveries": "Meine Lieferungen"
 }

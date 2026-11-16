@@ -49,6 +49,9 @@ describe('route markers', () => {
       'POST /api/v1/auth/switch-organization',
       // ADR 0007: writes only the caller's own membership, in the tenant the invitation proves.
       'POST /api/v1/invitations/accept-signed-in',
+      // ADR 0045: a request is seen by its branch, its warehouse, approvers and its driver; the service filters.
+      'GET /api/v1/stock-requests',
+      'GET /api/v1/stock-requests/:id',
     ]);
   });
 
@@ -270,6 +273,16 @@ describe('route markers', () => {
       'POST /api/v1/staff',
       'POST /api/v1/staff/:id/deactivate',
       'POST /api/v1/staff/:id/reactivate',
+      'POST /api/v1/stock-requests',
+      'POST /api/v1/stock-requests/:id/approve',
+      'POST /api/v1/stock-requests/:id/cancel',
+      'POST /api/v1/stock-requests/:id/deliver',
+      'POST /api/v1/stock-requests/:id/driver',
+      'POST /api/v1/stock-requests/:id/pack',
+      'POST /api/v1/stock-requests/:id/pick-up',
+      'POST /api/v1/stock-requests/:id/receive',
+      'POST /api/v1/stock-requests/:id/reject',
+      'POST /api/v1/stock-requests/:id/start-picking',
       'PUT /api/v1/inventory/boms/:itemId',
       'PUT /api/v1/inventory/recipes/:productId',
       'PUT /api/v1/label-overrides/:locale/:key',
