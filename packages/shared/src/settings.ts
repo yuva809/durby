@@ -12,8 +12,12 @@ import { countryCodeSchema } from './phone';
 import {
   billFooterSchema,
   billHeaderSchema,
+  billTextSchema,
   DEFAULT_BILL_FOOTER,
   DEFAULT_BILL_HEADER,
+  DEFAULT_BILL_TEXT,
+  DEFAULT_TICKET_TEXT,
+  ticketTextSchema,
 } from './pos-bill-settings';
 import { closedDatesSchema, DEFAULT_OPENING_HOURS, weeklyHoursSchema } from './time/opening-hours';
 
@@ -240,6 +244,23 @@ export const SETTINGS = {
     description: 'platform.settings.posBillFooter.description',
     schema: billFooterSchema,
     default: DEFAULT_BILL_FOOTER,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  // Text sizes of the printed bill and of kitchen and bar tickets (docs/modules/pos.md → Text size).
+  'pos.billText': define({
+    label: 'platform.settings.posBillText.name',
+    description: 'platform.settings.posBillText.description',
+    schema: billTextSchema,
+    default: DEFAULT_BILL_TEXT,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  'pos.ticketText': define({
+    label: 'platform.settings.posTicketText.name',
+    description: 'platform.settings.posTicketText.description',
+    schema: ticketTextSchema,
+    default: DEFAULT_TICKET_TEXT,
     scopes: ALL_SCOPES,
     dataBound: false,
   }),

@@ -869,5 +869,9 @@
   "platform.feedbackPage.sent": "Thank you. Your feedback is on its way to the team.",
   "platform.feedbackPage.history": "Sent by your organization",
   "platform.feedbackPage.empty": "Nothing sent yet.",
-  "platform.permissionAreas.feedback": "Feedback"
+  "platform.permissionAreas.feedback": "Feedback",
+  "platform.settings.posBillText.name": "Bill text size",
+  "platform.settings.posBillText.description": "How large the printed bill is: overall, and per part.",
+  "platform.settings.posTicketText.name": "Ticket text size",
+  "platform.settings.posTicketText.description": "How large kitchen and bar tickets print."
 }

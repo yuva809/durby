@@ -3,6 +3,8 @@ import { Test } from '@nestjs/testing';
 import {
   billLayoutSchema,
   DEFAULT_BILL_FOOTER,
+  DEFAULT_BILL_TEXT,
+  DEFAULT_TICKET_TEXT,
   DEFAULT_BILL_HEADER,
   DEFAULT_POS_PRINTERS,
 } from '@durby/shared';
@@ -72,9 +74,23 @@ describe('pos bill layout', () => {
     expect(body).toEqual({
       header: DEFAULT_BILL_HEADER,
       footer: DEFAULT_BILL_FOOTER,
+      text: DEFAULT_BILL_TEXT,
+      ticketText: DEFAULT_TICKET_TEXT,
       printers: DEFAULT_POS_PRINTERS,
       printerList: [],
     });
+  });
+
+  // Text sizes (docs/modules/pos.md → Text size): set per location like the header, refused when unknown.
+  it("returns the text sizes, a location's own where it has them", async () => {
+    const { org: o, owner } = await org();
+    const text = { size: 'large', header: null, items: 'xlarge', total: null, footer: 'small' };
+    await put(owner, 'pos.billText', text).expect(200);
+    await put(owner, 'pos.ticketText', { size: 'xlarge', items: null }, o.locations[0]).expect(200);
+    await put(owner, 'pos.billText', { ...text, size: 'huge' }).expect(422);
+    const body = billLayoutSchema.parse((await layout(owner, o.locations[0]).expect(200)).body);
+    expect(body.text).toEqual(text);
+    expect(body.ticketText).toEqual({ size: 'xlarge', items: null });
   });
 
   it("returns the organization's values, and a location's own where it has them", async () => {

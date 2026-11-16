@@ -1,6 +1,11 @@
 'use client';
 
-import type { KitchenTicket } from '@durby/shared';
+import {
+  DEFAULT_TICKET_TEXT,
+  type KitchenTicket,
+  printTextScale,
+  type TicketText,
+} from '@durby/shared';
 import type { BillLine } from '../../lib/pos/format';
 import { type ReactNode, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -30,40 +35,47 @@ export function PrintRoot({ children }: { children: ReactNode }) {
  * kitchen printer's slip on the 80 mm roll: "Dine in" (a bar ticket: "BAR"), the organization and
  * time, the table and order in large type, then the new items with their quantity in a column. No
  * prices; tickets don't name the waiter (ADR 0016, 0025). A void ticket says so in large letters.
+ * Text sizes from `pos.ticketText`: the overall size, and the item lines their own if set.
  */
 export function KitchenTicketView({
   ticket,
   tableName,
   orderNumber,
   organizationName,
+  text = DEFAULT_TICKET_TEXT,
 }: {
   ticket: KitchenTicket;
   tableName: string;
   orderNumber: string;
   organizationName: string;
+  /** Null or absent: the default sizes. */
+  text?: TicketText | null;
 }) {
   const t = useT();
+  const sizes = text ?? DEFAULT_TICKET_TEXT;
+  const overall = printTextScale(sizes);
   const time = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(
     new Date(ticket.createdAt),
   );
   return (
     <article
       className="flex flex-col gap-3 p-2 font-sans text-foreground"
+      style={{ fontSize: `${overall}rem` }}
       data-testid="kitchen-ticket"
       data-station={ticket.station}
     >
       <header className="flex flex-col items-center gap-1 text-center">
-        <p className="text-xl font-bold">
+        <p className="text-[1.25em] font-bold">
           {t(ticket.station === 'bar' ? 'pos.ticket.bar' : 'pos.ticket.dineIn')}
         </p>
-        <p className="text-sm">
+        <p className="text-[0.875em]">
           {t('pos.ticket.header', { organization: organizationName, time })}
         </p>
-        <p className="mt-1 text-2xl font-bold" data-testid="kitchen-ticket-table">
+        <p className="mt-1 text-[1.5em] font-bold" data-testid="kitchen-ticket-table">
           {t('pos.ticket.table', { table: tableName })}
         </p>
         {/* Order numbers are long ("ORD-2026-000505"): their own line, so the table stays on one. */}
-        <p className="text-base font-semibold">
+        <p className="font-semibold">
           {t('pos.ticket.orderTicket', {
             number: orderNumber,
             sequence: String(ticket.sequence),
@@ -72,17 +84,21 @@ export function KitchenTicketView({
       </header>
       <div className="border-t border-dashed border-border pt-2 text-center">
         {ticket.kind === 'void' ? (
-          <p className="text-3xl font-bold">{t('pos.ticket.void')}</p>
+          <p className="text-[1.875em] font-bold">{t('pos.ticket.void')}</p>
         ) : (
-          <p className="text-xl font-bold">{t('pos.ticket.new')}</p>
+          <p className="text-[1.25em] font-bold">{t('pos.ticket.new')}</p>
         )}
       </div>
-      <ul className="flex flex-col gap-2">
+      <ul
+        className="flex flex-col gap-2"
+        style={{ fontSize: `${printTextScale(sizes, 'items') / overall}em` }}
+        data-testid="kitchen-ticket-items"
+      >
         {ticket.lines.map((line) => (
-          <li key={line.id} className="grid grid-cols-[2.5ch_1fr] gap-x-2 text-xl">
+          <li key={line.id} className="grid grid-cols-[2.5ch_1fr] gap-x-2 text-[1.25em]">
             <span className="font-semibold tabular-nums">{Math.abs(line.quantity)}</span>
             <span>{line.productName}</span>
-            {line.note && <span className="col-start-2 text-base italic">{line.note}</span>}
+            {line.note && <span className="col-start-2 text-[0.8em] italic">{line.note}</span>}
           </li>
         ))}
       </ul>

@@ -161,6 +161,52 @@ describe('BillPage', () => {
         url: '/api/v1/settings/pos.billFooter',
         body: { value: { lines: ['Thank you!', 'Danke!'] } },
       },
+      {
+        method: 'PUT',
+        url: '/api/v1/settings/pos.billText',
+        body: {
+          value: { size: 'normal', header: null, items: null, total: null, footer: null },
+        },
+      },
+      {
+        method: 'PUT',
+        url: '/api/v1/settings/pos.ticketText',
+        body: { value: { size: 'normal', items: null } },
+      },
+    ]);
+  });
+
+  it('sets the text sizes of the bill and the tickets, shows them in the preview and saves them', async () => {
+    signedInAs('owner');
+    const writes = api({ '': EMPTY });
+    render(<BillPage />, { wrapper: Brand });
+    const preview = await screen.findByTestId('bill-preview');
+    expect(within(preview).getByTestId('receipt-text').style.fontSize).toBe('1em');
+
+    await userEvent.click(screen.getByTestId('bill-size-large'));
+    await userEvent.selectOptions(screen.getByTestId('bill-size-total'), 'xlarge');
+    await userEvent.click(screen.getByTestId('ticket-size-small'));
+    await userEvent.selectOptions(screen.getByTestId('ticket-size-items'), 'xlarge');
+    // Large overall; the total at extra large relative to it (1.3 × 1.45 / 1.2).
+    expect(within(preview).getByTestId('receipt-text').style.fontSize).toBe('1.2em');
+    expect(within(preview).getByTestId('bill-header').style.fontSize).toBe('1em');
+    expect(parseFloat(within(preview).getByTestId('bill-total').style.fontSize)).toBeCloseTo(
+      (1.3 * 1.45) / 1.2,
+    );
+    const kitchen = within(screen.getByTestId('bill-preview-kitchen'));
+    expect(kitchen.getByTestId('kitchen-ticket').style.fontSize).toBe('0.85rem');
+    expect(parseFloat(kitchen.getByTestId('kitchen-ticket-items').style.fontSize)).toBeCloseTo(
+      1.45 / 0.85,
+    );
+
+    await userEvent.click(screen.getByTestId('bill-save'));
+    await screen.findByTestId('bill-saved');
+    expect(writes.slice(2).map((w) => [w.url, w.body])).toEqual([
+      [
+        '/api/v1/settings/pos.billText',
+        { value: { size: 'large', header: null, items: null, total: 'xlarge', footer: null } },
+      ],
+      ['/api/v1/settings/pos.ticketText', { value: { size: 'small', items: 'xlarge' } }],
     ]);
   });
 
@@ -203,12 +249,16 @@ describe('BillPage', () => {
     expect(writes.map((w) => `${w.method} ${w.url}`)).toEqual([
       `PUT /api/v1/settings/pos.billHeader?locationId=${HARBOUR.id}`,
       `PUT /api/v1/settings/pos.billFooter?locationId=${HARBOUR.id}`,
+      `PUT /api/v1/settings/pos.billText?locationId=${HARBOUR.id}`,
+      `PUT /api/v1/settings/pos.ticketText?locationId=${HARBOUR.id}`,
     ]);
     await userEvent.click(screen.getByTestId('bill-use-organization'));
-    await waitFor(() => expect(writes).toHaveLength(4));
-    expect(writes.slice(2).map((w) => `${w.method} ${w.url}`)).toEqual([
+    await waitFor(() => expect(writes).toHaveLength(8));
+    expect(writes.slice(4).map((w) => `${w.method} ${w.url}`)).toEqual([
       `DELETE /api/v1/settings/pos.billHeader?locationId=${HARBOUR.id}`,
       `DELETE /api/v1/settings/pos.billFooter?locationId=${HARBOUR.id}`,
+      `DELETE /api/v1/settings/pos.billText?locationId=${HARBOUR.id}`,
+      `DELETE /api/v1/settings/pos.ticketText?locationId=${HARBOUR.id}`,
     ]);
   });
 

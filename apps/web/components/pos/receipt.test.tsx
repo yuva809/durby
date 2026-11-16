@@ -2,6 +2,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetMocks } from '../../test/mocks';
+import { DEFAULT_BILL_HEADER } from '@durby/shared';
 import { Receipt } from './receipt';
 
 vi.mock('../../app/labels-provider', async () => (await import('../../test/mocks')).labelsMock());
@@ -34,6 +35,33 @@ describe('Receipt: interim-bill notice (no TSE yet)', () => {
       );
       cleanup();
     }
+  });
+});
+
+describe('Receipt: text sizes (pos.billText)', () => {
+  it('prints at the normal size without the setting, and scales the parts that have their own size', () => {
+    const { unmount } = render(bill([]));
+    expect(screen.getByTestId('receipt-text').style.fontSize).toBe('1em');
+    unmount();
+    render(
+      <Receipt
+        layout={{
+          header: DEFAULT_BILL_HEADER,
+          footer: { lines: [] },
+          text: { size: 'small', header: null, items: 'xlarge', total: null, footer: 'normal' },
+        }}
+        organizationName="Bay Leaf"
+        productName="Product"
+        tableName="5"
+        order={{ number: 'B-1', covers: null, waiterName: null, total: '1.00' }}
+        bill={[]}
+        printedAt={new Date('2026-11-16T12:00:00Z')}
+      />,
+    );
+    expect(screen.getByTestId('receipt-text').style.fontSize).toBe('0.85em');
+    expect(screen.getByTestId('bill-header').style.fontSize).toBe('1em');
+    expect(parseFloat(screen.getByTestId('bill-items').style.fontSize)).toBeCloseTo(1.45 / 0.85);
+    expect(parseFloat(screen.getByTestId('bill-footer').style.fontSize)).toBeCloseTo(1 / 0.85);
   });
 });
 

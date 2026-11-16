@@ -137,6 +137,7 @@ function Runner() {
             tableName={order.tableName}
             orderNumber={order.number}
             organizationName={organizationName}
+            text={drawn.layout?.ticketText ?? null}
           />
         ) : job.kind === 'bill' && drawn.check ? (
           <CheckReceipt
