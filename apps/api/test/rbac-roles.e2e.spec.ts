@@ -110,12 +110,20 @@ describe('roles API', () => {
       'reservations.setup.create',
       'reservations.setup.edit',
       'reservations.setup.delete',
+      'orders.orders.read',
+      'orders.orders.create',
+      'orders.orders.edit',
+      'orders.customers.read',
+      'orders.customers.create',
+      'orders.customers.edit',
     ]);
     expect(data[3]?.permissions).toEqual([
       'platform.settings.read',
       'catalog.products.read',
       'inventory.stock.read',
       'pos.tables.read',
+      'orders.orders.read',
+      'orders.customers.read',
     ]);
     expect(data.map((r) => r.id)).not.toContain(custom);
 

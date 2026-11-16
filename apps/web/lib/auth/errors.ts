@@ -9,6 +9,7 @@ import type {
   LabelErrorCode,
   LocationErrorCode,
   NumberingErrorCode,
+  OrdersErrorCode,
   PlatformErrorCode,
   PosErrorCode,
   RbacErrorCode,
@@ -31,6 +32,7 @@ export type ApiErrorCode =
   | AuditErrorCode
   | CatalogErrorCode
   | InventoryErrorCode
+  | OrdersErrorCode
   | LocationErrorCode
   | PosErrorCode
   | ReservationErrorCode
@@ -118,6 +120,13 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'inventory.too_many_variants': 'inventory.errors.tooManyVariants',
   'inventory.bom_not_found': 'inventory.errors.bomNotFound',
   'inventory.bom_invalid': 'inventory.errors.bomInvalid',
+  'orders.customer_not_found': 'orders.errors.customerNotFound',
+  'orders.customer_code_taken': 'orders.errors.customerCodeTaken',
+  'orders.order_not_found': 'orders.errors.orderNotFound',
+  'orders.warehouse_not_found': 'orders.errors.warehouseNotFound',
+  'orders.item_not_found': 'orders.errors.itemNotFound',
+  'orders.not_editable': 'orders.errors.notEditable',
+  'orders.invalid_transition': 'orders.errors.invalidTransition',
   'catalog.category_not_found': 'catalog.errors.categoryNotFound',
   'catalog.product_not_found': 'catalog.errors.productNotFound',
   'catalog.category_name_taken': 'catalog.errors.categoryNameTaken',

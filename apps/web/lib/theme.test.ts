@@ -43,7 +43,11 @@ describe('tokensCss', () => {
 describe('fetchTheme', () => {
   it('asks the api with the request host and parses the theme', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(Response.json(demo));
-    expect(await fetchTheme('partner-demo.localhost:3000', fetchImpl, 'http://api')).toEqual(demo);
+    // An api without navLayout (older, ADR 0044) means the default sidebar.
+    expect(await fetchTheme('partner-demo.localhost:3000', fetchImpl, 'http://api')).toEqual({
+      ...demo,
+      navLayout: 'default',
+    });
     expect(fetchImpl).toHaveBeenCalledWith(
       'http://api/api/v1/theme',
       expect.objectContaining({

@@ -802,5 +802,16 @@
   "platform.nav.branches": "Filialen",
   "platform.nav.deliveries": "Lieferverfolgung",
   "platform.nav.importData": "Daten importieren",
-  "platform.nav.feedback": "Feedback"
+  "platform.nav.feedback": "Feedback",
+  "platform.features.orders.name": "Aufträge",
+  "platform.features.orders.description": "Verkaufsaufträge, Kommissionierung und Lieferverfolgung für Lagerartikel.",
+  "platform.numbering.series.ordersSalesOrder.name": "Verkaufsaufträge",
+  "platform.numbering.series.ordersSalesOrder.description": "Nummern der Verkaufsaufträge.",
+  "platform.audit.entities.customer": "Kunde",
+  "platform.audit.entities.salesOrder": "Verkaufsauftrag",
+  "platform.audit.fields.code": "Code",
+  "platform.audit.fields.customerId": "Kunde",
+  "platform.audit.fields.total": "Summe",
+  "platform.audit.fields.salePrice": "Verkaufspreis",
+  "platform.auditPage.modules.orders": "Aufträge"
 }

@@ -56,6 +56,15 @@ export const FEATURES = {
     dependsOn: ['inventory'],
     limits: noLimits,
   },
+  // Sales orders, picking and delivery tracking for distribution (ADR 0044): sells stock items.
+  orders: {
+    module: 'orders',
+    order: 35,
+    label: 'platform.features.orders.name',
+    description: 'platform.features.orders.description',
+    dependsOn: ['inventory'],
+    limits: noLimits,
+  },
   billing: {
     module: 'billing',
     order: 50,

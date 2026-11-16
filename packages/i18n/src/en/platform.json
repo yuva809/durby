@@ -802,5 +802,16 @@
   "platform.nav.branches": "Branches",
   "platform.nav.deliveries": "Delivery Tracking",
   "platform.nav.importData": "Import Data",
-  "platform.nav.feedback": "Feedback"
+  "platform.nav.feedback": "Feedback",
+  "platform.features.orders.name": "Orders",
+  "platform.features.orders.description": "Sales orders, picking and delivery tracking for stock items.",
+  "platform.numbering.series.ordersSalesOrder.name": "Sales orders",
+  "platform.numbering.series.ordersSalesOrder.description": "Numbers of sales orders.",
+  "platform.audit.entities.customer": "Customer",
+  "platform.audit.entities.salesOrder": "Sales order",
+  "platform.audit.fields.code": "Code",
+  "platform.audit.fields.customerId": "Customer",
+  "platform.audit.fields.total": "Total",
+  "platform.audit.fields.salePrice": "Sale price",
+  "platform.auditPage.modules.orders": "Orders"
 }

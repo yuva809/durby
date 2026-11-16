@@ -1,6 +1,6 @@
 'use client';
 
-import { STOCK_UNITS, type StockItem, type StockUnit } from '@durby/shared';
+import { priceSchema, STOCK_UNITS, type StockItem, type StockUnit } from '@durby/shared';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -102,13 +102,18 @@ function ArchiveButton({ item, onDone }: { item: StockItem; onDone: () => void }
 function ItemDialog({ item, onDone }: { item?: StockItem; onDone: () => void }) {
   const t = useT();
   const id = useId();
-  const { store } = useAuth();
+  const { store, session } = useAuth();
   const action = useActionKey();
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [unit, setUnit] = useState<StockUnit>('kg');
   const [min, setMin] = useState('');
+  const [salePrice, setSalePrice] = useState('');
   const [checked, setChecked] = useState(false);
+  // The default price on sales orders (ADR 0044): only where the organization has orders.
+  const sells = session?.activeFeatures.includes('orders') ?? false;
+  const priceInvalid =
+    checked && salePrice.trim() !== '' && !priceSchema.safeParse(salePrice.trim()).success;
   const nameMissing = checked && name.trim() === '';
   const minInvalid = checked && min.trim() !== '' && !isQuantity(min);
 
@@ -123,17 +128,21 @@ function ItemDialog({ item, onDone }: { item?: StockItem; onDone: () => void }) 
         setSku(item?.sku ?? '');
         setUnit(item?.unit ?? 'kg');
         setMin(item?.minQuantity ? shortQuantity(item.minQuantity) : '');
+        setSalePrice(item?.salePrice ?? '');
         setChecked(false);
       }}
       submit={() => {
         setChecked(true);
         if (name.trim() === '' || (min.trim() !== '' && !isQuantity(min))) return null;
+        if (salePrice.trim() !== '' && !priceSchema.safeParse(salePrice.trim()).success)
+          return null;
         if (item) {
           return updateStockItem(store, action, item.id, {
             name: name.trim(),
             sku: sku.trim() || null,
             unit,
             minQuantity: min.trim() || null,
+            ...(sells ? { salePrice: salePrice.trim() || null } : {}),
           });
         }
         return createStockItem(store, action, {
@@ -141,6 +150,7 @@ function ItemDialog({ item, onDone }: { item?: StockItem; onDone: () => void }) 
           unit,
           ...(sku.trim() ? { sku: sku.trim() } : {}),
           ...(min.trim() ? { minQuantity: min.trim() } : {}),
+          ...(sells && salePrice.trim() ? { salePrice: salePrice.trim() } : {}),
         });
       }}
       onDone={onDone}
@@ -194,6 +204,22 @@ function ItemDialog({ item, onDone }: { item?: StockItem; onDone: () => void }) 
           onChange={(e) => setSku(e.target.value)}
         />
       </Field>
+      {sells && (
+        <Field
+          id={`${id}-sale-price`}
+          label={t('inventory.fields.salePrice')}
+          problem={priceInvalid ? t('inventory.page.salePriceInvalid') : null}
+        >
+          <Input
+            id={`${id}-sale-price`}
+            inputMode="decimal"
+            value={salePrice}
+            aria-invalid={priceInvalid || undefined}
+            onChange={(e) => setSalePrice(e.target.value.replace(',', '.'))}
+            data-testid="item-sale-price"
+          />
+        </Field>
+      )}
     </FormDialog>
   );
 }

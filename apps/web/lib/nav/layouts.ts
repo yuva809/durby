@@ -60,8 +60,8 @@ const OPERATIONS: NavLayoutDefinition = {
       label: 'platform.nav.orderHistory',
       icon: Package,
       group: 'operations',
-      feature: 'inventory',
-      planned: true,
+      feature: 'orders',
+      permission: 'orders.orders.read',
     },
     {
       id: 'picking',

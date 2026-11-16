@@ -139,6 +139,10 @@ model Organization {
   posPrinterCommands           PosPrinterCommand[]
   posPrinters                  PosPrinter[]
   posPrintJobs                 PosPrintJob[]
+  orderCustomers               OrderCustomer[]
+  salesOrders                  SalesOrder[]
+  salesOrderLines              SalesOrderLine[]
+  salesOrderEvents             SalesOrderEvent[]
 
   @@index([partnerId])
   @@index([planId])
@@ -182,6 +186,7 @@ model Location {
   posPrinterCommands      PosPrinterCommand[]
   posPrinters             PosPrinter[]
   posPrintJobs            PosPrintJob[]
+  salesOrders             SalesOrder[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -1627,6 +1632,7 @@ model Warehouse {
   incoming        StockDocument[] @relation("StockDocumentToWarehouse")
   movements       StockMovement[]
   levels          StockLevel[]
+  salesOrders     SalesOrder[]
 
   @@unique([tenantId, id])
   @@index([tenantId, locationId])
@@ -1635,28 +1641,31 @@ model Warehouse {
 
 /// An ingredient or good kept in stock, organization-wide. The unit is fixed once the item has movements.
 model StockItem {
-  id            String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId      String          @map("tenant_id") @db.Uuid
+  id            String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String           @map("tenant_id") @db.Uuid
   name          String
   sku           String?
   unit          StockUnit
   /// Reorder level; null = none.
-  minQuantity   Decimal?        @map("min_quantity") @db.Decimal(14, 3)
+  minQuantity   Decimal?         @map("min_quantity") @db.Decimal(14, 3)
   /// A variant's parent (ADR 0038): one level only, checked by the service.
-  parentItemId  String?         @map("parent_item_id") @db.Uuid
+  parentItemId  String?          @map("parent_item_id") @db.Uuid
   /// A variant's attribute values in attribute order; empty for other items.
-  variantValues String[]        @default([]) @map("variant_values")
-  archivedAt    DateTime?       @map("archived_at") @db.Timestamptz(6)
-  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization  Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  parent        StockItem?      @relation("StockItemVariants", fields: [tenantId, parentItemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  variants      StockItem[]     @relation("StockItemVariants")
+  variantValues String[]         @default([]) @map("variant_values")
+  /// Default unit price on sales orders (ADR 0044); null = none.
+  salePrice     Decimal?         @map("sale_price") @db.Decimal(12, 2)
+  archivedAt    DateTime?        @map("archived_at") @db.Timestamptz(6)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization  Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  parent        StockItem?       @relation("StockItemVariants", fields: [tenantId, parentItemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  variants      StockItem[]      @relation("StockItemVariants")
   movements     StockMovement[]
   levels        StockLevel[]
   recipeLines   RecipeLine[]
-  boms          Bom[]           @relation("BomOutput")
-  bomLines      BomLine[]       @relation("BomComponent")
+  boms          Bom[]            @relation("BomOutput")
+  bomLines      BomLine[]        @relation("BomComponent")
+  salesLines    SalesOrderLine[]
 
   @@unique([tenantId, id])
   /// One variant per combination of values (NULL parents never collide).
@@ -2001,4 +2010,106 @@ enum PosPrintJobStatus {
   needs_check
 
   @@map("pos_print_job_status")
+}
+
+enum SalesOrderStatus {
+  draft
+  confirmed
+  picking
+  packed
+  dispatched
+  delivered
+  cancelled
+
+  @@map("sales_order_status")
+}
+
+/// A customer of a distribution business (ADR 0044). Archived, never deleted: orders keep pointing at it.
+model OrderCustomer {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  name         String
+  /// The business's own reference; unique among active customers (partial index).
+  code         String?
+  phone        String?
+  email        String?
+  address      String?
+  note         String?
+  archivedAt   DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  orders       SalesOrder[]
+
+  @@unique([tenantId, id])
+  @@map("order_customers")
+}
+
+/// A sales order: stock items for a customer, leaving from one warehouse (ADR 0044). Numbered (SO-…, ADR 0012).
+model SalesOrder {
+  id              String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String            @map("tenant_id") @db.Uuid
+  number          String
+  status          SalesOrderStatus  @default(draft)
+  customerId      String            @map("customer_id") @db.Uuid
+  /// The warehouse's location, kept for access checks and filters.
+  locationId      String            @map("location_id") @db.Uuid
+  warehouseId     String            @map("warehouse_id") @db.Uuid
+  requestedDate   DateTime?         @map("requested_date") @db.Date
+  deliveryAddress String?           @map("delivery_address")
+  note            String?
+  /// Sum of the line totals (exact cents).
+  total           Decimal           @db.Decimal(14, 2)
+  createdByUserId String            @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization      @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  customer        OrderCustomer     @relation(fields: [tenantId, customerId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  location        Location          @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  warehouse       Warehouse         @relation(fields: [tenantId, warehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  lines           SalesOrderLine[]
+  events          SalesOrderEvent[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, number])
+  @@index([tenantId, locationId, id])
+  @@index([tenantId, customerId])
+  @@index([tenantId, status])
+  @@map("sales_orders")
+}
+
+/// One item of a sales order. Replaced as a whole while the order is a draft.
+model SalesOrderLine {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  orderId      String       @map("order_id") @db.Uuid
+  itemId       String       @map("item_id") @db.Uuid
+  quantity     Decimal      @db.Decimal(14, 3)
+  unitPrice    Decimal      @map("unit_price") @db.Decimal(12, 2)
+  lineTotal    Decimal      @map("line_total") @db.Decimal(14, 2)
+  sortOrder    Int          @default(0) @map("sort_order")
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  order        SalesOrder   @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  item         StockItem    @relation(fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, orderId, itemId])
+  @@map("sales_order_lines")
+}
+
+/// The timeline of a sales order: one row per status it reached. Append-only.
+model SalesOrderEvent {
+  id           String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String           @map("tenant_id") @db.Uuid
+  orderId      String           @map("order_id") @db.Uuid
+  status       SalesOrderStatus
+  note         String?
+  userId       String?          @map("user_id") @db.Uuid
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  order        SalesOrder       @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, orderId, id])
+  @@map("sales_order_events")
 }

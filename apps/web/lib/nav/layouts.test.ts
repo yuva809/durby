@@ -10,7 +10,7 @@ const flat = (items: readonly NavItem[]): NavItem[] =>
 
 // The inventory plan's owner (ADR 0040): inventory and catalog, every permission.
 const owner = {
-  activeFeatures: ['inventory', 'catalog'],
+  activeFeatures: ['inventory', 'catalog', 'orders'],
   activePermissions: Object.keys(PERMISSIONS),
 };
 
@@ -47,12 +47,11 @@ describe('nav layouts (ADR 0044)', () => {
     );
     expect(byGroup).toEqual({
       main: ['home'],
-      operations: ['inventory', 'categories', 'branches'],
+      operations: ['inventory', 'categories', 'orders', 'branches'],
       administration: ['audit', 'staff', 'settings'],
       tools: [],
     });
     expect(ids(items.filter((i) => i.planned === true))).toEqual([
-      'orders',
       'picking',
       'deliveries',
       'import',

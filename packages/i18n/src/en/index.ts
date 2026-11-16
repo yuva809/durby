@@ -3,6 +3,7 @@ import auth from './auth.json';
 import billing from './billing.json';
 import catalog from './catalog.json';
 import inventory from './inventory.json';
+import orders from './orders.json';
 import platform from './platform.json';
 import pos from './pos.json';
 import reports from './reports.json';
@@ -15,6 +16,7 @@ export const labelFiles = {
   billing,
   catalog,
   inventory,
+  orders,
   platform,
   pos,
   reports,
@@ -28,6 +30,7 @@ export default {
   ...billing,
   ...catalog,
   ...inventory,
+  ...orders,
   ...platform,
   ...pos,
   ...reports,

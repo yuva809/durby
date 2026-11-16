@@ -42,7 +42,9 @@ has no customer orders, picking, delivery tracking, a general import or in-app f
 7. **Feedback goes to the platform team**: staff send a category, a message and an optional screenshot; the staff
    portal lists it with a status.
 
-Steps 3–7 ship one at a time; until a module ships its menu item is `planned` (hidden).
+The modules ship one step at a time (step 1: menu, Product Category, Branches; step 2: orders and customers;
+step 3: picking and delivery; step 4: import; step 5: feedback); until a module ships its menu item is `planned`
+(hidden). Step 2 grants staff read-only access to orders and customers, like the rest of their role.
 
 ## Consequences
 

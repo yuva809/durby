@@ -233,5 +233,7 @@
   "inventory.production.post": "Fertigen",
   "inventory.production.recent": "Letzte Fertigungsaufträge",
   "inventory.production.noOrders": "In diesem Lager gibt es noch keine Fertigungsaufträge.",
-  "inventory.production.lines": "{count} Artikel"
+  "inventory.production.lines": "{count} Artikel",
+  "inventory.fields.salePrice": "Verkaufspreis (optional)",
+  "inventory.page.salePriceInvalid": "Geben Sie einen Preis mit bis zu 2 Nachkommastellen ein."
 }

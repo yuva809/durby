@@ -193,3 +193,9 @@ each variant is an `inventory.stock_item.created`; a production order is an `inv
 Inventory → **Units of Measurement**, **Variant Attributes**, **Variant Products** (items with variants, Generate
 variants), **Bills of Materials** (edit per prepared item) and **Production Order** (make an item in a warehouse, with
 the components and their stock); receipts offer each line's matching units.
+
+## Sale price (ADR 0044)
+
+`stock_items.sale_price` (2 decimals, optional): the default unit price when the item is added to a sales order
+(docs/modules/orders.md). Set in the item dialog while the organization has the `orders` feature; in the item's audit
+snapshot.

@@ -79,6 +79,15 @@ export const NUMBER_SERIES = {
     pattern: '{prefix}-{YYYY}-{seq:6}',
     resetPolicy: 'yearly',
   },
+  /** Sales orders of a distribution business (ADR 0044). */
+  'orders.salesOrder': {
+    label: 'platform.numbering.series.ordersSalesOrder.name',
+    description: 'platform.numbering.series.ordersSalesOrder.description',
+    feature: 'orders',
+    prefix: 'SO',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
   'billing.invoice': {
     label: 'platform.numbering.series.billingInvoice.name',
     description: 'platform.numbering.series.billingInvoice.description',

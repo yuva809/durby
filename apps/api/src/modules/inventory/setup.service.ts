@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import Decimal from 'decimal.js';
 import type {
   CreateStockItemRequest,
   CreateWarehouseRequest,
@@ -33,6 +34,7 @@ export const ITEM_SELECT = {
   minQuantity: true,
   parentItemId: true,
   variantValues: true,
+  salePrice: true,
   archivedAt: true,
 } as const;
 
@@ -45,6 +47,7 @@ export type ItemRow = {
   minQuantity: { toFixed(digits: number): string } | null;
   parentItemId: string | null;
   variantValues: string[];
+  salePrice: { toFixed(digits: number): string } | null;
   archivedAt: Date | null;
 };
 
@@ -195,6 +198,7 @@ export class InventorySetupService {
             sku: body.sku ?? null,
             unit: body.unit,
             minQuantity: body.minQuantity ?? null,
+            salePrice: body.salePrice ?? null,
           },
           select: ITEM_SELECT,
         });
@@ -236,6 +240,12 @@ export class InventorySetupService {
               : body.minQuantity === null
                 ? null
                 : fixed3(body.minQuantity),
+          salePrice:
+            body.salePrice === undefined
+              ? before.salePrice
+              : body.salePrice === null
+                ? null
+                : new Decimal(body.salePrice).toFixed(2),
           archivedAt: archivedAt(current.archivedAt, body.archived)?.toISOString() ?? null,
         };
         if (JSON.stringify(itemSnapshot(before)) === JSON.stringify(itemSnapshot(next))) {
@@ -248,6 +258,7 @@ export class InventorySetupService {
             sku: next.sku,
             unit: next.unit,
             minQuantity: next.minQuantity,
+            salePrice: next.salePrice,
             archivedAt: archivedAt(current.archivedAt, body.archived),
           },
           select: ITEM_SELECT,
@@ -301,6 +312,7 @@ export function itemResponse(row: ItemRow): StockItem {
     minQuantity: row.minQuantity?.toFixed(3) ?? null,
     parentItemId: row.parentItemId,
     variantValues: row.variantValues,
+    salePrice: row.salePrice?.toFixed(2) ?? null,
     archivedAt: row.archivedAt?.toISOString() ?? null,
   };
 }

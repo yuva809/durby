@@ -40,7 +40,7 @@ describe('system roles', () => {
     },
   );
 
-  it('keeps admin below owner, and staff to reading settings, products and tables', () => {
+  it('keeps admin below owner, and staff to reading settings, products, tables and orders', () => {
     expect(systemRolePermissions('admin').has('platform.org.manage')).toBe(false);
     expect(systemRolePermissions('admin').has('platform.roles.manage')).toBe(true);
     expect(systemRolePermissions('admin').has('catalog.products.edit')).toBe(true);
@@ -58,6 +58,12 @@ describe('system roles', () => {
       'inventory.warehouses.create',
       'inventory.warehouses.delete',
       'inventory.warehouses.edit',
+      'orders.customers.create',
+      'orders.customers.edit',
+      'orders.customers.read',
+      'orders.orders.create',
+      'orders.orders.edit',
+      'orders.orders.read',
       'platform.roles.read',
       'platform.settings.read',
       'platform.users.invite',
@@ -89,6 +95,8 @@ describe('system roles', () => {
     expect([...systemRolePermissions('staff')].sort()).toEqual([
       'catalog.products.read',
       'inventory.stock.read',
+      'orders.customers.read',
+      'orders.orders.read',
       'platform.settings.read',
       'pos.tables.read',
     ]);

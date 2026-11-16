@@ -44,6 +44,8 @@ export const AUDIT_ENTITY_TYPES = [
   'unit_of_measure',
   'variant_attribute',
   'bom',
+  'customer',
+  'sales_order',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -291,6 +293,28 @@ export const AUDIT_ACTIONS = {
   'inventory.stock_document.created': {
     entityType: 'stock_document',
     label: 'inventory.audit.actions.stockDocumentCreated',
+  },
+  /** Customers and sales orders (ADR 0044). */
+  'orders.customer.created': {
+    entityType: 'customer',
+    label: 'orders.audit.actions.customerCreated',
+  },
+  'orders.customer.updated': {
+    entityType: 'customer',
+    label: 'orders.audit.actions.customerUpdated',
+  },
+  'orders.sales_order.created': {
+    entityType: 'sales_order',
+    label: 'orders.audit.actions.salesOrderCreated',
+  },
+  'orders.sales_order.updated': {
+    entityType: 'sales_order',
+    label: 'orders.audit.actions.salesOrderUpdated',
+  },
+  /** A status change: confirmed, cancelled (later: picked, packed, dispatched, delivered). */
+  'orders.sales_order.status_changed': {
+    entityType: 'sales_order',
+    label: 'orders.audit.actions.salesOrderStatusChanged',
   },
   'pos.dining_area.created': {
     entityType: 'dining_area',
@@ -580,6 +604,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'minQuantity',
     'parentItemId',
     'variantValues',
+    'salePrice',
     'archivedAt',
   ],
   /** `factor`: decimal string, base units per unit. */
@@ -618,4 +643,17 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   ],
   /** Never the guest's name, email, phone or notes: only that and when they were erased. */
   reservation_guest: ['id', 'anonymisedAt'],
+  /** Never contact details, address or notes (personal data; audit rows can't be erased). */
+  customer: ['id', 'code', 'archivedAt'],
+  /** Never the customer's details, the delivery address or notes. `total`: decimal string. */
+  sales_order: [
+    'id',
+    'number',
+    'status',
+    'customerId',
+    'locationId',
+    'warehouseId',
+    'lineCount',
+    'total',
+  ],
 } as const satisfies Record<AuditEntityType, readonly string[]>;
