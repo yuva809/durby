@@ -168,5 +168,11 @@
   "orders.detail.vehicle": "Fahrzeug",
   "orders.detail.dispatchedAt": "Versandt",
   "orders.detail.deliveredAt": "Geliefert",
-  "orders.errors.importInvalid": "Einige Zeilen können nicht importiert werden. Prüfen Sie die Vorschau, korrigieren Sie die Datei und versuchen Sie es erneut."
+  "orders.errors.importInvalid": "Einige Zeilen können nicht importiert werden. Prüfen Sie die Vorschau, korrigieren Sie die Datei und versuchen Sie es erneut.",
+  "orders.permissionAreas.requests": "Warenanforderungen",
+  "orders.permissions.requestsRead": "Warenanforderungen ansehen",
+  "orders.permissions.requestsCreate": "Ware für die Filiale anfordern",
+  "orders.permissions.requestsApprove": "Warenanforderungen genehmigen oder ablehnen",
+  "orders.permissions.requestsReceive": "Wareneingang in der Filiale bestätigen",
+  "orders.permissions.deliveryAssign": "Fahrer zuweisen und alle Lieferungen verfolgen"
 }

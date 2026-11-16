@@ -2,6 +2,7 @@ import { PERMISSION_KEYS } from '@durby/shared';
 import request from 'supertest';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { EntitlementsAdmin } from '../src/platform/config/entitlements';
 import { startAuthApp, type AuthTestKit } from './support/auth-app';
 import { RbacSeed, type SeededOrg } from './support/rbac';
 import { withIdempotencyKey } from './support/idempotency';
@@ -119,6 +120,10 @@ describe('roles API', () => {
       'orders.customers.edit',
       'orders.picking.use',
       'orders.delivery.use',
+      'orders.delivery.assign',
+      'orders.requests.read',
+      'orders.requests.create',
+      'orders.requests.receive',
     ]);
     expect(data[3]?.permissions).toEqual([
       'platform.settings.read',
@@ -133,6 +138,28 @@ describe('roles API', () => {
 
     const staff = await tokenAs(a, a.roles.staff);
     await api(staff.token).get('/roles').expect(403);
+  });
+
+  // ADR 0045: the branch roles exist everywhere but show only with the orders module.
+  it('lists Branch, Warehouse and Driver only where the organization has orders', async () => {
+    const keys = async (org: SeededOrg) => {
+      const { token } = await tokenAs(org, org.roles.owner);
+      const res = await api(token).get('/roles').expect(200);
+      return (res.body as { data: { systemKey: string | null }[] }).data.map((r) => r.systemKey);
+    };
+    const admin = kit.app.get(EntitlementsAdmin);
+    const withOrders = await seed.org('With orders');
+    await admin.setPlan(withOrders.id, 'inventory', 'cli.entitlements');
+    expect(await keys(withOrders)).toEqual(
+      expect.arrayContaining(['branch', 'warehouse', 'driver']),
+    );
+    const without = await seed.org('Without orders');
+    await admin.setPlan(without.id, 'inventory', 'cli.entitlements');
+    await admin.setOverride(without.id, 'orders', false, undefined, 'cli.entitlements');
+    const shown = await keys(without);
+    expect(shown).not.toContain('branch');
+    expect(shown).not.toContain('driver');
+    expect(shown).toContain('manager');
   });
 
   describe('POST /roles', () => {

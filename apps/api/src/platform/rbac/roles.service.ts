@@ -2,12 +2,14 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   type CreateRoleRequest,
   type Role,
+  SYSTEM_ROLE_FEATURES,
   SYSTEM_ROLES,
   type SystemRole,
   type UpdateRoleRequest,
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../audit';
 import { AuthContext, Clock } from '../auth';
+import { EntitlementService } from '../config/entitlements';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../tenancy';
 import { roleKeysOf } from './access';
 import { AccessService } from './access.service';
@@ -40,6 +42,7 @@ export class RolesService {
     private readonly auth: AuthContext,
     private readonly audit: AuditService,
     private readonly clock: Clock,
+    private readonly entitlements: EntitlementService,
   ) {}
 
   /** The role's system key and effective registered keys, for the granting rules. */
@@ -74,9 +77,20 @@ export class RolesService {
     return { userId: this.auth.require().userId, access: await this.access.current() };
   }
 
-  /** System roles first (owner → staff), then custom roles by name. */
+  /**
+   * System roles first (owner → staff), then custom roles by name. Roles of a module the organization doesn't have
+   * (the branch roles without orders, ADR 0045) are left out.
+   */
   async list(): Promise<Role[]> {
-    const roles = await this.db.role.findMany({ select: ROLE_SELECT });
+    const all = await this.db.role.findMany({ select: ROLE_SELECT });
+    const needed = [...new Set(Object.values(SYSTEM_ROLE_FEATURES))];
+    const enabled = new Set<string>();
+    for (const feature of needed)
+      if (await this.entitlements.isEnabled(feature)) enabled.add(feature);
+    const roles = all.filter((r) => {
+      const feature = r.systemKey ? SYSTEM_ROLE_FEATURES[r.systemKey] : undefined;
+      return feature === undefined || enabled.has(feature);
+    });
     const rank = (r: RoleRow) =>
       r.systemKey ? SYSTEM_ROLES.indexOf(r.systemKey) : SYSTEM_ROLES.length;
     return roles

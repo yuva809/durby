@@ -168,5 +168,11 @@
   "orders.detail.vehicle": "Vehicle",
   "orders.detail.dispatchedAt": "Dispatched",
   "orders.detail.deliveredAt": "Delivered",
-  "orders.errors.importInvalid": "Some rows can't be imported. Check the preview, fix the file and try again."
+  "orders.errors.importInvalid": "Some rows can't be imported. Check the preview, fix the file and try again.",
+  "orders.permissionAreas.requests": "Stock requests",
+  "orders.permissions.requestsRead": "See stock requests",
+  "orders.permissions.requestsCreate": "Request stock for the branch",
+  "orders.permissions.requestsApprove": "Approve or reject stock requests",
+  "orders.permissions.requestsReceive": "Confirm what arrived at the branch",
+  "orders.permissions.deliveryAssign": "Assign drivers and track all deliveries"
 }

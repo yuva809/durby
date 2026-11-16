@@ -873,5 +873,8 @@
   "platform.settings.posBillText.name": "Bill text size",
   "platform.settings.posBillText.description": "How large the printed bill is: overall, and per part.",
   "platform.settings.posTicketText.name": "Ticket text size",
-  "platform.settings.posTicketText.description": "How large kitchen and bar tickets print."
+  "platform.settings.posTicketText.description": "How large kitchen and bar tickets print.",
+  "platform.roles.branch": "Branch",
+  "platform.roles.warehouse": "Warehouse (Lager)",
+  "platform.roles.driver": "Driver"
 }

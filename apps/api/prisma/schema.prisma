@@ -334,6 +334,9 @@ enum SystemRole {
   host
   kitchen
   bar
+  branch
+  warehouse
+  driver
 
   @@map("system_role")
 }
