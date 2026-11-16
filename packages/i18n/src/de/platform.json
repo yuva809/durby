@@ -869,5 +869,9 @@
   "platform.feedbackPage.sent": "Danke. Ihr Feedback ist unterwegs zum Team.",
   "platform.feedbackPage.history": "Von Ihrer Organisation gesendet",
   "platform.feedbackPage.empty": "Noch nichts gesendet.",
-  "platform.permissionAreas.feedback": "Feedback"
+  "platform.permissionAreas.feedback": "Feedback",
+  "platform.settings.posBillText.name": "Schriftgröße der Rechnung",
+  "platform.settings.posBillText.description": "Wie groß die gedruckte Rechnung ist: insgesamt und je Teil.",
+  "platform.settings.posTicketText.name": "Schriftgröße der Bons",
+  "platform.settings.posTicketText.description": "Wie groß Küchen- und Barbons gedruckt werden."
 }

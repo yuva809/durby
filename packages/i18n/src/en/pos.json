@@ -509,5 +509,19 @@
   "pos.split.each": "About {amount} each",
   "pos.split.ofTotal": "{count} checks for {total}.",
   "pos.split.centMore": "Some pay a cent more so it adds up.",
-  "pos.split.joinedTotal": "{count} tables on one bill"
+  "pos.split.joinedTotal": "{count} tables on one bill",
+  "pos.billSettings.textSize": "Text size",
+  "pos.billSettings.textSizeHint": "How large the bill and the kitchen and bar tickets print. Set one size for everything, or a part its own size. The preview shows the result.",
+  "pos.billSettings.billSize": "Bill",
+  "pos.billSettings.ticketSize": "Kitchen and bar tickets",
+  "pos.billSettings.sameAsOverall": "Same as overall",
+  "pos.billSettings.sizes.small": "Small",
+  "pos.billSettings.sizes.normal": "Normal",
+  "pos.billSettings.sizes.large": "Large",
+  "pos.billSettings.sizes.xlarge": "Extra large",
+  "pos.billSettings.part.header": "Header (name and contact)",
+  "pos.billSettings.part.items": "Items",
+  "pos.billSettings.part.total": "Total",
+  "pos.billSettings.part.footer": "Footer",
+  "pos.billSettings.part.ticketItems": "Ticket items"
 }

@@ -2,6 +2,8 @@ import { type INestApplication, Injectable, type OnModuleInit } from '@nestjs/co
 import { Test } from '@nestjs/testing';
 import {
   DEFAULT_BILL_FOOTER,
+  DEFAULT_BILL_TEXT,
+  DEFAULT_TICKET_TEXT,
   DEFAULT_POS_PRINTERS,
   DEFAULT_BILL_HEADER,
   DEFAULT_OPENING_HOURS,
@@ -139,6 +141,8 @@ describe('/api/v1/settings', () => {
           ['reservations.holdMinutes', 5],
           ['pos.billHeader', DEFAULT_BILL_HEADER],
           ['pos.billFooter', DEFAULT_BILL_FOOTER],
+          ['pos.billText', DEFAULT_BILL_TEXT],
+          ['pos.ticketText', DEFAULT_TICKET_TEXT],
           ['pos.printers', DEFAULT_POS_PRINTERS],
           ['pos.printJobMaxAgeSeconds', 600],
           ['pos.kitchenProcessing', true],

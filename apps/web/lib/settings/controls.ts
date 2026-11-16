@@ -2,6 +2,7 @@ import { isLabelKey, type LabelKey } from '@durby/i18n';
 import {
   billFooterSchema,
   billHeaderSchema,
+  billTextSchema,
   closedDatesSchema,
   posPrintersSchema,
   type ResolvedSetting,
@@ -10,6 +11,7 @@ import {
   settingAllowsScope,
   settingLabelBase,
   SETTINGS,
+  ticketTextSchema,
   turnTimesSchema,
   weeklyHoursSchema,
 } from '@durby/shared';
@@ -43,7 +45,7 @@ export type SettingControl =
   | { kind: 'scheduleOr'; inherit: string }
   /** Party-size bands with minutes (`reservations.turnTimes`). */
   | { kind: 'turnTimes' }
-  /** Edited on a page of its own (the bill's header and footer with a preview; the printers). */
+  /** Edited on a page of its own (the bill's header, footer and text sizes with a preview; the printers). */
   | { kind: 'page'; href: string };
 
 /** `weighted_average` → `weightedAverage` (label keys are camelCase). */
@@ -67,7 +69,12 @@ export function controlOf(key: SettingKey): SettingControl | null {
   if (SETTINGS[key].schema === weeklyHoursSchema) return { kind: 'weeklyHours' };
   if (SETTINGS[key].schema === closedDatesSchema) return { kind: 'dateList' };
   if (SETTINGS[key].schema === turnTimesSchema) return { kind: 'turnTimes' };
-  if (SETTINGS[key].schema === billHeaderSchema || SETTINGS[key].schema === billFooterSchema) {
+  // The bill page: header, footer and text sizes, with a live preview.
+  if (
+    [billHeaderSchema, billFooterSchema, billTextSchema, ticketTextSchema].includes(
+      SETTINGS[key].schema as never,
+    )
+  ) {
     return { kind: 'page', href: '/settings/bill' };
   }
   // Printers per location, with Find printer and a test print through the Android app (ADR 0032).

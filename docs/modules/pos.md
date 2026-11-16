@@ -276,6 +276,20 @@ footer }`, the effective values there. An unknown or unreadable location → 404
 - Web: Settings → **Bill** edits both for the organization or one location, with a preview of the real bill. The
   logo is shrunk in the browser to at most 384 × 192 px, grayscale, before it is saved.
 
+### Text size
+
+- Settings, same scopes and key as the bill layout:
+  - `pos.billText` `{ size, header, items, total, footer }`: `size` one of `small` (×0.85), `normal` (×1), `large`
+    (×1.2), `xlarge` (×1.45); each part `null` (as `size`) or its own size. Default: `normal`, no part sizes.
+  - `pos.ticketText` `{ size, items }`: kitchen and bar tickets, the item lines optionally their own size. Default
+    `normal`.
+- `GET /pos/bill-layout` also returns them (`text`, `ticketText`); the web reads them with defaults from an older api.
+- Every print path draws the same receipt and ticket (browser print, and the Android app's and LAN printers' raster
+  images), so the sizes apply to bills, guest checks, reprints and tickets alike. The type inside is in `em`, scaled
+  per part; the paper width stays 72 mm, so larger text wraps sooner.
+- Web: Settings → **Bill** → Text size: four buttons for the overall bill and ticket size, a "Same as overall" or size
+  choice per part, and the previews show the result before saving. Saved and reset together with header and footer.
+
 ## Step 4: billing & checkout (ADR 0036)
 
 A **bill** is one act of billing: items of 1–10 open orders at one location (more than one is a merge). What it

@@ -711,6 +711,7 @@ function TableOrder({
                           ticket={ticket}
                           tableName={table.name}
                           orderNumber={print.orderNumber}
+                          text={layout.status === 'ready' ? layout.data.ticketText : null}
                         />
                       </div>
                     ))}

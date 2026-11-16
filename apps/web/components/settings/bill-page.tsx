@@ -7,8 +7,18 @@ import {
   billFooterSchema,
   type BillHeader,
   billHeaderSchema,
+  BILL_TEXT_PARTS,
+  type BillText,
+  billTextSchema,
   DEFAULT_BILL_FOOTER,
   DEFAULT_BILL_HEADER,
+  DEFAULT_BILL_TEXT,
+  DEFAULT_TICKET_TEXT,
+  PRINT_TEXT_SCALE,
+  PRINT_TEXT_SIZES,
+  type PrintTextSize,
+  type TicketText,
+  ticketTextSchema,
   type KitchenTicket,
   type LocationSummary,
   type PrepStation,
@@ -25,6 +35,7 @@ import { deleteSetting, loadSettings, putSetting } from '../../lib/settings/api'
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
+import { cn } from '../../lib/utils';
 import { MoneyProvider } from '../pos/money';
 import { KitchenTicketView } from '../pos/kitchen-ticket';
 import { Receipt } from '../pos/receipt';
@@ -132,10 +143,12 @@ function BillSettings({ locations }: { locations: LocationSummary[] }) {
         {(list) => (
           <BillEditor
             // A new scope or a reset starts from the stored values again.
-            key={`${scope}:${JSON.stringify(list.filter((s) => s.key.startsWith('pos.bill')))}`}
+            key={`${scope}:${JSON.stringify(list.filter((s) => s.key.startsWith('pos.bill') || s.key === 'pos.ticketText'))}`}
             locationId={scope || null}
             header={list.find((s) => s.key === 'pos.billHeader')}
             footer={list.find((s) => s.key === 'pos.billFooter')}
+            billText={list.find((s) => s.key === 'pos.billText')}
+            ticketText={list.find((s) => s.key === 'pos.ticketText')}
             onChanged={reload}
           />
         )}
@@ -148,11 +161,15 @@ function BillEditor({
   locationId,
   header,
   footer,
+  billText,
+  ticketText,
   onChanged,
 }: {
   locationId: string | null;
   header: ResolvedSetting | undefined;
   footer: ResolvedSetting | undefined;
+  billText: ResolvedSetting | undefined;
+  ticketText: ResolvedSetting | undefined;
   onChanged: () => void;
 }) {
   const t = useT();
@@ -163,6 +180,10 @@ function BillEditor({
   const footerAction = useActionKey();
   const resetHeaderAction = useActionKey();
   const resetFooterAction = useActionKey();
+  const billTextAction = useActionKey();
+  const ticketTextAction = useActionKey();
+  const resetBillTextAction = useActionKey();
+  const resetTicketTextAction = useActionKey();
   const fileInput = useRef<HTMLInputElement>(null);
   const canManage = session?.activePermissions.includes('platform.settings.manage') ?? false;
   const organizationName =
@@ -172,6 +193,12 @@ function BillEditor({
   const storedFooter = billFooterSchema.safeParse(footer?.value).data ?? DEFAULT_BILL_FOOTER;
   const [draft, setDraft] = useState<HeaderDraft>(() => headerDraft(storedHeader));
   const [lines, setLines] = useState<string[]>(() => storedFooter.lines);
+  const [billSizes, setBillSizes] = useState<BillText>(
+    () => billTextSchema.safeParse(billText?.value).data ?? DEFAULT_BILL_TEXT,
+  );
+  const [ticketSizes, setTicketSizes] = useState<TicketText>(
+    () => ticketTextSchema.safeParse(ticketText?.value).data ?? DEFAULT_TICKET_TEXT,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -183,7 +210,8 @@ function BillEditor({
   const footerValid = billFooterSchema.safeParse(nextFooter).success;
   const emailInvalid = !billHeaderSchema.shape.email.safeParse(nextHeader.email).success;
   const ownHere =
-    locationId !== null && (header?.source === 'location' || footer?.source === 'location');
+    locationId !== null &&
+    [header, footer, billText, ticketText].some((s) => s?.source === 'location');
 
   const set = (field: keyof Omit<HeaderDraft, 'logo'>) => (value: string) => {
     setSaved(false);
@@ -214,6 +242,8 @@ function BillEditor({
     const results = [
       await putSetting(store, headerAction, 'pos.billHeader', nextHeader, scope),
       await putSetting(store, footerAction, 'pos.billFooter', nextFooter, scope),
+      await putSetting(store, billTextAction, 'pos.billText', billSizes, scope),
+      await putSetting(store, ticketTextAction, 'pos.ticketText', ticketSizes, scope),
     ];
     setBusy(false);
     const failed = results.find((r) => !r.ok);
@@ -231,6 +261,8 @@ function BillEditor({
     const results = [
       await deleteSetting(store, resetHeaderAction, 'pos.billHeader', scope),
       await deleteSetting(store, resetFooterAction, 'pos.billFooter', scope),
+      await deleteSetting(store, resetBillTextAction, 'pos.billText', scope),
+      await deleteSetting(store, resetTicketTextAction, 'pos.ticketText', scope),
     ];
     setBusy(false);
     const failed = results.find((r) => !r.ok);
@@ -398,6 +430,62 @@ function BillEditor({
           )}
         </Card>
 
+        <Card className="flex flex-col gap-4 p-4" data-testid="bill-text-sizes">
+          <div className="flex flex-col gap-1">
+            <h2 className="font-semibold">{t('pos.billSettings.textSize')}</h2>
+            <p className="text-sm text-muted-foreground">{t('pos.billSettings.textSizeHint')}</p>
+          </div>
+          <SizeChoice
+            label={t('pos.billSettings.billSize')}
+            value={billSizes.size}
+            disabled={!canManage}
+            testId="bill-size"
+            onChange={(size) => {
+              setSaved(false);
+              setBillSizes((b) => ({ ...b, size }));
+            }}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {BILL_TEXT_PARTS.map((name) => (
+              <PartSize
+                key={name}
+                id={`${id}-bill-${name}`}
+                label={t(`pos.billSettings.part.${name}`)}
+                value={billSizes[name]}
+                disabled={!canManage}
+                testId={`bill-size-${name}`}
+                onChange={(value) => {
+                  setSaved(false);
+                  setBillSizes((b) => ({ ...b, [name]: value }));
+                }}
+              />
+            ))}
+          </div>
+          <SizeChoice
+            label={t('pos.billSettings.ticketSize')}
+            value={ticketSizes.size}
+            disabled={!canManage}
+            testId="ticket-size"
+            onChange={(size) => {
+              setSaved(false);
+              setTicketSizes((v) => ({ ...v, size }));
+            }}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <PartSize
+              id={`${id}-ticket-items`}
+              label={t('pos.billSettings.part.ticketItems')}
+              value={ticketSizes.items}
+              disabled={!canManage}
+              testId="ticket-size-items"
+              onChange={(value) => {
+                setSaved(false);
+                setTicketSizes((v) => ({ ...v, items: value }));
+              }}
+            />
+          </div>
+        </Card>
+
         {canManage && (
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={busy} className="min-h-11" data-testid="bill-save">
@@ -415,7 +503,7 @@ function BillEditor({
         <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Preview title={t('pos.bill.customer')} testId="bill-preview">
             <Receipt
-              layout={{ header: nextHeader, footer: nextFooter }}
+              layout={{ header: nextHeader, footer: nextFooter, text: billSizes }}
               organizationName={organizationName}
               productName={productName}
               tableName="5"
@@ -452,6 +540,7 @@ function BillEditor({
               tableName="5"
               orderNumber={SAMPLE_ORDER_NUMBER}
               organizationName={nextHeader.name ?? organizationName}
+              text={ticketSizes}
             />
           </Preview>
           <Preview title={t('pos.bill.bar')} testId="bill-preview-bar">
@@ -460,10 +549,96 @@ function BillEditor({
               tableName="5"
               orderNumber={SAMPLE_ORDER_NUMBER}
               organizationName={nextHeader.name ?? organizationName}
+              text={ticketSizes}
             />
           </Preview>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** The overall size: four buttons, one pressed. */
+function SizeChoice({
+  label,
+  value,
+  disabled,
+  testId,
+  onChange,
+}: {
+  label: string;
+  value: PrintTextSize;
+  disabled: boolean;
+  testId: string;
+  onChange: (size: PrintTextSize) => void;
+}) {
+  const t = useT();
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm font-medium">{label}</span>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="flex flex-wrap gap-2"
+        data-testid={testId}
+      >
+        {PRINT_TEXT_SIZES.map((size) => (
+          <button
+            key={size}
+            type="button"
+            role="radio"
+            aria-checked={size === value}
+            disabled={disabled}
+            onClick={() => onChange(size)}
+            className={cn(
+              'min-h-11 rounded-md border px-4 font-medium hover:bg-muted disabled:opacity-60',
+              size === value && 'border-primary bg-muted ring-1 ring-primary',
+            )}
+            style={{ fontSize: `${PRINT_TEXT_SCALE[size] * 0.875}rem` }}
+            data-testid={`${testId}-${size}`}
+          >
+            {t(`pos.billSettings.sizes.${size}`)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** A part's own size, or "as the overall size". */
+function PartSize({
+  id,
+  label,
+  value,
+  disabled,
+  testId,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: PrintTextSize | null;
+  disabled: boolean;
+  testId: string;
+  onChange: (size: PrintTextSize | null) => void;
+}) {
+  const t = useT();
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Select
+        id={id}
+        value={value ?? ''}
+        disabled={disabled}
+        onChange={(e) => onChange((e.target.value || null) as PrintTextSize | null)}
+        data-testid={testId}
+      >
+        <option value="">{t('pos.billSettings.sameAsOverall')}</option>
+        {PRINT_TEXT_SIZES.map((size) => (
+          <option key={size} value={size}>
+            {t(`pos.billSettings.sizes.${size}`)}
+          </option>
+        ))}
+      </Select>
     </div>
   );
 }
