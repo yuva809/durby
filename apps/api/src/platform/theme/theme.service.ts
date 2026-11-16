@@ -58,6 +58,7 @@ export class ThemeService {
                 colorPrimary: true,
                 colorInk: true,
                 colorPaper: true,
+                navLayout: true,
               },
             },
           },

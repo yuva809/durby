@@ -98,6 +98,9 @@ describe('/api/v1/number-series', () => {
         'inventory.stockConsumption',
         'inventory.stockProduction',
         'inventory.purchaseOrder',
+        'inventory.goodsIssue',
+        'inventory.goodsRestock',
+        'orders.salesOrder',
         'billing.invoice',
         'pos.order',
         'pos.guestCheck',
@@ -128,6 +131,9 @@ describe('/api/v1/number-series', () => {
         'inventory.stockConsumption',
         'inventory.stockProduction',
         'inventory.purchaseOrder',
+        'inventory.goodsIssue',
+        'inventory.goodsRestock',
+        'orders.salesOrder',
       ]);
     });
 

@@ -21,7 +21,7 @@ const page = (
 
 /**
  * The pages under Inventory in the sidebar, in display order (docs/modules/inventory.md → Step 5, ADR 0038). Products
- * and categories live on the catalog page; Inventory Adjustment opens the Adjust tab.
+ * live on the catalog page, categories on their own page (/catalog/categories, ADR 0044).
  */
 export const INVENTORY_PAGES: readonly NavItem[] = [
   page('stock', '/inventory', 'inventory.nav.stock', 'inventory.stock.read'),
@@ -30,7 +30,7 @@ export const INVENTORY_PAGES: readonly NavItem[] = [
   page('attributes', '/inventory/attributes', 'inventory.nav.attributes', 'inventory.stock.read'),
   page(
     'categories',
-    '/catalog#categories',
+    '/catalog/categories',
     'inventory.nav.categories',
     'catalog.products.read',
     'catalog',

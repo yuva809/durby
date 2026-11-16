@@ -47,6 +47,8 @@ export const staffErrors = {
       'A customer with this name or an account with this email already exists.',
       details,
     ),
+  feedbackNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'staff.feedback_not_found', 'Feedback not found.'),
   customerNotFound: () =>
     new ApiError(HttpStatus.NOT_FOUND, 'staff.customer_not_found', 'Customer not found.'),
   ownerActive: () =>

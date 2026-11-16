@@ -292,8 +292,8 @@ describe('RolesPage', () => {
     ]);
     expect(screen.queryByTestId('role-create')).toBeNull();
     expect(screen.queryByTestId('role-edit')).toBeNull();
-    // Staff's location-scope keys: settings, products, stock and tables.
-    expect(within(cards[3]!).getAllByText('per location')).toHaveLength(4);
+    // Staff's location-scope keys: settings, feedback, products, stock, tables, orders and customers.
+    expect(within(cards[3]!).getAllByText('per location')).toHaveLength(7);
   });
 
   it('offers only held keys in the editor', async () => {

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AsiaMight operations: technical and test notes</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#1f7a3d; --ok:#1f7a3d; --warn:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; } }
+  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  h3 { font-size: 15px; margin: 20px 0 6px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .done { color: var(--ok); } .open { color: var(--warn); }
+  nav a { color: var(--accent); margin-right: 14px; }
+  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="#status">Status</a><a href="#menu">Menu</a><a href="#orders">Orders</a><a href="#api">API</a><a href="#tests">Tests</a><a href="#deploy">Deploy</a></nav>
+
+  <h1>AsiaMight operations</h1>
+  <p class="lead">The grouped sidebar for AsiaMight (app.asiamight.site) and the modules behind it: Product Category, Branches, Order History with customers, and next Picking, Delivery Tracking, Import Data and Feedback. Decision: ADR 0044. Specs: <code>docs/modules/orders.md</code>, <code>docs/platform/web-shell.md</code> → Layouts. Branch: <code>feature/asiamight-ops</code>.</p>
+
+  <h2 id="status">Status</h2>
+  <div class="scroll"><table>
+    <tr><th>Step</th><th>What</th><th>State</th></tr>
+    <tr><td>1</td><td>Operations sidebar (theme <code>nav_layout</code>), Product Category page, Branches page</td><td class="done">Built, tested</td></tr>
+    <tr><td>2</td><td>Orders: customers, sales orders (draft → confirmed, cancel), Order History, sale price on items</td><td class="done">Built; API e2e need Docker</td></tr>
+    <tr><td>3</td><td>Picking (stock goes out), packing, Delivery Tracking, returns (stock back in)</td><td class="done">Built; API e2e need Docker</td></tr>
+    <tr><td>4</td><td>Import Data (CSV: categories, items, opening stock, customers; all or nothing)</td><td class="done">Built; API e2e need Docker</td></tr>
+    <tr><td>5</td><td>Feedback to the Durby team, read and marked in the admin portal (no screenshots yet)</td><td class="done">Built; API e2e need Docker</td></tr>
+  </table></div>
+
+  <h2 id="menu">Sidebar layout</h2>
+  <p><code>partner_themes.nav_layout</code> (<code>default</code> | <code>operations</code>) is set by migration (<code>20261115100000_partner_nav_layout</code> sets AsiaMight to <code>operations</code>) and returned by <code>GET /api/v1/theme</code> as <code>navLayout</code>. The web picks the layout in <code>apps/web/lib/nav/layouts.ts</code>; every item keeps its feature and permission, so the plan and the role still decide what shows. app.durby.tech keeps its menu.</p>
+  <div class="scroll"><table>
+    <tr><th>Group</th><th>Items (route)</th></tr>
+    <tr><td>Business operations</td><td>Inventory (<code>/inventory</code>, submenu), Product Category (<code>/catalog/categories</code>), Order History (<code>/orders</code>), Picking (<code>/picking</code>), Branches (<code>/branches</code>), Delivery Tracking (<code>/deliveries</code>)</td></tr>
+    <tr><td>Administration &amp; reports</td><td>Audit log (<code>/audit</code>), Manage Staff (<code>/staff</code>), Settings (<code>/settings</code>)</td></tr>
+    <tr><td>Tools &amp; utilities</td><td>Import Data (<code>/import</code>), Feedback (<code>/feedback</code>)</td></tr>
+  </table></div>
+
+  <h2 id="orders">Orders</h2>
+  <ul>
+    <li><strong>Customers</strong> (<code>order_customers</code>): name, code (unique among active), phone, email, address, note. Archived, never deleted. Audit snapshots keep only id, code and archive time (personal data).</li>
+    <li><strong>Sales orders</strong>: number <code>SO-YYYY-000001</code>, customer, warehouse (its location is the branch), requested date, delivery address, note, lines of <em>stock items</em> with quantity and unit price, total.</li>
+    <li><strong>Money</strong>: line total = quantity × price, rounded half up to cents; total = sum of line totals. Exact decimals in the api, BigInt cents in the web preview.</li>
+    <li><strong>Statuses</strong>: draft → confirmed (→ picking → packed → dispatched → delivered in step 3); cancel up to packed. Each move: timeline row (append-only), audit row, row lock.</li>
+    <li><strong>Sale price</strong>: new optional field on stock items; fills the price of a new line.</li>
+    <li><strong>Picking</strong> (<code>orders.picking.use</code>): the picked quantity per line (short allowed, never more than ordered) books one goods issue <code>GI-…</code> at average cost; refused below zero stock unless the branch allows it. The order is then packed.</li>
+    <li><strong>Delivery</strong> (<code>orders.delivery.use</code>): dispatch with driver, phone and vehicle; delivered with who received it; came back with a reason, which books a restock <code>RS-…</code> at the cost the goods left at. A cancel after picking restocks too.</li>
+  </ul>
+  <div class="callout">Order keys are checked at the order's branch: a manager limited to one branch sees and changes only that branch's orders. Staff can read orders and customers but not change them.</div>
+
+  <h2 id="api">API</h2>
+<pre>GET    /api/v1/orders/customers            orders.customers.read
+POST   /api/v1/orders/customers            orders.customers.create
+PATCH  /api/v1/orders/customers/:id        orders.customers.edit
+GET    /api/v1/orders?status=&amp;locationId=&amp;customerId=&amp;from=&amp;to=&amp;limit=&amp;cursor=
+GET    /api/v1/orders/:id                  orders.orders.read
+POST   /api/v1/orders                      orders.orders.create   { customerId, warehouseId, lines[], confirm? }
+PATCH  /api/v1/orders/:id                  orders.orders.edit     drafts only
+POST   /api/v1/orders/:id/confirm          orders.orders.edit
+POST   /api/v1/orders/:id/cancel           orders.orders.edit     { reason? }
+POST   /api/v1/orders/:id/start-picking    orders.picking.use
+POST   /api/v1/orders/:id/pick             orders.picking.use     { lines: [{ lineId, quantity }] }
+POST   /api/v1/orders/:id/dispatch         orders.delivery.use    { driverName?, driverPhone?, vehicle?, note? }
+POST   /api/v1/orders/:id/deliver          orders.delivery.use    { note? }
+POST   /api/v1/orders/:id/return           orders.delivery.use    { note? }</pre>
+  <p>All writes need an <code>Idempotency-Key</code>; creates and status moves complete it in the business transaction.</p>
+
+  <h2 id="tests">Testing</h2>
+  <h3>Automated</h3>
+  <div class="scroll"><table>
+    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
+    <tr><td>Web</td><td><code>lib/nav/layouts.test.ts</code></td><td>layouts registered and labelled, operations groups, planned hidden, Product Category not twice</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/catalog/categories-page.test.tsx</code></td><td>order and product counts, read-only, no access</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/orders/orders.test.tsx</code></td><td>list, search without reload, status filter, load more, create with sale price and exact total, validation, detail, confirm, cancel with reason, staff read-only, customers</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/orders/fulfilment.test.tsx</code></td><td>picking queue, pick with prefilled and short quantities, over-pick refused, delivery board, dispatch, came back</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>lib/orders/form.test.ts</code></td><td>cent rounding, sellable items, date range, search, query</td><td class="done">Pass</td></tr>
+    <tr><td>API unit</td><td><code>theme-snapshot.spec.ts</code>, <code>order-math.spec.ts</code></td><td>layout in the theme; rounding, moves, cursor</td><td class="done">Pass</td></tr>
+    <tr><td>API e2e</td><td><code>test/orders.e2e.spec.ts</code>, <code>test/theme.e2e.spec.ts</code></td><td>orders end to end, isolation, permissions; AsiaMight layout</td><td class="open">Needs Docker / CI</td></tr>
+  </table></div>
+<pre>cd apps/web &amp;&amp; npx vitest run lib/nav components/orders lib/orders components/catalog
+cd apps/api &amp;&amp; npx vitest run src/modules/orders src/platform/theme
+cd apps/api &amp;&amp; npx vitest run test/orders.e2e.spec.ts test/theme.e2e.spec.ts   # Docker</pre>
+
+  <h3>Manual (app.asiamight.site, owner)</h3>
+  <div class="scroll"><table>
+    <tr><th>Step</th><th>Expected</th></tr>
+    <tr><td>Sign in</td><td>Sidebar: Business operations / Administration &amp; reports / Tools &amp; utilities; app.durby.tech unchanged</td></tr>
+    <tr><td>Product Category → drag a category</td><td>Order saved; same order on the Products page</td></tr>
+    <tr><td>Branches</td><td>Locations list titled Branches; add / rename for owners</td></tr>
+    <tr><td>Inventory → item → Sale price 12.90</td><td>Saved; shown when the item is added to an order</td></tr>
+    <tr><td>Order History → Customers → New customer</td><td>Customer listed; a second with the same code is refused</td></tr>
+    <tr><td>New order: customer, item ×3, keep "Confirm at once"</td><td>Total 38.70; order SO-2026-000001 Confirmed; timeline Draft, Confirmed</td></tr>
+    <tr><td>New order without "Confirm at once" → open → Edit → Confirm</td><td>Draft editable; after confirm no Edit</td></tr>
+    <tr><td>Cancel with a reason</td><td>Status Cancelled; reason in the timeline; Audit log → module Orders shows the change</td></tr>
+    <tr><td>Receive 10 Rice, then order 3 → Picking → Pick → Picked and packed</td><td>Order Packed; Inventory shows Rice 7; Documents has a Goods issue GI-…</td></tr>
+    <tr><td>Pick with one line at 0</td><td>"1 short" shown; the order ships without it; picked column in the order panel</td></tr>
+    <tr><td>Order 50 of an item with 10 in stock → Pick all</td><td>Refused with "not enough stock"; order stays Confirmed</td></tr>
+    <tr><td>Delivery Tracking → Dispatch (driver, vehicle)</td><td>Moves to On the way with the driver and time</td></tr>
+    <tr><td>Came back (reason)</td><td>Order Returned; stock back to 10; Documents has Goods back in RS-…</td></tr>
+    <tr><td>Delivered (received by)</td><td>Order in Delivered (last 7 days); timeline complete</td></tr>
+    <tr><td>Import Data → Stock items → template → 3 rows (one with unit "box")</td><td>Preview flags row 3 unit; Import disabled; fixed file imports 3 rows</td></tr>
+    <tr><td>Import Data → Opening stock: Main, R-1, 10, 8,50</td><td>One receipt per warehouse listed; Inventory shows 10 at 8.50</td></tr>
+    <tr><td>Import Data → Customers with codes</td><td>Existing codes updated, new ones added; summary counts match</td></tr>
+    <tr><td>Feedback → Idea → message → Send</td><td>"Thank you" and the item under "Sent by your organization" as New</td></tr>
+    <tr><td>Admin portal (support) → Feedback</td><td>The item with AsiaMight and the sender's email; Mark done → the customer sees Done; portal audit log has one row</td></tr>
+    <tr><td>Sign in as Staff</td><td>Order History and Customers read-only; no Picking, Delivery Tracking or Import Data in the menu; Feedback available</td></tr>
+  </table></div>
+
+  <h2 id="deploy">Deploy</h2>
+  <ul>
+    <li>Migrations: <code>20261115100000_partner_nav_layout</code> (theme column, AsiaMight layout), <code>20261115110000_orders</code> (tables, RLS, <code>orders</code> feature for every plan with inventory, one audit row per affected organization), <code>20261116100000_orders_fulfilment_values</code> and <code>20261116100100_orders_fulfilment</code> (new stock document kinds and order status; picked quantities, delivery details, the order on stock documents), <code>20261116110000_feedback</code> (the platform feedback table). Expand only: the running release keeps working until the new one is up.</li>
+    <li>Run <code>bin/release.sh</code> after merging; the theme cache refreshes within 5 minutes.</li>
+  </ul>
+</main>
+</body>
+</html>

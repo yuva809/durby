@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -38,6 +40,11 @@ import {
   type UpdateWarehouseRequest,
   updateWarehouseRequestSchema,
   type Warehouse,
+  type DataImportResult,
+  type ImportItemsRequest,
+  importItemsRequestSchema,
+  type ImportOpeningStockRequest,
+  importOpeningStockRequestSchema,
 } from '@durby/shared';
 import { RequireFeature } from '../../platform/config/entitlements';
 import { ZodBody, ZodQuery } from '../../platform/http';
@@ -46,6 +53,7 @@ import { RequirePermission } from '../../platform/rbac';
 import { inventoryErrors } from './inventory-errors';
 import { RecipesService } from './recipes.service';
 import { InventorySetupService } from './setup.service';
+import { ItemImportService } from './item-import.service';
 import { StockService } from './stock.service';
 
 const id = (notFound: () => Error) => new ParseUUIDPipe({ exceptionFactory: notFound });
@@ -62,6 +70,7 @@ export class InventoryController {
     private readonly setup: InventorySetupService,
     private readonly stockService: StockService,
     private readonly recipes: RecipesService,
+    private readonly itemImport: ItemImportService,
   ) {}
 
   @RequirePermission('inventory.stock.read')
@@ -97,6 +106,28 @@ export class InventoryController {
     @Query(new ZodQuery(listStockItemsQuerySchema)) query: ListStockItemsQuery,
   ): Promise<{ data: StockItem[] }> {
     return { data: await this.setup.listItems(query) };
+  }
+
+  /** Import Data (ADR 0044 step 4): creates and updates many items; the result goes with the key. */
+  @RequirePermission('inventory.items.create')
+  @Idempotent({ completion: 'transaction' })
+  @Post('items/import')
+  @HttpCode(HttpStatus.OK)
+  importItems(
+    @Body(new ZodBody(importItemsRequestSchema)) body: ImportItemsRequest,
+  ): Promise<DataImportResult> {
+    return this.itemImport.importItems(body);
+  }
+
+  /** Import Data → opening stock: one receipt per warehouse (ADR 0044 step 4). */
+  @RequirePermission('inventory.stock.receive')
+  @Idempotent({ completion: 'transaction' })
+  @Post('opening-stock/import')
+  @HttpCode(HttpStatus.OK)
+  importOpeningStock(
+    @Body(new ZodBody(importOpeningStockRequestSchema)) body: ImportOpeningStockRequest,
+  ): Promise<DataImportResult> {
+    return this.stockService.importOpeningStock(body);
   }
 
   @RequirePermission('inventory.items.create')

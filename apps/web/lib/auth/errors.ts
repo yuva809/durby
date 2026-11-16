@@ -2,6 +2,7 @@ import type {
   AuditErrorCode,
   AuthErrorCode,
   CatalogErrorCode,
+  DataImportErrorCode,
   EntitlementErrorCode,
   IdempotencyErrorCode,
   InventoryErrorCode,
@@ -9,6 +10,7 @@ import type {
   LabelErrorCode,
   LocationErrorCode,
   NumberingErrorCode,
+  OrdersErrorCode,
   PlatformErrorCode,
   PosErrorCode,
   RbacErrorCode,
@@ -30,7 +32,9 @@ export type ApiErrorCode =
   | EntitlementErrorCode
   | AuditErrorCode
   | CatalogErrorCode
+  | DataImportErrorCode
   | InventoryErrorCode
+  | OrdersErrorCode
   | LocationErrorCode
   | PosErrorCode
   | ReservationErrorCode
@@ -118,6 +122,16 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'inventory.too_many_variants': 'inventory.errors.tooManyVariants',
   'inventory.bom_not_found': 'inventory.errors.bomNotFound',
   'inventory.bom_invalid': 'inventory.errors.bomInvalid',
+  'orders.customer_not_found': 'orders.errors.customerNotFound',
+  'orders.customer_code_taken': 'orders.errors.customerCodeTaken',
+  'orders.order_not_found': 'orders.errors.orderNotFound',
+  'orders.warehouse_not_found': 'orders.errors.warehouseNotFound',
+  'orders.item_not_found': 'orders.errors.itemNotFound',
+  'orders.not_editable': 'orders.errors.notEditable',
+  'orders.invalid_transition': 'orders.errors.invalidTransition',
+  'orders.pick_invalid': 'orders.errors.pickInvalid',
+  'orders.import_invalid': 'orders.errors.importInvalid',
+  'inventory.import_invalid': 'inventory.errors.importInvalid',
   'catalog.category_not_found': 'catalog.errors.categoryNotFound',
   'catalog.product_not_found': 'catalog.errors.productNotFound',
   'catalog.category_name_taken': 'catalog.errors.categoryNameTaken',
@@ -188,6 +202,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'staff.feature_limits_invalid': 'staff.errors.featureLimitsInvalid',
   'staff.expiry_past': 'staff.errors.expiryPast',
   'staff.feature_dependency_missing': 'staff.errors.featureDependencyMissing',
+  'staff.feedback_not_found': 'staff.errors.feedbackNotFound',
 };
 
 export function errorLabel(code: ApiErrorCode | 'unknown'): LabelKey {

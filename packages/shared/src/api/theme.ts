@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { HEX_COLOR, LOGO_PATH, PRODUCT_NAME_MAX_LENGTH, THEME_TOKEN_NAMES } from '../theme';
+import {
+  HEX_COLOR,
+  LOGO_PATH,
+  NAV_LAYOUTS,
+  PRODUCT_NAME_MAX_LENGTH,
+  THEME_TOKEN_NAMES,
+} from '../theme';
 
 const hexColor = z.string().regex(HEX_COLOR);
 
@@ -17,6 +23,8 @@ export const themeResponseSchema = z.object({
       typeof hexColor
     >,
   ),
+  /** Sidebar layout (ADR 0044); an older api without it, or an unknown value, means `default`. */
+  navLayout: z.enum(NAV_LAYOUTS).catch('default'),
 });
 
 export type ThemeResponse = z.infer<typeof themeResponseSchema>;

@@ -6,14 +6,9 @@ import { usePathname } from 'next/navigation';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
-import {
-  activeNavItem,
-  NAV_GROUPS,
-  NAV_ITEMS,
-  type NavAccess,
-  type NavItem,
-  visibleNav,
-} from '../../lib/nav/registry';
+import { useNavLayout } from '../theme-provider';
+import { navLayout } from '../../lib/nav/layouts';
+import { activeNavItem, type NavAccess, type NavItem, visibleNav } from '../../lib/nav/registry';
 import { cn } from '../../lib/utils';
 
 const ITEM_CLASS =
@@ -21,7 +16,8 @@ const ITEM_CLASS =
 
 /**
  * The navigation items the session may see (UI hints; the api enforces), grouped, with the
- * current page marked. `onNavigate` closes the drawer on tablets.
+ * current page marked, in the layout of the partner's theme (ADR 0044). `onNavigate` closes the drawer
+ * on tablets.
  */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { session } = useAuth();
@@ -31,12 +27,13 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     activeFeatures: session?.activeFeatures ?? [],
     activePermissions: session?.activePermissions ?? [],
   };
-  const items = visibleNav(NAV_ITEMS, access);
+  const layout = navLayout(useNavLayout());
+  const items = visibleNav(layout.items, access);
   const current = activeNavItem(items, pathname);
 
   return (
     <nav aria-label={t('platform.nav.label')} className="flex flex-col gap-4 p-3">
-      {NAV_GROUPS.map((group) => {
+      {layout.groups.map((group) => {
         const groupItems = items.filter((item) => item.group === group.id);
         if (groupItems.length === 0) return null;
         const headingId = `nav-group-${group.id}`;

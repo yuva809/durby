@@ -1,5 +1,6 @@
 import {
   DEFAULT_THEME,
+  NAV_LAYOUTS,
   normalizeHost,
   resolveThemeColors,
   type ThemeResponse,
@@ -15,6 +16,8 @@ export interface DomainThemeRow {
     colorPrimary: string;
     colorInk: string | null;
     colorPaper: string | null;
+    /** Checked against NAV_LAYOUTS: an unknown value means `default`. */
+    navLayout?: string;
   } | null;
 }
 
@@ -53,7 +56,8 @@ function toResponse(
     paper: theme.colorPaper,
   });
   if (fallback) onContrastFallback(partnerId);
-  return { productName: theme.productName, logoUrl: theme.logoPath, tokens };
+  const navLayout = NAV_LAYOUTS.find((layout) => layout === theme.navLayout) ?? 'default';
+  return { productName: theme.productName, logoUrl: theme.logoPath, tokens, navLayout };
 }
 
 /** The theme for a raw request host; unknown, malformed and IP hosts get DEFAULT_THEME. */

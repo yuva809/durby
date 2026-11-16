@@ -77,6 +77,9 @@ export function FormDialog({
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    // A dialog opened from another dialog's form (a new customer in the order form): React events bubble
+    // through portals, so the outer form must not submit too.
+    event.stopPropagation();
     const pending = submit();
     if (!pending) return;
     setBusy(true);
@@ -105,6 +108,7 @@ export function FormDialog({
       <DialogTrigger asChild>
         {triggerIcon ? (
           <Button
+            type="button"
             variant={triggerVariant}
             size="icon"
             className={triggerClassName}
@@ -114,7 +118,7 @@ export function FormDialog({
             {triggerIcon}
           </Button>
         ) : (
-          <Button variant={triggerVariant} data-testid={testId}>
+          <Button type="button" variant={triggerVariant} data-testid={testId}>
             {trigger}
           </Button>
         )}

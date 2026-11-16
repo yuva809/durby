@@ -34,7 +34,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <style id="theme-tokens">{tokensCss(theme.tokens)}</style>
       </head>
       <body className="min-h-dvh">
-        <BrandProvider brand={{ productName: theme.productName, logoUrl: theme.logoUrl }}>
+        <BrandProvider
+          brand={{
+            productName: theme.productName,
+            logoUrl: theme.logoUrl,
+            navLayout: theme.navLayout,
+          }}
+        >
           <AuthProvider>
             <LabelsProvider>{children}</LabelsProvider>
           </AuthProvider>

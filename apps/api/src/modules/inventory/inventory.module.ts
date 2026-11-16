@@ -3,6 +3,7 @@ import { CatalogModule } from '../catalog';
 import { BomsService } from './boms.service';
 import { ConsumptionHandler } from './consumption.handler';
 import { InventoryController } from './inventory.controller';
+import { ItemImportService } from './item-import.service';
 import { ItemSetupController } from './item-setup.controller';
 import { RecipesService } from './recipes.service';
 import { InventorySetupService } from './setup.service';
@@ -25,6 +26,9 @@ import { VariantsService } from './variants.service';
     UnitsService,
     VariantsService,
     BomsService,
+    ItemImportService,
   ],
+  // Sales orders book their goods out and back in through it (orders module, ADR 0044).
+  exports: [StockService],
 })
 export class InventoryModule {}

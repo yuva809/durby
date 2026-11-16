@@ -1,5 +1,6 @@
 'use client';
 
+import type { LabelKey } from '@durby/i18n';
 import { LOCATION_NAME_MAX_LENGTH, type LocationSummary } from '@durby/shared';
 import { MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -19,8 +20,9 @@ import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 /**
  * /settings/locations (docs/platform/web-shell.md → Locations). Everyone with
  * platform.settings.read sees the list; only owners (platform.org.manage) add, rename and delete.
+ * Also /branches in the operations menu (ADR 0044), with its own title.
  */
-export function LocationsPage() {
+export function LocationsPage({ title = 'platform.nav.locations' }: { title?: LabelKey } = {}) {
   const t = useT();
   const { store, session } = useAuth();
   const [locations, reload] = useResource(session?.activeOrganizationId ?? null, () =>
@@ -28,15 +30,14 @@ export function LocationsPage() {
   );
   if (!session) return null;
   const permissions = new Set(session.activePermissions);
-  if (!permissions.has('platform.settings.read'))
-    return <NoAccess title="platform.nav.locations" />;
+  if (!permissions.has('platform.settings.read')) return <NoAccess title={title} />;
   const canManage = permissions.has('platform.org.manage');
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">{t('platform.nav.locations')}</h1>
+          <h1 className="text-2xl font-semibold">{t(title)}</h1>
           <p className="text-muted-foreground">{t('platform.locationsPage.intro')}</p>
         </div>
         {canManage && <LocationDialog onDone={reload} />}

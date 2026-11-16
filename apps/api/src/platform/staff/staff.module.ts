@@ -17,6 +17,8 @@ import { StaffMailer } from './staff-mailer';
 import { StaffSessionsService } from './staff-sessions.service';
 import { PlatformAuditController, StaffController } from './staff.controller';
 import { StaffService } from './staff.service';
+import { StaffFeedbackController } from './staff-feedback.controller';
+import { StaffFeedbackService } from './staff-feedback.service';
 
 /**
  * Durby staff and the admin portal API (docs/platform/admin-portal.md, ADR 0017). The global
@@ -33,6 +35,7 @@ import { StaffService } from './staff.service';
     OnboardingOptionsController,
     CustomerEntitlementsController,
     FeatureCatalogController,
+    StaffFeedbackController,
   ],
   providers: [
     CustomerEntitlementsService,
@@ -44,6 +47,7 @@ import { StaffService } from './staff.service';
     StaffMailer,
     StaffService,
     StaffSessionsService,
+    StaffFeedbackService,
     { provide: STAFF_AUTHENTICATOR, useExisting: StaffAuthenticator },
   ],
   exports: [STAFF_AUTHENTICATOR, StaffAuthenticator, StaffContext, StaffService],

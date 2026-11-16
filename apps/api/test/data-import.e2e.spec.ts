@@ -1,0 +1,193 @@
+import type { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import {
+  dataImportResultSchema,
+  orderCustomerListResponseSchema,
+  productCategoryListResponseSchema,
+  stockItemListResponseSchema,
+  stockLevelListResponseSchema,
+  type SystemRole,
+  warehouseSchema,
+} from '@durby/shared';
+import request from 'supertest';
+import type { App } from 'supertest/types';
+import { v7 as uuidv7 } from 'uuid';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/app.setup';
+import { EntitlementsAdmin } from '../src/platform/config/entitlements';
+import { withIdempotencyKey } from './support/idempotency';
+import { RbacSeed, type SeededOrg } from './support/rbac';
+
+/**
+ * Import Data (docs/platform/import.md, ADR 0044 step 4): categories, stock items, opening stock and customers, each
+ * at its module, all rows in one transaction, refused as a whole with the rows' problems.
+ */
+describe('data import (ADR 0044 step 4)', () => {
+  let app: INestApplication;
+  let server: App;
+  let seed: RbacSeed;
+  let entitlements: EntitlementsAdmin;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = configureApp(moduleRef.createNestApplication());
+    await app.init();
+    server = app.getHttpServer() as App;
+    seed = new RbacSeed(app);
+    entitlements = app.get(EntitlementsAdmin);
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  async function memberToken(org: SeededOrg, role: SystemRole) {
+    const userId = await seed.user();
+    await seed.member(org.id, userId, org.roles[role]);
+    return seed.token(userId, org.id);
+  }
+
+  const auth = (req: request.Test, token: string) => req.auth(token, { type: 'bearer' });
+  const get = (token: string, path: string) => auth(request(server).get(`/api/v1${path}`), token);
+  const post = (token: string, path: string, body: object, key: string = uuidv7()) =>
+    withIdempotencyKey(auth(request(server).post(`/api/v1${path}`), token), key).send(body);
+
+  async function setup() {
+    const org = await seed.org();
+    await entitlements.setPlan(org.id, 'inventory', 'cli.entitlements');
+    const owner = await memberToken(org, 'owner');
+    return { org, owner };
+  }
+
+  it('adds missing categories at the end and leaves the others', async () => {
+    const s = await setup();
+    await post(s.owner, '/catalog/categories', { name: 'Rice' }).expect(201);
+    const result = dataImportResultSchema.parse(
+      (
+        await post(s.owner, '/catalog/categories/import', {
+          rows: [{ name: 'rice' }, { name: 'Oil' }, { name: 'Snacks' }],
+        }).expect(200)
+      ).body,
+    );
+    expect(result).toMatchObject({ created: 2, unchanged: 1 });
+    const list = productCategoryListResponseSchema.parse(
+      (await get(s.owner, '/catalog/categories').expect(200)).body,
+    );
+    expect(list.data.map((c) => c.name)).toEqual(['Rice', 'Oil', 'Snacks']);
+    await post(s.owner, '/catalog/categories/import', {
+      rows: [{ name: 'A' }, { name: 'a' }],
+    }).expect(400);
+  });
+
+  it('creates and updates stock items by SKU or name, all or nothing', async () => {
+    const s = await setup();
+    await post(s.owner, '/inventory/items', { name: 'Rice', unit: 'pc', sku: 'R-1' }).expect(201);
+    const result = dataImportResultSchema.parse(
+      (
+        await post(s.owner, '/inventory/items/import', {
+          rows: [
+            { name: 'Rice 5 kg', sku: 'R-1', unit: 'pc', salePrice: '12.90' },
+            { name: 'Oil', unit: 'l', minQuantity: '2' },
+          ],
+        }).expect(200)
+      ).body,
+    );
+    expect(result).toMatchObject({ created: 1, updated: 1, unchanged: 0 });
+    const items = stockItemListResponseSchema.parse(
+      (await get(s.owner, '/inventory/items').expect(200)).body,
+    );
+    expect(items.data.map((i) => [i.name, i.sku, i.salePrice])).toEqual(
+      expect.arrayContaining([
+        ['Rice 5 kg', 'R-1', '12.90'],
+        ['Oil', null, null],
+      ]),
+    );
+    // One bad row: nothing is written.
+    const res = await post(s.owner, '/inventory/items/import', {
+      rows: [
+        { name: 'Sugar', unit: 'kg' },
+        { name: 'Salt', unit: 'box' },
+      ],
+    }).expect(400);
+    expect(res.body).toMatchObject({
+      code: 'inventory.import_invalid',
+      details: { rows: [{ row: 2, field: 'unit', problem: 'invalid' }] },
+    });
+    const after = stockItemListResponseSchema.parse(
+      (await get(s.owner, '/inventory/items').expect(200)).body,
+    );
+    expect(after.data.map((i) => i.name)).not.toContain('Sugar');
+  });
+
+  it('books opening stock as one receipt per warehouse, refusing unknown names', async () => {
+    const s = await setup();
+    const warehouse = async (name: string) =>
+      warehouseSchema.parse(
+        (
+          await post(s.owner, '/inventory/warehouses', {
+            locationId: s.org.locations[0],
+            name,
+          }).expect(201)
+        ).body,
+      ).id;
+    const main = await warehouse('Main');
+    const cold = await warehouse('Cold room');
+    await post(s.owner, '/inventory/items', { name: 'Rice', unit: 'pc', sku: 'R-1' }).expect(201);
+    await post(s.owner, '/inventory/items', { name: 'Fish', unit: 'kg' }).expect(201);
+    await post(s.owner, '/inventory/opening-stock/import', {
+      rows: [{ warehouse: 'Nowhere', item: 'R-1', quantity: '1', unitCost: '1' }],
+    }).expect(400);
+    const result = dataImportResultSchema.parse(
+      (
+        await post(s.owner, '/inventory/opening-stock/import', {
+          rows: [
+            { warehouse: 'main', item: 'R-1', quantity: '10', unitCost: '8.50' },
+            { warehouse: 'Cold room', item: 'fish', quantity: '2.5', unitCost: '20' },
+          ],
+        }).expect(200)
+      ).body,
+    );
+    expect(result.documents).toHaveLength(2);
+    const level = async (warehouseId: string) =>
+      stockLevelListResponseSchema
+        .parse((await get(s.owner, `/inventory/stock?warehouseId=${warehouseId}`).expect(200)).body)
+        .data.map((l) => [l.itemName, l.quantity, l.averageCost]);
+    expect(await level(main)).toEqual([['Rice', '10.000', '8.5000']]);
+    expect(await level(cold)).toEqual([['Fish', '2.500', '20.0000']]);
+  });
+
+  it('imports customers by code or name; staff may not import', async () => {
+    const s = await setup();
+    await post(s.owner, '/orders/customers', { name: 'Lotus', code: 'C-1' }).expect(201);
+    const result = dataImportResultSchema.parse(
+      (
+        await post(s.owner, '/orders/customers/import', {
+          rows: [
+            { name: 'Lotus Mart', code: 'C-1', phone: '+60 12' },
+            { name: 'Sunrise Grocers', email: 'buy@sunrise.example' },
+          ],
+        }).expect(200)
+      ).body,
+    );
+    expect(result).toMatchObject({ created: 1, updated: 1 });
+    const list = orderCustomerListResponseSchema.parse(
+      (await get(s.owner, '/orders/customers').expect(200)).body,
+    );
+    expect(list.data.map((c) => c.name)).toEqual(['Lotus Mart', 'Sunrise Grocers']);
+    const staff = await memberToken(s.org, 'staff');
+    await post(staff, '/orders/customers/import', { rows: [{ name: 'X' }] }).expect(403);
+  });
+
+  it('replays an import with the same key instead of importing twice', async () => {
+    const s = await setup();
+    const key = uuidv7();
+    const body = { rows: [{ name: 'Once' }] };
+    await post(s.owner, '/orders/customers/import', body, key).expect(200);
+    await post(s.owner, '/orders/customers/import', body, key).expect(200);
+    const list = orderCustomerListResponseSchema.parse(
+      (await get(s.owner, '/orders/customers').expect(200)).body,
+    );
+    expect(list.data.filter((c) => c.name === 'Once')).toHaveLength(1);
+  });
+});

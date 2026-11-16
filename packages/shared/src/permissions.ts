@@ -27,6 +27,8 @@ export const PERMISSIONS = {
   'platform.settings.manage': { scope: 'location', label: 'platform.permissions.settingsManage' },
   'platform.labels.manage': { scope: 'organization', label: 'platform.permissions.labelsManage' },
   'platform.audit.read': { scope: 'organization', label: 'platform.permissions.auditRead' },
+  // Feedback to the Durby team (ADR 0044 step 5): every role, location scope so location-limited members hold it.
+  'platform.feedback.send': { scope: 'location', label: 'platform.permissions.feedbackSend' },
   // Location scope so location-limited members (waiters) can read the organization-wide menu.
   'catalog.products.read': { scope: 'location', label: 'catalog.permissions.productsRead' },
   'catalog.products.create': { scope: 'organization', label: 'catalog.permissions.productsCreate' },
@@ -117,6 +119,16 @@ export const PERMISSIONS = {
   'reservations.setup.create': { scope: 'location', label: 'reservations.permissions.setupCreate' },
   'reservations.setup.edit': { scope: 'location', label: 'reservations.permissions.setupEdit' },
   'reservations.setup.delete': { scope: 'location', label: 'reservations.permissions.setupDelete' },
+  // Sales orders and customers (ADR 0044): orders at a branch, customers organization-wide but readable per branch.
+  'orders.orders.read': { scope: 'location', label: 'orders.permissions.ordersRead' },
+  'orders.orders.create': { scope: 'location', label: 'orders.permissions.ordersCreate' },
+  'orders.orders.edit': { scope: 'location', label: 'orders.permissions.ordersEdit' },
+  'orders.customers.read': { scope: 'location', label: 'orders.permissions.customersRead' },
+  'orders.customers.create': { scope: 'organization', label: 'orders.permissions.customersCreate' },
+  'orders.customers.edit': { scope: 'organization', label: 'orders.permissions.customersEdit' },
+  // Picking takes the goods out of the warehouse; delivery dispatches, delivers and returns (ADR 0044 step 3).
+  'orders.picking.use': { scope: 'location', label: 'orders.permissions.pickingUse' },
+  'orders.delivery.use': { scope: 'location', label: 'orders.permissions.deliveryUse' },
 } as const satisfies Record<string, PermissionDefinition>;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -203,6 +215,15 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'reservations.setup.create': 'grant',
     'reservations.setup.edit': 'grant',
     'reservations.setup.delete': 'grant',
+    'orders.orders.read': 'grant',
+    'orders.orders.create': 'grant',
+    'orders.orders.edit': 'grant',
+    'orders.customers.read': 'grant',
+    'orders.customers.create': 'grant',
+    'orders.customers.edit': 'grant',
+    'orders.picking.use': 'grant',
+    'orders.delivery.use': 'grant',
+    'platform.feedback.send': 'grant',
   },
   manager: {
     'platform.org.manage': 'deny',
@@ -257,6 +278,15 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'reservations.setup.create': 'grant',
     'reservations.setup.edit': 'grant',
     'reservations.setup.delete': 'grant',
+    'orders.orders.read': 'grant',
+    'orders.orders.create': 'grant',
+    'orders.orders.edit': 'grant',
+    'orders.customers.read': 'grant',
+    'orders.customers.create': 'grant',
+    'orders.customers.edit': 'grant',
+    'orders.picking.use': 'grant',
+    'orders.delivery.use': 'grant',
+    'platform.feedback.send': 'grant',
   },
   staff: {
     'platform.org.manage': 'deny',
@@ -311,6 +341,15 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'reservations.setup.create': 'deny',
     'reservations.setup.edit': 'deny',
     'reservations.setup.delete': 'deny',
+    'orders.orders.read': 'grant',
+    'orders.orders.create': 'deny',
+    'orders.orders.edit': 'deny',
+    'orders.customers.read': 'grant',
+    'orders.customers.create': 'deny',
+    'orders.customers.edit': 'deny',
+    'orders.picking.use': 'deny',
+    'orders.delivery.use': 'deny',
+    'platform.feedback.send': 'grant',
   },
   // Table service (ADR 0016): takes orders at the tables of their locations, and, like the cashier,
   // prints the bill and checks out. Reservations: books and seats guests and runs the waitlist too
@@ -368,6 +407,15 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'reservations.setup.create': 'deny',
     'reservations.setup.edit': 'deny',
     'reservations.setup.delete': 'deny',
+    'orders.orders.read': 'deny',
+    'orders.orders.create': 'deny',
+    'orders.orders.edit': 'deny',
+    'orders.customers.read': 'deny',
+    'orders.customers.create': 'deny',
+    'orders.customers.edit': 'deny',
+    'orders.picking.use': 'deny',
+    'orders.delivery.use': 'deny',
+    'platform.feedback.send': 'grant',
   },
   // Table service (ADR 0016): the billing counter.
   cashier: {
@@ -423,6 +471,15 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'reservations.setup.create': 'deny',
     'reservations.setup.edit': 'deny',
     'reservations.setup.delete': 'deny',
+    'orders.orders.read': 'deny',
+    'orders.orders.create': 'deny',
+    'orders.orders.edit': 'deny',
+    'orders.customers.read': 'deny',
+    'orders.customers.create': 'deny',
+    'orders.customers.edit': 'deny',
+    'orders.picking.use': 'deny',
+    'orders.delivery.use': 'deny',
+    'platform.feedback.send': 'grant',
   },
   // Reservations (docs/modules/reservations.md → Permissions): the door. Bookings, walk-ins and the
   // waitlist, and which tables exist; no orders, menu, setup or people.
@@ -479,6 +536,15 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'reservations.setup.create': 'deny',
     'reservations.setup.edit': 'deny',
     'reservations.setup.delete': 'deny',
+    'orders.orders.read': 'deny',
+    'orders.orders.create': 'deny',
+    'orders.orders.edit': 'deny',
+    'orders.customers.read': 'deny',
+    'orders.customers.create': 'deny',
+    'orders.customers.edit': 'deny',
+    'orders.picking.use': 'deny',
+    'orders.delivery.use': 'deny',
+    'platform.feedback.send': 'grant',
   },
   // The kitchen screen: tickets without prices (ADR 0026).
   kitchen: {
@@ -534,6 +600,15 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'reservations.setup.create': 'deny',
     'reservations.setup.edit': 'deny',
     'reservations.setup.delete': 'deny',
+    'orders.orders.read': 'deny',
+    'orders.orders.create': 'deny',
+    'orders.orders.edit': 'deny',
+    'orders.customers.read': 'deny',
+    'orders.customers.create': 'deny',
+    'orders.customers.edit': 'deny',
+    'orders.picking.use': 'deny',
+    'orders.delivery.use': 'deny',
+    'platform.feedback.send': 'grant',
   },
   // The bar screen (ADR 0026).
   bar: {
@@ -589,6 +664,15 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'reservations.setup.create': 'deny',
     'reservations.setup.edit': 'deny',
     'reservations.setup.delete': 'deny',
+    'orders.orders.read': 'deny',
+    'orders.orders.create': 'deny',
+    'orders.orders.edit': 'deny',
+    'orders.customers.read': 'deny',
+    'orders.customers.create': 'deny',
+    'orders.customers.edit': 'deny',
+    'orders.picking.use': 'deny',
+    'orders.delivery.use': 'deny',
+    'platform.feedback.send': 'grant',
   },
 };
 

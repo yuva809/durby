@@ -311,5 +311,7 @@
   "catalog.page.renumberDescription": "Every active product gets 1, 2, 3 … in menu order (categories, then products), replacing its current number. Printed menus and what staff type at the till change.",
   "catalog.page.renumberConfirm": "Renumber",
   "catalog.page.dragHint": "Drag categories by their handle to set the menu order. Renumber menu follows it.",
-  "catalog.page.dragCategory": "Move {name}"
+  "catalog.page.dragCategory": "Move {name}",
+  "catalog.categoriesPage.intro": "Group your products. Drag a category to change the order everywhere it is listed.",
+  "catalog.categoriesPage.products": "Products: {count}"
 }

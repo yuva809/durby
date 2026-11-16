@@ -223,6 +223,7 @@ export const STAFF_ERROR_CODES = [
   'staff.feature_limits_invalid',
   'staff.expiry_past',
   'staff.feature_dependency_missing',
+  'staff.feedback_not_found',
 ] as const;
 
 export type StaffErrorCode = (typeof STAFF_ERROR_CODES)[number];

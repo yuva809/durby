@@ -22,7 +22,8 @@ import {
 import { INVENTORY_PAGES } from './inventory-pages';
 import { SETTINGS_TABS } from './settings-tabs';
 
-export type NavGroup = 'main' | 'modules' | 'settings';
+/** `operations`, `administration` and `tools`: the groups of the operations layout (ADR 0044). */
+export type NavGroup = 'main' | 'modules' | 'settings' | 'operations' | 'administration' | 'tools';
 
 export interface NavItem {
   id: string;

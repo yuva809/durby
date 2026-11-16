@@ -1,4 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
+import type { DataImportProblemRow } from '@durby/shared';
 import { ApiError } from '../../platform/http';
 
 /** Error codes of the inventory module (docs/modules/inventory.md → Errors). */
@@ -120,6 +121,16 @@ export const inventoryErrors = {
       HttpStatus.NOT_FOUND,
       'inventory.bom_not_found',
       'This item has no bill of materials.',
+    ),
+  /** Import Data (ADR 0044 step 4): the rows' problems, refused as a whole. */
+  importInvalid: (rows: DataImportProblemRow[]) =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'inventory.import_invalid',
+      'Some import rows are invalid.',
+      {
+        rows,
+      },
     ),
   bomInvalid: () =>
     new ApiError(

@@ -40,7 +40,7 @@ describe('system roles', () => {
     },
   );
 
-  it('keeps admin below owner, and staff to reading settings, products and tables', () => {
+  it('keeps admin below owner, and staff to reading settings, products, tables and orders', () => {
     expect(systemRolePermissions('admin').has('platform.org.manage')).toBe(false);
     expect(systemRolePermissions('admin').has('platform.roles.manage')).toBe(true);
     expect(systemRolePermissions('admin').has('catalog.products.edit')).toBe(true);
@@ -58,6 +58,15 @@ describe('system roles', () => {
       'inventory.warehouses.create',
       'inventory.warehouses.delete',
       'inventory.warehouses.edit',
+      'orders.customers.create',
+      'orders.customers.edit',
+      'orders.customers.read',
+      'orders.delivery.use',
+      'orders.orders.create',
+      'orders.orders.edit',
+      'orders.orders.read',
+      'orders.picking.use',
+      'platform.feedback.send',
       'platform.roles.read',
       'platform.settings.read',
       'platform.users.invite',
@@ -89,6 +98,9 @@ describe('system roles', () => {
     expect([...systemRolePermissions('staff')].sort()).toEqual([
       'catalog.products.read',
       'inventory.stock.read',
+      'orders.customers.read',
+      'orders.orders.read',
+      'platform.feedback.send',
       'platform.settings.read',
       'pos.tables.read',
     ]);
@@ -98,6 +110,7 @@ describe('system roles', () => {
   it('lets waiters take orders and, like cashiers, print bills and close them', () => {
     expect([...systemRolePermissions('waiter')].sort()).toEqual([
       'catalog.products.read',
+      'platform.feedback.send',
       'platform.settings.read',
       'pos.bills.print',
       'pos.orders.close',
@@ -114,6 +127,7 @@ describe('system roles', () => {
     ]);
     expect([...systemRolePermissions('cashier')].sort()).toEqual([
       'catalog.products.read',
+      'platform.feedback.send',
       'platform.settings.read',
       'pos.bills.print',
       'pos.orders.close',
@@ -179,11 +193,13 @@ describe('system roles', () => {
     ];
     expect([...systemRolePermissions('kitchen')].sort()).toEqual([
       ...store,
+      'platform.feedback.send',
       'platform.settings.read',
       'pos.kitchen.use',
     ]);
     expect([...systemRolePermissions('bar')].sort()).toEqual([
       ...store,
+      'platform.feedback.send',
       'platform.settings.read',
       'pos.bar.use',
     ]);
@@ -196,6 +212,7 @@ describe('system roles', () => {
   // The door: bookings, walk-ins and the waitlist, and which tables exist; no orders, menu or setup.
   it('gives the host the bookings, the waitlist and the tables, nothing else', () => {
     expect([...systemRolePermissions('host')].sort()).toEqual([
+      'platform.feedback.send',
       'platform.settings.read',
       'pos.tables.read',
       'reservations.bookings.create',

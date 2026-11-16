@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PREP_STATIONS } from './catalog';
+import { PREP_STATIONS, priceSchema } from './catalog';
 
 /** Request and response bodies of /api/v1/inventory (docs/modules/inventory.md, ADR 0027). */
 
@@ -17,6 +17,10 @@ export const STOCK_DOCUMENT_KINDS = [
   'transfer',
   'consumption',
   'production',
+  /** Goods out to a customer when a sales order is picked (ADR 0044). */
+  'issue',
+  /** Goods back in from a cancelled or returned sales order (ADR 0044). */
+  'restock',
 ] as const;
 export type StockDocumentKind = (typeof STOCK_DOCUMENT_KINDS)[number];
 
@@ -88,6 +92,8 @@ export const stockItemSchema = z.object({
   parentItemId: z.uuid().nullable().default(null),
   /** A variant's attribute values in attribute order, e.g. ["Large", "0.5 l"]; empty for other items. */
   variantValues: z.array(z.string()).default([]),
+  /** Default unit price on sales orders (ADR 0044), 2 decimals; null = none. Default for older apis. */
+  salePrice: z.string().nullable().default(null),
   archivedAt: z.iso.datetime().nullable(),
 });
 
@@ -96,6 +102,7 @@ export const createStockItemRequestSchema = z.strictObject({
   sku: z.string().trim().min(1).max(50).optional(),
   unit: z.enum(STOCK_UNITS),
   minQuantity: stockQuantitySchema.optional(),
+  salePrice: priceSchema.optional(),
 });
 
 export const updateStockItemRequestSchema = z
@@ -104,6 +111,7 @@ export const updateStockItemRequestSchema = z
     sku: z.string().trim().min(1).max(50).nullable().optional(),
     unit: z.enum(STOCK_UNITS).optional(),
     minQuantity: stockQuantitySchema.nullable().optional(),
+    salePrice: priceSchema.nullable().optional(),
     archived: z.boolean().optional(),
   })
   .refine((body) => Object.values(body).some((v) => v !== undefined), {

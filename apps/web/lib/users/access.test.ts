@@ -176,6 +176,7 @@ describe('custom-role editor', () => {
       'platform.settings',
       'platform.labels',
       'platform.audit',
+      'platform.feedback',
       'catalog.products',
       'inventory.stock',
       'inventory.warehouses',
@@ -190,6 +191,10 @@ describe('custom-role editor', () => {
       'reservations.bookings',
       'reservations.waitlist',
       'reservations.setup',
+      'orders.orders',
+      'orders.customers',
+      'orders.picking',
+      'orders.delivery',
     ]);
     expect(groups.flatMap((g) => g.keys)).toEqual([...PERMISSION_KEYS]);
     for (const locale of LOCALES) {

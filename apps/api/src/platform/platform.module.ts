@@ -23,6 +23,7 @@ import { RedisModule } from './redis';
 import { StaffModule } from './staff';
 import { TenancyModule } from './tenancy';
 import { ThemeModule } from './theme';
+import { FeedbackModule } from './feedback';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { ThemeModule } from './theme';
     OrganizationModule,
     ProvisioningModule,
     ThemeModule,
+    FeedbackModule,
   ],
   controllers: [HealthController],
   providers: [HealthService, { provide: APP_FILTER, useClass: ApiExceptionFilter }],

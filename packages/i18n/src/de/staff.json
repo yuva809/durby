@@ -171,5 +171,17 @@
   "staff.modules.partlySaved": "Nicht alles wurde gespeichert. Gespeichert: {saved}. Nicht gespeichert: {failed}. Bitte prüfen und erneut versuchen.",
   "staff.modules.changePlanAction": "Tarif ändern",
   "staff.modules.onboardingNote": "Vorbelegt aus dem Tarif. Änderungen werden als individuelle Schaltungen gespeichert.",
-  "staff.audit.actors.cliSeedDev": "seed-dev-Befehl (nur lokal)"
+  "staff.audit.actors.cliSeedDev": "seed-dev-Befehl (nur lokal)",
+  "staff.permissions.feedbackRead": "Kunden-Feedback lesen",
+  "staff.permissions.feedbackManage": "Kunden-Feedback als gesehen oder erledigt markieren",
+  "staff.audit.actions.feedbackStatusChanged": "Feedback-Status geändert",
+  "staff.audit.entities.feedback": "Feedback",
+  "staff.errors.feedbackNotFound": "Dieses Feedback existiert nicht mehr.",
+  "staff.nav.feedback": "Feedback",
+  "staff.feedbackPage.filter": "Anzeigen",
+  "staff.feedbackPage.all": "Alle",
+  "staff.feedbackPage.empty": "Hier ist kein Feedback.",
+  "staff.feedbackPage.mark.new": "Als neu markieren",
+  "staff.feedbackPage.mark.seen": "Als gesehen markieren",
+  "staff.feedbackPage.mark.done": "Als erledigt markieren"
 }

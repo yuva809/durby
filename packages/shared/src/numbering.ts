@@ -79,6 +79,33 @@ export const NUMBER_SERIES = {
     pattern: '{prefix}-{YYYY}-{seq:6}',
     resetPolicy: 'yearly',
   },
+  /** Goods issued for picked sales orders (ADR 0044). */
+  'inventory.goodsIssue': {
+    label: 'platform.numbering.series.inventoryGoodsIssue.name',
+    description: 'platform.numbering.series.inventoryGoodsIssue.description',
+    feature: 'orders',
+    prefix: 'GI',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
+  /** Goods back in from cancelled or returned sales orders (ADR 0044). */
+  'inventory.goodsRestock': {
+    label: 'platform.numbering.series.inventoryGoodsRestock.name',
+    description: 'platform.numbering.series.inventoryGoodsRestock.description',
+    feature: 'orders',
+    prefix: 'RS',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
+  /** Sales orders of a distribution business (ADR 0044). */
+  'orders.salesOrder': {
+    label: 'platform.numbering.series.ordersSalesOrder.name',
+    description: 'platform.numbering.series.ordersSalesOrder.description',
+    feature: 'orders',
+    prefix: 'SO',
+    pattern: '{prefix}-{YYYY}-{seq:6}',
+    resetPolicy: 'yearly',
+  },
   'billing.invoice': {
     label: 'platform.numbering.series.billingInvoice.name',
     description: 'platform.numbering.series.billingInvoice.description',
