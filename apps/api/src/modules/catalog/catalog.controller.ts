@@ -19,6 +19,9 @@ import {
   type ProductBulkResponse,
   type ImportProductsRequest,
   importProductsRequestSchema,
+  type DataImportResult,
+  type ImportCategoriesRequest,
+  importCategoriesRequestSchema,
   type NumberProductsResponse,
   type OrderCategoriesRequest,
   orderCategoriesRequestSchema,
@@ -48,6 +51,7 @@ import { RequirePermission } from '../../platform/rbac';
 import { catalogErrors } from './catalog-errors';
 import { CatalogBulkService } from './catalog-bulk.service';
 import { CatalogService } from './catalog.service';
+import { CategoryImportService } from './category-import.service';
 
 /** A malformed id is a 404 of the entity, like an unknown one. */
 const uuidOr = (notFound: () => Error) => new ParseUUIDPipe({ exceptionFactory: notFound });
@@ -62,6 +66,7 @@ export class CatalogController {
   constructor(
     private readonly catalog: CatalogService,
     private readonly bulk: CatalogBulkService,
+    private readonly categoryImport: CategoryImportService,
   ) {}
 
   @RequirePermission('catalog.products.read')
@@ -120,6 +125,17 @@ export class CatalogController {
     @Body(new ZodBody(productBulkRequestSchema)) body: ProductBulkRequest,
   ): Promise<ProductBulkResponse> {
     return this.bulk.products(body);
+  }
+
+  /** Import Data → product categories (ADR 0044 step 4): adds the missing names. */
+  @RequirePermission('catalog.products.create')
+  @Idempotent({ completion: 'transaction' })
+  @Post('categories/import')
+  @HttpCode(HttpStatus.OK)
+  importCategories(
+    @Body(new ZodBody(importCategoriesRequestSchema)) body: ImportCategoriesRequest,
+  ): Promise<DataImportResult> {
+    return this.categoryImport.importCategories(body);
   }
 
   /** Drag-and-drop order (ADR 0043): sets positions, so a replay writes the same order again. */

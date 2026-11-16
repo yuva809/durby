@@ -237,5 +237,6 @@
   "inventory.fields.salePrice": "Sale price (optional)",
   "inventory.page.salePriceInvalid": "Enter a price with up to 2 decimals.",
   "inventory.kinds.issue": "Goods issue",
-  "inventory.kinds.restock": "Goods back in"
+  "inventory.kinds.restock": "Goods back in",
+  "inventory.errors.importInvalid": "Some rows can't be imported. Check the preview, fix the file and try again."
 }

@@ -1,12 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type {
-  CreateOrderCustomerRequest,
-  ListOrderCustomersQuery,
-  OrderCustomer,
-  UpdateOrderCustomerRequest,
+import {
+  checkCustomerRows,
+  type CreateOrderCustomerRequest,
+  type DataImportResult,
+  type ImportCustomersRequest,
+  type ListOrderCustomersQuery,
+  type OrderCustomer,
+  type UpdateOrderCustomerRequest,
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
+import { AccessService } from '../../platform/rbac';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../../platform/tenancy';
 import { isUniqueViolation, ordersErrors } from './orders-errors';
 
@@ -34,6 +38,7 @@ export class CustomersService {
     private readonly tenantContext: TenantContext,
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
+    private readonly access: AccessService,
   ) {}
 
   async list(query: ListOrderCustomersQuery): Promise<OrderCustomer[]> {
@@ -128,6 +133,97 @@ export class CustomersService {
           after: snapshot('customer', after),
         });
         return after;
+      }),
+    );
+  }
+
+  /**
+   * Import Data → customers (docs/platform/import.md, ADR 0044 step 4): a row meets an active customer by code when it
+   * has one, else by name (case-insensitive); created when there is none, updated when something differs (empty
+   * cells keep what is there). Updating needs `orders.customers.edit` as well. One transaction.
+   */
+  async importCustomers(body: ImportCustomersRequest): Promise<DataImportResult> {
+    const problems = checkCustomerRows(body.rows);
+    if (problems.length > 0) throw ordersErrors.importInvalid(problems);
+    const { tenantId, userId } = this.tenantContext.require();
+    const canEdit = await this.access.can('orders.customers.edit');
+    return this.unique(() =>
+      this.db.$transaction(async (tx) => {
+        const customers = await tx.orderCustomer.findMany({
+          where: { archivedAt: null },
+          select: CUSTOMER_SELECT,
+        });
+        const byCode = new Map(
+          customers.filter((c) => c.code).map((c) => [c.code!.toLowerCase(), c]),
+        );
+        const byName = new Map(customers.map((c) => [c.name.toLowerCase(), c]));
+        const result: DataImportResult = { created: 0, updated: 0, unchanged: 0, documents: [] };
+        const value = (cell: string | undefined) => cell?.trim() || null;
+        for (const row of body.rows) {
+          const code = value(row.code);
+          const current = code
+            ? byCode.get(code.toLowerCase())
+            : byName.get(row.name.trim().toLowerCase());
+          if (!current) {
+            const created = await tx.orderCustomer.create({
+              data: {
+                tenantId,
+                name: row.name.trim(),
+                code,
+                phone: value(row.phone),
+                email: value(row.email),
+                address: value(row.address),
+                note: value(row.note),
+              },
+              select: CUSTOMER_SELECT,
+            });
+            await this.audit.record(tx, {
+              action: 'orders.customer.created',
+              actor: auditActor.user(userId),
+              entityId: created.id,
+              after: snapshot('customer', customerResponse(created)),
+            });
+            result.created += 1;
+            continue;
+          }
+          const before = customerResponse(current);
+          const next: OrderCustomer = {
+            ...before,
+            name: row.name.trim(),
+            code: code ?? before.code,
+            phone: value(row.phone) ?? before.phone,
+            email: value(row.email) ?? before.email,
+            address: value(row.address) ?? before.address,
+            note: value(row.note) ?? before.note,
+          };
+          if (JSON.stringify(before) === JSON.stringify(next)) {
+            result.unchanged += 1;
+            continue;
+          }
+          if (!canEdit) await this.access.assert('orders.customers.edit');
+          const updated = await tx.orderCustomer.update({
+            where: { id: current.id },
+            data: {
+              name: next.name,
+              code: next.code,
+              phone: next.phone,
+              email: next.email,
+              address: next.address,
+              note: next.note,
+            },
+            select: CUSTOMER_SELECT,
+          });
+          await this.audit.record(tx, {
+            action: 'orders.customer.updated',
+            actor: auditActor.user(userId),
+            entityId: current.id,
+            before: snapshot('customer', before),
+            after: snapshot('customer', customerResponse(updated)),
+          });
+          result.updated += 1;
+        }
+        await this.idempotency.completeInTransaction(tx, result);
+        return result;
       }),
     );
   }

@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import type { ImportRowProblem, PriceRuleProblem } from '@durby/shared';
+import type { DataImportProblemRow, ImportRowProblem, PriceRuleProblem } from '@durby/shared';
 import { ApiError } from '../../platform/http';
 
 /** Error codes of the catalog module (docs/modules/catalog.md → Errors). */
@@ -56,6 +56,16 @@ export const catalogErrors = {
     ),
   categoryArchived: () =>
     new ApiError(HttpStatus.CONFLICT, 'catalog.category_archived', 'The category is archived.'),
+  /** Import Data → categories (ADR 0044): the same code, its own row shape. */
+  categoryImportInvalid: (rows: DataImportProblemRow[]) =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'catalog.import_invalid',
+      'Some import rows are invalid.',
+      {
+        rows,
+      },
+    ),
   importInvalid: (rows: ImportRowProblem[]) =>
     new ApiError(
       HttpStatus.BAD_REQUEST,

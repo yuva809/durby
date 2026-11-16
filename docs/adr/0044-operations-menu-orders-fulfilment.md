@@ -37,7 +37,9 @@ has no customer orders, picking, delivery tracking, a general import or in-app f
 5. **Delivery tracking is a status board**, not routing: driver, phone, vehicle, notes and a timeline per order.
 
 6. **Import Data** is a CSV wizard (template, preview with row errors, import in one transaction, at most 5,000
-   rows) for product categories, products / stock items, opening stock and customers.
+   rows) for product categories, products / stock items, opening stock and customers. Each kind is imported by its
+   module and needs that module's create key (no separate import key: one key per route keeps the access model as
+   it is). See docs/platform/import.md.
 
 7. **Feedback goes to the platform team**: staff send a category, a message and an optional screenshot; the staff
    portal lists it with a status.

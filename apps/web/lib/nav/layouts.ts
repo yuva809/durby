@@ -1,5 +1,5 @@
 import type { LabelKey } from '@durby/i18n';
-import type { NavLayout } from '@durby/shared';
+import type { FeatureKey, NavLayout, PermissionKey } from '@durby/shared';
 import {
   Archive,
   Building2,
@@ -99,7 +99,21 @@ const OPERATIONS: NavLayoutDefinition = {
       label: 'platform.nav.importData',
       icon: Download,
       group: 'tools',
-      planned: true,
+      // Shown while the user can import at least one kind (each needs its module's key, docs/platform/import.md).
+      children: [
+        ['categories', 'catalog', 'catalog.products.create'],
+        ['items', 'inventory', 'inventory.items.create'],
+        ['opening-stock', 'inventory', 'inventory.stock.receive'],
+        ['customers', 'orders', 'orders.customers.create'],
+      ].map(([kind, feature, permission]) => ({
+        id: `import-${kind}`,
+        href: '/import',
+        label: 'platform.nav.importData',
+        icon: Download,
+        group: 'tools',
+        feature: feature as FeatureKey,
+        permission: permission as PermissionKey,
+      })),
     },
     {
       id: 'feedback',

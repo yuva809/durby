@@ -49,9 +49,9 @@ describe('nav layouts (ADR 0044)', () => {
       main: ['home'],
       operations: ['inventory', 'categories', 'orders', 'picking', 'branches', 'deliveries'],
       administration: ['audit', 'staff', 'settings'],
-      tools: [],
+      tools: ['import'],
     });
-    expect(ids(items.filter((i) => i.planned === true))).toEqual(['import', 'feedback']);
+    expect(ids(items.filter((i) => i.planned === true))).toEqual(['feedback']);
   });
 
   it('lists Product Category on its own, not again under Inventory', () => {

@@ -3,6 +3,8 @@ import Decimal from 'decimal.js';
 import type {
   AdjustmentReason,
   AuditActor,
+  DataImportResult,
+  ImportOpeningStockRequest,
   EventPayload,
   AdjustmentRequest,
   ListStockDocumentsQuery,
@@ -18,6 +20,7 @@ import type {
   StockUnit,
   TransferRequest,
 } from '@durby/shared';
+import { checkOpeningStockRows } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { SettingsService } from '../../platform/config/settings';
 import { IdempotencyService } from '../../platform/idempotency';
@@ -647,6 +650,99 @@ export class StockService {
       actor: auditActor.user(input.userId),
       movements,
       levels,
+    });
+  }
+
+  /**
+   * Import Data → opening stock (docs/platform/import.md, ADR 0044 step 4): rows of warehouse (name), item (SKU, else
+   * name), quantity and unit cost become one receipt per warehouse, all in one transaction. Warehouses must be active and
+   * the caller must be able to receive goods at each; unknown names are refused with their rows.
+   */
+  async importOpeningStock(body: ImportOpeningStockRequest): Promise<DataImportResult> {
+    const { tenantId, userId } = this.tenantContext.require();
+    const scope = await this.access.locationIdsFor('inventory.stock.receive');
+    const [warehouses, items] = await Promise.all([
+      this.db.warehouse.findMany({
+        where: { archivedAt: null, ...(scope === 'all' ? {} : { locationId: { in: scope } }) },
+        select: { id: true, name: true, locationId: true },
+      }),
+      this.db.stockItem.findMany({
+        where: { archivedAt: null },
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          _count: { select: { variants: { where: { archivedAt: null } } } },
+        },
+      }),
+    ]);
+    // A parent with variants holds no stock (ADR 0038): it can't be named here.
+    const stockable = items.filter((i) => i._count.variants === 0);
+    const warehouseByName = new Map(warehouses.map((w) => [w.name.toLowerCase(), w]));
+    const itemByKey = new Map<string, string>();
+    for (const item of stockable) itemByKey.set(item.name.toLowerCase(), item.id);
+    // SKUs win over names when both match.
+    for (const item of stockable) if (item.sku) itemByKey.set(item.sku.toLowerCase(), item.id);
+    const problems = checkOpeningStockRows(body.rows, {
+      warehouses: new Set(warehouseByName.keys()),
+      items: new Set(itemByKey.keys()),
+    });
+    if (problems.length > 0) throw inventoryErrors.importInvalid(problems);
+
+    const groups = new Map<string, { itemId: string; quantity: Decimal; unitCost: Decimal }[]>();
+    for (const row of body.rows) {
+      const warehouse = warehouseByName.get(row.warehouse.trim().toLowerCase())!;
+      const lines = groups.get(warehouse.id) ?? [];
+      lines.push({
+        itemId: itemByKey.get(row.item.trim().toLowerCase())!,
+        quantity: new Decimal(row.quantity.trim()),
+        unitCost: new Decimal(row.unitCost.trim()),
+      });
+      groups.set(warehouse.id, lines);
+    }
+    return this.db.$transaction(async (tx) => {
+      if ((await this.settings.get('inventory.valuationMethod', {}, tx)) !== 'weighted_average') {
+        throw inventoryErrors.valuationUnsupported();
+      }
+      const result: DataImportResult = { created: 0, updated: 0, unchanged: 0, documents: [] };
+      // Warehouses in id order, so two imports lock their levels in the same order.
+      for (const warehouseId of [...groups.keys()].sort()) {
+        const lines = groups.get(warehouseId)!;
+        const levels = await lockLevels(
+          tx,
+          tenantId,
+          [warehouseId],
+          [...new Set(lines.map((l) => l.itemId))],
+        );
+        const movements = lines.map((line) => {
+          const booked = bookIn(levels.get(warehouseId, line.itemId), line.quantity, line.unitCost);
+          levels.set(warehouseId, line.itemId, booked.level);
+          return {
+            warehouseId,
+            itemId: line.itemId,
+            quantity: line.quantity,
+            unitCost: booked.unitCost,
+          };
+        });
+        const document = await this.book(tx, {
+          kind: 'receipt',
+          warehouseId,
+          toWarehouseId: null,
+          reason: null,
+          supplier: null,
+          note: null,
+          sourceTicketId: null,
+          sourceOrderId: null,
+          createdByUserId: userId,
+          actor: auditActor.user(userId),
+          movements,
+          levels,
+        });
+        result.created += lines.length;
+        result.documents.push(document.number);
+      }
+      await this.idempotency.completeInTransaction(tx, result);
+      return result;
     });
   }
 

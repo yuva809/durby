@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   type CancelSalesOrderRequest,
   cancelSalesOrderRequestSchema,
@@ -6,6 +17,9 @@ import {
   createOrderCustomerRequestSchema,
   type CreateSalesOrderRequest,
   createSalesOrderRequestSchema,
+  type DataImportResult,
+  type ImportCustomersRequest,
+  importCustomersRequestSchema,
   type DispatchSalesOrderRequest,
   dispatchSalesOrderRequestSchema,
   type ListOrderCustomersQuery,
@@ -61,6 +75,17 @@ export class OrdersController {
     @Body(new ZodBody(createOrderCustomerRequestSchema)) body: CreateOrderCustomerRequest,
   ): Promise<OrderCustomer> {
     return this.customers.create(body);
+  }
+
+  /** Import Data → customers (ADR 0044 step 4): creates and updates many; the result goes with the key. */
+  @RequirePermission('orders.customers.create')
+  @Idempotent({ completion: 'transaction' })
+  @Post('customers/import')
+  @HttpCode(HttpStatus.OK)
+  importCustomers(
+    @Body(new ZodBody(importCustomersRequestSchema)) body: ImportCustomersRequest,
+  ): Promise<DataImportResult> {
+    return this.customers.importCustomers(body);
   }
 
   @RequirePermission('orders.customers.edit')

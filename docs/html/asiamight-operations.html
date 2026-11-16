@@ -39,7 +39,7 @@
     <tr><td>1</td><td>Operations sidebar (theme <code>nav_layout</code>), Product Category page, Branches page</td><td class="done">Built, tested</td></tr>
     <tr><td>2</td><td>Orders: customers, sales orders (draft → confirmed, cancel), Order History, sale price on items</td><td class="done">Built; API e2e need Docker</td></tr>
     <tr><td>3</td><td>Picking (stock goes out), packing, Delivery Tracking, returns (stock back in)</td><td class="done">Built; API e2e need Docker</td></tr>
-    <tr><td>4</td><td>Import Data (CSV: categories, items, opening stock, customers)</td><td class="open">Planned</td></tr>
+    <tr><td>4</td><td>Import Data (CSV: categories, items, opening stock, customers; all or nothing)</td><td class="done">Built; API e2e need Docker</td></tr>
     <tr><td>5</td><td>Feedback to the Durby team</td><td class="open">Planned</td></tr>
   </table></div>
 
@@ -49,7 +49,7 @@
     <tr><th>Group</th><th>Items (route)</th></tr>
     <tr><td>Business operations</td><td>Inventory (<code>/inventory</code>, submenu), Product Category (<code>/catalog/categories</code>), Order History (<code>/orders</code>), Picking (<code>/picking</code>), Branches (<code>/branches</code>), Delivery Tracking (<code>/deliveries</code>)</td></tr>
     <tr><td>Administration &amp; reports</td><td>Audit log (<code>/audit</code>), Manage Staff (<code>/staff</code>), Settings (<code>/settings</code>)</td></tr>
-    <tr><td>Tools &amp; utilities</td><td>Import Data*, Feedback*</td></tr>
+    <tr><td>Tools &amp; utilities</td><td>Import Data (<code>/import</code>), Feedback*</td></tr>
   </table></div>
   <p>* <code>planned</code>: hidden until its step ships.</p>
 
@@ -115,7 +115,10 @@ cd apps/api &amp;&amp; npx vitest run test/orders.e2e.spec.ts test/theme.e2e.spe
     <tr><td>Delivery Tracking → Dispatch (driver, vehicle)</td><td>Moves to On the way with the driver and time</td></tr>
     <tr><td>Came back (reason)</td><td>Order Returned; stock back to 10; Documents has Goods back in RS-…</td></tr>
     <tr><td>Delivered (received by)</td><td>Order in Delivered (last 7 days); timeline complete</td></tr>
-    <tr><td>Sign in as Staff</td><td>Order History and Customers read-only; no Picking or Delivery Tracking in the menu</td></tr>
+    <tr><td>Import Data → Stock items → template → 3 rows (one with unit "box")</td><td>Preview flags row 3 unit; Import disabled; fixed file imports 3 rows</td></tr>
+    <tr><td>Import Data → Opening stock: Main, R-1, 10, 8,50</td><td>One receipt per warehouse listed; Inventory shows 10 at 8.50</td></tr>
+    <tr><td>Import Data → Customers with codes</td><td>Existing codes updated, new ones added; summary counts match</td></tr>
+    <tr><td>Sign in as Staff</td><td>Order History and Customers read-only; no Picking, Delivery Tracking or Import Data in the menu</td></tr>
   </table></div>
 
   <h2 id="deploy">Deploy</h2>

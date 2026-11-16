@@ -167,5 +167,6 @@
   "orders.detail.driver": "Driver",
   "orders.detail.vehicle": "Vehicle",
   "orders.detail.dispatchedAt": "Dispatched",
-  "orders.detail.deliveredAt": "Delivered"
+  "orders.detail.deliveredAt": "Delivered",
+  "orders.errors.importInvalid": "Some rows can't be imported. Check the preview, fix the file and try again."
 }
