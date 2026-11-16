@@ -18,6 +18,7 @@ import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
+import { TransfersPicking } from '../requests/transfers-picking';
 import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { StatusBadge } from './order-detail';
 
@@ -82,6 +83,8 @@ function Picking({ organizationId }: { organizationId: string | null }) {
           </div>
         )}
       </div>
+      <TransfersPicking organizationId={organizationId} />
+      <h2 className="text-lg font-semibold">{t('platform.nav.orderHistory')}</h2>
       <Loaded resource={queue} reload={reload}>
         {(page) => {
           // Oldest first: the order that has waited longest is picked first.
