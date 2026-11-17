@@ -8,6 +8,8 @@ import {
   latestChecks,
   minutesSince,
   moneyFormat,
+  pickedBillItems,
+  pickedBillTotal,
   rate,
   sum,
   times,
@@ -123,6 +125,55 @@ describe('billLines', () => {
   it('keeps different prices of the same product apart', () => {
     const bill = billLines(order([line(1, {})], [line(2, { unitPrice: '7.40' })]));
     expect(bill.map((l) => l.unitPrice)).toEqual(['6.90', '7.40']);
+  });
+
+  describe('picking items to bill (Step 4c)', () => {
+    // 3 Soup over two tickets (2 + 1), one of them already billed; 1 Cola.
+    const picked = order(
+      [
+        line(1, { quantity: 2, remaining: 2, billedQuantity: 1 }),
+        line(2, { productId: 'cola', productName: 'Cola', unitPrice: '3.80' }),
+      ],
+      [line(3, {})],
+    );
+
+    it('knows what of each line is unbilled and which sent lines it comes from', () => {
+      const [soup, cola] = billLines(picked);
+      expect([soup!.quantity, soup!.unbilled, soup!.parts]).toEqual([
+        3,
+        2,
+        [
+          { orderLineId: line(1, {}).id, unbilled: 1 },
+          { orderLineId: line(3, {}).id, unbilled: 1 },
+        ],
+      ]);
+      expect(cola!.unbilled).toBe(1);
+    });
+
+    it('takes the picked count from the oldest sent lines first, capped at what is unbilled', () => {
+      const bill = billLines(picked);
+      const [soup, cola] = bill;
+      expect(pickedBillItems(bill, { [soup!.key]: 2, [cola!.key]: 1 })).toEqual([
+        { orderLineId: line(1, {}).id, quantity: 1 },
+        { orderLineId: line(3, {}).id, quantity: 1 },
+        { orderLineId: line(2, {}).id, quantity: 1 },
+      ]);
+      expect(pickedBillItems(bill, { [soup!.key]: 1 })).toEqual([
+        { orderLineId: line(1, {}).id, quantity: 1 },
+      ]);
+      // The order changed meanwhile: never more than is left.
+      expect(pickedBillItems(bill, { [soup!.key]: 9 })).toHaveLength(2);
+      expect(pickedBillItems(bill, {})).toEqual([]);
+    });
+
+    it('adds up what is picked', () => {
+      const bill = billLines(picked);
+      expect(pickedBillTotal(bill, { [bill[0]!.key]: 2, [bill[1]!.key]: 1 })).toEqual({
+        items: 3,
+        gross: '17.60',
+      });
+      expect(pickedBillTotal(bill, {})).toEqual({ items: 0, gross: '0.00' });
+    });
   });
 });
 

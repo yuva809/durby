@@ -795,6 +795,94 @@ describe('OrderPage (till)', () => {
     expect(within(printed).getByTestId('bill-number').textContent).toBe('Bill no. CHK-2026-000001');
   });
 
+  describe('select items to bill (docs/modules/pos.md → Step 4c)', () => {
+    const COLA_LINE = line(2, id(22), COLA, 1, 1);
+    const TWO_TICKETS: Order = {
+      ...ORDER,
+      tickets: [
+        ORDER.tickets[0]!,
+        { ...ORDER.tickets[0]!, id: id(22), sequence: 2, station: 'bar', lines: [COLA_LINE] },
+      ],
+      unbilled: '17.60',
+    };
+
+    it('ticks lines on the bill, takes fewer with −, and bills just those', async () => {
+      signedInAs('cashier');
+      const writes = api(withOrder(TWO_TICKETS));
+      render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+      await userEvent.click(await screen.findByTestId('select-to-bill'));
+      expect(screen.queryByTestId('print-bill')).toBeNull();
+      expect(screen.getByTestId('bill-selected')).toHaveProperty('disabled', true);
+
+      const soup = screen
+        .getAllByTestId('bill-line')
+        .find((l) => l.getAttribute('data-name') === 'Soup')!;
+      // A tap ticks all 2 Soup; − leaves one for another guest.
+      await userEvent.click(within(soup).getByTestId('bill-line-pick'));
+      expect(within(soup).getByTestId('bill-line-count').textContent).toBe('2 of 2');
+      await userEvent.click(within(soup).getByRole('button', { name: 'One Soup less' }));
+      expect(within(soup).getByTestId('bill-line-count').textContent).toBe('1 of 2');
+      const cola = screen
+        .getAllByTestId('bill-line')
+        .find((l) => l.getAttribute('data-name') === 'Cola')!;
+      await userEvent.click(within(cola).getByTestId('bill-line-pick'));
+      // One Cola: no stepper.
+      expect(within(cola).queryByTestId('bill-line-stepper')).toBeNull();
+
+      const bill = screen.getByTestId('bill-selected');
+      expect(bill.textContent).toBe('Bill 2 selected · €10.70');
+      await userEvent.click(bill);
+      await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+      expect(writes.filter((w) => w.path === '/api/v1/pos/bills').map((w) => w.body)).toEqual([
+        {
+          orderIds: [ORDER.id],
+          items: [
+            { orderLineId: ORDER.tickets[0]!.lines[0]!.id, quantity: 1 },
+            { orderLineId: COLA_LINE.id, quantity: 1 },
+          ],
+        },
+      ]);
+      // Done: back to the bill as usual.
+      await waitFor(() => expect(screen.queryByTestId('bill-selected')).toBeNull());
+    });
+
+    it('shows billed items as billed, not pickable, and cancels without billing', async () => {
+      signedInAs('cashier');
+      const soupBilled = { ...ORDER.tickets[0]!.lines[0]!, billedQuantity: 2 };
+      const writes = api(
+        withOrder({
+          ...TWO_TICKETS,
+          tickets: [{ ...ORDER.tickets[0]!, lines: [soupBilled] }, TWO_TICKETS.tickets[1]!],
+          unbilled: '3.80',
+        }),
+      );
+      render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+      await userEvent.click(await screen.findByTestId('select-to-bill'));
+      const soup = screen
+        .getAllByTestId('bill-line')
+        .find((l) => l.getAttribute('data-name') === 'Soup')!;
+      expect(within(soup).getByTestId('bill-line-billed').textContent).toBe('Billed');
+      expect(within(soup).getByTestId('bill-line-pick')).toHaveProperty('disabled', true);
+      await userEvent.click(screen.getByTestId('select-to-bill-cancel'));
+      expect(screen.getByTestId('print-bill')).toBeTruthy();
+      expect(writes.filter((w) => w.path === '/api/v1/pos/bills')).toEqual([]);
+    });
+
+    it('is not offered without bill printing, or with nothing left to bill', async () => {
+      signedInAs('cashier', ['pos.bills.print']);
+      api(withOrder(TWO_TICKETS));
+      render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+      await screen.findAllByTestId('bill-line');
+      expect(screen.queryByTestId('select-to-bill')).toBeNull();
+      cleanup();
+      signedInAs('cashier');
+      api(withOrder({ ...TWO_TICKETS, unbilled: '0.00' }));
+      render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+      await screen.findAllByTestId('bill-line');
+      expect(screen.queryByTestId('select-to-bill')).toBeNull();
+    });
+  });
+
   it('lets a cashier see and print the bill with prices, without the menu', async () => {
     signedInAs('cashier');
     api({

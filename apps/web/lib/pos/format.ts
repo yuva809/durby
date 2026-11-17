@@ -76,6 +76,10 @@ export interface BillLine {
   quantity: number;
   unitPrice: string;
   total: string;
+  /** Order bills only (billLines): how many are not on a bill yet. */
+  unbilled?: number;
+  /** Order bills only: the sent lines behind this one, oldest first, with what is unbilled of each. */
+  parts?: { orderLineId: string; unbilled: number }[];
 }
 
 /**
@@ -90,6 +94,7 @@ export function billLines(order: Pick<Order, 'tickets'>): BillLine[] {
       const key = `${line.productId}|${line.unitPrice}|${line.note ?? ''}`;
       const current = lines.get(key);
       const quantity = (current?.quantity ?? 0) + line.remaining;
+      const unbilled = Math.max(0, line.remaining - line.billedQuantity);
       lines.set(key, {
         key,
         name: line.productName,
@@ -97,10 +102,54 @@ export function billLines(order: Pick<Order, 'tickets'>): BillLine[] {
         quantity,
         unitPrice: line.unitPrice,
         total: times(line.unitPrice, quantity),
+        unbilled: (current?.unbilled ?? 0) + unbilled,
+        parts: [
+          ...(current?.parts ?? []),
+          ...(unbilled > 0 ? [{ orderLineId: line.id, unbilled }] : []),
+        ],
       });
     }
   }
   return [...lines.values()];
+}
+
+/** How many of each bill line (by key) are picked for a bill of chosen items. */
+export type BillPick = Readonly<Record<string, number>>;
+
+/**
+ * The picked items as the api's bill items (docs/modules/pos.md → Step 4c): each bill line's count is taken from its
+ * sent lines oldest first, never more than is unbilled. Counts above what is left (the order changed) are capped.
+ */
+export function pickedBillItems(
+  lines: readonly BillLine[],
+  pick: BillPick,
+): { orderLineId: string; quantity: number }[] {
+  return lines.flatMap((line) => {
+    let wanted = Math.min(pick[line.key] ?? 0, line.unbilled ?? 0);
+    const items: { orderLineId: string; quantity: number }[] = [];
+    for (const part of line.parts ?? []) {
+      if (wanted <= 0) break;
+      const quantity = Math.min(wanted, part.unbilled);
+      items.push({ orderLineId: part.orderLineId, quantity });
+      wanted -= quantity;
+    }
+    return items;
+  });
+}
+
+/** Count and amount of what is picked, capped like pickedBillItems. */
+export function pickedBillTotal(
+  lines: readonly BillLine[],
+  pick: BillPick,
+): { items: number; gross: string } {
+  const picked = lines.map((line) => ({
+    line,
+    count: Math.min(pick[line.key] ?? 0, line.unbilled ?? 0),
+  }));
+  return {
+    items: picked.reduce((n, p) => n + p.count, 0),
+    gross: sum(picked.filter((p) => p.count > 0).map((p) => times(p.line.unitPrice, p.count))),
+  };
 }
 
 /**

@@ -25,6 +25,7 @@ import {
   ArrowLeft,
   Check,
   ChefHat,
+  ListChecks,
   Minus,
   Plus,
   Printer,
@@ -52,9 +53,12 @@ import {
 import {
   type BillLine,
   billLines,
+  type BillPick,
   durationLabel,
   latestChecks,
   minutesSince,
+  pickedBillItems,
+  pickedBillTotal,
   rate,
   sum,
   times,
@@ -77,6 +81,7 @@ import { cn } from '../../lib/utils';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
+import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { KitchenTicketView, OrderSlip, PrintRoot } from './kitchen-ticket';
@@ -414,6 +419,31 @@ function TableOrder({
     }
   }
 
+  // Select items to bill (docs/modules/pos.md → Step 4c): null while not picking.
+  const [pick, setPick] = useState<BillPick | null>(null);
+  const pickKey = useActionKey();
+  async function billPicked(order: Order, lines: BillLine[]) {
+    if (!pick) return;
+    const items = pickedBillItems(lines, pick);
+    if (items.length === 0) return;
+    setError(null);
+    setQueuedBill(null);
+    setBilling(true);
+    try {
+      const bill = await createBill(store, pickKey, { orderIds: [order.id], items });
+      if (!bill.ok) {
+        setError(t(errorLabel(bill.code)));
+        return;
+      }
+      setPick(null);
+      reload();
+      const first = bill.data?.checks[0];
+      if (first) await printCheck(first.id);
+    } finally {
+      setBilling(false);
+    }
+  }
+
   /** `sent`: right after a send or void, when items that went straight to the bill don't print. */
   const printTickets = (order: Order, ticketIds: readonly string[], sent = false) => {
     const tickets = order.tickets.filter((x) => ticketIds.includes(x.id) && !(sent && x.direct));
@@ -529,7 +559,28 @@ function TableOrder({
                   icon: <Printer aria-hidden />,
                 }
             : null;
-        const barAction = sendAction ?? printAction;
+        // Picking items for a bill: only while the order is open with something unbilled.
+        const canPick =
+          access.canPrintBill &&
+          order !== null &&
+          order.status === 'open' &&
+          order.unbilled !== '0.00';
+        const activePick = canPick ? pick : null;
+        const picked = activePick ? pickedBillTotal(bill, activePick) : null;
+        const pickAction = picked
+          ? {
+              label: t('pos.order.billSelected', {
+                count: String(picked.items),
+                amount: money(picked.gross),
+              }),
+              short: t('pos.order.billSelectedShort'),
+              run: () => void billPicked(order!, bill),
+              testId: 'bill-selected',
+              icon: <ReceiptText aria-hidden />,
+              disabled: picked.items === 0,
+            }
+          : null;
+        const barAction = pickAction ?? sendAction ?? printAction;
 
         return (
           <div className={cn('flex flex-col gap-5', barAction && 'pb-24 lg:pb-0')}>
@@ -602,6 +653,17 @@ function TableOrder({
                     order={order}
                     bill={bill}
                     notice={sent}
+                    onSelect={canPick ? () => setPick({}) : undefined}
+                    selection={
+                      activePick
+                        ? {
+                            pick: activePick,
+                            onPick: (key, count) =>
+                              setPick((current) => ({ ...current, [key]: count })),
+                            onCancel: () => setPick(null),
+                          }
+                        : null
+                    }
                     voidButton={
                       order &&
                       order.status === 'open' &&
@@ -641,14 +703,25 @@ function TableOrder({
                     />
                   )}
                 </div>
-                {(sendAction || printAction || error) && (
+                {(pickAction || sendAction || printAction || error) && (
                   <div
                     className="hidden shrink-0 flex-col gap-2 border-t border-border pt-3 lg:flex"
                     data-testid="order-panel-actions"
                   >
                     <Notice text={error} tone="error" />
                     {nativeStatus}
-                    {sendAction && (
+                    {pickAction && (
+                      <Button
+                        className="min-h-12 gap-2 text-base"
+                        disabled={billing || pickAction.disabled}
+                        onClick={pickAction.run}
+                        data-testid={pickAction.testId}
+                      >
+                        {pickAction.icon}
+                        {pickAction.label}
+                      </Button>
+                    )}
+                    {!pickAction && sendAction && (
                       <Button
                         className="min-h-12 gap-2 text-base"
                         disabled={busy}
@@ -659,7 +732,7 @@ function TableOrder({
                         {sendAction.label}
                       </Button>
                     )}
-                    {printAction && (
+                    {!pickAction && printAction && (
                       <Button
                         variant={sendAction ? 'outline' : 'default'}
                         className="min-h-11 gap-2"
@@ -685,13 +758,20 @@ function TableOrder({
                   className="flex min-w-0 flex-1 flex-col text-foreground no-underline"
                 >
                   <span className="font-semibold tabular-nums">
-                    {sendAction
-                      ? `${t('pos.order.itemCount', { count: String(cartCount) })} · ${money(cartTotal)}`
-                      : `${t('pos.order.itemCount', { count: String(order?.totals.itemCount ?? 0) })} · ${money(order?.totals.gross ?? '0.00')}`}
+                    {picked
+                      ? `${t('pos.order.itemCount', { count: String(picked.items) })} · ${money(picked.gross)}`
+                      : sendAction
+                        ? `${t('pos.order.itemCount', { count: String(cartCount) })} · ${money(cartTotal)}`
+                        : `${t('pos.order.itemCount', { count: String(order?.totals.itemCount ?? 0) })} · ${money(order?.totals.gross ?? '0.00')}`}
                   </span>
                   <span className="text-sm text-primary-text">{t('pos.order.viewOrder')}</span>
                 </a>
-                <Button className="min-h-12 gap-2" disabled={busy} onClick={barAction.run}>
+                <Button
+                  className="min-h-12 gap-2"
+                  disabled={pickAction ? billing || pickAction.disabled : busy}
+                  onClick={barAction.run}
+                  data-testid={pickAction ? 'bill-selected-bar' : undefined}
+                >
                   {barAction.icon}
                   {barAction.short}
                 </Button>
@@ -1055,50 +1135,95 @@ function CartRow({
   );
 }
 
-/** What the table has: combined items, VAT split, total, and the void action. */
+/** Picking items on the bill for a bill of their own (docs/modules/pos.md → Step 4c). */
+interface BillSelection {
+  pick: BillPick;
+  onPick: (key: string, count: number) => void;
+  onCancel: () => void;
+}
+
+/**
+ * What the table has: combined items, VAT split, total, and the void action. With `onSelect` it offers "Select items
+ * to bill"; while `selection` is set, each line with something unbilled can be ticked (all of it) and then reduced
+ * with − / +; lines already on a bill show so and can't be picked.
+ */
 function OnTheTable({
   order,
   bill,
   notice,
   voidButton,
+  onSelect,
+  selection,
 }: {
   order: Order | null;
   bill: BillLine[];
   notice: string | null;
   voidButton: ReactNode;
+  onSelect?: () => void;
+  selection: BillSelection | null;
 }) {
   const t = useT();
   const money = useMoney();
   return (
     <Card className="flex flex-col gap-3 p-4" data-testid="order-view">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">{t('pos.order.onTable')}</h2>
-        {voidButton}
+        {selection ? (
+          <Button variant="ghost" onClick={selection.onCancel} data-testid="select-to-bill-cancel">
+            {t('pos.order.selectCancel')}
+          </Button>
+        ) : (
+          <span className="flex flex-wrap items-center gap-2">
+            {onSelect && (
+              <Button variant="outline" onClick={onSelect} data-testid="select-to-bill">
+                <ListChecks aria-hidden />
+                {t('pos.order.selectToBill')}
+              </Button>
+            )}
+            {voidButton}
+          </span>
+        )}
       </div>
+      {selection && (
+        <p className="text-sm text-muted-foreground" data-testid="select-to-bill-hint">
+          {t('pos.order.selectHint')}
+        </p>
+      )}
       <Notice text={notice} tone="info" />
       {bill.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('pos.order.noOrder')}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {bill.map((line) => (
-            <li
-              key={line.key}
-              className="flex items-start justify-between gap-3 text-sm"
-              data-testid="bill-line"
-              data-name={line.name}
-            >
-              <span className="flex min-w-0 gap-2">
-                <span className="w-6 shrink-0 text-right font-semibold tabular-nums text-muted-foreground">
-                  {line.quantity}×
+        <ul className={cn('flex flex-col', selection ? 'gap-1' : 'gap-2')}>
+          {bill.map((line) =>
+            selection ? (
+              <SelectableBillLine
+                key={line.key}
+                line={line}
+                count={Math.min(selection.pick[line.key] ?? 0, line.unbilled ?? 0)}
+                onPick={(count) => selection.onPick(line.key, count)}
+              />
+            ) : (
+              <li
+                key={line.key}
+                className="flex items-start justify-between gap-3 text-sm"
+                data-testid="bill-line"
+                data-name={line.name}
+              >
+                <span className="flex min-w-0 gap-2">
+                  <span className="w-6 shrink-0 text-right font-semibold tabular-nums text-muted-foreground">
+                    {line.quantity}×
+                  </span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="font-medium">{line.name}</span>
+                    {line.note && (
+                      <span className="text-xs text-muted-foreground">{line.note}</span>
+                    )}
+                  </span>
                 </span>
-                <span className="flex min-w-0 flex-col">
-                  <span className="font-medium">{line.name}</span>
-                  {line.note && <span className="text-xs text-muted-foreground">{line.note}</span>}
-                </span>
-              </span>
-              <span className="tabular-nums">{money(line.total)}</span>
-            </li>
-          ))}
+                <span className="tabular-nums">{money(line.total)}</span>
+              </li>
+            ),
+          )}
         </ul>
       )}
       {order && order.totals.itemCount > 0 && (
@@ -1123,6 +1248,105 @@ function OnTheTable({
         </div>
       )}
     </Card>
+  );
+}
+
+/**
+ * One bill line while picking: the whole row ticks all that is unbilled of it; once ticked, − / + take fewer (one Cola
+ * of three for one guest). Lines already billed show "billed" and can't be ticked.
+ */
+function SelectableBillLine({
+  line,
+  count,
+  onPick,
+}: {
+  line: BillLine;
+  count: number;
+  onPick: (count: number) => void;
+}) {
+  const t = useT();
+  const money = useMoney();
+  const id = useId();
+  const unbilled = line.unbilled ?? 0;
+  const billed = line.quantity - unbilled;
+  const on = count > 0;
+  return (
+    <li
+      className={cn(
+        'flex flex-col gap-1 rounded-lg px-2 py-1.5 text-sm',
+        on && 'bg-accent/60',
+        unbilled === 0 && 'opacity-60',
+      )}
+      data-testid="bill-line"
+      data-name={line.name}
+      data-picked={count}
+    >
+      <div className="flex min-h-11 items-center gap-3">
+        <Checkbox
+          id={`${id}-pick`}
+          checked={on}
+          disabled={unbilled === 0}
+          onCheckedChange={(next) => onPick(next === true ? unbilled : 0)}
+          data-testid="bill-line-pick"
+        />
+        <label
+          htmlFor={`${id}-pick`}
+          className={cn(
+            'flex min-w-0 flex-1 gap-2',
+            unbilled > 0 ? 'cursor-pointer' : 'cursor-default',
+          )}
+        >
+          <span className="w-6 shrink-0 text-right font-semibold tabular-nums text-muted-foreground">
+            {line.quantity}×
+          </span>
+          <span className="flex min-w-0 flex-col">
+            <span className="font-medium">{line.name}</span>
+            {line.note && <span className="text-xs text-muted-foreground">{line.note}</span>}
+            {billed > 0 && (
+              <span className="text-xs text-muted-foreground" data-testid="bill-line-billed">
+                {unbilled === 0
+                  ? t('pos.order.lineBilled')
+                  : t('pos.order.lineBilledSome', { count: String(billed) })}
+              </span>
+            )}
+          </span>
+        </label>
+        <span className="tabular-nums">
+          {money(on ? times(line.unitPrice, count) : line.total)}
+        </span>
+      </div>
+      {on && unbilled > 1 && (
+        <div className="flex items-center justify-end gap-1" data-testid="bill-line-stepper">
+          <Button
+            type="button"
+            variant="outline"
+            className="size-11 px-0"
+            disabled={count <= 1}
+            aria-label={t('pos.split.less', { name: line.name })}
+            onClick={() => onPick(count - 1)}
+          >
+            <Minus aria-hidden />
+          </Button>
+          <span
+            className="min-w-14 text-center font-semibold tabular-nums"
+            aria-live="polite"
+            data-testid="bill-line-count"
+          >
+            {t('pos.order.pickedOf', { count: String(count), total: String(unbilled) })}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            className="size-11 px-0"
+            disabled={count >= unbilled}
+            aria-label={t('pos.split.more', { name: line.name })}
+            onClick={() => onPick(count + 1)}
+          >
+            <Plus aria-hidden />
+          </Button>
+        </div>
+      )}
+    </li>
   );
 }
 

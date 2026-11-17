@@ -523,5 +523,13 @@
   "pos.billSettings.part.items": "Positionen",
   "pos.billSettings.part.total": "Summe",
   "pos.billSettings.part.footer": "Fußzeile",
-  "pos.billSettings.part.ticketItems": "Positionen auf dem Bon"
+  "pos.billSettings.part.ticketItems": "Positionen auf dem Bon",
+  "pos.order.selectToBill": "Positionen abrechnen",
+  "pos.order.selectCancel": "Auswahl abbrechen",
+  "pos.order.selectHint": "Haken Sie an, was auf diese Rechnung kommt. Mit − und + nehmen Sie weniger von einer Position.",
+  "pos.order.billSelected": "{count} ausgewählte abrechnen · {amount}",
+  "pos.order.billSelectedShort": "Auswahl abrechnen",
+  "pos.order.lineBilled": "Abgerechnet",
+  "pos.order.lineBilledSome": "{count} abgerechnet",
+  "pos.order.pickedOf": "{count} von {total}"
 }

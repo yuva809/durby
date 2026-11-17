@@ -523,5 +523,13 @@
   "pos.billSettings.part.items": "Items",
   "pos.billSettings.part.total": "Total",
   "pos.billSettings.part.footer": "Footer",
-  "pos.billSettings.part.ticketItems": "Ticket items"
+  "pos.billSettings.part.ticketItems": "Ticket items",
+  "pos.order.selectToBill": "Select items to bill",
+  "pos.order.selectCancel": "Cancel selection",
+  "pos.order.selectHint": "Tick what goes on this bill. Use − and + to take fewer of an item.",
+  "pos.order.billSelected": "Bill {count} selected · {amount}",
+  "pos.order.billSelectedShort": "Bill selected",
+  "pos.order.lineBilled": "Billed",
+  "pos.order.lineBilledSome": "{count} billed",
+  "pos.order.pickedOf": "{count} of {total}"
 }
