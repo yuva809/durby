@@ -4,7 +4,9 @@ import type {
   ApproveStockRequest,
   CreateStockRequest,
   ListStockRequestsQuery,
+  NotificationKind,
   PackStockRequest,
+  PermissionKey,
   ReceiveStockRequest,
   RequestAvailability,
   RequestDriver,
@@ -18,6 +20,7 @@ import type {
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { EntitlementService } from '../../platform/config/entitlements';
 import { IdempotencyService } from '../../platform/idempotency';
+import { NotificationService } from '../../platform/notifications';
 import { NumberingService } from '../../platform/numbering';
 import { AccessService, MemberNames } from '../../platform/rbac';
 import {
@@ -147,6 +150,7 @@ export class StockRequestsService {
     private readonly numbering: NumberingService,
     private readonly stock: StockService,
     private readonly members: MemberNames,
+    private readonly notifications: NotificationService,
     private readonly entitlements: EntitlementService,
   ) {}
 
@@ -348,6 +352,7 @@ export class StockRequestsService {
         entityId: request.id,
         after: requestSnapshot(response),
       });
+      await this.notifyMove(tx, response, undefined);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
@@ -503,6 +508,9 @@ export class StockRequestsService {
         before: requestSnapshot(before),
         after: requestSnapshot(after),
       });
+      if (before.driverUserId !== driverUserId) {
+        await this.notifyDriver(tx, after);
+      }
       await this.idempotency.completeInTransaction(tx, after);
       return after;
     });
@@ -591,8 +599,80 @@ export class StockRequestsService {
         before: requestSnapshot(before),
         after: requestSnapshot(after),
       });
+      await this.notifyMove(tx, after, extra.driverUserId);
       await this.idempotency.completeInTransaction(tx, after);
       return after;
+    });
+  }
+
+  /**
+   * Who hears about a step (ADR 0047): a new request → approvers; approved / rejected → whoever asked; packed → the
+   * branch's receivers ("on the way") and the driver if one was set; received with less than was sent → approvers.
+   */
+  private async notifyMove(
+    tx: TenantTransactionClient,
+    after: StockRequest,
+    newDriverUserId: string | undefined,
+  ): Promise<void> {
+    const db = asTenantDb(tx);
+    const params = requestParams(after);
+    const send = (kind: NotificationKind, userIds: readonly string[]) =>
+      this.notifications.notify(tx, {
+        userIds,
+        kind,
+        entityType: 'stock_request',
+        entityId: after.id,
+        params,
+      });
+    const holderIds = async (key: PermissionKey, locationId?: string) =>
+      (await this.members.holders(db, key, locationId)).map((h) => h.userId);
+    switch (after.status) {
+      case 'submitted':
+        await send('request_submitted', await holderIds('orders.requests.approve'));
+        return;
+      case 'approved':
+      case 'rejected': {
+        const { requestedByUserId } = await tx.stockRequest.findUniqueOrThrow({
+          where: { id: after.id },
+          select: { requestedByUserId: true },
+        });
+        if (requestedByUserId) {
+          const kind = after.status === 'approved' ? 'request_approved' : 'request_rejected';
+          await send(kind, [requestedByUserId]);
+        }
+        return;
+      }
+      case 'packed':
+        await send(
+          'request_on_the_way',
+          await holderIds('orders.requests.receive', after.locationId),
+        );
+        if (newDriverUserId) await this.notifyDriver(tx, after);
+        return;
+      case 'received':
+        if (
+          after.lines.some(
+            (l) =>
+              l.pickedQuantity !== null &&
+              new Decimal(l.receivedQuantity ?? '0').lessThan(l.pickedQuantity),
+          )
+        ) {
+          await send('request_short', await holderIds('orders.requests.approve'));
+        }
+        return;
+      default:
+        return;
+    }
+  }
+
+  private async notifyDriver(tx: TenantTransactionClient, after: StockRequest): Promise<void> {
+    if (!after.driverUserId) return;
+    await this.notifications.notify(tx, {
+      userIds: [after.driverUserId],
+      kind: 'request_driver_assigned',
+      entityType: 'stock_request',
+      entityId: after.id,
+      params: requestParams(after),
     });
   }
 
@@ -607,6 +687,12 @@ export class StockRequestsService {
 }
 
 const isZero = (q: Qty) => new Decimal(q.toFixed(3)).isZero();
+
+/** What the notification text needs: the transfer number once there is one, and the branch. */
+const requestParams = (r: StockRequest): Record<string, string> => ({
+  number: r.transferNumber ?? r.number,
+  branch: r.locationName,
+});
 
 const driverIds = (row: { driverUserId: string | null }) =>
   row.driverUserId ? [row.driverUserId] : [];

@@ -105,6 +105,22 @@ export const appEnvSchema = z
     SMTP_URL: smtpUrl,
     MAIL_FROM: z.string({ error: 'is required' }).min(3),
 
+    // Browser push (docs/platform/notifications.md, ADR 0047): VAPID keys from `npx web-push generate-vapid-keys`.
+    // All three or none; without them push is off and the bell and email still work.
+    WEB_PUSH_PUBLIC_KEY: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{80,100}$/, 'must be a base64url VAPID public key')
+      .optional(),
+    WEB_PUSH_PRIVATE_KEY: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{40,50}$/, 'must be a base64url VAPID private key')
+      .optional(),
+    /** Who push services may contact about our messages: mailto:… or https://… */
+    WEB_PUSH_SUBJECT: z
+      .string()
+      .regex(/^(mailto:|https:\/\/)\S+$/, 'must start with mailto: or https://')
+      .optional(),
+
     // Durby staff and the admin portal (docs/platform/admin-portal.md, ADR 0017).
     /** Only these domains can be invited as staff. */
     STAFF_EMAIL_DOMAINS: domainList,
@@ -144,6 +160,15 @@ export const appEnvSchema = z
           });
         }
       }
+    }
+    const push = [env.WEB_PUSH_PUBLIC_KEY, env.WEB_PUSH_PRIVATE_KEY, env.WEB_PUSH_SUBJECT];
+    if (push.some((v) => v !== undefined) && push.some((v) => v === undefined)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['WEB_PUSH_PUBLIC_KEY'],
+        message:
+          'set WEB_PUSH_PUBLIC_KEY, WEB_PUSH_PRIVATE_KEY and WEB_PUSH_SUBJECT together, or none',
+      });
     }
     if (env.REFRESH_TOKEN_TTL_DAYS > env.REFRESH_FAMILY_MAX_DAYS) {
       ctx.addIssue({

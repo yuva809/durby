@@ -5,6 +5,7 @@ import {
   configNumberSeriesChangedV1,
   configSettingsChangedV1,
 } from './config';
+import { platformNotificationCreatedV1 } from './platform';
 import { posKitchenTicketCreatedV1, posOrderClosedV1, posOrderOpenedV1 } from './pos';
 import {
   reservationsReservationCreatedV1,
@@ -33,6 +34,7 @@ export const EVENTS = {
   'config.labels.changed': { current: 1, versions: { 1: configLabelsChangedV1 } },
   'config.number_series.changed': { current: 1, versions: { 1: configNumberSeriesChangedV1 } },
   'config.entitlements.changed': { current: 1, versions: { 1: configEntitlementsChangedV1 } },
+  'platform.notification.created': { current: 1, versions: { 1: platformNotificationCreatedV1 } },
   'pos.order.opened': { current: 1, versions: { 1: posOrderOpenedV1 } },
   'pos.order.closed': { current: 1, versions: { 1: posOrderClosedV1 } },
   'pos.kitchen_ticket.created': { current: 1, versions: { 1: posKitchenTicketCreatedV1 } },

@@ -32,7 +32,8 @@ export class MemberNames {
   async holders(
     db: TenantDb,
     key: PermissionKey,
-    locationId: string,
+    /** Needed for location-scoped keys; organization-scoped keys (e.g. orders.requests.approve) leave it out. */
+    locationId?: string,
   ): Promise<{ userId: string; name: string | null }[]> {
     const rows = await db.membership.findMany({
       where: { deactivatedAt: null },

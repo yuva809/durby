@@ -24,6 +24,7 @@ import { StaffModule } from './staff';
 import { TenancyModule } from './tenancy';
 import { ThemeModule } from './theme';
 import { FeedbackModule } from './feedback';
+import { NotificationsModule } from './notifications';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { FeedbackModule } from './feedback';
     ProvisioningModule,
     ThemeModule,
     FeedbackModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   providers: [HealthService, { provide: APP_FILTER, useClass: ApiExceptionFilter }],

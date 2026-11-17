@@ -54,3 +54,4 @@ export * from './api/imports';
 export * from './api/feedback';
 export * from './api/stock-requests';
 export * from './api/workspace';
+export * from './api/notifications';

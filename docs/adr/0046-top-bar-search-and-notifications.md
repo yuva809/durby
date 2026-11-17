@@ -3,6 +3,7 @@
 - Status: accepted (2026-11-17)
 - Date: 2026-11-17
 - Builds on: ADR 0015 (web shell), ADR 0044 (operations menu, orders), ADR 0045 (branch requests)
+- Extended by: ADR 0047 (stored updates, email and push, several signed-in accounts)
 
 ## Context
 

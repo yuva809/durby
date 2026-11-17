@@ -5,6 +5,7 @@ import type {
   CreateSalesOrderRequest,
   DispatchSalesOrderRequest,
   ListSalesOrdersQuery,
+  NotificationKind,
   PermissionKey,
   PickSalesOrderRequest,
   SalesOrder,
@@ -18,10 +19,12 @@ import type {
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
+import { NotificationService } from '../../platform/notifications';
 import { NumberingService } from '../../platform/numbering';
-import { AccessService } from '../../platform/rbac';
+import { AccessService, MemberNames } from '../../platform/rbac';
 import { StockService } from '../inventory';
 import {
+  asTenantDb,
   TENANT_PRISMA,
   TenantContext,
   type TenantPrismaClient,
@@ -31,6 +34,14 @@ import { canMove, decodeCursor, encodeCursor, lineTotal, orderTotal } from './or
 import { ordersErrors } from './orders-errors';
 
 type Money = { toFixed(digits: number): string };
+
+const SALES_NOTIFY: Partial<
+  Record<SalesOrderStatus, { kind: NotificationKind; key: PermissionKey }>
+> = {
+  confirmed: { kind: 'sales_confirmed', key: 'orders.picking.use' },
+  packed: { kind: 'sales_packed', key: 'orders.delivery.use' },
+  returned: { kind: 'sales_returned', key: 'orders.orders.edit' },
+};
 
 const SUMMARY_SELECT = {
   id: true,
@@ -136,6 +147,8 @@ export class SalesOrdersService {
     private readonly idempotency: IdempotencyService,
     private readonly numbering: NumberingService,
     private readonly stock: StockService,
+    private readonly members: MemberNames,
+    private readonly notifications: NotificationService,
   ) {}
 
   async list(query: ListSalesOrdersQuery): Promise<SalesOrderListResponse> {
@@ -228,6 +241,7 @@ export class SalesOrdersService {
         entityId: order.id,
         after: orderSnapshot(response),
       });
+      await this.notifyStatus(tx, response);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
@@ -410,9 +424,27 @@ export class SalesOrdersService {
         before: orderSnapshot(before),
         after: orderSnapshot(after),
       });
+      await this.notifyStatus(tx, after);
       // Appends a timeline row: the key completes with it (rule 8).
       await this.idempotency.completeInTransaction(tx, after);
       return after;
+    });
+  }
+
+  /**
+   * Who hears about a step (ADR 0047), at the order's branch: confirmed → whoever picks; packed → whoever delivers;
+   * returned → whoever edits orders. Only the number goes in the text (the customer may be a person).
+   */
+  private async notifyStatus(tx: TenantTransactionClient, order: SalesOrder): Promise<void> {
+    const step = SALES_NOTIFY[order.status];
+    if (!step) return;
+    const holders = await this.members.holders(asTenantDb(tx), step.key, order.locationId);
+    await this.notifications.notify(tx, {
+      userIds: holders.map((h) => h.userId),
+      kind: step.kind,
+      entityType: 'sales_order',
+      entityId: order.id,
+      params: { number: order.number },
     });
   }
 

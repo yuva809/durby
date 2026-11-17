@@ -10,6 +10,7 @@ import type {
   InvitationErrorCode,
   LabelErrorCode,
   LocationErrorCode,
+  NotificationErrorCode,
   NumberingErrorCode,
   OrdersErrorCode,
   PlatformErrorCode,
@@ -30,6 +31,7 @@ export type ApiErrorCode =
   | SettingErrorCode
   | LabelErrorCode
   | NumberingErrorCode
+  | NotificationErrorCode
   | EntitlementErrorCode
   | AuditErrorCode
   | CatalogErrorCode
@@ -46,6 +48,7 @@ export type ApiErrorCode =
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
 const LABELS: Record<ApiErrorCode, LabelKey> = {
   'platform.busy': 'platform.errors.busy',
+  'platform.notification_not_found': 'platform.errors.notificationNotFound',
   'auth.unauthenticated': 'auth.errors.unauthenticated',
   'auth.invalid_credentials': 'auth.errors.invalidCredentials',
   'auth.email_not_verified': 'auth.errors.emailNotVerified',

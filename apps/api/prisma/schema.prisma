@@ -147,6 +147,9 @@ model Organization {
   stockRequests                StockRequest[]
   stockRequestLines            StockRequestLine[]
   stockRequestEvents           StockRequestEvent[]
+  notifications                Notification[]
+  notificationPreferences      NotificationPreference[]
+  pushSubscriptions            PushSubscription[]
 
   @@index([partnerId])
   @@index([planId])
@@ -2262,4 +2265,56 @@ model StockRequestEvent {
   @@unique([tenantId, id])
   @@index([tenantId, requestId, id])
   @@map("stock_request_events")
+}
+
+/// A notification for one person (ADR 0047), written in the transaction of the change. Read, never deleted.
+model Notification {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  /// No FK: notifications outlive memberships.
+  userId       String       @map("user_id") @db.Uuid
+  /// A NOTIFICATION_KINDS key (shape checked in SQL).
+  kind         String
+  entityType   String       @map("entity_type")
+  entityId     String       @map("entity_id") @db.Uuid
+  /// What the text needs: numbers and names, never free text or contact details.
+  params       Json         @default("{}")
+  readAt       DateTime?    @map("read_at") @db.Timestamptz(6)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, userId, id])
+  @@map("notifications")
+}
+
+/// A person's choice per kind (ADR 0047); missing rows mean the default (NOTIFICATION_EMAIL_BY_DEFAULT).
+model NotificationPreference {
+  tenantId     String       @map("tenant_id") @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  kind         String
+  email        Boolean
+  push         Boolean
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([tenantId, userId, kind])
+  @@map("notification_preferences")
+}
+
+/// A browser that turned push on for a person in an organization (ADR 0047). The endpoint is a capability URL:
+/// never logged or returned. Removed when the person turns it off or the push service says it is gone.
+model PushSubscription {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  endpoint     String
+  p256dh       String
+  auth         String
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, endpoint])
+  @@index([tenantId, userId])
+  @@map("push_subscriptions")
 }
