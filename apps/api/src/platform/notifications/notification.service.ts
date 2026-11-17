@@ -44,6 +44,8 @@ const SELECT = {
   createdAt: true,
 } as const;
 
+const SELECT_OWNED = { ...SELECT, userId: true } as const;
+
 export const notificationErrors = {
   notFound: () =>
     new ApiError(
@@ -133,8 +135,10 @@ export class NotificationService {
 
   async markRead(id: string): Promise<Notification> {
     const { userId } = this.tenantContext.require();
-    const row = await this.db.notification.findUnique({ where: { id }, select: { userId: true } });
+    const row = await this.db.notification.findUnique({ where: { id }, select: SELECT_OWNED });
     if (!row || row.userId !== userId) throw notificationErrors.notFound();
+    // Set-state: an already read one keeps its first read time.
+    if (row.readAt) return toResponse(row);
     const updated = await this.db.notification.update({
       where: { id },
       data: { readAt: new Date() },

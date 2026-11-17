@@ -164,8 +164,13 @@ describe('route markers', () => {
       'POST /api/v1/invitations/accept',
       'POST /api/v1/invitations/accept-signed-in',
       'POST /api/v1/invitations/preview',
-      // ADR 0047: reads only; the push endpoint goes in the body, never in a URL.
+      // ADR 0047: the caller's own read marks and push devices, set-state; push/status reads only (the endpoint goes
+      // in the body, never in a URL).
+      'POST /api/v1/notifications/:id/read',
       'POST /api/v1/notifications/push/status',
+      'POST /api/v1/notifications/push/subscribe',
+      'POST /api/v1/notifications/push/unsubscribe',
+      'POST /api/v1/notifications/read-all',
       'POST /api/v1/platform/auth/accept',
       'POST /api/v1/platform/auth/login',
       'POST /api/v1/platform/auth/logout',
@@ -178,6 +183,8 @@ describe('route markers', () => {
       // ADR 0017 §8 (with PATCH /platform/staff/:id above): replay-safe set-state staff writes.
       'POST /api/v1/platform/staff/:id/deactivate',
       'POST /api/v1/platform/staff/invitations',
+      // ADR 0047: the caller's own choices, set-state.
+      'PUT /api/v1/notifications/preferences',
       'PUT /api/v1/platform/customers/:id/features/:key',
       'PUT /api/v1/platform/customers/:id/plan',
     ]);
@@ -240,10 +247,6 @@ describe('route markers', () => {
       'POST /api/v1/inventory/warehouses',
       'POST /api/v1/invitations',
       'POST /api/v1/locations',
-      'POST /api/v1/notifications/:id/read',
-      'POST /api/v1/notifications/push/subscribe',
-      'POST /api/v1/notifications/push/unsubscribe',
-      'POST /api/v1/notifications/read-all',
       'POST /api/v1/orders',
       'POST /api/v1/orders/:id/cancel',
       'POST /api/v1/orders/:id/confirm',
@@ -305,7 +308,6 @@ describe('route markers', () => {
       'PUT /api/v1/inventory/boms/:itemId',
       'PUT /api/v1/inventory/recipes/:productId',
       'PUT /api/v1/label-overrides/:locale/:key',
-      'PUT /api/v1/notifications/preferences',
       'PUT /api/v1/number-series/:key/counter',
       'PUT /api/v1/reservations/settings/:key',
       'PUT /api/v1/reservations/tables/:tableId/rule',

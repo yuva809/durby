@@ -24,8 +24,14 @@ import {
 } from '@durby/shared';
 import { Authenticated } from '../auth';
 import { ZodBody } from '../http';
-import { IdempotencyExempt, Idempotent } from '../idempotency';
+import { IdempotencyExempt } from '../idempotency';
 import { notificationErrors, NotificationService } from './notification.service';
+
+/**
+ * The caller’s own read marks, choices and push devices: set-state, so a replay changes nothing. @Idempotent() is for
+ * permission-checked tenant writes and these are @Authenticated() (the boot check refuses that mix).
+ */
+const PERSONAL_SET_STATE = 'set-state on the caller’s own rows: replaying it changes nothing';
 
 /**
  * /api/v1/notifications (docs/platform/notifications.md, ADR 0047): the signed-in person's own notifications and
@@ -49,7 +55,7 @@ export class NotificationsController {
 
   /** Set-state: the same choices again change nothing. */
   @Authenticated()
-  @Idempotent()
+  @IdempotencyExempt(PERSONAL_SET_STATE)
   @Put('preferences')
   async putPreferences(
     @Body(new ZodBody(putNotificationPreferencesSchema)) body: PutNotificationPreferences,
@@ -77,7 +83,7 @@ export class NotificationsController {
 
   /** Set-state: the same browser again changes nothing. */
   @Authenticated()
-  @Idempotent()
+  @IdempotencyExempt(PERSONAL_SET_STATE)
   @Post('push/subscribe')
   @HttpCode(HttpStatus.NO_CONTENT)
   subscribe(@Body(new ZodBody(pushSubscriptionSchema)) body: PushSubscriptionBody): Promise<void> {
@@ -85,7 +91,7 @@ export class NotificationsController {
   }
 
   @Authenticated()
-  @Idempotent()
+  @IdempotencyExempt(PERSONAL_SET_STATE)
   @Post('push/unsubscribe')
   @HttpCode(HttpStatus.NO_CONTENT)
   unsubscribe(
@@ -95,7 +101,7 @@ export class NotificationsController {
   }
 
   @Authenticated()
-  @Idempotent()
+  @IdempotencyExempt(PERSONAL_SET_STATE)
   @Post('read-all')
   @HttpCode(HttpStatus.OK)
   markAllRead(): Promise<{ updated: number }> {
@@ -103,7 +109,7 @@ export class NotificationsController {
   }
 
   @Authenticated()
-  @Idempotent()
+  @IdempotencyExempt(PERSONAL_SET_STATE)
   @Post(':id/read')
   @HttpCode(HttpStatus.OK)
   markRead(
