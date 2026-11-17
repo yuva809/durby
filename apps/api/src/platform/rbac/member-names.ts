@@ -58,4 +58,15 @@ export class MemberNames {
       .filter((row) => holds(resolveAccess(this.registry, row), this.registry, key, locationId))
       .map((row) => ({ userId: row.userId, name: row.displayName }));
   }
+
+  /** Active members whose display name contains the query (the top bar search, ADR 0046); callers check platform.users.read. */
+  async search(db: TenantDb, q: string, take: number): Promise<{ userId: string; name: string }[]> {
+    const rows = await db.membership.findMany({
+      where: { deactivatedAt: null, displayName: { contains: q, mode: 'insensitive' } },
+      select: { userId: true, displayName: true },
+      orderBy: [{ displayName: 'asc' }, { id: 'asc' }],
+      take,
+    });
+    return rows.map((r) => ({ userId: r.userId, name: r.displayName! }));
+  }
 }

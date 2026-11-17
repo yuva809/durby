@@ -165,8 +165,11 @@ value. Moving emails to the theme is later.
 - **Sidebar** (≥ 1024 px): wordmark or logo, nav groups, the active item marked with `--primary` and
   `aria-current="page"`. **Tablet and below** (< 1024 px): a top bar with a menu button opening the nav in a `Sheet`
   (drawer). Back office on an iPad, portrait and landscape: tap targets ≥ 44 px, no hover-only actions.
-- **Top bar:** organization switcher (only with ≥ 2 organizations; otherwise the organization name as text) and the
-  user menu (email, sign out).
+- **Top bar (ADR 0046):** search (Ctrl+K / ⌘K: menu pages, and from two letters records from `GET /api/v1/search`),
+  Audit Log for `platform.audit.read`, and the bell (`GET /api/v1/attention`: what waits for the person, refreshed
+  every minute, on tab focus and when opened). See docs/html/top-bar.html.
+- **Sidebar bottom (ADR 0046):** the person card (email, organization, role) with the other organizations of this site,
+  Account and Sign out; with ≥ 2 organizations a "Switch organization" button also sits at the top of the sidebar.
 - **Organization switcher:** `store.switchOrganization(id)`; on success the session (features, permissions, labels)
   reloads and the app navigates to `/`, since the current page may not exist for the other organization. Errors show
   their label.

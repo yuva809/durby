@@ -39,9 +39,15 @@ describe('route markers', () => {
 
   it('lists every @Authenticated() route', () => {
     expect(withMarker(routes, 'authenticated')).toEqual([
+      // ADR 0046: the top bar; each module answers only what the caller may see.
+      'GET /api/v1/attention',
       'GET /api/v1/auth/me',
       // ADR 0009 §6: reads only the token's active organization's features, for a member.
       'GET /api/v1/me/entitlements',
+      'GET /api/v1/search',
+      // ADR 0045: a request is seen by its branch, its warehouse, approvers and its driver; the service filters.
+      'GET /api/v1/stock-requests',
+      'GET /api/v1/stock-requests/:id',
       // The caller's own language: the users row only, no tenant data.
       'PATCH /api/v1/auth/me',
       // ADR 0023 §3: the caller's own password (and the forced change of a temporary one).
@@ -49,9 +55,6 @@ describe('route markers', () => {
       'POST /api/v1/auth/switch-organization',
       // ADR 0007: writes only the caller's own membership, in the tenant the invitation proves.
       'POST /api/v1/invitations/accept-signed-in',
-      // ADR 0045: a request is seen by its branch, its warehouse, approvers and its driver; the service filters.
-      'GET /api/v1/stock-requests',
-      'GET /api/v1/stock-requests/:id',
     ]);
   });
 

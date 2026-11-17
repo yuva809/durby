@@ -3,6 +3,7 @@
 import { SALES_ORDER_STATUSES, type SalesOrderStatus, type SalesOrderSummary } from '@durby/shared';
 import { Package, Search, UsersRound } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useId, useMemo, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
@@ -75,7 +76,14 @@ function Orders({
   const [more, setMore] = useState<Page[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreProblem, setMoreProblem] = useState<string | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // A search result or a link opens one in the side panel (?open=<id>, ADR 0046); a new link opens again.
+  const urlOpen = useSearchParams().get('open');
+  const [openId, setOpenId] = useState<string | null>(urlOpen);
+  const [seenUrl, setSeenUrl] = useState(urlOpen);
+  if (urlOpen !== seenUrl) {
+    setSeenUrl(urlOpen);
+    if (urlOpen) setOpenId(urlOpen);
+  }
 
   const filter: OrderFilter = {
     ...(status ? { status } : {}),

@@ -9,6 +9,7 @@ import {
 } from '@durby/shared';
 import { ClipboardList, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -66,7 +67,14 @@ function Requests({
   const t = useT();
   const { store } = useAuth();
   const [tab, setTab] = useState<Tab>('open');
-  const [openId, setOpenId] = useState<string | null>(null);
+  // A search result or a link opens one in the side panel (?open=<id>, ADR 0046); a new link opens again.
+  const urlOpen = useSearchParams().get('open');
+  const [openId, setOpenId] = useState<string | null>(urlOpen);
+  const [seenUrl, setSeenUrl] = useState(urlOpen);
+  if (urlOpen !== seenUrl) {
+    setSeenUrl(urlOpen);
+    if (urlOpen) setOpenId(urlOpen);
+  }
   const [requests, reload] = useResource(
     organizationId === null ? null : `${organizationId}:${tab}`,
     () => loadRequests(store, { status: TABS[tab] }),
