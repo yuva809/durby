@@ -23,9 +23,16 @@ export class OutboxPayloadInvalidError extends Error {
 export class OutboxService {
   constructor(private readonly tenantContext: TenantContext) {}
 
-  /** Validates the payload against the event's current version and inserts it; returns the id. */
-  async add(tx: TenantTransactionClient, event: NewEvent): Promise<string> {
-    const { tenantId } = this.tenantContext.require();
+  /**
+   * Validates the payload against the event's current version and inserts it; returns the id. `tenantId` defaults to
+   * the current tenant; the staff portal passes the organization it acts in (with `app.tenant_id` set in `tx`).
+   */
+  async add(
+    tx: Pick<TenantTransactionClient, '$queryRaw'>,
+    event: NewEvent,
+    options: { tenantId?: string } = {},
+  ): Promise<string> {
+    const tenantId = options.tenantId ?? this.tenantContext.require().tenantId;
     const definition = EVENTS[event.type];
     const schema = (definition.versions as Readonly<Record<number, z.ZodObject>>)[
       definition.current

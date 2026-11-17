@@ -1,6 +1,7 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
   defaultPreference,
+  NOTIFICATION_EVENT_MAX_IDS,
   NOTIFICATION_KINDS,
   NOTIFICATION_LIST_LIMIT,
   type Notification,
@@ -11,6 +12,7 @@ import {
   type PutNotificationPreferences,
 } from '@durby/shared';
 import { ApiError } from '../http';
+import { OutboxService } from '../outbox';
 import {
   TENANT_PRISMA,
   TenantContext,
@@ -57,14 +59,16 @@ export class NotificationService {
   constructor(
     @Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient,
     private readonly tenantContext: TenantContext,
+    private readonly outbox: OutboxService,
   ) {}
 
   /**
    * Writes one notification per recipient. `tenantId` defaults to the current tenant (the staff portal passes the
-   * organization it acts in, with `app.tenant_id` set in its transaction). Returns the new ids.
+   * organization it acts in, with `app.tenant_id` set in its transaction). Those who chose email or push for the kind
+   * get an outbox event (ids only) for the worker to send. Returns the new ids.
    */
   async notify(
-    tx: Pick<TenantTransactionClient, 'notification'>,
+    tx: Pick<TenantTransactionClient, 'notification' | 'notificationPreference' | '$queryRaw'>,
     input: NewNotification,
     options: { tenantId?: string; actorUserId?: string | null } = {},
   ): Promise<string[]> {
@@ -84,8 +88,27 @@ export class NotificationService {
         entityId: input.entityId,
         params: { ...(input.params ?? {}) },
       })),
-      select: { id: true },
+      select: { id: true, userId: true },
     });
+    const stored = await tx.notificationPreference.findMany({
+      where: { tenantId, kind: input.kind, userId: { in: userIds } },
+      select: { userId: true, email: true, push: true },
+    });
+    const choice = new Map(stored.map((p) => [p.userId, p.email || p.push]));
+    const fallback = defaultPreference(input.kind);
+    const outgoing = rows
+      .filter((r) => choice.get(r.userId) ?? (fallback.email || fallback.push))
+      .map((r) => r.id);
+    for (let i = 0; i < outgoing.length; i += NOTIFICATION_EVENT_MAX_IDS) {
+      await this.outbox.add(
+        tx,
+        {
+          type: 'platform.notification.created',
+          payload: { notificationIds: outgoing.slice(i, i + NOTIFICATION_EVENT_MAX_IDS) },
+        },
+        { tenantId },
+      );
+    }
     return rows.map((r) => r.id);
   }
 

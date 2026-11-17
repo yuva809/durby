@@ -1,6 +1,7 @@
 'use client';
 
 import { LOCALES, type Locale } from '@durby/i18n';
+import Link from 'next/link';
 import { useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
@@ -88,6 +89,19 @@ export function AccountPage() {
             </Button>
           </div>
         </form>
+      </Card>
+      <Card className="flex items-center justify-between gap-4 p-6">
+        <div className="grid gap-1">
+          <span className="font-medium">{t('platform.notifications.settings.title')}</span>
+          <span className="text-sm text-muted-foreground">
+            {t('platform.notifications.settings.summary')}
+          </span>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/account/notifications" data-testid="account-notifications">
+            {t('platform.notifications.settings.open')}
+          </Link>
+        </Button>
       </Card>
     </div>
   );

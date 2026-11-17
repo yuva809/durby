@@ -2,9 +2,9 @@ import {
   type AttentionKind,
   type AttentionResponse,
   attentionResponseSchema,
-  type Notification,
   type NotificationListResponse,
   notificationListResponseSchema,
+  notificationPath,
   type SearchResult,
   searchResponseSchema,
 } from '@durby/shared';
@@ -61,22 +61,8 @@ export const markNotificationRead = (store: Api, id: string) =>
 export const markAllNotificationsRead = (store: Api) =>
   write(store, new ActionKey(), '/api/v1/notifications/read-all', 'POST');
 
-/** Where an update leads; feedback has no page of its own. */
-export function notificationHref(
-  n: Pick<Notification, 'kind' | 'entityType' | 'entityId'>,
-): string | null {
-  if (n.kind === 'request_driver_assigned') return '/my-deliveries';
-  switch (n.entityType) {
-    case 'stock_request':
-      return `/requests?open=${n.entityId}`;
-    case 'sales_order':
-      return `/orders?open=${n.entityId}`;
-    case 'stock_item':
-      return '/inventory';
-    case 'feedback':
-      return null;
-  }
-}
+/** Where an update leads (shared with the email and push links). */
+export const notificationHref = notificationPath;
 
 /** `requests_to_approve` → `requestsToApprove`: label keys are camelCase. */
 export const camel = (value: string) =>

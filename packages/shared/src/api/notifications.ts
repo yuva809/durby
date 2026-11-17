@@ -82,6 +82,26 @@ export type NotificationListResponse = z.infer<typeof notificationListResponseSc
 export type NotificationPreference = z.infer<typeof notificationPreferenceSchema>;
 export type PutNotificationPreferences = z.infer<typeof putNotificationPreferencesSchema>;
 
+/** The web page an update leads to (bell, email, push); feedback has none. */
+export function notificationPath(
+  n: Pick<Notification, 'kind' | 'entityType' | 'entityId'>,
+): string | null {
+  if (n.kind === 'request_driver_assigned') return '/my-deliveries';
+  switch (n.entityType) {
+    case 'stock_request':
+      return `/requests?open=${n.entityId}`;
+    case 'sales_order':
+      return `/orders?open=${n.entityId}`;
+    case 'stock_item':
+      return '/inventory';
+    case 'feedback':
+      return null;
+  }
+}
+
+/** Where each person picks email and push per kind. */
+export const NOTIFICATION_SETTINGS_PATH = '/account/notifications';
+
 /** A person's choice for a kind, or the default. */
 export function defaultPreference(kind: NotificationKind): NotificationPreference {
   return { kind, email: NOTIFICATION_EMAIL_BY_DEFAULT.includes(kind), push: false };
