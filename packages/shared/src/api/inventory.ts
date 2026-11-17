@@ -96,6 +96,8 @@ export const stockItemSchema = z.object({
   variantValues: z.array(z.string()).default([]),
   /** Default unit price on sales orders (ADR 0044), 2 decimals; null = none. Default for older apis. */
   salePrice: z.string().nullable().default(null),
+  /** Its category (ADR 0048), from the organization's one category list; null = uncategorized. */
+  categoryId: z.uuid().nullable().default(null),
   archivedAt: z.iso.datetime().nullable(),
 });
 
@@ -105,6 +107,7 @@ export const createStockItemRequestSchema = z.strictObject({
   unit: z.enum(STOCK_UNITS),
   minQuantity: stockQuantitySchema.optional(),
   salePrice: priceSchema.optional(),
+  categoryId: z.uuid().nullable().optional(),
 });
 
 export const updateStockItemRequestSchema = z
@@ -114,6 +117,8 @@ export const updateStockItemRequestSchema = z
     unit: z.enum(STOCK_UNITS).optional(),
     minQuantity: stockQuantitySchema.nullable().optional(),
     salePrice: priceSchema.nullable().optional(),
+    /** null: uncategorized. */
+    categoryId: z.uuid().nullable().optional(),
     archived: z.boolean().optional(),
   })
   .refine((body) => Object.values(body).some((v) => v !== undefined), {

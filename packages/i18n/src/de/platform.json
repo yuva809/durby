@@ -911,5 +911,7 @@
   "platform.attention.kinds.salesToDispatch": "Verkaufsaufträge zu versenden",
   "platform.attention.kinds.draftOrders": "Entwürfe von Verkaufsaufträgen",
   "platform.attention.kinds.lowStock": "Artikel am oder unter Meldebestand",
-  "platform.shell.accountCard": "{email}, {organization}: Kontomenü"
+  "platform.shell.accountCard": "{email}, {organization}: Kontomenü",
+  "platform.audit.fields.parentId": "Unterkategorie von",
+  "platform.audit.fields.imageVersion": "Kachelbild"
 }

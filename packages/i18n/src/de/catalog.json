@@ -313,5 +313,7 @@
   "catalog.page.dragHint": "Ziehen Sie Kategorien am Griff, um die Reihenfolge der Karte festzulegen. Neu nummerieren folgt ihr.",
   "catalog.page.dragCategory": "{name} verschieben",
   "catalog.categoriesPage.intro": "Gruppieren Sie Ihre Produkte. Ziehen Sie eine Kategorie, um die Reihenfolge überall zu ändern.",
-  "catalog.categoriesPage.products": "Produkte: {count}"
+  "catalog.categoriesPage.products": "Produkte: {count}",
+  "catalog.errors.categoryParentInvalid": "Diese Kategorie kann nicht Unterkategorie dieser sein. Wählen Sie eine Hauptkategorie, und nur für eine Kategorie ohne eigene Unterkategorien.",
+  "catalog.errors.categoryImageInvalid": "Das Bild muss eine WebP-, PNG- oder JPEG-Datei mit höchstens 300 KB sein."
 }

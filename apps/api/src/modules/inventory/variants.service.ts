@@ -178,6 +178,8 @@ export class VariantsService {
               minQuantity: null,
               parentItemId: itemId,
               variantValues: values,
+              // In its parent's category (ADR 0048), so the category's tile lists it.
+              categoryId: parent.categoryId,
             },
             select: ITEM_SELECT,
           });

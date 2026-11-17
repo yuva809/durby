@@ -6,8 +6,12 @@ import { canonicalJson } from '../audit';
  * body, so key order in the body doesn't matter but any value does.
  */
 export function requestHash(method: string, url: string, body: unknown): string {
+  // A raw upload (an image, ADR 0048) counts by its bytes' hash, not as a JSON array of them.
+  const content = Buffer.isBuffer(body)
+    ? { sha256: createHash('sha256').update(body).digest('hex') }
+    : (body ?? null);
   return createHash('sha256')
-    .update(canonicalJson({ method: method.toUpperCase(), url, body: body ?? null }) ?? '')
+    .update(canonicalJson({ method: method.toUpperCase(), url, body: content }) ?? '')
     .digest('hex');
 }
 

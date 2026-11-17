@@ -20,6 +20,7 @@ const item = (id: string, name: string, extra: Partial<StockItem> = {}): StockIt
   parentItemId: null,
   variantValues: [],
   salePrice: null,
+  categoryId: null,
   archivedAt: null,
   ...extra,
 });

@@ -14,6 +14,7 @@ import type {
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
 import { AccessService } from '../../platform/rbac';
+import { CatalogService } from '../catalog';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../../platform/tenancy';
 import { inventoryErrors, isUniqueViolation } from './inventory-errors';
 
@@ -36,6 +37,7 @@ export const ITEM_SELECT = {
   parentItemId: true,
   variantValues: true,
   salePrice: true,
+  categoryId: true,
   archivedAt: true,
 } as const;
 
@@ -49,6 +51,7 @@ export type ItemRow = {
   parentItemId: string | null;
   variantValues: string[];
   salePrice: { toFixed(digits: number): string } | null;
+  categoryId: string | null;
   archivedAt: Date | null;
 };
 
@@ -69,6 +72,7 @@ export class InventorySetupService {
     private readonly access: AccessService,
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
+    private readonly catalog: CatalogService,
   ) {}
 
   async listWarehouses(query: ListWarehousesQuery): Promise<Warehouse[]> {
@@ -190,6 +194,7 @@ export class InventorySetupService {
 
   async createItem(body: CreateStockItemRequest): Promise<StockItem> {
     const { tenantId, userId } = this.tenantContext.require();
+    if (body.categoryId) await this.catalog.assertActiveCategory(body.categoryId);
     return this.unique(inventoryErrors.itemNameTaken, () =>
       this.db.$transaction(async (tx) => {
         const row = await tx.stockItem.create({
@@ -200,6 +205,7 @@ export class InventorySetupService {
             unit: body.unit,
             minQuantity: body.minQuantity ?? null,
             salePrice: body.salePrice ?? null,
+            categoryId: body.categoryId ?? null,
           },
           select: ITEM_SELECT,
         });
@@ -218,6 +224,7 @@ export class InventorySetupService {
 
   async updateItem(id: string, body: UpdateStockItemRequest): Promise<StockItem> {
     const { userId } = this.tenantContext.require();
+    if (body.categoryId) await this.catalog.assertActiveCategory(body.categoryId);
     return this.unique(inventoryErrors.itemNameTaken, () =>
       this.db.$transaction(async (tx) => {
         const current = await tx.stockItem.findUnique({ where: { id }, select: ITEM_SELECT });
@@ -247,6 +254,7 @@ export class InventorySetupService {
               : body.salePrice === null
                 ? null
                 : new Decimal(body.salePrice).toFixed(2),
+          categoryId: body.categoryId === undefined ? before.categoryId : body.categoryId,
           archivedAt: archivedAt(current.archivedAt, body.archived)?.toISOString() ?? null,
         };
         if (JSON.stringify(itemSnapshot(before)) === JSON.stringify(itemSnapshot(next))) {
@@ -260,6 +268,7 @@ export class InventorySetupService {
             unit: next.unit,
             minQuantity: next.minQuantity,
             salePrice: next.salePrice,
+            categoryId: next.categoryId,
             archivedAt: archivedAt(current.archivedAt, body.archived),
           },
           select: ITEM_SELECT,
@@ -314,6 +323,7 @@ export function itemResponse(row: ItemRow): StockItem {
     parentItemId: row.parentItemId,
     variantValues: row.variantValues,
     salePrice: row.salePrice?.toFixed(2) ?? null,
+    categoryId: row.categoryId,
     archivedAt: row.archivedAt?.toISOString() ?? null,
   };
 }

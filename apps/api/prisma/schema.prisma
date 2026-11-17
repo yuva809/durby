@@ -135,6 +135,7 @@ model Organization {
   reservations                 Reservation[]
   reservationTables            ReservationTable[]
   reservationStatusChanges     ReservationStatusChange[]
+  productCategoryImages        ProductCategoryImage[]
   priceRules                   PriceRule[]
   posPrinterCommands           PosPrinterCommand[]
   posPrinters                  PosPrinter[]
@@ -829,21 +830,44 @@ enum PrepStation {
 }
 
 model ProductCategory {
-  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String       @map("tenant_id") @db.Uuid
+  id           String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String                @map("tenant_id") @db.Uuid
   name         String
-  sortOrder    Int          @default(0) @map("sort_order")
+  sortOrder    Int                   @default(0) @map("sort_order")
   /// Which ticket its items print on (ADR 0025).
-  station      PrepStation  @default(kitchen)
-  archivedAt   DateTime?    @map("archived_at") @db.Timestamptz(6)
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  station      PrepStation           @default(kitchen)
+  /// What belongs in it (ADR 0048); null = none.
+  description  String?
+  /// Its parent ("secondary") category (ADR 0048): one level only, checked by the service.
+  parentId     String?               @map("parent_id") @db.Uuid
+  archivedAt   DateTime?             @map("archived_at") @db.Timestamptz(6)
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization          @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  parent       ProductCategory?      @relation("CategoryChildren", fields: [tenantId, parentId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  children     ProductCategory[]     @relation("CategoryChildren")
   products     Product[]
   priceRules   PriceRule[]
+  image        ProductCategoryImage?
+  stockItems   StockItem[]
 
   @@unique([tenantId, id])
+  @@index([tenantId, parentId])
   @@map("product_categories")
+}
+
+/// A category's tile image (ADR 0048): resized by the browser, WebP/PNG/JPEG, at most 300 KB. Kept apart so lists stay light.
+model ProductCategoryImage {
+  tenantId     String          @map("tenant_id") @db.Uuid
+  categoryId   String          @map("category_id") @db.Uuid
+  contentType  String          @map("content_type")
+  data         Bytes
+  updatedAt    DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  category     ProductCategory @relation(fields: [tenantId, categoryId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  organization Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([tenantId, categoryId])
+  @@map("product_category_images")
 }
 
 /// `price` is gross (VAT included); `taxRate` a percentage. Archived, never deleted.
@@ -1668,11 +1692,14 @@ model StockItem {
   variantValues String[]           @default([]) @map("variant_values")
   /// Default unit price on sales orders (ADR 0044); null = none.
   salePrice     Decimal?           @map("sale_price") @db.Decimal(12, 2)
+  /// Its category (ADR 0048); null = uncategorized.
+  categoryId    String?            @map("category_id") @db.Uuid
   archivedAt    DateTime?          @map("archived_at") @db.Timestamptz(6)
   createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization  Organization       @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   parent        StockItem?         @relation("StockItemVariants", fields: [tenantId, parentItemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  category      ProductCategory?   @relation(fields: [tenantId, categoryId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   variants      StockItem[]        @relation("StockItemVariants")
   movements     StockMovement[]
   levels        StockLevel[]
@@ -1685,6 +1712,7 @@ model StockItem {
   @@unique([tenantId, id])
   /// One variant per combination of values (NULL parents never collide).
   @@unique([tenantId, parentItemId, variantValues])
+  @@index([tenantId, categoryId])
   @@map("stock_items")
 }
 

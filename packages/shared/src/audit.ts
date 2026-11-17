@@ -503,7 +503,19 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   number_series_counter: ['id', 'seriesKey', 'period', 'nextValue'],
   /** Never `payload` or `lastError`. `handler`: set when one failed handler job was re-queued. */
   outbox_event: ['id', 'type', 'version', 'attempts', 'deadLetteredAt', 'handler'],
-  product_category: ['id', 'name', 'sortOrder', 'station', 'archivedAt'],
+  /**
+   * `imageVersion`: when the tile image last changed (the bytes are never in the log); null = none. The description is
+   * free text and stays out, as for products (ADR 0048).
+   */
+  product_category: [
+    'id',
+    'name',
+    'sortOrder',
+    'station',
+    'parentId',
+    'imageVersion',
+    'archivedAt',
+  ],
   /** `days`: comma-separated weekdays; `value`: decimal text. */
   price_rule: [
     'id',
@@ -615,6 +627,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'parentItemId',
     'variantValues',
     'salePrice',
+    'categoryId',
     'archivedAt',
   ],
   /** `factor`: decimal string, base units per unit. */

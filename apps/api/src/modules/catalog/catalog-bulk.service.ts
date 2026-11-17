@@ -3,7 +3,6 @@ import {
   type CategoryBulkRequest,
   type CategoryBulkResponse,
   newPrice,
-  type PrepStation,
   type ProductBulkAction,
   type ProductBulkRequest,
   type ProductBulkResponse,
@@ -23,6 +22,7 @@ import {
   isUniqueViolation,
   violates,
 } from './catalog-errors';
+import { CATEGORY_SELECT, type CategoryRow, categorySnapshot } from './category-shape';
 import { fixed2 } from './decimal-text';
 
 const PRODUCT_SELECT = {
@@ -35,14 +35,6 @@ const PRODUCT_SELECT = {
   sortOrder: true,
   archivedAt: true,
 } as const;
-const CATEGORY_SELECT = {
-  id: true,
-  name: true,
-  sortOrder: true,
-  station: true,
-  archivedAt: true,
-} as const;
-
 type ProductRow = {
   id: string;
   categoryId: string;
@@ -53,14 +45,6 @@ type ProductRow = {
   sortOrder: number;
   archivedAt: Date | null;
 };
-type CategoryRow = {
-  id: string;
-  name: string;
-  sortOrder: number;
-  station: PrepStation;
-  archivedAt: Date | null;
-};
-
 /** Up to 500 rows, each with its audit row: more than the 5 s default (as the import). */
 const LONG = { maxWait: 10_000, timeout: 60_000 };
 
@@ -354,8 +338,4 @@ function productSnapshot(row: ProductRow) {
     sortOrder: row.sortOrder,
     archivedAt: row.archivedAt?.toISOString() ?? null,
   });
-}
-
-function categorySnapshot(row: CategoryRow) {
-  return snapshot('product_category', row);
 }
