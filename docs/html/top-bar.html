@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Top bar and sidebar: technical and test notes</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#1f7a3d; --ok:#1f7a3d; --warn:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; } }
+  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .done { color: var(--ok); } .open { color: var(--warn); }
+  nav a { color: var(--accent); margin-right: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="#layout">Layout</a><a href="#search">Search</a><a href="#bell">Bell</a><a href="#tests">Tests</a></nav>
+  <h1>Top bar and sidebar</h1>
+  <p class="lead">Search, the "waiting for me" bell, the Audit Log shortcut and the person card, the same on app.durby.tech and app.asiamight.site. Decision: ADR 0046. Branch: <code>feature/shell-tools</code> (on top of <code>feature/branch-requests</code>).</p>
+
+  <h2 id="layout">Layout</h2>
+<pre>┌ Sidebar ───────────────┐┌ Top bar ─────────────────────────────────────────────┐
+│ Wordmark               ││ [🔍 Search items, orders, requests, pages…  Ctrl K]  │
+│ [Switch organization]* ││                          [Audit Log]** [🔔 3]          │
+│ menu (by role)         │└──────────────────────────────────────────────────────┘
+│ ┌ AW  anna@…         ⇕ │   * only with several organizations on this site
+│ └    AsiaMight · Owner │  ** only with platform.audit.read
+└────────────────────────┘</pre>
+  <p>The person card opens: other organizations (switching reloads the session and goes home), Account, Sign out. The tablet drawer shows the same sidebar.</p>
+
+  <h2 id="search">Search</h2>
+  <div class="scroll"><table>
+    <tr><th>Finds</th><th>By</th><th>Who</th><th>Opens</th></tr>
+    <tr><td>Menu pages</td><td>name</td><td>pages the person can open</td><td>the page</td></tr>
+    <tr><td>Stock items</td><td>name, SKU</td><td><code>inventory.stock.read</code></td><td>/inventory</td></tr>
+    <tr><td>Products</td><td>name, menu number</td><td><code>catalog.products.read</code></td><td>/catalog</td></tr>
+    <tr><td>Customers</td><td>name, code</td><td><code>orders.customers.read</code></td><td>/orders/customers</td></tr>
+    <tr><td>Sales orders</td><td>number, customer</td><td><code>orders.orders.read</code> at the branch</td><td>/orders?open=…</td></tr>
+    <tr><td>Stock requests / transfers</td><td>SRQ / TRF number</td><td>its branch, its warehouse, approvers, its driver</td><td>/requests?open=…</td></tr>
+    <tr><td>Staff</td><td>display name</td><td><code>platform.users.read</code></td><td>/staff</td></tr>
+  </table></div>
+  <p><code>GET /api/v1/search?q=</code> (2–100 characters), at most 5 per type. Ctrl+K / ⌘K opens it; arrows and Enter pick.</p>
+
+  <h2 id="bell">Bell: waiting for me</h2>
+  <div class="scroll"><table>
+    <tr><th>Item</th><th>For</th><th>Opens</th></tr>
+    <tr><td>Stock requests to approve</td><td>owner, admin</td><td>/requests</td></tr>
+    <tr><td>Transfers to pick</td><td>picking at the source (Lager)</td><td>/picking</td></tr>
+    <tr><td>Deliveries assigned to you</td><td>the driver</td><td>/my-deliveries</td></tr>
+    <tr><td>Deliveries on the way to your branch</td><td>receiving branch</td><td>/requests</td></tr>
+    <tr><td>Sales orders to pick / dispatch</td><td>picking / delivery</td><td>/picking, /deliveries</td></tr>
+    <tr><td>Draft sales orders</td><td>order editors</td><td>/orders</td></tr>
+    <tr><td>Low stock</td><td>stock readers (their warehouses, not In transit)</td><td>/inventory</td></tr>
+  </table></div>
+  <p><code>GET /api/v1/attention</code> → <code>{ data: [{ kind, count }], total }</code>; worked out per request, nothing stored. Refresh: every minute, on tab focus, when opened.</p>
+
+  <h2 id="tests">Testing</h2>
+  <div class="scroll"><table>
+    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
+    <tr><td>Web</td><td><code>components/shell/top-bar.test.tsx</code></td><td>pages by permission, records, Ctrl+K and Enter, bell count and links, empty bell, account switch and sign out, audit shortcut</td><td class="done">Pass</td></tr>
+    <tr><td>API e2e</td><td><code>test/workspace.e2e.spec.ts</code></td><td>search per role and across organizations, waiting counts per role and after approval</td><td class="open">Needs Docker / CI</td></tr>
+  </table></div>
+  <h3>Manual</h3>
+  <ul>
+    <li>Ctrl+K → type "ri" → stock item and requests appear; Enter on a TRF opens its panel on Stock Requests.</li>
+    <li>Branch sends a request → owner's bell shows 1 "Stock requests to approve"; after approving it moves to Lager's bell.</li>
+    <li>A user in Durby and AsiaMight orgs on the same site: person card lists both and switches.</li>
+    <li>Staff role: no Audit Log button; bell shows only what they can act on.</li>
+  </ul>
+</main>
+</body>
+</html>
