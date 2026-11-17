@@ -188,7 +188,8 @@ function Catalog({
     <div className={`flex flex-col gap-6${canManage ? ' pb-28 lg:pb-0' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t('catalog.nav.title')}</h1>
-        <div className="flex flex-wrap gap-2">
+        {/* Phones: two even columns (labels may wrap) instead of four ragged rows. */}
+        <div className="grid w-full grid-cols-2 gap-2 [&>*]:min-w-0 [&>*]:whitespace-normal [&>*]:py-1.5 [&>*]:text-center sm:flex sm:w-auto sm:flex-wrap sm:[&>*]:whitespace-nowrap sm:[&>*]:py-0">
           <Button variant="outline" asChild>
             <Link href="/catalog/prices" data-testid="price-rules-open">
               <Tags aria-hidden />
@@ -234,7 +235,7 @@ function Catalog({
           )}
         </div>
       </div>
-      <div className="flex min-h-11 items-center gap-3">
+      <div className="flex min-h-11 flex-wrap items-center gap-3">
         <Checkbox
           id={`${id}-archived`}
           checked={showArchived}
@@ -244,15 +245,15 @@ function Catalog({
           {t('catalog.page.showArchived')}
         </Label>
         {locations.status === 'ready' && locations.data.length > 0 && (
-          <div className="ml-auto flex items-center gap-2">
-            <Label htmlFor={`${id}-price-location`} className="font-normal">
+          <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+            <Label htmlFor={`${id}-price-location`} className="shrink-0 font-normal">
               {t('catalog.prices.menuLocation')}
             </Label>
             <Select
               id={`${id}-price-location`}
               value={priceLocation}
               onChange={(e) => setPriceLocation(e.target.value)}
-              className="w-48"
+              className="min-w-0 flex-1 sm:w-48 sm:flex-none"
               data-testid="menu-price-location"
             >
               <option value="">{t('catalog.prices.ownPrice')}</option>

@@ -271,48 +271,50 @@ function ProductionForm({
               {t('inventory.production.enterQuantity')}
             </p>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="text-left text-xs text-muted-foreground">
-                <tr>
-                  <th scope="col" className="px-4 py-2 font-medium">
-                    {t('inventory.fields.item')}
-                  </th>
-                  <th scope="col" className="px-4 py-2 text-right font-medium">
-                    {t('inventory.production.needed')}
-                  </th>
-                  <th scope="col" className="px-4 py-2 text-right font-medium">
-                    {t('inventory.production.onHand')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {needs.map((need) => (
-                  <tr key={need.itemId} data-testid="production-need" data-short={need.short}>
-                    <td className="px-4 py-2">
-                      <span className="flex items-center gap-2">
-                        {need.itemName}
-                        {need.short && (
-                          <Badge className="bg-destructive text-destructive-foreground">
-                            {t('inventory.production.short')}
-                          </Badge>
-                        )}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {shortQuantity(need.needed)} {t(`inventory.units.${need.unit}`)}
-                    </td>
-                    <td
-                      className={cn(
-                        'px-4 py-2 text-right tabular-nums',
-                        need.short ? 'text-destructive' : 'text-muted-foreground',
-                      )}
-                    >
-                      {shortQuantity(need.onHand)}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs text-muted-foreground">
+                  <tr>
+                    <th scope="col" className="px-4 py-2 font-medium">
+                      {t('inventory.fields.item')}
+                    </th>
+                    <th scope="col" className="px-4 py-2 text-right font-medium">
+                      {t('inventory.production.needed')}
+                    </th>
+                    <th scope="col" className="px-4 py-2 text-right font-medium">
+                      {t('inventory.production.onHand')}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y">
+                  {needs.map((need) => (
+                    <tr key={need.itemId} data-testid="production-need" data-short={need.short}>
+                      <td className="px-4 py-2">
+                        <span className="flex items-center gap-2">
+                          {need.itemName}
+                          {need.short && (
+                            <Badge className="bg-destructive text-destructive-foreground">
+                              {t('inventory.production.short')}
+                            </Badge>
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {shortQuantity(need.needed)} {t(`inventory.units.${need.unit}`)}
+                      </td>
+                      <td
+                        className={cn(
+                          'px-4 py-2 text-right tabular-nums',
+                          need.short ? 'text-destructive' : 'text-muted-foreground',
+                        )}
+                      >
+                        {shortQuantity(need.onHand)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Card>
 

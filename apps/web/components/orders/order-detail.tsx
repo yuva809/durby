@@ -179,48 +179,50 @@ function Detail({
         <h3 id="order-lines-heading" className="font-medium">
           {t('orders.detail.lines')}
         </h3>
-        <table className="w-full text-sm" data-testid="order-detail-lines">
-          <thead>
-            <tr className="border-b text-left text-muted-foreground">
-              <th className="py-1 font-medium">{t('orders.detail.item')}</th>
-              <th className="py-1 text-right font-medium">{t('orders.detail.quantity')}</th>
-              {picked && (
-                <th className="py-1 text-right font-medium">{t('orders.detail.picked')}</th>
-              )}
-              <th className="py-1 text-right font-medium">{t('orders.detail.unitPrice')}</th>
-              <th className="py-1 text-right font-medium">{t('orders.detail.lineTotal')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {order.lines.map((line) => (
-              <tr key={line.id} className="border-b last:border-0">
-                <td className="py-1.5">{line.itemName}</td>
-                <td className="py-1.5 text-right tabular-nums">
-                  {`${line.quantity.replace(/\.?0+$/, '')} ${line.unit}`}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" data-testid="order-detail-lines">
+            <thead>
+              <tr className="border-b text-left text-muted-foreground">
+                <th className="py-1 font-medium">{t('orders.detail.item')}</th>
+                <th className="py-1 text-right font-medium">{t('orders.detail.quantity')}</th>
                 {picked && (
-                  <td className="py-1.5 text-right tabular-nums" data-testid="order-line-picked">
-                    {line.pickedQuantity === null
-                      ? none
-                      : line.pickedQuantity.replace(/\.?0+$/, '') || '0'}
-                  </td>
+                  <th className="py-1 text-right font-medium">{t('orders.detail.picked')}</th>
                 )}
-                <td className="py-1.5 text-right tabular-nums">{money(line.unitPrice)}</td>
-                <td className="py-1.5 text-right tabular-nums">{money(line.lineTotal)}</td>
+                <th className="py-1 text-right font-medium">{t('orders.detail.unitPrice')}</th>
+                <th className="py-1 text-right font-medium">{t('orders.detail.lineTotal')}</th>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="font-medium">
-              <td className="pt-2" colSpan={picked ? 4 : 3}>
-                {t('orders.detail.total')}
-              </td>
-              <td className="pt-2 text-right tabular-nums" data-testid="order-detail-total">
-                {money(order.total)}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+            </thead>
+            <tbody>
+              {order.lines.map((line) => (
+                <tr key={line.id} className="border-b last:border-0">
+                  <td className="py-1.5">{line.itemName}</td>
+                  <td className="py-1.5 text-right tabular-nums">
+                    {`${line.quantity.replace(/\.?0+$/, '')} ${line.unit}`}
+                  </td>
+                  {picked && (
+                    <td className="py-1.5 text-right tabular-nums" data-testid="order-line-picked">
+                      {line.pickedQuantity === null
+                        ? none
+                        : line.pickedQuantity.replace(/\.?0+$/, '') || '0'}
+                    </td>
+                  )}
+                  <td className="py-1.5 text-right tabular-nums">{money(line.unitPrice)}</td>
+                  <td className="py-1.5 text-right tabular-nums">{money(line.lineTotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="font-medium">
+                <td className="pt-2" colSpan={picked ? 4 : 3}>
+                  {t('orders.detail.total')}
+                </td>
+                <td className="pt-2 text-right tabular-nums" data-testid="order-detail-total">
+                  {money(order.total)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </section>
 
       <section aria-labelledby="order-timeline-heading" className="flex flex-col gap-2">

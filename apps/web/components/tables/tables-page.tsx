@@ -338,7 +338,8 @@ function AreaTabs({
   );
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-end gap-2 border-b border-border">
+      {/* Phones: Add area above the tabs, so it never covers them; the tabs scroll sideways. */}
+      <div className="flex flex-col-reverse gap-2 border-b border-border sm:flex-row sm:items-end">
         <div
           role="tablist"
           aria-label={t('pos.tablesPage.areas')}
@@ -362,7 +363,7 @@ function AreaTabs({
             )}
         </div>
         {access.canManage && (
-          <div className="pb-1.5">
+          <div className="self-end sm:pb-1.5">
             <AreaDialog locationId={locationId} onDone={onDone} />
           </div>
         )}
@@ -419,7 +420,9 @@ function FloorGrid({
   return (
     <ul
       ref={canvas}
-      className="relative min-h-[620px] overflow-hidden rounded-2xl border border-border bg-card/50"
+      // Below 1024 px a plain grid in table order: phones and portrait tablets are too narrow for the floor plan (tiles
+      // overlapped, fixed-size tiles at percentage positions) and to drag on. From 1024 px the plan, as placed.
+      className="relative grid grid-cols-2 gap-3 rounded-2xl border border-border bg-card/50 p-3 sm:grid-cols-3 md:grid-cols-4 lg:block lg:min-h-[620px] lg:overflow-hidden lg:p-0"
       style={{
         backgroundImage: 'radial-gradient(hsl(var(--border)) 1px, transparent 1px)',
         backgroundSize: '24px 24px',
@@ -504,6 +507,8 @@ function TableTile({
       data-testid="table-card"
       data-name={table.name}
       data-status={status}
+      // In the phone grid the plan's inline position doesn't apply (see FloorGrid).
+      className="max-lg:!static max-lg:!w-auto max-lg:!transform-none max-lg:!cursor-auto"
       style={{
         position: 'absolute',
         left: `${table.floorX / 10}%`,
@@ -515,6 +520,8 @@ function TableTile({
       }}
       onPointerDown={(event) => {
         if (!canManage || (event.target as HTMLElement).closest('button')) return;
+        // No dragging in the grid (below 1024 px): there is no plan to place the table on.
+        if (window.matchMedia?.('(max-width: 1023px)').matches) return;
         drag.current = { pointer: event.pointerId, moved: false };
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
