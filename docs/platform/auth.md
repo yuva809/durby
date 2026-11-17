@@ -57,6 +57,15 @@ fallback for browsers that don't (Safari, the Android app's WebView); the config
 `NODE_ENV=production`. The prefix is never used without `Secure`. The api logs a warning at boot when
 `COOKIE_SECURE=true` and a `WEB_ORIGINS` entry is plain `http://`: there, those clients sign out on every reload.
 
+### Several accounts (ADR 0047)
+
+Up to five accounts can be signed in on one browser, each in a slot 0–4 with its own cookie: slot 0 is the cookie
+above, slots 1–4 append `_1` … `_4` (`__Secure-durby_rt_2`). The web sends `X-Durby-Account: <slot>` on login,
+refresh, logout, switch-organization and password change; no header means slot 0, anything but 0–4 is
+`400 validation.failed`.
+The slot only picks the cookie: who the caller is comes from the token, and each slot's family rotates, expires and is
+revoked on its own.
+
 ### Rotation and reuse detection
 
 Every refresh consumes the presented token atomically
@@ -261,19 +270,20 @@ asserts that no token or link appears.
 
 ## Configuration
 
-| Var                          | Default                  | Notes                                                  |
-| ---------------------------- | ------------------------ | ------------------------------------------------------ |
-| `JWT_ACCESS_SECRET`          | –                        | required, ≥ 32 characters (`openssl rand -hex 32`)     |
-| `JWT_ACCESS_TTL_SECONDS`     | 600                      | 60–900                                                 |
-| `JWT_ISSUER`, `JWT_AUDIENCE` | `durby-api`, `durby-web` |                                                        |
-| `REFRESH_TOKEN_TTL_DAYS`     | 14                       |                                                        |
-| `REFRESH_FAMILY_MAX_DAYS`    | 30                       |                                                        |
-| `WEB_ORIGINS`                | –                        | required, comma-separated exact origins (Origin check) |
-| `WEB_BASE_URL`               | –                        | required, base of email links                          |
-| `COOKIE_SECURE`              | `true`                   | `false` rejected in production                         |
-| `TRUST_PROXY`                | 0                        | proxy hops in front of the api                         |
-| `SMTP_URL`                   | –                        | required, e.g. `smtp://localhost:1025`                 |
-| `MAIL_FROM`                  | –                        | required                                               |
+| Var                          | Default                  | Notes                                                        |
+| ---------------------------- | ------------------------ | ------------------------------------------------------------ |
+| `JWT_ACCESS_SECRET`          | –                        | required, ≥ 32 characters (`openssl rand -hex 32`)           |
+| `JWT_ACCESS_TTL_SECONDS`     | 600                      | 60–900                                                       |
+| `JWT_ISSUER`, `JWT_AUDIENCE` | `durby-api`, `durby-web` |                                                              |
+| `REFRESH_TOKEN_TTL_DAYS`     | 14                       |                                                              |
+| `REFRESH_FAMILY_MAX_DAYS`    | 30                       |                                                              |
+| `WEB_ORIGINS`                | –                        | required, comma-separated exact origins (Origin check)       |
+| `WEB_BASE_URL`               | –                        | required, base of email links                                |
+| `COOKIE_SECURE`              | `true`                   | `false` rejected in production                               |
+| `TRUST_PROXY`                | 0                        | proxy hops in front of the api                               |
+| `SMTP_URL`                   | –                        | required, e.g. `smtp://localhost:1025`                       |
+| `MAIL_FROM`                  | –                        | required                                                     |
+| `WEB_PUSH_*`                 | –                        | optional, all three or none (docs/platform/notifications.md) |
 
 ## Web
 
@@ -288,8 +298,14 @@ client guard (docs/platform/web-shell.md → Routes).
   session back after a reload. Status is `loading` until that answers, then `authenticated` or `anonymous`.
 - **Renewal:** a timer refreshes 60 s before the access token expires. `apiFetch()` adds the bearer token and, on a
   401, refreshes once and retries.
-- **One refresh at a time:** concurrent calls in a tab share one request, and the Web Locks API (`durby-auth-refresh`)
-  serializes tabs, so two tabs never rotate the cookie at once (which the api would treat as reuse).
+- **One refresh at a time:** concurrent calls in a tab share one request, and the Web Locks API (`durby-auth-refresh`,
+  `durby-auth-refresh:<slot>` for slots 1–4) serializes tabs, so two tabs never rotate a cookie at once (which the api
+  would treat as reuse).
+- **Several accounts (ADR 0047):** `lib/auth/accounts.ts` remembers which email is in which slot (`localStorage`,
+  emails only, the one file allowed to use browser storage) and each tab's slot (`sessionStorage`, falling back to the
+  last used). `useAccounts()` switches (`store.selectAccount(slot)`: nothing changes if that sign-in ended), adds
+  (`/login?add=1` signs in into the email's slot or a free one), signs out (another account takes over first) or signs
+  out of all. On load the tab's slot is restored, else the next account that still works; ended ones leave the list.
 - **Only a dead session signs out:** `auth.refresh_invalid`, `auth.refresh_reused` or `auth.unauthenticated` clear
   the session; rate limits, outages and network errors keep the current one until the next attempt.
 - **Email links:** `reset-password` and `verify-email` read `#token=…` once (`useLinkToken()`), then remove it from
