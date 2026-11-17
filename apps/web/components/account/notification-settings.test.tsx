@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockState, resetMocks } from '../../test/mocks';
 import { sessionFixture } from '../../test/session-fixture';
+import { keyBytes } from '../../lib/account/push';
 import { NotificationSettings } from './notification-settings';
 
 vi.mock('../../app/providers', async () => (await import('../../test/mocks')).providersMock());
@@ -57,5 +58,28 @@ describe('/account/notifications (ADR 0047)', () => {
       ),
     );
     expect(await screen.findByText('Saved.')).toBeTruthy();
+  });
+});
+
+describe('push on this device (ADR 0047)', () => {
+  it('says when the browser cannot receive push', async () => {
+    mockState.session = sessionFixture();
+    mockState.store.apiFetch.mockImplementation((path: string) =>
+      Promise.resolve(
+        Response.json(
+          path === '/api/v1/notifications/push' ? { publicKey: 'BKey' } : { data: PREFS },
+        ),
+      ),
+    );
+    render(<NotificationSettings />);
+    // jsdom has no service worker or Push API.
+    expect((await screen.findByTestId('push-state')).textContent).toContain(
+      "This browser can't receive push messages",
+    );
+    expect(screen.queryByTestId('push-toggle')).toBeNull();
+  });
+
+  it('decodes the base64url VAPID key', () => {
+    expect([...keyBytes('AQID_-8')]).toEqual([1, 2, 3, 255, 239]);
   });
 });

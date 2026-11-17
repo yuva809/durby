@@ -950,5 +950,13 @@
   "platform.notifications.kindNames.salesPacked": "A sales order is ready to dispatch",
   "platform.notifications.kindNames.salesReturned": "A sales order came back",
   "platform.notifications.kindNames.lowStock": "An item drops to its reorder level",
-  "platform.notifications.kindNames.feedbackAnswered": "My feedback was answered"
+  "platform.notifications.kindNames.feedbackAnswered": "My feedback was answered",
+  "platform.notifications.push.title": "Push on this device",
+  "platform.notifications.push.state.on": "On: the updates you tick under Push appear on this device, even when the app is closed.",
+  "platform.notifications.push.state.off": "Off on this device. Turn it on to get the updates you tick under Push.",
+  "platform.notifications.push.state.blocked": "Notifications are blocked for this site in your browser settings.",
+  "platform.notifications.push.state.unsupported": "This browser can't receive push messages. On iPhone and iPad, add the app to your home screen first.",
+  "platform.notifications.push.state.unavailable": "Push isn't set up on this server yet.",
+  "platform.notifications.push.turnOn": "Turn on",
+  "platform.notifications.push.turnOff": "Turn off"
 }

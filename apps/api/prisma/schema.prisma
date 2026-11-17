@@ -149,6 +149,7 @@ model Organization {
   stockRequestEvents           StockRequestEvent[]
   notifications                Notification[]
   notificationPreferences      NotificationPreference[]
+  pushSubscriptions            PushSubscription[]
 
   @@index([partnerId])
   @@index([planId])
@@ -2299,4 +2300,21 @@ model NotificationPreference {
 
   @@id([tenantId, userId, kind])
   @@map("notification_preferences")
+}
+
+/// A browser that turned push on for a person in an organization (ADR 0047). The endpoint is a capability URL:
+/// never logged or returned. Removed when the person turns it off or the push service says it is gone.
+model PushSubscription {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  endpoint     String
+  p256dh       String
+  auth         String
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, endpoint])
+  @@index([tenantId, userId])
+  @@map("push_subscriptions")
 }

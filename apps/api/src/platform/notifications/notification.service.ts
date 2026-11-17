@@ -9,10 +9,14 @@ import {
   type NotificationKind,
   type NotificationListResponse,
   type NotificationPreference,
+  type PushConfigResponse,
+  type PushSubscriptionBody,
   type PutNotificationPreferences,
+  type RemovePushSubscription,
 } from '@durby/shared';
 import { ApiError } from '../http';
 import { OutboxService } from '../outbox';
+import { PUSH_SENDER, type PushSender } from './push-sender';
 import {
   TENANT_PRISMA,
   TenantContext,
@@ -60,6 +64,7 @@ export class NotificationService {
     @Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient,
     private readonly tenantContext: TenantContext,
     private readonly outbox: OutboxService,
+    @Inject(PUSH_SENDER) private readonly push: PushSender,
   ) {}
 
   /**
@@ -179,6 +184,39 @@ export class NotificationService {
       }
     });
     return this.preferences(userId);
+  }
+
+  pushConfig(): PushConfigResponse {
+    return { publicKey: this.push.publicKey };
+  }
+
+  /**
+   * This browser takes push for the caller in this organization. An endpoint already kept for someone else (a shared
+   * device where another person turned push on) moves to the caller: the browser now belongs to this sign-in.
+   */
+  async subscribe(body: PushSubscriptionBody): Promise<void> {
+    const { tenantId, userId } = this.tenantContext.require();
+    const data = { userId, p256dh: body.keys.p256dh, auth: body.keys.auth };
+    await this.db.pushSubscription.upsert({
+      where: { tenantId_endpoint: { tenantId, endpoint: body.endpoint } },
+      create: { tenantId, endpoint: body.endpoint, ...data },
+      update: data,
+    });
+  }
+
+  async pushStatus(body: RemovePushSubscription): Promise<{ subscribed: boolean }> {
+    const { userId } = this.tenantContext.require();
+    const found = await this.db.pushSubscription.findFirst({
+      where: { userId, endpoint: body.endpoint },
+      select: { id: true },
+    });
+    return { subscribed: found !== null };
+  }
+
+  /** Only the caller's own; an unknown endpoint is fine (already gone). */
+  async unsubscribe(body: RemovePushSubscription): Promise<void> {
+    const { userId } = this.tenantContext.require();
+    await this.db.pushSubscription.deleteMany({ where: { userId, endpoint: body.endpoint } });
   }
 }
 

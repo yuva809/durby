@@ -3,7 +3,7 @@
 import type { LabelKey } from '@durby/i18n';
 import type { NotificationKind, NotificationPreference } from '@durby/shared';
 import Link from 'next/link';
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -18,6 +18,7 @@ import { camel } from '../../lib/workspace/api';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
+import { PushDevice } from './push-device';
 
 type Channel = 'email' | 'push';
 
@@ -25,7 +26,7 @@ type Channel = 'email' | 'push';
  * /account/notifications (ADR 0047): per kind of update, whether it also comes by email (and, on a device where push
  * is on, as a push message). The bell always has every update. Choices are per organization.
  */
-export function NotificationSettings({ pushSlot }: { pushSlot?: ReactNode }) {
+export function NotificationSettings() {
   const t = useT();
   const { store, session } = useAuth();
   const action = useActionKey();
@@ -70,7 +71,7 @@ export function NotificationSettings({ pushSlot }: { pushSlot?: ReactNode }) {
           {t('platform.notifications.settings.intro')}
         </p>
       </div>
-      {pushSlot}
+      <PushDevice />
       <Card className="p-0">
         {loaded.status === 'error' ? (
           <p className="p-6 text-sm text-destructive">{t(errorLabel(loaded.code))}</p>

@@ -47,6 +47,7 @@ describe('route markers', () => {
       // ADR 0047: the caller's own notifications and choices in the active organization; every query names the caller.
       'GET /api/v1/notifications',
       'GET /api/v1/notifications/preferences',
+      'GET /api/v1/notifications/push',
       'GET /api/v1/search',
       // ADR 0045: a request is seen by its branch, its warehouse, approvers and its driver; the service filters.
       'GET /api/v1/stock-requests',
@@ -59,6 +60,9 @@ describe('route markers', () => {
       // ADR 0007: writes only the caller's own membership, in the tenant the invitation proves.
       'POST /api/v1/invitations/accept-signed-in',
       'POST /api/v1/notifications/:id/read',
+      'POST /api/v1/notifications/push/status',
+      'POST /api/v1/notifications/push/subscribe',
+      'POST /api/v1/notifications/push/unsubscribe',
       'POST /api/v1/notifications/read-all',
       'PUT /api/v1/notifications/preferences',
     ]);
@@ -160,6 +164,8 @@ describe('route markers', () => {
       'POST /api/v1/invitations/accept',
       'POST /api/v1/invitations/accept-signed-in',
       'POST /api/v1/invitations/preview',
+      // ADR 0047: reads only; the push endpoint goes in the body, never in a URL.
+      'POST /api/v1/notifications/push/status',
       'POST /api/v1/platform/auth/accept',
       'POST /api/v1/platform/auth/login',
       'POST /api/v1/platform/auth/logout',
@@ -235,6 +241,8 @@ describe('route markers', () => {
       'POST /api/v1/invitations',
       'POST /api/v1/locations',
       'POST /api/v1/notifications/:id/read',
+      'POST /api/v1/notifications/push/subscribe',
+      'POST /api/v1/notifications/push/unsubscribe',
       'POST /api/v1/notifications/read-all',
       'POST /api/v1/orders',
       'POST /api/v1/orders/:id/cancel',

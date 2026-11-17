@@ -176,4 +176,36 @@ describe('notifications (ADR 0047)', () => {
     ).data;
     expect(theirs.find((p) => p.kind === 'low_stock')?.email).toBe(false);
   });
+
+  it('keeps a device for push per person, and only they see or remove it', async () => {
+    const s = await setup();
+    const device = {
+      endpoint: `https://push.example.test/send/${uuidv7()}`,
+      keys: { p256dh: 'B'.repeat(87), auth: 'a'.repeat(22) },
+    };
+    const status = async (token: string) =>
+      (
+        (await post(token, '/notifications/push/status', { endpoint: device.endpoint }).expect(200))
+          .body as { subscribed: boolean }
+      ).subscribed;
+    await get(s.owner.token, '/notifications/push').expect(200);
+    await post(s.owner.token, '/notifications/push/subscribe', device).expect(204);
+    // The same browser again changes nothing.
+    await post(s.owner.token, '/notifications/push/subscribe', device).expect(204);
+    expect(await status(s.owner.token)).toBe(true);
+    expect(await status(s.branchUser.token)).toBe(false);
+    // Someone else can't remove it.
+    await post(s.branchUser.token, '/notifications/push/unsubscribe', {
+      endpoint: device.endpoint,
+    }).expect(204);
+    expect(await status(s.owner.token)).toBe(true);
+    await post(s.owner.token, '/notifications/push/unsubscribe', {
+      endpoint: device.endpoint,
+    }).expect(204);
+    expect(await status(s.owner.token)).toBe(false);
+    await post(s.owner.token, '/notifications/push/subscribe', {
+      ...device,
+      endpoint: 'http://insecure.example.test/x',
+    }).expect(400);
+  });
 });

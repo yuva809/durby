@@ -77,6 +77,34 @@ export const putNotificationPreferencesSchema = z.strictObject({
     .max(NOTIFICATION_KINDS.length),
 });
 
+/** The server's VAPID public key; null when push is not set up on this server. */
+export const pushConfigResponseSchema = z.object({ publicKey: z.string().nullable() });
+
+const base64url = (min: number, max: number) =>
+  z
+    .string()
+    .min(min)
+    .max(max)
+    .regex(/^[A-Za-z0-9_-]+={0,2}$/);
+
+/** What the browser's PushSubscription.toJSON() gives, minus expirationTime. */
+export const pushSubscriptionSchema = z.strictObject({
+  endpoint: z.url({ protocol: /^https$/ }).max(1024),
+  keys: z.strictObject({ p256dh: base64url(80, 100), auth: base64url(16, 32) }),
+});
+
+export const removePushSubscriptionSchema = z.strictObject({
+  endpoint: z.url({ protocol: /^https$/ }).max(1024),
+});
+
+/** Whether this browser is on for the caller in this organization (a browser has one subscription for all). */
+export const pushStatusResponseSchema = z.object({ subscribed: z.boolean() });
+export type PushStatusResponse = z.infer<typeof pushStatusResponseSchema>;
+
+export type PushConfigResponse = z.infer<typeof pushConfigResponseSchema>;
+export type PushSubscriptionBody = z.infer<typeof pushSubscriptionSchema>;
+export type RemovePushSubscription = z.infer<typeof removePushSubscriptionSchema>;
+
 export type Notification = z.infer<typeof notificationSchema>;
 export type NotificationListResponse = z.infer<typeof notificationListResponseSchema>;
 export type NotificationPreference = z.infer<typeof notificationPreferenceSchema>;

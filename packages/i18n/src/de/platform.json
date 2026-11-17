@@ -950,5 +950,13 @@
   "platform.notifications.kindNames.salesPacked": "Ein Auftrag ist bereit zum Versand",
   "platform.notifications.kindNames.salesReturned": "Ein Auftrag kam zurück",
   "platform.notifications.kindNames.lowStock": "Ein Artikel erreicht seinen Meldebestand",
-  "platform.notifications.kindNames.feedbackAnswered": "Mein Feedback wurde beantwortet"
+  "platform.notifications.kindNames.feedbackAnswered": "Mein Feedback wurde beantwortet",
+  "platform.notifications.push.title": "Push auf diesem Gerät",
+  "platform.notifications.push.state.on": "An: Die unter Push angehakten Neuigkeiten erscheinen auf diesem Gerät, auch wenn die App geschlossen ist.",
+  "platform.notifications.push.state.off": "Auf diesem Gerät aus. Schalten Sie es ein, um die unter Push angehakten Neuigkeiten zu bekommen.",
+  "platform.notifications.push.state.blocked": "Benachrichtigungen sind für diese Seite in Ihren Browser-Einstellungen blockiert.",
+  "platform.notifications.push.state.unsupported": "Dieser Browser kann keine Push-Nachrichten empfangen. Auf iPhone und iPad fügen Sie die App zuerst zum Home-Bildschirm hinzu.",
+  "platform.notifications.push.state.unavailable": "Push ist auf diesem Server noch nicht eingerichtet.",
+  "platform.notifications.push.turnOn": "Einschalten",
+  "platform.notifications.push.turnOff": "Ausschalten"
 }

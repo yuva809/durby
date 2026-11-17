@@ -7,6 +7,7 @@ import { InMemoryMailer } from '../mail/in-memory-mailer';
 import type { OutboxEvent } from '../outbox';
 import type { PlatformPrismaClient, TenantTransactionClient } from '../tenancy';
 import { NotificationDeliveryHandler, notificationText } from './notification-delivery.handler';
+import type { PushSender } from './push-sender';
 
 const TENANT = '0190a000-0000-7000-8000-0000000000a1';
 const ANNA = '0190a000-0000-7000-8000-000000000001';
@@ -26,13 +27,35 @@ function row(id: string, userId: string, kind: string, entityType = 'stock_reque
 
 function setup(
   rows: ReturnType<typeof row>[],
-  prefs: { userId: string; kind: string; email: boolean }[] = [],
+  prefs: { userId: string; kind: string; email: boolean; push?: boolean }[] = [],
 ) {
   const mailer = new InMemoryMailer();
+  const subscriptions = [
+    { id: 's1', userId: BEN, endpoint: 'https://push.example/ok', p256dh: 'k', auth: 'a' },
+    { id: 's2', userId: BEN, endpoint: 'https://push.example/gone', p256dh: 'k', auth: 'a' },
+  ];
+  const deleted: string[] = [];
+  const pushed: { endpoint: string; title: string; url: string }[] = [];
   const tx = {
     notification: { findMany: () => Promise.resolve(rows) },
-    notificationPreference: { findMany: () => Promise.resolve(prefs) },
+    notificationPreference: {
+      findMany: () => Promise.resolve(prefs.map((p) => ({ push: false, ...p }))),
+    },
+    pushSubscription: {
+      findMany: () => Promise.resolve(subscriptions),
+      deleteMany: ({ where }: { where: { id: string } }) => {
+        deleted.push(where.id);
+        return Promise.resolve({ count: 1 });
+      },
+    },
   } as unknown as TenantTransactionClient;
+  const push: PushSender = {
+    publicKey: 'public-key',
+    send: (target, message) => {
+      pushed.push({ endpoint: target.endpoint, ...message });
+      return Promise.resolve(target.endpoint.endsWith('gone') ? 'gone' : 'sent');
+    },
+  };
   const platformDb = {
     organization: {
       findUniqueOrThrow: () =>
@@ -58,7 +81,7 @@ function setup(
     WEB_ORIGINS: ['https://app.durby.tech', 'https://app.asiamight.site'],
     WEB_BASE_URL: 'https://app.durby.tech',
   } as unknown as AppConfig;
-  const handler = new NotificationDeliveryHandler(mailer, config, platformDb, labels, users);
+  const handler = new NotificationDeliveryHandler(mailer, config, platformDb, labels, users, push);
   const event = {
     id: '0190a000-0000-7000-8000-000000000900',
     tenantId: TENANT,
@@ -67,7 +90,7 @@ function setup(
     payload: { notificationIds: rows.map((r) => r.id) },
     occurredAt: new Date(),
   } as OutboxEvent;
-  return { mailer, run: () => handler.deliver(event, tx) };
+  return { mailer, pushed, deleted, run: () => handler.deliver(event, tx) };
 }
 
 describe('notification emails (ADR 0047)', () => {
@@ -103,6 +126,28 @@ describe('notification emails (ADR 0047)', () => {
     mailer.clear();
     mailer.failWith = new Error('smtp down');
     await expect(run()).resolves.toBeUndefined();
+  });
+
+  it('pushes the text and the page to each device of those who chose push, and drops gone ones', async () => {
+    const { mailer, pushed, deleted, run } = setup(
+      [row('0190a000-0000-7000-8000-000000000202', BEN, 'request_approved')],
+      [{ userId: BEN, kind: 'request_approved', email: false, push: true }],
+    );
+    await run();
+    expect(mailer.sent).toEqual([]);
+    expect(pushed).toEqual([
+      {
+        endpoint: 'https://push.example/ok',
+        title: 'Your stock request was approved: SRQ-2026-000001',
+        url: `/requests?open=${REQUEST}`,
+      },
+      {
+        endpoint: 'https://push.example/gone',
+        title: 'Your stock request was approved: SRQ-2026-000001',
+        url: `/requests?open=${REQUEST}`,
+      },
+    ]);
+    expect(deleted).toEqual(['s2']);
   });
 
   it('writes the feedback status in words', () => {

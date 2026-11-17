@@ -33,6 +33,8 @@ WORKDIR /app
 # Root-owned and read-only for the node user. Next writes its cache under .next/cache only.
 COPY --from=build /repo/apps/web/.next/standalone ./
 COPY --from=build /repo/apps/web/.next/static ./apps/web/.next/static
+# The push service worker (sw.js, ADR 0047): served from the site root.
+COPY --from=build /repo/apps/web/public ./apps/web/public
 RUN mkdir -p apps/web/.next/cache && chown node:node apps/web/.next/cache
 USER node
 EXPOSE 3000
