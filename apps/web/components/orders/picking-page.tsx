@@ -216,37 +216,42 @@ function PickDialog({ order, onDone }: { order: SalesOrderSummary; onDone: () =>
             <p className="text-sm text-muted-foreground">
               {t('orders.picking.stockNote', { warehouse: full.warehouseName })}
             </p>
-            <table className="w-full text-sm" data-testid="pick-lines">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="py-1 font-medium">{t('orders.detail.item')}</th>
-                  <th className="py-1 text-right font-medium">{t('orders.picking.ordered')}</th>
-                  <th className="py-1 text-right font-medium">{t('orders.picking.picked')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {full.lines.map((line) => (
-                  <tr key={line.id} className="border-b last:border-0">
-                    <td className="py-1.5">{line.itemName}</td>
-                    <td className="py-1.5 text-right tabular-nums">
-                      {`${short(line.quantity)} ${line.unit}`}
-                    </td>
-                    <td className="py-1.5 text-right">
-                      <Input
-                        inputMode="decimal"
-                        className="ml-auto w-24 text-right"
-                        value={picked[line.id] ?? ''}
-                        aria-label={t('orders.picking.pickedOf', { name: line.itemName })}
-                        onChange={(e) =>
-                          setPicked((p) => ({ ...p, [line.id]: e.target.value.replace(',', '.') }))
-                        }
-                        data-testid="pick-quantity"
-                      />
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="pick-lines">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="py-1 font-medium">{t('orders.detail.item')}</th>
+                    <th className="py-1 text-right font-medium">{t('orders.picking.ordered')}</th>
+                    <th className="py-1 text-right font-medium">{t('orders.picking.picked')}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {full.lines.map((line) => (
+                    <tr key={line.id} className="border-b last:border-0">
+                      <td className="py-1.5">{line.itemName}</td>
+                      <td className="py-1.5 text-right tabular-nums">
+                        {`${short(line.quantity)} ${line.unit}`}
+                      </td>
+                      <td className="py-1.5 text-right">
+                        <Input
+                          inputMode="decimal"
+                          className="ml-auto w-24 text-right"
+                          value={picked[line.id] ?? ''}
+                          aria-label={t('orders.picking.pickedOf', { name: line.itemName })}
+                          onChange={(e) =>
+                            setPicked((p) => ({
+                              ...p,
+                              [line.id]: e.target.value.replace(',', '.'),
+                            }))
+                          }
+                          data-testid="pick-quantity"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <Button
               type="button"
               variant="outline"

@@ -1355,7 +1355,7 @@ function CategoryRail({
         aria-pressed={active}
         onClick={() => onCategory(key)}
         className={cn(
-          'flex min-h-11 shrink-0 items-center justify-between gap-3 rounded-md px-3 text-left text-sm transition-colors lg:border-l-2',
+          'flex min-h-11 shrink-0 items-center justify-between gap-2 rounded-md px-3 text-left text-sm transition-colors lg:gap-3 lg:border-l-2',
           active
             ? 'bg-card font-semibold text-foreground shadow-sm lg:border-primary'
             : 'text-muted-foreground hover:bg-card hover:text-foreground lg:border-transparent',
@@ -1369,7 +1369,9 @@ function CategoryRail({
   return (
     <nav
       aria-label={t('pos.order.categories')}
-      className="flex gap-1 overflow-x-auto rounded-lg bg-muted p-1 lg:sticky lg:top-4 lg:flex-col lg:overflow-visible"
+      // Below 1024 px every category shows, in rows that wrap (a sideways strip hid most of them on phones);
+      // from 1024 px a sticky column beside the menu.
+      className="flex flex-wrap gap-1 rounded-lg bg-muted p-1 lg:sticky lg:top-4 lg:flex-col lg:flex-nowrap"
       data-testid="category-chips"
     >
       {item(null, t('catalog.page.allCategories'), products.length)}
