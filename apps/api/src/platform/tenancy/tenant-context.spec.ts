@@ -96,6 +96,8 @@ describe('TENANT_MODELS', () => {
       'Membership',
       'MembershipLocation',
       'MembershipPermission',
+      'Notification',
+      'NotificationPreference',
       'NumberSeries',
       'NumberSeriesCounter',
       'OrderCustomer',

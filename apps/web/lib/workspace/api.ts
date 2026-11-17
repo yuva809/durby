@@ -2,10 +2,14 @@ import {
   type AttentionKind,
   type AttentionResponse,
   attentionResponseSchema,
+  type Notification,
+  type NotificationListResponse,
+  notificationListResponseSchema,
   type SearchResult,
   searchResponseSchema,
 } from '@durby/shared';
-import { type Api, list, read, type Result } from '../api-call';
+import { type Api, list, read, type Result, write } from '../api-call';
+import { ActionKey } from '../idempotency';
 
 /** The top bar's calls (ADR 0046) and where each result or item leads. */
 
@@ -44,6 +48,35 @@ export const ATTENTION_HREF: Readonly<Record<AttentionKind, string>> = {
   draft_orders: '/orders',
   low_stock: '/inventory',
 };
+
+// --- Updates: stored notifications (ADR 0047) ------------------------------------------------------------------
+
+export const loadNotifications = (store: Api): Promise<Result<NotificationListResponse>> =>
+  read(store, '/api/v1/notifications', notificationListResponseSchema);
+
+/** Each click is its own action: a fresh key per call. */
+export const markNotificationRead = (store: Api, id: string) =>
+  write(store, new ActionKey(), `/api/v1/notifications/${id}/read`, 'POST');
+
+export const markAllNotificationsRead = (store: Api) =>
+  write(store, new ActionKey(), '/api/v1/notifications/read-all', 'POST');
+
+/** Where an update leads; feedback has no page of its own. */
+export function notificationHref(
+  n: Pick<Notification, 'kind' | 'entityType' | 'entityId'>,
+): string | null {
+  if (n.kind === 'request_driver_assigned') return '/my-deliveries';
+  switch (n.entityType) {
+    case 'stock_request':
+      return `/requests?open=${n.entityId}`;
+    case 'sales_order':
+      return `/orders?open=${n.entityId}`;
+    case 'stock_item':
+      return '/inventory';
+    case 'feedback':
+      return null;
+  }
+}
 
 /** `requests_to_approve` → `requestsToApprove`: label keys are camelCase. */
 export const camel = (value: string) =>

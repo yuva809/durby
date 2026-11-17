@@ -44,6 +44,9 @@ describe('route markers', () => {
       'GET /api/v1/auth/me',
       // ADR 0009 §6: reads only the token's active organization's features, for a member.
       'GET /api/v1/me/entitlements',
+      // ADR 0047: the caller's own notifications and choices in the active organization; every query names the caller.
+      'GET /api/v1/notifications',
+      'GET /api/v1/notifications/preferences',
       'GET /api/v1/search',
       // ADR 0045: a request is seen by its branch, its warehouse, approvers and its driver; the service filters.
       'GET /api/v1/stock-requests',
@@ -55,6 +58,9 @@ describe('route markers', () => {
       'POST /api/v1/auth/switch-organization',
       // ADR 0007: writes only the caller's own membership, in the tenant the invitation proves.
       'POST /api/v1/invitations/accept-signed-in',
+      'POST /api/v1/notifications/:id/read',
+      'POST /api/v1/notifications/read-all',
+      'PUT /api/v1/notifications/preferences',
     ]);
   });
 
@@ -228,6 +234,8 @@ describe('route markers', () => {
       'POST /api/v1/inventory/warehouses',
       'POST /api/v1/invitations',
       'POST /api/v1/locations',
+      'POST /api/v1/notifications/:id/read',
+      'POST /api/v1/notifications/read-all',
       'POST /api/v1/orders',
       'POST /api/v1/orders/:id/cancel',
       'POST /api/v1/orders/:id/confirm',
@@ -289,6 +297,7 @@ describe('route markers', () => {
       'PUT /api/v1/inventory/boms/:itemId',
       'PUT /api/v1/inventory/recipes/:productId',
       'PUT /api/v1/label-overrides/:locale/:key',
+      'PUT /api/v1/notifications/preferences',
       'PUT /api/v1/number-series/:key/counter',
       'PUT /api/v1/reservations/settings/:key',
       'PUT /api/v1/reservations/tables/:tableId/rule',

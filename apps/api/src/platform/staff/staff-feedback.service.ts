@@ -8,6 +8,7 @@ import {
 } from '@durby/shared';
 import { UserDirectory } from '../auth';
 import { PrismaService } from '../database';
+import { NotificationService } from '../notifications';
 import { platformSnapshot, PlatformAuditService } from './platform-audit.service';
 import { staffErrors } from './staff-errors';
 
@@ -47,6 +48,7 @@ export class StaffFeedbackService {
     private readonly db: PrismaService,
     private readonly users: UserDirectory,
     private readonly platformAudit: PlatformAuditService,
+    private readonly notifications: NotificationService,
   ) {}
 
   async list(query: StaffFeedbackListQuery): Promise<StaffFeedback[]> {
@@ -78,6 +80,22 @@ export class StaffFeedbackService {
         before: platformSnapshot('feedback', { ...current }),
         after: platformSnapshot('feedback', { ...updated }),
       });
+      // The sender hears that we looked at it or dealt with it (ADR 0047); the row lives in their organization,
+      // so this transaction acts in it for row-level security.
+      if (status !== 'new') {
+        await tx.$executeRaw`SELECT set_config('app.tenant_id', ${current.organizationId}, true)`;
+        await this.notifications.notify(
+          tx,
+          {
+            userIds: [current.userId],
+            kind: 'feedback_answered',
+            entityType: 'feedback',
+            entityId: id,
+            params: { status },
+          },
+          { tenantId: current.organizationId, actorUserId: null },
+        );
+      }
       return updated;
     });
     const [response] = await this.withEmails([row]);

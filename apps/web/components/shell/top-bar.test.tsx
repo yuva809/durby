@@ -113,10 +113,77 @@ describe('notifications bell (ADR 0046)', () => {
 
   it('says when nothing waits', async () => {
     signedIn();
-    api({ '/api/v1/attention': { data: [], total: 0 } });
+    api({
+      '/api/v1/attention': { data: [], total: 0 },
+      '/api/v1/notifications': { data: [], unread: 0 },
+    });
     render(<NotificationsBell />);
     await userEvent.click(await screen.findByTestId('attention-bell'));
     expect(await screen.findByTestId('attention-empty')).toBeTruthy();
+    expect(screen.queryByTestId('attention-count')).toBeNull();
+  });
+});
+
+describe('notifications bell: updates (ADR 0047)', () => {
+  const REQUEST_ID = '0190a000-0000-7000-8000-000000000101';
+  const updates = {
+    data: [
+      {
+        id: '0190a000-0000-7000-8000-000000000201',
+        kind: 'request_approved',
+        entityType: 'stock_request',
+        entityId: REQUEST_ID,
+        params: { number: 'TRF-2026-000004', branch: 'Branch Nord' },
+        readAt: null,
+        createdAt: '2026-11-18T09:00:00.000Z',
+      },
+      {
+        id: '0190a000-0000-7000-8000-000000000202',
+        kind: 'feedback_answered',
+        entityType: 'feedback',
+        entityId: '0190a000-0000-7000-8000-000000000301',
+        params: { status: 'done' },
+        readAt: '2026-11-18T08:00:00.000Z',
+        createdAt: '2026-11-17T09:00:00.000Z',
+      },
+    ],
+    unread: 1,
+  };
+
+  it('adds unread updates to the badge, opens one and marks it read', async () => {
+    signedIn();
+    api({ '/api/v1/attention': { data: [], total: 0 }, '/api/v1/notifications': updates });
+    render(<NotificationsBell />);
+    expect((await screen.findByTestId('attention-count')).textContent).toBe('1');
+    // Nothing waits but there is news: the menu opens on Updates.
+    await userEvent.click(screen.getByTestId('attention-bell'));
+    const items = await screen.findAllByTestId('update-item');
+    expect(items[0]!.textContent).toContain('Your stock request was approved: TRF-2026-000004');
+    expect(items[0]!.getAttribute('data-unread')).toBe('true');
+    expect(items[1]!.textContent).toContain('Your feedback was dealt with by our team');
+    expect(items[1]!.getAttribute('data-unread')).toBeNull();
+
+    await userEvent.click(items[0]!);
+    expect(mockState.router.push).toHaveBeenCalledWith(`/requests?open=${REQUEST_ID}`);
+    expect(mockState.store.apiFetch).toHaveBeenCalledWith(
+      `/api/v1/notifications/${updates.data[0]!.id}/read`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    await waitFor(() => expect(screen.queryByTestId('attention-count')).toBeNull());
+  });
+
+  it('marks all as read', async () => {
+    signedIn();
+    api({ '/api/v1/attention': { data: [], total: 0 }, '/api/v1/notifications': updates });
+    render(<NotificationsBell />);
+    await screen.findByTestId('attention-count');
+    await userEvent.click(screen.getByTestId('attention-bell'));
+    await userEvent.click(await screen.findByTestId('updates-read-all'));
+    expect(mockState.store.apiFetch).toHaveBeenCalledWith(
+      '/api/v1/notifications/read-all',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(screen.queryByTestId('updates-read-all')).toBeNull();
     expect(screen.queryByTestId('attention-count')).toBeNull();
   });
 });
