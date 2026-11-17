@@ -204,7 +204,45 @@ describe('account card (ADR 0046)', () => {
 
     await userEvent.click(screen.getByTestId('account-card'));
     await userEvent.click(await screen.findByTestId('sign-out'));
-    await waitFor(() => expect(mockState.store.logout).toHaveBeenCalled());
+    await waitFor(() => expect(mockState.accounts.signOut).toHaveBeenCalled());
+    expect(mockState.router.replace).toHaveBeenCalledWith('/login');
+  });
+
+  it('lists the other accounts on this browser, switches, adds and signs out of all (ADR 0047)', async () => {
+    signedIn();
+    mockState.accounts.list = [
+      { slot: 0, email: 'a@b.test' },
+      { slot: 2, email: 'ben@example.com' },
+    ];
+    mockState.accounts.current = 0;
+    render(<AccountCard />);
+    await userEvent.click(screen.getByTestId('account-card'));
+    const others = await screen.findAllByTestId('account-other');
+    expect(others.map((o) => o.textContent)).toEqual(['Bben@example.com']);
+    await userEvent.click(others[0]!);
+    await waitFor(() => expect(mockState.accounts.switchTo).toHaveBeenCalledWith(2));
+    expect(mockState.router.push).toHaveBeenCalledWith('/');
+
+    await userEvent.click(screen.getByTestId('account-card'));
+    await userEvent.click(await screen.findByTestId('account-add'));
+    expect(mockState.router.push).toHaveBeenCalledWith('/login?add=1');
+
+    await userEvent.click(screen.getByTestId('account-card'));
+    await userEvent.click(await screen.findByTestId('sign-out-all'));
+    await waitFor(() => expect(mockState.accounts.signOutAll).toHaveBeenCalled());
+    expect(mockState.router.replace).toHaveBeenCalledWith('/login');
+  });
+
+  it('stays signed in when another account takes over, and hides Add at five', async () => {
+    signedIn();
+    mockState.accounts.list = [0, 1, 2, 3, 4].map((slot) => ({ slot, email: `u${slot}@x.test` }));
+    mockState.accounts.signOut.mockResolvedValue(true);
+    render(<AccountCard />);
+    await userEvent.click(screen.getByTestId('account-card'));
+    expect(screen.queryByTestId('account-add')).toBeNull();
+    await userEvent.click(await screen.findByTestId('sign-out'));
+    await waitFor(() => expect(mockState.router.push).toHaveBeenCalledWith('/'));
+    expect(mockState.router.replace).not.toHaveBeenCalled();
   });
 
   it('makes initials from the email', () => {

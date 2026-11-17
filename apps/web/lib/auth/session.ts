@@ -1,4 +1,9 @@
-import { apiErrorBodySchema, type MeResponse, sessionResponseSchema } from '@durby/shared';
+import {
+  ACCOUNT_SLOT_HEADER,
+  apiErrorBodySchema,
+  type MeResponse,
+  sessionResponseSchema,
+} from '@durby/shared';
 import type { ApiErrorCode } from './errors';
 
 /**
@@ -14,12 +19,19 @@ const MIN_REFRESH_DELAY_MS = 5_000;
 /** Web Locks name: one refresh at a time across tabs, or rotation would look like token reuse. */
 export const REFRESH_LOCK = 'durby-auth-refresh';
 
+/** Per account slot (ADR 0047): each slot's cookie rotates on its own. Slot 0 keeps the old name. */
+export const refreshLock = (slot: number) =>
+  slot === 0 ? REFRESH_LOCK : `${REFRESH_LOCK}:${slot}`;
+
 /** Refresh failures that mean the session is over (sign in again). */
 const SESSION_ENDED: ReadonlySet<string> = new Set([
   'auth.refresh_invalid',
   'auth.refresh_reused',
   'auth.unauthenticated',
 ]);
+
+/** Whether a failed refresh means that sign-in is over (rather than an outage). */
+export const isSessionEnded = (code: string): boolean => SESSION_ENDED.has(code);
 
 export interface Session extends MeResponse {
   accessToken: string;
@@ -42,13 +54,22 @@ export interface SessionStoreDeps {
   locks?: LockManagerLike;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (handle: unknown) => void;
+  /** The account slot this tab starts on (ADR 0047); default 0. */
+  slot?: number;
 }
 
 /** Function properties (not methods): safe to pass around unbound, e.g. to useSyncExternalStore. */
 export interface SessionStore {
   get: () => Session | null;
   subscribe: (listener: (session: Session | null) => void) => () => void;
-  login: (email: string, password: string) => Promise<AuthResult>;
+  /** Signs in; `slot` signs in another account there (ADR 0047) and makes it this tab's account on success. */
+  login: (email: string, password: string, slot?: number) => Promise<AuthResult>;
+  /** This tab's account slot (ADR 0047). */
+  slot: () => number;
+  /** Switches this tab to the account in `slot` (its refresh cookie); on failure nothing changes. */
+  selectAccount: (slot: number) => Promise<AuthResult>;
+  /** Signs out the account in `slot` without touching this tab's session (sign out of all). */
+  logoutSlot: (slot: number) => Promise<void>;
   /** Restores or renews the session from the refresh cookie. Concurrent calls share one request. */
   refresh: () => Promise<AuthResult>;
   logout: () => Promise<void>;
@@ -67,14 +88,16 @@ export function createSessionStore(deps: SessionStoreDeps): SessionStore {
   let session: Session | null = null;
   let timer: unknown;
   let inflight: Promise<AuthResult> | null = null;
+  let slot = deps.slot ?? 0;
 
-  const post = (path: string, body?: unknown, headers: HeadersInit = {}) =>
+  const post = (path: string, body?: unknown, headers: HeadersInit = {}, forSlot = slot) =>
     deps.fetch(`${AUTH_API}${path}`, {
       method: 'POST',
       credentials: 'same-origin',
       cache: 'no-store',
       headers: {
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        [ACCOUNT_SLOT_HEADER]: String(forSlot),
         ...headers,
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -91,11 +114,13 @@ export function createSessionStore(deps: SessionStoreDeps): SessionStore {
     for (const listener of listeners) listener(next);
   }
 
-  async function fromResponse(res: Response): Promise<AuthResult> {
+  /** A session answer for `forSlot`: on success that slot becomes this tab's account. */
+  async function fromResponse(res: Response, forSlot = slot): Promise<AuthResult> {
     if (!res.ok) return { ok: false, code: await errorCode(res) };
     const parsed = sessionResponseSchema.safeParse(await res.json());
     if (!parsed.success) return { ok: false, code: 'unknown' };
     const { accessToken, expiresIn, ...me } = parsed.data;
+    slot = forSlot;
     set({ ...me, accessToken, expiresAt: now() + expiresIn * 1000 });
     return { ok: true };
   }
@@ -121,20 +146,42 @@ export function createSessionStore(deps: SessionStoreDeps): SessionStore {
       };
     },
 
-    async login(email, password) {
+    async login(email, password, target = slot) {
       try {
-        return await fromResponse(await post('/login', { email, password }));
+        return await fromResponse(await post('/login', { email, password }, {}, target), target);
       } catch {
         return { ok: false, code: 'unknown' };
       }
     },
 
+    slot: () => slot,
+
+    async selectAccount(target) {
+      if (target === slot && session) return { ok: true };
+      const attempt = async (): Promise<AuthResult> => {
+        try {
+          return await fromResponse(await post('/refresh', undefined, {}, target), target);
+        } catch {
+          return { ok: false, code: 'unknown' };
+        }
+      };
+      return deps.locks ? deps.locks.request(refreshLock(target), attempt) : attempt();
+    },
+
+    async logoutSlot(target) {
+      if (target === slot) return store.logout();
+      try {
+        await post('/logout', undefined, {}, target);
+      } catch {
+        // Best effort: the cookie dies with its family's expiry anyway.
+      }
+    },
+
     refresh() {
-      inflight ??= (deps.locks ? deps.locks.request(REFRESH_LOCK, doRefresh) : doRefresh()).finally(
-        () => {
-          inflight = null;
-        },
-      );
+      const lock = refreshLock(slot);
+      inflight ??= (deps.locks ? deps.locks.request(lock, doRefresh) : doRefresh()).finally(() => {
+        inflight = null;
+      });
       return inflight;
     },
 

@@ -13,6 +13,7 @@ import {
   Res,
 } from '@nestjs/common';
 import {
+  ACCOUNT_SLOT_HEADER,
   changePasswordRequestSchema,
   updateMeRequestSchema,
   type UpdateMeRequest,
@@ -35,7 +36,12 @@ import { APP_CONFIG, type AppConfig } from '../config';
 import { ApiError, ZodBody } from '../http';
 import { AuthContext } from './auth-context';
 import { Authenticated } from '../markers';
-import { clearRefreshCookieOptions, refreshCookieName, refreshCookieOptions } from './cookies';
+import {
+  accountSlot,
+  clearRefreshCookieOptions,
+  refreshCookieName,
+  refreshCookieOptions,
+} from './cookies';
 import { RequireOrigin } from './origin.guard';
 import { PasswordService } from './password.service';
 import { Public } from '../markers';
@@ -68,7 +74,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<SessionResponse> {
     // The host picks which organizations the session offers (ADR 0042).
-    return this.respond(res, await this.sessions.login(body, clientIp(req), req.hostname));
+    const name = this.cookieName(req);
+    return this.respond(res, name, await this.sessions.login(body, clientIp(req), req.hostname));
   }
 
   @Public()
@@ -81,10 +88,12 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SessionResponse> {
+    const name = this.cookieName(req);
     return this.respond(
       res,
-      await this.clearCookieOnFailure(res, () =>
-        this.sessions.refresh(this.cookie(req), clientIp(req), req.hostname),
+      name,
+      await this.clearCookieOnFailure(res, name, () =>
+        this.sessions.refresh(this.cookie(req, name), clientIp(req), req.hostname),
       ),
     );
   }
@@ -96,8 +105,9 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
-    await this.sessions.logout(this.cookie(req), clientIp(req));
-    res.clearCookie(refreshCookieName(this.config), clearRefreshCookieOptions(this.config));
+    const name = this.cookieName(req);
+    await this.sessions.logout(this.cookie(req, name), clientIp(req));
+    res.clearCookie(name, clearRefreshCookieOptions(this.config));
   }
 
   @Authenticated()
@@ -111,14 +121,15 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SessionResponse> {
+    const name = this.cookieName(req);
     const session = await this.sessions.switchOrganization(
       this.auth.require(),
       body.organizationId,
-      this.cookie(req),
+      this.cookie(req, name),
       clientIp(req),
       req.hostname,
     );
-    return this.respond(res, session);
+    return this.respond(res, name, session);
   }
 
   @Authenticated()
@@ -156,6 +167,7 @@ export class AuthController {
   ): Promise<SessionResponse> {
     return this.respond(
       res,
+      this.cookieName(req),
       await this.sessions.changePassword(this.auth.require(), body, clientIp(req), req.hostname),
     );
   }
@@ -205,16 +217,23 @@ export class AuthController {
     await this.passwords.resendVerification(body.email, clientIp(req), req.headers.origin);
   }
 
-  private cookie(req: Request): string | undefined {
-    const value: unknown = (req.cookies as Record<string, unknown> | undefined)?.[
-      refreshCookieName(this.config)
-    ];
+  /** The refresh cookie of the request's account slot (ACCOUNT_SLOT_HEADER, ADR 0047). */
+  private cookieName(req: Request): string {
+    const slot = accountSlot(req.headers[ACCOUNT_SLOT_HEADER.toLowerCase()]);
+    if (slot === null) {
+      throw new ApiError(HttpStatus.BAD_REQUEST, 'validation.failed', 'Invalid account slot.');
+    }
+    return refreshCookieName(this.config, slot);
+  }
+
+  private cookie(req: Request, name: string): string | undefined {
+    const value: unknown = (req.cookies as Record<string, unknown> | undefined)?.[name];
     return typeof value === 'string' && value.length > 0 ? value : undefined;
   }
 
-  private respond(res: Response, session: IssuedSession): SessionResponse {
+  private respond(res: Response, name: string, session: IssuedSession): SessionResponse {
     res.cookie(
-      refreshCookieName(this.config),
+      name,
       session.refresh.token,
       refreshCookieOptions(this.config, session.refresh.expiresAt),
     );
@@ -222,7 +241,11 @@ export class AuthController {
   }
 
   /** A dead refresh cookie is removed, so the browser stops sending it. */
-  private async clearCookieOnFailure<T>(res: Response, fn: () => Promise<T>): Promise<T> {
+  private async clearCookieOnFailure<T>(
+    res: Response,
+    name: string,
+    fn: () => Promise<T>,
+  ): Promise<T> {
     try {
       return await fn();
     } catch (error) {
@@ -230,7 +253,7 @@ export class AuthController {
         error instanceof ApiError &&
         (error.code === 'auth.refresh_invalid' || error.code === 'auth.refresh_reused')
       ) {
-        res.clearCookie(refreshCookieName(this.config), clearRefreshCookieOptions(this.config));
+        res.clearCookie(name, clearRefreshCookieOptions(this.config));
       }
       throw error;
     }

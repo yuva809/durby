@@ -958,5 +958,8 @@
   "platform.notifications.push.state.unsupported": "Dieser Browser kann keine Push-Nachrichten empfangen. Auf iPhone und iPad fügen Sie die App zuerst zum Home-Bildschirm hinzu.",
   "platform.notifications.push.state.unavailable": "Push ist auf diesem Server noch nicht eingerichtet.",
   "platform.notifications.push.turnOn": "Einschalten",
-  "platform.notifications.push.turnOff": "Ausschalten"
+  "platform.notifications.push.turnOff": "Ausschalten",
+  "platform.shell.accounts": "Konten",
+  "platform.shell.addAccount": "Weiteres Konto hinzufügen",
+  "platform.shell.signOutAll": "Von allen Konten abmelden"
 }

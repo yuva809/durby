@@ -958,5 +958,8 @@
   "platform.notifications.push.state.unsupported": "This browser can't receive push messages. On iPhone and iPad, add the app to your home screen first.",
   "platform.notifications.push.state.unavailable": "Push isn't set up on this server yet.",
   "platform.notifications.push.turnOn": "Turn on",
-  "platform.notifications.push.turnOff": "Turn off"
+  "platform.notifications.push.turnOff": "Turn off",
+  "platform.shell.accounts": "Accounts",
+  "platform.shell.addAccount": "Add another account",
+  "platform.shell.signOutAll": "Sign out of all accounts"
 }
