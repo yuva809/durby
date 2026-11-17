@@ -16,6 +16,7 @@ import type {
   StockUnit,
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
+import { EntitlementService } from '../../platform/config/entitlements';
 import { IdempotencyService } from '../../platform/idempotency';
 import { NumberingService } from '../../platform/numbering';
 import { AccessService, MemberNames } from '../../platform/rbac';
@@ -146,6 +147,7 @@ export class StockRequestsService {
     private readonly numbering: NumberingService,
     private readonly stock: StockService,
     private readonly members: MemberNames,
+    private readonly entitlements: EntitlementService,
   ) {}
 
   // -------------------------------------------------------------------------------------------------------------
@@ -154,6 +156,8 @@ export class StockRequestsService {
 
   async list(query: ListStockRequestsQuery): Promise<StockRequestSummary[]> {
     const { userId } = this.tenantContext.require();
+    // The reads are @Authenticated() (no feature guard): without `orders` there is nothing to list.
+    if (!(await this.entitlements.isEnabled('orders'))) return [];
     const statusWhere = query.status ? { status: { in: query.status } } : {};
     let where: object;
     if (query.mine) {
@@ -189,6 +193,7 @@ export class StockRequestsService {
   }
 
   async get(id: string): Promise<StockRequest> {
+    if (!(await this.entitlements.isEnabled('orders'))) throw ordersErrors.requestNotFound();
     const row = await this.readable(id);
     const names = await this.members.forUsers(asTenantDb(this.db), driverIds(row));
     return requestResponse(row, names);
