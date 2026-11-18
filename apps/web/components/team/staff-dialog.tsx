@@ -4,13 +4,11 @@ import { LOCALES, type Locale } from '@durby/i18n';
 import {
   INVITATION_TTL_DAYS,
   type LocationSummary,
-  MATRIX_COLUMNS,
   PASSWORD_MIN_LENGTH,
-  type PermissionKey,
   type Role,
   type TeamMember,
 } from '@durby/shared';
-import { CheckCircle2, Info, KeyRound, Lock, Mail } from 'lucide-react';
+import { CheckCircle2, KeyRound, Mail } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
@@ -18,21 +16,9 @@ import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { roleName } from '../../lib/rbac/roles';
 import { createTeamMember, updateTeamMember } from '../../lib/team/api';
-import {
-  blockedByView,
-  canToggle,
-  generatePassword,
-  type MatrixCell,
-  type MatrixRow as MatrixRowData,
-  type MatrixSection as MatrixSectionData,
-  overridesOf,
-  permissionMatrix,
-  selectedOf,
-  tickMany,
-  tickOne,
-} from '../../lib/team/matrix';
+import { generatePassword, overridesOf, permissionMatrix, selectedOf } from '../../lib/team/matrix';
 import { useActionKey } from '../../lib/use-action-key';
-import { permissionLabel, type UsersAccess } from '../../lib/users/access';
+import type { UsersAccess } from '../../lib/users/access';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
@@ -41,13 +27,10 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { PasswordInput } from '../ui/password-input';
 import { Select } from '../ui/select';
+import { PermissionMatrix } from './permission-matrix';
 import { ShareLink } from './share-link';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** The matrix columns: the row, then View, Create, Edit and Delete (ADR 0037, ADR 0050). */
-const MATRIX_GRID =
-  'grid grid-cols-[minmax(0,1fr)_repeat(4,2.75rem)] items-center gap-x-1 sm:grid-cols-[minmax(0,1fr)_repeat(4,4.5rem)]';
 
 type Result =
   | { kind: 'created'; name: string }
@@ -201,27 +184,13 @@ function StaffForm({
   const [busy, setBusy] = useState(false);
 
   const owner = role?.systemKey === 'owner';
-  const { sections, hiddenModules } = permissionMatrix(activeFeatures);
-  const visibleKeys = sections.flatMap((s) => s.keys);
-  const toggleable = new Set<string>(visibleKeys.filter((key) => canToggle(access, key)));
+  const visibleKeys = permissionMatrix(activeFeatures).sections.flatMap((s) => s.keys);
 
   function chooseRole(next: Role) {
     setRoleId(next.id);
     // A new role starts from its own defaults.
     setSelected(new Set(next.permissions));
     if (next.systemKey === 'owner') setAllLocations(true);
-  }
-
-  const may = (key: string) => canToggle(access, key);
-
-  /** One box; "Grant View first": unticking View also clears its row's actions. */
-  function toggle(key: string, on: boolean) {
-    setSelected((current) => tickOne(current, key, on, may));
-  }
-
-  /** Ticks or clears a row or section: only the keys you may change, actions only with their View. */
-  function toggleMany(keys: readonly string[], on: boolean) {
-    setSelected((current) => tickMany(current, keys, on, may));
   }
 
   async function submit() {
@@ -512,75 +481,24 @@ function StaffForm({
             </p>
           ) : (
             <>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setSelected(new Set(roleKeys))}
-                >
-                  {t('platform.team.dialog.roleDefaults')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setSelected((s) => tickMany(s, toggleable, true, may))}
-                >
-                  {t('platform.team.dialog.selectAll')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setSelected((s) => tickMany(s, toggleable, false, may))}
-                >
-                  {t('platform.team.dialog.clear')}
-                </Button>
-              </div>
-              <div className="flex flex-col rounded-lg border" data-testid="team-matrix">
-                <div
-                  className={cn(
-                    MATRIX_GRID,
-                    // Pinned while the matrix scrolls; solid so rows don't show through.
-                    'sticky top-0 z-20 h-9 rounded-t-lg border-b bg-card px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase',
-                  )}
-                  aria-hidden
-                  data-testid="team-matrix-header"
-                >
-                  <span className="truncate">{t('platform.team.dialog.column.module')}</span>
-                  {MATRIX_COLUMNS.map((verb) => (
-                    <span
-                      key={verb}
-                      // One header height for every language: long words (de "Bearbeiten") shrink, then hyphenate.
-                      className="text-center text-[0.625rem] leading-tight tracking-normal hyphens-auto [overflow-wrap:anywhere] sm:text-[0.6875rem]"
-                      title={t(`platform.team.dialog.column.${verb}`)}
-                    >
-                      {t(`platform.team.dialog.column.${verb}`)}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex flex-col divide-y">
-                  {sections.map((section) => (
-                    <MatrixSection
-                      key={section.module}
-                      section={section}
-                      selected={selected}
-                      access={access}
-                      changed={changed}
-                      onToggle={toggle}
-                      onToggleMany={toggleMany}
-                    />
-                  ))}
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t('platform.team.dialog.matrixNote')}
-              </p>
-              {hiddenModules.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {t('platform.team.dialog.hiddenModules', {
-                    modules: hiddenModules.map((label) => t(label)).join(', '),
-                  })}
-                </p>
-              )}
+              <PermissionMatrix
+                selected={selected}
+                onChange={setSelected}
+                access={access}
+                activeFeatures={activeFeatures}
+                changed={changed}
+                changedLabel="platform.team.dialog.changed"
+                note={t('platform.team.dialog.matrixNote')}
+                actions={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setSelected(new Set(roleKeys))}
+                  >
+                    {t('platform.team.dialog.roleDefaults')}
+                  </Button>
+                }
+              />
             </>
           )}
         </section>
@@ -598,200 +516,6 @@ function StaffForm({
         </div>
       </div>
     </form>
-  );
-}
-
-/** Tri-state of a set of keys: none, some or all ticked. */
-function tickState(
-  keys: readonly string[],
-  selected: ReadonlySet<string>,
-): boolean | 'indeterminate' {
-  const ticked = keys.filter((key) => selected.has(key)).length;
-  return ticked === 0 ? false : ticked === keys.length ? true : 'indeterminate';
-}
-
-/**
- * One module of the matrix (ADR 0050): a header whose box ticks or clears every key in it, then its rows.
- */
-function MatrixSection({
-  section,
-  selected,
-  access,
-  changed,
-  onToggle,
-  onToggleMany,
-}: {
-  section: MatrixSectionData;
-  selected: ReadonlySet<string>;
-  access: UsersAccess;
-  changed: (key: string) => boolean;
-  onToggle: (key: string, on: boolean) => void;
-  onToggleMany: (keys: readonly string[], on: boolean) => void;
-}) {
-  const t = useT();
-  const name = t(section.label);
-  return (
-    <div data-testid="team-matrix-section" data-section={section.module}>
-      <label
-        // Sticks under the column header (h-9) until the next section pushes it up; muted over card, but solid.
-        className="sticky top-9 z-10 flex min-h-11 items-center gap-2 bg-[color-mix(in_oklab,var(--muted)_50%,var(--card))] px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-        data-testid="team-matrix-section-header"
-      >
-        <Checkbox
-          checked={tickState(section.keys, selected)}
-          disabled={!section.keys.some((key) => canToggle(access, key))}
-          onCheckedChange={(v) => onToggleMany(section.keys, v === true)}
-          aria-label={t('platform.team.dialog.wholeSection', { section: name })}
-          data-testid="team-permission-section"
-          data-section={section.module}
-        />
-        {name}
-      </label>
-      <div className="flex flex-col divide-y">
-        {section.rows.map((row) => (
-          <MatrixRow
-            key={row.row}
-            row={row}
-            selected={selected}
-            access={access}
-            changed={changed}
-            onToggle={onToggle}
-            onToggleAll={(on) => onToggleMany(row.keys, on)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * One row of the matrix: the box in front ticks or clears the whole row (only the keys you may change), then a View,
- * Create, Edit and Delete cell each, a muted dash where the row has no such key.
- */
-function MatrixRow({
-  row,
-  selected,
-  access,
-  changed,
-  onToggle,
-  onToggleAll,
-}: {
-  row: MatrixRowData;
-  selected: ReadonlySet<string>;
-  access: UsersAccess;
-  changed: (key: string) => boolean;
-  onToggle: (key: string, on: boolean) => void;
-  onToggleAll: (on: boolean) => void;
-}) {
-  const t = useT();
-  const rowName = t(row.label);
-  return (
-    <div className={cn(MATRIX_GRID, 'px-3 py-1')} data-testid="team-matrix-row" data-area={row.row}>
-      <label className="flex min-h-11 min-w-0 items-center gap-2 text-sm font-medium">
-        <Checkbox
-          checked={tickState(row.keys, selected)}
-          disabled={!row.keys.some((key) => canToggle(access, key))}
-          onCheckedChange={(v) => onToggleAll(v === true)}
-          aria-label={t('platform.team.dialog.wholeArea', { area: rowName })}
-          data-testid="team-permission-area"
-          data-area={row.row}
-        />
-        <span className="truncate" title={rowName}>
-          {rowName}
-        </span>
-      </label>
-      {MATRIX_COLUMNS.map((column) => {
-        const cell = row.cells[column];
-        return (
-          <div key={column} className="flex justify-center" data-column={column}>
-            {cell ? (
-              <PermissionBox
-                cell={cell}
-                selected={selected}
-                access={access}
-                changed={changed}
-                onToggle={onToggle}
-              />
-            ) : (
-              <span
-                className="text-sm text-muted-foreground/60"
-                title={t('platform.team.dialog.noKey', {
-                  column: t(`platform.team.dialog.column.${column}`),
-                })}
-                aria-hidden
-                data-testid="team-permission-empty"
-              >
-                –
-              </span>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * One permission's box in its cell. Its full sentence is the title and accessible name; a note (the box allows more
- * than its column says, ADR 0050) shows as an info marker and is read out with the name.
- */
-function PermissionBox({
-  cell,
-  selected,
-  access,
-  changed,
-  onToggle,
-}: {
-  cell: MatrixCell;
-  selected: ReadonlySet<string>;
-  access: UsersAccess;
-  changed: (key: string) => boolean;
-  onToggle: (key: string, on: boolean) => void;
-}) {
-  const t = useT();
-  const permission: PermissionKey = cell.key;
-  const locked = !canToggle(access, permission);
-  // "Grant View first": an unticked action whose row's View isn't ticked.
-  const blocked = !locked && blockedByView(selected, permission);
-  const name = t(permissionLabel(permission));
-  const note = cell.note ? t(cell.note) : null;
-  const described = [name, note, blocked ? t('platform.team.dialog.viewFirst') : null]
-    .filter(Boolean)
-    .join(' ');
-  return (
-    <label
-      className={cn(
-        'relative flex min-h-11 min-w-11 items-center justify-center text-sm',
-        locked && 'text-muted-foreground',
-      )}
-      title={locked ? `${described} ${t('platform.team.dialog.locked')}` : described}
-    >
-      <Checkbox
-        checked={selected.has(permission)}
-        disabled={locked || blocked}
-        onCheckedChange={(v) => onToggle(permission, v === true)}
-        aria-label={described}
-        data-blocked={blocked || undefined}
-        data-testid="team-permission"
-        data-key={permission}
-      />
-      {note && (
-        <Info
-          aria-hidden
-          className="absolute right-0 bottom-1 size-3 text-muted-foreground"
-          data-testid="team-permission-note"
-        />
-      )}
-      {locked && <Lock aria-hidden className="absolute bottom-1 left-0 size-3" />}
-      {changed(permission) && (
-        <span
-          className="absolute top-1.5 right-0.5 size-2 rounded-full bg-primary"
-          title={t('platform.team.dialog.changed')}
-          aria-label={t('platform.team.dialog.changed')}
-          data-testid="team-permission-changed"
-        />
-      )}
-    </label>
   );
 }
 
