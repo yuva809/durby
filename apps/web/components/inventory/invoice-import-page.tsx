@@ -40,7 +40,7 @@ import { Loaded, NoAccess } from '../users/common';
 import { type InvoiceHeader, InvoiceEditor } from './invoice-editor';
 
 /**
- * /inventory/invoice (docs/modules/inventory.md → Vendor invoices, ADR 0049, 0051): choose the supplier's PDF, or
+ * /inventory/invoice (docs/modules/inventory.md → Vendor invoices, ADR 0049, 0054): choose the supplier's PDF, or
  * photos of it; it is read on this device (a PDF's own text, else on-device recognition); check each line, then send
  * it for approval. Nothing is in stock until someone approves it in the queue (/inventory/invoices).
  */
@@ -266,7 +266,7 @@ function Flow({
     );
   }
 
-  // Anyone who receives goods may propose new items: the approver creates them (ADR 0051).
+  // Anyone who receives goods may propose new items: the approver creates them (ADR 0054).
   const problems = rowProblems(rows, true);
   const included = rows.filter((r) => r.include);
   const blocked =

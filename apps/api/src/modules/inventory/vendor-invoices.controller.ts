@@ -20,7 +20,7 @@ import { vendorInvoiceErrors, VendorInvoicesService } from './vendor-invoices.se
 const invoiceId = new ParseUUIDPipe({ exceptionFactory: () => vendorInvoiceErrors.notFound() });
 
 /**
- * /api/v1/inventory/invoices (docs/modules/inventory.md → Vendor invoices, ADR 0051). Each route names the key it
+ * /api/v1/inventory/invoices (docs/modules/inventory.md → Vendor invoices, ADR 0054). Each route names the key it
  * needs somewhere; the service checks it at the invoice's warehouse. Submitting and deciding append rows, so their
  * idempotency key completes in the business transaction (rule 8); an edit replaces the pending invoice (set-state).
  */

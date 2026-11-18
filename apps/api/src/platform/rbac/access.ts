@@ -91,6 +91,18 @@ export function roleKeysOf(
 }
 
 /**
+ * A role's registered keys from its stored keys, with legacy keys expanded (ADR 0037 §5, ADR 0051): what its members
+ * can do, for access resolution and the granting rules alike.
+ */
+export function storedRoleKeys(
+  registry: PermissionRegistry,
+  systemKey: SystemRole | null,
+  storedKeys: readonly string[],
+): ReadonlySet<string> {
+  return roleKeysOf(registry, systemKey, expandLegacyKeys(storedKeys));
+}
+
+/**
  * Resolves a membership row. No membership, no role or deactivated → no permissions. A location-limited
  * membership keeps only location-scope keys; with no location rows it covers no locations.
  */
@@ -100,10 +112,10 @@ export function resolveAccess(
 ): ResolvedAccess {
   if (!row || row.deactivatedAt) return NO_ACCESS;
   const roleKeys = row.role
-    ? roleKeysOf(
+    ? storedRoleKeys(
         registry,
         row.role.systemKey,
-        expandLegacyKeys(row.role.permissions.map((p) => p.permissionKey)),
+        row.role.permissions.map((p) => p.permissionKey),
       )
     : new Set<string>();
   const effectiveKeys = row.role

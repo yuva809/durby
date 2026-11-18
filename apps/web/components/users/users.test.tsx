@@ -278,7 +278,7 @@ describe('RolesPage', () => {
     expect(screen.getByTestId('no-access')).toBeTruthy();
   });
 
-  it('shows system roles read-only and no editor without platform.roles.manage', async () => {
+  it('shows system roles read-only and no editor without platform.roles.create or .edit', async () => {
     signedInAs('manager');
     api(defaults);
     render(<RolesPage />);
@@ -292,8 +292,8 @@ describe('RolesPage', () => {
     ]);
     expect(screen.queryByTestId('role-create')).toBeNull();
     expect(screen.queryByTestId('role-edit')).toBeNull();
-    // Staff's location-scope keys: settings, feedback, products, stock, tables, orders and customers.
-    expect(within(cards[3]!).getAllByText('per location')).toHaveLength(7);
+    // Staff's location-scope keys: organization, settings, feedback, products, stock, tables, orders, customers.
+    expect(within(cards[3]!).getAllByText('per location')).toHaveLength(8);
   });
 
   it('offers only held keys in the editor', async () => {
@@ -301,7 +301,7 @@ describe('RolesPage', () => {
     api(defaults);
     render(<RolesPage />);
     await userEvent.click(await screen.findByTestId('role-create'));
-    const held = screen.getByTestId('permission-platform.users.manage');
+    const held = screen.getByTestId('permission-platform.users.edit');
     const notHeld = screen.getByTestId('permission-platform.org.manage');
     expect((held as HTMLButtonElement).disabled).toBe(false);
     expect((notHeld as HTMLButtonElement).disabled).toBe(true);

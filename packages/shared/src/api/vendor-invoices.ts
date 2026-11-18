@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { INVENTORY_NAME_MAX_LENGTH, STOCK_DOCUMENT_MAX_LINES, STOCK_UNITS } from './inventory';
 
 /**
- * Vendor invoices waiting for approval (docs/modules/inventory.md → Vendor invoices, ADR 0051). Read from the
+ * Vendor invoices waiting for approval (docs/modules/inventory.md → Vendor invoices, ADR 0054). Read from the
  * supplier's PDF or photo in the browser, submitted as Pending (nothing in stock yet); someone with
  * inventory.invoices.approve at the warehouse approves (one goods receipt, new items created with it) or rejects.
  */

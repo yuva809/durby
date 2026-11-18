@@ -36,6 +36,12 @@ as sentences under their area, so the matrix was half grid, half list. Owners as
 7. **Layout only.** Keys, scopes, routes, guards, system roles and what the dialog saves are unchanged (a test checks
    the saved overrides per system role). No role filtering: an owner can still grant beyond the role (ADR 0023).
 
+## Follow-up (2026-11-18)
+
+[ADR 0051](0051-split-broad-permission-keys.md) split the four keys that carried a note, added Delete boxes for Sales
+orders and Customers and a View box for Organization. No placement carries a `note` any more; the field stays for
+future keys.
+
 ## Consequences
 
 - A new permission key needs a matrix cell (and, for a new row, its label in every locale).

@@ -46,7 +46,7 @@ import { type InvoiceHeader, InvoiceEditor } from './invoice-editor';
 const TABS: readonly VendorInvoiceStatus[] = ['pending', 'approved', 'rejected'];
 
 /**
- * /inventory/invoices, the approval queue (docs/modules/inventory.md → Vendor invoices, ADR 0051): vendor invoices
+ * /inventory/invoices, the approval queue (docs/modules/inventory.md → Vendor invoices, ADR 0054): vendor invoices
  * read and sent for approval, by status. Opening one shows its lines; while pending it can be corrected, and those
  * with inventory.invoices.approve approve it (one goods receipt, new items created) or reject it with a reason.
  */

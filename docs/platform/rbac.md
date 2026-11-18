@@ -40,12 +40,16 @@ Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a 
 
 | Key                            | Scope        | Grants                                                                               |
 | ------------------------------ | ------------ | ------------------------------------------------------------------------------------ |
+| `platform.org.read`            | location     | the Company settings tab; every built-in role and custom role (ADR 0051)             |
 | `platform.org.manage`          | organization | organization name and locations (create, rename, delete): owner only                 |
 | `platform.users.read`          | organization | list members and open invitations                                                    |
 | `platform.users.invite`        | organization | invite by email, revoke invitations                                                  |
-| `platform.users.manage`        | organization | change a member's role or locations, remove a member                                 |
+| `platform.users.edit`          | organization | change a member's name, role, locations or permissions (ADR 0051)                    |
+| `platform.users.delete`        | organization | remove, deactivate and reactivate a member (ADR 0051)                                |
 | `platform.roles.read`          | organization | list roles (needed by the invite dialog)                                             |
-| `platform.roles.manage`        | organization | create, edit, delete custom roles                                                    |
+| `platform.roles.create`        | organization | create custom roles (ADR 0051)                                                       |
+| `platform.roles.edit`          | organization | edit custom roles (ADR 0051)                                                         |
+| `platform.roles.delete`        | organization | delete custom roles (ADR 0051)                                                       |
 | `platform.settings.read`       | location     | read resolved settings (1.6, ADR 0010)                                               |
 | `platform.settings.manage`     | location     | set and remove setting values (1.6, ADR 0010)                                        |
 | `platform.labels.manage`       | organization | label overrides (1.7)                                                                |
@@ -153,7 +157,7 @@ permissions: ADR 0007 → Open questions.
 counts the remaining Owners in the same transaction. A deferred constraint trigger
 (`memberships_keep_last_owner`) re-checks at commit and takes the same lock, so concurrent demotions can't both pass.
 
-**TODO (later):** a "leave organization" flow for members without `platform.users.manage`.
+**TODO (later):** a "leave organization" flow for members without `platform.users.delete`.
 
 ## Ending access
 
@@ -191,12 +195,12 @@ All under `/api/v1`, bodies validated with Zod (`packages/shared/src/api/rbac.ts
 | Method | Path                            | Marker                  | Notes                                                                                                                   |
 | ------ | ------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/members`                      | `platform.users.read`   | email, role, locations                                                                                                  |
-| PATCH  | `/members/:id`                  | `platform.users.manage` | `{ roleId?, locationIds?: uuid[] \| null }` (null = all)                                                                |
-| DELETE | `/members/:id`                  | `platform.users.manage` | not yourself                                                                                                            |
+| PATCH  | `/members/:id`                  | `platform.users.edit`   | `{ roleId?, locationIds?: uuid[] \| null }` (null = all)                                                                |
+| DELETE | `/members/:id`                  | `platform.users.delete` | not yourself                                                                                                            |
 | GET    | `/roles`                        | `platform.roles.read`   | system and custom roles with their effective keys                                                                       |
-| POST   | `/roles`                        | `platform.roles.manage` | `{ name, permissions }`                                                                                                 |
-| PATCH  | `/roles/:id`                    | `platform.roles.manage` | custom roles only                                                                                                       |
-| DELETE | `/roles/:id`                    | `platform.roles.manage` | custom only; 409 `rbac.role_in_use` if a member or open invitation uses it; closed invitations for it are deleted first |
+| POST   | `/roles`                        | `platform.roles.create` | `{ name, permissions }`                                                                                                 |
+| PATCH  | `/roles/:id`                    | `platform.roles.edit`   | custom roles only                                                                                                       |
+| DELETE | `/roles/:id`                    | `platform.roles.delete` | custom only; 409 `rbac.role_in_use` if a member or open invitation uses it; closed invitations for it are deleted first |
 | GET    | `/invitations`                  | `platform.users.read`   | open invitations                                                                                                        |
 | POST   | `/invitations`                  | `platform.users.invite` |                                                                                                                         |
 | DELETE | `/invitations/:id`              | `platform.users.invite` | revoke                                                                                                                  |
@@ -274,9 +278,9 @@ deferred trigger counts active Owner memberships only).
 | ------ | ----------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/staff`                | `platform.users.read`   | members (name, email, phone, role, locations, grants, denies, effective count, status, last sign-in, joined) and open invitations; stats: total, active, inactive, invited, custom permissions |
 | POST   | `/staff`                | `platform.users.invite` | see above; rate limited per organization                                                                                                                                                       |
-| PATCH  | `/staff/:id`            | `platform.users.manage` | `{ name?, phone?, roleId?, locationIds?, grants?, denies? }`                                                                                                                                   |
-| POST   | `/staff/:id/deactivate` | `platform.users.manage` | not yourself                                                                                                                                                                                   |
-| POST   | `/staff/:id/reactivate` | `platform.users.manage` |                                                                                                                                                                                                |
+| PATCH  | `/staff/:id`            | `platform.users.edit`   | `{ name?, phone?, roleId?, locationIds?, grants?, denies? }`                                                                                                                                   |
+| POST   | `/staff/:id/deactivate` | `platform.users.delete` | not yourself                                                                                                                                                                                   |
+| POST   | `/staff/:id/reactivate` | `platform.users.delete` |                                                                                                                                                                                                |
 | POST   | `/invitations/:id/link` | `platform.users.invite` | new link, old one stops working                                                                                                                                                                |
 | POST   | `/auth/password/change` | Authenticated           |                                                                                                                                                                                                |
 
@@ -294,12 +298,11 @@ least-privileged role you can give, never Owner), locations and a permission mat
 from the role, changes are marked, keys you don't hold are locked, modules switched off for the organization are
 not listed. The matrix (ADR 0050) has one section per module ("Administration" for platform keys) with a tri-state
 box, then rows with a whole-row box and a View, Create, Edit and Delete cell each. Every key sits in exactly one
-cell, set by its `matrix` placement in `PERMISSIONS`; a cell without a key is a dash, and a box that allows more
-than its column says (`platform.users.manage`, `platform.roles.manage`, `orders.orders.edit`,
-`orders.customers.edit`) carries an info note. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
+cell, set by its `matrix` placement in `PERMISSIONS`; a cell without a key is a dash. ADR 0051 split the four keys
+that allowed more than their column said, so no box carries an info note any more. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
 
 **Passwords set by owners and admins (ADR 0052).** "Set password" in a member's menu (`POST /staff/:id/password`,
-`platform.users.manage`) for accounts this organization created that belong to no other organization
+`platform.users.edit`) for accounts this organization created that belong to no other organization
 (`passwordSettable`), and only for members the actor may manage. With the setting `team.adminsManageSignIn` on,
 passwords given in Add Staff or here are final (no "Choose your own password", no self change or reset by email);
 off, they are temporary. Every session of the member ends; audited as `platform.membership.password_set`.
@@ -352,3 +355,13 @@ Business entities have `module.entity.create`, `module.entity.edit` and `module.
 key. Routes map POST (create) to `create`, PATCH, PUT and state changes to `edit`, and DELETE and erasure to `delete`.
 Stored `*.manage` keys still mean all three (`LEGACY_PERMISSION_ALIASES`, expanded on resolution). Bulk endpoints check
 `edit`, and `delete` for a delete action.
+
+## Split broad keys (ADR 0051)
+
+`platform.roles.manage` became `platform.roles.create`, `.edit` and `.delete`; `platform.users.manage` became
+`platform.users.edit` and `.delete` (invite stays); `orders.orders.edit` and `orders.customers.edit` stay and got
+`.delete` siblings for cancelling sales orders and archiving or restoring customers; `platform.org.read` is new.
+Stored old keys keep their meaning through `LEGACY_PERMISSION_ALIASES` until the cleanup release
+([#126](https://github.com/yuva809/durby/issues/126)); the migration copies them onto the new keys (old rows kept).
+`pnpm --filter @durby/api rbac:split --dry-run` shows what the migration adds per organization and whether anyone's
+effective permissions would change.

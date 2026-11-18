@@ -1,4 +1,4 @@
--- Vendor invoices waiting for approval (docs/modules/inventory.md → Vendor invoices, ADR 0051). Read from the
+-- Vendor invoices waiting for approval (docs/modules/inventory.md → Vendor invoices, ADR 0054). Read from the
 -- supplier's PDF or photo in the browser; approval books one goods receipt. Tenant data, RLS. Expand only.
 
 -- CreateTable

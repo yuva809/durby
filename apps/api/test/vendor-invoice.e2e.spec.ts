@@ -19,10 +19,10 @@ import { withIdempotencyKey } from './support/idempotency';
 import { RbacSeed, type SeededOrg } from './support/rbac';
 
 /**
- * Vendor invoices waiting for approval (ADR 0051): submitting books nothing; approval books one goods receipt with the
+ * Vendor invoices waiting for approval (ADR 0054): submitting books nothing; approval books one goods receipt with the
  * new items, once; rejecting needs a reason; only approvers at the warehouse decide.
  */
-describe('vendor invoice approval queue (ADR 0051)', () => {
+describe('vendor invoice approval queue (ADR 0054)', () => {
   let app: INestApplication;
   let server: App;
   let seed: RbacSeed;

@@ -40,7 +40,7 @@ export function rowsTotal(rows: readonly InvoiceRow[]): string {
 }
 
 /**
- * The review of a vendor invoice (ADR 0049, 0051): supplier, note, warehouse and how new items are created, then
+ * The review of a vendor invoice (ADR 0049, 0054): supplier, note, warehouse and how new items are created, then
  * each line (include, item or New, quantity, cost) and the total against the printed one. Used to submit an invoice
  * and by approvers to correct a pending one; `actions` are the page's buttons. `readOnly` shows a decided one.
  */

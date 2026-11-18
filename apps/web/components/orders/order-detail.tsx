@@ -41,13 +41,14 @@ export function StatusBadge({ status }: { status: SalesOrderStatus }) {
 
 /**
  * One order in a side panel (docs/modules/orders.md → Web): customer, branch, items with totals and the timeline.
- * Drafts can be edited and confirmed, orders up to packed cancelled (`orders.orders.edit`).
+ * Drafts can be edited and confirmed (`orders.orders.edit`), orders up to packed cancelled (`orders.orders.delete`, ADR 0051).
  */
 export function OrderDetail({
   orderId,
   onClose,
   onChanged,
   canEdit,
+  canCancel,
   formData,
   formatTime,
 }: {
@@ -55,6 +56,7 @@ export function OrderDetail({
   onClose: () => void;
   onChanged: () => void;
   canEdit: boolean;
+  canCancel: boolean;
   formData: OrderFormData | null;
   formatTime: (iso: string) => string;
 }) {
@@ -79,6 +81,7 @@ export function OrderDetail({
             <Detail
               order={o}
               canEdit={canEdit}
+              canCancel={canCancel}
               formData={formData}
               onChanged={changed}
               formatTime={formatTime}
@@ -97,12 +100,14 @@ export function OrderDetail({
 function Detail({
   order,
   canEdit,
+  canCancel,
   formData,
   onChanged,
   formatTime,
 }: {
   order: SalesOrder;
   canEdit: boolean;
+  canCancel: boolean;
   formData: OrderFormData | null;
   onChanged: () => void;
   formatTime: (iso: string) => string;
@@ -144,12 +149,12 @@ function Detail({
       </div>
       <SheetDescription className="sr-only">{order.customerName}</SheetDescription>
 
-      {canEdit && (
+      {(canEdit || canCancel) && (
         <div className="flex flex-wrap gap-2" data-testid="order-actions">
-          {order.status === 'draft' && formData && (
+          {canEdit && order.status === 'draft' && formData && (
             <OrderDialog order={order} data={formData} onDone={onChanged} />
           )}
-          {order.status === 'draft' && (
+          {canEdit && order.status === 'draft' && (
             <ConfirmAction
               testId="order-confirm"
               trigger={t('orders.detail.confirm')}
@@ -160,7 +165,7 @@ function Detail({
               onDone={onChanged}
             />
           )}
-          {SALES_ORDER_CANCELLABLE.includes(order.status) && (
+          {canCancel && SALES_ORDER_CANCELLABLE.includes(order.status) && (
             <CancelOrder order={order} onDone={onChanged} />
           )}
         </div>

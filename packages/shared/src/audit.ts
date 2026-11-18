@@ -148,6 +148,11 @@ export const AUDIT_ACTIONS = {
     entityType: 'plan',
     label: 'platform.audit.actions.planFeaturesChanged',
   },
+  // ADR 0051: the migration that copied stored keys onto their split keys (actor `migration`).
+  'platform.permission_keys.split': {
+    entityType: 'organization',
+    label: 'platform.audit.actions.permissionKeysSplit',
+  },
   'platform.setting_value.created': {
     entityType: 'setting_value',
     label: 'platform.audit.actions.settingValueCreated',
@@ -323,7 +328,7 @@ export const AUDIT_ACTIONS = {
     entityType: 'sales_order',
     label: 'orders.audit.actions.salesOrderStatusChanged',
   },
-  /** Vendor invoices (ADR 0051): read and submitted, changed while pending, then approved or rejected. */
+  /** Vendor invoices (ADR 0054): read and submitted, changed while pending, then approved or rejected. */
   'inventory.vendor_invoice.submitted': {
     entityType: 'vendor_invoice',
     label: 'inventory.audit.actions.vendorInvoiceSubmitted',
@@ -475,7 +480,8 @@ export function auditEntityLabel(type: AuditEntityType): string {
  * password or token hashes, tokens, links or email addresses: audit rows can't be updated or erased.
  */
 export const AUDIT_SNAPSHOT_FIELDS = {
-  organization: ['id', 'partnerId', 'name', 'planId'],
+  /** rowsAdded: stored permission rows the ADR 0051 migration added. */
+  organization: ['id', 'partnerId', 'name', 'planId', 'rowsAdded'],
   role: ['id', 'systemKey', 'name', 'permissions'],
   /** grants/denies: per-member permission changes; active: false while deactivated (ADR 0023). */
   membership: [

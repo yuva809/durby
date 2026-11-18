@@ -329,15 +329,19 @@ describe('TeamPage', () => {
     await userEvent.click(box);
     expect(box.getAttribute('data-state')).toBe('checked');
 
-    // A box that allows more than its column says carries a note.
+    // ADR 0051: Members has its own Edit and Delete boxes, and no box carries a note any more.
     const users = within(dialog)
       .getAllByTestId('team-matrix-row')
       .find((r) => r.dataset.area === 'platform.users')!;
-    expect(within(users).getByTestId('team-permission-note')).toBeDefined();
-    const manage = within(users)
-      .getAllByTestId('team-permission')
-      .find((c) => c.dataset.key === 'platform.users.manage')!;
-    expect(manage.getAttribute('aria-label')).toContain('Also allows removing members.');
+    const column = (key: string) =>
+      within(users)
+        .getAllByTestId('team-permission')
+        .find((c) => c.dataset.key === key)
+        ?.closest('[data-column]')
+        ?.getAttribute('data-column');
+    expect(column('platform.users.edit')).toBe('edit');
+    expect(column('platform.users.delete')).toBe('delete');
+    expect(within(dialog).queryAllByTestId('team-permission-note')).toHaveLength(0);
 
     // The section box: some ticked → indeterminate; click → all; click → none.
     const orders = sections.find((s) => s.dataset.section === 'orders')!;

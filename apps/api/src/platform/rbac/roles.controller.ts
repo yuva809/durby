@@ -40,14 +40,14 @@ export class RolesController {
     return { data: await this.roles.list() };
   }
 
-  @RequirePermission('platform.roles.manage')
+  @RequirePermission('platform.roles.create')
   @Idempotent()
   @Post()
   create(@Body(new ZodBody(createRoleRequestSchema)) body: CreateRoleRequest): Promise<Role> {
     return this.roles.create(body);
   }
 
-  @RequirePermission('platform.roles.manage')
+  @RequirePermission('platform.roles.edit')
   @Idempotent()
   @Patch(':id')
   update(
@@ -57,7 +57,7 @@ export class RolesController {
     return this.roles.update(id, body);
   }
 
-  @RequirePermission('platform.roles.manage')
+  @RequirePermission('platform.roles.delete')
   @Idempotent()
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)

@@ -351,8 +351,7 @@
   "inventory.invoices.newItemsHint": "New items are created when the invoice is approved.",
   "inventory.permissionAreas.invoices": "Vendor invoices",
   "inventory.invoice.importDataFormats": "PDF · Photos",
-  "inventory.permissionRows.invoices": "Vendor invoices",
-  "inventory.permissionNotes.invoicesApprove": "Edit here means approving or rejecting invoices in the approval queue; approving books the goods receipt.",
+  "inventory.permissionRows.invoices": "Invoice approval",
   "inventory.errors.mainWarehouseNotAllowed": "Only someone who edits warehouses at every location can choose the main warehouse.",
   "inventory.page.mainWarehouse": "Main warehouse",
   "inventory.page.mainWarehouseHint": "Supplies every branch: branches always request goods from it, and its staff pick and pack for all of them. Only one warehouse can be the main one."

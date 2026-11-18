@@ -98,7 +98,7 @@ export const NUMBER_SERIES = {
     resetPolicy: 'yearly',
   },
   /** Branch stock requests and the transfers they become (ADR 0045). */
-  /** Vendor invoices waiting for approval (ADR 0051). */
+  /** Vendor invoices waiting for approval (ADR 0054). */
   'inventory.vendorInvoice': {
     label: 'platform.numbering.series.inventoryVendorInvoice.name',
     description: 'platform.numbering.series.inventoryVendorInvoice.description',

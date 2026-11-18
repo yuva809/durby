@@ -544,19 +544,21 @@ function MemberRow({
         </div>
       </td>
       <td className={cn(cell, 'text-right max-lg:absolute max-lg:top-2 max-lg:right-0')}>
-        {actions.canManage && (
+        {(actions.canEdit || actions.canRemove) && (
           <RowMenu label={t('platform.team.actionsFor', { name: label })}>
-            <DropdownMenuItem onSelect={onEdit} data-testid="team-edit">
-              <Pencil aria-hidden />
-              {t('platform.team.edit')}
-            </DropdownMenuItem>
-            {member.passwordSettable && (
+            {actions.canEdit && (
+              <DropdownMenuItem onSelect={onEdit} data-testid="team-edit">
+                <Pencil aria-hidden />
+                {t('platform.team.edit')}
+              </DropdownMenuItem>
+            )}
+            {actions.canEdit && member.passwordSettable && (
               <DropdownMenuItem onSelect={onSetPassword} data-testid="team-set-password">
                 <KeyRound aria-hidden />
                 {t('platform.team.setPassword.action')}
               </DropdownMenuItem>
             )}
-            {member.status === 'active' ? (
+            {!actions.canRemove ? null : member.status === 'active' ? (
               <DropdownMenuItem
                 onSelect={() => onConfirm({ kind: 'deactivate', member })}
                 data-testid="team-deactivate"
@@ -573,14 +575,18 @@ function MemberRow({
                 {t('platform.team.reactivate')}
               </DropdownMenuItem>
             )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => onConfirm({ kind: 'remove', member })}
-              className="text-destructive"
-            >
-              <Trash2 aria-hidden />
-              {t('platform.team.remove')}
-            </DropdownMenuItem>
+            {actions.canRemove && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => onConfirm({ kind: 'remove', member })}
+                  className="text-destructive"
+                >
+                  <Trash2 aria-hidden />
+                  {t('platform.team.remove')}
+                </DropdownMenuItem>
+              </>
+            )}
           </RowMenu>
         )}
       </td>

@@ -18,6 +18,7 @@ import { RouteMarkerCheck } from './route-marker.check';
 import { SystemRoles } from './system-roles';
 import { InvitationLinkController, TeamController } from './team.controller';
 import { TeamService } from './team.service';
+import { PermissionSplitReport } from './permission-split';
 
 /** Roles, permissions and route access (docs/platform/rbac.md). AccessGuard runs on every route. */
 @Global()
@@ -36,6 +37,7 @@ import { TeamService } from './team.service';
     InvitationsService,
     MemberNames,
     MembersService,
+    PermissionSplitReport,
     RolesService,
     RouteMarkerCheck,
     SystemRoles,

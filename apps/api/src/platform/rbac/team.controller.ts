@@ -50,7 +50,7 @@ export class TeamController {
     return this.team.create(body);
   }
 
-  @RequirePermission('platform.users.manage')
+  @RequirePermission('platform.users.edit')
   @Idempotent()
   @Patch(':id')
   update(
@@ -60,8 +60,8 @@ export class TeamController {
     return this.team.update(id, body);
   }
 
-  /** Sets the member's password (ADR 0052); answers the member, never the password. */
-  @RequirePermission('platform.users.manage')
+  /** Sets the member's password (ADR 0052): editing a member; answers the member, never the password. */
+  @RequirePermission('platform.users.edit')
   @IdempotencyExempt(
     'the body is a password, which must not be kept even hashed; a replay sets the same password again',
   )
@@ -74,7 +74,7 @@ export class TeamController {
     return this.team.setPassword(id, body.password);
   }
 
-  @RequirePermission('platform.users.manage')
+  @RequirePermission('platform.users.delete')
   @Idempotent()
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
@@ -82,7 +82,7 @@ export class TeamController {
     return this.team.deactivate(id);
   }
 
-  @RequirePermission('platform.users.manage')
+  @RequirePermission('platform.users.delete')
   @Idempotent()
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)

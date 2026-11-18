@@ -4,7 +4,7 @@
   per owning module (`catalog/category-import.service.ts`, `inventory/item-import.service.ts`,
   `StockService.importOpeningStock`, `CustomersService.importCustomers`)
 - Decisions: [ADR 0044](../adr/0044-operations-menu-orders-fulfilment.md) step 4,
-  [ADR 0051](../adr/0051-vendor-invoice-approval-and-import-data.md) (Excel, page layout, vendor invoice tile)
+  [ADR 0054](../adr/0054-vendor-invoice-approval-and-import-data.md) (Excel, page layout, vendor invoice tile)
 
 A CSV and Excel wizard (`/import`, Tools & utilities in the operations menu) to bring existing lists into the app. The
 browser reads the file and sends rows as JSON to the module that owns the records; the module checks them again and writes
