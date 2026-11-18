@@ -1,6 +1,6 @@
 # ADR 0034: Branch environments and building on the server
 
-- Status: accepted (2026-11-12)
+- Status: accepted (2026-11-12), amended 2026-11-18 (see [Amendment](#amendment-2026-11-18-main-only))
 - Date: 2026-11-12
 - Step: hosting. Amends [ADR 0004](0004-staging-deployment.md) decision 1 ("the server never builds images") and replaces the
   CI workflow of [ADR 0003](0003-continuous-integration.md).
@@ -71,3 +71,20 @@ pushed to GHCR and pulled by the server. Two things changed:
 - There is no registry copy of a release. Rollback uses the last 5 releases' images kept on the host
   (`deploy.sh --skip-migrations <sha>`). An older release must be checked out in `/opt/durby/src` and built by hand
   (docs/ops/deploy.md → Rollback).
+
+## Amendment (2026-11-18): main only
+
+The `development` branch and the dev stack (decision 1's second row, decision 2) are not in use. There is one hosted
+environment, production, deployed from `main` at `app.durby.tech` (`staging.durby.tech` redirects there, ADR 0039).
+
+1. **Feature branches merge straight into `main`.** There is no `development` branch for now, so decision 2 ("code
+   reaches production through `development`") is suspended.
+2. **Every merge to `main` is a production release.** `.github/workflows/deploy.yml` deploys it as in decision 4.
+   Its `development` trigger stays, unused, so a dev stack can come back without a workflow change.
+3. **The checks run locally, before the merge.** Nothing runs them on GitHub (decision 4). Run
+   `pnpm lint && pnpm typecheck && pnpm test` locally in Docker and merge only when all three pass.
+4. **A staging stack can be added later** (for example at `staging.durby.tech`, which today only redirects). It
+   would come back as the second row of decision 1, with its own `.env`, data and backups, and `main` would then
+   deploy there first. That needs its own ADR.
+
+Decisions 3 and 4 (building on the server, deploy on push) are unchanged.
