@@ -22,7 +22,7 @@ items for one flow (Request Stock and Stock Requests), and the `branch` role rea
      `POST /auth/password/forgot` sends no link (same 202, so nothing is revealed).
    - Accounts that signed up or joined by invitation are never managed: their passwords stay theirs.
    - Off: everything as in ADR 0023.
-2. **Set password** `POST /api/v1/staff/:id/password` `{ password }` (`platform.users.manage`):
+2. **Set password** `POST /api/v1/staff/:id/password` `{ password }` (`platform.users.edit`):
    - Only for an account this organization created that has no membership in another organization (else it would
      open another organization's door): `passwordSettable` on each member; otherwise 403
      `rbac.password_not_settable`.

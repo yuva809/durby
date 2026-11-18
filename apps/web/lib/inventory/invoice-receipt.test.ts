@@ -149,7 +149,7 @@ describe('vendor invoice review (ADR 0049)', () => {
   });
 });
 
-describe('a stored invoice back as rows (ADR 0051)', () => {
+describe('a stored invoice back as rows (ADR 0054)', () => {
   const stored = (lines: VendorInvoice['lines']): VendorInvoice => ({
     id: id(70),
     number: 'VIN-2026-000001',

@@ -351,6 +351,5 @@
   "inventory.invoices.newItemsHint": "New items are created when the invoice is approved.",
   "inventory.permissionAreas.invoices": "Vendor invoices",
   "inventory.invoice.importDataFormats": "PDF · Photos",
-  "inventory.permissionRows.invoices": "Vendor invoices",
-  "inventory.permissionNotes.invoicesApprove": "Edit here means approving or rejecting invoices in the approval queue; approving books the goods receipt."
+  "inventory.permissionRows.invoices": "Invoice approval"
 }

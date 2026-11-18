@@ -148,7 +148,7 @@ function signedIn(permissions = [...systemRolePermissions('owner')]) {
 
 const pdfFile = () => new File(['%PDF'], '108666.pdf', { type: 'application/pdf' });
 
-describe('/inventory/invoice (ADR 0049, 0051)', () => {
+describe('/inventory/invoice (ADR 0049, 0054)', () => {
   it('reads the PDF, matches by SKU, marks new items, and sends it for approval', async () => {
     signedIn();
     const writes = api();

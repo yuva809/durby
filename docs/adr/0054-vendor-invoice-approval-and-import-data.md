@@ -1,4 +1,4 @@
-# ADR 0051: Vendor invoices wait for approval; photos and Excel in Import Data
+# ADR 0054: Vendor invoices wait for approval; photos and Excel in Import Data
 
 - Status: accepted (2026-11-18)
 - Date: 2026-11-18

@@ -83,7 +83,7 @@ const ACCEPT =
   '.csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 /**
- * /import, Import Data (docs/platform/import.md, ADR 0044 step 4, ADR 0051): pick what to import, download its
+ * /import, Import Data (docs/platform/import.md, ADR 0044 step 4, ADR 0054): pick what to import, download its
  * template, choose a CSV or Excel file, check the preview and its problems, then import all rows at once (all or
  * nothing). A supplier's invoice is a PDF or photos, not a table: its tile leads to its own page and the approval queue.
  */
@@ -473,7 +473,7 @@ function Tile({
   );
 }
 
-/** Vendor invoices: read from a PDF or photos on their own page, then approved (ADR 0049, 0051). */
+/** Vendor invoices: read from a PDF or photos on their own page, then approved (ADR 0049, 0054). */
 function InvoiceTile({ queue }: { queue: boolean }) {
   const t = useT();
   return (

@@ -137,21 +137,26 @@ export const canToggle = (access: UsersAccess, key: string): boolean =>
 
 export interface TeamRowActions {
   self: boolean;
-  /** Edit, deactivate/reactivate: `platform.users.manage` and the member's keys ⊆ yours. */
-  canManage: boolean;
+  /** Edit: `platform.users.edit` and the member's keys ⊆ yours. */
+  canEdit: boolean;
+  /** Deactivate, reactivate, remove: `platform.users.delete` and the member's keys ⊆ yours (ADR 0051). */
+  canRemove: boolean;
 }
 
 /** The row's actions: never on yourself; members compared by their effective keys. */
 export function teamRowActions(access: UsersAccess, member: TeamMember): TeamRowActions {
   const self = member.userId === access.actor.userId;
-  if (self || !access.canManageUsers) return { self, canManage: false };
+  if (self || !(access.canEditUsers || access.canRemoveUsers)) {
+    return { self, canEdit: false, canRemove: false };
+  }
   const verdict = canManageMember(access.actor, {
     userId: member.userId,
     role: member.role
       ? { systemKey: member.role.systemKey, keys: new Set(member.permissions) }
       : null,
   });
-  return { self, canManage: verdict === 'ok' };
+  const ok = verdict === 'ok';
+  return { self, canEdit: ok && access.canEditUsers, canRemove: ok && access.canRemoveUsers };
 }
 
 /** Easy to read out and type: no 0/O, 1/l/I. */

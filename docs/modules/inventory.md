@@ -106,7 +106,7 @@ and detail), **Items**, **Warehouses**.
 - Code: `components/inventory/category-overview.tsx`, `lib/inventory/overview.ts`. Test page:
   docs/html/inventory-categories.html.
 
-### Vendor invoices (ADR 0049, 0051)
+### Vendor invoices (ADR 0049, 0054)
 
 `/inventory/invoice` (Import Vendor Invoice on the operations Inventory page, and a tile on Import Data;
 `inventory.stock.receive`):

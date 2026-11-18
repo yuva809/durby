@@ -87,7 +87,7 @@ export function newItemName(line: InvoiceLine): string {
   return line.description.trim().slice(0, INVENTORY_NAME_MAX_LENGTH);
 }
 
-/** The invoice to submit for approval (ADR 0051): the included rows; call only when rowProblems finds none. */
+/** The invoice to submit for approval (ADR 0054): the included rows; call only when rowProblems finds none. */
 export function submitRequest(input: {
   rows: readonly InvoiceRow[];
   warehouseId: string;

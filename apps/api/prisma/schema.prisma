@@ -2358,7 +2358,7 @@ model PushSubscription {
   @@map("push_subscriptions")
 }
 
-/// A vendor invoice read from its PDF or photo, waiting for approval (ADR 0051). Approval books one receipt.
+/// A vendor invoice read from its PDF or photo, waiting for approval (ADR 0054). Approval books one receipt.
 model VendorInvoice {
   id            String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId      String              @map("tenant_id") @db.Uuid

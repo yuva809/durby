@@ -7,7 +7,7 @@ import {
 import { cellText, splitCsv } from '../catalog/import-file';
 
 /**
- * Import Data in the browser (docs/platform/import.md, ADR 0044 step 4, ADR 0051): a CSV or Excel file becomes the
+ * Import Data in the browser (docs/platform/import.md, ADR 0044 step 4, ADR 0054): a CSV or Excel file becomes the
  * rows of one kind. CSV as in the products import: RFC 4180 quoting, comma or semicolon, UTF-8 with or without BOM.
  * Excel: the .xlsx workbook, read on the device. Headers are matched loosely ("Min quantity", "min_quantity" and
  * "MinQuantity" are one column); unknown columns are ignored.

@@ -39,6 +39,7 @@ export function OrdersPage() {
         organizationId={session.activeOrganizationId}
         canCreate={permissions.has('orders.orders.create')}
         canEdit={permissions.has('orders.orders.edit')}
+        canCancel={permissions.has('orders.orders.delete')}
         canReadCustomers={permissions.has('orders.customers.read')}
         canAddCustomer={permissions.has('orders.customers.create')}
       />
@@ -55,12 +56,15 @@ function Orders({
   organizationId,
   canCreate,
   canEdit,
+  canCancel,
   canReadCustomers,
   canAddCustomer,
 }: {
   organizationId: string | null;
   canCreate: boolean;
   canEdit: boolean;
+  /** `orders.orders.delete` (ADR 0051). */
+  canCancel: boolean;
   canReadCustomers: boolean;
   canAddCustomer: boolean;
 }) {
@@ -370,6 +374,7 @@ function Orders({
         onClose={() => setOpenId(null)}
         onChanged={reload}
         canEdit={canEdit}
+        canCancel={canCancel}
         formData={formData}
         formatTime={formatTime}
       />

@@ -216,7 +216,7 @@ export class StockService {
     body: ImportReceiptRequest,
     options: {
       complete?: (tx: TenantTransactionClient, document: StockDocument) => Promise<unknown>;
-      /** An approved vendor invoice (ADR 0051): its approval stands in for inventory.items.edit. */
+      /** An approved vendor invoice (ADR 0054): its approval stands in for inventory.items.edit. */
       newItemsApproved?: boolean;
     } = {},
   ): Promise<StockDocument> {
@@ -515,7 +515,7 @@ export class StockService {
     header: { supplier?: string | null; note: string | null; reason?: AdjustmentReason };
     plan: (levels: Levels) => PlannedMovement[];
     /**
-     * Runs after the document is booked, in its transaction (a vendor invoice marked approved, ADR 0051); what it
+     * Runs after the document is booked, in its transaction (a vendor invoice marked approved, ADR 0054); what it
      * returns is what the idempotency key stores, so a replay answers the same.
      */
     complete?: (tx: TenantTransactionClient, document: StockDocument) => Promise<unknown>;

@@ -140,7 +140,7 @@ function signedIn(permissions = [...systemRolePermissions('owner')]) {
   });
 }
 
-describe('/inventory/invoices (ADR 0051)', () => {
+describe('/inventory/invoices (ADR 0054)', () => {
   it('lists pending invoices; an approver opens one, corrects it, and approving saves first', async () => {
     signedIn();
     const writes = api();

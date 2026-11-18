@@ -36,7 +36,7 @@ describe('roleKeysOf', () => {
 
   it('denies other system roles keys their grants do not list', () => {
     const admin = roleKeysOf(registry, 'admin', ['platform.org.manage']);
-    expect(admin.has('platform.roles.manage')).toBe(true);
+    expect(admin.has('platform.roles.edit')).toBe(true);
     expect(admin.has('platform.org.manage')).toBe(false);
     expect(admin.has('test.stock.adjust')).toBe(false);
   });
@@ -140,10 +140,10 @@ describe('per-member overrides and deactivation (ADR 0023)', () => {
       registry,
       row({
         role: { id: 'r1', systemKey: 'owner', permissions: [] },
-        permissions: [override('platform.users.manage', 'deny')],
+        permissions: [override('platform.users.edit', 'deny')],
       }),
     );
-    expect(access.permissions.has('platform.users.manage')).toBe(true);
+    expect(access.permissions.has('platform.users.edit')).toBe(true);
   });
 
   it('applies the location rule after the overrides', () => {

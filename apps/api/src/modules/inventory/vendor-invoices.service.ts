@@ -125,7 +125,7 @@ interface Row {
 }
 
 /**
- * Vendor invoices waiting for approval (docs/modules/inventory.md → Vendor invoices, ADR 0051). Submitted by those who
+ * Vendor invoices waiting for approval (docs/modules/inventory.md → Vendor invoices, ADR 0054). Submitted by those who
  * receive goods at the warehouse; approved or rejected by inventory.invoices.approve there. Approval books one goods
  * receipt (new items created with it, the approval standing in for inventory.items.edit) and marks the invoice in the
  * same transaction; it only succeeds while the invoice is pending and unchanged since it was read.

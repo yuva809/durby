@@ -184,7 +184,7 @@ export async function pdfRows(file: Blob): Promise<string[]> {
   return rows;
 }
 
-// --- Photos and scans (ADR 0051) -----------------------------------------------------------------------------
+// --- Photos and scans (ADR 0054) -----------------------------------------------------------------------------
 
 /** A line of text as the on-device recognition reads it: its page and box (any unit, y down). */
 export interface ReadLine {

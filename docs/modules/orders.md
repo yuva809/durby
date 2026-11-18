@@ -54,13 +54,13 @@ without the write key. They show as Create / Edit / View columns in Add Staff (A
 | ---------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `GET /customers`       | `orders.customers.read`   | `?includeArchived=true`                                                                                                   |
 | `POST /customers`      | `orders.customers.create` | Idempotent, completes in the transaction                                                                                  |
-| `PATCH /customers/:id` | `orders.customers.edit`   | Fields, `archived`                                                                                                        |
+| `PATCH /customers/:id` | `orders.customers.edit`   | Fields; `archived` also needs `.delete` (ADR 0051)                                                                        |
 | `GET /`                | `orders.orders.read`      | `status` (repeatable), `locationId`, `customerId`, `from`, `to`, `limit` ≤ 200, `cursor`; newest first                    |
 | `GET /:id`             | `orders.orders.read`      | With lines and timeline                                                                                                   |
 | `POST /`               | `orders.orders.create`    | `customerId`, `warehouseId`, `lines[]` (each item once, ≤ 200), `requestedDate?`, `deliveryAddress?`, `note?`, `confirm?` |
 | `PATCH /:id`           | `orders.orders.edit`      | Drafts only; `lines` replace all lines                                                                                    |
 | `POST /:id/confirm`    | `orders.orders.edit`      | draft → confirmed                                                                                                         |
-| `POST /:id/cancel`     | `orders.orders.edit`      | `reason?`; up to packed                                                                                                   |
+| `POST /:id/cancel`     | `orders.orders.delete`    | `reason?`; up to packed                                                                                                   |
 
 Lines refuse unknown or archived items and parents with variants (`orders.item_not_found`, ADR 0038).
 
