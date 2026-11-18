@@ -1,4 +1,9 @@
-import { type ArgumentsHost, Logger, NotFoundException } from '@nestjs/common';
+import {
+  type ArgumentsHost,
+  Logger,
+  NotFoundException,
+  PayloadTooLargeException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { TenantContextMissingError } from '../tenancy';
 import { ApiError } from './api-error';
@@ -44,6 +49,37 @@ describe('ApiExceptionFilter', () => {
       status: 404,
       body: { code: 'http.not_found' },
     });
+  });
+
+  it('answers a body over the parser limit with 413 platform.payload_too_large', () => {
+    // What body-parser passes to next() (an http-errors object, not a Nest HttpException).
+    const tooLarge = Object.assign(new Error('request entity too large'), {
+      status: 413,
+      statusCode: 413,
+      expose: true,
+      type: 'entity.too.large',
+      length: 400_000,
+      limit: 300_000,
+    });
+    expect(run(tooLarge)).toEqual({
+      status: 413,
+      body: { code: 'platform.payload_too_large', message: 'The request body is too large.' },
+      headers: {},
+    });
+    expect(run(new PayloadTooLargeException())).toMatchObject({
+      status: 413,
+      body: { code: 'platform.payload_too_large' },
+    });
+  });
+
+  it('keeps other parser-like errors a 500', () => {
+    const log = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    const other = Object.assign(new Error('x'), { status: 413, type: 'something.else' });
+    expect(run(other)).toMatchObject({ status: 500, body: { code: 'internal.error' } });
+    expect(run(Object.assign(new Error('x'), { type: 'entity.too.large' }))).toMatchObject({
+      status: 500,
+    });
+    log.mockRestore();
   });
 
   it('hides the message of unexpected errors from the client and the log', () => {

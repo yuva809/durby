@@ -566,6 +566,7 @@
   "platform.errors.locationsNameTaken": "Es gibt bereits einen Standort mit diesem Namen.",
   "platform.errors.locationsInUse": "Dieser Standort wird noch verwendet (Mitglieder, Einstellungen, Tische, Bereiche oder Bestellungen) und kann nicht gelöscht werden.",
   "platform.errors.busy": "Gerade sehr viel los. Bitte gleich noch einmal versuchen.",
+  "platform.errors.payloadTooLarge": "Das ist zu groß zum Hochladen. Wählen Sie eine kleinere Datei.",
   "platform.audit.entities.location": "Standort",
   "platform.audit.actions.locationCreated": "Standort angelegt",
   "platform.audit.actions.locationUpdated": "Standort umbenannt",

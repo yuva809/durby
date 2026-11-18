@@ -206,9 +206,9 @@ with _Archive them_ as the next step. On phones the bar sits at the bottom of th
   The parent is an active top-level category other than itself; a category with secondary categories stays top level
   (`catalog.category_parent_invalid`).
 - Tile image: `PUT /catalog/categories/:id/image` with the raw file (`Content-Type` image/webp, image/png or
-  image/jpeg, at most 300 KB, checked by its first bytes: `catalog.category_image_invalid`; larger: 413).
-  `DELETE …/image` removes it; `GET …/image` reads it (catalog.products.read; cacheable, the url carries
-  `imageVersion`). The web resizes to WebP of at most 800 px before upload.
+  image/jpeg, at most 300 KB, checked by its first bytes: `catalog.category_image_invalid`; larger:
+  `413 platform.payload_too_large`). `DELETE …/image` removes it; `GET …/image` reads it (catalog.products.read;
+  cacheable, the url carries `imageVersion`). The web resizes to WebP of at most 800 px before upload.
 - The dialog asks for name, description, secondary category and image; kitchen/bar shows only with the `pos` feature.
   `/catalog/categories` shows image or colour, description, and secondary categories under their parent; only
   top-level ones drag. Without the till it counts stock items, with it menu products.

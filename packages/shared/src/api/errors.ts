@@ -16,7 +16,9 @@ export type ApiErrorBody = z.infer<typeof apiErrorBodySchema>;
 /**
  * Codes any route may answer. `platform.busy` (503, Retry-After): the database was overloaded
  * (ADR 0021); the same request may be retried with the same Idempotency-Key.
+ * `platform.payload_too_large` (413): the body is over the route's size limit (e.g. a tile image
+ * over CATEGORY_IMAGE_MAX_BYTES).
  */
-export const PLATFORM_ERROR_CODES = ['platform.busy'] as const;
+export const PLATFORM_ERROR_CODES = ['platform.busy', 'platform.payload_too_large'] as const;
 
 export type PlatformErrorCode = (typeof PLATFORM_ERROR_CODES)[number];

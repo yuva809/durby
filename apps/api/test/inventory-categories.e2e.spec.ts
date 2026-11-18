@@ -108,7 +108,10 @@ describe('inventory categories (ADR 0048)', () => {
 
     // Declared PNG but not one, or too big, or a type the api doesn't take.
     await put(Buffer.from('not an image at all'), 'image/png').expect(400);
-    await put(Buffer.concat([PNG, Buffer.alloc(300 * 1024)]), 'image/png').expect(413);
+    const tooBig = await put(Buffer.concat([PNG, Buffer.alloc(300 * 1024)]), 'image/png').expect(
+      413,
+    );
+    expect(tooBig.body).toMatchObject({ code: 'platform.payload_too_large' });
     await put(PNG, 'image/gif').expect(400);
 
     const removed = productCategorySchema.parse(

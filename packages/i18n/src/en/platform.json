@@ -566,6 +566,7 @@
   "platform.errors.locationsNameTaken": "The organization already has a location with this name.",
   "platform.errors.locationsInUse": "This location is still in use (members, settings, tables, areas or orders), so it can't be deleted.",
   "platform.errors.busy": "Very busy right now. Please try again in a moment.",
+  "platform.errors.payloadTooLarge": "This is too large to upload. Choose a smaller file.",
   "platform.audit.entities.location": "Location",
   "platform.audit.actions.locationCreated": "Location created",
   "platform.audit.actions.locationUpdated": "Location renamed",
