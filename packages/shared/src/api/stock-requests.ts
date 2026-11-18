@@ -47,19 +47,26 @@ const lineQuantities = z
     message: 'Each line once',
   });
 
-export const createStockRequestSchema = z.strictObject({
-  fromWarehouseId: z.uuid(),
-  /** A warehouse at the branch. */
-  toWarehouseId: z.uuid(),
-  lines: z
-    .array(z.strictObject({ itemId: z.uuid(), quantity: stockQuantitySchema }))
-    .min(1)
-    .max(STOCK_REQUEST_MAX_LINES)
-    .refine((lines) => new Set(lines.map((l) => l.itemId)).size === lines.length, {
-      message: 'Each item once',
-    }),
-  note: note.optional(),
-});
+export const createStockRequestSchema = z
+  .strictObject({
+    /** Absent: the main warehouse (ADR 0053); with a main warehouse, only it. */
+    fromWarehouseId: z.uuid().optional(),
+    /** A warehouse at the branch, or `toLocationId`: the branch, whose store is created on its first request. */
+    toWarehouseId: z.uuid().optional(),
+    toLocationId: z.uuid().optional(),
+    lines: z
+      .array(z.strictObject({ itemId: z.uuid(), quantity: stockQuantitySchema }))
+      .min(1)
+      .max(STOCK_REQUEST_MAX_LINES)
+      .refine((lines) => new Set(lines.map((l) => l.itemId)).size === lines.length, {
+        message: 'Each item once',
+      }),
+    note: note.optional(),
+  })
+  .refine((body) => (body.toWarehouseId === undefined) !== (body.toLocationId === undefined), {
+    message: 'Either toWarehouseId or toLocationId',
+    path: ['toWarehouseId'],
+  });
 
 /** Approve: the quantity to send per line (0 drops it; at least one above 0). */
 export const approveStockRequestSchema = z.strictObject({
@@ -157,6 +164,22 @@ export const requestWarehouseSchema = z.object({
   locationName: z.string(),
   /** The caller may request goods for this warehouse (its branch). */
   canRequestInto: z.boolean(),
+  /** Supplies every branch (ADR 0053). Default for older apis. */
+  isMain: z.boolean().default(false),
+});
+
+/**
+ * A branch the caller may request goods for (ADR 0053), with the warehouse goods go into: its own, or null when it
+ * has none yet (the first request creates its store).
+ */
+export const requestDestinationSchema = z.object({
+  locationId: z.uuid(),
+  locationName: z.string(),
+  warehouseId: z.uuid().nullable(),
+  warehouseName: z.string().nullable(),
+});
+export const requestDestinationListResponseSchema = z.object({
+  data: z.array(requestDestinationSchema),
 });
 export const requestWarehouseListResponseSchema = z.object({
   data: z.array(requestWarehouseSchema),
@@ -170,6 +193,9 @@ export const requestAvailabilitySchema = z.object({
   unit: z.enum(STOCK_UNITS),
   /** 3 decimals; may be 0. */
   available: z.string(),
+  /** For grouping the request cart (ADR 0053). Defaults for older apis. */
+  categoryId: z.uuid().nullable().default(null),
+  categoryName: z.string().nullable().default(null),
 });
 export const requestAvailabilityResponseSchema = z.object({
   data: z.array(requestAvailabilitySchema),
@@ -191,11 +217,13 @@ export type StockRequestSummary = z.infer<typeof stockRequestSummarySchema>;
 export type StockRequest = z.infer<typeof stockRequestSchema>;
 export type RequestWarehouse = z.infer<typeof requestWarehouseSchema>;
 export type RequestAvailability = z.infer<typeof requestAvailabilitySchema>;
+export type RequestDestination = z.infer<typeof requestDestinationSchema>;
 export type RequestDriver = z.infer<typeof requestDriverSchema>;
 
 export const STOCK_REQUEST_ERROR_CODES = [
   'orders.request_not_found',
   'orders.request_invalid',
+  'orders.request_main_only',
   'orders.request_transition',
   'orders.request_not_yours',
   'orders.driver_not_found',

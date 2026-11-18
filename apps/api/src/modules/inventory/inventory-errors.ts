@@ -50,6 +50,12 @@ export const inventoryErrors = {
     ),
   productNotFound: () =>
     new ApiError(HttpStatus.NOT_FOUND, 'inventory.product_not_found', 'Product not found.'),
+  mainWarehouseNotAllowed: () =>
+    new ApiError(
+      HttpStatus.FORBIDDEN,
+      'inventory.main_warehouse_not_allowed',
+      'Only someone who edits warehouses at every location can choose the main warehouse.',
+    ),
   stationTaken: () =>
     new ApiError(
       HttpStatus.CONFLICT,

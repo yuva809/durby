@@ -637,7 +637,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'stations',
     'archivedAt',
   ],
-  warehouse: ['id', 'locationId', 'name', 'sortOrder', 'suppliesStation', 'archivedAt'],
+  warehouse: ['id', 'locationId', 'name', 'sortOrder', 'suppliesStation', 'isMain', 'archivedAt'],
   /** `itemIds`: sorted, joined with commas; snapshots hold flat values only. */
   recipe: ['productId', 'lineCount', 'itemIds'],
   /** `minQuantity`: decimal string; `variantValues`: joined with ' / ' (ADR 0038). */

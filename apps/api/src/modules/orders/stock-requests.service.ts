@@ -9,6 +9,7 @@ import type {
   PermissionKey,
   ReceiveStockRequest,
   RequestAvailability,
+  RequestDestination,
   RequestDriver,
   RequestWarehouse,
   StockRequest,
@@ -207,7 +208,13 @@ export class StockRequestsService {
   async warehouses(): Promise<RequestWarehouse[]> {
     const rows = await this.db.warehouse.findMany({
       where: { archivedAt: null, isTransit: false },
-      select: { id: true, name: true, locationId: true, location: { select: { name: true } } },
+      select: {
+        id: true,
+        name: true,
+        locationId: true,
+        isMain: true,
+        location: { select: { name: true } },
+      },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
     });
     const scope = await this.access.locationIdsFor('orders.requests.create');
@@ -217,7 +224,41 @@ export class StockRequestsService {
       locationId: w.locationId,
       locationName: w.location.name,
       canRequestInto: scope === 'all' || scope.includes(w.locationId),
+      isMain: w.isMain,
     }));
+  }
+
+  /**
+   * The branches the caller may request goods for (ADR 0053), each with the warehouse goods go into: its first
+   * active one, or none yet (the first request creates its store). The main warehouse's own location is not a branch.
+   */
+  async destinations(): Promise<RequestDestination[]> {
+    const scope = await this.access.locationIdsFor('orders.requests.create');
+    if (scope !== 'all' && scope.length === 0) return [];
+    const [locations, warehouses] = await Promise.all([
+      this.db.location.findMany({
+        where: scope === 'all' ? {} : { id: { in: scope } },
+        select: { id: true, name: true },
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      }),
+      this.db.warehouse.findMany({
+        where: { archivedAt: null, isTransit: false },
+        select: { id: true, name: true, locationId: true, isMain: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+      }),
+    ]);
+    const main = warehouses.find((w) => w.isMain);
+    return locations
+      .filter((l) => !main || l.id !== main.locationId)
+      .map((l) => {
+        const own = warehouses.find((w) => w.locationId === l.id && !w.isMain);
+        return {
+          locationId: l.id,
+          locationName: l.name,
+          warehouseId: own?.id ?? null,
+          warehouseName: own?.name ?? null,
+        };
+      });
   }
 
   /**
@@ -242,6 +283,8 @@ export class StockRequestsService {
           unit: true,
           parentItemId: true,
           variantValues: true,
+          categoryId: true,
+          category: { select: { name: true } },
           _count: { select: { variants: { where: { archivedAt: null } } } },
         },
         orderBy: [{ name: 'asc' }, { id: 'asc' }],
@@ -253,6 +296,10 @@ export class StockRequestsService {
     ]);
     const quantity = new Map(levels.map((l) => [l.itemId, l.quantity.toFixed(3)]));
     const names = new Map(items.map((i) => [i.id, i.name]));
+    // Variants take their parent's category (ADR 0048).
+    const byId = new Map(items.map((i) => [i.id, i]));
+    const categoryOf = (i: (typeof items)[number]) =>
+      i.parentItemId ? (byId.get(i.parentItemId) ?? i) : i;
     return items
       .filter((i) => i._count.variants === 0)
       .map((i) => ({
@@ -264,6 +311,8 @@ export class StockRequestsService {
         sku: i.sku,
         unit: i.unit,
         available: quantity.get(i.id) ?? '0.000',
+        categoryId: categoryOf(i).categoryId,
+        categoryName: categoryOf(i).category?.name ?? null,
       }));
   }
 
@@ -289,22 +338,15 @@ export class StockRequestsService {
 
   async create(body: CreateStockRequest): Promise<StockRequest> {
     const { tenantId, userId } = this.tenantContext.require();
-    if (body.fromWarehouseId === body.toWarehouseId) throw ordersErrors.requestInvalid();
-    const [from, to] = await Promise.all([
-      this.db.warehouse.findUnique({
-        where: { id: body.fromWarehouseId },
-        select: { id: true, locationId: true, archivedAt: true, isTransit: true },
-      }),
-      this.db.warehouse.findUnique({
-        where: { id: body.toWarehouseId },
-        select: { id: true, locationId: true, archivedAt: true, isTransit: true },
-      }),
-    ]);
-    if (!from || from.archivedAt || from.isTransit || !to || to.archivedAt || to.isTransit) {
-      throw ordersErrors.warehouseNotFound();
-    }
-    await this.access.assert('orders.requests.create', { locationId: to.locationId });
+    const from = await this.source(body.fromWarehouseId);
+    const target = await this.target(body);
+    await this.access.assert('orders.requests.create', { locationId: target.locationId });
     return this.db.$transaction(async (tx) => {
+      // A branch without a warehouse gets its store with its first request (ADR 0053).
+      const to = target.warehouseId
+        ? { id: target.warehouseId, locationId: target.locationId }
+        : await this.branchStore(tx, tenantId, userId, target.locationId);
+      if (from.id === to.id) throw ordersErrors.requestInvalid();
       const ids = body.lines.map((l) => l.itemId);
       const items = await tx.stockItem.findMany({
         where: { id: { in: ids }, archivedAt: null },
@@ -356,6 +398,94 @@ export class StockRequestsService {
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
+  }
+
+  /** Where goods come from: the main warehouse when there is one (only it), else the one named. */
+  private async source(fromWarehouseId: string | undefined) {
+    const main = await this.db.warehouse.findFirst({
+      where: { isMain: true, archivedAt: null },
+      select: { id: true, locationId: true },
+    });
+    if (main) {
+      if (fromWarehouseId !== undefined && fromWarehouseId !== main.id) {
+        throw ordersErrors.mainOnly();
+      }
+      return main;
+    }
+    if (fromWarehouseId === undefined) throw ordersErrors.requestInvalid();
+    const from = await this.db.warehouse.findUnique({
+      where: { id: fromWarehouseId },
+      select: { id: true, locationId: true, archivedAt: true, isTransit: true },
+    });
+    if (!from || from.archivedAt || from.isTransit) throw ordersErrors.warehouseNotFound();
+    return { id: from.id, locationId: from.locationId };
+  }
+
+  /** Where goods go: the warehouse named, or the branch named (its own warehouse, else none yet). */
+  private async target(
+    body: CreateStockRequest,
+  ): Promise<{ warehouseId: string | null; locationId: string }> {
+    if (body.toWarehouseId !== undefined) {
+      const to = await this.db.warehouse.findUnique({
+        where: { id: body.toWarehouseId },
+        select: { id: true, locationId: true, archivedAt: true, isTransit: true },
+      });
+      if (!to || to.archivedAt || to.isTransit) throw ordersErrors.warehouseNotFound();
+      return { warehouseId: to.id, locationId: to.locationId };
+    }
+    const locationId = body.toLocationId;
+    if (locationId === undefined) throw ordersErrors.requestInvalid();
+    const location = await this.db.location.findUnique({
+      where: { id: locationId },
+      select: { id: true },
+    });
+    if (!location) throw ordersErrors.warehouseNotFound();
+    const own = await this.db.warehouse.findFirst({
+      where: { locationId, archivedAt: null, isTransit: false, isMain: false },
+      select: { id: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+    });
+    return { warehouseId: own?.id ?? null, locationId };
+  }
+
+  /**
+   * The branch's store, created with its first request (ADR 0053): named like the branch, audited as a warehouse the
+   * requester created. Inside the request's transaction, so a failed request leaves no store behind.
+   */
+  private async branchStore(
+    tx: TenantTransactionClient,
+    tenantId: string,
+    userId: string,
+    locationId: string,
+  ): Promise<{ id: string; locationId: string }> {
+    const existing = await tx.warehouse.findFirst({
+      where: { locationId, archivedAt: null, isTransit: false, isMain: false },
+      select: { id: true, locationId: true },
+    });
+    if (existing) return existing;
+    const location = await tx.location.findUniqueOrThrow({
+      where: { id: locationId },
+      select: { name: true },
+    });
+    const row = await tx.warehouse.create({
+      data: { tenantId, locationId, name: location.name.slice(0, 100), sortOrder: 0 },
+      select: {
+        id: true,
+        locationId: true,
+        name: true,
+        sortOrder: true,
+        suppliesStation: true,
+        isMain: true,
+        archivedAt: true,
+      },
+    });
+    await this.audit.record(tx, {
+      action: 'inventory.warehouse.created',
+      actor: auditActor.user(userId),
+      entityId: row.id,
+      after: snapshot('warehouse', row),
+    });
+    return { id: row.id, locationId: row.locationId };
   }
 
   cancel(id: string, body: StockRequestNote): Promise<StockRequest> {
