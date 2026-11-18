@@ -74,9 +74,12 @@ const level = (itemId: string, quantity: string, value: string, low = false) => 
   low,
 });
 
-function signedIn(features = ['inventory', 'catalog', 'orders']) {
+function signedIn(
+  features = ['inventory', 'catalog', 'orders'],
+  role: 'owner' | 'branch' = 'owner',
+) {
   mockState.session = sessionFixture({
-    activePermissions: [...systemRolePermissions('owner')],
+    activePermissions: [...systemRolePermissions(role)],
     activeFeatures: features,
   });
 }
@@ -89,6 +92,8 @@ function api() {
     'GET /api/v1/inventory/items': { data: [YAM, BASMATI, COLA, LOOSE] },
     'GET /api/v1/inventory/units': { data: [] },
     'GET /api/v1/catalog/categories': { data: [FOOD, RICE, DRINKS] },
+    // The same categories for stock readers without the catalog (ADR 0059).
+    'GET /api/v1/inventory/categories': { data: [FOOD, RICE, DRINKS] },
     'GET /api/v1/inventory/stock': {
       data: [level(YAM.id, '4.000', '8.00', true), level(BASMATI.id, '10.000', '20.00')],
     },
@@ -262,13 +267,13 @@ describe('category dialog (ADR 0048)', () => {
     expect(screen.getByTestId('category-parent')).toHaveProperty('disabled', true);
   });
 
-  it('offers Request stock to those who may request goods, with orders on', async () => {
+  it('offers the request cart to those who may request goods, with orders on', async () => {
     signedIn();
     api();
     render(<InventoryPage />, { wrapper: operations });
     const request = await screen.findByTestId('inventory-request-stock');
     expect(request.getAttribute('href')).toBe('/requests/new');
-    expect(request.textContent).toBe('Request stock');
+    expect(request.textContent).toBe('Request cart');
     cleanup();
 
     // Without orders there are no requests.
@@ -277,5 +282,24 @@ describe('category dialog (ADR 0048)', () => {
     render(<InventoryPage />, { wrapper: operations });
     await screen.findAllByTestId('category-tile');
     expect(screen.queryByTestId('inventory-request-stock')).toBeNull();
+  });
+
+  it('shows a branch its stock by category without the catalog, with the request cart (ADR 0059)', async () => {
+    signedIn(['inventory', 'catalog', 'orders'], 'branch');
+    api();
+    render(<InventoryPage />, { wrapper: operations });
+    const tiles = await screen.findAllByTestId('category-tile');
+    expect(tiles.map((tile) => tile.getAttribute('data-name'))).toEqual([
+      'All items',
+      'African Item',
+      'Beverages',
+      'Uncategorized',
+    ]);
+    expect(within(tiles[1]!).getByTestId('category-tile-count').textContent).toBe('2 items');
+    // Read from inventory: the catalog (and its prices) stays closed to a branch.
+    const paths = mockState.store.apiFetch.mock.calls.map(([input]) => String(input));
+    expect(paths.some((p) => p.startsWith('/api/v1/inventory/categories'))).toBe(true);
+    expect(paths.some((p) => p.startsWith('/api/v1/catalog/'))).toBe(false);
+    expect(screen.getByTestId('inventory-request-stock').textContent).toBe('Request cart');
   });
 });

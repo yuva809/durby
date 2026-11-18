@@ -7,7 +7,7 @@ import {
   systemRolePermissions,
 } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
-import { NAV_LAYOUT_DEFINITIONS, navLayout } from './layouts';
+import { BRANCH_NAV_LAYOUT, isBranchView, NAV_LAYOUT_DEFINITIONS, navLayout } from './layouts';
 import { activeNavItem, NAV_ITEMS, type NavItem, visibleNav } from './registry';
 
 const ids = (items: NavItem[]) => items.map((i) => i.id);
@@ -25,20 +25,24 @@ describe('nav layouts (ADR 0044)', () => {
     expect(Object.keys(NAV_LAYOUT_DEFINITIONS).sort()).toEqual([...NAV_LAYOUTS].sort());
   });
 
-  it.each(NAV_LAYOUTS)('%s: registered keys, labels in en and de, unique ids and hrefs', (key) => {
-    const { groups, items } = NAV_LAYOUT_DEFINITIONS[key];
-    for (const item of flat(items)) {
-      if (item.feature) expect(Object.keys(FEATURES)).toContain(item.feature);
-      if (item.permission) expect(Object.keys(PERMISSIONS)).toContain(item.permission);
-      expect(isLabelKey(item.label)).toBe(true);
-      expect(dictionaries.de[item.label]).toBeTruthy();
-    }
-    // Pages under an item (submenus, settings tabs) are shown with their parent.
-    for (const item of items) expect(groups.map((g) => g.id)).toContain(item.group);
-    for (const group of groups) if (group.label) expect(dictionaries.de[group.label]).toBeTruthy();
-    expect(new Set(items.map((i) => i.id)).size).toBe(items.length);
-    expect(new Set(items.map((i) => i.href)).size).toBe(items.length);
-  });
+  it.each([...NAV_LAYOUTS, 'branch'] as const)(
+    '%s: registered keys, labels in en and de, unique ids and hrefs',
+    (key) => {
+      const { groups, items } = key === 'branch' ? BRANCH_NAV_LAYOUT : NAV_LAYOUT_DEFINITIONS[key];
+      for (const item of flat(items)) {
+        if (item.feature) expect(Object.keys(FEATURES)).toContain(item.feature);
+        if (item.permission) expect(Object.keys(PERMISSIONS)).toContain(item.permission);
+        expect(isLabelKey(item.label)).toBe(true);
+        expect(dictionaries.de[item.label]).toBeTruthy();
+      }
+      // Pages under an item (submenus, settings tabs) are shown with their parent.
+      for (const item of items) expect(groups.map((g) => g.id)).toContain(item.group);
+      for (const group of groups)
+        if (group.label) expect(dictionaries.de[group.label]).toBeTruthy();
+      expect(new Set(items.map((i) => i.id)).size).toBe(items.length);
+      expect(new Set(items.map((i) => i.href)).size).toBe(items.length);
+    },
+  );
 
   it('gives unknown and absent layouts Durby menu', () => {
     expect(navLayout(undefined).items).toBe(NAV_ITEMS);
@@ -86,24 +90,18 @@ describe('nav layouts (ADR 0044)', () => {
   });
 });
 
-describe('the operations menu per branch role (ADR 0045)', () => {
+describe('the operations menu per branch role (ADR 0045, 0059)', () => {
+  const access = (role: SystemRole) => ({
+    activeFeatures: ['inventory', 'catalog', 'orders'],
+    activePermissions: [...systemRolePermissions(role)],
+  });
+  // As the sidebar shows it: the layout for the person.
   const menu = (role: SystemRole) =>
-    ids(
-      visibleNav(navLayout('operations').items, {
-        activeFeatures: ['inventory', 'catalog', 'orders'],
-        activePermissions: [...systemRolePermissions(role)],
-      }),
-    );
+    ids(visibleNav(navLayout('operations', access(role)).items, access(role)));
 
   it('gives each role its part of the flow', () => {
-    expect(menu('branch')).toEqual([
-      'home',
-      'inventory',
-      'stock-requests',
-      'branches',
-      'settings',
-      'feedback',
-    ]);
+    // A branch has its own menu: Inventory (with the request cart), Order History, Delivery Tracking, Feedback.
+    expect(menu('branch')).toEqual(['inventory', 'order-history', 'branch-deliveries', 'feedback']);
     expect(menu('warehouse')).toEqual([
       'home',
       'inventory',
@@ -118,9 +116,20 @@ describe('the operations menu per branch role (ADR 0045)', () => {
       'feedback',
     ]);
     expect(menu('driver')).toEqual(['home', 'my-deliveries', 'settings', 'feedback']);
-    // The new-request form belongs to Stock Requests: one menu item (ADR 0052).
+    // The new-request form belongs to Stock Requests: one menu item (ADR 0052); for a branch, to its Order History.
     expect(activeNavItem(navLayout('operations').items, '/requests/new')?.id).toBe(
       'stock-requests',
     );
+    expect(activeNavItem(BRANCH_NAV_LAYOUT.items, '/requests/new')?.id).toBe('order-history');
+  });
+
+  it('knows a branch: asks for goods, neither approves nor handles sales orders', () => {
+    expect(isBranchView(access('branch'))).toBe(true);
+    for (const role of ['owner', 'admin', 'manager', 'warehouse', 'driver'] as const) {
+      expect(isBranchView(access(role))).toBe(false);
+    }
+    // Only the operations layout has a branch menu.
+    expect(navLayout('default', access('branch')).items).toBe(NAV_ITEMS);
+    expect(navLayout('operations', access('branch'))).toBe(BRANCH_NAV_LAYOUT);
   });
 });

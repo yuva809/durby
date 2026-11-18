@@ -38,7 +38,13 @@ export function SearchBox() {
   const t = useT();
   const router = useRouter();
   const { store, session } = useAuth();
-  const layout = navLayout(useNavLayout());
+  // The same menu as the sidebar: a branch finds its own pages (ADR 0059).
+  const layout = navLayout(
+    useNavLayout(),
+    session
+      ? { activeFeatures: session.activeFeatures, activePermissions: session.activePermissions }
+      : undefined,
+  );
   const listId = useId();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');

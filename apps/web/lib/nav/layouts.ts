@@ -11,7 +11,7 @@ import {
   Package,
   Truck,
 } from 'lucide-react';
-import { NAV_GROUPS, NAV_ITEMS, type NavGroup, type NavItem } from './registry';
+import { NAV_GROUPS, NAV_ITEMS, type NavAccess, type NavGroup, type NavItem } from './registry';
 
 export interface NavLayoutDefinition {
   groups: readonly { id: NavGroup; label: LabelKey | null }[];
@@ -25,6 +25,15 @@ const item = (id: string) => {
 };
 
 const inventory = item('inventory');
+
+const FEEDBACK: NavItem = {
+  id: 'feedback',
+  href: '/feedback',
+  label: 'platform.nav.feedback',
+  icon: Heart,
+  group: 'tools',
+  permission: 'platform.feedback.send',
+};
 
 /**
  * The operations menu (ADR 0044): a distribution business's sidebar in three groups. Same items,
@@ -134,23 +143,69 @@ const OPERATIONS: NavLayoutDefinition = {
         permission: permission as PermissionKey,
       })),
     },
-    {
-      id: 'feedback',
-      href: '/feedback',
-      label: 'platform.nav.feedback',
-      icon: Heart,
-      group: 'tools',
-      permission: 'platform.feedback.send',
-    },
+    FEEDBACK,
   ],
 };
 
+/**
+ * The operations menu of a branch (ADR 0059), as AsiaMight's branches know it: Inventory (with the request cart),
+ * Order History (the branch's requests), Delivery Tracking (what is on its way to the branch) and Feedback.
+ */
+const BRANCH: NavLayoutDefinition = {
+  groups: [
+    { id: 'operations', label: 'platform.nav.groups.operations' },
+    { id: 'tools', label: 'platform.nav.groups.tools' },
+  ],
+  items: [
+    { ...inventory, icon: Archive, group: 'operations', children: undefined },
+    {
+      id: 'order-history',
+      href: '/requests',
+      label: 'platform.nav.orderHistory',
+      icon: Package,
+      group: 'operations',
+      feature: 'orders',
+      permission: 'orders.requests.read',
+    },
+    {
+      id: 'branch-deliveries',
+      href: '/deliveries',
+      label: 'platform.nav.deliveries',
+      icon: MapPin,
+      group: 'operations',
+      feature: 'orders',
+      permission: 'orders.requests.receive',
+    },
+    FEEDBACK,
+  ],
+};
+
+/**
+ * Someone who works for a branch (ADR 0059, the Branch manager role): asks the main warehouse for goods, and neither
+ * approves requests nor handles sales orders. UI hint only, like the menu.
+ */
+export function isBranchView(access: NavAccess): boolean {
+  const holds = (key: PermissionKey) => access.activePermissions.includes(key);
+  return (
+    holds('orders.requests.create') &&
+    !holds('orders.requests.approve') &&
+    !holds('orders.orders.read')
+  );
+}
+
 const DEFAULT: NavLayoutDefinition = { groups: NAV_GROUPS, items: NAV_ITEMS };
 
-/** The sidebar for a partner theme's layout (ADR 0044); unknown or absent → Durby's menu. */
-export function navLayout(layout: NavLayout | undefined): NavLayoutDefinition {
-  return layout === 'operations' ? OPERATIONS : DEFAULT;
+/**
+ * The sidebar for a partner theme's layout (ADR 0044), and in the operations layout for a branch its own menu (ADR
+ * 0059); unknown or absent → Durby's menu.
+ */
+export function navLayout(layout: NavLayout | undefined, access?: NavAccess): NavLayoutDefinition {
+  if (layout !== 'operations') return DEFAULT;
+  return access && isBranchView(access) ? BRANCH : OPERATIONS;
 }
+
+/** For tests: the branch menu of the operations layout. */
+export const BRANCH_NAV_LAYOUT: NavLayoutDefinition = BRANCH;
 
 /** For tests: every layout. */
 export const NAV_LAYOUT_DEFINITIONS: Readonly<Record<NavLayout, NavLayoutDefinition>> = {

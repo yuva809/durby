@@ -141,6 +141,8 @@ export const stockRequestSummarySchema = z.object({
   lineCount: z.int(),
   driverUserId: z.uuid().nullable(),
   driverName: z.string().nullable(),
+  /** Who sent the request (ADR 0059): the Order History's "Requested by". Default for older apis. */
+  requestedByName: z.string().nullable().default(null),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

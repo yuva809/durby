@@ -18,6 +18,9 @@ import {
   createStockItemRequestSchema,
   type CreateWarehouseRequest,
   createWarehouseRequestSchema,
+  type ListProductCategoriesQuery,
+  listProductCategoriesQuerySchema,
+  type ProductCategoryListResponse,
   type ListStockDocumentsQuery,
   listStockDocumentsQuerySchema,
   type ListStockItemsQuery,
@@ -46,6 +49,7 @@ import {
   type ImportOpeningStockRequest,
   importOpeningStockRequestSchema,
 } from '@durby/shared';
+import { CatalogService } from '../catalog';
 import { RequireFeature } from '../../platform/config/entitlements';
 import { ZodBody, ZodQuery } from '../../platform/http';
 import { Idempotent } from '../../platform/idempotency';
@@ -71,7 +75,20 @@ export class InventoryController {
     private readonly stockService: StockService,
     private readonly recipes: RecipesService,
     private readonly itemImport: ItemImportService,
+    private readonly catalog: CatalogService,
   ) {}
+
+  /**
+   * The categories items are filed under (ADR 0059), for everyone who reads stock: a branch sees its stock by
+   * category without reading the catalog and its prices. Names and order only; the same list as the catalog's.
+   */
+  @RequirePermission('inventory.stock.read')
+  @Get('categories')
+  async categories(
+    @Query(new ZodQuery(listProductCategoriesQuerySchema)) query: ListProductCategoriesQuery,
+  ): Promise<ProductCategoryListResponse> {
+    return { data: await this.catalog.listCategories(query) };
+  }
 
   @RequirePermission('inventory.stock.read')
   @Get('warehouses')

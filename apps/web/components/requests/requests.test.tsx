@@ -2,9 +2,12 @@
 import { type SystemRole, systemRolePermissions } from '@durby/shared';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockState, resetMocks } from '../../test/mocks';
 import { sessionFixture } from '../../test/session-fixture';
+import { DeliveriesPage } from '../orders/deliveries-page';
+import { BrandProvider } from '../theme-provider';
 import { MyDeliveriesPage } from './my-deliveries-page';
 import { RequestStockPage } from './request-stock-page';
 import { RequestsPage } from './requests-page';
@@ -64,6 +67,7 @@ const request = (status: string, extra: Record<string, unknown> = {}) => ({
   lineCount: 2,
   driverUserId: null,
   driverName: null,
+  requestedByName: 'Sam Example',
   createdAt: '2026-11-13T09:00:00.000Z',
   updatedAt: '2026-11-13T09:00:00.000Z',
   note: null,
@@ -151,6 +155,13 @@ function api(detail: ReturnType<typeof request>) {
 
 const posts = (calls: { method: string; path: string; body: unknown }[]) =>
   calls.filter((c) => c.method === 'POST');
+
+/** AsiaMight's menu layout (ADR 0044), where a branch has its own pages (ADR 0059). */
+const operations = ({ children }: { children: ReactNode }) => (
+  <BrandProvider brand={{ productName: 'AsiaMight', logoUrl: null, navLayout: 'operations' }}>
+    {children}
+  </BrandProvider>
+);
 
 describe('Request stock cart (branch, ADR 0053)', () => {
   beforeEach(() => {
@@ -282,7 +293,6 @@ describe('Stock Requests', () => {
       }),
     );
     render(<RequestsPage />);
-    await userEvent.click(screen.getByTestId('requests-tab-progress'));
     await userEvent.click(await screen.findByTestId('request-row'));
     const panel = await screen.findByTestId('request-panel');
     expect(within(panel).queryByTestId('request-approve')).toBeNull();
@@ -301,6 +311,65 @@ describe('Stock Requests', () => {
     await waitFor(() =>
       expect(posts(calls)[0]?.body).toEqual({ lines: [{ lineId: id(41), quantity: '3' }] }),
     );
+  });
+});
+
+describe('A branch’s Order History and Delivery Tracking (ADR 0059)', () => {
+  it('lists the branch’s requests as a table, searched by number and filtered by stage', async () => {
+    signedInAs('branch');
+    const calls = api(request('approved'));
+    render(<RequestsPage />, { wrapper: operations });
+    expect(await screen.findByRole('heading', { name: 'Order History' })).toBeTruthy();
+    const row = await screen.findByTestId('request-table-row');
+    expect(row.textContent).toContain('SRQ-2026-000047');
+    expect(row.textContent).toContain('Kurfürstenstraße');
+    expect(row.textContent).toContain('TRF-2026-000047');
+    expect(within(row).getByTestId('request-requested-by').textContent).toBe('Sam Example');
+    // A branch opens on all of its requests; an owner on what waits for approval.
+    expect(screen.getByTestId<HTMLSelectElement>('requests-status').value).toBe('all');
+    expect(calls.some((c) => c.path === '/api/v1/stock-requests')).toBe(true);
+
+    await userEvent.type(screen.getByTestId('requests-search'), 'TRF-2026-0000');
+    expect(screen.getByTestId('request-table-row')).toBeTruthy();
+    await userEvent.type(screen.getByTestId('requests-search'), '99');
+    expect(screen.queryByTestId('request-table-row')).toBeNull();
+    expect(screen.getByTestId('requests-empty').textContent).toContain('TRF-2026-000099');
+
+    await userEvent.selectOptions(screen.getByTestId('requests-status'), 'done');
+    await waitFor(() =>
+      expect(calls.at(-1)?.path).toBe(
+        '/api/v1/stock-requests?status=received%2Crejected%2Ccancelled',
+      ),
+    );
+  });
+
+  it('keeps Stock Requests and the approval queue for owners', async () => {
+    signedInAs('owner');
+    api(request('submitted'));
+    render(<RequestsPage />, { wrapper: operations });
+    expect(await screen.findByRole('heading', { name: 'Stock Requests' })).toBeTruthy();
+    expect(screen.getByTestId<HTMLSelectElement>('requests-status').value).toBe('open');
+  });
+
+  it('follows the branch’s requests to its door and links to confirming receipt', async () => {
+    signedInAs('branch');
+    const calls = api(request('in_transit', { driverUserId: id(60), driverName: 'Ali' }));
+    render(<DeliveriesPage />);
+    const card = await screen.findByTestId('tracking-card');
+    expect(card.textContent).toContain('Driver: Ali');
+    const steps = within(card).getByTestId('tracking-steps');
+    const done = [...steps.querySelectorAll('li')].map((li) => li.getAttribute('data-done'));
+    expect(done).toEqual(['true', 'true', 'true', 'true', 'false']);
+    expect(within(card).getByTestId('tracking-receive').getAttribute('href')).toBe(
+      `/requests?open=${id(10)}`,
+    );
+    expect(
+      calls.some((c) =>
+        c.path.startsWith('/api/v1/stock-requests?status=approved%2Cpicking%2Cpacked'),
+      ),
+    ).toBe(true);
+    // Not the sales-order board: a branch has neither orders.delivery.use nor assign.
+    expect(screen.queryByTestId('transfers-picking')).toBeNull();
   });
 });
 

@@ -41,6 +41,7 @@ import {
   warehouseListResponseSchema,
   warehouseSchema,
 } from '@durby/shared';
+import { type ProductCategory, productCategoryListResponseSchema } from '@durby/shared';
 import { type Api, list, read, type Result, write } from '../api-call';
 import type { ActionKey } from '../idempotency';
 
@@ -118,6 +119,24 @@ export const putRecipe = (
 
 export const loadCosts = (store: Api): Promise<Result<DishCost[]>> =>
   read(store, `${BASE}/costs`, list(dishCostListResponseSchema));
+
+/**
+ * The categories items are filed under, for everyone who reads stock (ADR 0059): a branch without the catalog. No
+ * images: those are the catalog's, so the tiles show their colour.
+ */
+export const loadStockCategories = async (
+  store: Api,
+  includeArchived = false,
+): Promise<Result<ProductCategory[]>> => {
+  const result = await read(
+    store,
+    `${BASE}/categories${query({ includeArchived })}`,
+    list(productCategoryListResponseSchema),
+  );
+  return result.ok
+    ? { ok: true, data: result.data.map((c) => ({ ...c, imageVersion: null })) }
+    : result;
+};
 
 // Step 5 (docs/modules/inventory.md → Step 5, ADR 0038).
 

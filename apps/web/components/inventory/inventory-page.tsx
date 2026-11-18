@@ -9,7 +9,7 @@ import type {
   UnitOfMeasure,
   Warehouse,
 } from '@durby/shared';
-import { ArrowLeft, FileText, MoreHorizontal, ShoppingBasket } from 'lucide-react';
+import { ArrowLeft, FileText, MoreHorizontal, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
@@ -18,7 +18,12 @@ import { useAuth } from '../../app/providers';
 import { loadCategories } from '../../lib/catalog/api';
 import { INVENTORY_PAGES } from '../../lib/nav/inventory-pages';
 import { visibleNav } from '../../lib/nav/registry';
-import { loadStockItems, loadUnits, loadWarehouses } from '../../lib/inventory/api';
+import {
+  loadStockCategories,
+  loadStockItems,
+  loadUnits,
+  loadWarehouses,
+} from '../../lib/inventory/api';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
 import { cn } from '../../lib/utils';
@@ -62,8 +67,8 @@ export interface InventoryData {
   /** Active units of measurement receipts can be entered in (ADR 0038). */
   units: UnitOfMeasure[];
   /**
-   * The organization's categories for filing items (ADR 0048), active and archived; null when the person can't read
-   * them (no catalog feature or catalog.products.read): then no category field shows.
+   * The organization's categories for filing items (ADR 0048), active and archived: from the catalog, or for stock
+   * readers without it from inventory (a branch, ADR 0059); null while they load: then no category field shows.
    */
   categories: ProductCategory[] | null;
   can: (key: PermissionKey) => boolean;
@@ -118,11 +123,14 @@ function Inventory({
   );
   const [items, reloadItems] = useResource(organizationId, () => loadStockItems(store, true));
   const [units] = useResource(organizationId, () => loadUnits(store));
-  const readsCategories =
+  const catalogReader =
     (session?.activeFeatures.includes('catalog') ?? false) &&
     (session?.activePermissions.includes('catalog.products.read') ?? false);
+  // Without the catalog (a branch, ADR 0059) the same categories come from inventory, so stock still shows by them.
+  const readsCategories =
+    catalogReader || (session?.activePermissions.includes('inventory.stock.read') ?? false);
   const [categories, reloadCategories] = useResource(readsCategories ? organizationId : null, () =>
-    loadCategories(store, true),
+    catalogReader ? loadCategories(store, true) : loadStockCategories(store, true),
   );
   const permissions = new Set(session?.activePermissions ?? []);
   const can = (key: PermissionKey) => permissions.has(key);
@@ -170,7 +178,7 @@ function Inventory({
               {requests && (
                 <Button asChild>
                   <Link href="/requests/new" data-testid="inventory-request-stock">
-                    <ShoppingBasket aria-hidden />
+                    <ShoppingCart aria-hidden />
                     {t('inventory.overview.requestStock')}
                   </Link>
                 </Button>

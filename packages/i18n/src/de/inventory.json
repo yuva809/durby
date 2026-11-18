@@ -391,5 +391,5 @@
   "inventory.invoice.invoiceDate": "Rechnungsdatum",
   "inventory.invoice.invoiceDatePlaceholder": "TT-MM-JJJJ",
   "inventory.invoice.supplierMissing": "Nicht von der Rechnung gelesen: Bitte auf dem Papier prüfen und eintragen.",
-  "inventory.overview.requestStock": "Ware anfordern"
+  "inventory.overview.requestStock": "Anforderungskorb"
 }

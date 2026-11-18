@@ -6,8 +6,9 @@ import {
   STOCK_REQUEST_TO_PICK,
   type StockRequest,
   type StockRequestStatus,
+  type StockRequestSummary,
 } from '@durby/shared';
-import { ClipboardList, Plus } from 'lucide-react';
+import { ClipboardList, Plus, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -21,11 +22,15 @@ import {
   receiveRequest,
   rejectRequest,
 } from '../../lib/orders/requests-api';
+import { isBranchView } from '../../lib/nav/layouts';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
+import { useNavLayout } from '../theme-provider';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
+import { Input } from '../ui/input';
+import { Select } from '../ui/select';
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet';
 import { Loaded, NoAccess } from '../users/common';
 import {
@@ -36,17 +41,20 @@ import {
   requestTitle,
 } from './common';
 
-const TABS = {
+/** The status filter (ADR 0059): every request, or one stage. */
+const FILTERS = {
+  all: null,
   open: ['submitted'],
   progress: [...STOCK_REQUEST_TO_PICK, ...STOCK_REQUEST_ON_THE_WAY],
   done: STOCK_REQUEST_DONE,
-} as const satisfies Record<string, readonly StockRequestStatus[]>;
-type Tab = keyof typeof TABS;
+} as const satisfies Record<string, readonly StockRequestStatus[] | null>;
+type Filter = keyof typeof FILTERS;
 
 /**
- * /requests, Stock Requests (docs/modules/orders.md → Branch requests, ADR 0045): a branch's own requests, or all of
- * them for owners and admins, by stage. A request opens in a side panel with its quantities and timeline and the
- * steps the caller may take: approve or reject, cancel, confirm receipt.
+ * /requests, Stock Requests (docs/modules/orders.md → Branch requests, ADR 0045, 0059): a branch's own requests (its
+ * "Order History"), or all of them for owners and admins, as a table filtered by stage and searched by request or
+ * transfer number. A request opens in a side panel with its quantities and timeline and the steps the caller may
+ * take: approve or reject, cancel, confirm receipt.
  */
 export function RequestsPage() {
   const { session } = useAuth();
@@ -65,8 +73,13 @@ function Requests({
   permissions: ReadonlySet<string>;
 }) {
   const t = useT();
-  const { store } = useAuth();
-  const [tab, setTab] = useState<Tab>('open');
+  const { store, session } = useAuth();
+  const branch = useNavLayout() === 'operations' && session !== null && isBranchView(session);
+  // Owners and admins open on what waits for them; everyone else on all of their requests (ADR 0059).
+  const [filter, setFilter] = useState<Filter>(
+    permissions.has('orders.requests.approve') ? 'open' : 'all',
+  );
+  const [search, setSearch] = useState('');
   // A search result or a link opens one in the side panel (?open=<id>, ADR 0046); a new link opens again.
   const urlOpen = useSearchParams().get('open');
   const [openId, setOpenId] = useState<string | null>(urlOpen);
@@ -76,8 +89,11 @@ function Requests({
     if (urlOpen) setOpenId(urlOpen);
   }
   const [requests, reload] = useResource(
-    organizationId === null ? null : `${organizationId}:${tab}`,
-    () => loadRequests(store, { status: TABS[tab] }),
+    organizationId === null ? null : `${organizationId}:${filter}`,
+    () => {
+      const status = FILTERS[filter];
+      return loadRequests(store, status ? { status } : {});
+    },
   );
   const time = useMemo(
     () => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }),
@@ -89,8 +105,12 @@ function Requests({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">{t('platform.nav.stockRequests')}</h1>
-          <p className="text-muted-foreground">{t('orders.requestsPage.intro')}</p>
+          <h1 className="text-2xl font-semibold">
+            {t(branch ? 'platform.nav.orderHistory' : 'platform.nav.stockRequests')}
+          </h1>
+          <p className="text-muted-foreground">
+            {t(branch ? 'orders.requestsPage.branchIntro' : 'orders.requestsPage.intro')}
+          </p>
         </div>
         {permissions.has('orders.requests.create') && (
           <Button asChild>
@@ -102,68 +122,67 @@ function Requests({
         )}
       </div>
       <Card className="flex flex-col gap-0 p-0">
-        <div role="tablist" className="flex flex-wrap gap-1 border-b p-3">
-          {(Object.keys(TABS) as Tab[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={key === tab}
-              onClick={() => setTab(key)}
-              className={cn(
-                'min-h-11 rounded-md px-4 text-sm font-medium hover:bg-muted',
-                key === tab && 'bg-muted text-primary ring-1 ring-primary',
-              )}
-              data-testid={`requests-tab-${key}`}
-            >
-              {t(`orders.requestsPage.tabs.${key}`)}
-            </button>
-          ))}
+        <div className="flex flex-col gap-3 border-b p-3 sm:flex-row">
+          <div className="relative flex-1">
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('orders.requestsPage.search')}
+              aria-label={t('orders.requestsPage.search')}
+              className="pl-9"
+              data-testid="requests-search"
+            />
+          </div>
+          <Select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as Filter)}
+            aria-label={t('orders.requestsPage.statusFilter')}
+            className="sm:w-60"
+            data-testid="requests-status"
+          >
+            {(Object.keys(FILTERS) as Filter[]).map((key) => (
+              <option key={key} value={key}>
+                {t(
+                  key === 'all'
+                    ? 'orders.requestsPage.allStatuses'
+                    : `orders.requestsPage.tabs.${key}`,
+                )}
+              </option>
+            ))}
+          </Select>
         </div>
         <Loaded resource={requests} reload={reload}>
-          {(list) =>
-            list.length === 0 ? (
+          {(list) => {
+            const needle = search.trim().toLowerCase();
+            const shown =
+              needle === ''
+                ? list
+                : list.filter(
+                    (r) =>
+                      r.number.toLowerCase().includes(needle) ||
+                      (r.transferNumber ?? '').toLowerCase().includes(needle),
+                  );
+            return shown.length === 0 ? (
               <div
                 className="flex flex-col items-center gap-2 px-6 py-12 text-center"
                 data-testid="requests-empty"
               >
                 <ClipboardList aria-hidden className="size-8 text-muted-foreground" />
-                <p className="text-muted-foreground">{t('orders.requestsPage.empty')}</p>
+                <p className="text-muted-foreground">
+                  {needle === ''
+                    ? t('orders.requestsPage.empty')
+                    : t('orders.requestsPage.noMatch', { query: search.trim() })}
+                </p>
               </div>
             ) : (
-              <ul className="divide-y" data-testid="requests-list">
-                {list.map((r) => (
-                  <li key={r.id}>
-                    <button
-                      type="button"
-                      className="flex min-h-11 w-full flex-col gap-1 px-4 py-3 text-left hover:bg-muted/50"
-                      aria-label={t('orders.requestsPage.open', { number: requestTitle(r) })}
-                      onClick={() => setOpenId(r.id)}
-                      data-testid="request-row"
-                    >
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold">{requestTitle(r)}</span>
-                        <RequestStatusBadge status={r.status} />
-                        {r.transferNumber && (
-                          <span className="text-xs text-muted-foreground">
-                            {t('orders.transfers.for', { number: r.number })}
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {t('orders.requestsPage.route', {
-                          from: r.fromWarehouseName,
-                          to: `${r.locationName} · ${r.toWarehouseName}`,
-                        })}{' '}
-                        · {t('orders.requestsPage.items', { count: String(r.lineCount) })} ·{' '}
-                        {formatTime(r.createdAt)}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )
-          }
+              <RequestTable rows={shown} formatTime={formatTime} onOpen={setOpenId} />
+            );
+          }}
         </Loaded>
       </Card>
       <RequestPanel
@@ -173,6 +192,86 @@ function Requests({
         onChanged={reload}
         formatTime={formatTime}
       />
+    </div>
+  );
+}
+
+/** The requests as a table (ADR 0059): number, branch, items, who asked, when, stage and transfer number. */
+function RequestTable({
+  rows,
+  formatTime,
+  onOpen,
+}: {
+  rows: readonly StockRequestSummary[];
+  formatTime: (iso: string) => string;
+  onOpen: (id: string) => void;
+}) {
+  const t = useT();
+  const head =
+    'px-4 py-3 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase';
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm" data-testid="requests-list">
+        <thead>
+          <tr className="border-b">
+            <th scope="col" className={head}>
+              {t('orders.requestsPage.columns.request')}
+            </th>
+            <th scope="col" className={cn(head, 'hidden sm:table-cell')}>
+              {t('orders.requestsPage.columns.branch')}
+            </th>
+            <th scope="col" className={cn(head, 'text-right')}>
+              {t('orders.requestsPage.columns.items')}
+            </th>
+            <th scope="col" className={cn(head, 'hidden md:table-cell')}>
+              {t('orders.requestsPage.columns.requestedBy')}
+            </th>
+            <th scope="col" className={cn(head, 'hidden md:table-cell')}>
+              {t('orders.requestsPage.columns.date')}
+            </th>
+            <th scope="col" className={head}>
+              {t('orders.requestsPage.columns.status')}
+            </th>
+            <th scope="col" className={cn(head, 'hidden lg:table-cell')}>
+              {t('orders.requestsPage.columns.transfer')}
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {rows.map((r) => (
+            <tr key={r.id} className="hover:bg-muted/50" data-testid="request-table-row">
+              <td className="px-4 py-2">
+                <button
+                  type="button"
+                  className="min-h-11 text-left font-semibold hover:underline"
+                  aria-label={t('orders.requestsPage.open', { number: requestTitle(r) })}
+                  onClick={() => onOpen(r.id)}
+                  data-testid="request-row"
+                >
+                  {r.number}
+                </button>
+                <span className="block pb-1 text-xs text-muted-foreground md:hidden">
+                  {formatTime(r.createdAt)}
+                </span>
+              </td>
+              <td className="hidden px-4 py-2 sm:table-cell">{r.locationName}</td>
+              <td className="px-4 py-2 text-right tabular-nums">{r.lineCount}</td>
+              <td className="hidden px-4 py-2 md:table-cell" data-testid="request-requested-by">
+                {r.requestedByName ?? '—'}
+              </td>
+              <td className="hidden px-4 py-2 whitespace-nowrap md:table-cell">
+                {formatTime(r.createdAt)}
+              </td>
+              <td className="px-4 py-2">
+                <RequestStatusBadge status={r.status} />
+              </td>
+              <td className="hidden px-4 py-2 whitespace-nowrap lg:table-cell">
+                {r.transferNumber ?? '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

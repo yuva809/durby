@@ -57,6 +57,7 @@ StockLevel             stock_levels        projection per warehouse and item: qu
 | `GET /warehouses`       | `inventory.stock.read`        |                             | `?locationId=&includeArchived=true`                                          |
 | `POST /warehouses`      | `inventory.warehouses.manage` | `completion: 'transaction'` | `{ locationId, name, sortOrder? }`                                           |
 | `PATCH /warehouses/:id` | `inventory.warehouses.manage` | response                    | `{ name?, sortOrder?, archived? }`                                           |
+| `GET /categories`       | `inventory.stock.read`        |                             | `?includeArchived=true`: the catalog's categories, for stock readers (0059)  |
 | `GET /items`            | `inventory.stock.read`        |                             | `?includeArchived=true`                                                      |
 | `POST /items`           | `inventory.items.manage`      | `completion: 'transaction'` | `{ name, sku?, unit, minQuantity? }`                                         |
 | `PATCH /items/:id`      | `inventory.items.manage`      | response                    | `{ name?, sku?, unit?, minQuantity?, archived? }`                            |

@@ -1,6 +1,8 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
+  productCategoryListResponseSchema,
+  productCategorySchema,
   requestDriverListResponseSchema,
   stockItemSchema,
   stockLevelListResponseSchema,
@@ -340,5 +342,41 @@ describe('branch stock requests (ADR 0045)', () => {
     const again = (await get(s.branchUser.token, '/stock-requests/destinations').expect(200))
       .body as { data: { warehouseId: string | null }[] };
     expect(again.data[0]?.warehouseId).toBe(created.toWarehouseId);
+  });
+
+  it('names who asked, and shows a branch the categories without the catalog (ADR 0059)', async () => {
+    const s = await setup();
+    const userId = await seed.user();
+    await seed.member(s.org.id, userId, s.org.roles.branch, {
+      locations: [s.org.locations[1]],
+      displayName: 'Sam Example',
+    });
+    const named = await seed.token(userId, s.org.id);
+    const created = stockRequestSchema.parse(
+      (
+        await post(named, '/stock-requests', {
+          fromWarehouseId: s.main,
+          toWarehouseId: s.branch,
+          lines: [{ itemId: s.rice, quantity: '1' }],
+        }).expect(201)
+      ).body,
+    );
+    expect(created.requestedByName).toBe('Sam Example');
+    const listed = stockRequestListResponseSchema.parse(
+      (await get(s.owner.token, '/stock-requests').expect(200)).body,
+    );
+    expect(listed.data.find((r) => r.id === created.id)?.requestedByName).toBe('Sam Example');
+
+    // The categories through inventory; the catalog and its prices stay closed to a branch.
+    const category = productCategorySchema.parse(
+      (await post(s.owner.token, '/catalog/categories', { name: 'Dry goods' }).expect(201)).body,
+    );
+    const categories = productCategoryListResponseSchema.parse(
+      (await get(s.branchUser.token, '/inventory/categories').expect(200)).body,
+    );
+    expect(categories.data.map((c) => c.name)).toContain(category.name);
+    await get(s.branchUser.token, '/catalog/categories').expect(403);
+    // Not for those who don't read stock.
+    await get(s.driver.token, '/inventory/categories').expect(403);
   });
 });
