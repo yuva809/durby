@@ -11,20 +11,36 @@ vi.mock('../../app/providers', async () => (await import('../../test/mocks')).pr
 vi.mock('../../app/labels-provider', async () => (await import('../../test/mocks')).labelsMock());
 vi.mock('next/navigation', async () => (await import('../../test/mocks')).navigationMock());
 
-/** The PDF reader (pdfjs) is the browser's; here it hands over rows of Bonesca order 108666. */
-const pdf = vi.hoisted(() => ({ rows: [] as string[], fail: null as string | null }));
+/**
+ * The PDF reader (pdfjs) and on-device recognition are the browser's; here they hand over rows of Bonesca order
+ * 108666. `noText`: the PDF has no text layer; `scanFails`: recognition reads nothing either.
+ */
+const pdf = vi.hoisted(() => ({
+  rows: [] as string[],
+  noText: false,
+  scanFails: false,
+  scanned: [] as File[][],
+}));
 vi.mock('../../lib/inventory/invoice-pdf', async (original) => {
   const real = await original<typeof import('../../lib/inventory/invoice-pdf')>();
   return {
     ...real,
     pdfRows: () =>
-      pdf.fail ? Promise.reject(new real.InvoicePdfError('noText')) : Promise.resolve(pdf.rows),
+      pdf.noText ? Promise.reject(new real.InvoicePdfError('noText')) : Promise.resolve(pdf.rows),
+    scanRows: (files: File[]) => {
+      pdf.scanned.push(files);
+      return pdf.scanFails
+        ? Promise.reject(new real.InvoicePdfError('noText'))
+        : Promise.resolve(pdf.rows);
+    },
   };
 });
 
 beforeEach(() => {
   resetMocks();
-  pdf.fail = null;
+  pdf.noText = false;
+  pdf.scanFails = false;
+  pdf.scanned = [];
   pdf.rows = [
     'Order confirmation',
     'Order number : 108666 Customer ID : 91211',
@@ -80,18 +96,27 @@ function api() {
         Response.json(
           {
             id: id(9),
-            number: 'GR-2026-000012',
-            kind: 'receipt',
+            number: 'VIN-2026-000001',
+            status: 'pending',
             warehouseId: WAREHOUSE.id,
-            toWarehouseId: null,
-            reason: null,
-            supplier: 'Bonesca',
-            note: null,
-            createdAt: '2026-11-18T10:00:00.000Z',
             warehouseName: 'Main Warehouse',
-            toWarehouseName: null,
+            supplier: 'Bonesca',
+            invoiceNumber: '108666',
+            invoiceDate: '10-11-2026',
             lineCount: 2,
-            value: '1795.00',
+            newItemCount: 1,
+            total: '1795.00',
+            printedTotal: '1795.00',
+            submittedByName: null,
+            createdAt: '2026-11-18T10:00:00.000Z',
+            decidedAt: null,
+            note: null,
+            fileName: '108666.pdf',
+            source: 'pdf',
+            rejectReason: null,
+            decidedByName: null,
+            documentId: null,
+            documentNumber: null,
             lines: [],
           },
           { status: 201 },
@@ -123,8 +148,8 @@ function signedIn(permissions = [...systemRolePermissions('owner')]) {
 
 const pdfFile = () => new File(['%PDF'], '108666.pdf', { type: 'application/pdf' });
 
-describe('/inventory/invoice (ADR 0049)', () => {
-  it('reads the PDF, matches by SKU, marks new items, and imports one receipt', async () => {
+describe('/inventory/invoice (ADR 0049, 0054)', () => {
+  it('reads the PDF, matches by SKU, marks new items, and sends it for approval', async () => {
     signedIn();
     const writes = api();
     render(<InvoiceImportPage />);
@@ -142,17 +167,30 @@ describe('/inventory/invoice (ADR 0049)', () => {
 
     await userEvent.type(screen.getByTestId('invoice-supplier'), 'Bonesca');
     await userEvent.selectOptions(screen.getByTestId('invoice-new-category'), FISH.id);
-    await userEvent.click(screen.getByTestId('invoice-import'));
+    await userEvent.click(screen.getByTestId('invoice-submit'));
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(writes[0]).toEqual({
-      path: '/api/v1/inventory/receipts/import',
+      path: '/api/v1/inventory/invoices',
       body: {
         warehouseId: WAREHOUSE.id,
         supplier: 'Bonesca',
+        invoiceNumber: '108666',
+        invoiceDate: '10-11-2026',
         note: 'Order 108666 · 10-11-2026',
+        printedTotal: '1795.00',
+        fileName: '108666.pdf',
+        source: 'pdf',
         lines: [
-          { itemId: CATFISH.id, quantity: '50.00', unitCost: '11.00' },
           {
+            code: '1103-002',
+            description: 'Bigi Mama African Catfish WG 800-1000gr IQF 1 x 4kg 20% -VN',
+            itemId: CATFISH.id,
+            quantity: '50.00',
+            unitCost: '11.00',
+          },
+          {
+            code: '1971-002',
+            description: 'OD Yellow Croakers WG 500-1000g IPB 5 x 2kg -SR',
             newItem: {
               name: 'OD Yellow Croakers WG 500-1000g IPB 5 x 2kg -SR',
               sku: '1971-002',
@@ -165,27 +203,46 @@ describe('/inventory/invoice (ADR 0049)', () => {
         ],
       },
     });
-    expect((await screen.findByTestId('invoice-done')).textContent).toContain('GR-2026-000012');
+    const done = await screen.findByTestId('invoice-done');
+    expect(done.textContent).toContain('Sent for approval as VIN-2026-000001');
+    expect(pdf.scanned).toHaveLength(0);
   });
 
-  it('says why a PDF without text cannot be read', async () => {
+  it('reads photos on the device and sends them as a scan', async () => {
+    signedIn();
+    const writes = api();
+    render(<InvoiceImportPage />);
+    const photos = [
+      new File(['jpg'], 'page-1.jpg', { type: 'image/jpeg' }),
+      new File(['jpg'], 'page-2.jpg', { type: 'image/jpeg' }),
+    ];
+    await userEvent.upload(await screen.findByTestId('invoice-file'), photos);
+    expect(await screen.findByTestId('invoice-scanned')).toBeTruthy();
+    expect(pdf.scanned).toEqual([photos]);
+    expect(screen.getAllByTestId('invoice-line')).toHaveLength(2);
+    await userEvent.click(screen.getByTestId('invoice-submit'));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]!.body).toMatchObject({ source: 'scan', fileName: '2 photos' });
+  });
+
+  it('reads a PDF without text as a scan, and says so when nothing can be read', async () => {
     signedIn();
     api();
-    pdf.fail = 'noText';
+    pdf.noText = true;
+    pdf.scanFails = true;
     render(<InvoiceImportPage />);
     await userEvent.upload(await screen.findByTestId('invoice-file'), pdfFile());
-    expect(await screen.findByText(/no text \(a scan or photo\)/)).toBeTruthy();
+    expect(await screen.findByText(/No text could be read from this file/)).toBeTruthy();
+    expect(pdf.scanned).toHaveLength(1);
   });
 
-  it('keeps new lines from importing for someone who cannot create items', async () => {
+  it('lets someone who only receives goods propose new items: the approver creates them', async () => {
     signedIn(['inventory.stock.read', 'inventory.stock.receive']);
     api();
     render(<InvoiceImportPage />);
     await userEvent.upload(await screen.findByTestId('invoice-file'), pdfFile());
-    expect(await screen.findByTestId('invoice-line-problem')).toBeTruthy();
-    expect(screen.getByTestId('invoice-import')).toHaveProperty('disabled', true);
-    // Leaving the new line out lets the rest go.
-    await userEvent.click(screen.getAllByTestId('invoice-line-include')[1]!);
-    expect(screen.getByTestId('invoice-import')).toHaveProperty('disabled', false);
+    expect(await screen.findByTestId('invoice-line-new')).toBeTruthy();
+    expect(screen.queryByTestId('invoice-line-problem')).toBeNull();
+    expect(screen.getByTestId('invoice-submit')).toHaveProperty('disabled', false);
   });
 });

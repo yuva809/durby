@@ -3,10 +3,11 @@
 - Code: `packages/shared/src/api/imports.ts`, `apps/web/components/imports/`, `apps/web/lib/imports/`, and one service
   per owning module (`catalog/category-import.service.ts`, `inventory/item-import.service.ts`,
   `StockService.importOpeningStock`, `CustomersService.importCustomers`)
-- Decisions: [ADR 0044](../adr/0044-operations-menu-orders-fulfilment.md) step 4
+- Decisions: [ADR 0044](../adr/0044-operations-menu-orders-fulfilment.md) step 4,
+  [ADR 0054](../adr/0054-vendor-invoice-approval-and-import-data.md) (Excel, page layout, vendor invoice tile)
 
-A CSV wizard (`/import`, Tools & utilities in the operations menu) to bring existing lists into the app. The browser
-reads the file and sends rows as JSON to the module that owns the records; the module checks them again and writes
+A CSV and Excel wizard (`/import`, Tools & utilities in the operations menu) to bring existing lists into the app. The
+browser reads the file and sends rows as JSON to the module that owns the records; the module checks them again and writes
 **all rows in one transaction, or none**.
 
 ## Kinds
@@ -40,9 +41,18 @@ dropped, ADR 0044). The page and its menu item show the kinds the user may run.
 Headers match loosely (case, spaces and `_` ignored) with a few aliases (`price` → sale price, `qty` → quantity,
 `mobile` → phone, …). Comma or semicolon separated, UTF-8 with or without BOM, decimal commas (`8,50`) accepted.
 
+Excel: `.xlsx` workbooks are read on the device (`readXlsxRows`, `read-excel-file`), from the sheet named like the kind
+("Items", "Opening stock") or else the first; numbers as the text Excel stored (no float noise). CSV and Excel both go
+through `readTableRows`. Other files (`.xls`, `.ods`, …) are refused: save as `.xlsx` or CSV. The template downloads
+as CSV with a BOM, which Excel opens directly.
+
 ## Web
 
-Pick the kind → download its template → choose a CSV file → the preview shows the row count, the first 10 rows and
+A header ("Bring your existing data in", three steps), then a tile per kind the person may import (icon, description,
+"CSV · Excel") and, for those with `inventory.stock.receive`, the vendor invoice tile ("PDF · Photos") with a link to
+the approval queue ([inventory.md → Vendor invoices](../modules/inventory.md)).
+
+Pick the kind → download its template → choose a CSV or Excel file → the preview shows the row count, the first 10 rows and
 every problem (`checkCategoryRows`, `checkItemRows`, `checkOpeningStockRows` with the loaded warehouses and items,
 `checkCustomerRows`; the same checks the api runs) → "Import N rows" (disabled while there are problems) → summary.
 

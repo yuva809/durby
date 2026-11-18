@@ -192,6 +192,7 @@ describe('custom-role editor', () => {
       'platform.feedback',
       'catalog.products',
       'inventory.stock',
+      'inventory.invoices',
       'inventory.warehouses',
       'inventory.items',
       'inventory.recipes',

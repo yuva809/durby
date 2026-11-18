@@ -1,12 +1,14 @@
 import {
-  type ImportReceiptRequest,
   INVENTORY_NAME_MAX_LENGTH,
   type StockItem,
   stockQuantitySchema,
   type StockUnit,
+  type SubmitVendorInvoiceRequest,
   unitCostSchema,
+  type VendorInvoice,
+  type VendorInvoiceSource,
 } from '@durby/shared';
-import type { InvoiceLine } from './invoice-pdf';
+import type { InvoiceLine, ParsedInvoice } from './invoice-pdf';
 
 /**
  * The review of a vendor invoice before it becomes a goods receipt (ADR 0049): each line matched to a stock item or
@@ -85,33 +87,72 @@ export function newItemName(line: InvoiceLine): string {
   return line.description.trim().slice(0, INVENTORY_NAME_MAX_LENGTH);
 }
 
-/** The request for the included rows; call only when rowProblems finds none. */
-export function receiptRequest(input: {
+/** The invoice to submit for approval (ADR 0054): the included rows; call only when rowProblems finds none. */
+export function submitRequest(input: {
   rows: readonly InvoiceRow[];
   warehouseId: string;
   supplier: string;
   note: string;
+  invoice: Pick<ParsedInvoice, 'number' | 'date' | 'total'>;
+  fileName: string | null;
+  source: VendorInvoiceSource;
   newItemUnit: StockUnit;
   newItemCategoryId: string | null;
-}): ImportReceiptRequest {
+}): SubmitVendorInvoiceRequest {
   return {
     warehouseId: input.warehouseId,
-    ...(input.supplier.trim() ? { supplier: input.supplier.trim() } : {}),
-    ...(input.note.trim() ? { note: input.note.trim() } : {}),
+    ...(input.supplier.trim()
+      ? { supplier: input.supplier.trim().slice(0, INVENTORY_NAME_MAX_LENGTH) }
+      : {}),
+    ...(input.invoice.number ? { invoiceNumber: input.invoice.number.slice(0, 50) } : {}),
+    ...(input.invoice.date ? { invoiceDate: input.invoice.date.slice(0, 20) } : {}),
+    ...(input.note.trim() ? { note: input.note.trim().slice(0, 500) } : {}),
+    ...(input.invoice.total && /^\d{1,10}(\.\d{1,2})?$/.test(input.invoice.total)
+      ? { printedTotal: input.invoice.total }
+      : {}),
+    ...(input.fileName ? { fileName: input.fileName.slice(0, 200) } : {}),
+    source: input.source,
     lines: input.rows
       .filter((r) => r.include)
       .map((r) => {
-        const amounts = { quantity: clean(r.quantity), unitCost: clean(r.unitCost) };
-        if (r.target !== NEW_ITEM) return { itemId: r.target, ...amounts };
+        const base = {
+          ...(r.line.code ? { code: r.line.code.slice(0, 50) } : {}),
+          description: r.line.description.slice(0, 300),
+          quantity: clean(r.quantity),
+          unitCost: clean(r.unitCost),
+        };
+        if (r.target !== NEW_ITEM) return { ...base, itemId: r.target };
         return {
+          ...base,
           newItem: {
             name: newItemName(r.line),
             ...(r.line.code ? { sku: r.line.code.slice(0, 50) } : {}),
             unit: input.newItemUnit,
             ...(input.newItemCategoryId ? { categoryId: input.newItemCategoryId } : {}),
           },
-          ...amounts,
         };
       }),
   };
+}
+
+/** A stored invoice back as review rows (the approver's edit): every line included, as saved. */
+export function rowsFromInvoice(invoice: VendorInvoice): InvoiceRow[] {
+  return invoice.lines.map((l) => ({
+    line: {
+      code: l.code,
+      description: l.newItem?.name ?? l.description,
+      quantity: l.quantity,
+      unitPrice: l.unitCost,
+      vatRate: null,
+      total: l.value,
+      checks: true,
+    },
+    include: true,
+    target: l.itemId ?? NEW_ITEM,
+    // "50.000" → "50", "41.5000" → "41.50", "0.4150" → "0.415": as a person types them.
+    quantity: l.quantity.includes('.')
+      ? l.quantity.replace(/0+$/, '').replace(/\.$/, '')
+      : l.quantity,
+    unitCost: l.unitCost.replace(/(\.\d\d\d*?)0+$/, '$1'),
+  }));
 }

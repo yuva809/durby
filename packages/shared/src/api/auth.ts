@@ -103,6 +103,7 @@ export const AUTH_ERROR_CODES = [
   'auth.refresh_reused',
   'auth.not_a_member',
   'auth.password_change_required',
+  'auth.password_managed',
   'auth.origin_rejected',
   'auth.token_invalid',
   'auth.unavailable',

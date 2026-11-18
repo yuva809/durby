@@ -99,10 +99,11 @@ export class TeamService {
       }),
     ]);
     const ids = rows.map((r) => r.userId);
-    const [profiles, lastActive, temporary] = await Promise.all([
+    const [profiles, lastActive, temporary, settable] = await Promise.all([
       this.users.profiles(ids),
       this.users.lastActiveIn(tenantId, ids),
-      this.users.withTemporaryPassword(ids),
+      this.pendingPasswords(ids),
+      this.users.passwordSettableIn(tenantId, ids),
     ]);
     const members = rows
       .map((row) =>
@@ -110,6 +111,7 @@ export class TeamService {
           email: profiles.get(row.userId)?.email ?? '',
           lastActiveAt: lastActive.get(row.userId) ?? null,
           passwordChangePending: temporary.has(row.userId),
+          passwordSettable: settable.has(row.userId),
         }),
       )
       .sort(
@@ -192,6 +194,8 @@ export class TeamService {
     const { tenantId } = this.tenantContext.require();
     const allLocations = body.locationIds == null;
     const locale = body.locale ?? (await this.settings.get('locale'));
+    // Set by owners and admins (ADR 0052): the password given here is final.
+    const managed = await this.settings.get('team.adminsManageSignIn');
     const membershipId = await this.db.$transaction(async (tx) => {
       const role = await tx.role.findUnique({
         where: { tenantId_id: { tenantId, id: body.roleId } },
@@ -206,6 +210,7 @@ export class TeamService {
       const user = await this.users.createWithTemporaryPassword(tx, {
         email,
         password,
+        temporary: !managed,
         locale: (LOCALES as readonly string[]).includes(locale) ? locale : DEFAULT_LOCALE,
         organizationId: tenantId,
       });
@@ -296,6 +301,47 @@ export class TeamService {
       }),
     );
     return this.memberOf(row);
+  }
+
+  /**
+   * Sets a member's password (ADR 0052): an account this organization created and that belongs to no other one,
+   * managed by the actor (never themselves, an Owner only by an Owner). Final with `team.adminsManageSignIn` on,
+   * else temporary (they choose their own at the next sign-in). Every session of the member ends; audited without
+   * the password (users live outside the tenant tables, so the audit row follows the change).
+   */
+  async setPassword(id: string, password: string): Promise<TeamMember> {
+    const actor = await this.roles.actor();
+    const { tenantId } = this.tenantContext.require();
+    const target = await this.db.$transaction((tx) => this.manageable(tx, tenantId, id, actor));
+    const settable = await this.users.passwordSettableIn(tenantId, [target.userId]);
+    if (!settable.has(target.userId)) throw rbacErrors.passwordNotSettable();
+    const managed = await this.settings.get('team.adminsManageSignIn');
+    const now = this.clock.now();
+    await this.users.setPassword(target.userId, password, { temporary: !managed, now });
+    try {
+      await this.revocations.revokeUser(target.userId, now);
+    } catch (error) {
+      // The refresh tokens are revoked already; access tokens end within their short lifetime.
+      this.logger.error(
+        { err: { type: error instanceof Error ? error.name : 'unknown' } },
+        'password revocation marker not written',
+      );
+    }
+    await this.db.$transaction((tx) =>
+      this.audit.record(tx, {
+        action: 'platform.membership.password_set',
+        actor: auditActor.user(actor.userId),
+        entityId: target.id,
+        after: snapshotOf(target),
+      }),
+    );
+    return this.memberOf(target);
+  }
+
+  /** Who still has to replace a temporary password: nobody where owners and admins set passwords. */
+  private async pendingPasswords(ids: readonly string[]): Promise<Set<string>> {
+    if (await this.settings.get('team.adminsManageSignIn')) return new Set();
+    return this.users.withTemporaryPassword(ids);
   }
 
   /** Switches a member off: no access, open sessions end at once (ADR 0023 §6). */
@@ -390,21 +436,28 @@ export class TeamService {
 
   private async memberOf(row: MemberRow): Promise<TeamMember> {
     const { tenantId } = this.tenantContext.require();
-    const [profile, lastActive, temporary] = await Promise.all([
+    const [profile, lastActive, temporary, settable] = await Promise.all([
       this.users.findById(row.userId),
       this.users.lastActiveIn(tenantId, [row.userId]),
-      this.users.withTemporaryPassword([row.userId]),
+      this.pendingPasswords([row.userId]),
+      this.users.passwordSettableIn(tenantId, [row.userId]),
     ]);
     return this.toMember(row, {
       email: profile?.email ?? '',
       lastActiveAt: lastActive.get(row.userId) ?? null,
       passwordChangePending: temporary.has(row.userId),
+      passwordSettable: settable.has(row.userId),
     });
   }
 
   private toMember(
     row: MemberRow,
-    extra: { email: string; lastActiveAt: Date | null; passwordChangePending: boolean },
+    extra: {
+      email: string;
+      lastActiveAt: Date | null;
+      passwordChangePending: boolean;
+      passwordSettable: boolean;
+    },
   ): TeamMember {
     const overrides = fromRows(row.permissions);
     const role = this.roles.viewOf(row.role);
@@ -424,6 +477,7 @@ export class TeamService {
       lastActiveAt: extra.lastActiveAt?.toISOString() ?? null,
       joinedAt: row.createdAt.toISOString(),
       passwordChangePending: extra.passwordChangePending,
+      passwordSettable: extra.passwordSettable,
     };
   }
 }

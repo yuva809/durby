@@ -11,6 +11,8 @@ import { InventorySetupService } from './setup.service';
 import { StockService } from './stock.service';
 import { UnitsService } from './units.service';
 import { VariantsService } from './variants.service';
+import { VendorInvoicesController } from './vendor-invoices.controller';
+import { VendorInvoicesService } from './vendor-invoices.service';
 
 /**
  * Inventory (docs/modules/inventory.md): warehouses, stock items, the stock ledger, recipes and
@@ -18,7 +20,7 @@ import { VariantsService } from './variants.service';
  */
 @Module({
   imports: [CatalogModule],
-  controllers: [InventoryController, ItemSetupController],
+  controllers: [InventoryController, ItemSetupController, VendorInvoicesController],
   providers: [
     InventorySetupService,
     StockService,
@@ -29,6 +31,7 @@ import { VariantsService } from './variants.service';
     BomsService,
     ItemImportService,
     InventoryLookup,
+    VendorInvoicesService,
   ],
   // Sales orders book their goods out and back in through it (orders module, ADR 0044).
   exports: [StockService, InventoryLookup],

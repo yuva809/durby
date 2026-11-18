@@ -18,6 +18,7 @@ import { emailKey, normalizeEmail } from './crypto';
 import { LockoutService, LockoutUnavailableError } from './lockout.service';
 import { MembershipLookup, type OrganizationScope } from './membership-lookup';
 import { PasswordHasher } from './password-hasher';
+import { PasswordPolicy } from './password-policy';
 import type { IssuedRefreshToken, RefreshSession } from './refresh-token.store';
 import { RefreshTokenStore } from './refresh-token.store';
 import { RevocationService } from './revocation.service';
@@ -47,6 +48,7 @@ export class SessionService {
     @Inject(TENANT_PRISMA) private readonly tenantDb: TenantPrismaClient,
     private readonly tenantContext: TenantContext,
     private readonly audit: AuditService,
+    private readonly passwordPolicy: PasswordPolicy,
   ) {}
 
   /** `host`: the request's host; it picks which organizations the session offers (ADR 0042). */
@@ -191,6 +193,7 @@ export class SessionService {
   async me(auth: Readonly<AuthContextValue>, host?: string): Promise<MeResponse> {
     const user = await this.db.user.findUnique({ where: { id: auth.userId } });
     if (!user) throw authErrors.unauthenticated();
+    const changeRequired = await this.passwordPolicy.changeRequired(user);
     return {
       user: { id: user.id, email: user.email, locale: user.locale },
       organizations: await this.memberships.organizationsOf(
@@ -199,7 +202,7 @@ export class SessionService {
       ),
       activeOrganizationId: auth.organizationId,
       ...(await this.accessIn(auth.organizationId, user.id)),
-      passwordChangeRequired: user.mustChangePassword,
+      passwordChangeRequired: changeRequired,
     };
   }
 
@@ -238,6 +241,8 @@ export class SessionService {
     await this.limits.enforce([this.limits.rules.loginIp, ip]);
     const user = await this.db.user.findUnique({ where: { id: auth.userId } });
     if (!user) throw authErrors.unauthenticated();
+    // Set by an owner or admin (ADR 0052): not the person's to change.
+    if (await this.passwordPolicy.managed(user)) throw authErrors.passwordManaged();
     if (!(await this.hasher.verify(user.passwordHash, input.currentPassword))) {
       this.security.event('auth.login.failed', { userId: user.id, ip });
       throw authErrors.invalidCredentials();
@@ -318,12 +323,13 @@ export class SessionService {
     organizations: OrganizationSummary[],
   ): Promise<IssuedSession> {
     const user = await this.db.user.findUniqueOrThrow({ where: { id: userId } });
+    const changeRequired = await this.passwordPolicy.changeRequired(user);
     const accessToken = await this.accessTokens.sign(
       {
         userId,
         organizationId,
         sessionId: refresh.familyId,
-        passwordChangeRequired: user.mustChangePassword,
+        passwordChangeRequired: changeRequired,
       },
       this.clock.now(),
     );
@@ -337,7 +343,7 @@ export class SessionService {
         organizations,
         activeOrganizationId: organizationId,
         ...(await this.accessIn(organizationId, userId)),
-        passwordChangeRequired: user.mustChangePassword,
+        passwordChangeRequired: changeRequired,
       },
     };
   }

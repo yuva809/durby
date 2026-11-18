@@ -46,6 +46,7 @@ StockLevel             stock_levels        projection per warehouse and item: qu
 | `inventory.stock.receive`     | receipts                                | ✓     | ✓       |       | ✓       | ✓   |                       |
 | `inventory.stock.adjust`      | adjustments (waste, breakage, count, …) | ✓     | ✓       |       | ✓       | ✓   |                       |
 | `inventory.stock.transfer`    | transfers (both warehouses' locations)  | ✓     | ✓       |       |         |     |                       |
+| `inventory.invoices.approve`  | approve or reject vendor invoices       | ✓     | ✓       |       |         |     |                       |
 | `inventory.warehouses.manage` | create, rename, archive warehouses      | ✓     | ✓       |       |         |     |                       |
 | `inventory.items.manage`      | stock items (organization scope)        | ✓     |         |       |         |     |                       |
 
@@ -105,21 +106,37 @@ and detail), **Items**, **Warehouses**.
 - Code: `components/inventory/category-overview.tsx`, `lib/inventory/overview.ts`. Test page:
   docs/html/inventory-categories.html.
 
-### Vendor invoices (ADR 0049)
+### Vendor invoices (ADR 0049, 0054)
 
-`/inventory/invoice` (Import Vendor Invoice on the operations Inventory page, and a card on Import Data;
+`/inventory/invoice` (Import Vendor Invoice on the operations Inventory page, and a tile on Import Data;
 `inventory.stock.receive`):
 
-1. Choose the supplier's invoice or order confirmation PDF. It is read on the device (`lib/inventory/invoice-pdf.ts`):
-   item lines (code, description, quantity, unit price, VAT, total), order number, date, supplier, grand total. A PDF
-   without text (a scan) can't be read.
-2. Review (`lib/inventory/invoice-receipt.ts`): each line matched by SKU = supplier code, then exact name, else New;
-   change item, quantity or cost, or leave a line out; pick the warehouse, and unit and category for new items; the
-   total is checked against the invoice.
-3. Import: `POST /api/v1/inventory/receipts/import` creates the new items and books one receipt with supplier and note,
-   all or nothing (new items also need `inventory.items.edit`).
+1. Choose the supplier's invoice or order confirmation: one PDF, or one or more photos. It is read on the device
+   (`lib/inventory/invoice-pdf.ts`): a PDF's text, else on-device recognition (`scanRows`, the menu scan's OCR, rows
+   rebuilt by `linesToRows`). Item lines (code, description, quantity, unit price, VAT, total), order number, date,
+   supplier, grand total.
+2. Review (`lib/inventory/invoice-receipt.ts`, `components/inventory/invoice-editor.tsx`): each line matched by SKU =
+   supplier code, then exact name, else New; change item, quantity or cost, or leave a line out; pick the warehouse,
+   and unit and category for new items; the total is checked against the invoice.
+3. Send for approval: `POST /api/v1/inventory/invoices` stores it as pending (`VIN-…`) and notifies the approvers at
+   the warehouse's location. Nothing is in stock yet.
 
-Test page: docs/html/vendor-invoice.html.
+`/inventory/invoices`, the approval queue (`components/inventory/invoice-queue-page.tsx`): Pending / Approved /
+Rejected. Holders of `inventory.invoices.approve` correct a pending invoice (`PUT /invoices/:id`), approve it (new
+items created and one goods receipt booked, in one transaction; `POST /invoices/:id/approve`) or reject it with a
+reason (`POST /invoices/:id/reject`). The sender is notified either way.
+
+| Method + path                | Permission                   | Idempotency                 |
+| ---------------------------- | ---------------------------- | --------------------------- |
+| `GET /invoices?status=`      | `inventory.stock.read`       |                             |
+| `GET /invoices/:id`          | `inventory.stock.read`       |                             |
+| `POST /invoices`             | `inventory.stock.receive`    | `completion: 'transaction'` |
+| `PUT /invoices/:id`          | sender or approver, pending  | response                    |
+| `POST /invoices/:id/approve` | `inventory.invoices.approve` | `completion: 'transaction'` |
+| `POST /invoices/:id/reject`  | `inventory.invoices.approve` | `completion: 'transaction'` |
+
+Test pages: docs/html/vendor-invoice.html (reading), docs/html/vendor-invoice-approval.html (queue, photos, Import
+Data).
 
 ## Step 2: recipes, dish cost and sales consumption (ADR 0028)
 

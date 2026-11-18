@@ -1,7 +1,13 @@
-import type { StockItem } from '@durby/shared';
+import type { StockItem, VendorInvoice } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
-import type { InvoiceLine } from './invoice-pdf';
-import { matchInvoice, NEW_ITEM, receiptRequest, rowProblems } from './invoice-receipt';
+import { type InvoiceLine, linesToRows } from './invoice-pdf';
+import {
+  matchInvoice,
+  NEW_ITEM,
+  rowProblems,
+  rowsFromInvoice,
+  submitRequest,
+} from './invoice-receipt';
 
 const id = (n: number) => `0190a000-0000-7000-8000-0000000050${String(n).padStart(2, '0')}`;
 const item = (n: number, name: string, sku: string | null, extra: Partial<StockItem> = {}) =>
@@ -66,31 +72,164 @@ describe('vendor invoice review (ADR 0049)', () => {
     expect(rowProblems([{ ...left, include: false }], false)).toEqual([[]]);
   });
 
-  it('builds one request: existing items by id, new ones with the supplier code as SKU', () => {
+  it('builds one invoice to submit: existing items by id, new ones with the supplier code as SKU', () => {
     const rows = matchInvoice(lines, [CATFISH, TILAPIA]);
     rows[2] = { ...rows[2]!, include: false };
     expect(
-      receiptRequest({
+      submitRequest({
         rows,
         warehouseId: id(90),
         supplier: ' Bonesca ',
-        note: 'Order 108666 · 10-11-2026',
+        note: ' ',
+        invoice: { number: '108666', date: '10-11-2026', total: '554.00' },
+        fileName: '108666.pdf',
+        source: 'pdf',
         newItemUnit: 'pc',
         newItemCategoryId: id(80),
       }),
     ).toEqual({
       warehouseId: id(90),
       supplier: 'Bonesca',
-      note: 'Order 108666 · 10-11-2026',
+      invoiceNumber: '108666',
+      invoiceDate: '10-11-2026',
+      printedTotal: '554.00',
+      fileName: '108666.pdf',
+      source: 'pdf',
       lines: [
-        { itemId: CATFISH.id, quantity: '50.00', unitCost: '11.00' },
-        { itemId: TILAPIA.id, quantity: '1.00', unitCost: '2.00' },
         {
+          code: '1103-002',
+          description: 'Bigi Mama African Catfish 1 x 4kg',
+          itemId: CATFISH.id,
+          quantity: '50.00',
+          unitCost: '11.00',
+        },
+        {
+          code: '2252-001',
+          description: 'ultimate taste  red tilapia steaks',
+          itemId: TILAPIA.id,
+          quantity: '1.00',
+          unitCost: '2.00',
+        },
+        {
+          description: 'Brand new thing',
           newItem: { name: 'Brand new thing', unit: 'pc', categoryId: id(80) },
           quantity: '1.00',
           unitCost: '2.00',
         },
       ],
     });
+  });
+
+  it('leaves out a printed total the api would refuse, and no category when none is chosen', () => {
+    const request = submitRequest({
+      rows: matchInvoice([line('7', 'Thing')], []),
+      warehouseId: id(90),
+      supplier: '',
+      note: 'Check the boxes',
+      invoice: { number: null, date: null, total: '1.234' },
+      fileName: null,
+      source: 'scan',
+      newItemUnit: 'kg',
+      newItemCategoryId: null,
+    });
+    expect(request).toEqual({
+      warehouseId: id(90),
+      note: 'Check the boxes',
+      source: 'scan',
+      lines: [
+        {
+          code: '7',
+          description: 'Thing',
+          newItem: { name: 'Thing', sku: '7', unit: 'kg' },
+          quantity: '1.00',
+          unitCost: '2.00',
+        },
+      ],
+    });
+  });
+});
+
+describe('a stored invoice back as rows (ADR 0054)', () => {
+  const stored = (lines: VendorInvoice['lines']): VendorInvoice => ({
+    id: id(70),
+    number: 'VIN-2026-000001',
+    status: 'pending',
+    warehouseId: id(90),
+    warehouseName: 'Main',
+    supplier: 'Bonesca',
+    invoiceNumber: '108666',
+    invoiceDate: null,
+    lineCount: lines.length,
+    newItemCount: 1,
+    total: '0.00',
+    printedTotal: null,
+    submittedByName: null,
+    createdAt: '2026-11-18T10:00:00.000Z',
+    decidedAt: null,
+    note: null,
+    fileName: null,
+    source: 'pdf',
+    rejectReason: null,
+    decidedByName: null,
+    documentId: null,
+    documentNumber: null,
+    lines,
+  });
+
+  it('keeps items and new items, and trims stored zeros as a person types them', () => {
+    const rows = rowsFromInvoice(
+      stored([
+        {
+          id: id(71),
+          position: 1,
+          code: '1103-002',
+          description: 'Bigi Mama African Catfish 1 x 4kg',
+          itemId: CATFISH.id,
+          itemName: CATFISH.name,
+          newItem: null,
+          quantity: '50.000',
+          unitCost: '11.0000',
+          value: '550.00',
+        },
+        {
+          id: id(72),
+          position: 2,
+          code: null,
+          description: 'brand new thing',
+          itemId: null,
+          itemName: null,
+          newItem: { name: 'Brand new thing', sku: null, unit: 'pc', categoryId: null },
+          quantity: '120',
+          unitCost: '0.4150',
+          value: '49.80',
+        },
+      ]),
+    );
+    expect(rows.map((r) => [r.target, r.line.description, r.quantity, r.unitCost])).toEqual([
+      [CATFISH.id, 'Bigi Mama African Catfish 1 x 4kg', '50', '11.00'],
+      [NEW_ITEM, 'Brand new thing', '120', '0.415'],
+    ]);
+    expect(rows.every((r) => r.include)).toBe(true);
+  });
+});
+
+describe('scanned lines as rows', () => {
+  const read = (text: string, page: number, x0: number, y0: number, y1 = y0 + 20) => ({
+    text,
+    page,
+    box: { x0, x1: x0 + 50, y0, y1 },
+  });
+
+  it('joins pieces on one line left to right, per page in order', () => {
+    expect(
+      linesToRows([
+        read('11.00', 1, 400, 102),
+        read('1103-002 Catfish', 1, 10, 100),
+        read('50', 1, 300, 98),
+        read('Second line', 1, 10, 140),
+        read('Page two', 2, 10, 10),
+        read('  ', 1, 10, 200),
+      ]),
+    ).toEqual(['1103-002 Catfish 50 11.00', 'Second line', 'Page two']);
   });
 });

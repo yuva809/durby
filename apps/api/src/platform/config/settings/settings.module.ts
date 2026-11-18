@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { PASSWORD_POLICY_SETTINGS } from '../../auth';
 import { INVITATION_SETTINGS } from '../../rbac';
 import { SettingInUseChecks } from './in-use';
 import { SettingsAdmin } from './settings-admin.service';
@@ -18,7 +19,14 @@ import { SettingsService } from './settings.service';
     SettingsAdmin,
     SettingInUseChecks,
     { provide: INVITATION_SETTINGS, useExisting: SettingsService },
+    { provide: PASSWORD_POLICY_SETTINGS, useExisting: SettingsService },
   ],
-  exports: [SettingsService, SettingsAdmin, SettingInUseChecks, INVITATION_SETTINGS],
+  exports: [
+    SettingsService,
+    SettingsAdmin,
+    SettingInUseChecks,
+    INVITATION_SETTINGS,
+    PASSWORD_POLICY_SETTINGS,
+  ],
 })
 export class SettingsModule {}

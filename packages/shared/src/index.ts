@@ -54,5 +54,6 @@ export * from './time/berlin-day';
 export * from './api/imports';
 export * from './api/feedback';
 export * from './api/stock-requests';
+export * from './api/vendor-invoices';
 export * from './api/workspace';
 export * from './api/notifications';

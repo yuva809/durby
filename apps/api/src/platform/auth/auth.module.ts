@@ -11,6 +11,7 @@ import { LockoutService } from './lockout.service';
 import { MembershipLookup } from './membership-lookup';
 import { OriginGuard } from './origin.guard';
 import { PasswordHasher } from './password-hasher';
+import { PasswordPolicy } from './password-policy';
 import { PasswordService } from './password.service';
 import { RefreshTokenStore } from './refresh-token.store';
 import { RevocationService } from './revocation.service';
@@ -37,6 +38,7 @@ import { UserDirectory } from './user-directory';
     MembershipLookup,
     OriginGuard,
     PasswordHasher,
+    PasswordPolicy,
     PasswordService,
     RefreshTokenStore,
     RevocationService,
@@ -55,6 +57,7 @@ import { UserDirectory } from './user-directory';
     LockoutService,
     OriginGuard,
     PasswordHasher,
+    PasswordPolicy,
     PasswordService,
     RevocationService,
     SecurityLog,

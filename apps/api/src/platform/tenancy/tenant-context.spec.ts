@@ -148,6 +148,8 @@ describe('TENANT_MODELS', () => {
       'TenantFeatureOverride',
       'UnitOfMeasure',
       'VariantAttribute',
+      'VendorInvoice',
+      'VendorInvoiceLine',
       'Warehouse',
     ]);
   });

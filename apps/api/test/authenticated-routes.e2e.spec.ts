@@ -183,6 +183,8 @@ describe('route markers', () => {
       // ADR 0017 §8 (with PATCH /platform/staff/:id above): replay-safe set-state staff writes.
       'POST /api/v1/platform/staff/:id/deactivate',
       'POST /api/v1/platform/staff/invitations',
+      // ADR 0052: the body is a password (never stored, not even hashed); a replay sets it again.
+      'POST /api/v1/staff/:id/password',
       // ADR 0047: the caller's own choices, set-state.
       'PUT /api/v1/notifications/preferences',
       'PUT /api/v1/platform/customers/:id/features/:key',
@@ -237,13 +239,15 @@ describe('route markers', () => {
       'POST /api/v1/feedback',
       'POST /api/v1/inventory/adjustments',
       'POST /api/v1/inventory/attributes',
+      'POST /api/v1/inventory/invoices',
+      'POST /api/v1/inventory/invoices/:id/approve',
+      'POST /api/v1/inventory/invoices/:id/reject',
       'POST /api/v1/inventory/items',
       'POST /api/v1/inventory/items/:id/variants',
       'POST /api/v1/inventory/items/import',
       'POST /api/v1/inventory/opening-stock/import',
       'POST /api/v1/inventory/productions',
       'POST /api/v1/inventory/receipts',
-      'POST /api/v1/inventory/receipts/import',
       'POST /api/v1/inventory/transfers',
       'POST /api/v1/inventory/units',
       'POST /api/v1/inventory/warehouses',
@@ -309,6 +313,7 @@ describe('route markers', () => {
       'POST /api/v1/stock-requests/:id/start-picking',
       'PUT /api/v1/catalog/categories/:id/image',
       'PUT /api/v1/inventory/boms/:itemId',
+      'PUT /api/v1/inventory/invoices/:id',
       'PUT /api/v1/inventory/recipes/:productId',
       'PUT /api/v1/label-overrides/:locale/:key',
       'PUT /api/v1/number-series/:key/counter',

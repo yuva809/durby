@@ -23,6 +23,12 @@ export const rbacErrors = {
       'rbac.cannot_change_self',
       'You cannot change or remove your own membership.',
     ),
+  passwordNotSettable: () =>
+    new ApiError(
+      HttpStatus.FORBIDDEN,
+      'rbac.password_not_settable',
+      'Only the password of an account this organization created, and that belongs to no other organization, can be set here.',
+    ),
   lastOwner: () =>
     new ApiError(HttpStatus.CONFLICT, 'rbac.last_owner', 'The organization needs an owner.'),
   ownerAllLocations: () =>

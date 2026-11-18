@@ -41,6 +41,12 @@ export const authErrors = {
       'auth.password_change_required',
       'Choose your own password first.',
     ),
+  passwordManaged: () =>
+    new ApiError(
+      HttpStatus.FORBIDDEN,
+      'auth.password_managed',
+      'Your password is set by your organization; ask an owner or admin.',
+    ),
   originRejected: () =>
     new ApiError(HttpStatus.FORBIDDEN, 'auth.origin_rejected', 'Request origin not allowed.'),
   tokenInvalid: () =>

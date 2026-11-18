@@ -14,6 +14,11 @@ export { inviteLinkBase, mailLinkBase, type MailLinkTarget } from './link-base';
 export { LockoutService, LockoutUnavailableError } from './lockout.service';
 export { RequireOrigin } from './origin.guard';
 export { PasswordHasher } from './password-hasher';
+export {
+  PASSWORD_POLICY_SETTINGS,
+  PasswordPolicy,
+  type PasswordPolicySettings,
+} from './password-policy';
 export { RevocationService } from './revocation.service';
 export { SecurityLog } from './security-log';
 export { SessionStatus } from './session-status';

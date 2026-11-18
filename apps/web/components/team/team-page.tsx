@@ -10,6 +10,7 @@ import {
 } from '@durby/shared';
 import {
   Check,
+  KeyRound,
   Link2,
   MoreHorizontal,
   Pencil,
@@ -29,6 +30,7 @@ import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import type { Session } from '../../lib/auth/session';
 import { roleName } from '../../lib/rbac/roles';
+import { loadSettings } from '../../lib/settings/api';
 import { loadTeam, setTeamMemberActive } from '../../lib/team/api';
 import { teamRowActions } from '../../lib/team/matrix';
 import { useActionKey } from '../../lib/use-action-key';
@@ -58,6 +60,7 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Loaded, NoAccess } from '../users/common';
 import { scopeText } from '../users/scope-fields';
+import { PasswordDialog } from './password-dialog';
 import { ShareLink } from './share-link';
 import { StaffDialog } from './staff-dialog';
 
@@ -84,6 +87,12 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
   const [team, reload] = useResource(org, () => loadTeam(store));
   const [roles] = useResource(access.canReadRoles ? org : null, () => loadRoles(store));
   const [locations] = useResource(org, () => loadLocations(store));
+  // Passwords set by owners and admins are final (ADR 0052); unreadable settings: the usual temporary ones.
+  const [settings] = useResource(org, () => loadSettings(store));
+  const passwordsFinal =
+    settings.status === 'ready' &&
+    settings.data.find((s) => s.key === 'team.adminsManageSignIn')?.value === true;
+  const [settingPassword, setSettingPassword] = useState<TeamMember | null>(null);
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [status, setStatus] = useState<Status>('all');
@@ -242,6 +251,7 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
                                   locations={locationList}
                                   dateFormat={dateFormat}
                                   onEdit={() => setEditing(row.member)}
+                                  onSetPassword={() => setSettingPassword(row.member)}
                                   onConfirm={setConfirm}
                                 />
                               ) : (
@@ -286,9 +296,17 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
           access={access}
           activeFeatures={session.activeFeatures}
           organizationName={organizationName}
+          passwordsFinal={passwordsFinal}
           onSaved={reload}
         />
       )}
+
+      <PasswordDialog
+        member={settingPassword}
+        passwordsFinal={passwordsFinal}
+        onClose={() => setSettingPassword(null)}
+        onDone={reload}
+      />
 
       {view === 'members' && (
         <Dialog open={sharing !== null} onOpenChange={(open) => !open && setSharing(null)}>
@@ -464,6 +482,7 @@ function MemberRow({
   locations,
   dateFormat,
   onEdit,
+  onSetPassword,
   onConfirm,
 }: {
   member: TeamMember;
@@ -471,6 +490,7 @@ function MemberRow({
   locations: readonly LocationSummary[] | null;
   dateFormat: Intl.DateTimeFormat;
   onEdit: () => void;
+  onSetPassword: () => void;
   onConfirm: (confirm: Confirm) => void;
 }) {
   const t = useT();
@@ -530,6 +550,12 @@ function MemberRow({
               <DropdownMenuItem onSelect={onEdit} data-testid="team-edit">
                 <Pencil aria-hidden />
                 {t('platform.team.edit')}
+              </DropdownMenuItem>
+            )}
+            {actions.canEdit && member.passwordSettable && (
+              <DropdownMenuItem onSelect={onSetPassword} data-testid="team-set-password">
+                <KeyRound aria-hidden />
+                {t('platform.team.setPassword.action')}
               </DropdownMenuItem>
             )}
             {!actions.canRemove ? null : member.status === 'active' ? (
