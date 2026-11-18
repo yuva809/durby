@@ -179,6 +179,10 @@ model Location {
   tenantId                String                   @map("tenant_id") @db.Uuid
   brandId                 String                   @map("brand_id") @db.Uuid
   name                    String
+  /// The branch's address (ADR 0056); null = none.
+  address                 String?
+  /// Archived (ADR 0056): hidden from lists and pickers, its data kept.
+  archivedAt              DateTime?                @map("archived_at") @db.Timestamptz(6)
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization            Organization             @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)

@@ -57,6 +57,7 @@ describe('settings registry', () => {
       'inventory.targetFoodCostPercent',
       'inventory.allowNegativeStock',
       'team.adminsManageSignIn',
+      'orders.requestsNeedApproval',
     ]);
   });
 

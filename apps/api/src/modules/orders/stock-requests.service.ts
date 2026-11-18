@@ -20,6 +20,7 @@ import type {
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { EntitlementService } from '../../platform/config/entitlements';
+import { SettingsService } from '../../platform/config/settings';
 import { IdempotencyService } from '../../platform/idempotency';
 import { NotificationService } from '../../platform/notifications';
 import { NumberingService } from '../../platform/numbering';
@@ -153,6 +154,7 @@ export class StockRequestsService {
     private readonly members: MemberNames,
     private readonly notifications: NotificationService,
     private readonly entitlements: EntitlementService,
+    private readonly settings: SettingsService,
   ) {}
 
   // -------------------------------------------------------------------------------------------------------------
@@ -237,7 +239,7 @@ export class StockRequestsService {
     if (scope !== 'all' && scope.length === 0) return [];
     const [locations, warehouses] = await Promise.all([
       this.db.location.findMany({
-        where: scope === 'all' ? {} : { id: { in: scope } },
+        where: { archivedAt: null, ...(scope === 'all' ? {} : { id: { in: scope } }) },
         select: { id: true, name: true },
         orderBy: [{ name: 'asc' }, { id: 'asc' }],
       }),
@@ -356,10 +358,17 @@ export class StockRequestsService {
       const missing = ids.filter((id) => !usable.has(id));
       if (missing.length > 0) throw ordersErrors.itemNotFound(missing);
       const { number } = await this.numbering.next('orders.stockRequest', tx);
+      // Without approval (orders.requestsNeedApproval off, ADR 0056) a request is approved as it is sent: every line
+      // as asked, with its transfer number now; the warehouse finds it on its Picking list.
+      const needsApproval = await this.settings.get('orders.requestsNeedApproval', {}, tx);
+      const transferNumber = needsApproval
+        ? null
+        : (await this.numbering.next('orders.stockTransfer', tx)).number;
       const request = await tx.stockRequest.create({
         data: {
           tenantId,
           number,
+          ...(transferNumber ? { status: 'approved' as const, transferNumber } : {}),
           locationId: to.locationId,
           fromLocationId: from.locationId,
           fromWarehouseId: from.id,
@@ -375,6 +384,7 @@ export class StockRequestsService {
           requestId: request.id,
           itemId: l.itemId,
           quantity: new Decimal(l.quantity).toFixed(3),
+          ...(transferNumber ? { approvedQuantity: new Decimal(l.quantity).toFixed(3) } : {}),
           sortOrder: i,
         })),
       });
@@ -387,6 +397,12 @@ export class StockRequestsService {
           userId,
         },
       });
+      if (transferNumber) {
+        // Approved by the organization's setting, not by a person: no user on the step.
+        await tx.stockRequestEvent.create({
+          data: { tenantId, requestId: request.id, status: 'approved', note: null, userId: null },
+        });
+      }
       const response = await this.read(tx, request.id);
       await this.audit.record(tx, {
         action: 'orders.stock_request.created',
@@ -394,7 +410,8 @@ export class StockRequestsService {
         entityId: request.id,
         after: requestSnapshot(response),
       });
-      await this.notifyMove(tx, response, undefined);
+      // Approvers hear about a request that waits for them; an approved one needs nobody's decision.
+      if (!transferNumber) await this.notifyMove(tx, response, undefined);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });

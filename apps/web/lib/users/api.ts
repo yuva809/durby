@@ -36,8 +36,16 @@ export const loadInvitations = (store: Api): Promise<Result<Invitation[]>> =>
 export const loadRoles = (store: Api): Promise<Result<Role[]>> =>
   read(store, '/api/v1/roles', list(roleListResponseSchema));
 
-export const loadLocations = (store: Api): Promise<Result<LocationSummary[]>> =>
-  read(store, '/api/v1/locations', list(locationListResponseSchema));
+/** Active locations; `includeArchived` adds archived branches (the Branches page, ADR 0056). */
+export const loadLocations = (
+  store: Api,
+  includeArchived = false,
+): Promise<Result<LocationSummary[]>> =>
+  read(
+    store,
+    `/api/v1/locations${includeArchived ? '?includeArchived=true' : ''}`,
+    list(locationListResponseSchema),
+  );
 
 export const updateMember = (
   store: Api,

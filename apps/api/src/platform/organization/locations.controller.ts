@@ -10,19 +10,24 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
+  type ListLocationsQuery,
+  listLocationsQuerySchema,
   type LocationListResponse,
   type LocationRequest,
   locationRequestSchema,
   type LocationSummary,
+  type UpdateLocationRequest,
+  updateLocationRequestSchema,
 } from '@durby/shared';
-import { ZodBody } from '../http';
+import { ZodBody, ZodQuery } from '../http';
 import { Idempotent } from '../markers';
 import { AccessService, RequirePermission } from '../rbac';
 import { TENANT_PRISMA, type TenantPrismaClient } from '../tenancy';
 import { locationErrors } from './location-errors';
-import { LocationsService } from './locations.service';
+import { LOCATION_SELECT, locationResponse, LocationsService } from './locations.service';
 
 const READ = 'platform.settings.read';
 /** Owner only: the organization's structure, like its name. */
@@ -44,14 +49,20 @@ export class LocationsController {
 
   @RequirePermission(READ)
   @Get()
-  async list(): Promise<LocationListResponse> {
+  async list(
+    @Query(new ZodQuery(listLocationsQuerySchema)) query: ListLocationsQuery,
+  ): Promise<LocationListResponse> {
     const scope = await this.access.locationIdsFor(READ);
     const rows = await this.db.location.findMany({
-      where: scope === 'all' ? {} : { id: { in: scope } },
-      select: { id: true, name: true, brandId: true },
+      where: {
+        ...(scope === 'all' ? {} : { id: { in: scope } }),
+        // Archived branches only when asked for (the Branches page, ADR 0056).
+        ...(query.includeArchived ? {} : { archivedAt: null }),
+      },
+      select: LOCATION_SELECT,
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
     });
-    return { data: rows };
+    return { data: rows.map(locationResponse) };
   }
 
   @RequirePermission(MANAGE)
@@ -60,17 +71,17 @@ export class LocationsController {
   create(
     @Body(new ZodBody(locationRequestSchema)) body: LocationRequest,
   ): Promise<LocationSummary> {
-    return this.locations.create(body.name);
+    return this.locations.create(body.name, body.address);
   }
 
   @RequirePermission(MANAGE)
   @Idempotent()
   @Patch(':id')
-  rename(
+  update(
     @Param('id', new ParseUUIDPipe({ exceptionFactory: locationErrors.notFound })) id: string,
-    @Body(new ZodBody(locationRequestSchema)) body: LocationRequest,
+    @Body(new ZodBody(updateLocationRequestSchema)) body: UpdateLocationRequest,
   ): Promise<LocationSummary> {
-    return this.locations.rename(id, body.name);
+    return this.locations.update(id, body);
   }
 
   @RequirePermission(MANAGE)

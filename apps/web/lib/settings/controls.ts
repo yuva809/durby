@@ -123,9 +123,15 @@ export function controlOf(key: SettingKey): SettingControl | null {
   }
 }
 
+/**
+ * Keys switched on a page of their own, not in this list: whether stock transfers need approval is on the operations
+ * menu's Branches page (ADR 0056), so organizations without that menu never see it.
+ */
+const OWN_PAGE: ReadonlySet<SettingKey> = new Set<SettingKey>(['orders.requestsNeedApproval']);
+
 /** Keys this page edits: those that may be stored at organization scope, in registry order. */
-export const ORGANIZATION_SETTING_KEYS: readonly SettingKey[] = SETTING_KEYS.filter((key) =>
-  settingAllowsScope(key, 'organization'),
+export const ORGANIZATION_SETTING_KEYS: readonly SettingKey[] = SETTING_KEYS.filter(
+  (key) => settingAllowsScope(key, 'organization') && !OWN_PAGE.has(key),
 );
 
 export const settingLabels = (key: SettingKey) => ({

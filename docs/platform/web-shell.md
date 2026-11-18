@@ -305,7 +305,8 @@ stale hints).
 ### Locations: `/api/v1/locations`
 
 - `GET`: `@RequirePermission('platform.settings.read')`, filtered with `locationIdsFor('platform.settings.read')`: a
-  location-limited member sees only their locations. Response `{ data: [{ id, name, brandId }] }` ordered by name.
+  location-limited member sees only their locations. Response `{ data: [{ id, name, brandId, address, archivedAt }] }`
+  ordered by name: active locations, and archived ones too with `?includeArchived=true` (the Branches page, ADR 0056).
 - **Why `platform.settings.read` and not a new `platform.locations.read`:** every system role holds
   `settings.read` already. A new key granted to Staff would repeat the 1.6 cascade: every custom role that invites or
   manages members would need the new key too, or it could no longer assign or manage Staff (the subset rule,
@@ -317,16 +318,17 @@ stale hints).
   | Route                   | Idempotency                 | Notes                                                                                                                                                                                       |
   | ----------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
   | `POST /locations`       | `completion: 'transaction'` | The organization's first location also creates its brand, named after the organization (provisioning creates neither).                                                                      |
-  | `PATCH /locations/:id`  | response                    | Rename; the same name again writes nothing.                                                                                                                                                 |
+  | `PATCH /locations/:id`  | response                    | `{ name?, address?, archived? }` (ADR 0056): rename, set or clear the address, archive or restore; the same values again write nothing.                                                     |
   | `DELETE /locations/:id` | response                    | 204. Only while nothing uses it: members limited to it, invitations, settings, tables, areas and orders all reference it with `RESTRICT`, and the violation becomes 409 `locations.in_use`. |
 
   Names are unique per organization ignoring case (409 `locations.name_taken`), checked under a per-organization
   transaction lock (`pg_advisory_xact_lock`). An unknown id, another organization's id or a bad UUID: 404
   `rbac.location_not_found`. Audit: `platform.location.created|updated|deleted`, entity `location`, snapshot
-  `id, brandId, name`.
+  `id, brandId, name, address, archivedAt`.
 
 - Web: **Settings → Locations** (`/settings/locations`, `platform.settings.read`); add, rename and delete only with
-  `platform.org.manage`. The Tables and Service pages link owners there when there is no location yet.
+  `platform.org.manage`. In the operations menu only (AsiaMight), **Branches** (`/branches`, ADR 0056): cards with address, staff and
+  warehouses, search, archive and restore, and the `orders.requestsNeedApproval` switch. The Tables and Service pages link owners there when there is no location yet.
 - Code: `apps/api/src/platform/organization/` (organization structure, next to `PATCH /organization`).
 
 ### Invitation links

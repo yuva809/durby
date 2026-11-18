@@ -1,6 +1,6 @@
-import { LocationsPage } from '../../../components/settings/locations-page';
+import { BranchesRoute } from '../../../components/branches/branches-route';
 
-/** Branches in the operations menu (ADR 0044): Settings → Locations under its own name. */
+/** Branches (ADR 0044, 0056): the Branches page in the operations menu, the locations list elsewhere. */
 export default function Page() {
-  return <LocationsPage title="platform.nav.branches" />;
+  return <BranchesRoute />;
 }
