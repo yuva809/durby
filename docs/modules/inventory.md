@@ -87,6 +87,24 @@ Inventory (nav, feature `inventory`): tabs **Stock** (per location and warehouse
 total), **Receive**, **Adjust**, **Transfer** (line forms with item search and live totals), **Documents** (list
 and detail), **Items**, **Warehouses**.
 
+### Categories and the operations inventory page (ADR 0048)
+
+- A stock item has an optional `categoryId` from the organization's one category list (`product_categories`, shared
+  with the catalog); only an active category. Variants take their parent's. The item dialog shows a Category field to
+  people who can read categories (`catalog` feature and `catalog.products.read`).
+- In the operations menu, Inventory is one item. `/inventory` there opens on:
+  - filters: category, stock level (all / low / out) and warehouse;
+  - category tiles: All items, each top-level category with its secondary ones counted in, and Uncategorized; a tile
+    shows the category's image or a colour from the table palette;
+  - "Find a category or product".
+
+  A tile lists its items with quantity and value over the warehouses shown; chips narrow to a secondary category.
+  **Export** downloads what is listed as CSV (UTF-8 with a byte order mark, so Excel opens it). **More** holds the
+  other tabs and the setup pages. **Add New Item** files the item under a category. The default menu keeps the tabs.
+
+- Code: `components/inventory/category-overview.tsx`, `lib/inventory/overview.ts`. Test page:
+  docs/html/inventory-categories.html.
+
 ## Step 2: recipes, dish cost and sales consumption (ADR 0028)
 
 ### Recipes

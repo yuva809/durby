@@ -200,6 +200,19 @@ previewing the new prices), _Archive_, _Restore_, _Delete_; categories _Archive_
 says how many products go with them). After a delete, products or categories kept because they were sold are named,
 with _Archive them_ as the next step. On phones the bar sits at the bottom of the screen.
 
+### Category description, secondary categories and tile images (ADR 0048)
+
+- A category has an optional description (up to 500 characters, not audited) and an optional parent, one level only.
+  The parent is an active top-level category other than itself; a category with secondary categories stays top level
+  (`catalog.category_parent_invalid`).
+- Tile image: `PUT /catalog/categories/:id/image` with the raw file (`Content-Type` image/webp, image/png or
+  image/jpeg, at most 300 KB, checked by its first bytes: `catalog.category_image_invalid`; larger: 413).
+  `DELETE …/image` removes it; `GET …/image` reads it (catalog.products.read; cacheable, the url carries
+  `imageVersion`). The web resizes to WebP of at most 800 px before upload.
+- The dialog asks for name, description, secondary category and image; kitchen/bar shows only with the `pos` feature.
+  `/catalog/categories` shows image or colour, description, and secondary categories under their parent; only
+  top-level ones drag. Without the till it counts stock items, with it menu products.
+
 ### Menu scan (`/catalog/scan`)
 
 Builds products from the menu a restaurant already has — photos or a PDF — and imports them through the same
