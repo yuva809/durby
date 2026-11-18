@@ -324,6 +324,7 @@
   "inventory.invoice.submit": "{count} Positionen zur Freigabe senden",
   "inventory.invoice.sent": "Als {number} mit {count} Positionen zur Freigabe gesendet.",
   "inventory.invoice.sentHint": "Noch nichts ist im Bestand: Gebucht wird, sobald jemand in der Freigabeliste zustimmt.",
+  "inventory.invoice.totalMatchesRounding": "Stimmt mit der Rechnungssumme von {amount} überein, bis auf {difference} durch gerundete Stückpreise.",
   "inventory.invoice.totalDiffersSimple": "Die Rechnung nennt {amount}. Prüfen Sie ausgelassene oder geänderte Zeilen.",
   "inventory.invoices.title": "Freigabeliste",
   "inventory.invoices.intro": "Gelesene und zur Freigabe gesendete Lieferantenrechnungen. Mit der Freigabe werden sie als Wareneingang gebucht.",
@@ -391,5 +392,12 @@
   "inventory.invoice.invoiceDate": "Rechnungsdatum",
   "inventory.invoice.invoiceDatePlaceholder": "TT-MM-JJJJ",
   "inventory.invoice.supplierMissing": "Nicht von der Rechnung gelesen: Bitte auf dem Papier prüfen und eintragen.",
-  "inventory.overview.requestStock": "Anforderungskorb"
+  "inventory.overview.requestStock": "Anforderungskorb",
+  "inventory.invoice.skippedLines": "Übersprungen, keine Ware: {names}",
+  "inventory.invoice.packLine": "{packs} {unit} × {per} = {pieces} Stk.",
+  "inventory.invoice.packLineNoUnit": "{packs} × {per} = {pieces} Stk.",
+  "inventory.invoice.countAs": "Gepackte Positionen zählen",
+  "inventory.invoice.countInvoiced": "Wie berechnet",
+  "inventory.invoice.countPieces": "Nach Stück",
+  "inventory.invoice.countAsHint": "Wie berechnet: die Packungen zum Packungspreis. Nach Stück: jedes Stück zum Stückpreis."
 }

@@ -107,7 +107,7 @@ and detail), **Items**, **Warehouses**.
 - Code: `components/inventory/category-overview.tsx`, `lib/inventory/overview.ts`. Test page:
   docs/html/inventory-categories.html.
 
-### Vendor invoices (ADR 0049, 0054, 0055)
+### Vendor invoices (ADR 0049, 0054, 0055, 0058)
 
 `/inventory/invoice` (Import Vendor Invoice on the operations Inventory page, and a tile on Import Data;
 `inventory.stock.receive`):
@@ -121,7 +121,9 @@ and detail), **Items**, **Warehouses**.
    New items get, per line, a category ("+" adds one, "Set for all" fills the rest), brand, pack size (read from the
    description, `lib/inventory/pack-size.ts`) and unit; any line may be invoiced in a unit of measurement ("+" adds
    one, e.g. Carton = 12 pc), converted to the item's unit on approval (ADR 0055). The total is checked against the
-   invoice; "Show what was read" lists the rows read from the pages.
+   invoice; "Show what was read" lists the rows read from the pages. Packed lines (wholesalers' "CAR 4 × 12") are
+   counted as invoiced or by the piece, one switch for the invoice; free goods merge into their product's line;
+   transport and similar charges are skipped and named (ADR 0058).
 3. Send for approval: `POST /api/v1/inventory/invoices` stores it as pending (`VIN-…`) and notifies the approvers at
    the warehouse's location. Nothing is in stock yet.
 

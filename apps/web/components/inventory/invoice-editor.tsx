@@ -14,7 +14,7 @@ import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { createCategory } from '../../lib/catalog/api';
 import { createUnit } from '../../lib/inventory/api';
-import { lineValue, sumValues } from '../../lib/inventory/format';
+import { differsByRounding, lineValue, sumValues } from '../../lib/inventory/format';
 import {
   type InvoiceRow,
   missingCategory,
@@ -55,6 +55,24 @@ export function rowsTotal(rows: readonly InvoiceRow[]): string {
   );
 }
 
+/** The total against the printed one: equal, apart only from rounding piece prices (ADR 0058), or different. */
+export function totalCheck(
+  rows: readonly InvoiceRow[],
+  printedTotal: string,
+): 'matches' | 'rounding' | 'differs' {
+  const total = rowsTotal(rows);
+  if (total === printedTotal) return 'matches';
+  const lines = rows
+    .filter((r) => r.include)
+    .map((r) => ({
+      quantity: r.quantity.replace(',', '.'),
+      unitCost: r.unitCost.replace(',', '.'),
+    }));
+  return differsByRounding(total, printedTotal, lines) ? 'rounding' : 'differs';
+}
+
+const NONE_SKIPPED: readonly string[] = [];
+
 /**
  * The review of a vendor invoice (ADR 0049, 0054, 0055): supplier, note and warehouse, then each line: include, item or
  * New, and for new items their category (with "+" to add one), brand, pack size and unit; for every line the unit it
@@ -77,6 +95,7 @@ export function InvoiceEditor({
   onCategoryCreated,
   onUnitCreated,
   printedTotal,
+  skipped = NONE_SKIPPED,
   readOnly = false,
   actions,
 }: {
@@ -95,6 +114,8 @@ export function InvoiceEditor({
   onCategoryCreated?: (category: ProductCategory) => void;
   onUnitCreated?: (unit: UnitOfMeasure) => void;
   printedTotal: string | null;
+  /** Non-goods lines left out when reading (transport, "order confirmed", ADR 0058), by description. */
+  skipped?: readonly string[];
   readOnly?: boolean;
   actions?: ReactNode;
 }) {
@@ -108,6 +129,7 @@ export function InvoiceEditor({
   const supplierMissing = !readOnly && header.supplier.trim() === '';
   const withoutCategory = missingCategory(rows);
   const total = rowsTotal(rows);
+  const check = printedTotal ? totalCheck(rows, printedTotal) : null;
   const sortedItems = [...items]
     .filter((i) => i.archivedAt === null)
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -139,6 +161,11 @@ export function InvoiceEditor({
             {leftOut > 0 && (
               <Chip testId="invoice-count-left-out">
                 {t('inventory.invoice.countLeftOut', { count: String(leftOut) })}
+              </Chip>
+            )}
+            {skipped.length > 0 && (
+              <Chip testId="invoice-count-skipped">
+                {t('inventory.invoice.skippedLines', { names: skipped.join(', ') })}
               </Chip>
             )}
           </ul>
@@ -316,6 +343,21 @@ export function InvoiceEditor({
                       <span className="font-medium">{row.line.description}</span>
                       <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         {row.line.code}
+                        {row.line.pack && (
+                          <span data-testid="invoice-line-packed">
+                            {t(
+                              row.line.pack.unit
+                                ? 'inventory.invoice.packLine'
+                                : 'inventory.invoice.packLineNoUnit',
+                              {
+                                packs: row.line.pack.count,
+                                unit: row.line.pack.unit ?? '',
+                                per: row.line.pack.per,
+                                pieces: row.line.pack.pieces,
+                              },
+                            )}
+                          </span>
+                        )}
                         {!row.line.checks && (
                           <Badge
                             className="bg-accent text-accent-foreground"
@@ -566,17 +608,23 @@ export function InvoiceEditor({
           <p className="text-lg font-semibold tabular-nums" data-testid="invoice-total">
             {t('inventory.invoice.total', { amount: money(total) })}
           </p>
-          {printedTotal && (
+          {printedTotal && check && (
             <p
               className={cn(
                 'text-sm',
-                total === printedTotal ? 'text-muted-foreground' : 'text-destructive',
+                check === 'differs' ? 'text-destructive' : 'text-muted-foreground',
               )}
               data-testid="invoice-total-check"
             >
-              {total === printedTotal
-                ? t('inventory.invoice.totalMatches', { amount: money(printedTotal) })
-                : t('inventory.invoice.totalDiffersSimple', { amount: money(printedTotal) })}
+              {check === 'matches' &&
+                t('inventory.invoice.totalMatches', { amount: money(printedTotal) })}
+              {check === 'rounding' &&
+                t('inventory.invoice.totalMatchesRounding', {
+                  amount: money(printedTotal),
+                  difference: money(sumValues([total, `-${printedTotal}`])),
+                })}
+              {check === 'differs' &&
+                t('inventory.invoice.totalDiffersSimple', { amount: money(printedTotal) })}
             </p>
           )}
         </div>

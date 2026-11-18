@@ -254,6 +254,40 @@ describe('Request stock cart (branch, ADR 0053)', () => {
   });
 });
 
+describe('Request cart without a branch (ADR 0059)', () => {
+  afterEach(() => {
+    setup.destinations = [
+      {
+        locationId: BRANCH.locationId,
+        locationName: BRANCH.locationName,
+        warehouseId: BRANCH.id,
+        warehouseName: BRANCH.name,
+      },
+    ];
+  });
+
+  it('shows an owner how to set one up, and tells a branch whom to ask', async () => {
+    setup.destinations = [];
+    signedInAs('owner');
+    api(request('submitted'));
+    render(<RequestStockPage />);
+    const setupCard = await screen.findByTestId('request-no-branch-setup');
+    const links = within(setupCard).getAllByRole('link');
+    expect(links.map((l) => l.getAttribute('href'))).toEqual(['/branches', '/staff']);
+    cleanup();
+
+    signedInAs('branch');
+    api(request('submitted'));
+    render(<RequestStockPage />, { wrapper: operations });
+    expect(await screen.findByText(/tick your branch for you in Manage Staff/)).toBeTruthy();
+    expect(screen.queryByTestId('request-no-branch-setup')).toBeNull();
+    // A branch's way back is its Order History.
+    expect(screen.getByRole('link', { name: 'Order History' }).getAttribute('href')).toBe(
+      '/requests',
+    );
+  });
+});
+
 describe('Stock Requests', () => {
   it('lets the owner approve with changed quantities', async () => {
     signedInAs('owner');

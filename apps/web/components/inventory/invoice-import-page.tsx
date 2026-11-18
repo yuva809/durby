@@ -26,8 +26,10 @@ import {
   scanRows,
 } from '../../lib/inventory/invoice-pdf';
 import {
+  type CountAs,
   type InvoiceRow,
   matchInvoice,
+  recount,
   rowProblems,
   submitRequest,
 } from '../../lib/inventory/invoice-receipt';
@@ -172,6 +174,8 @@ function Flow({
   const action = useActionKey();
   const [step, setStep] = useState<Step>({ kind: 'choose', problem: null, reading: null });
   const [rows, setRows] = useState<InvoiceRow[]>([]);
+  // Packed lines as invoiced (the packs) or by the piece (ADR 0058).
+  const [countAs, setCountAs] = useState<CountAs>('invoiced');
   const [header, setHeader] = useState<InvoiceHeader>({
     supplier: '',
     invoiceNumber: '',
@@ -221,6 +225,7 @@ function Flow({
       choose(t('inventory.invoice.noLines'));
       return;
     }
+    setCountAs('invoiced');
     setRows(matchInvoice(invoice.lines, items));
     setHeader((h) => ({
       ...h,
@@ -339,6 +344,41 @@ function Flow({
           </span>
         )}
       </div>
+      {step.invoice.lines.some((l) => l.pack) && (
+        <div
+          className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3"
+          data-testid="invoice-count-as"
+        >
+          <span className="text-sm font-medium">{t('inventory.invoice.countAs')}</span>
+          <div className="flex gap-1" role="radiogroup" aria-label={t('inventory.invoice.countAs')}>
+            {(['invoiced', 'pieces'] as const).map((mode) => (
+              <Button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={countAs === mode}
+                variant={countAs === mode ? 'default' : 'outline'}
+                className="rounded-full"
+                onClick={() => {
+                  if (mode === countAs) return;
+                  setCountAs(mode);
+                  setRows((current) => recount(current, mode));
+                }}
+                data-testid={`invoice-count-${mode}`}
+              >
+                {t(
+                  mode === 'invoiced'
+                    ? 'inventory.invoice.countInvoiced'
+                    : 'inventory.invoice.countPieces',
+                )}
+              </Button>
+            ))}
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {t('inventory.invoice.countAsHint')}
+          </span>
+        </div>
+      )}
       <InvoiceEditor
         header={header}
         onHeader={(patch) => setHeader((h) => ({ ...h, ...patch }))}
@@ -355,6 +395,7 @@ function Flow({
         onCategoryCreated={onCategoryCreated}
         onUnitCreated={onUnitCreated}
         printedTotal={step.invoice.total}
+        skipped={step.invoice.skipped}
         actions={
           <>
             <Button

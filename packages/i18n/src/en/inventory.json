@@ -324,6 +324,7 @@
   "inventory.invoice.submit": "Send {count} lines for approval",
   "inventory.invoice.sent": "Sent for approval as {number} with {count} lines.",
   "inventory.invoice.sentHint": "Nothing is in stock yet: it is booked once someone approves it in the approval queue.",
+  "inventory.invoice.totalMatchesRounding": "Matches the invoice total of {amount}, apart from {difference} from rounding piece prices.",
   "inventory.invoice.totalDiffersSimple": "The invoice says {amount}. Check lines left out or changed.",
   "inventory.invoices.title": "Approval queue",
   "inventory.invoices.intro": "Vendor invoices read and sent for approval. Approving books them as a goods receipt.",
@@ -391,5 +392,12 @@
   "inventory.invoice.invoiceDate": "Invoice date",
   "inventory.invoice.invoiceDatePlaceholder": "dd-mm-yyyy",
   "inventory.invoice.supplierMissing": "Not read from the invoice: check the paper and fill it in.",
-  "inventory.overview.requestStock": "Request cart"
+  "inventory.overview.requestStock": "Request cart",
+  "inventory.invoice.skippedLines": "Skipped, not goods: {names}",
+  "inventory.invoice.packLine": "{packs} {unit} × {per} = {pieces} pcs",
+  "inventory.invoice.packLineNoUnit": "{packs} × {per} = {pieces} pcs",
+  "inventory.invoice.countAs": "Count packed lines",
+  "inventory.invoice.countInvoiced": "As invoiced",
+  "inventory.invoice.countPieces": "By the piece",
+  "inventory.invoice.countAsHint": "As invoiced: the packs at the pack price. By the piece: every piece at the piece price."
 }

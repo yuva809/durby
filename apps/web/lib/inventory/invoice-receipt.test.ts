@@ -2,8 +2,10 @@ import type { StockItem, VendorInvoice } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import { type InvoiceLine, linesToRows } from './invoice-pdf';
 import {
+  amountsOf,
   matchInvoice,
   NEW_ITEM,
+  recount,
   rowProblems,
   itemDetailsChange,
   retarget,
@@ -306,5 +308,40 @@ describe('an existing item’s details on the invoice (ADR 0055)', () => {
     const fresh = retarget(row!, NEW_ITEM, [PACKED]);
     expect(fresh).toMatchObject({ target: NEW_ITEM, categoryId: '', brand: '', unitId: '' });
     expect(retarget(fresh, PACKED.id, [PACKED])).toMatchObject({ brand: 'OD' });
+  });
+});
+
+describe('packed lines as invoiced or by the piece (ADR 0058)', () => {
+  // 4 cartons of 12 for 120.48: 30.12 a carton, 2.51 a piece.
+  const packed = {
+    code: '10434',
+    description: 'GOLDEN MORN 12x300GR',
+    quantity: '4',
+    unitPrice: '30.12',
+    vatRate: null,
+    total: '120.48',
+    checks: true,
+    pack: { count: '4', per: '12', unit: 'CAR', pieces: '48', piecePrice: '2.51' },
+  } satisfies InvoiceLine;
+  const single = line('2252-001', 'ultimate taste red tilapia steaks', '3', '2.00');
+
+  it('counts packed lines either way; other lines the same both ways', () => {
+    expect(amountsOf(packed, 'invoiced')).toEqual({ quantity: '4', unitCost: '30.12' });
+    expect(amountsOf(packed, 'pieces')).toEqual({ quantity: '48', unitCost: '2.51' });
+    expect(amountsOf(single, 'pieces')).toEqual({ quantity: '3', unitCost: '2.00' });
+    const rows = matchInvoice([packed, single], [TILAPIA], 'pc', 'pieces');
+    expect(rows.map((r) => [r.target, r.quantity, r.unitCost])).toEqual([
+      [NEW_ITEM, '48', '2.51'],
+      [TILAPIA.id, '3', '2.00'],
+    ]);
+  });
+
+  it('recounts every row from its line, keeping what else was chosen', () => {
+    const rows = matchInvoice([packed, single], [TILAPIA]);
+    rows[0] = { ...rows[0]!, quantity: '5', include: false };
+    const pieces = recount(rows, 'pieces');
+    expect(pieces[0]).toMatchObject({ quantity: '48', unitCost: '2.51', include: false });
+    expect(pieces[1]).toMatchObject({ quantity: '3', unitCost: '2.00', target: TILAPIA.id });
+    expect(recount(pieces, 'invoiced')[0]).toMatchObject({ quantity: '4', unitCost: '30.12' });
   });
 });
