@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vendor invoice import: technical and test notes</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#1f7a3d; --ok:#1f7a3d; --warn:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; } }
+  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .done { color: var(--ok); } .open { color: var(--warn); }
+  nav a { color: var(--accent); margin-right: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="#flow">Flow</a><a href="#reading">Reading</a><a href="#roles">Roles</a><a href="#tests">Tests</a></nav>
+  <h1>Vendor invoice import (PDF)</h1>
+  <p class="lead">A supplier's invoice or order confirmation as a PDF becomes one goods receipt; products not in Durby yet are created with it. Also: the till's roles only where there is a till. Decision: ADR 0049. Branch: <code>feature/vendor-invoice-import</code> (on top of <code>feature/asiamight-inventory</code>).</p>
+
+  <h2 id="flow">Flow</h2>
+<pre>Inventory → [Import Vendor Invoice]      (or Import Data → Vendor invoice (PDF))
+  1  Choose PDF  →  read on this device
+  2  Review
+     Supplier [Bonesca]   Note [Order 108666 · 10-11-2026]   Warehouse [Main ▾]
+     Unit of new items [piece ▾]   Category of new items [Frozen fish ▾]
+     ☑ 1103-002 Bigi Mama African Catfish …   [Catfish 4kg ▾]   50   11.00   € 550,00
+     ☑ 1971-002 OD Yellow Croakers …          [New item ▾] New   30   41.50   € 1.245,00
+     …
+     Receipt total: € 5.739,80   ✓ Matches the invoice total of € 5.739,80
+                                         [Choose another PDF] [Import 24 lines]
+  3  Goods receipt GR-2026-… booked with 24 lines</pre>
+
+  <h2 id="reading">How the PDF is read</h2>
+  <div class="scroll"><table>
+    <tr><th>Part</th><th>Rule</th></tr>
+    <tr><td>Rows</td><td>text pieces on the same baseline (±3 pt), left to right; pages top to bottom; at most 20 pages</td></tr>
+    <tr><td>Item line</td><td>[code with a digit] description quantity [€] price [€] [VAT %] [€] total — at the end of the row</td></tr>
+    <tr><td>Amounts</td><td><code>1.245,00</code> and <code>1,245.00</code> alike; each line checked: quantity × price = total (± 1 cent)</td></tr>
+    <tr><td>Header</td><td>number from "Order number / Invoice no. / Rechnungsnummer …", first dd-mm-yyyy date, supplier from the footer e-mail domain</td></tr>
+    <tr><td>Grand total</td><td>last "Total" row that isn't net, excluding VAT or a weight</td></tr>
+    <tr><td>Matching</td><td>SKU = supplier code, then exact name (case and spaces aside); else New (SKU = supplier code)</td></tr>
+  </table></div>
+  <p>Bonesca order confirmation 108666 (the PDF from the request) reads 24 lines, every line checks, and they add up to exactly € 5.739,80. Its supplier footer is an image, so the supplier is typed once.</p>
+  <p>API: <code>POST /api/v1/inventory/receipts/import</code> — lines <code>{ itemId, quantity, unitCost }</code> or <code>{ newItem: { name, sku, unit, categoryId }, quantity, unitCost }</code>; one transaction; new items need <code>inventory.items.edit</code>.</p>
+
+  <h2 id="roles">Roles</h2>
+  <p>Waiter, Cashier, Kitchen, Bar (need <code>pos</code>) and Host (needs <code>reservations</code>) are no longer offered to an organization without them. AsiaMight's pickers: Owner, Admin, Manager, Staff, Branch, Warehouse, Driver.</p>
+
+  <h2 id="tests">Testing</h2>
+  <div class="scroll"><table>
+    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
+    <tr><td>Web unit</td><td><code>lib/inventory/invoice-pdf.test.ts</code></td><td>amount notations, Bonesca rows, header and total, flagged lines, headers skipped</td><td class="done">Pass</td></tr>
+    <tr><td>Web unit</td><td><code>lib/inventory/invoice-receipt.test.ts</code></td><td>matching, row problems, the request</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/inventory/invoice-import.test.tsx</code></td><td>read → review → import body → done; scan refused; no item rights</td><td class="done">Pass</td></tr>
+    <tr><td>Shared</td><td><code>permissions.test.ts</code></td><td>roles per feature</td><td class="done">Pass</td></tr>
+    <tr><td>API e2e</td><td><code>test/vendor-invoice.e2e.spec.ts</code>, <code>test/rbac-roles.e2e.spec.ts</code></td><td>receipt with new items, all-or-nothing, item rights; till roles hidden</td><td class="open">Needs Docker / CI</td></tr>
+  </table></div>
+  <h3>Manual</h3>
+  <ul>
+    <li>Inventory → Import Vendor Invoice → choose <code>108666.pdf</code> → 24 lines, total matches → type "Bonesca", pick warehouse and category → Import → Inventory shows the stock.</li>
+    <li>Import it again: all 24 lines now match by SKU (no New).</li>
+    <li>A scanned PDF → "This PDF has no text…".</li>
+    <li>Staff → Invite: no Waiter, Cashier, Kitchen, Bar or Host in AsiaMight.</li>
+  </ul>
+</main>
+</body>
+</html>

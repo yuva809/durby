@@ -105,6 +105,22 @@ and detail), **Items**, **Warehouses**.
 - Code: `components/inventory/category-overview.tsx`, `lib/inventory/overview.ts`. Test page:
   docs/html/inventory-categories.html.
 
+### Vendor invoices (ADR 0049)
+
+`/inventory/invoice` (Import Vendor Invoice on the operations Inventory page, and a card on Import Data;
+`inventory.stock.receive`):
+
+1. Choose the supplier's invoice or order confirmation PDF. It is read on the device (`lib/inventory/invoice-pdf.ts`):
+   item lines (code, description, quantity, unit price, VAT, total), order number, date, supplier, grand total. A PDF
+   without text (a scan) can't be read.
+2. Review (`lib/inventory/invoice-receipt.ts`): each line matched by SKU = supplier code, then exact name, else New;
+   change item, quantity or cost, or leave a line out; pick the warehouse, and unit and category for new items; the
+   total is checked against the invoice.
+3. Import: `POST /api/v1/inventory/receipts/import` creates the new items and books one receipt with supplier and note,
+   all or nothing (new items also need `inventory.items.edit`).
+
+Test page: docs/html/vendor-invoice.html.
+
 ## Step 2: recipes, dish cost and sales consumption (ADR 0028)
 
 ### Recipes

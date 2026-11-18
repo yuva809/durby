@@ -88,6 +88,11 @@ unit test, so each new key is a conscious decision per role. System roles cannot
 are labels: `platform.roles.owner`, `.admin`, `.manager`, `.staff`, `.waiter`, `.cashier`, `.host`. Organizations that need something else create
 custom roles.
 
+**Roles per feature** (`SYSTEM_ROLE_FEATURES`): every system role exists in every organization, but some are listed only where
+the organization has their feature: Waiter, Cashier, Kitchen and Bar with `pos`, Host with `reservations` (ADR 0049),
+Branch, Warehouse and Driver with `orders` (ADR 0045). A distributor without the till sees Owner, Admin, Manager, Staff,
+Branch, Warehouse and Driver. Members who already hold a hidden role keep it.
+
 ## Resolving access
 
 On every `@RequirePermission` request the guard loads, through the tenant client, the caller's membership with its

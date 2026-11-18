@@ -62,7 +62,7 @@ describe('vendor invoice review (ADR 0049)', () => {
       ['unitCost', 'newNotAllowed'],
     ]);
     // Left out lines have no problems.
-    const left = rows[2]!;
+    const left = rows[2];
     expect(rowProblems([{ ...left, include: false }], false)).toEqual([[]]);
   });
 
