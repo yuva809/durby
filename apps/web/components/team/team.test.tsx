@@ -100,13 +100,13 @@ const TEAM: TeamListResponse = {
   stats: { total: 3, active: 2, inactive: 1, invited: 1, customPermissions: 1 },
 };
 
-function signedInAs(key: SystemRole) {
+function signedInAs(key: SystemRole, activeFeatures = ['catalog', 'pos']) {
   const r = ROLES.find((x) => x.systemKey === key)!;
   mockState.session = sessionFixture({
     user: { id: ME, email: 'me@example.test', locale: 'en' },
     activeRole: ref(r),
     activePermissions: [...systemRolePermissions(key)],
-    activeFeatures: ['catalog', 'pos'],
+    activeFeatures,
   });
 }
 
@@ -292,6 +292,60 @@ describe('TeamPage', () => {
     for (const box of within(row).getAllByTestId('team-permission')) {
       expect(box.getAttribute('data-state')).toBe('unchecked');
     }
+  });
+
+  it('puts every permission in a View, Create, Edit or Delete cell, grouped by section (ADR 0050)', async () => {
+    signedInAs('owner', ['catalog', 'pos', 'orders']);
+    api();
+    render(<TeamPage />);
+    await userEvent.click(await screen.findByTestId('team-add'));
+    const dialog = await screen.findByTestId('team-dialog');
+    const waiter = within(dialog)
+      .getAllByTestId('team-role')
+      .find((b) => b.dataset.role === 'waiter')!;
+    await userEvent.click(waiter);
+    const sections = within(dialog).getAllByTestId('team-matrix-section');
+    expect(sections.map((s) => s.dataset.section)).toEqual([
+      'platform',
+      'catalog',
+      'pos',
+      'orders',
+    ]);
+    expect(sections[0]!.textContent).toContain('Administration');
+
+    // Picking: one box, in the Edit column, the sentence as its name; the other cells are dashes.
+    const picking = within(dialog)
+      .getAllByTestId('team-matrix-row')
+      .find((r) => r.dataset.area === 'orders.picking')!;
+    expect(picking.textContent).toContain('Picking');
+    const box = within(picking).getByTestId('team-permission');
+    expect(box.dataset.key).toBe('orders.picking.use');
+    expect(box.closest('[data-column]')?.getAttribute('data-column')).toBe('edit');
+    expect(box.getAttribute('aria-label')).toBe('Pick and pack sales orders');
+    expect(within(picking).getAllByTestId('team-permission-empty')).toHaveLength(3);
+    await userEvent.click(box);
+    expect(box.getAttribute('data-state')).toBe('checked');
+
+    // A box that allows more than its column says carries a note.
+    const users = within(dialog)
+      .getAllByTestId('team-matrix-row')
+      .find((r) => r.dataset.area === 'platform.users')!;
+    expect(within(users).getByTestId('team-permission-note')).toBeDefined();
+    const manage = within(users)
+      .getAllByTestId('team-permission')
+      .find((c) => c.dataset.key === 'platform.users.manage')!;
+    expect(manage.getAttribute('aria-label')).toContain('Also allows removing members.');
+
+    // The section box: some ticked → indeterminate; click → all; click → none.
+    const orders = sections.find((s) => s.dataset.section === 'orders')!;
+    const whole = within(orders).getByTestId('team-permission-section');
+    expect(whole.getAttribute('data-state')).toBe('indeterminate');
+    await userEvent.click(whole);
+    for (const cell of within(orders).getAllByTestId('team-permission'))
+      expect(cell.getAttribute('data-state')).toBe('checked');
+    await userEvent.click(whole);
+    for (const cell of within(orders).getAllByTestId('team-permission'))
+      expect(cell.getAttribute('data-state')).toBe('unchecked');
   });
 
   it('deactivates a member after confirming', async () => {

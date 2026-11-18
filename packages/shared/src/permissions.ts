@@ -5,139 +5,388 @@ import type { FeatureKey } from './features';
  * - `organization` scope: only memberships covering all locations can hold the key.
  * - `location` scope: held per location; location-limited memberships hold it for their locations.
  *
- * Adding a key: give it a scope and a label, then decide grant/deny in SYSTEM_ROLE_GRANTS for every
- * non-owner system role (the typecheck fails until you do). Owner gets it automatically.
+ * Adding a key: give it a scope, a label and a matrix cell (ADR 0050), then decide grant/deny in SYSTEM_ROLE_GRANTS
+ * for every non-owner system role (the typecheck fails until you do). Owner gets it automatically.
  */
 export type PermissionScope = 'organization' | 'location';
+
+/** The columns of the Manage Staff matrix (ADR 0050), in display order. */
+export const MATRIX_COLUMNS = ['read', 'create', 'edit', 'delete'] as const;
+export type MatrixColumn = (typeof MATRIX_COLUMNS)[number];
+
+/**
+ * Where a key sits in the Manage Staff matrix (ADR 0050): one cell of a row. `row` is `<module>.<row>` (its name is the
+ * `<module>.permissionRows.<row>` label); at most one key per row and column. `note` is a label key shown as an info
+ * marker when the box allows more than its column says (e.g. edit that also removes).
+ */
+export interface MatrixPlacement {
+  row: string;
+  column: MatrixColumn;
+  note?: string;
+}
 
 export interface PermissionDefinition {
   scope: PermissionScope;
   /** Label key of the permission's display name. */
   label: string;
+  matrix: MatrixPlacement;
 }
 
 export const PERMISSIONS = {
-  'platform.org.manage': { scope: 'organization', label: 'platform.permissions.orgManage' },
-  'platform.users.read': { scope: 'organization', label: 'platform.permissions.usersRead' },
-  'platform.users.invite': { scope: 'organization', label: 'platform.permissions.usersInvite' },
-  'platform.users.manage': { scope: 'organization', label: 'platform.permissions.usersManage' },
-  'platform.roles.read': { scope: 'organization', label: 'platform.permissions.rolesRead' },
-  'platform.roles.manage': { scope: 'organization', label: 'platform.permissions.rolesManage' },
+  'platform.org.manage': {
+    scope: 'organization',
+    label: 'platform.permissions.orgManage',
+    matrix: { row: 'platform.org', column: 'edit' },
+  },
+  'platform.users.read': {
+    scope: 'organization',
+    label: 'platform.permissions.usersRead',
+    matrix: { row: 'platform.users', column: 'read' },
+  },
+  'platform.users.invite': {
+    scope: 'organization',
+    label: 'platform.permissions.usersInvite',
+    matrix: { row: 'platform.users', column: 'create' },
+  },
+  'platform.users.manage': {
+    scope: 'organization',
+    label: 'platform.permissions.usersManage',
+    matrix: { row: 'platform.users', column: 'edit', note: 'platform.permissionNotes.usersManage' },
+  },
+  'platform.roles.read': {
+    scope: 'organization',
+    label: 'platform.permissions.rolesRead',
+    matrix: { row: 'platform.roles', column: 'read' },
+  },
+  'platform.roles.manage': {
+    scope: 'organization',
+    label: 'platform.permissions.rolesManage',
+    matrix: { row: 'platform.roles', column: 'edit', note: 'platform.permissionNotes.rolesManage' },
+  },
   // Location scope (ADR 0010): location values need the key there, other scopes all locations.
-  'platform.settings.read': { scope: 'location', label: 'platform.permissions.settingsRead' },
-  'platform.settings.manage': { scope: 'location', label: 'platform.permissions.settingsManage' },
-  'platform.labels.manage': { scope: 'organization', label: 'platform.permissions.labelsManage' },
-  'platform.audit.read': { scope: 'organization', label: 'platform.permissions.auditRead' },
+  'platform.settings.read': {
+    scope: 'location',
+    label: 'platform.permissions.settingsRead',
+    matrix: { row: 'platform.settings', column: 'read' },
+  },
+  'platform.settings.manage': {
+    scope: 'location',
+    label: 'platform.permissions.settingsManage',
+    matrix: { row: 'platform.settings', column: 'edit' },
+  },
+  'platform.labels.manage': {
+    scope: 'organization',
+    label: 'platform.permissions.labelsManage',
+    matrix: { row: 'platform.labels', column: 'edit' },
+  },
+  'platform.audit.read': {
+    scope: 'organization',
+    label: 'platform.permissions.auditRead',
+    matrix: { row: 'platform.audit', column: 'read' },
+  },
   // Feedback to the Durby team (ADR 0044 step 5): every role, location scope so location-limited members hold it.
-  'platform.feedback.send': { scope: 'location', label: 'platform.permissions.feedbackSend' },
+  'platform.feedback.send': {
+    scope: 'location',
+    label: 'platform.permissions.feedbackSend',
+    matrix: { row: 'platform.feedback', column: 'create' },
+  },
   // Location scope so location-limited members (waiters) can read the organization-wide menu.
-  'catalog.products.read': { scope: 'location', label: 'catalog.permissions.productsRead' },
-  'catalog.products.create': { scope: 'organization', label: 'catalog.permissions.productsCreate' },
-  'catalog.products.edit': { scope: 'organization', label: 'catalog.permissions.productsEdit' },
-  'catalog.products.delete': { scope: 'organization', label: 'catalog.permissions.productsDelete' },
+  'catalog.products.read': {
+    scope: 'location',
+    label: 'catalog.permissions.productsRead',
+    matrix: { row: 'catalog.products', column: 'read' },
+  },
+  'catalog.products.create': {
+    scope: 'organization',
+    label: 'catalog.permissions.productsCreate',
+    matrix: { row: 'catalog.products', column: 'create' },
+  },
+  'catalog.products.edit': {
+    scope: 'organization',
+    label: 'catalog.permissions.productsEdit',
+    matrix: { row: 'catalog.products', column: 'edit' },
+  },
+  'catalog.products.delete': {
+    scope: 'organization',
+    label: 'catalog.permissions.productsDelete',
+    matrix: { row: 'catalog.products', column: 'delete' },
+  },
   // Inventory (docs/modules/inventory.md → Permissions), checked at the warehouse's location.
-  'inventory.stock.read': { scope: 'location', label: 'inventory.permissions.stockRead' },
-  'inventory.stock.receive': { scope: 'location', label: 'inventory.permissions.stockReceive' },
-  'inventory.stock.adjust': { scope: 'location', label: 'inventory.permissions.stockAdjust' },
-  'inventory.stock.transfer': { scope: 'location', label: 'inventory.permissions.stockTransfer' },
+  'inventory.stock.read': {
+    scope: 'location',
+    label: 'inventory.permissions.stockRead',
+    matrix: { row: 'inventory.stock', column: 'read' },
+  },
+  'inventory.stock.receive': {
+    scope: 'location',
+    label: 'inventory.permissions.stockReceive',
+    matrix: { row: 'inventory.deliveries', column: 'create' },
+  },
+  'inventory.stock.adjust': {
+    scope: 'location',
+    label: 'inventory.permissions.stockAdjust',
+    matrix: { row: 'inventory.adjustments', column: 'create' },
+  },
+  'inventory.stock.transfer': {
+    scope: 'location',
+    label: 'inventory.permissions.stockTransfer',
+    matrix: { row: 'inventory.transfers', column: 'create' },
+  },
   // Production orders (ADR 0038): ingredients out, the prepared item in, at the warehouse.
-  'inventory.stock.produce': { scope: 'location', label: 'inventory.permissions.stockProduce' },
+  'inventory.stock.produce': {
+    scope: 'location',
+    label: 'inventory.permissions.stockProduce',
+    matrix: { row: 'inventory.production', column: 'create' },
+  },
   'inventory.warehouses.create': {
     scope: 'location',
     label: 'inventory.permissions.warehousesCreate',
+    matrix: { row: 'inventory.warehouses', column: 'create' },
   },
   'inventory.warehouses.edit': {
     scope: 'location',
     label: 'inventory.permissions.warehousesEdit',
+    matrix: { row: 'inventory.warehouses', column: 'edit' },
   },
   'inventory.warehouses.delete': {
     scope: 'location',
     label: 'inventory.permissions.warehousesDelete',
+    matrix: { row: 'inventory.warehouses', column: 'delete' },
   },
-  'inventory.items.create': { scope: 'organization', label: 'inventory.permissions.itemsCreate' },
-  'inventory.items.edit': { scope: 'organization', label: 'inventory.permissions.itemsEdit' },
-  'inventory.items.delete': { scope: 'organization', label: 'inventory.permissions.itemsDelete' },
+  'inventory.items.create': {
+    scope: 'organization',
+    label: 'inventory.permissions.itemsCreate',
+    matrix: { row: 'inventory.items', column: 'create' },
+  },
+  'inventory.items.edit': {
+    scope: 'organization',
+    label: 'inventory.permissions.itemsEdit',
+    matrix: { row: 'inventory.items', column: 'edit' },
+  },
+  'inventory.items.delete': {
+    scope: 'organization',
+    label: 'inventory.permissions.itemsDelete',
+    matrix: { row: 'inventory.items', column: 'delete' },
+  },
   // Recipes and dish costs (docs/modules/inventory.md → Step 2).
   'inventory.recipes.create': {
     scope: 'organization',
     label: 'inventory.permissions.recipesCreate',
+    matrix: { row: 'inventory.recipes', column: 'create' },
   },
   'inventory.recipes.edit': {
     scope: 'organization',
     label: 'inventory.permissions.recipesEdit',
+    matrix: { row: 'inventory.recipes', column: 'edit' },
   },
   'inventory.recipes.delete': {
     scope: 'organization',
     label: 'inventory.permissions.recipesDelete',
+    matrix: { row: 'inventory.recipes', column: 'delete' },
   },
-  'inventory.costs.read': { scope: 'organization', label: 'inventory.permissions.costsRead' },
-  'pos.tables.read': { scope: 'location', label: 'pos.permissions.tablesRead' },
-  'pos.tables.create': { scope: 'location', label: 'pos.permissions.tablesCreate' },
-  'pos.tables.edit': { scope: 'location', label: 'pos.permissions.tablesEdit' },
-  'pos.tables.delete': { scope: 'location', label: 'pos.permissions.tablesDelete' },
-  'pos.orders.read': { scope: 'location', label: 'pos.permissions.ordersRead' },
-  'pos.orders.take': { scope: 'location', label: 'pos.permissions.ordersTake' },
-  'pos.orders.void': { scope: 'location', label: 'pos.permissions.ordersVoid' },
-  'pos.orders.close': { scope: 'location', label: 'pos.permissions.ordersClose' },
+  'inventory.costs.read': {
+    scope: 'organization',
+    label: 'inventory.permissions.costsRead',
+    matrix: { row: 'inventory.costs', column: 'read' },
+  },
+  'pos.tables.read': {
+    scope: 'location',
+    label: 'pos.permissions.tablesRead',
+    matrix: { row: 'pos.tables', column: 'read' },
+  },
+  'pos.tables.create': {
+    scope: 'location',
+    label: 'pos.permissions.tablesCreate',
+    matrix: { row: 'pos.tables', column: 'create' },
+  },
+  'pos.tables.edit': {
+    scope: 'location',
+    label: 'pos.permissions.tablesEdit',
+    matrix: { row: 'pos.tables', column: 'edit' },
+  },
+  'pos.tables.delete': {
+    scope: 'location',
+    label: 'pos.permissions.tablesDelete',
+    matrix: { row: 'pos.tables', column: 'delete' },
+  },
+  'pos.orders.read': {
+    scope: 'location',
+    label: 'pos.permissions.ordersRead',
+    matrix: { row: 'pos.orders', column: 'read' },
+  },
+  'pos.orders.take': {
+    scope: 'location',
+    label: 'pos.permissions.ordersTake',
+    matrix: { row: 'pos.orders', column: 'create' },
+  },
+  'pos.orders.void': {
+    scope: 'location',
+    label: 'pos.permissions.ordersVoid',
+    matrix: { row: 'pos.orders', column: 'delete' },
+  },
+  'pos.orders.close': {
+    scope: 'location',
+    label: 'pos.permissions.ordersClose',
+    matrix: { row: 'pos.orders', column: 'edit' },
+  },
   // Discounts and comps on an order (ADR 0036 §5): managers, like voids.
-  'pos.orders.discount': { scope: 'location', label: 'pos.permissions.ordersDiscount' },
+  'pos.orders.discount': {
+    scope: 'location',
+    label: 'pos.permissions.ordersDiscount',
+    matrix: { row: 'pos.discounts', column: 'edit' },
+  },
   // The bill with prices; waiters print the order only (docs/modules/pos.md → Printing).
-  'pos.bills.print': { scope: 'location', label: 'pos.permissions.billsPrint' },
+  'pos.bills.print': {
+    scope: 'location',
+    label: 'pos.permissions.billsPrint',
+    matrix: { row: 'pos.bills', column: 'create' },
+  },
   // Cancel a bill so its items can be billed again (ADR 0036): a fraud risk, like voids.
-  'pos.bills.cancel': { scope: 'location', label: 'pos.permissions.billsCancel' },
+  'pos.bills.cancel': {
+    scope: 'location',
+    label: 'pos.permissions.billsCancel',
+    matrix: { row: 'pos.bills', column: 'delete' },
+  },
   // The kitchen and bar screens (docs/modules/pos.md → Kitchen and bar screens, ADR 0026).
-  'pos.kitchen.use': { scope: 'location', label: 'pos.permissions.kitchenUse' },
-  'pos.bar.use': { scope: 'location', label: 'pos.permissions.barUse' },
+  'pos.kitchen.use': {
+    scope: 'location',
+    label: 'pos.permissions.kitchenUse',
+    matrix: { row: 'pos.kitchen', column: 'edit' },
+  },
+  'pos.bar.use': {
+    scope: 'location',
+    label: 'pos.permissions.barUse',
+    matrix: { row: 'pos.bar', column: 'edit' },
+  },
   // Reservations (docs/modules/reservations.md → Permissions), checked at the booking's location.
   'reservations.bookings.read': {
     scope: 'location',
     label: 'reservations.permissions.bookingsRead',
+    matrix: { row: 'reservations.bookings', column: 'read' },
   },
   'reservations.bookings.create': {
     scope: 'location',
     label: 'reservations.permissions.bookingsCreate',
+    matrix: { row: 'reservations.bookings', column: 'create' },
   },
   'reservations.bookings.edit': {
     scope: 'location',
     label: 'reservations.permissions.bookingsEdit',
+    matrix: { row: 'reservations.bookings', column: 'edit' },
   },
   'reservations.bookings.delete': {
     scope: 'location',
     label: 'reservations.permissions.bookingsDelete',
+    matrix: { row: 'reservations.bookings', column: 'delete' },
   },
   'reservations.waitlist.create': {
     scope: 'location',
     label: 'reservations.permissions.waitlistCreate',
+    matrix: { row: 'reservations.waitlist', column: 'create' },
   },
   'reservations.waitlist.edit': {
     scope: 'location',
     label: 'reservations.permissions.waitlistEdit',
+    matrix: { row: 'reservations.waitlist', column: 'edit' },
   },
   'reservations.waitlist.delete': {
     scope: 'location',
     label: 'reservations.permissions.waitlistDelete',
+    matrix: { row: 'reservations.waitlist', column: 'delete' },
   },
-  'reservations.setup.create': { scope: 'location', label: 'reservations.permissions.setupCreate' },
-  'reservations.setup.edit': { scope: 'location', label: 'reservations.permissions.setupEdit' },
-  'reservations.setup.delete': { scope: 'location', label: 'reservations.permissions.setupDelete' },
+  'reservations.setup.create': {
+    scope: 'location',
+    label: 'reservations.permissions.setupCreate',
+    matrix: { row: 'reservations.setup', column: 'create' },
+  },
+  'reservations.setup.edit': {
+    scope: 'location',
+    label: 'reservations.permissions.setupEdit',
+    matrix: { row: 'reservations.setup', column: 'edit' },
+  },
+  'reservations.setup.delete': {
+    scope: 'location',
+    label: 'reservations.permissions.setupDelete',
+    matrix: { row: 'reservations.setup', column: 'delete' },
+  },
   // Sales orders and customers (ADR 0044): orders at a branch, customers organization-wide but readable per branch.
-  'orders.orders.read': { scope: 'location', label: 'orders.permissions.ordersRead' },
-  'orders.orders.create': { scope: 'location', label: 'orders.permissions.ordersCreate' },
-  'orders.orders.edit': { scope: 'location', label: 'orders.permissions.ordersEdit' },
-  'orders.customers.read': { scope: 'location', label: 'orders.permissions.customersRead' },
-  'orders.customers.create': { scope: 'organization', label: 'orders.permissions.customersCreate' },
-  'orders.customers.edit': { scope: 'organization', label: 'orders.permissions.customersEdit' },
+  'orders.orders.read': {
+    scope: 'location',
+    label: 'orders.permissions.ordersRead',
+    matrix: { row: 'orders.salesOrders', column: 'read' },
+  },
+  'orders.orders.create': {
+    scope: 'location',
+    label: 'orders.permissions.ordersCreate',
+    matrix: { row: 'orders.salesOrders', column: 'create' },
+  },
+  'orders.orders.edit': {
+    scope: 'location',
+    label: 'orders.permissions.ordersEdit',
+    matrix: {
+      row: 'orders.salesOrders',
+      column: 'edit',
+      note: 'orders.permissionNotes.ordersEdit',
+    },
+  },
+  'orders.customers.read': {
+    scope: 'location',
+    label: 'orders.permissions.customersRead',
+    matrix: { row: 'orders.customers', column: 'read' },
+  },
+  'orders.customers.create': {
+    scope: 'organization',
+    label: 'orders.permissions.customersCreate',
+    matrix: { row: 'orders.customers', column: 'create' },
+  },
+  'orders.customers.edit': {
+    scope: 'organization',
+    label: 'orders.permissions.customersEdit',
+    matrix: {
+      row: 'orders.customers',
+      column: 'edit',
+      note: 'orders.permissionNotes.customersEdit',
+    },
+  },
   // Picking takes the goods out of the warehouse; delivery dispatches, delivers and returns (ADR 0044 step 3).
-  'orders.picking.use': { scope: 'location', label: 'orders.permissions.pickingUse' },
-  'orders.delivery.use': { scope: 'location', label: 'orders.permissions.deliveryUse' },
-  'orders.delivery.assign': { scope: 'location', label: 'orders.permissions.deliveryAssign' },
+  'orders.picking.use': {
+    scope: 'location',
+    label: 'orders.permissions.pickingUse',
+    matrix: { row: 'orders.picking', column: 'edit' },
+  },
+  'orders.delivery.use': {
+    scope: 'location',
+    label: 'orders.permissions.deliveryUse',
+    matrix: { row: 'orders.delivery', column: 'edit' },
+  },
+  'orders.delivery.assign': {
+    scope: 'location',
+    label: 'orders.permissions.deliveryAssign',
+    matrix: { row: 'orders.assignDrivers', column: 'edit' },
+  },
   // Branch stock requests (ADR 0045): a branch asks the main warehouse for goods, an admin decides, the warehouse
   // picks, a driver delivers, the branch confirms what arrived. Checked at the branch's location (receive, create)
   // or the warehouse's (assign); approving is organization-wide.
-  'orders.requests.read': { scope: 'location', label: 'orders.permissions.requestsRead' },
-  'orders.requests.create': { scope: 'location', label: 'orders.permissions.requestsCreate' },
-  'orders.requests.approve': { scope: 'organization', label: 'orders.permissions.requestsApprove' },
-  'orders.requests.receive': { scope: 'location', label: 'orders.permissions.requestsReceive' },
+  'orders.requests.read': {
+    scope: 'location',
+    label: 'orders.permissions.requestsRead',
+    matrix: { row: 'orders.requests', column: 'read' },
+  },
+  'orders.requests.create': {
+    scope: 'location',
+    label: 'orders.permissions.requestsCreate',
+    matrix: { row: 'orders.requests', column: 'create' },
+  },
+  'orders.requests.approve': {
+    scope: 'organization',
+    label: 'orders.permissions.requestsApprove',
+    matrix: { row: 'orders.approveRequests', column: 'edit' },
+  },
+  'orders.requests.receive': {
+    scope: 'location',
+    label: 'orders.permissions.requestsReceive',
+    matrix: { row: 'orders.receiveRequests', column: 'edit' },
+  },
 } as const satisfies Record<string, PermissionDefinition>;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
