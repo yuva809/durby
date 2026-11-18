@@ -171,13 +171,15 @@ describe('branch stock requests (ADR 0045)', () => {
     expect(transit).toBeDefined();
     expect(await levels(s.owner.token, transit!.id)).toEqual({ Rice: '4.000' });
 
-    // The driver sees only their deliveries and moves them; another driver can't.
+    // The driver sees only their deliveries and moves them; to another driver the request doesn't
+    // exist (StockRequestsService.readable hides what you may not see).
     const mine = stockRequestListResponseSchema.parse(
       (await get(s.driver.token, '/stock-requests?mine=true').expect(200)).body,
     );
     expect(mine.data.map((r) => r.id)).toEqual([created.id]);
     const other = await member(s.org, 'driver');
-    await post(other.token, `/stock-requests/${created.id}/pick-up`).expect(403);
+    const hidden = await post(other.token, `/stock-requests/${created.id}/pick-up`).expect(404);
+    expect(hidden.body).toMatchObject({ code: 'orders.request_not_found' });
     await post(s.driver.token, `/stock-requests/${created.id}/pick-up`).expect(201);
     await post(s.driver.token, `/stock-requests/${created.id}/deliver`, {
       note: 'Ms Weber',

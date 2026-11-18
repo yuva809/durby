@@ -41,10 +41,18 @@ function prisma(args: string[], migrationUrl: string): void {
 /**
  * docs/platform/entitlements.md → Seeded plans, after every migration: the 1.5 seed plus `catalog`
  * (added to every plan by the catalog_and_tables migration, ADR 0016) and `reservations`,
- * `reservations.online` (added to `full` only by the reservations_features migration).
+ * `reservations.online` (added to `full` only by the reservations_features migration), and `orders`
+ * (added to every plan with `inventory` by the orders migration, ADR 0044).
  */
 const SEEDED = {
-  inventory: ['catalog', 'inventory', 'inventory.counts', 'inventory.purchasing', 'reports'],
+  inventory: [
+    'catalog',
+    'inventory',
+    'inventory.counts',
+    'inventory.purchasing',
+    'orders',
+    'reports',
+  ],
   inventory_billing: [
     'billing',
     'billing.einvoice',
@@ -52,6 +60,7 @@ const SEEDED = {
     'inventory',
     'inventory.counts',
     'inventory.purchasing',
+    'orders',
     'reports',
   ],
   full: [
@@ -62,6 +71,7 @@ const SEEDED = {
     'inventory',
     'inventory.counts',
     'inventory.purchasing',
+    'orders',
     'pos',
     'pos.fiscal',
     'reports',
@@ -168,8 +178,10 @@ describe('entitlements migration', { timeout: 180_000 }, () => {
       );
 
       // One plan-contents row per organization on a changed plan and migration (ADR 0009):
-      // catalog_and_tables (catalog), then reservations_features (reservations, reservations.online).
-      const withoutReservations = SEEDED.full.filter((key) => !RESERVATIONS.includes(key));
+      // catalog_and_tables (catalog), then reservations_features (reservations, reservations.online),
+      // then orders (orders).
+      const withoutOrders = SEEDED.full.filter((key) => key !== 'orders');
+      const withoutReservations = withoutOrders.filter((key) => !RESERVATIONS.includes(key));
       const beforeCatalog = withoutReservations.filter((key) => key !== 'catalog');
       const changed = await db.query(`
         SELECT tenant_id, actor_system, entity_type, entity_id, before, after
@@ -185,7 +197,8 @@ describe('entitlements migration', { timeout: 180_000 }, () => {
       expect(changed.rows).toEqual(
         orgs.flatMap((id) => [
           row(id, beforeCatalog, withoutReservations),
-          row(id, withoutReservations, SEEDED.full),
+          row(id, withoutReservations, withoutOrders),
+          row(id, withoutOrders, SEEDED.full),
         ]),
       );
     } finally {

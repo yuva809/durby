@@ -74,6 +74,7 @@ describe('entitlements CLI', () => {
       'inventory',
       'inventory.counts',
       'inventory.purchasing',
+      'orders',
       'reports',
       'catalog',
     ]);
