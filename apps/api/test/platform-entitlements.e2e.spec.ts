@@ -95,7 +95,13 @@ describe('/api/v1/platform module switches', () => {
 
   it('onboards with a custom module set: the differences become overrides, audited in both logs', async () => {
     const { browser, id: staffId } = await signedInStaff(kit, 'onboarding');
-    const off = { inventory: false, reservations: false, 'reservations.online': false };
+    // orders (in full) needs inventory, so it goes off with it.
+    const off = {
+      inventory: false,
+      orders: false,
+      reservations: false,
+      'reservations.online': false,
+    };
     const id = await newCustomer(browser, {
       plan: 'full',
       features: {
@@ -116,6 +122,7 @@ describe('/api/v1/platform module switches', () => {
         'inventory',
         'inventory.counts',
         'inventory.purchasing',
+        'orders',
         'reservations',
         'reservations.online',
       ].sort(),
@@ -129,12 +136,12 @@ describe('/api/v1/platform module switches', () => {
     const tenantLog = await seed.as(id, (db) =>
       db.auditLog.findMany({ where: { action: 'platform.feature_override.created' } }),
     );
-    expect(tenantLog).toHaveLength(5);
+    expect(tenantLog).toHaveLength(6);
     expect(tenantLog[0]).toMatchObject({ actorSystem: 'staff.admin_portal' });
     const platform = await kit.raw.platformAuditLog.findMany({
       where: { organizationId: id, action: 'staff.feature_override.created' },
     });
-    expect(platform).toHaveLength(5);
+    expect(platform).toHaveLength(6);
     expect(platform[0]).toMatchObject({ actorStaffId: staffId, reason: 'onboarding' });
   });
 
