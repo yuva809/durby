@@ -19,6 +19,7 @@ import type {
   ReservationErrorCode,
   SettingErrorCode,
   StaffErrorCode,
+  VendorInvoiceErrorCode,
 } from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
 
@@ -43,6 +44,7 @@ export type ApiErrorCode =
   | PosErrorCode
   | ReservationErrorCode
   | StaffErrorCode
+  | VendorInvoiceErrorCode
   | PlatformErrorCode;
 
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
@@ -153,6 +155,8 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'catalog.price_rule_not_found': 'catalog.errors.priceRuleNotFound',
   'catalog.price_rule_invalid': 'catalog.errors.priceRuleInvalid',
   'catalog.location_not_found': 'catalog.errors.locationNotFound',
+  'inventory.vendor_invoice_not_found': 'inventory.errors.vendorInvoiceNotFound',
+  'inventory.vendor_invoice_decided': 'inventory.errors.vendorInvoiceDecided',
   'catalog.category_parent_invalid': 'catalog.errors.categoryParentInvalid',
   'catalog.category_image_invalid': 'catalog.errors.categoryImageInvalid',
   'pos.table_not_found': 'pos.errors.tableNotFound',

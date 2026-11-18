@@ -963,5 +963,18 @@
   "platform.notifications.push.turnOff": "Ausschalten",
   "platform.shell.accounts": "Konten",
   "platform.shell.addAccount": "Weiteres Konto hinzufügen",
-  "platform.shell.signOutAll": "Von allen Konten abmelden"
+  "platform.shell.signOutAll": "Von allen Konten abmelden",
+  "platform.audit.fields.supplier": "Lieferant",
+  "platform.audit.fields.invoiceNumber": "Nummer des Lieferanten",
+  "platform.audit.fields.newItemCount": "Neue Artikel",
+  "platform.audit.fields.documentId": "Wareneingang",
+  "platform.audit.entities.vendorInvoice": "Lieferantenrechnung",
+  "platform.numbering.series.inventoryVendorInvoice.name": "Lieferantenrechnungen",
+  "platform.numbering.series.inventoryVendorInvoice.description": "Aus PDF oder Foto gelesene Lieferantenrechnungen, die auf Freigabe warten.",
+  "platform.notifications.kinds.invoiceSubmitted": "Lieferantenrechnung freigeben: {number} ({supplier})",
+  "platform.notifications.kinds.invoiceApproved": "Ihre Lieferantenrechnung wurde freigegeben und gebucht: {number}",
+  "platform.notifications.kinds.invoiceRejected": "Ihre Lieferantenrechnung wurde abgelehnt: {number}",
+  "platform.notifications.kindNames.invoiceSubmitted": "Eine Lieferantenrechnung wartet auf Freigabe",
+  "platform.notifications.kindNames.invoiceApproved": "Meine Lieferantenrechnung wurde freigegeben",
+  "platform.notifications.kindNames.invoiceRejected": "Meine Lieferantenrechnung wurde abgelehnt"
 }

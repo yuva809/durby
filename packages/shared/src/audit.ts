@@ -47,6 +47,7 @@ export const AUDIT_ENTITY_TYPES = [
   'customer',
   'sales_order',
   'stock_request',
+  'vendor_invoice',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -316,6 +317,23 @@ export const AUDIT_ACTIONS = {
   'orders.sales_order.status_changed': {
     entityType: 'sales_order',
     label: 'orders.audit.actions.salesOrderStatusChanged',
+  },
+  /** Vendor invoices (ADR 0051): read and submitted, changed while pending, then approved or rejected. */
+  'inventory.vendor_invoice.submitted': {
+    entityType: 'vendor_invoice',
+    label: 'inventory.audit.actions.vendorInvoiceSubmitted',
+  },
+  'inventory.vendor_invoice.updated': {
+    entityType: 'vendor_invoice',
+    label: 'inventory.audit.actions.vendorInvoiceUpdated',
+  },
+  'inventory.vendor_invoice.approved': {
+    entityType: 'vendor_invoice',
+    label: 'inventory.audit.actions.vendorInvoiceApproved',
+  },
+  'inventory.vendor_invoice.rejected': {
+    entityType: 'vendor_invoice',
+    label: 'inventory.audit.actions.vendorInvoiceRejected',
   },
   /** Branch stock requests (ADR 0045): created, then each step of their life. */
   'orders.stock_request.created': {
@@ -690,5 +708,18 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'toWarehouseId',
     'lineCount',
     'driverUserId',
+  ],
+  /** Never the note or the reject reason (free text). */
+  vendor_invoice: [
+    'id',
+    'number',
+    'status',
+    'warehouseId',
+    'supplier',
+    'invoiceNumber',
+    'lineCount',
+    'newItemCount',
+    'total',
+    'documentId',
   ],
 } as const satisfies Record<AuditEntityType, readonly string[]>;

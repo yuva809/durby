@@ -963,5 +963,18 @@
   "platform.notifications.push.turnOff": "Turn off",
   "platform.shell.accounts": "Accounts",
   "platform.shell.addAccount": "Add another account",
-  "platform.shell.signOutAll": "Sign out of all accounts"
+  "platform.shell.signOutAll": "Sign out of all accounts",
+  "platform.audit.fields.supplier": "Supplier",
+  "platform.audit.fields.invoiceNumber": "Supplier's number",
+  "platform.audit.fields.newItemCount": "New items",
+  "platform.audit.fields.documentId": "Goods receipt",
+  "platform.audit.entities.vendorInvoice": "Vendor invoice",
+  "platform.numbering.series.inventoryVendorInvoice.name": "Vendor invoices",
+  "platform.numbering.series.inventoryVendorInvoice.description": "Invoices read from a supplier's PDF or photo, waiting for approval.",
+  "platform.notifications.kinds.invoiceSubmitted": "Vendor invoice to approve: {number} ({supplier})",
+  "platform.notifications.kinds.invoiceApproved": "Your vendor invoice was approved and booked: {number}",
+  "platform.notifications.kinds.invoiceRejected": "Your vendor invoice was rejected: {number}",
+  "platform.notifications.kindNames.invoiceSubmitted": "A vendor invoice waits for approval",
+  "platform.notifications.kindNames.invoiceApproved": "My vendor invoice was approved",
+  "platform.notifications.kindNames.invoiceRejected": "My vendor invoice was rejected"
 }

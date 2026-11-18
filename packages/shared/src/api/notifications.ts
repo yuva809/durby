@@ -18,6 +18,9 @@ export const NOTIFICATION_KINDS = [
   'sales_returned',
   'low_stock',
   'feedback_answered',
+  'invoice_submitted',
+  'invoice_approved',
+  'invoice_rejected',
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -26,6 +29,7 @@ export const NOTIFICATION_ENTITY_TYPES = [
   'sales_order',
   'stock_item',
   'feedback',
+  'vendor_invoice',
 ] as const;
 export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number];
 
@@ -36,6 +40,7 @@ export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 export const NOTIFICATION_EMAIL_BY_DEFAULT: readonly NotificationKind[] = [
   'request_submitted',
   'request_driver_assigned',
+  'invoice_submitted',
 ];
 
 export const NOTIFICATION_LIST_LIMIT = 30;
@@ -124,6 +129,8 @@ export function notificationPath(
       return '/inventory';
     case 'feedback':
       return null;
+    case 'vendor_invoice':
+      return `/inventory/invoices?open=${n.entityId}`;
   }
 }
 

@@ -212,10 +212,18 @@ export class StockService {
    * existing item, or a new one created first in the same transaction (needs inventory.items.edit; an active
    * category; a name no active item has). Quantities and costs are in the item's unit. All or nothing.
    */
-  async importReceipt(body: ImportReceiptRequest): Promise<StockDocument> {
+  async importReceipt(
+    body: ImportReceiptRequest,
+    options: {
+      complete?: (tx: TenantTransactionClient, document: StockDocument) => Promise<unknown>;
+      /** An approved vendor invoice (ADR 0051): its approval stands in for inventory.items.edit. */
+      newItemsApproved?: boolean;
+    } = {},
+  ): Promise<StockDocument> {
     const { tenantId, userId } = this.tenantContext.require();
     const fresh = body.lines.flatMap((l) => ('newItem' in l ? [l.newItem] : []));
-    if (fresh.length > 0) await this.access.assert('inventory.items.edit');
+    if (fresh.length > 0 && !options.newItemsApproved)
+      await this.access.assert('inventory.items.edit');
     const categoryIds = new Set(fresh.flatMap((n) => (n.categoryId ? [n.categoryId] : [])));
     for (const categoryId of categoryIds) await this.catalog.assertActiveCategory(categoryId);
     // The item of each line, by position: new ones are filled in once created.
@@ -257,6 +265,7 @@ export class StockService {
         return created;
       },
       header: { supplier: body.supplier ?? null, note: body.note || null },
+      complete: options.complete,
       plan: (levels) =>
         body.lines.map((line, index) => {
           const itemId = lineItems[index]!;
@@ -505,6 +514,11 @@ export class StockService {
     create?: (tx: TenantTransactionClient) => Promise<string[]>;
     header: { supplier?: string | null; note: string | null; reason?: AdjustmentReason };
     plan: (levels: Levels) => PlannedMovement[];
+    /**
+     * Runs after the document is booked, in its transaction (a vendor invoice marked approved, ADR 0051); what it
+     * returns is what the idempotency key stores, so a replay answers the same.
+     */
+    complete?: (tx: TenantTransactionClient, document: StockDocument) => Promise<unknown>;
   }): Promise<StockDocument> {
     const { tenantId, userId } = this.tenantContext.require();
     const from = await this.usableWarehouse(input.warehouseId, input.key);
@@ -560,7 +574,8 @@ export class StockService {
         movements,
         levels,
       });
-      await this.idempotency.completeInTransaction(tx, response);
+      const stored = input.complete ? await input.complete(tx, response) : response;
+      await this.idempotency.completeInTransaction(tx, stored);
       return response;
     });
   }

@@ -301,5 +301,12 @@
   "inventory.invoice.other": "Anderes PDF wählen",
   "inventory.invoice.import": "{count} Positionen importieren",
   "inventory.invoice.done": "Wareneingang {number} mit {count} Positionen gebucht.",
-  "inventory.invoice.again": "Weitere Rechnung importieren"
+  "inventory.invoice.again": "Weitere Rechnung importieren",
+  "inventory.permissions.invoicesApprove": "Lieferantenrechnungen freigeben",
+  "inventory.audit.actions.vendorInvoiceSubmitted": "Lieferantenrechnung eingereicht",
+  "inventory.audit.actions.vendorInvoiceUpdated": "Lieferantenrechnung geändert",
+  "inventory.audit.actions.vendorInvoiceApproved": "Lieferantenrechnung freigegeben",
+  "inventory.audit.actions.vendorInvoiceRejected": "Lieferantenrechnung abgelehnt",
+  "inventory.errors.vendorInvoiceNotFound": "Diese Lieferantenrechnung gibt es nicht oder Sie dürfen sie nicht sehen.",
+  "inventory.errors.vendorInvoiceDecided": "Diese Rechnung wurde inzwischen freigegeben, abgelehnt oder geändert. Laden Sie sie neu."
 }

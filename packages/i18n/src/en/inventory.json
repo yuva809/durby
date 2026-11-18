@@ -301,5 +301,12 @@
   "inventory.invoice.other": "Choose another PDF",
   "inventory.invoice.import": "Import {count} lines",
   "inventory.invoice.done": "Goods receipt {number} booked with {count} lines.",
-  "inventory.invoice.again": "Import another invoice"
+  "inventory.invoice.again": "Import another invoice",
+  "inventory.permissions.invoicesApprove": "Approve vendor invoices",
+  "inventory.audit.actions.vendorInvoiceSubmitted": "Vendor invoice submitted",
+  "inventory.audit.actions.vendorInvoiceUpdated": "Vendor invoice changed",
+  "inventory.audit.actions.vendorInvoiceApproved": "Vendor invoice approved",
+  "inventory.audit.actions.vendorInvoiceRejected": "Vendor invoice rejected",
+  "inventory.errors.vendorInvoiceNotFound": "This vendor invoice doesn't exist or isn't yours to see.",
+  "inventory.errors.vendorInvoiceDecided": "This invoice was approved, rejected or changed meanwhile. Reload it."
 }

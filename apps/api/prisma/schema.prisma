@@ -152,6 +152,9 @@ model Organization {
   notificationPreferences      NotificationPreference[]
   pushSubscriptions            PushSubscription[]
 
+  vendorInvoices     VendorInvoice[]
+  vendorInvoiceLines VendorInvoiceLine[]
+
   @@index([partnerId])
   @@index([planId])
   @@map("organizations")
@@ -853,6 +856,8 @@ model ProductCategory {
   priceRules   PriceRule[]
   image        ProductCategoryImage?
   stockItems   StockItem[]
+
+  vendorInvoiceLines VendorInvoiceLine[]
 
   @@unique([tenantId, id])
   @@index([tenantId, parentId])
@@ -1675,6 +1680,8 @@ model Warehouse {
   requestsFrom    StockRequest[]  @relation("StockRequestFrom")
   requestsTo      StockRequest[]  @relation("StockRequestTo")
 
+  vendorInvoices VendorInvoice[]
+
   @@unique([tenantId, id])
   @@index([tenantId, locationId])
   @@map("warehouses")
@@ -1712,6 +1719,8 @@ model StockItem {
   salesLines    SalesOrderLine[]
   requestLines  StockRequestLine[]
 
+  vendorInvoiceLines VendorInvoiceLine[]
+
   @@unique([tenantId, id])
   /// One variant per combination of values (NULL parents never collide).
   @@unique([tenantId, parentItemId, variantValues])
@@ -1744,6 +1753,8 @@ model StockDocument {
   warehouse       Warehouse              @relation("StockDocumentWarehouse", fields: [tenantId, warehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   toWarehouse     Warehouse?             @relation("StockDocumentToWarehouse", fields: [tenantId, toWarehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   movements       StockMovement[]
+
+  vendorInvoice VendorInvoice?
 
   @@unique([tenantId, id])
   @@unique([tenantId, number])
@@ -2345,4 +2356,60 @@ model PushSubscription {
   @@unique([tenantId, endpoint])
   @@index([tenantId, userId])
   @@map("push_subscriptions")
+}
+
+/// A vendor invoice read from its PDF or photo, waiting for approval (ADR 0051). Approval books one receipt.
+model VendorInvoice {
+  id            String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String              @map("tenant_id") @db.Uuid
+  number        String
+  status        String              @default("pending")
+  warehouseId   String              @map("warehouse_id") @db.Uuid
+  supplier      String?
+  invoiceNumber String?             @map("invoice_number")
+  invoiceDate   String?             @map("invoice_date")
+  note          String?
+  printedTotal  Decimal?            @map("printed_total") @db.Decimal(12, 2)
+  fileName      String?             @map("file_name")
+  source        String
+  submittedBy   String              @map("submitted_by") @db.Uuid
+  decidedBy     String?             @map("decided_by") @db.Uuid
+  decidedAt     DateTime?           @map("decided_at") @db.Timestamptz(6)
+  rejectReason  String?             @map("reject_reason")
+  documentId    String?             @unique @map("document_id") @db.Uuid
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization  Organization        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  warehouse     Warehouse           @relation(fields: [tenantId, warehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  document      StockDocument?      @relation(fields: [documentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lines         VendorInvoiceLine[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, number])
+  @@index([tenantId, status, id])
+  @@map("vendor_invoices")
+}
+
+/// One line: an existing item, or a new one (name, SKU, unit, category) created on approval.
+model VendorInvoiceLine {
+  id                String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String           @map("tenant_id") @db.Uuid
+  invoiceId         String           @map("invoice_id") @db.Uuid
+  position          Int
+  code              String?
+  description       String
+  itemId            String?          @map("item_id") @db.Uuid
+  newItemName       String?          @map("new_item_name")
+  newItemSku        String?          @map("new_item_sku")
+  newItemUnit       StockUnit?       @map("new_item_unit")
+  newItemCategoryId String?          @map("new_item_category_id") @db.Uuid
+  quantity          Decimal          @db.Decimal(14, 3)
+  unitCost          Decimal          @map("unit_cost") @db.Decimal(14, 4)
+  organization      Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoice           VendorInvoice    @relation(fields: [tenantId, invoiceId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  item              StockItem?       @relation(fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  newItemCategory   ProductCategory? @relation(fields: [tenantId, newItemCategoryId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, invoiceId, position])
+  @@map("vendor_invoice_lines")
 }

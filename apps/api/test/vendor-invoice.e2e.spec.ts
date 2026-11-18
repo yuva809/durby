@@ -2,8 +2,10 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
   productCategorySchema,
-  stockDocumentSchema,
   stockItemListResponseSchema,
+  stockLevelListResponseSchema,
+  vendorInvoiceListResponseSchema,
+  vendorInvoiceSchema,
   warehouseSchema,
 } from '@durby/shared';
 import request from 'supertest';
@@ -17,9 +19,10 @@ import { withIdempotencyKey } from './support/idempotency';
 import { RbacSeed, type SeededOrg } from './support/rbac';
 
 /**
- * A vendor invoice as one goods receipt (ADR 0049): existing items and new ones in one transaction, all or nothing.
+ * Vendor invoices waiting for approval (ADR 0051): submitting books nothing; approval books one goods receipt with the
+ * new items, once; rejecting needs a reason; only approvers at the warehouse decide.
  */
-describe('vendor invoice import (ADR 0049)', () => {
+describe('vendor invoice approval queue (ADR 0051)', () => {
   let app: INestApplication;
   let server: App;
   let seed: RbacSeed;
@@ -38,115 +41,158 @@ describe('vendor invoice import (ADR 0049)', () => {
     await app.close();
   });
 
-  async function member(org: SeededOrg, roleId: string) {
+  async function member(org: SeededOrg, roleId: string, locations?: string[]) {
     const userId = await seed.user();
-    await seed.member(org.id, userId, roleId);
+    await seed.member(org.id, userId, roleId, locations ? { locations } : {});
     return seed.token(userId, org.id);
   }
 
   const auth = (req: request.Test, token: string) => req.auth(token, { type: 'bearer' });
   const get = (token: string, path: string) => auth(request(server).get(`/api/v1${path}`), token);
-  const post = (token: string, path: string, body: object) =>
-    withIdempotencyKey(auth(request(server).post(`/api/v1${path}`), token), uuidv7()).send(body);
+  const send = (method: 'post' | 'put', token: string, path: string, body: object = {}) =>
+    withIdempotencyKey(auth(request(server)[method](`/api/v1${path}`), token), uuidv7()).send(body);
 
   async function setup() {
     const org = await seed.org();
     await entitlements.setPlan(org.id, 'inventory', 'cli.entitlements');
     const owner = await member(org, org.roles.owner);
+    const lager = await member(org, org.roles.warehouse, [org.locations[0]]);
     const warehouseId = warehouseSchema.parse(
       (
-        await post(owner, '/inventory/warehouses', {
+        await send('post', owner, '/inventory/warehouses', {
           locationId: org.locations[0],
           name: 'Main Warehouse',
         }).expect(201)
       ).body,
     ).id;
     const fish = productCategorySchema.parse(
-      (await post(owner, '/catalog/categories', { name: 'Frozen fish' }).expect(201)).body,
+      (await send('post', owner, '/catalog/categories', { name: 'Frozen fish' }).expect(201)).body,
     );
     const catfish = (
       (
-        await post(owner, '/inventory/items', {
-          name: 'Bigi Mama African Catfish 1 x 4kg',
+        await send('post', owner, '/inventory/items', {
+          name: 'Catfish 1 x 4kg',
           sku: '1103-002',
           unit: 'pc',
         }).expect(201)
       ).body as { id: string }
     ).id;
-    return { org, owner, warehouseId, fish, catfish };
+    const invoice = {
+      warehouseId,
+      supplier: 'Bonesca',
+      invoiceNumber: '108666',
+      invoiceDate: '10-11-2026',
+      printedTotal: '1795.00',
+      fileName: '108666.pdf',
+      source: 'pdf',
+      lines: [
+        {
+          code: '1103-002',
+          description: 'Bigi Mama African Catfish 1 x 4kg',
+          itemId: catfish,
+          quantity: '50',
+          unitCost: '11.00',
+        },
+        {
+          code: '1971-002',
+          description: 'OD Yellow Croakers 5 x 2kg',
+          newItem: {
+            name: 'OD Yellow Croakers 5 x 2kg',
+            sku: '1971-002',
+            unit: 'pc',
+            categoryId: fish.id,
+          },
+          quantity: '30',
+          unitCost: '41.50',
+        },
+      ],
+    };
+    return { org, owner, lager, warehouseId, fish, catfish, invoice };
   }
 
-  const items = async (token: string) =>
-    stockItemListResponseSchema.parse((await get(token, '/inventory/items').expect(200)).body).data;
+  const stockOf = async (token: string, warehouseId: string) =>
+    stockLevelListResponseSchema.parse(
+      (await get(token, `/inventory/stock?warehouseId=${warehouseId}`).expect(200)).body,
+    ).data;
 
-  it('books existing and new items as one receipt from the supplier, at the invoice costs', async () => {
+  it('waits as pending, then books one receipt with the new item when approved', async () => {
     const s = await setup();
-    const doc = stockDocumentSchema.parse(
+    const pending = vendorInvoiceSchema.parse(
+      (await send('post', s.lager, '/inventory/invoices', s.invoice).expect(201)).body,
+    );
+    expect(pending).toMatchObject({
+      status: 'pending',
+      lineCount: 2,
+      newItemCount: 1,
+      total: '1795.00',
+      printedTotal: '1795.00',
+      documentId: null,
+    });
+    expect(pending.number).toMatch(/^VIN-\d{4}-\d{6}$/);
+    // Nothing in stock yet.
+    expect(await stockOf(s.owner, s.warehouseId)).toEqual([]);
+
+    // The warehouse worker submits but can't approve.
+    await send('post', s.lager, `/inventory/invoices/${pending.id}/approve`).expect(403);
+    const approved = vendorInvoiceSchema.parse(
+      (await send('post', s.owner, `/inventory/invoices/${pending.id}/approve`).expect(201)).body,
+    );
+    expect(approved.status).toBe('approved');
+    expect(approved.documentNumber).toMatch(/^GR-/);
+    const levels = await stockOf(s.owner, s.warehouseId);
+    expect(levels.map((l) => [l.itemName, l.quantity]).sort()).toEqual([
+      ['Catfish 1 x 4kg', '50.000'],
+      ['OD Yellow Croakers 5 x 2kg', '30.000'],
+    ]);
+    const items = stockItemListResponseSchema.parse(
+      (await get(s.owner, '/inventory/items').expect(200)).body,
+    ).data;
+    expect(items.find((i) => i.sku === '1971-002')).toMatchObject({ categoryId: s.fish.id });
+
+    // Once only.
+    await send('post', s.owner, `/inventory/invoices/${pending.id}/approve`)
+      .expect(409)
+      .expect((res) =>
+        expect((res.body as { code: string }).code).toBe('inventory.vendor_invoice_decided'),
+      );
+  });
+
+  it('can be changed while pending, and rejected with a reason', async () => {
+    const s = await setup();
+    const pending = vendorInvoiceSchema.parse(
+      (await send('post', s.lager, '/inventory/invoices', s.invoice).expect(201)).body,
+    );
+    const changed = vendorInvoiceSchema.parse(
       (
-        await post(s.owner, '/inventory/receipts/import', {
-          warehouseId: s.warehouseId,
-          supplier: 'Bonesca',
-          note: 'Order 108666 · 10-11-2026',
-          lines: [
-            { itemId: s.catfish, quantity: '50', unitCost: '11.00' },
-            {
-              newItem: {
-                name: 'OD Yellow Croakers 5 x 2kg',
-                sku: '1971-002',
-                unit: 'pc',
-                categoryId: s.fish.id,
-              },
-              quantity: '30',
-              unitCost: '41.50',
-            },
-          ],
+        await send('put', s.lager, `/inventory/invoices/${pending.id}`, {
+          ...s.invoice,
+          lines: [s.invoice.lines[0]],
+        }).expect(200)
+      ).body,
+    );
+    expect(changed.lineCount).toBe(1);
+    await send('post', s.owner, `/inventory/invoices/${pending.id}/reject`, {}).expect(400);
+    const rejected = vendorInvoiceSchema.parse(
+      (
+        await send('post', s.owner, `/inventory/invoices/${pending.id}/reject`, {
+          reason: 'Wrong warehouse',
         }).expect(201)
       ).body,
     );
-    expect(doc).toMatchObject({ kind: 'receipt', supplier: 'Bonesca' });
-    expect(doc.lines.map((l) => [l.itemName, l.quantity, l.value])).toEqual([
-      ['Bigi Mama African Catfish 1 x 4kg', '50.000', '550.00'],
-      ['OD Yellow Croakers 5 x 2kg', '30.000', '1245.00'],
-    ]);
-    const croakers = (await items(s.owner)).find((i) => i.sku === '1971-002');
-    expect(croakers).toMatchObject({ unit: 'pc', categoryId: s.fish.id });
+    expect(rejected).toMatchObject({ status: 'rejected', rejectReason: 'Wrong warehouse' });
+    await send('put', s.lager, `/inventory/invoices/${pending.id}`, s.invoice).expect(409);
+    const list = vendorInvoiceListResponseSchema.parse(
+      (await get(s.owner, '/inventory/invoices?status=rejected').expect(200)).body,
+    ).data;
+    expect(list.map((i) => i.id)).toContain(pending.id);
   });
 
-  it('creates nothing when any line fails', async () => {
-    const s = await setup();
-    await post(s.owner, '/inventory/receipts/import', {
-      warehouseId: s.warehouseId,
-      lines: [
-        { newItem: { name: 'Fresh item', unit: 'pc' }, quantity: '1', unitCost: '1.00' },
-        // Same name as an active item: refused, and the first new item rolls back too.
-        {
-          newItem: { name: 'Bigi Mama African Catfish 1 x 4kg', unit: 'pc' },
-          quantity: '1',
-          unitCost: '1.00',
-        },
-      ],
-    }).expect(409);
-    expect((await items(s.owner)).map((i) => i.name)).not.toContain('Fresh item');
-  });
-
-  it('needs inventory.items.edit for new items, not for existing ones', async () => {
-    const s = await setup();
-    const custom = (
-      (
-        await post(s.owner, '/roles', {
-          name: `Receiver ${uuidv7()}`,
-          permissions: ['inventory.stock.read', 'inventory.stock.receive'],
-        }).expect(201)
-      ).body as { id: string }
-    ).id;
-    const receiver = await member(s.org, custom);
-    await post(receiver, '/inventory/receipts/import', {
-      warehouseId: s.warehouseId,
-      lines: [{ newItem: { name: 'Not allowed', unit: 'pc' }, quantity: '1', unitCost: '1' }],
-    }).expect(403);
-    await post(receiver, '/inventory/receipts/import', {
-      warehouseId: s.warehouseId,
-      lines: [{ itemId: s.catfish, quantity: '2', unitCost: '11' }],
-    }).expect(201);
+  it('is not visible across organizations', async () => {
+    const a = await setup();
+    const b = await setup();
+    const pending = vendorInvoiceSchema.parse(
+      (await send('post', a.owner, '/inventory/invoices', a.invoice).expect(201)).body,
+    );
+    await get(b.owner, `/inventory/invoices/${pending.id}`).expect(404);
   });
 });
