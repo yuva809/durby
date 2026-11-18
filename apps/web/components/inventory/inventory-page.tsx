@@ -9,7 +9,7 @@ import type {
   UnitOfMeasure,
   Warehouse,
 } from '@durby/shared';
-import { ArrowLeft, FileText, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, FileText, MoreHorizontal, ShoppingBasket } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
@@ -126,6 +126,9 @@ function Inventory({
   );
   const permissions = new Set(session?.activePermissions ?? []);
   const can = (key: PermissionKey) => permissions.has(key);
+  // A branch asks the main warehouse for goods from here too (ADR 0045, 0053): the request cart.
+  const requests =
+    (session?.activeFeatures.includes('orders') ?? false) && can('orders.requests.create');
   const tabs = TABS.filter((x) => !x.permission || can(x.permission));
   const reload = () => {
     reloadLocations();
@@ -164,6 +167,14 @@ function Inventory({
           data={data}
           actions={
             <>
+              {requests && (
+                <Button asChild>
+                  <Link href="/requests/new" data-testid="inventory-request-stock">
+                    <ShoppingBasket aria-hidden />
+                    {t('inventory.overview.requestStock')}
+                  </Link>
+                </Button>
+              )}
               <MoreMenu tabs={tabs.filter((x) => x.id !== 'stock')} onTab={setTab} />
               {can('inventory.stock.receive') && (
                 <Button variant="outline" asChild>
