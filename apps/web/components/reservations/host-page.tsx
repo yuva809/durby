@@ -16,6 +16,7 @@ import { useAuth } from '../../app/providers';
 import type { ApiErrorCode } from '../../lib/auth/errors';
 import { errorLabel } from '../../lib/auth/errors';
 import { useNow } from '../../lib/pos/use-now';
+import { useLiveRefresh } from '../../lib/realtime/use-live-refresh';
 import {
   actionsFor,
   clockTime,
@@ -150,8 +151,17 @@ function HostScreen({
     reloadFloor();
     reloadBookings();
   }, [reloadFloor, reloadBookings]);
-  // Other hosts and the till change bookings: refresh while visible, like /service.
-  const now = useNow(HOST_REFRESH_MS, reload);
+  // Other hosts and the till change bookings: reload on the reservations stream's hints, polling
+  // while it isn't live (ADR 0044). The clock ticks on its own.
+  useLiveRefresh({
+    store,
+    stream: 'reservations',
+    locationId,
+    enabled: true,
+    reload,
+    pollMs: HOST_REFRESH_MS,
+  });
+  const now = useNow(HOST_REFRESH_MS);
 
   const today = ready ? localDate(now, ready.timeZone) : null;
   const goTo = (next: LocalDate | null) => {

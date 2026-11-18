@@ -15,6 +15,7 @@ import {
   serviceBadges,
 } from '../../lib/reservations/service';
 import { useNow } from '../../lib/pos/use-now';
+import { useLiveRefresh } from '../../lib/realtime/use-live-refresh';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
 import { cn } from '../../lib/utils';
@@ -81,8 +82,25 @@ function LocationFloor({ locations }: { locations: LocationSummary[] }) {
     reloadTables();
     reloadBookings();
   };
-  // Other waiters open and close tables: refresh every 30 s while the page is visible.
-  const now = useNow(30_000, reload);
+  // Other waiters open and close tables, hosts seat bookings: reload on the pos and reservations
+  // streams' hints, polling while a stream isn't live (ADR 0044). The clock ticks on its own.
+  useLiveRefresh({
+    store,
+    stream: 'pos',
+    locationId,
+    enabled: true,
+    reload: reloadTables,
+    pollMs: 30_000,
+  });
+  useLiveRefresh({
+    store,
+    stream: 'reservations',
+    locationId,
+    enabled: reservationsVisible(session),
+    reload: reloadBookings,
+    pollMs: 30_000,
+  });
+  const now = useNow(30_000);
 
   const filters: { value: Filter; label: string }[] = [
     { value: 'all', label: t('pos.floor.filterAll') },

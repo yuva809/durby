@@ -16,6 +16,7 @@ import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { localeOf } from '../../lib/labels/labels';
 import { useNow } from '../../lib/pos/use-now';
+import { useLiveRefresh } from '../../lib/realtime/use-live-refresh';
 import {
   actionsFor,
   clockTime,
@@ -164,7 +165,17 @@ function BookingList({
     reloadFloor();
     reloadBookings();
   };
-  const now = useNow(REFRESH_MS, reload);
+  // Other devices change bookings: reload on the reservations stream's hints, polling while it
+  // isn't live (ADR 0044).
+  useLiveRefresh({
+    store,
+    stream: 'reservations',
+    locationId,
+    enabled: true,
+    reload,
+    pollMs: REFRESH_MS,
+  });
+  const now = useNow(REFRESH_MS);
 
   return (
     <div className="flex flex-col gap-5">

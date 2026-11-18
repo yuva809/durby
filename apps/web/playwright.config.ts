@@ -22,10 +22,15 @@ export default defineConfig({
     // downloading Playwright's Chromium. CI uses Playwright's Chromium.
     ...(process.env.PLAYWRIGHT_CHANNEL && { channel: process.env.PLAYWRIGHT_CHANNEL }),
   },
-  projects: [{ name: 'chromium' }],
+  projects: [
+    { name: 'chromium', testIgnore: /api-restart\.spec\.ts/ },
+    // Restarts the api: alone, after everything else (docs/platform/realtime.md → Tests).
+    { name: 'api-restart', testMatch: /api-restart\.spec\.ts/, dependencies: ['chromium'] },
+  ],
   webServer: [
     {
-      command: 'pnpm --filter @durby/api start',
+      // The built api under a small supervisor that can restart it (e2e/api-supervisor.ts).
+      command: 'node --experimental-strip-types e2e/api-supervisor.ts',
       // A growing suite signs in many times from one IP: raise the auth rate limits for this run
       // only (ADR 0015 §14; production refuses values below the defaults), and send mail to
       // Mailpit. Applies when Playwright starts the api (CI); a dev api you started yourself

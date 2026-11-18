@@ -10,6 +10,7 @@ import { OutboxDispatcher } from './dispatcher';
 import { OutboxEventRunner } from './event-runner';
 import { OutboxLagReporter } from './lag-reporter';
 import { bullConnection, type HandlerJobData, OUTBOX_QUEUE } from './outbox-queue';
+import { OutboxWakeup } from './wakeup';
 
 /** Touched on every dispatcher pass; the compose healthcheck fails when it is older than 30 s. */
 export const HEARTBEAT_FILE = join(tmpdir(), 'worker.alive');
@@ -29,8 +30,10 @@ export class OutboxWorker implements OnApplicationShutdown {
   private timers: NodeJS.Timeout[] = [];
   private loop: Promise<void> | undefined;
   private stopping = false;
-  /** Ends the dispatcher loop's current sleep early (shutdown). */
+  /** Ends the dispatcher loop's current sleep early (shutdown, a committed event). */
   private wake: (() => void) | undefined;
+  /** A committed event arrived during a pass: run the next one without sleeping. */
+  private nudged = false;
 
   constructor(
     @Inject(APP_CONFIG) private readonly config: AppConfig,
@@ -38,6 +41,7 @@ export class OutboxWorker implements OnApplicationShutdown {
     private readonly runner: OutboxEventRunner,
     private readonly lag: OutboxLagReporter,
     private readonly cleanup: OutboxCleanup,
+    private readonly wakeup: OutboxWakeup,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext('outbox');
@@ -62,6 +66,8 @@ export class OutboxWorker implements OnApplicationShutdown {
       else this.logger.warn(fields, fields.event);
     });
     this.loop = this.dispatchLoop();
+    // A committed event ends the idle sleep (ADR 0044 §5); the backoff still runs if this is down.
+    void this.wakeup.listen(() => this.nudge());
     this.every(LAG_EVERY_MS, () => this.lag.report());
     this.timers.push(
       setTimeout(() => {
@@ -80,9 +86,15 @@ export class OutboxWorker implements OnApplicationShutdown {
     await this.worker?.close();
   }
 
+  private nudge(): void {
+    this.nudged = true;
+    this.wake?.();
+  }
+
   private async dispatchLoop(): Promise<void> {
     let idleMs = this.config.OUTBOX_POLL_MS;
     while (!this.stopping) {
+      this.nudged = false;
       try {
         const result = await this.dispatcher.dispatchOnce();
         idleMs =
@@ -95,10 +107,12 @@ export class OutboxWorker implements OnApplicationShutdown {
       }
       await writeFile(HEARTBEAT_FILE, String(Date.now())).catch(() => undefined);
       if (this.stopping) break;
+      if (this.nudged) continue;
       await new Promise<void>((resolve) => {
         const timer = setTimeout(resolve, idleMs);
         this.wake = () => {
           clearTimeout(timer);
+          this.wake = undefined;
           resolve();
         };
       });

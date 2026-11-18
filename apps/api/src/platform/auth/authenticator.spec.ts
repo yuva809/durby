@@ -55,6 +55,8 @@ describe('Authenticator', () => {
       organizationId: claims.organizationId,
       sessionId: claims.sessionId,
       passwordChangeRequired: false,
+      issuedAt: claims.issuedAt,
+      expiresAt: claims.expiresAt,
     });
     expect(tenantContext.set).toHaveBeenCalledWith({
       tenantId: claims.organizationId,

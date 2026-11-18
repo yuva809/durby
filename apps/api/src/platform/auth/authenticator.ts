@@ -48,6 +48,8 @@ export class Authenticator {
       organizationId: claims.organizationId,
       sessionId: claims.sessionId,
       passwordChangeRequired: claims.passwordChangeRequired === true,
+      issuedAt: claims.issuedAt,
+      expiresAt: claims.expiresAt,
     });
     if (claims.organizationId !== null) {
       this.tenantContext.set({ tenantId: claims.organizationId, userId: claims.userId });

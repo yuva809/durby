@@ -1,3 +1,5 @@
+import { PosRealtimeHandler } from './realtime.handler';
+import { PosStreamController } from './stream.controller';
 import { Module } from '@nestjs/common';
 import { OrganizationModule } from '../../platform/organization';
 import { CatalogModule } from '../catalog';
@@ -33,6 +35,7 @@ import { TablesService } from './tables.service';
 @Module({
   imports: [CatalogModule, OrganizationModule],
   controllers: [
+    PosStreamController,
     TablesController,
     AreasController,
     OrdersController,
@@ -60,6 +63,7 @@ import { TablesService } from './tables.service';
     PrintersService,
     PrintJobsService,
     PrintJobSweep,
+    PosRealtimeHandler,
   ],
   exports: [TablesService, AreasService, PosFloorReader],
 })
