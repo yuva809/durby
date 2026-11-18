@@ -34,21 +34,13 @@ const warehouseId = new ParseUUIDPipe({ exceptionFactory: () => ordersErrors.war
 /**
  * /api/v1/stock-requests (docs/modules/orders.md → Branch requests, ADR 0045). Who may do what depends on the request
  * (its branch, its source warehouse, its driver): the route names the key, the service checks it at the right location
- * (reading is @Authenticated(): the service lists only what the caller may see); every step completes its idempotency key in the business transaction (rule 8).
+ * (reading is in StockRequestReadsController below); every step completes its idempotency key in the business
+ * transaction (rule 8).
  */
 @RequireFeature('orders')
 @Controller('stock-requests')
 export class StockRequestsController {
   constructor(private readonly requests: StockRequestsService) {}
-
-  /** What the caller can see: their branch's, their warehouse's, all for approvers, `mine=true` for a driver. */
-  @Authenticated()
-  @Get()
-  async list(
-    @Query(new ZodQuery(listStockRequestsQuerySchema)) query: ListStockRequestsQuery,
-  ): Promise<{ data: StockRequestSummary[] }> {
-    return { data: await this.requests.list(query) };
-  }
 
   @RequirePermission('orders.requests.create')
   @Get('warehouses')
@@ -68,12 +60,6 @@ export class StockRequestsController {
   @Get('drivers/:warehouseId')
   async drivers(@Param('warehouseId', warehouseId) id: string): Promise<{ data: RequestDriver[] }> {
     return { data: await this.requests.drivers(id) };
-  }
-
-  @Authenticated()
-  @Get(':id')
-  get(@Param('id', requestId) id: string): Promise<StockRequest> {
-    return this.requests.get(id);
   }
 
   @RequirePermission('orders.requests.create')
@@ -168,5 +154,31 @@ export class StockRequestsController {
     @Body(new ZodBody(receiveStockRequestSchema)) body: ReceiveStockRequest,
   ): Promise<StockRequest> {
     return this.requests.receive(id, body);
+  }
+}
+
+/**
+ * The reads (ADR 0045): @Authenticated(), because who sees a request depends on the request (its branch, its source
+ * warehouse, approvers, its driver) and the service filters. @RequireFeature works only with @RequirePermission (ADR
+ * 0009, refused at boot otherwise), so these live outside the class-level marker above and the service checks the
+ * `orders` feature itself. Registered after StockRequestsController, so `:id` never shadows its fixed paths.
+ */
+@Controller('stock-requests')
+export class StockRequestReadsController {
+  constructor(private readonly requests: StockRequestsService) {}
+
+  /** What the caller can see: their branch's, their warehouse's, all for approvers, `mine=true` for a driver. */
+  @Authenticated()
+  @Get()
+  async list(
+    @Query(new ZodQuery(listStockRequestsQuerySchema)) query: ListStockRequestsQuery,
+  ): Promise<{ data: StockRequestSummary[] }> {
+    return { data: await this.requests.list(query) };
+  }
+
+  @Authenticated()
+  @Get(':id')
+  get(@Param('id', requestId) id: string): Promise<StockRequest> {
+    return this.requests.get(id);
   }
 }

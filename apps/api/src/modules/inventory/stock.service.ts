@@ -25,9 +25,11 @@ import { checkOpeningStockRows } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { SettingsService } from '../../platform/config/settings';
 import { IdempotencyService } from '../../platform/idempotency';
+import { NotificationService } from '../../platform/notifications';
 import { NumberingService } from '../../platform/numbering';
-import { AccessService } from '../../platform/rbac';
+import { AccessService, MemberNames } from '../../platform/rbac';
 import {
+  asTenantDb,
   TENANT_PRISMA,
   TenantContext,
   type TenantPrismaClient,
@@ -133,6 +135,8 @@ export class StockService {
     private readonly numbering: NumberingService,
     private readonly settings: SettingsService,
     private readonly catalog: CatalogService,
+    private readonly members: MemberNames,
+    private readonly notifications: NotificationService,
   ) {}
 
   /**
@@ -975,6 +979,7 @@ export class StockService {
             updated_at = now()
         WHERE warehouse_id = ${warehouseId}::uuid AND item_id = ${itemId}::uuid`;
     }
+    await this.notifyLowStock(tx, input.levels);
     const row: DocumentRow = await tx.stockDocument.findUniqueOrThrow({
       where: { id: document.id },
       select: DOCUMENT_SELECT,
@@ -987,6 +992,57 @@ export class StockService {
       after: snapshot('stock_document', response),
     });
     return response;
+  }
+
+  /**
+   * Low stock (ADR 0047): a level that was above the item's reorder level and is now at or below it tells whoever
+   * reads stock at that warehouse's branch, once per crossing (not on every sale below it). In transit is skipped.
+   */
+  private async notifyLowStock(tx: TenantTransactionClient, levels: Levels): Promise<void> {
+    const changed = levels.entries();
+    if (changed.length === 0) return;
+    const [items, warehouses] = await Promise.all([
+      tx.stockItem.findMany({
+        where: { id: { in: [...new Set(changed.map(([, i]) => i))] }, minQuantity: { not: null } },
+        select: { id: true, name: true, minQuantity: true },
+      }),
+      tx.warehouse.findMany({
+        where: { id: { in: [...new Set(changed.map(([w]) => w))] }, isTransit: false },
+        select: { id: true, name: true, locationId: true },
+      }),
+    ]);
+    if (items.length === 0 || warehouses.length === 0) return;
+    const itemById = new Map(items.map((i) => [i.id, i]));
+    const warehouseById = new Map(warehouses.map((w) => [w.id, w]));
+    for (const [warehouseId, itemId, level] of changed) {
+      const item = itemById.get(itemId);
+      const warehouse = warehouseById.get(warehouseId);
+      if (!item || !warehouse) continue;
+      const min = new Decimal(item.minQuantity!.toFixed(3));
+      const was = levels.before(warehouseId, itemId).quantity;
+      if (!(was.gt(min) && level.quantity.lte(min))) continue;
+      const holders = await this.members.holders(
+        asTenantDb(tx),
+        'inventory.stock.read',
+        warehouse.locationId,
+      );
+      await this.notifications.notify(
+        tx,
+        {
+          userIds: holders.map((h) => h.userId),
+          kind: 'low_stock',
+          entityType: 'stock_item',
+          entityId: item.id,
+          params: {
+            item: item.name,
+            warehouse: warehouse.name,
+            quantity: level.quantity.toDecimalPlaces(3).toString(),
+          },
+        },
+        // The person who booked it hears too: a sale or pick that empties the shelf is easy to miss.
+        { actorUserId: null },
+      );
+    }
   }
 }
 

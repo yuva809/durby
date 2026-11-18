@@ -24,6 +24,7 @@ describe('event registry', () => {
       'config.labels.changed',
       'config.number_series.changed',
       'config.entitlements.changed',
+      'platform.notification.created',
       'pos.order.opened',
       'pos.order.closed',
       'pos.kitchen_ticket.created',
@@ -49,6 +50,13 @@ describe('event registry', () => {
       expect(v1.safeParse(payload).success).toBe(true);
       expect(v1.safeParse({ ...payload, guestName: 'Ada' }).success).toBe(false);
     }
+  });
+
+  it('platform.notification.created carries notification ids only', () => {
+    const v1 = EVENTS['platform.notification.created'].versions[1];
+    expect(v1.safeParse({ notificationIds: [uuid] }).success).toBe(true);
+    expect(v1.safeParse({ notificationIds: [] }).success).toBe(false);
+    expect(v1.safeParse({ notificationIds: [uuid], kind: 'low_stock' }).success).toBe(false);
   });
 
   it('pos.order.closed carries ids only', () => {

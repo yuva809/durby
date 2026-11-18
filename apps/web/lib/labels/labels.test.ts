@@ -14,6 +14,9 @@ function storeWith(apiFetch: SessionStore['apiFetch']): SessionStore {
     logout: vi.fn(),
     switchOrganization: vi.fn(),
     changePassword: vi.fn(),
+    slot: () => 0,
+    selectAccount: vi.fn(),
+    logoutSlot: vi.fn(),
     apiFetch,
   };
 }

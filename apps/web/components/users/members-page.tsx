@@ -73,31 +73,33 @@ function Members({ session, access }: { session: Session; access: UsersAccess })
         <TabsContent value="members">
           <Loaded resource={members} reload={reloadMembers}>
             {(list) => (
-              <table className="w-full text-left text-sm" data-testid="members">
-                <thead className="max-md:sr-only">
-                  <tr className="border-b text-muted-foreground">
-                    <th className={cell}>{t('platform.members.columns.email')}</th>
-                    <th className={cell}>{t('platform.members.columns.role')}</th>
-                    <th className={cell}>{t('platform.members.columns.scope')}</th>
-                    <th className={cell}>
-                      <span className="sr-only">{t('platform.members.columns.actions')}</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map((member) => (
-                    <MemberRow
-                      key={member.id}
-                      member={member}
-                      access={access}
-                      roles={roleList}
-                      grantable={grantable}
-                      locations={locationList}
-                      onChanged={reloadMembers}
-                    />
-                  ))}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm" data-testid="members">
+                  <thead className="max-md:sr-only">
+                    <tr className="border-b text-muted-foreground">
+                      <th className={cell}>{t('platform.members.columns.email')}</th>
+                      <th className={cell}>{t('platform.members.columns.role')}</th>
+                      <th className={cell}>{t('platform.members.columns.scope')}</th>
+                      <th className={cell}>
+                        <span className="sr-only">{t('platform.members.columns.actions')}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {list.map((member) => (
+                      <MemberRow
+                        key={member.id}
+                        member={member}
+                        access={access}
+                        roles={roleList}
+                        grantable={grantable}
+                        locations={locationList}
+                        onChanged={reloadMembers}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Loaded>
         </TabsContent>
@@ -124,31 +126,33 @@ function Members({ session, access }: { session: Session; access: UsersAccess })
               list.length === 0 ? (
                 <p className="text-muted-foreground">{t('platform.invitations.empty')}</p>
               ) : (
-                <table className="w-full text-left text-sm" data-testid="invitations">
-                  <thead className="max-md:sr-only">
-                    <tr className="border-b text-muted-foreground">
-                      <th className={cell}>{t('platform.members.columns.email')}</th>
-                      <th className={cell}>{t('platform.members.columns.role')}</th>
-                      <th className={cell}>{t('platform.members.columns.scope')}</th>
-                      <th className={cell}>{t('platform.invitations.columns.expires')}</th>
-                      <th className={cell}>
-                        <span className="sr-only">{t('platform.members.columns.actions')}</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {list.map((invitation) => (
-                      <InvitationRow
-                        key={invitation.id}
-                        invitation={invitation}
-                        canRevoke={canRevokeInvitation(access, invitation, roleList)}
-                        locations={locationList}
-                        locale={session.user.locale}
-                        onChanged={reloadInvitations}
-                      />
-                    ))}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm" data-testid="invitations">
+                    <thead className="max-md:sr-only">
+                      <tr className="border-b text-muted-foreground">
+                        <th className={cell}>{t('platform.members.columns.email')}</th>
+                        <th className={cell}>{t('platform.members.columns.role')}</th>
+                        <th className={cell}>{t('platform.members.columns.scope')}</th>
+                        <th className={cell}>{t('platform.invitations.columns.expires')}</th>
+                        <th className={cell}>
+                          <span className="sr-only">{t('platform.members.columns.actions')}</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {list.map((invitation) => (
+                        <InvitationRow
+                          key={invitation.id}
+                          invitation={invitation}
+                          canRevoke={canRevokeInvitation(access, invitation, roleList)}
+                          locations={locationList}
+                          locale={session.user.locale}
+                          onChanged={reloadInvitations}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )
             }
           </Loaded>

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notifications and accounts: technical and test notes</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#1f7a3d; --ok:#1f7a3d; --warn:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; } }
+  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .done { color: var(--ok); } .open { color: var(--warn); }
+  nav a { color: var(--accent); margin-right: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="#bell">Bell</a><a href="#kinds">Who hears what</a><a href="#email">Email</a><a href="#push">Push</a><a href="#accounts">Accounts</a><a href="#tests">Tests</a></nav>
+  <h1>Notifications and accounts</h1>
+  <p class="lead">Stored updates under the bell, email and browser push per person, and up to five signed-in accounts per browser. Same on app.durby.tech and app.asiamight.site. Decision: ADR 0047. Branch: <code>feature/notifications-accounts</code> (on top of <code>feature/shell-tools</code>). Docs: <code>docs/platform/notifications.md</code>, <code>docs/platform/auth.md</code> → Several accounts.</p>
+
+  <h2 id="bell">Bell</h2>
+<pre>[🔔 4]  ← waiting (3) + unread updates (1)
+┌ Waiting for you 3 │ Updates 1 ┐
+│ ● Your stock request was approved: TRF-2026-000004   18.11. 09:00 │  ← bold + dot = unread
+│   Your feedback was dealt with by our team           17.11. 09:00 │
+│              [ Mark all as read ]                                  │
+└────────────────────────────────────────────────────────────────────┘</pre>
+  <p>Opening an update marks it read and goes to its page (requests and orders open in their side panel; a driver's delivery opens My Deliveries). Opens on "Updates" when only updates have news. Last 30 shown.</p>
+
+  <h2 id="kinds">Who hears what</h2>
+  <div class="scroll"><table>
+    <tr><th>Update</th><th>When</th><th>Who</th><th>Email by default</th></tr>
+    <tr><td>A branch asks for stock</td><td>request sent</td><td>owner, admin (approve)</td><td>yes</td></tr>
+    <tr><td>Request approved / rejected</td><td>decided</td><td>whoever asked</td><td>no</td></tr>
+    <tr><td>Stock on the way</td><td>packed</td><td>branch receivers</td><td>no</td></tr>
+    <tr><td>Delivery assigned to me</td><td>driver set</td><td>the driver</td><td>yes</td></tr>
+    <tr><td>Received less than sent</td><td>received short</td><td>owner, admin</td><td>no</td></tr>
+    <tr><td>Sales order to pick / dispatch / came back</td><td>confirmed / packed / returned</td><td>picking / delivery / order editors at its branch</td><td>no</td></tr>
+    <tr><td>Low stock</td><td>drops to or below the reorder level (once)</td><td>stock readers at that warehouse</td><td>no</td></tr>
+    <tr><td>Feedback answered</td><td>staff mark seen or done</td><td>the sender</td><td>no</td></tr>
+  </table></div>
+  <p>Never to the person who caused it (except low stock). Push is off by default for every kind. Each person changes it in Account → Notifications.</p>
+
+  <h2 id="email">Email</h2>
+  <p>Sent by the worker (outbox event <code>platform.notification.created</code>, ids only) in the person's language, with links on the organization's own domain:</p>
+<pre>Subject: AsiaMight: Branch Nord asks for stock: SRQ-2026-000012
+
+Branch Nord asks for stock: SRQ-2026-000012
+
+Open it here:
+https://app.asiamight.site/requests?open=…
+
+You get this email because you chose email for this kind of update in AsiaMight. …
+https://app.asiamight.site/account/notifications</pre>
+
+  <h2 id="push">Browser push</h2>
+  <h3>Setup (once per environment)</h3>
+<pre>npx web-push generate-vapid-keys
+
+# apps/api/.env (all three or none; keep the private key secret)
+WEB_PUSH_PUBLIC_KEY=&lt;Public Key&gt;
+WEB_PUSH_PRIVATE_KEY=&lt;Private Key&gt;
+WEB_PUSH_SUBJECT=mailto:ops@durby.tech</pre>
+  <p>Restart the api and the worker. Changing the keys later drops every device: people turn push on again.</p>
+  <h3>On a device</h3>
+  <p>Account → Notifications → "Push on this device" → Turn on → the browser asks → allow. Then tick the kinds under Push. The message shows the bell's text; a tap opens the page. Works in Chrome, Edge, Firefox, Safari on macOS; on iPhone/iPad only from the home-screen app.</p>
+
+  <h2 id="accounts">Several accounts</h2>
+<pre>┌ AW  anna@…            ⇕ ┐   person card menu:
+└    AsiaMight · Owner     ┘   Switch organization (if several)
+                               Accounts
+                                 BW ben@…            ← switch (goes home)
+                                 + Add another account   (up to 5)
+                               Account
+                               Sign out                ← another account takes over
+                               Sign out of all accounts</pre>
+  <p>Each account has its own httpOnly cookie (<code>__Secure-durby_rt</code>, <code>_1</code> … <code>_4</code>), chosen by the <code>X-Durby-Account</code> header. The browser remembers only which email is in which slot. Each tab keeps its own account, so two tabs can show two people. On a shared device, sign out of all when leaving.</p>
+
+  <h2 id="tests">Testing</h2>
+  <div class="scroll"><table>
+    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
+    <tr><td>API unit</td><td><code>notification-delivery.handler.spec.ts</code></td><td>default email kinds, choices, language, partner links, push to each device, gone subscriptions removed, failed sends</td><td class="done">Pass</td></tr>
+    <tr><td>API unit</td><td><code>cookies.spec.ts</code>, <code>env.schema.spec.ts</code></td><td>cookie per slot, slot header 0–4; push keys all or none</td><td class="done">Pass</td></tr>
+    <tr><td>Shared</td><td><code>events/registry.test.ts</code></td><td>the event carries ids only</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/shell/top-bar.test.tsx</code></td><td>Updates tab, badge, open and mark read, mark all; other accounts, add, sign out (one / all)</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/account/notification-settings.test.tsx</code></td><td>choices grid, saves only changes, push card when unsupported, VAPID key decoding</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>lib/auth/accounts.test.ts</code>, <code>lib/auth/session.test.ts</code></td><td>list by slot, five max, tab slot, no storage; slot header, switch only on success, sign out another slot</td><td class="done">Pass</td></tr>
+    <tr><td>API e2e</td><td><code>test/notifications.e2e.spec.ts</code></td><td>request flow recipients, mark read, low stock once, choices, push devices</td><td class="open">Needs Docker / CI</td></tr>
+    <tr><td>API e2e</td><td><code>test/auth-accounts.e2e.spec.ts</code></td><td>one sign-in per slot, sign out of one slot, bad slot refused</td><td class="open">Needs Docker / CI</td></tr>
+  </table></div>
+  <h3>Manual</h3>
+  <ul>
+    <li>Branch sends a request → owner's bell: Updates 1 and an email; approve → the branch user's Updates shows "approved".</li>
+    <li>Warehouse packs with a driver → driver gets an update (and an email by default); the branch gets "on the way".</li>
+    <li>Sell or transfer until an item hits its reorder level → one low-stock update; selling more adds none.</li>
+    <li>Account → Notifications: tick Push for "A branch asks for stock", turn on push, send another request from another browser → a system notification; tap opens the request.</li>
+    <li>Person card → Add another account → sign in as the driver → switch back and forth; open a second tab and switch only there.</li>
+    <li>Sign out (one) → the other account stays; Sign out of all → sign-in page, the list is empty after reload.</li>
+  </ul>
+</main>
+</body>
+</html>

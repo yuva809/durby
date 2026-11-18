@@ -92,7 +92,7 @@ export function StockTab({ data }: { data: InventoryData }) {
                   value: money(sumValues(shown.map((l) => l.value))),
                 })}
               </p>
-              <Card className="overflow-hidden p-0">
+              <Card className="overflow-x-auto p-0">
                 <table className="w-full text-sm">
                   <thead className="hidden bg-muted text-left text-muted-foreground md:table-header-group">
                     <tr>
