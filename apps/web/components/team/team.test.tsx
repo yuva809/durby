@@ -297,6 +297,28 @@ describe('TeamPage', () => {
     }
   });
 
+  it('pins the column header and each section header while the matrix scrolls', async () => {
+    signedInAs('owner', ['catalog', 'pos', 'orders']);
+    api();
+    render(<TeamPage />);
+    await userEvent.click(await screen.findByTestId('team-add'));
+    const dialog = await screen.findByTestId('team-dialog');
+    const header = within(dialog).getByTestId('team-matrix-header');
+    // CSS sticky can't be scrolled in jsdom: guard the classes (the browser check in the PR shows it working).
+    expect(header.className).toMatch(/\bsticky\b/);
+    expect(header.className).toMatch(/\btop-0\b/);
+    expect(header.className).toMatch(/\bh-9\b/);
+    expect(header.className).toMatch(/\bbg-card\b/);
+    const sectionHeaders = within(dialog).getAllByTestId('team-matrix-section-header');
+    expect(sectionHeaders.length).toBeGreaterThan(1);
+    for (const section of sectionHeaders) {
+      expect(section.className).toMatch(/\bsticky\b/);
+      // Just below the h-9 column header.
+      expect(section.className).toMatch(/\btop-9\b/);
+      expect(section.className).not.toMatch(/bg-muted\/50/);
+    }
+  });
+
   it('puts every permission in a View, Create, Edit or Delete cell, grouped by section (ADR 0050)', async () => {
     signedInAs('owner', ['catalog', 'pos', 'orders']);
     api();

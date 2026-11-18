@@ -47,7 +47,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** The matrix columns: the row, then View, Create, Edit and Delete (ADR 0037, ADR 0050). */
 const MATRIX_GRID =
-  'grid grid-cols-[minmax(0,1fr)_repeat(4,2.75rem)] items-center gap-x-1 sm:grid-cols-[minmax(0,1fr)_repeat(4,4rem)]';
+  'grid grid-cols-[minmax(0,1fr)_repeat(4,2.75rem)] items-center gap-x-1 sm:grid-cols-[minmax(0,1fr)_repeat(4,4.5rem)]';
 
 type Result =
   | { kind: 'created'; name: string }
@@ -302,10 +302,11 @@ function StaffForm({
         <DialogDescription>{t('platform.team.dialog.description')}</DialogDescription>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto px-6 py-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+      {/* No top padding on the scroll area itself: the columns carry it, so the matrix header pins flush at the top. */}
+      <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto px-6 pb-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
         {/* Details, role, locations */}
         <section
-          className="flex flex-col gap-4 md:sticky md:top-0 md:self-start"
+          className="flex flex-col gap-4 pt-5 md:sticky md:top-0 md:self-start"
           aria-labelledby={`${id}-details`}
         >
           <h3
@@ -490,7 +491,10 @@ function StaffForm({
         </section>
 
         {/* Permission matrix */}
-        <section className="flex min-w-0 flex-col gap-3" aria-labelledby={`${id}-permissions`}>
+        <section
+          className="flex min-w-0 flex-col gap-3 md:pt-5"
+          aria-labelledby={`${id}-permissions`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3
               id={`${id}-permissions`}
@@ -535,13 +539,20 @@ function StaffForm({
                 <div
                   className={cn(
                     MATRIX_GRID,
-                    'border-b px-3 py-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase',
+                    // Pinned while the matrix scrolls; solid so rows don't show through.
+                    'sticky top-0 z-20 h-9 rounded-t-lg border-b bg-card px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase',
                   )}
                   aria-hidden
+                  data-testid="team-matrix-header"
                 >
-                  <span>{t('platform.team.dialog.column.module')}</span>
+                  <span className="truncate">{t('platform.team.dialog.column.module')}</span>
                   {MATRIX_COLUMNS.map((verb) => (
-                    <span key={verb} className="text-center">
+                    <span
+                      key={verb}
+                      // One header height for every language: long words (de "Bearbeiten") shrink, then hyphenate.
+                      className="text-center text-[0.625rem] leading-tight tracking-normal hyphens-auto [overflow-wrap:anywhere] sm:text-[0.6875rem]"
+                      title={t(`platform.team.dialog.column.${verb}`)}
+                    >
                       {t(`platform.team.dialog.column.${verb}`)}
                     </span>
                   ))}
@@ -621,7 +632,11 @@ function MatrixSection({
   const name = t(section.label);
   return (
     <div data-testid="team-matrix-section" data-section={section.module}>
-      <label className="flex min-h-11 items-center gap-2 bg-muted/50 px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+      <label
+        // Sticks under the column header (h-9) until the next section pushes it up; muted over card, but solid.
+        className="sticky top-9 z-10 flex min-h-11 items-center gap-2 bg-[color-mix(in_oklab,var(--muted)_50%,var(--card))] px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+        data-testid="team-matrix-section-header"
+      >
         <Checkbox
           checked={tickState(section.keys, selected)}
           disabled={!section.keys.some((key) => canToggle(access, key))}
