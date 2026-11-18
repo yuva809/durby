@@ -302,7 +302,9 @@ cell, set by its `matrix` placement in `PERMISSIONS`; a cell without a key is a 
 that allowed more than their column said, so no box carries an info note any more. On a row with a View box, Create, Edit and Delete can only be
 ticked while View is ("Grant View first"); unticking View clears the row's other actions (those you may change), and
 the row, section and Select all ticks only add actions whose View ends up ticked. A screen rule only: the api checks
-each key on its own, and an action saved without View stays as it is until someone changes it. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
+each key on its own, and an action saved without View stays as it is until someone changes it. The Roles page
+editor uses the same matrix component (`PermissionMatrix`) and rule for custom roles. The column header and each
+section header stay in view while the matrix scrolls. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
 
 **Warehouse Access (ADR 0057).** `memberships.warehouse_ids`: empty = every warehouse at the member's locations;
 with ids, only those for warehouse work (stock, documents, invoices, picking, receiving), checked by

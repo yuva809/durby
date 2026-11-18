@@ -288,10 +288,13 @@ request, and a stale hint just leads to an error message, never to access.
 - System roles (Owner, Admin, Manager, Staff) are read-only: their permissions grouped by area (the key's first two
   segments, e.g. `platform.users`), with the permission labels from `PERMISSIONS`. Location-scope keys carry a
   "per location" badge.
-- Custom roles with `platform.roles.manage`: **Create**, **Edit** (name and permissions), **Delete** (confirm).
-- The editor offers only keys the actor holds (`activePermissions`); keys the actor doesn't hold are shown disabled
-  with "Your role doesn't include this". Edit and delete are hidden for a custom role that has keys the actor
-  doesn't hold (`canEditRole` before the change).
+- Custom roles: **Create** (`platform.roles.create`), **Edit** (name and permissions, `platform.roles.edit`),
+  **Delete** (confirm, `platform.roles.delete`) (ADR 0051).
+- The editor is the Manage Staff permission matrix (`PermissionMatrix`, ADR 0050): sections → rows → View / Create /
+  Edit / Delete, "Grant View first", Select all and Clear. Keys the actor doesn't hold (`activePermissions`) are
+  locked; modules switched off for the organization aren't listed and their keys stay in the role. Saving keeps the
+  role's keys in their saved order and adds new ones in registry order (an unchanged save sends the same list). Edit
+  and delete are hidden for a custom role that has keys the actor doesn't hold (`canEditRole` before the change).
 - Deleting a role in use answers `rbac.role_in_use`: shown as its message, the role stays.
 
 ### Granting rules shared with the api

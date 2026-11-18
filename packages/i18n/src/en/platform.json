@@ -321,7 +321,7 @@
   "platform.rolesPage.editorDescription": "You can only give permissions your own role includes.",
   "platform.rolesPage.name": "Name",
   "platform.rolesPage.nameRequired": "Enter a name.",
-  "platform.rolesPage.notHeld": "Your role doesn't include this",
+  "platform.rolesPage.changed": "Not saved yet",
   "platform.rolesPage.delete": "Delete",
   "platform.rolesPage.deleteTitle": "Delete role?",
   "platform.rolesPage.deleteDescription": "{role} is deleted. This only works while no member or open invitation uses it.",

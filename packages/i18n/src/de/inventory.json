@@ -355,7 +355,7 @@
   "inventory.errors.mainWarehouseNotAllowed": "Nur wer Lager an allen Standorten bearbeitet, kann das Hauptlager festlegen.",
   "inventory.page.mainWarehouse": "Hauptlager",
   "inventory.page.mainWarehouseHint": "Beliefert alle Filialen: Filialen fordern Ware immer hier an, und sein Personal kommissioniert und packt für alle. Nur ein Lager kann das Hauptlager sein.",
-  "inventory.invoice.bulkCategory": "Kategorie für {count} neue Artikel ohne eine",
+  "inventory.invoice.bulkCategory": "Kategorie für {count} Positionen ohne eine",
   "inventory.invoice.bulkApply": "Für alle setzen",
   "inventory.invoice.category": "Kategorie",
   "inventory.invoice.categoryFor": "Kategorie von {name}",
@@ -381,5 +381,14 @@
   "inventory.invoice.showRead": "Anzeigen, was von den Seiten gelesen wurde",
   "inventory.invoice.rowProblems.pack": "Packungsgröße prüfen.",
   "inventory.items.brand": "Marke",
-  "inventory.items.packSize": "Packungsgröße"
+  "inventory.items.packSize": "Packungsgröße",
+  "inventory.invoice.detailsTitle": "Rechnungsdaten: Gelesenes prüfen",
+  "inventory.invoice.countItems": "{count} Artikel",
+  "inventory.invoice.countExisting": "{count} vorhanden",
+  "inventory.invoice.countNew": "{count} neu",
+  "inventory.invoice.countLeftOut": "{count} ausgelassen",
+  "inventory.invoice.invoiceNumber": "Rechnungsnummer",
+  "inventory.invoice.invoiceDate": "Rechnungsdatum",
+  "inventory.invoice.invoiceDatePlaceholder": "TT-MM-JJJJ",
+  "inventory.invoice.supplierMissing": "Nicht von der Rechnung gelesen: Bitte auf dem Papier prüfen und eintragen."
 }

@@ -5,6 +5,8 @@ import {
   matchInvoice,
   NEW_ITEM,
   rowProblems,
+  itemDetailsChange,
+  retarget,
   rowsFromInvoice,
   setMissingCategory,
   submitRequest,
@@ -200,6 +202,7 @@ describe('a stored invoice back as rows (ADR 0054)', () => {
           itemId: CATFISH.id,
           itemName: CATFISH.name,
           newItem: null,
+          itemDetails: null,
           unitId: id(81),
           unitSymbol: 'CTN',
           quantity: '50.000',
@@ -223,6 +226,7 @@ describe('a stored invoice back as rows (ADR 0054)', () => {
             packSize: '0.500',
             packUnit: 'kg',
           },
+          itemDetails: null,
           unitId: null,
           unitSymbol: null,
           quantity: '120',
@@ -264,5 +268,43 @@ describe('scanned lines as rows', () => {
         read('  ', 1, 10, 200),
       ]),
     ).toEqual(['1103-002 Catfish 50 11.00', 'Second line', 'Page two']);
+  });
+});
+
+describe('an existing item’s details on the invoice (ADR 0055)', () => {
+  const PACKED = item(4, 'Croaker 5 x 2kg', '1971-002', {
+    categoryId: id(80),
+    brand: 'OD',
+    packCount: 5,
+    packSize: '2.000',
+    packUnit: 'kg',
+  });
+
+  it('starts from the item’s own, filling a missing pack size from the description', () => {
+    const [plain, packed] = matchInvoice(
+      [line('1103-002', 'Catfish 1 x 4kg'), line('1971-002', 'OD Yellow Croakers 10 x 1kg')],
+      [CATFISH, PACKED],
+    );
+    expect(plain).toMatchObject({ categoryId: '', brand: '', pack: { count: '1', size: '4' } });
+    // The item's own pack size wins over the description's.
+    expect(packed).toMatchObject({
+      categoryId: id(80),
+      brand: 'OD',
+      pack: { count: '5', size: '2', unit: 'kg' },
+    });
+  });
+
+  it('sends only what changes, and follows the item when another is chosen', () => {
+    const [row] = matchInvoice([line('1971-002', 'Croaker')], [PACKED]);
+    expect(itemDetailsChange(row!, PACKED)).toBeUndefined();
+    expect(itemDetailsChange({ ...row!, brand: 'Ocean Delight' }, PACKED)).toEqual({
+      brand: 'Ocean Delight',
+    });
+    expect(
+      itemDetailsChange({ ...row!, pack: { count: '5', size: '2.5', unit: 'kg' } }, PACKED),
+    ).toEqual({ packSize: '2.5', packUnit: 'kg' });
+    const fresh = retarget(row!, NEW_ITEM, [PACKED]);
+    expect(fresh).toMatchObject({ target: NEW_ITEM, categoryId: '', brand: '', unitId: '' });
+    expect(retarget(fresh, PACKED.id, [PACKED])).toMatchObject({ brand: 'OD' });
   });
 });

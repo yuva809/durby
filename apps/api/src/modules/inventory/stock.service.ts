@@ -224,7 +224,17 @@ export class StockService {
     const fresh = body.lines.flatMap((l) => ('newItem' in l ? [l.newItem] : []));
     if (fresh.length > 0 && !options.newItemsApproved)
       await this.access.assert('inventory.items.edit');
-    const categoryIds = new Set(fresh.flatMap((n) => (n.categoryId ? [n.categoryId] : [])));
+    // Existing items' details to set as they are received (ADR 0055).
+    const updates = body.lines.flatMap((l) =>
+      'itemId' in l && l.itemDetails ? [{ itemId: l.itemId, details: l.itemDetails }] : [],
+    );
+    if (updates.length > 0 && !options.newItemsApproved)
+      await this.access.assert('inventory.items.edit');
+    const categoryIds = new Set(
+      [...fresh, ...updates.map((u) => u.details)].flatMap((n) =>
+        n.categoryId ? [n.categoryId] : [],
+      ),
+    );
     for (const categoryId of categoryIds) await this.catalog.assertActiveCategory(categoryId);
     // The item of each line, by position: new ones are filled in once created.
     const lineItems = body.lines.map((l) => ('itemId' in l ? l.itemId : null));
@@ -236,6 +246,7 @@ export class StockService {
       warehouseId: body.warehouseId,
       itemIds: lineItems.filter((id): id is string => id !== null),
       create: async (tx) => {
+        for (const update of updates) await this.setItemDetails(tx, userId, update);
         if (fresh.length === 0) return [];
         const taken = await tx.stockItem.findFirst({
           where: { name: { in: fresh.map((n) => n.name.trim()) }, archivedAt: null },
@@ -280,6 +291,57 @@ export class StockService {
           levels.set(body.warehouseId, itemId, booked.level);
           return { warehouseId: body.warehouseId, itemId, quantity, unitCost: booked.unitCost };
         }),
+    });
+  }
+
+  /** An item's category, brand and pack size as an approved invoice line gives them (ADR 0055); audited when changed. */
+  private async setItemDetails(
+    tx: TenantTransactionClient,
+    userId: string,
+    update: {
+      itemId: string;
+      details: {
+        categoryId?: string | null;
+        brand?: string;
+        packCount?: number;
+        packSize?: string;
+        packUnit?: StockUnit;
+      };
+    },
+  ): Promise<void> {
+    const current = await tx.stockItem.findUnique({
+      where: { id: update.itemId },
+      select: ITEM_SELECT,
+    });
+    if (!current) throw inventoryErrors.itemNotFound([update.itemId]);
+    const { details } = update;
+    const before = itemResponse(current);
+    const next = {
+      ...before,
+      categoryId: details.categoryId === undefined ? before.categoryId : details.categoryId,
+      brand: details.brand ?? before.brand,
+      packCount: details.packCount ?? before.packCount,
+      packSize: details.packSize ? new Decimal(details.packSize).toFixed(3) : before.packSize,
+      packUnit: details.packUnit ?? before.packUnit,
+    };
+    if (JSON.stringify(itemSnapshot(before)) === JSON.stringify(itemSnapshot(next))) return;
+    const row = await tx.stockItem.update({
+      where: { id: update.itemId },
+      data: {
+        categoryId: next.categoryId,
+        brand: next.brand,
+        packCount: next.packCount,
+        packSize: next.packSize,
+        packUnit: next.packUnit,
+      },
+      select: ITEM_SELECT,
+    });
+    await this.audit.record(tx, {
+      action: 'inventory.stock_item.updated',
+      actor: auditActor.user(userId),
+      entityId: row.id,
+      before: itemSnapshot(before),
+      after: itemSnapshot(itemResponse(row)),
     });
   }
 

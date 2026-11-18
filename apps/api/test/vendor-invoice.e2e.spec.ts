@@ -184,7 +184,14 @@ describe('vendor invoice approval queue (ADR 0054)', () => {
     const body = {
       ...s.invoice,
       lines: [
-        { ...catfishLine, quantity: '2', unitCost: '132.00', unitId: carton },
+        {
+          ...catfishLine,
+          quantity: '2',
+          unitCost: '132.00',
+          unitId: carton,
+          // The matched product gets its category and pack size on approval (ADR 0055).
+          itemDetails: { categoryId: s.fish.id, packCount: 1, packSize: '4', packUnit: 'kg' },
+        },
         {
           ...croakerLine,
           newItem: {
@@ -212,6 +219,13 @@ describe('vendor invoice approval queue (ADR 0054)', () => {
       unitId: carton,
       unitSymbol: 'CTN',
       quantity: '2.000',
+      itemDetails: {
+        categoryId: s.fish.id,
+        brand: null,
+        packCount: 1,
+        packSize: '4.000',
+        packUnit: 'kg',
+      },
     });
     expect(pending.lines[1]?.newItem).toMatchObject({
       brand: 'OD',
@@ -233,6 +247,13 @@ describe('vendor invoice approval queue (ADR 0054)', () => {
       brand: 'OD',
       packCount: 5,
       packSize: '2.000',
+      packUnit: 'kg',
+    });
+    expect(items.find((i) => i.id === s.catfish)).toMatchObject({
+      categoryId: s.fish.id,
+      brand: null,
+      packCount: 1,
+      packSize: '4.000',
       packUnit: 'kg',
     });
   });

@@ -355,7 +355,7 @@
   "inventory.errors.mainWarehouseNotAllowed": "Only someone who edits warehouses at every location can choose the main warehouse.",
   "inventory.page.mainWarehouse": "Main warehouse",
   "inventory.page.mainWarehouseHint": "Supplies every branch: branches always request goods from it, and its staff pick and pack for all of them. Only one warehouse can be the main one.",
-  "inventory.invoice.bulkCategory": "Category for {count} new items without one",
+  "inventory.invoice.bulkCategory": "Category for {count} lines without one",
   "inventory.invoice.bulkApply": "Set for all",
   "inventory.invoice.category": "Category",
   "inventory.invoice.categoryFor": "Category of {name}",
@@ -381,5 +381,14 @@
   "inventory.invoice.showRead": "Show what was read from the pages",
   "inventory.invoice.rowProblems.pack": "Check the pack size.",
   "inventory.items.brand": "Brand",
-  "inventory.items.packSize": "Pack size"
+  "inventory.items.packSize": "Pack size",
+  "inventory.invoice.detailsTitle": "Invoice details: check what was read",
+  "inventory.invoice.countItems": "{count} items",
+  "inventory.invoice.countExisting": "{count} existing",
+  "inventory.invoice.countNew": "{count} new",
+  "inventory.invoice.countLeftOut": "{count} left out",
+  "inventory.invoice.invoiceNumber": "Invoice number",
+  "inventory.invoice.invoiceDate": "Invoice date",
+  "inventory.invoice.invoiceDatePlaceholder": "dd-mm-yyyy",
+  "inventory.invoice.supplierMissing": "Not read from the invoice: check the paper and fill it in."
 }

@@ -321,7 +321,7 @@
   "platform.rolesPage.editorDescription": "Sie können nur Berechtigungen vergeben, die Ihre eigene Rolle umfasst.",
   "platform.rolesPage.name": "Name",
   "platform.rolesPage.nameRequired": "Geben Sie einen Namen ein.",
-  "platform.rolesPage.notHeld": "Nicht in Ihrer Rolle enthalten",
+  "platform.rolesPage.changed": "Noch nicht gespeichert",
   "platform.rolesPage.delete": "Löschen",
   "platform.rolesPage.deleteTitle": "Rolle löschen?",
   "platform.rolesPage.deleteDescription": "{role} wird gelöscht. Das geht nur, solange kein Mitglied und keine offene Einladung sie verwendet.",
