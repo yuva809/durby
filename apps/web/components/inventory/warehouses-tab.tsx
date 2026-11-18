@@ -74,6 +74,14 @@ export function WarehousesTab({ data }: { data: InventoryData }) {
                           {t(`inventory.stations.${w.suppliesStation}`)}
                         </Badge>
                       )}
+                      {w.isMain && (
+                        <Badge
+                          className="bg-primary text-primary-foreground"
+                          data-testid="warehouse-main"
+                        >
+                          {t('inventory.page.mainWarehouse')}
+                        </Badge>
+                      )}
                       {w.archivedAt && <Badge>{t('inventory.page.archived')}</Badge>}
                     </span>
                     {canManage && (
@@ -133,6 +141,7 @@ function WarehouseDialog({
   const [name, setName] = useState('');
   const [locationId, setLocationId] = useState('');
   const [suppliesStation, setSuppliesStation] = useState<'kitchen' | 'bar' | null>(null);
+  const [isMain, setIsMain] = useState(false);
   const [checked, setChecked] = useState(false);
   const nameMissing = checked && name.trim() === '';
 
@@ -146,6 +155,7 @@ function WarehouseDialog({
         setName(warehouse?.name ?? '');
         setLocationId(warehouse?.locationId ?? data.locations[0]?.id ?? '');
         setSuppliesStation(warehouse?.suppliesStation ?? null);
+        setIsMain(warehouse?.isMain ?? false);
         setChecked(false);
       }}
       submit={() => {
@@ -155,6 +165,8 @@ function WarehouseDialog({
           ? updateWarehouse(store, action, warehouse.id, {
               name: name.trim(),
               suppliesStation,
+              // Sent only when changed: choosing it needs warehouse rights everywhere (ADR 0053).
+              ...(isMain !== warehouse.isMain ? { isMain } : {}),
             })
           : createWarehouse(store, action, { locationId, name: name.trim() });
       }}
@@ -199,6 +211,20 @@ function WarehouseDialog({
           <option value="bar">{t('inventory.stations.bar')}</option>
         </Select>
       </Field>
+      {warehouse && !warehouse.isTransit && (
+        <label className="flex min-h-11 items-start gap-3 text-sm">
+          <Checkbox
+            checked={isMain}
+            onCheckedChange={(next) => setIsMain(next === true)}
+            className="mt-0.5"
+            data-testid="warehouse-is-main"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="font-medium">{t('inventory.page.mainWarehouse')}</span>
+            <span className="text-muted-foreground">{t('inventory.page.mainWarehouseHint')}</span>
+          </span>
+        </label>
+      )}
     </FormDialog>
   );
 }

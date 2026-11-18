@@ -1020,5 +1020,6 @@
   "platform.team.setPassword.save": "Set password",
   "platform.team.setPassword.doneTitle": "New password set for {name}",
   "platform.team.setPassword.doneFinal": "They were signed out everywhere and sign in with the new password.",
-  "platform.team.setPassword.doneTemporary": "They were signed out everywhere; at the next sign-in they choose their own password."
+  "platform.team.setPassword.doneTemporary": "They were signed out everywhere; at the next sign-in they choose their own password.",
+  "platform.audit.fields.isMain": "Main warehouse"
 }

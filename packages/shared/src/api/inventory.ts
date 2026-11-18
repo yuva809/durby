@@ -52,6 +52,8 @@ export const warehouseSchema = z.object({
   suppliesStation: z.enum(PREP_STATIONS).nullable(),
   /** Goods between warehouses (ADR 0045): created by the app, one per organization. Default for older apis. */
   isTransit: z.boolean().default(false),
+  /** Supplies every branch (ADR 0053): branch requests always come from it. At most one active. */
+  isMain: z.boolean().default(false),
   archivedAt: z.iso.datetime().nullable(),
 });
 
@@ -66,6 +68,8 @@ export const updateWarehouseRequestSchema = z
     name: name.optional(),
     sortOrder: sortOrder.optional(),
     suppliesStation: z.enum(PREP_STATIONS).nullable().optional(),
+    /** Make it the main warehouse (another one stops being it), or not (ADR 0053). */
+    isMain: z.boolean().optional(),
     archived: z.boolean().optional(),
   })
   .refine((body) => Object.values(body).some((v) => v !== undefined), {
@@ -519,6 +523,7 @@ export type ProductionRequest = z.infer<typeof productionRequestSchema>;
 /** Stable error codes of the inventory endpoints; the web app shows the matching label. */
 export const INVENTORY_ERROR_CODES = [
   'inventory.warehouse_not_found',
+  'inventory.main_warehouse_not_allowed',
   'inventory.location_not_found',
   'inventory.item_not_found',
   'inventory.document_not_found',

@@ -1667,6 +1667,8 @@ model Warehouse {
   suppliesStation PrepStation?    @map("supplies_station")
   /// The organization's "In transit" warehouse (ADR 0045): one at most (partial unique index).
   isTransit       Boolean         @default(false) @map("is_transit")
+  /// Supplies every branch (ADR 0053): branch requests come from it. At most one active per organization.
+  isMain          Boolean         @default(false) @map("is_main")
   archivedAt      DateTime?       @map("archived_at") @db.Timestamptz(6)
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)

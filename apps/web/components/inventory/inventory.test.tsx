@@ -299,4 +299,25 @@ describe('InventoryPage', () => {
     ]);
     expect(screen.getByTestId('warehouse-create')).toBeTruthy();
   });
+
+  it('makes a warehouse the main one, sending the switch only when it changes (ADR 0053)', async () => {
+    signedInAs('owner');
+    const writes = api({
+      [`PATCH /api/v1/inventory/warehouses/${STORE.id}`]: () =>
+        Response.json({ ...STORE, isMain: true }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('warehouses'));
+    const row = screen.getAllByTestId('warehouse-row')[0]!;
+    await userEvent.click(within(row).getByTestId('warehouse-edit'));
+    await userEvent.click(await screen.findByTestId('warehouse-is-main'));
+    await userEvent.click(screen.getByTestId('form-save'));
+    await waitFor(() =>
+      expect(writes.find((w) => w.method === 'PATCH')?.body).toEqual({
+        name: 'Main store',
+        suppliesStation: 'kitchen',
+        isMain: true,
+      }),
+    );
+  });
 });

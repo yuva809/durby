@@ -351,5 +351,8 @@
   "inventory.invoices.newItemsHint": "Neue Artikel werden bei der Freigabe angelegt.",
   "inventory.permissionAreas.invoices": "Lieferantenrechnungen",
   "inventory.invoice.importDataFormats": "PDF · Fotos",
-  "inventory.permissionRows.invoices": "Rechnungsfreigabe"
+  "inventory.permissionRows.invoices": "Rechnungsfreigabe",
+  "inventory.errors.mainWarehouseNotAllowed": "Nur wer Lager an allen Standorten bearbeitet, kann das Hauptlager festlegen.",
+  "inventory.page.mainWarehouse": "Hauptlager",
+  "inventory.page.mainWarehouseHint": "Beliefert alle Filialen: Filialen fordern Ware immer hier an, und sein Personal kommissioniert und packt für alle. Nur ein Lager kann das Hauptlager sein."
 }

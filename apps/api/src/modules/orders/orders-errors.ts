@@ -43,6 +43,12 @@ export const ordersErrors = {
   // Branch stock requests (ADR 0045).
   requestNotFound: () =>
     new ApiError(HttpStatus.NOT_FOUND, 'orders.request_not_found', 'Stock request not found.'),
+  mainOnly: () =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'orders.request_main_only',
+      'Requests come from the main warehouse.',
+    ),
   requestInvalid: () =>
     new ApiError(
       HttpStatus.BAD_REQUEST,

@@ -14,6 +14,7 @@ import {
   receiveStockRequestSchema,
   type RequestAvailability,
   type RequestDriver,
+  type RequestDestination,
   type RequestWarehouse,
   type StockRequest,
   type StockRequestNote,
@@ -46,6 +47,13 @@ export class StockRequestsController {
   @Get('warehouses')
   async warehouses(): Promise<{ data: RequestWarehouse[] }> {
     return { data: await this.requests.warehouses() };
+  }
+
+  /** The branches the caller may request for, with their warehouse or none yet (ADR 0053). */
+  @RequirePermission('orders.requests.create')
+  @Get('destinations')
+  async destinations(): Promise<{ data: RequestDestination[] }> {
+    return { data: await this.requests.destinations() };
   }
 
   @RequirePermission('orders.requests.create')

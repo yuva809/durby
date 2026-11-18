@@ -54,6 +54,8 @@ describe('branch stock requests (ADR 0045)', () => {
   const get = (token: string, path: string) => auth(request(server).get(`/api/v1${path}`), token);
   const post = (token: string, path: string, body: object = {}) =>
     withIdempotencyKey(auth(request(server).post(`/api/v1${path}`), token), uuidv7()).send(body);
+  const patch = (token: string, path: string, body: object) =>
+    withIdempotencyKey(auth(request(server).patch(`/api/v1${path}`), token), uuidv7()).send(body);
 
   async function setup() {
     const org = await seed.org();
@@ -255,5 +257,58 @@ describe('branch stock requests (ADR 0045)', () => {
       lines: [{ lineId: line, quantity: '9' }],
     }).expect(409);
     expect((res.body as { code: string }).code).toBe('inventory.insufficient_stock');
+  });
+
+  /** ADR 0053: one main warehouse supplies every branch; a branch without a store gets one with its first request. */
+  it('supplies every branch from the main warehouse and creates a branch store with the first request', async () => {
+    const s = await setup();
+    const [, branchLocation] = s.org.locations;
+    // Only someone who edits warehouses everywhere chooses the main one.
+    await patch(s.branchUser.token, `/inventory/warehouses/${s.main}`, { isMain: true }).expect(
+      403,
+    );
+    const main = warehouseSchema.parse(
+      (await patch(s.owner.token, `/inventory/warehouses/${s.main}`, { isMain: true }).expect(200))
+        .body,
+    );
+    expect(main.isMain).toBe(true);
+    // The branch has no store of its own any more.
+    await patch(s.owner.token, `/inventory/warehouses/${s.branch}`, { archived: true }).expect(200);
+
+    const destinations = (await get(s.branchUser.token, '/stock-requests/destinations').expect(200))
+      .body as { data: { locationId: string; warehouseId: string | null }[] };
+    expect(destinations.data).toEqual([
+      expect.objectContaining({ locationId: branchLocation, warehouseId: null }),
+    ]);
+    const warehouses = (await get(s.branchUser.token, '/stock-requests/warehouses').expect(200))
+      .body as { data: { id: string; isMain: boolean }[] };
+    expect(warehouses.data.find((w) => w.id === s.main)?.isMain).toBe(true);
+
+    // Another source than the main warehouse is refused.
+    const other = (
+      await post(s.branchUser.token, '/stock-requests', {
+        fromWarehouseId: s.branch,
+        toLocationId: branchLocation,
+        lines: [{ itemId: s.rice, quantity: '1' }],
+      }).expect(400)
+    ).body as { code: string };
+    expect(other.code).toBe('orders.request_main_only');
+
+    const created = stockRequestSchema.parse(
+      (
+        await post(s.branchUser.token, '/stock-requests', {
+          toLocationId: branchLocation,
+          lines: [{ itemId: s.rice, quantity: '2' }],
+        }).expect(201)
+      ).body,
+    );
+    expect(created.fromWarehouseId).toBe(s.main);
+    expect(created.toWarehouseId).not.toBe(s.branch);
+    expect(created.locationId).toBe(branchLocation);
+
+    // The store exists now: the next request goes into it.
+    const again = (await get(s.branchUser.token, '/stock-requests/destinations').expect(200))
+      .body as { data: { warehouseId: string | null }[] };
+    expect(again.data[0]?.warehouseId).toBe(created.toWarehouseId);
   });
 });

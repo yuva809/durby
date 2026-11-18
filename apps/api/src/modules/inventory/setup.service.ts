@@ -25,6 +25,7 @@ const WAREHOUSE_SELECT = {
   sortOrder: true,
   suppliesStation: true,
   isTransit: true,
+  isMain: true,
   archivedAt: true,
 } as const;
 
@@ -138,6 +139,13 @@ export class InventorySetupService {
       throw inventoryErrors.warehouseNotFound();
     }
     await this.access.assert('inventory.warehouses.edit', { locationId: found.locationId });
+    // The main warehouse supplies every branch (ADR 0053): chosen only by someone who edits warehouses everywhere.
+    if (
+      body.isMain !== undefined &&
+      (await this.access.locationIdsFor('inventory.warehouses.edit')) !== 'all'
+    ) {
+      throw inventoryErrors.mainWarehouseNotAllowed();
+    }
     return this.unique(inventoryErrors.warehouseNameTaken, () =>
       this.db.$transaction(async (tx) => {
         const current = await tx.warehouse.findUniqueOrThrow({
@@ -150,7 +158,31 @@ export class InventorySetupService {
           suppliesStation:
             body.suppliesStation === undefined ? current.suppliesStation : body.suppliesStation,
           archivedAt: archivedAt(current.archivedAt, body.archived),
+          // Never the transit one; an archived warehouse stops being the main one.
+          isMain: !current.isTransit && (body.isMain ?? current.isMain),
         };
+        if (data.archivedAt !== null) data.isMain = false;
+        // One active main warehouse per organization (warehouses_one_main_key): the previous one steps down.
+        if (data.isMain && !current.isMain) {
+          const previous = await tx.warehouse.findMany({
+            where: { isMain: true, archivedAt: null, id: { not: id } },
+            select: WAREHOUSE_SELECT,
+          });
+          for (const other of previous) {
+            const row = await tx.warehouse.update({
+              where: { id: other.id },
+              data: { isMain: false },
+              select: WAREHOUSE_SELECT,
+            });
+            await this.audit.record(tx, {
+              action: 'inventory.warehouse.updated',
+              actor: auditActor.user(userId),
+              entityId: other.id,
+              before: snapshot('warehouse', other),
+              after: snapshot('warehouse', row),
+            });
+          }
+        }
         // One active warehouse per location supplies each station (the partial unique index).
         if (data.suppliesStation && data.archivedAt === null) {
           const other = await tx.warehouse.findFirst({

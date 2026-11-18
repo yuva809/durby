@@ -5,6 +5,8 @@ import {
   type ReceiveStockRequest,
   type RequestAvailability,
   requestAvailabilityResponseSchema,
+  type RequestDestination,
+  requestDestinationListResponseSchema,
   type RequestDriver,
   requestDriverListResponseSchema,
   type RequestWarehouse,
@@ -38,6 +40,10 @@ export const loadRequest = (store: Api, id: string): Promise<Result<StockRequest
 
 export const loadRequestWarehouses = (store: Api): Promise<Result<RequestWarehouse[]>> =>
   read(store, `${BASE}/warehouses`, list(requestWarehouseListResponseSchema));
+
+/** The branches the caller may request for, with their warehouse or none yet (ADR 0053). */
+export const loadRequestDestinations = (store: Api): Promise<Result<RequestDestination[]>> =>
+  read(store, `${BASE}/destinations`, list(requestDestinationListResponseSchema));
 
 export const loadAvailability = (
   store: Api,
