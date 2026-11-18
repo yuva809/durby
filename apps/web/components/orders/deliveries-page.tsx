@@ -15,6 +15,7 @@ import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { TransfersPicking } from '../requests/transfers-picking';
 import { Loaded, NoAccess } from '../users/common';
+import { BranchDeliveries } from '../requests/branch-deliveries';
 
 const BOARD_LIMIT = 200;
 const RECENT_DAYS = 7;
@@ -28,11 +29,12 @@ export function DeliveriesPage() {
   const { session } = useAuth();
   if (!session) return null;
   const permissions = session.activePermissions;
-  if (
-    !permissions.includes('orders.delivery.use') &&
-    !permissions.includes('orders.delivery.assign')
-  )
-    return <NoAccess title="platform.nav.deliveries" />;
+  const deliveries =
+    permissions.includes('orders.delivery.use') || permissions.includes('orders.delivery.assign');
+  // A branch follows its own requests to its door (ADR 0059).
+  if (!deliveries && permissions.includes('orders.requests.receive'))
+    return <BranchDeliveries organizationId={session.activeOrganizationId} />;
+  if (!deliveries) return <NoAccess title="platform.nav.deliveries" />;
   return (
     <MoneyProvider>
       {permissions.includes('orders.delivery.assign') && (

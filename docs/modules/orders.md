@@ -144,7 +144,7 @@ transfer number `TRF-…`.
 
 | Who               | Role key         | Does                                                        |
 | ----------------- | ---------------- | ----------------------------------------------------------- |
-| Branch manager    | `branch`         | Request Stock, follows its requests, confirms receipt       |
+| Branch manager    | `branch`         | Request cart, follows its requests, confirms receipt        |
 | Owner, Admin      | `owner`, `admin` | Approves (quantities may change, 0 drops a line) or rejects |
 | Warehouse (Lager) | `warehouse`      | Picks and packs on the Picking page, assigns a driver       |
 | Driver            | `driver`         | My Deliveries: Picked up, Delivered                         |
@@ -188,7 +188,13 @@ notes), idempotency key completed in the transaction. Errors: `orders.request_no
 stock" button opening the request cart `/requests/new`: categories, search, Add / − / +, a sticky cart bar and a side
 sheet to send; quantities only, kept in the browser until sent, ADR 0053), the
 transfers section of Picking (To pick / Packed / Received, pick with a driver, assign later), My Deliveries
-(`/my-deliveries`); Delivery Tracking shows transfers to those who assign drivers.
+(`/my-deliveries`); Delivery Tracking shows transfers to those who assign drivers. Stock Requests is a table (request,
+branch, items, requested by, date, status, transfer number) searched by number and filtered by stage.
+
+**A branch's view (ADR 0059).** In the operations menu a branch (asks for goods, neither approves nor reads sales
+orders) has its own menu: Inventory (category tiles from `GET /api/v1/inventory/categories`, a "Request cart"
+button), Order History (`/requests`), Delivery Tracking (`/deliveries`: its requests with their steps, the driver and
+"Confirm receipt", and what arrived in the last 7 days) and Feedback; `/` opens Inventory.
 
 **Tests:** `apps/api/src/modules/orders/stock-requests.spec.ts`, `apps/api/test/stock-requests.e2e.spec.ts` (Docker),
 `apps/web/components/requests/requests.test.tsx`, `apps/web/lib/orders/request-cart.test.ts`, `apps/web/lib/nav/layouts.test.ts`

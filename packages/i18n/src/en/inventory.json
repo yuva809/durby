@@ -391,5 +391,5 @@
   "inventory.invoice.invoiceDate": "Invoice date",
   "inventory.invoice.invoiceDatePlaceholder": "dd-mm-yyyy",
   "inventory.invoice.supplierMissing": "Not read from the invoice: check the paper and fill it in.",
-  "inventory.overview.requestStock": "Request stock"
+  "inventory.overview.requestStock": "Request cart"
 }

@@ -27,7 +27,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     activeFeatures: session?.activeFeatures ?? [],
     activePermissions: session?.activePermissions ?? [],
   };
-  const layout = navLayout(useNavLayout());
+  const layout = navLayout(useNavLayout(), access);
   const items = visibleNav(layout.items, access);
   const current = activeNavItem(items, pathname);
 

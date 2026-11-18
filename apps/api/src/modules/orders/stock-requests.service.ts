@@ -47,6 +47,7 @@ const SUMMARY_SELECT = {
   fromWarehouseId: true,
   toWarehouseId: true,
   driverUserId: true,
+  requestedByUserId: true,
   createdAt: true,
   updatedAt: true,
   location: { select: { name: true } },
@@ -86,6 +87,7 @@ interface SummaryRow {
   fromWarehouseId: string;
   toWarehouseId: string;
   driverUserId: string | null;
+  requestedByUserId: string;
   createdAt: Date;
   updatedAt: Date;
   location: { name: string };
@@ -202,17 +204,16 @@ export class StockRequestsService {
       orderBy: { id: 'desc' },
       take: LIST_LIMIT,
     });
-    const names = await this.members.forUsers(
-      asTenantDb(this.db),
-      rows.flatMap((r) => (r.driverUserId ? [r.driverUserId] : [])),
-    );
+    const names = await this.members.forUsers(asTenantDb(this.db), [
+      ...new Set(rows.flatMap(namedUsers)),
+    ]);
     return rows.map((r) => summaryResponse(r, names));
   }
 
   async get(id: string): Promise<StockRequest> {
     if (!(await this.entitlements.isEnabled('orders'))) throw ordersErrors.requestNotFound();
     const row = await this.readable(id);
-    const names = await this.members.forUsers(asTenantDb(this.db), driverIds(row));
+    const names = await this.members.forUsers(asTenantDb(this.db), namedUsers(row));
     return requestResponse(row, names);
   }
 
@@ -848,7 +849,7 @@ export class StockRequestsService {
       where: { id },
       select: REQUEST_SELECT,
     });
-    const names = await this.members.forUsers(asTenantDb(tx), driverIds(row));
+    const names = await this.members.forUsers(asTenantDb(tx), namedUsers(row));
     return requestResponse(row, names);
   }
 }
@@ -861,8 +862,9 @@ const requestParams = (r: StockRequest): Record<string, string> => ({
   branch: r.locationName,
 });
 
-const driverIds = (row: { driverUserId: string | null }) =>
-  row.driverUserId ? [row.driverUserId] : [];
+/** The people a response names: who asked, and the driver once there is one. */
+const namedUsers = (row: { requestedByUserId: string; driverUserId: string | null }) =>
+  row.driverUserId ? [row.requestedByUserId, row.driverUserId] : [row.requestedByUserId];
 
 /**
  * Per-line quantities from a body that names `lines` exactly once each; `max` caps each (null: no cap). Refused as
@@ -904,6 +906,7 @@ function summaryResponse(row: SummaryRow, names: ReadonlyMap<string, string>): S
     lineCount: row._count.lines,
     driverUserId: row.driverUserId,
     driverName: row.driverUserId ? (names.get(row.driverUserId) ?? null) : null,
+    requestedByName: names.get(row.requestedByUserId) ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
