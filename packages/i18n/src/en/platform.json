@@ -730,6 +730,7 @@
   "platform.team.dialog.clear": "Clear",
   "platform.team.dialog.changed": "Changed from the role",
   "platform.team.dialog.locked": "You can only give or take permissions you have yourself.",
+  "platform.team.dialog.viewFirst": "Grant View first",
   "platform.team.dialog.ownerAll": "Owners always have every permission.",
   "platform.team.dialog.hiddenModules": "Not listed because they are switched off for this organization: {modules}.",
   "platform.team.dialog.column.module": "Module",

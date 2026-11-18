@@ -111,7 +111,7 @@ function signedInAs(key: SystemRole, activeFeatures = ['catalog', 'pos']) {
 }
 
 /** Answers by method and path; records the writes. */
-function api(writes: Record<string, () => Response> = {}) {
+function api(writes: Record<string, () => Response> = {}, team: TeamListResponse = TEAM) {
   const sent: { method: string; path: string; body: unknown }[] = [];
   mockState.store.apiFetch.mockImplementation((input: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET';
@@ -125,7 +125,7 @@ function api(writes: Record<string, () => Response> = {}) {
       const answer = writes[`${method} ${path}`];
       return Promise.resolve(answer ? answer() : new Response(null, { status: 204 }));
     }
-    if (path === '/api/v1/staff') return Promise.resolve(Response.json(TEAM));
+    if (path === '/api/v1/staff') return Promise.resolve(Response.json(team));
     if (path === '/api/v1/roles') return Promise.resolve(Response.json({ data: ROLES }));
     return Promise.resolve(Response.json({ data: [] }));
   });
@@ -350,6 +350,97 @@ describe('TeamPage', () => {
     await userEvent.click(whole);
     for (const cell of within(orders).getAllByTestId('team-permission'))
       expect(cell.getAttribute('data-state')).toBe('unchecked');
+  });
+
+  // ADR 0050 follow-up: on rows with a View box, actions need View first.
+  it('blocks actions until View is ticked, and unticking View clears the row', async () => {
+    signedInAs('owner', ['catalog', 'pos', 'orders']);
+    api();
+    render(<TeamPage />);
+    await userEvent.click(await screen.findByTestId('team-add'));
+    const dialog = await screen.findByTestId('team-dialog');
+    await userEvent.click(
+      within(dialog)
+        .getAllByTestId('team-role')
+        .find((b) => b.dataset.role === 'waiter')!,
+    );
+    const box = (key: string) =>
+      within(dialog)
+        .getAllByTestId('team-permission')
+        .find((c) => c.dataset.key === key)!;
+    const create = box('orders.orders.create');
+    expect(create.hasAttribute('disabled')).toBe(true);
+    expect(create.dataset.blocked).toBe('true');
+    expect(create.getAttribute('aria-label')).toContain('Grant View first');
+    // Rows without a View box are never blocked.
+    expect(box('orders.picking.use').hasAttribute('disabled')).toBe(false);
+
+    await userEvent.click(box('orders.orders.read'));
+    expect(box('orders.orders.create').hasAttribute('disabled')).toBe(false);
+    await userEvent.click(box('orders.orders.create'));
+    await userEvent.click(box('orders.orders.delete'));
+    expect(box('orders.orders.delete').getAttribute('data-state')).toBe('checked');
+
+    await userEvent.click(box('orders.orders.read'));
+    for (const key of [
+      'orders.orders.read',
+      'orders.orders.create',
+      'orders.orders.edit',
+      'orders.orders.delete',
+    ]) {
+      expect(box(key).getAttribute('data-state'), key).toBe('unchecked');
+    }
+    expect(box('orders.orders.create').hasAttribute('disabled')).toBe(true);
+  });
+
+  it('ticks a section consistently: View boxes, then their actions', async () => {
+    signedInAs('owner', ['catalog', 'pos', 'orders']);
+    api();
+    render(<TeamPage />);
+    await userEvent.click(await screen.findByTestId('team-add'));
+    const dialog = await screen.findByTestId('team-dialog');
+    const orders = within(dialog)
+      .getAllByTestId('team-matrix-section')
+      .find((s) => s.dataset.section === 'orders')!;
+    await userEvent.click(within(orders).getByTestId('team-permission-section'));
+    for (const cell of within(orders).getAllByTestId('team-permission')) {
+      expect(cell.getAttribute('data-state')).toBe('checked');
+      expect(cell.dataset.blocked).toBeUndefined();
+    }
+  });
+
+  it('saves a member whose old data has an action without View exactly as it was', async () => {
+    signedInAs('owner', ['catalog', 'pos', 'orders']);
+    // Saved before the rule: the waiter got Create on sales orders without View.
+    const team: TeamListResponse = {
+      ...TEAM,
+      members: [
+        { ...TEAM.members[0]!, grants: ['catalog.products.edit', 'orders.orders.create'] },
+        ...TEAM.members.slice(1),
+      ],
+    };
+    const sent = api(
+      { [`PATCH /api/v1/staff/${id(61)}`]: () => Response.json(team.members[0]) },
+      team,
+    );
+    render(<TeamPage />);
+    const rows = await screen.findAllByTestId('team-row');
+    await userEvent.click(within(rows[0]!).getByTestId('team-row-menu'));
+    await userEvent.click(await screen.findByTestId('team-edit'));
+    const dialog = await screen.findByTestId('team-dialog');
+    const create = within(dialog)
+      .getAllByTestId('team-permission')
+      .find((c) => c.dataset.key === 'orders.orders.create')!;
+    // Ticked, and can still be unticked.
+    expect(create.getAttribute('data-state')).toBe('checked');
+    expect(create.hasAttribute('disabled')).toBe(false);
+    await userEvent.click(within(dialog).getByTestId('team-save'));
+    await waitFor(() =>
+      expect(sent.find((s) => s.path === `/api/v1/staff/${id(61)}`)?.body).toMatchObject({
+        grants: ['catalog.products.edit', 'orders.orders.create'],
+        denies: ['pos.bills.print'],
+      }),
+    );
   });
 
   it('deactivates a member after confirming', async () => {

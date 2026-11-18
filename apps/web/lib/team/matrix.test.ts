@@ -8,12 +8,16 @@ import {
 } from '@durby/shared';
 import type { UsersAccess } from '../users/access';
 import {
+  blockedByView,
   canToggle,
   generatePassword,
   overridesOf,
+  viewKeyFor,
   permissionMatrix,
   selectedOf,
   teamRowActions,
+  tickMany,
+  tickOne,
   whatsappUrl,
 } from './matrix';
 
@@ -259,5 +263,69 @@ describe('generatePassword and whatsappUrl', () => {
     expect(whatsappUrl('Join us: https://x.test/a#token=1')).toBe(
       'https://wa.me/?text=Join%20us%3A%20https%3A%2F%2Fx.test%2Fa%23token%3D1',
     );
+  });
+});
+
+describe('Grant View first', () => {
+  const all = () => true;
+  const SALES = [
+    'orders.orders.read',
+    'orders.orders.create',
+    'orders.orders.edit',
+    'orders.orders.delete',
+  ];
+
+  it('gates the actions of rows that have a View box, and nothing else', () => {
+    expect(viewKeyFor('orders.orders.create')).toBe('orders.orders.read');
+    expect(viewKeyFor('platform.users.delete')).toBe('platform.users.read');
+    expect(viewKeyFor('orders.orders.read')).toBeNull();
+    // Rows without a View box: Picking, Deliveries, Warehouses.
+    expect(viewKeyFor('orders.picking.use')).toBeNull();
+    expect(viewKeyFor('inventory.stock.receive')).toBeNull();
+    expect(viewKeyFor('inventory.warehouses.create')).toBeNull();
+  });
+
+  it('blocks an unticked action until its View is ticked, never one already ticked', () => {
+    expect(blockedByView(new Set(), 'orders.orders.create')).toBe(true);
+    expect(blockedByView(new Set(['orders.orders.read']), 'orders.orders.create')).toBe(false);
+    // Saved before the rule: ticked without View stays untickable.
+    expect(blockedByView(new Set(['orders.orders.create']), 'orders.orders.create')).toBe(false);
+    expect(blockedByView(new Set(), 'orders.picking.use')).toBe(false);
+  });
+
+  it('ticks an action only with its View, and unticking View clears the row (not locked boxes)', () => {
+    expect([...tickOne(new Set(), 'orders.orders.create', true, all)]).toEqual([]);
+    const full = new Set(SALES);
+    expect([...tickOne(full, 'orders.orders.read', false, all)]).toEqual([]);
+    const lockedDelete = (key: string) => key !== 'orders.orders.delete';
+    expect([...tickOne(full, 'orders.orders.read', false, lockedDelete)]).toEqual([
+      'orders.orders.delete',
+    ]);
+    // Unticking an action leaves View alone.
+    expect([...tickOne(full, 'orders.orders.edit', false, all)].sort()).toEqual(
+      ['orders.orders.create', 'orders.orders.delete', 'orders.orders.read'].sort(),
+    );
+  });
+
+  it('ticks many only where View ends up ticked, and clears actions with their View', () => {
+    expect([...tickMany(new Set(), SALES, true, all)].sort()).toEqual([...SALES].sort());
+    // View locked and unticked: its actions are skipped; rows without View still tick.
+    const viewLocked = (key: string) => key !== 'orders.orders.read';
+    expect([...tickMany(new Set(), [...SALES, 'orders.picking.use'], true, viewLocked)]).toEqual([
+      'orders.picking.use',
+    ]);
+    // View locked but already ticked: the actions tick.
+    expect([...tickMany(new Set(['orders.orders.read']), SALES, true, viewLocked)].sort()).toEqual(
+      [...SALES].sort(),
+    );
+    expect([...tickMany(new Set(SALES), ['orders.orders.read'], false, all)]).toEqual([]);
+  });
+
+  it('leaves data saved before the rule as it is until someone changes it', () => {
+    const saved = new Set(['orders.orders.create']);
+    expect([...tickOne(saved, 'orders.picking.use', true, all)].sort()).toEqual([
+      'orders.orders.create',
+      'orders.picking.use',
+    ]);
   });
 });
