@@ -6,6 +6,7 @@ import {
   NEW_ITEM,
   rowProblems,
   rowsFromInvoice,
+  setMissingCategory,
   submitRequest,
 } from './invoice-receipt';
 
@@ -21,6 +22,10 @@ const item = (n: number, name: string, sku: string | null, extra: Partial<StockI
     variantValues: [],
     salePrice: null,
     categoryId: null,
+    brand: null,
+    packCount: null,
+    packSize: null,
+    packUnit: null,
     archivedAt: null,
     ...extra,
   }) satisfies StockItem;
@@ -73,8 +78,11 @@ describe('vendor invoice review (ADR 0049)', () => {
   });
 
   it('builds one invoice to submit: existing items by id, new ones with the supplier code as SKU', () => {
-    const rows = matchInvoice(lines, [CATFISH, TILAPIA]);
+    // Every new line without a category gets one at once; per line a unit, a brand and a pack size (ADR 0055).
+    const rows = setMissingCategory(matchInvoice(lines, [CATFISH, TILAPIA]), id(80));
+    rows[0] = { ...rows[0]!, unitId: id(81) };
     rows[2] = { ...rows[2]!, include: false };
+    rows[3] = { ...rows[3]!, brand: ' Bigi ', pack: { count: '12', size: '500', unit: 'g' } };
     expect(
       submitRequest({
         rows,
@@ -84,8 +92,6 @@ describe('vendor invoice review (ADR 0049)', () => {
         invoice: { number: '108666', date: '10-11-2026', total: '554.00' },
         fileName: '108666.pdf',
         source: 'pdf',
-        newItemUnit: 'pc',
-        newItemCategoryId: id(80),
       }),
     ).toEqual({
       warehouseId: id(90),
@@ -102,6 +108,7 @@ describe('vendor invoice review (ADR 0049)', () => {
           itemId: CATFISH.id,
           quantity: '50.00',
           unitCost: '11.00',
+          unitId: id(81),
         },
         {
           code: '2252-001',
@@ -112,7 +119,15 @@ describe('vendor invoice review (ADR 0049)', () => {
         },
         {
           description: 'Brand new thing',
-          newItem: { name: 'Brand new thing', unit: 'pc', categoryId: id(80) },
+          newItem: {
+            name: 'Brand new thing',
+            unit: 'pc',
+            categoryId: id(80),
+            brand: 'Bigi',
+            packCount: 12,
+            packSize: '500',
+            packUnit: 'g',
+          },
           quantity: '1.00',
           unitCost: '2.00',
         },
@@ -122,15 +137,13 @@ describe('vendor invoice review (ADR 0049)', () => {
 
   it('leaves out a printed total the api would refuse, and no category when none is chosen', () => {
     const request = submitRequest({
-      rows: matchInvoice([line('7', 'Thing')], []),
+      rows: matchInvoice([line('7', 'Thing')], [], 'kg'),
       warehouseId: id(90),
       supplier: '',
       note: 'Check the boxes',
       invoice: { number: null, date: null, total: '1.234' },
       fileName: null,
       source: 'scan',
-      newItemUnit: 'kg',
-      newItemCategoryId: null,
     });
     expect(request).toEqual({
       warehouseId: id(90),
@@ -187,6 +200,8 @@ describe('a stored invoice back as rows (ADR 0054)', () => {
           itemId: CATFISH.id,
           itemName: CATFISH.name,
           newItem: null,
+          unitId: id(81),
+          unitSymbol: 'CTN',
           quantity: '50.000',
           unitCost: '11.0000',
           value: '550.00',
@@ -198,7 +213,18 @@ describe('a stored invoice back as rows (ADR 0054)', () => {
           description: 'brand new thing',
           itemId: null,
           itemName: null,
-          newItem: { name: 'Brand new thing', sku: null, unit: 'pc', categoryId: null },
+          newItem: {
+            name: 'Brand new thing',
+            sku: null,
+            unit: 'pc',
+            categoryId: id(80),
+            brand: 'Bigi',
+            packCount: 12,
+            packSize: '0.500',
+            packUnit: 'kg',
+          },
+          unitId: null,
+          unitSymbol: null,
           quantity: '120',
           unitCost: '0.4150',
           value: '49.80',
@@ -210,6 +236,13 @@ describe('a stored invoice back as rows (ADR 0054)', () => {
       [NEW_ITEM, 'Brand new thing', '120', '0.415'],
     ]);
     expect(rows.every((r) => r.include)).toBe(true);
+    // The invoiced-in unit, and the new item's category, brand and pack size come back as typed (ADR 0055).
+    expect(rows[0]!.unitId).toBe(id(81));
+    expect(rows[1]).toMatchObject({
+      categoryId: id(80),
+      brand: 'Bigi',
+      pack: { count: '12', size: '0.5', unit: 'kg' },
+    });
   });
 });
 

@@ -157,6 +157,86 @@ describe('vendor invoice approval queue (ADR 0054)', () => {
       );
   });
 
+  /** ADR 0055: a line invoiced per carton is booked in pieces; a new item keeps its brand and pack size. */
+  it('converts lines invoiced in a unit of measurement and keeps the new item’s pack size', async () => {
+    const s = await setup();
+    const carton = (
+      (
+        await send('post', s.owner, '/inventory/units', {
+          name: 'Carton',
+          symbol: 'CTN',
+          baseUnit: 'pc',
+          factor: '12',
+        }).expect(201)
+      ).body as { id: string }
+    ).id;
+    const kgCarton = (
+      (
+        await send('post', s.owner, '/inventory/units', {
+          name: 'Sack',
+          symbol: 'SK',
+          baseUnit: 'kg',
+          factor: '25',
+        }).expect(201)
+      ).body as { id: string }
+    ).id;
+    const [catfishLine, croakerLine] = s.invoice.lines;
+    const body = {
+      ...s.invoice,
+      lines: [
+        { ...catfishLine, quantity: '2', unitCost: '132.00', unitId: carton },
+        {
+          ...croakerLine,
+          newItem: {
+            ...croakerLine!.newItem!,
+            brand: 'OD',
+            packCount: 5,
+            packSize: '2',
+            packUnit: 'kg',
+          },
+        },
+      ],
+    };
+    // A unit of another base unit than the item's is refused.
+    await send('post', s.lager, '/inventory/invoices', {
+      ...body,
+      lines: [{ ...body.lines[0], unitId: kgCarton }, body.lines[1]],
+    })
+      .expect(400)
+      .expect((res) => expect((res.body as { code: string }).code).toBe('inventory.unit_mismatch'));
+
+    const pending = vendorInvoiceSchema.parse(
+      (await send('post', s.lager, '/inventory/invoices', body).expect(201)).body,
+    );
+    expect(pending.lines[0]).toMatchObject({
+      unitId: carton,
+      unitSymbol: 'CTN',
+      quantity: '2.000',
+    });
+    expect(pending.lines[1]?.newItem).toMatchObject({
+      brand: 'OD',
+      packCount: 5,
+      packSize: '2.000',
+      packUnit: 'kg',
+    });
+
+    await send('post', s.owner, `/inventory/invoices/${pending.id}/approve`).expect(201);
+    const levels = await stockOf(s.owner, s.warehouseId);
+    // 2 cartons of 12 at 132.00 a carton: 24 pieces at 11.00.
+    expect(levels.find((l) => l.itemName === 'Catfish 1 x 4kg')).toMatchObject({
+      quantity: '24.000',
+    });
+    const items = stockItemListResponseSchema.parse(
+      (await get(s.owner, '/inventory/items').expect(200)).body,
+    ).data;
+    expect(items.find((i) => i.sku === '1971-002')).toMatchObject({
+      brand: 'OD',
+      packCount: 5,
+      packSize: '2.000',
+      packUnit: 'kg',
+    });
+  });
+
   it('can be changed while pending, and rejected with a reason', async () => {
     const s = await setup();
     const pending = vendorInvoiceSchema.parse(

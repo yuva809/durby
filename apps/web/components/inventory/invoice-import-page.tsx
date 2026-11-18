@@ -3,6 +3,7 @@
 import type {
   ProductCategory,
   StockItem,
+  UnitOfMeasure,
   VendorInvoice,
   VendorInvoiceSource,
   Warehouse,
@@ -15,7 +16,7 @@ import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { loadCategories } from '../../lib/catalog/api';
-import { loadStockItems, loadWarehouses } from '../../lib/inventory/api';
+import { loadStockItems, loadUnits, loadWarehouses } from '../../lib/inventory/api';
 import { submitInvoice } from '../../lib/inventory/invoices-api';
 import {
   InvoicePdfError,
@@ -61,6 +62,10 @@ export function InvoiceImportPage() {
         readsCategories={
           session.activeFeatures.includes('catalog') && permissions.has('catalog.products.read')
         }
+        canCreateCategory={
+          session.activeFeatures.includes('catalog') && permissions.has('catalog.products.create')
+        }
+        canCreateUnit={permissions.has('inventory.items.create')}
       />
     </MoneyProvider>
   );
@@ -68,7 +73,14 @@ export function InvoiceImportPage() {
 
 type Step =
   | { kind: 'choose'; problem: string | null; reading: string | null }
-  | { kind: 'review'; fileName: string; source: VendorInvoiceSource; invoice: ParsedInvoice }
+  | {
+      kind: 'review';
+      fileName: string;
+      source: VendorInvoiceSource;
+      invoice: ParsedInvoice;
+      /** The text rows read from the pages, for "Show what was read". */
+      read: string[];
+    }
   | { kind: 'done'; invoice: VendorInvoice };
 
 const isPdf = (file: File) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
@@ -76,17 +88,22 @@ const isPdf = (file: File) => file.type === 'application/pdf' || /\.pdf$/i.test(
 function InvoiceImport({
   organizationId,
   readsCategories,
+  canCreateCategory,
+  canCreateUnit,
 }: {
   organizationId: string | null;
   readsCategories: boolean;
+  canCreateCategory: boolean;
+  canCreateUnit: boolean;
 }) {
   const t = useT();
   const { store } = useAuth();
   const [warehouses] = useResource(organizationId, () => loadWarehouses(store));
   const [items, reloadItems] = useResource(organizationId, () => loadStockItems(store));
-  const [categories] = useResource(readsCategories ? organizationId : null, () =>
+  const [categories, reloadCategories] = useResource(readsCategories ? organizationId : null, () =>
     loadCategories(store),
   );
+  const [units, reloadUnits] = useResource(organizationId, () => loadUnits(store));
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -116,6 +133,11 @@ function InvoiceImport({
                 warehouses={warehouseList.filter((w) => w.archivedAt === null && !w.isTransit)}
                 items={itemList}
                 categories={categories.status === 'ready' ? categories.data : null}
+                units={units.status === 'ready' ? units.data : []}
+                canCreateCategory={canCreateCategory && categories.status === 'ready'}
+                canCreateUnit={canCreateUnit}
+                onCategoryCreated={reloadCategories}
+                onUnitCreated={reloadUnits}
               />
             )}
           </Loaded>
@@ -129,10 +151,20 @@ function Flow({
   warehouses,
   items,
   categories,
+  units,
+  canCreateCategory,
+  canCreateUnit,
+  onCategoryCreated,
+  onUnitCreated,
 }: {
   warehouses: Warehouse[];
   items: StockItem[];
   categories: ProductCategory[] | null;
+  units: UnitOfMeasure[];
+  canCreateCategory: boolean;
+  canCreateUnit: boolean;
+  onCategoryCreated: () => void;
+  onUnitCreated: () => void;
 }) {
   const t = useT();
   const id = useId();
@@ -144,8 +176,6 @@ function Flow({
     supplier: '',
     note: '',
     warehouseId: warehouses[0]?.id ?? '',
-    newItemUnit: 'pc',
-    newItemCategoryId: '',
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -205,7 +235,7 @@ function Flow({
       files.length === 1
         ? files[0]!.name
         : t('inventory.invoice.photos', { count: String(files.length) });
-    setStep({ kind: 'review', fileName, source, invoice });
+    setStep({ kind: 'review', fileName, source, invoice, read: rowsRead });
   }
 
   if (step.kind === 'done') {
@@ -286,8 +316,6 @@ function Flow({
         invoice: review.invoice,
         fileName: review.fileName,
         source: review.source,
-        newItemUnit: header.newItemUnit,
-        newItemCategoryId: header.newItemCategoryId || null,
       }),
     );
     setBusy(false);
@@ -314,8 +342,13 @@ function Flow({
         problems={problems}
         items={items}
         categories={categories}
+        units={units}
         warehouses={warehouses}
         canCreate
+        canCreateCategory={canCreateCategory}
+        canCreateUnit={canCreateUnit}
+        onCategoryCreated={onCategoryCreated}
+        onUnitCreated={onUnitCreated}
         printedTotal={step.invoice.total}
         actions={
           <>
@@ -336,6 +369,12 @@ function Flow({
         }
       />
       <Notice text={error} tone="error" />
+      <details className="rounded-lg border bg-card p-3 text-sm" data-testid="invoice-read">
+        <summary className="cursor-pointer font-medium">{t('inventory.invoice.showRead')}</summary>
+        <pre className="mt-2 max-h-80 overflow-auto text-xs whitespace-pre-wrap text-muted-foreground">
+          {step.read.join('\n')}
+        </pre>
+      </details>
     </div>
   );
 }

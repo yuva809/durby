@@ -39,6 +39,10 @@ export const ITEM_SELECT = {
   variantValues: true,
   salePrice: true,
   categoryId: true,
+  brand: true,
+  packCount: true,
+  packSize: true,
+  packUnit: true,
   archivedAt: true,
 } as const;
 
@@ -53,6 +57,10 @@ export type ItemRow = {
   variantValues: string[];
   salePrice: { toFixed(digits: number): string } | null;
   categoryId: string | null;
+  brand: string | null;
+  packCount: number | null;
+  packSize: { toFixed(digits: number): string } | null;
+  packUnit: StockUnit | null;
   archivedAt: Date | null;
 };
 
@@ -238,6 +246,10 @@ export class InventorySetupService {
             minQuantity: body.minQuantity ?? null,
             salePrice: body.salePrice ?? null,
             categoryId: body.categoryId ?? null,
+            brand: body.brand ?? null,
+            packCount: body.packCount ?? null,
+            packSize: body.packSize ?? null,
+            packUnit: body.packUnit ?? null,
           },
           select: ITEM_SELECT,
         });
@@ -287,6 +299,15 @@ export class InventorySetupService {
                 ? null
                 : new Decimal(body.salePrice).toFixed(2),
           categoryId: body.categoryId === undefined ? before.categoryId : body.categoryId,
+          brand: body.brand === undefined ? before.brand : body.brand,
+          packCount: body.packCount === undefined ? before.packCount : body.packCount,
+          packSize:
+            body.packSize === undefined
+              ? before.packSize
+              : body.packSize === null
+                ? null
+                : fixed3(body.packSize),
+          packUnit: body.packUnit === undefined ? before.packUnit : body.packUnit,
           archivedAt: archivedAt(current.archivedAt, body.archived)?.toISOString() ?? null,
         };
         if (JSON.stringify(itemSnapshot(before)) === JSON.stringify(itemSnapshot(next))) {
@@ -301,6 +322,10 @@ export class InventorySetupService {
             minQuantity: next.minQuantity,
             salePrice: next.salePrice,
             categoryId: next.categoryId,
+            brand: next.brand,
+            packCount: next.packCount,
+            packSize: next.packSize,
+            packUnit: next.packUnit,
             archivedAt: archivedAt(current.archivedAt, body.archived),
           },
           select: ITEM_SELECT,
@@ -356,6 +381,10 @@ export function itemResponse(row: ItemRow): StockItem {
     variantValues: row.variantValues,
     salePrice: row.salePrice?.toFixed(2) ?? null,
     categoryId: row.categoryId,
+    brand: row.brand,
+    packCount: row.packCount,
+    packSize: row.packSize?.toFixed(3) ?? null,
+    packUnit: row.packUnit,
     archivedAt: row.archivedAt?.toISOString() ?? null,
   };
 }

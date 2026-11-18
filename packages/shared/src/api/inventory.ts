@@ -29,6 +29,29 @@ export const ADJUSTMENT_REASONS = ['waste', 'breakage', 'count', 'other'] as con
 export type AdjustmentReason = (typeof ADJUSTMENT_REASONS)[number];
 
 const name = z.string().trim().min(1).max(INVENTORY_NAME_MAX_LENGTH);
+
+/**
+ * An item's brand and pack size (ADR 0055): "12 x 500 g" is count 12, size 500, unit g; size and unit come together.
+ * The count alone ("Pack of 6") or the size alone ("4 kg") is fine too.
+ */
+export const BRAND_MAX_LENGTH = 100;
+export const PACK_COUNT_MAX = 100_000;
+const brand = z.string().trim().min(1).max(BRAND_MAX_LENGTH);
+const packCount = z.int().min(1).max(PACK_COUNT_MAX);
+const packSize = z
+  .string()
+  .regex(/^\d{1,10}(\.\d{1,3})?$/, 'Invalid size')
+  .refine((v) => Number(v) > 0, 'Invalid size');
+const packFields = {
+  brand: brand.optional(),
+  packCount: packCount.optional(),
+  packSize: packSize.optional(),
+  packUnit: z.enum(STOCK_UNITS).optional(),
+};
+const packTogether = (body: { packSize?: string | null; packUnit?: string | null }) =>
+  (body.packSize === undefined || body.packSize === null) ===
+  (body.packUnit === undefined || body.packUnit === null);
+const PACK_TOGETHER = { message: 'A pack size needs its unit', path: ['packUnit'] };
 const sortOrder = z.int().min(0).max(1_000_000);
 const note = z.string().trim().max(INVENTORY_NOTE_MAX_LENGTH);
 
@@ -102,17 +125,25 @@ export const stockItemSchema = z.object({
   salePrice: z.string().nullable().default(null),
   /** Its category (ADR 0048), from the organization's one category list; null = uncategorized. */
   categoryId: z.uuid().nullable().default(null),
+  /** Brand and pack size (ADR 0055); defaults for older apis. `packSize` 3 decimals. */
+  brand: z.string().nullable().default(null),
+  packCount: z.int().nullable().default(null),
+  packSize: z.string().nullable().default(null),
+  packUnit: z.enum(STOCK_UNITS).nullable().default(null),
   archivedAt: z.iso.datetime().nullable(),
 });
 
-export const createStockItemRequestSchema = z.strictObject({
-  name,
-  sku: z.string().trim().min(1).max(50).optional(),
-  unit: z.enum(STOCK_UNITS),
-  minQuantity: stockQuantitySchema.optional(),
-  salePrice: priceSchema.optional(),
-  categoryId: z.uuid().nullable().optional(),
-});
+export const createStockItemRequestSchema = z
+  .strictObject({
+    name,
+    sku: z.string().trim().min(1).max(50).optional(),
+    unit: z.enum(STOCK_UNITS),
+    minQuantity: stockQuantitySchema.optional(),
+    salePrice: priceSchema.optional(),
+    categoryId: z.uuid().nullable().optional(),
+    ...packFields,
+  })
+  .refine(packTogether, PACK_TOGETHER);
 
 export const updateStockItemRequestSchema = z
   .strictObject({
@@ -123,11 +154,21 @@ export const updateStockItemRequestSchema = z
     salePrice: priceSchema.nullable().optional(),
     /** null: uncategorized. */
     categoryId: z.uuid().nullable().optional(),
+    /** null clears (ADR 0055); a size is given or cleared with its unit. */
+    brand: brand.nullable().optional(),
+    packCount: packCount.nullable().optional(),
+    packSize: packSize.nullable().optional(),
+    packUnit: z.enum(STOCK_UNITS).nullable().optional(),
     archived: z.boolean().optional(),
   })
   .refine((body) => Object.values(body).some((v) => v !== undefined), {
     message: 'Nothing to update',
-  });
+  })
+  .refine((body) => (body.packSize === undefined) === (body.packUnit === undefined), PACK_TOGETHER)
+  .refine(
+    (body) => body.packSize === undefined || (body.packSize === null) === (body.packUnit === null),
+    PACK_TOGETHER,
+  );
 
 export const listStockItemsQuerySchema = z.object({
   includeArchived: z
@@ -181,19 +222,29 @@ export const transferRequestSchema = z.strictObject({
  * A vendor invoice as a goods receipt (ADR 0049): each line an existing item or a new one (created in the same
  * transaction, its SKU the supplier's product id), with quantity and unit cost in the item's unit.
  */
-const newInvoiceItemSchema = z.strictObject({
-  name,
-  sku: z.string().trim().min(1).max(50).optional(),
-  unit: z.enum(STOCK_UNITS),
-  categoryId: z.uuid().nullable().optional(),
-});
+const newInvoiceItemSchema = z
+  .strictObject({
+    name,
+    sku: z.string().trim().min(1).max(50).optional(),
+    unit: z.enum(STOCK_UNITS),
+    categoryId: z.uuid().nullable().optional(),
+    ...packFields,
+  })
+  .refine(packTogether, PACK_TOGETHER);
 
+/** `unitId`: the unit the supplier invoices in (ADR 0055); quantity and cost are in it, converted to the item's. */
 export const importReceiptLineSchema = z.union([
-  z.strictObject({ itemId: z.uuid(), quantity: stockQuantitySchema, unitCost: unitCostSchema }),
+  z.strictObject({
+    itemId: z.uuid(),
+    quantity: stockQuantitySchema,
+    unitCost: unitCostSchema,
+    unitId: z.uuid().optional(),
+  }),
   z.strictObject({
     newItem: newInvoiceItemSchema,
     quantity: stockQuantitySchema,
     unitCost: unitCostSchema,
+    unitId: z.uuid().optional(),
   }),
 ]);
 

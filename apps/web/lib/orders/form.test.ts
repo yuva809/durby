@@ -21,6 +21,10 @@ const item = (id: string, name: string, extra: Partial<StockItem> = {}): StockIt
   variantValues: [],
   salePrice: null,
   categoryId: null,
+  brand: null,
+  packCount: null,
+  packSize: null,
+  packUnit: null,
   archivedAt: null,
   ...extra,
 });

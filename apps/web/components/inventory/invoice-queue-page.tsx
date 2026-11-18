@@ -3,6 +3,7 @@
 import type {
   ProductCategory,
   StockItem,
+  UnitOfMeasure,
   VendorInvoice,
   VendorInvoiceStatus,
   VendorInvoiceSummary,
@@ -17,7 +18,7 @@ import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { loadCategories } from '../../lib/catalog/api';
-import { loadStockItems, loadWarehouses } from '../../lib/inventory/api';
+import { loadStockItems, loadUnits, loadWarehouses } from '../../lib/inventory/api';
 import {
   approveInvoice,
   loadInvoice,
@@ -272,9 +273,12 @@ function Detail({
   const [invoice, reload] = useResource(id, () => loadInvoice(store, id));
   const [warehouses] = useResource(organizationId, () => loadWarehouses(store));
   const [items] = useResource(organizationId, () => loadStockItems(store));
-  const [categories] = useResource(readsCategories ? organizationId : null, () =>
+  const [categories, reloadCategories] = useResource(readsCategories ? organizationId : null, () =>
     loadCategories(store),
   );
+  const [units, reloadUnits] = useResource(organizationId, () => loadUnits(store));
+  const { session } = useAuth();
+  const permissions = new Set(session?.activePermissions ?? []);
   return (
     <div className="flex flex-col gap-4" data-testid="queue-detail">
       <Button variant="ghost" className="self-start" onClick={onBack} data-testid="queue-back">
@@ -295,6 +299,13 @@ function Detail({
                     )}
                     items={itemList}
                     categories={categories.status === 'ready' ? categories.data : null}
+                    units={units.status === 'ready' ? units.data : []}
+                    canCreateCategory={
+                      categories.status === 'ready' && permissions.has('catalog.products.create')
+                    }
+                    canCreateUnit={permissions.has('inventory.items.create')}
+                    onCategoryCreated={reloadCategories}
+                    onUnitCreated={reloadUnits}
                     canApprove={canApprove}
                     canEdit={canEdit}
                     onChanged={reload}
@@ -314,6 +325,11 @@ function InvoiceDetail({
   warehouses,
   items,
   categories,
+  units,
+  canCreateCategory,
+  canCreateUnit,
+  onCategoryCreated,
+  onUnitCreated,
   canApprove,
   canEdit,
   onChanged,
@@ -322,6 +338,11 @@ function InvoiceDetail({
   warehouses: Warehouse[];
   items: StockItem[];
   categories: ProductCategory[] | null;
+  units: UnitOfMeasure[];
+  canCreateCategory: boolean;
+  canCreateUnit: boolean;
+  onCategoryCreated: () => void;
+  onUnitCreated: () => void;
   canApprove: boolean;
   canEdit: boolean;
   onChanged: () => void;
@@ -332,13 +353,10 @@ function InvoiceDetail({
   const saveAction = useActionKey();
   const approveAction = useActionKey();
   const rejectAction = useActionKey();
-  const firstNew = invoice.lines.find((l) => l.newItem)?.newItem;
   const initialHeader: InvoiceHeader = {
     supplier: invoice.supplier ?? '',
     note: invoice.note ?? '',
     warehouseId: invoice.warehouseId,
-    newItemUnit: firstNew?.unit ?? 'pc',
-    newItemCategoryId: firstNew?.categoryId ?? '',
   };
   const [header, setHeader] = useState<InvoiceHeader>(initialHeader);
   const [rows, setRows] = useState<InvoiceRow[]>(() => rowsFromInvoice(invoice));
@@ -366,8 +384,6 @@ function InvoiceDetail({
         },
         fileName: invoice.fileName,
         source: invoice.source,
-        newItemUnit: header.newItemUnit,
-        newItemCategoryId: header.newItemCategoryId || null,
       }),
     );
 
@@ -438,8 +454,13 @@ function InvoiceDetail({
         problems={pending ? problems : []}
         items={items}
         categories={categories}
+        units={units}
         warehouses={warehouses}
         canCreate
+        canCreateCategory={canCreateCategory}
+        canCreateUnit={canCreateUnit}
+        onCategoryCreated={onCategoryCreated}
+        onUnitCreated={onUnitCreated}
         printedTotal={invoice.printedTotal}
         readOnly={!pending || !canEdit}
         actions={

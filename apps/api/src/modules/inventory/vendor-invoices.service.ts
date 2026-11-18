@@ -78,9 +78,15 @@ const SELECT = {
       newItemSku: true,
       newItemUnit: true,
       newItemCategoryId: true,
+      newItemBrand: true,
+      newItemPackCount: true,
+      newItemPackSize: true,
+      newItemPackUnit: true,
+      unitId: true,
       quantity: true,
       unitCost: true,
       item: { select: { name: true } },
+      unit: { select: { symbol: true } },
     },
     orderBy: { position: 'asc' },
   },
@@ -118,9 +124,15 @@ interface Row {
     newItemSku: string | null;
     newItemUnit: StockUnit | null;
     newItemCategoryId: string | null;
+    newItemBrand: string | null;
+    newItemPackCount: number | null;
+    newItemPackSize: Dec | null;
+    newItemPackUnit: StockUnit | null;
+    unitId: string | null;
     quantity: Dec;
     unitCost: Dec;
     item: { name: string } | null;
+    unit: { symbol: string } | null;
   }[];
 }
 
@@ -349,16 +361,37 @@ export class VendorInvoicesService {
     return warehouse;
   }
 
-  /** Existing items active; new items' categories active (checked again on approval). */
+  /**
+   * Existing items active; new items' categories active; a line's unit of measurement active and in its item's unit
+   * (ADR 0055). Checked again on approval.
+   */
   private async checkLines(body: SubmitVendorInvoiceRequest): Promise<void> {
     const ids = body.lines.flatMap((l) => (l.itemId ? [l.itemId] : []));
+    const itemUnit = new Map<string, StockUnit>();
     if (ids.length > 0) {
       const found = await this.db.stockItem.findMany({
         where: { id: { in: ids }, archivedAt: null },
-        select: { id: true },
+        select: { id: true, unit: true },
       });
       const missing = ids.filter((id) => !found.some((f) => f.id === id));
       if (missing.length > 0) throw inventoryErrors.itemNotFound(missing);
+      for (const f of found) itemUnit.set(f.id, f.unit);
+    }
+    const unitIds = [...new Set(body.lines.flatMap((l) => (l.unitId ? [l.unitId] : [])))];
+    if (unitIds.length > 0) {
+      const units = await this.db.unitOfMeasure.findMany({
+        where: { id: { in: unitIds }, archivedAt: null },
+        select: { id: true, baseUnit: true },
+      });
+      const missing = unitIds.filter((id) => !units.some((u) => u.id === id));
+      if (missing.length > 0) throw inventoryErrors.unitNotFound(missing);
+      const base = new Map(units.map((u) => [u.id, u.baseUnit]));
+      const mismatched = body.lines.flatMap((l) => {
+        if (!l.unitId) return [];
+        const unit = l.itemId ? itemUnit.get(l.itemId) : l.newItem?.unit;
+        return base.get(l.unitId) === unit ? [] : [l.itemId ?? l.newItem?.name ?? ''];
+      });
+      if (mismatched.length > 0) throw inventoryErrors.unitMismatch(mismatched);
     }
     const categories = new Set(
       body.lines.flatMap((l) => (l.newItem?.categoryId ? [l.newItem.categoryId] : [])),
@@ -384,6 +417,11 @@ export class VendorInvoicesService {
         newItemSku: l.newItem?.sku ?? null,
         newItemUnit: l.newItem?.unit ?? null,
         newItemCategoryId: l.newItem?.categoryId ?? null,
+        newItemBrand: l.newItem?.brand ?? null,
+        newItemPackCount: l.newItem?.packCount ?? null,
+        newItemPackSize: l.newItem?.packSize ?? null,
+        newItemPackUnit: l.newItem?.packUnit ?? null,
+        unitId: l.unitId ?? null,
         quantity: new Decimal(l.quantity).toFixed(3),
         unitCost: new Decimal(l.unitCost).toFixed(4),
       })),
@@ -447,7 +485,11 @@ function receiptOf(row: Row): ImportReceiptRequest {
     ...(row.supplier ? { supplier: row.supplier } : {}),
     ...(note ? { note: note.slice(0, 500) } : {}),
     lines: row.lines.map((l) => {
-      const amounts = { quantity: l.quantity.toFixed(3), unitCost: l.unitCost.toFixed(4) };
+      const amounts = {
+        quantity: l.quantity.toFixed(3),
+        unitCost: l.unitCost.toFixed(4),
+        ...(l.unitId ? { unitId: l.unitId } : {}),
+      };
       if (l.itemId) return { itemId: l.itemId, ...amounts };
       return {
         newItem: {
@@ -455,6 +497,11 @@ function receiptOf(row: Row): ImportReceiptRequest {
           ...(l.newItemSku ? { sku: l.newItemSku } : {}),
           unit: l.newItemUnit!,
           ...(l.newItemCategoryId ? { categoryId: l.newItemCategoryId } : {}),
+          ...(l.newItemBrand ? { brand: l.newItemBrand } : {}),
+          ...(l.newItemPackCount !== null ? { packCount: l.newItemPackCount } : {}),
+          ...(l.newItemPackSize && l.newItemPackUnit
+            ? { packSize: l.newItemPackSize.toFixed(3), packUnit: l.newItemPackUnit }
+            : {}),
         },
         ...amounts,
       };
@@ -509,8 +556,14 @@ function invoiceOf(row: Row, names: ReadonlyMap<string, string>): VendorInvoice 
               sku: l.newItemSku,
               unit: l.newItemUnit ?? 'pc',
               categoryId: l.newItemCategoryId,
+              brand: l.newItemBrand,
+              packCount: l.newItemPackCount,
+              packSize: l.newItemPackSize?.toFixed(3) ?? null,
+              packUnit: l.newItemPackUnit,
             }
           : null,
+      unitId: l.unitId,
+      unitSymbol: l.unit?.symbol ?? null,
       quantity: l.quantity.toFixed(3),
       unitCost: l.unitCost.toFixed(4),
       value: value(l).toFixed(2),

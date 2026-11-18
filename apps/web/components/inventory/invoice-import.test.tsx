@@ -75,6 +75,15 @@ const CATFISH = {
   categoryId: null,
   archivedAt: null,
 };
+/** Units of measurement (ADR 0038): the supplier invoices catfish per carton of 12. */
+const CARTON = {
+  id: id(5),
+  name: 'Carton',
+  symbol: 'CTN',
+  baseUnit: 'pc',
+  factor: '12.000000',
+  archivedAt: null,
+};
 const FISH = {
   id: id(4),
   name: 'Frozen fish',
@@ -127,6 +136,7 @@ function api() {
       '/api/v1/inventory/warehouses': { data: [WAREHOUSE] },
       '/api/v1/inventory/items': { data: [CATFISH] },
       '/api/v1/catalog/categories': { data: [FISH] },
+      '/api/v1/inventory/units': { data: [CARTON] },
       '/api/v1/settings': {
         data: [
           { key: 'locale', value: 'en', source: 'default', dataBound: false },
@@ -166,7 +176,20 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
     expect(screen.getByTestId('invoice-total-check').textContent).toContain('Matches');
 
     await userEvent.type(screen.getByTestId('invoice-supplier'), 'Bonesca');
-    await userEvent.selectOptions(screen.getByTestId('invoice-new-category'), FISH.id);
+    // Category for every new line without one, at once; the pack size was read from the description (ADR 0055).
+    await userEvent.selectOptions(screen.getByTestId('invoice-bulk-category-select'), FISH.id);
+    await userEvent.click(screen.getByTestId('invoice-bulk-category-apply'));
+    expect(within(lines[1]!).getByTestId<HTMLSelectElement>('invoice-line-category').value).toBe(
+      FISH.id,
+    );
+    expect(within(lines[1]!).getByTestId<HTMLInputElement>('invoice-line-pack-count').value).toBe(
+      '5',
+    );
+    await userEvent.type(within(lines[1]!).getByTestId('invoice-line-brand'), 'OD');
+    await userEvent.selectOptions(
+      within(lines[0]!).getByTestId('invoice-line-invoiced-in'),
+      CARTON.id,
+    );
     await userEvent.click(screen.getByTestId('invoice-submit'));
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(writes[0]).toEqual({
@@ -187,6 +210,7 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
             itemId: CATFISH.id,
             quantity: '50.00',
             unitCost: '11.00',
+            unitId: CARTON.id,
           },
           {
             code: '1971-002',
@@ -196,6 +220,10 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
               sku: '1971-002',
               unit: 'pc',
               categoryId: FISH.id,
+              brand: 'OD',
+              packCount: 5,
+              packSize: '2',
+              packUnit: 'kg',
             },
             quantity: '30.00',
             unitCost: '41.50',

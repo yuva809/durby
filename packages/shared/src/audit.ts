@@ -657,6 +657,10 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'variantValues',
     'salePrice',
     'categoryId',
+    'brand',
+    'packCount',
+    'packSize',
+    'packUnit',
     'archivedAt',
   ],
   /** `factor`: decimal string, base units per unit. */

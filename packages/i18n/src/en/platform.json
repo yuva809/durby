@@ -1021,5 +1021,9 @@
   "platform.team.setPassword.doneTitle": "New password set for {name}",
   "platform.team.setPassword.doneFinal": "They were signed out everywhere and sign in with the new password.",
   "platform.team.setPassword.doneTemporary": "They were signed out everywhere; at the next sign-in they choose their own password.",
-  "platform.audit.fields.isMain": "Main warehouse"
+  "platform.audit.fields.isMain": "Main warehouse",
+  "platform.audit.fields.brand": "Brand",
+  "platform.audit.fields.packCount": "Pack count",
+  "platform.audit.fields.packSize": "Pack size",
+  "platform.audit.fields.packUnit": "Pack unit"
 }
