@@ -9,7 +9,8 @@ import type {
   UnitOfMeasure,
   Warehouse,
 } from '@durby/shared';
-import { ArrowLeft, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, FileText, MoreHorizontal } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
 import { useT } from '../../app/labels-provider';
@@ -164,6 +165,14 @@ function Inventory({
           actions={
             <>
               <MoreMenu tabs={tabs.filter((x) => x.id !== 'stock')} onTab={setTab} />
+              {can('inventory.stock.receive') && (
+                <Button variant="outline" asChild>
+                  <Link href="/inventory/invoice" data-testid="inventory-invoice">
+                    <FileText aria-hidden />
+                    {t('inventory.invoice.open')}
+                  </Link>
+                </Button>
+              )}
               {can('inventory.items.edit') && (
                 <ItemDialog
                   categories={data.categories}
