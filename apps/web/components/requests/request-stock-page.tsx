@@ -36,9 +36,11 @@ import {
   loadRequestDestinations,
   loadRequestWarehouses,
 } from '../../lib/orders/requests-api';
+import { isBranchView } from '../../lib/nav/layouts';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
+import { useNavLayout } from '../theme-provider';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
@@ -63,7 +65,11 @@ export function RequestStockPage() {
 
 function RequestStock({ organizationId }: { organizationId: string | null }) {
   const t = useT();
-  const { store } = useAuth();
+  const { store, session } = useAuth();
+  // A branch calls its requests Order History (ADR 0059).
+  const branch = useNavLayout() === 'operations' && session !== null && isBranchView(session);
+  // Who can give people their branch can also fix an empty list.
+  const setsUpStaff = session?.activePermissions.includes('platform.users.edit') ?? false;
   const [warehouses] = useResource(organizationId, () => loadRequestWarehouses(store));
   const [destinations] = useResource(organizationId, () => loadRequestDestinations(store));
   return (
@@ -74,7 +80,9 @@ function RequestStock({ organizationId }: { organizationId: string | null }) {
           <p className="text-muted-foreground">{t('orders.requestForm.intro')}</p>
         </div>
         <Button variant="outline" asChild>
-          <Link href="/requests">{t('platform.nav.stockRequests')}</Link>
+          <Link href="/requests">
+            {t(branch ? 'platform.nav.orderHistory' : 'platform.nav.stockRequests')}
+          </Link>
         </Button>
       </div>
       <Loaded resource={warehouses} reload={() => undefined}>
@@ -82,7 +90,11 @@ function RequestStock({ organizationId }: { organizationId: string | null }) {
           <Loaded resource={destinations} reload={() => undefined}>
             {(branches) =>
               branches.length === 0 || !organizationId ? (
-                <Notice text={t('orders.requestForm.noWarehouse')} tone="info" />
+                setsUpStaff ? (
+                  <NoBranchSetup />
+                ) : (
+                  <Notice text={t('orders.requestForm.noWarehouse')} tone="info" />
+                )
               ) : (
                 <Shop organizationId={organizationId} sources={sources} branches={branches} />
               )
@@ -91,6 +103,27 @@ function RequestStock({ organizationId }: { organizationId: string | null }) {
         )}
       </Loaded>
     </div>
+  );
+}
+
+/**
+ * No branch to request for, said to someone who can change it (ADR 0059): requests bring goods from the main warehouse
+ * to another branch, so a branch apart from the main warehouse's is needed, and its people need it ticked.
+ */
+function NoBranchSetup() {
+  const t = useT();
+  return (
+    <Card className="flex max-w-3xl flex-col gap-3 p-4" data-testid="request-no-branch-setup">
+      <p>{t('orders.requestForm.noBranchSetup')}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" asChild>
+          <Link href="/branches">{t('platform.nav.branches')}</Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href="/staff">{t('platform.nav.staff')}</Link>
+        </Button>
+      </div>
+    </Card>
   );
 }
 
