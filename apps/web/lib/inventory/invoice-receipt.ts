@@ -18,6 +18,25 @@ import { EMPTY_PACK, type PackSize, packFields, packProblems, parsePackSize } fr
 
 export const NEW_ITEM = 'new';
 
+/** How packed lines are counted (ADR 0058): as invoiced (the packs, a pack's price) or by the piece. */
+export type CountAs = 'invoiced' | 'pieces';
+
+/** A line's quantity and unit cost counted as asked; lines not in packs are the same either way. */
+export function amountsOf(
+  line: InvoiceLine,
+  countAs: CountAs,
+): { quantity: string; unitCost: string } {
+  if (countAs === 'pieces' && line.pack) {
+    return { quantity: line.pack.pieces, unitCost: line.pack.piecePrice };
+  }
+  return { quantity: line.quantity, unitCost: line.unitPrice };
+}
+
+/** Every row counted again from its invoice line (quantities typed since are replaced). */
+export function recount(rows: readonly InvoiceRow[], countAs: CountAs): InvoiceRow[] {
+  return rows.map((r) => ({ ...r, ...amountsOf(r.line, countAs) }));
+}
+
 export interface InvoiceRow {
   line: InvoiceLine;
   include: boolean;
@@ -50,6 +69,7 @@ export function matchInvoice(
   lines: readonly InvoiceLine[],
   items: readonly StockItem[],
   newUnit: StockUnit = 'pc',
+  countAs: CountAs = 'invoiced',
 ): InvoiceRow[] {
   const parents = new Set(
     items.map((i) => i.parentItemId).filter((id): id is string => id !== null),
@@ -67,8 +87,7 @@ export function matchInvoice(
       line,
       include: true,
       target,
-      quantity: line.quantity,
-      unitCost: line.unitPrice,
+      ...amountsOf(line, countAs),
       unitId: '',
       newUnit,
       ...detailsFor(line, byId.get(target)),

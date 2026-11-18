@@ -39,6 +39,27 @@ export function lineValue(quantity: string, unitCost: string): string | null {
   return centsText(divRound(q * c, 100_000n));
 }
 
+/**
+ * Whether two totals differ only by rounding unit costs to 4 decimals (ADR 0058): a price per piece worked out from a
+ * pack's (101.50 for 400 pieces is 0.25375, kept as 0.2538) moves its line by at most half a cent plus half a
+ * ten-thousandth per unit. Only lines whose cost has 3 or 4 decimals count; false when the totals are equal or either
+ * isn't an amount.
+ */
+export function differsByRounding(
+  total: string,
+  printed: string,
+  lines: readonly { quantity: string; unitCost: string }[],
+): boolean {
+  const a = scaled(total, 2);
+  const b = scaled(printed, 2);
+  if (a === null || b === null || a === b) return false;
+  // Per line, in cents: ⌊0.5 + quantity × 0.005⌋, the quantity in thousandths.
+  const allowance = lines
+    .filter((l) => /\.\d{3,4}$/.test(l.unitCost.trim()))
+    .reduce((cents, l) => cents + (500_000n + (scaled(l.quantity, 3) ?? 0n) * 5n) / 1_000_000n, 0n);
+  return (a > b ? a - b : b - a) <= allowance;
+}
+
 /** The sum of decimal strings with 2 decimals. */
 export function sumValues(values: readonly string[]): string {
   return centsText(values.reduce((sum, v) => sum + (scaled(v, 2) ?? 0n), 0n));

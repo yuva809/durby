@@ -1,7 +1,9 @@
 /**
- * Vendor invoices from their PDF (docs/modules/inventory.md → Vendor invoices, ADR 0049): the browser reads the PDF's
- * text, groups it into rows and picks out the item table ("Product ID · Description · Qty · Unit price · VAT ·
- * Total", as Bonesca and most wholesalers print it). No upload: only the receipt built from it goes to the api.
+ * Vendor invoices from their PDF (docs/modules/inventory.md → Vendor invoices, ADR 0049, 0058): the browser reads the
+ * PDF's text, groups it into rows and picks out the item table. Three layouts: "Product ID · Description · Qty · Unit
+ * price · VAT · Total" (Bonesca and most wholesalers), packed lines "Code · Description · Origin · Unit · Packs · Per
+ * pack · Free · Pieces · Price · Total · VAT code" (Italian wholesalers), and "Pos · Art-Nr · Description · Qty · Per
+ * pack · VAT % · Price · Total" (German wholesalers). No upload: only the receipt built from it goes to the api.
  */
 
 export interface InvoiceLine {
@@ -15,6 +17,11 @@ export interface InvoiceLine {
   total: string;
   /** quantity × unit price is the printed total (to the cent): the row was read right. */
   checks: boolean;
+  /**
+   * A line invoiced in packs (ADR 0058): "4 CAR × 12 = 48 pcs". `quantity` and `unitPrice` are then as invoiced (the
+   * packs); `pieces` and `piecePrice` the same goods counted by the piece. Absent for other lines.
+   */
+  pack?: { count: string; per: string; unit: string | null; pieces: string; piecePrice: string };
 }
 
 export interface ParsedInvoice {
@@ -25,6 +32,8 @@ export interface ParsedInvoice {
   lines: InvoiceLine[];
   /** The printed grand total, when found. */
   total: string | null;
+  /** Rows read as lines but not goods (transport, "order confirmed"): left out, counted for the person (ADR 0058). */
+  skipped: string[];
 }
 
 /** "1.245,00" → "1245.00", "50,00" → "50.00", "1,245.00" → "1245.00", "41.5" → "41.5"; null if not a number. */
@@ -58,9 +67,160 @@ const ROW = new RegExp(
 );
 const HEADER_WORDS = /\b(description|beschreibung|omschrijving|qty|quantity|menge|aantal)\b/i;
 
-/** Reads one table row, or null when the row isn't one. */
+/** A charge, not goods: transport, freight, an "order confirmed" line (ADR 0058). */
+const NON_GOODS =
+  /\b(trasporto|transport|transporte|freight|fracht|versand|versandkosten|shipping|spedizione|porto|order confirmed)\b/i;
+
+/** European decimals as printed: "12,000", "1.245,00". */
+const EU = String.raw`\d[\d.]*,\d+`;
+
+/**
+ * Packed lines (Italian wholesalers, ADR 0058): "10434 GOLDEN MORN 12x300GR NG CAR 4 12,000 0,000 48,000 2,51 120,48
+ * 41%": code, description, origin, pack unit, packs, pieces per pack, free, pieces, price, total, VAT code. The price
+ * is per piece or per pack, whichever times its quantity is the total.
+ */
+const PACKED = new RegExp(
+  String.raw`^(?<code>\d{1,8})\s+(?<description>.+?)\s+(?:[A-Z]{2}\s+)?(?<unit>CAR|CNF|CRT|CT|BOX|PC|PZ|KRT|SAC|BAG|TRAY)\s+(?<packs>\d{1,6})\s+(?<per>${EU})\s+${EU}\s+(?<pieces>${EU})\s+(?<price>${EU})\s+(?<total>${EU})\s+\S+$`,
+);
+
+/**
+ * Per position (German wholesalers, ADR 0058): "1. 1676 Annam Jack Mackerel Tin 24x425g 60 24 7% 33,36 2.001,60":
+ * position, article number, description, quantity, pieces per pack ("Stk" for single pieces), VAT %, price, total.
+ */
+const PER_POSITION = new RegExp(
+  String.raw`^(?:\d{1,3}\.?\s+)?(?<code>\d{2,8})\s+(?<description>.+?)\s+(?<quantity>\d{1,6}(?:,\d{1,3})?)\s+(?<per>\d{1,4}|stk\.?|st\.?|stück|stck)\s+(?<vat>\d{1,2}(?:[.,]\d+)?)\s*%\s+(?<price>${EU})\s+(?<total>${EU})$`,
+  'i',
+);
+
+/** quantity × price is total within a cent. */
+const checks = (quantity: string, price: string, total: string) => {
+  const difference = (milli(quantity) * milli(price)) / 1000n - milli(total);
+  return difference >= -10n && difference <= 10n;
+};
+
+/** total ÷ quantity, 4 decimals (rounded half up), exact. */
+function per(total: string, quantity: string): string {
+  const q = milli(quantity);
+  if (q === 0n) return '0';
+  // milli(total) / q gives units; scale by 10_000 for 4 decimals.
+  const scaled = (milli(total) * 10_000n * 2n + q) / (2n * q);
+  const whole = scaled / 10_000n;
+  const fraction = String(scaled % 10_000n).padStart(4, '0');
+  return `${whole}.${fraction}`;
+}
+
+/** A computed price as a person types it: "30.1200" → "30.12", "0.2635" stays. */
+const trimPrice = (value: string) => value.replace(/(\.\d\d\d*?)0+$/, '$1');
+
+/** A line invoiced in packs: as invoiced (packs, price per pack) and by the piece. */
+function packedLine(input: {
+  code: string;
+  description: string;
+  packs: string;
+  perPack: string;
+  unit: string | null;
+  pieces: string;
+  price: string;
+  total: string;
+  vatRate: string | null;
+}): InvoiceLine {
+  const { packs, pieces, price, total } = input;
+  // Which count the printed price belongs to: the one whose product is the total.
+  const perPiece = checks(pieces, price, total);
+  const perPackPrice = perPiece ? trimPrice(per(total, packs)) : price;
+  const piecePrice = perPiece ? price : trimPrice(per(total, pieces));
+  return {
+    code: input.code,
+    description: input.description,
+    quantity: packs,
+    unitPrice: perPackPrice,
+    vatRate: input.vatRate,
+    total,
+    checks: perPiece || checks(packs, price, total),
+    pack: { count: packs, per: input.perPack, unit: input.unit, pieces, piecePrice },
+  };
+}
+
+/** A European decimal as these layouts print it: "48,000" → "48.000", "1.245,00" → "1245.00"; null if not one. */
+function eu(raw: string): string | null {
+  const text = raw.trim().replace(/\./g, '').replace(',', '.');
+  return /^\d+(\.\d+)?$/.test(text) ? text : null;
+}
+
+/** Plain decimals without trailing zeros: "12.000" → "12". */
+const plain = (value: string) => (value.includes('.') ? value.replace(/\.?0+$/, '') : value);
+
+/** The packed and per-position layouts (ADR 0058); null when the row is neither. */
+function parseLayoutRow(row: string): InvoiceLine | null {
+  const packed = PACKED.exec(row);
+  if (packed?.groups) {
+    const g = packed.groups;
+    const packs = eu(g.packs ?? '');
+    const perPack = eu(g.per ?? '');
+    const pieces = eu(g.pieces ?? '');
+    const price = eu(g.price ?? '');
+    const total = eu(g.total ?? '');
+    if (!packs || !perPack || !pieces || !price || !total || milli(packs) === 0n) return null;
+    return packedLine({
+      code: g.code!,
+      description: (g.description ?? '').trim(),
+      packs,
+      perPack: plain(perPack),
+      unit: g.unit ?? null,
+      pieces: plain(pieces),
+      price,
+      total,
+      vatRate: null,
+    });
+  }
+  const position = PER_POSITION.exec(row);
+  if (position?.groups) {
+    const g = position.groups;
+    const quantity = eu(g.quantity ?? '');
+    const price = eu(g.price ?? '');
+    const total = eu(g.total ?? '');
+    if (!quantity || !price || !total || milli(quantity) === 0n) return null;
+    const vatRate = eu(g.vat ?? '');
+    const perPack = /^\d+$/.test(g.per ?? '') ? g.per! : null;
+    if (perPack && perPack !== '1') {
+      const pieces = String((milli(quantity) * BigInt(perPack)) / 1000n);
+      return {
+        code: g.code ?? null,
+        description: (g.description ?? '').trim(),
+        quantity,
+        unitPrice: price,
+        vatRate,
+        total,
+        checks: checks(quantity, price, total),
+        pack: {
+          count: quantity,
+          per: perPack,
+          unit: null,
+          pieces,
+          piecePrice: trimPrice(per(total, pieces)),
+        },
+      };
+    }
+    return {
+      code: g.code ?? null,
+      description: (g.description ?? '').trim(),
+      quantity,
+      unitPrice: price,
+      vatRate,
+      total,
+      checks: checks(quantity, price, total),
+    };
+  }
+  return null;
+}
+
+/** Reads one table row, or null when the row isn't one: the packed and per-position layouts first, then the plain one. */
 export function parseInvoiceRow(row: string): InvoiceLine | null {
-  const match = ROW.exec(row.replace(/\s+/g, ' ').trim());
+  const clean = row.replace(/\s+/g, ' ').trim();
+  if (HEADER_WORDS.test(clean)) return null;
+  const layout = parseLayoutRow(clean);
+  if (layout) return layout.description.length >= 2 ? layout : null;
+  const match = ROW.exec(clean);
   if (!match?.groups) return null;
   const g = match.groups;
   const description = (g.description ?? '').trim();
@@ -91,18 +251,29 @@ export function parseInvoiceRow(row: string): InvoiceLine | null {
  */
 export function parseInvoice(rows: readonly string[]): ParsedInvoice {
   const text = rows.join('\n');
-  // A labelled number with a digit in it ("Order number : 108666", "Rechnungsnummer 2026-14"), never "Order confirmation".
+  // A labelled number with a digit in it ("Order number : 108666", "Rechnungsnummer 2026-14", "Rechnung II Nr.
+  // RE22606995"), never "Order confirmation"; else the row after a lone "INVOICE" heading (ADR 0058).
   const number =
-    /(?:order|invoice|rechnungs?|bestell|factuur)\s*-?\s*(?:number|no\.?|nr\.?|nummer|#)\s*:?\s*([A-Z0-9/-]*\d[A-Z0-9/-]*)/i.exec(
+    /(?:order|invoice|rechnungs?|bestell|factuur|fattura|factura|facture)(?:\s+[A-Z]{1,3})?\s*-?\s*(?:number|no\.?|nr\.?|nummer|n°|#)\s*:?\s*([A-Z0-9/-]*\d[A-Z0-9/-]*)/i.exec(
       text,
-    )?.[1] ?? null;
+    )?.[1] ?? headedNumber(rows);
   const date = /\b(\d{1,2}[-./]\d{1,2}[-./]\d{4})\b/.exec(text)?.[1] ?? null;
   const domain = /[\w.+-]+@([a-z0-9-]+)\.[a-z.]{2,}/i.exec(text)?.[1] ?? null;
   const supplier =
     domain && !/^(gmail|outlook|hotmail|yahoo|gmx|web|icloud|t-online)$/i.test(domain)
       ? domain.charAt(0).toUpperCase() + domain.slice(1)
       : null;
-  const lines = rows.map(parseInvoiceRow).filter((l): l is InvoiceLine => l !== null);
+  // Lines, and where the last one was: the totals are below it.
+  const lines: InvoiceLine[] = [];
+  const skipped: string[] = [];
+  let lastLine = -1;
+  rows.forEach((row, index) => {
+    const line = parseInvoiceRow(row);
+    if (!line) return;
+    lastLine = index;
+    if (NON_GOODS.test(line.description)) skipped.push(line.description);
+    else lines.push(line);
+  });
   // The grand total: the last "Total …" row that isn't "excluding VAT" / net.
   let total: string | null = null;
   for (const row of rows) {
@@ -116,7 +287,74 @@ export function parseInvoice(rows: readonly string[]): ParsedInvoice {
     const parsed = amount ? parseAmount(amount) : null;
     if (parsed) total = parsed;
   }
-  return { supplier, number, date, lines, total };
+  const merged = mergeRepeated(lines);
+  lines.splice(0, lines.length, ...merged);
+  // No labelled total that is the lines' sum (a gross total, or none at all): an amount below the lines that is the
+  // net sum, as wholesalers print it without a label (ADR 0058).
+  const sum = lines.length > 0 ? linesTotal(lines) : null;
+  if (sum && total !== sum && lastLine >= 0) {
+    const below = rows.slice(lastLine + 1).join(' ');
+    const amounts = [...below.matchAll(/\d[\d.,]*\d/g)].map((m) => parseAmount(m[0]));
+    if (amounts.some((a) => a !== null && milli(a) === milli(sum))) total = sum;
+  }
+  return { supplier, number, date, lines, total, skipped };
+}
+
+/**
+ * Lines of one product (same code and description) as one (ADR 0058): wholesalers print free goods as a second line at
+ * 0.00. Quantities and totals are added; the price is the total over the quantity (4 decimals).
+ */
+export function mergeRepeated(lines: readonly InvoiceLine[]): InvoiceLine[] {
+  const merged: InvoiceLine[] = [];
+  const index = new Map<string, number>();
+  for (const line of lines) {
+    const key = line.code ? `${line.code}|${line.description.toLowerCase()}` : null;
+    const at = key ? index.get(key) : undefined;
+    if (key === null || at === undefined) {
+      if (key) index.set(key, merged.length);
+      merged.push(line);
+      continue;
+    }
+    const first = merged[at]!;
+    const quantity = add(first.quantity, line.quantity);
+    const total = linesTotal([first, line]);
+    const pack =
+      first.pack && line.pack
+        ? {
+            ...first.pack,
+            count: add(first.pack.count, line.pack.count),
+            pieces: add(first.pack.pieces, line.pack.pieces),
+          }
+        : undefined;
+    merged[at] = {
+      ...first,
+      quantity,
+      unitPrice: trimPrice(per(total, quantity)),
+      total,
+      checks: first.checks && line.checks,
+      ...(pack ? { pack: { ...pack, piecePrice: trimPrice(per(total, pack.pieces)) } } : {}),
+    };
+  }
+  return merged;
+}
+
+/** a + b, exact to thousandths, as a plain decimal. */
+function add(a: string, b: string): string {
+  const sum = milli(a) + milli(b);
+  const fraction = String(sum % 1000n)
+    .padStart(3, '0')
+    .replace(/0+$/, '');
+  return fraction ? `${sum / 1000n}.${fraction}` : String(sum / 1000n);
+}
+
+/** The invoice number on the row after a lone "INVOICE" (or Rechnung, Fattura …) heading; null when there is none. */
+function headedNumber(rows: readonly string[]): string | null {
+  for (let i = 0; i < rows.length - 1; i++) {
+    if (!/^(invoice|rechnung|fattura|factura|facture|factuur)$/i.test(rows[i]!.trim())) continue;
+    const next = rows[i + 1]!.trim();
+    if (/^[A-Z0-9/-]*\d[A-Z0-9/-]*$/i.test(next)) return next;
+  }
+  return null;
 }
 
 /** The sum of line totals, 2 decimals, exact. */

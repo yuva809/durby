@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   compareQuantities,
+  differsByRounding,
   isQuantity,
   isSignedQuantity,
   isUnitCost,
@@ -59,5 +60,27 @@ describe('inventory form math', () => {
     expect(shortQuantity('10.500')).toBe('10.5');
     expect(shortQuantity('3.000')).toBe('3');
     expect(shortQuantity('-2.250')).toBe('-2.25');
+  });
+});
+
+describe('totals apart only by rounding piece prices (ADR 0058)', () => {
+  // 101.50 for 400 pieces is 0.25375 a piece: kept as 0.2538, the line is 101.52.
+  const pieces = [
+    { quantity: '400', unitCost: '0.2538' },
+    { quantity: '48', unitCost: '2.51' },
+  ];
+
+  it('allows half a cent plus half a ten-thousandth per piece, for costs with more than 2 decimals', () => {
+    expect(differsByRounding('222.00', '221.98', pieces)).toBe(true);
+    expect(differsByRounding('221.96', '221.98', pieces)).toBe(true);
+    expect(differsByRounding('222.01', '221.98', pieces)).toBe(false);
+  });
+
+  it('is not rounding when equal, priced in cents, or not amounts', () => {
+    expect(differsByRounding('221.98', '221.98', pieces)).toBe(false);
+    expect(differsByRounding('120.49', '120.48', [{ quantity: '48', unitCost: '2.51' }])).toBe(
+      false,
+    );
+    expect(differsByRounding('x', '1.00', pieces)).toBe(false);
   });
 });

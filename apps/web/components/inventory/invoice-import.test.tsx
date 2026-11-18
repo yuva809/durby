@@ -281,4 +281,68 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
     expect(screen.queryByTestId('invoice-line-problem')).toBeNull();
     expect(screen.getByTestId('invoice-submit')).toHaveProperty('disabled', false);
   });
+
+  it('counts packed lines as invoiced or by the piece, and skips transport (ADR 0058)', async () => {
+    signedIn();
+    const writes = api();
+    // A wholesaler's packed lines: code, description, origin, pack unit, packs, per pack, free, pieces, price, total.
+    pdf.rows = [
+      'INVOICE',
+      '10163527',
+      '07.11.2026',
+      '10434 GOLDEN MORN 12x300GR NG CAR 4 12,000 0,000 48,000 2,51 120,48 41%',
+      '8030 NOODLES CHICKEN 40x70GR TH CAR 10 40,000 0,000 400,000 10,54 105,40 41%',
+      '3964 SARDINES IN OIL 40x125GR MA CAR 10 40,000 0,000 400,000 10,15 101,50 41%',
+      '9497 TRASPORTO IT PC 2 1,000 0,000 2,000 0,00 0,00 E7',
+      '327,38',
+    ];
+    render(<InvoiceImportPage />);
+    await userEvent.upload(await screen.findByTestId('invoice-file'), pdfFile());
+    expect(await screen.findAllByTestId('invoice-line')).toHaveLength(3);
+    const amounts = () =>
+      screen
+        .getAllByTestId('invoice-line')
+        .map((l) => [
+          within(l).getByTestId<HTMLInputElement>('invoice-line-quantity').value,
+          within(l).getByTestId<HTMLInputElement>('invoice-line-cost').value,
+        ]);
+    const first = screen.getAllByTestId('invoice-line')[0]!;
+    expect(within(first).getByTestId('invoice-line-packed').textContent).toBe(
+      '4 CAR × 12 = 48 pcs',
+    );
+    expect(screen.getByTestId<HTMLInputElement>('invoice-number').value).toBe('10163527');
+    expect(screen.getByTestId('invoice-count-skipped').textContent).toBe(
+      'Skipped, not goods: TRASPORTO',
+    );
+    // As invoiced first: cartons at the carton price.
+    expect(screen.getByTestId('invoice-count-invoiced').getAttribute('aria-checked')).toBe('true');
+    expect(amounts()).toEqual([
+      ['4', '30.12'],
+      ['10', '10.54'],
+      ['10', '10.15'],
+    ]);
+    expect(screen.getByTestId('invoice-total-check').textContent).toContain('Matches');
+
+    // By the piece: 0.25375 a sardine tin is kept as 0.2538, 2 cents over the paper, said so.
+    await userEvent.click(screen.getByTestId('invoice-count-pieces'));
+    expect(amounts()).toEqual([
+      ['48', '2.51'],
+      ['400', '0.2635'],
+      ['400', '0.2538'],
+    ]);
+    expect(screen.getByTestId('invoice-total-check').textContent).toContain(
+      'apart from €0.02 from rounding piece prices',
+    );
+    await userEvent.click(screen.getByTestId('invoice-submit'));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]!.body).toMatchObject({
+      invoiceNumber: '10163527',
+      printedTotal: '327.38',
+      lines: [
+        { code: '10434', quantity: '48', unitCost: '2.51' },
+        { code: '8030', quantity: '400', unitCost: '0.2635' },
+        { code: '3964', quantity: '400', unitCost: '0.2538' },
+      ],
+    });
+  });
 });
