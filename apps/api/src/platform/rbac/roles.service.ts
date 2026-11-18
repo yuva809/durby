@@ -11,7 +11,7 @@ import { auditActor, AuditService, snapshot } from '../audit';
 import { AuthContext, Clock } from '../auth';
 import { EntitlementService } from '../config/entitlements';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../tenancy';
-import { roleKeysOf } from './access';
+import { storedRoleKeys } from './access';
 import { AccessService } from './access.service';
 import { type Actor, canEditRole, type RoleView } from './granting';
 import { PERMISSION_REGISTRY, type PermissionRegistry } from './permission-registry';
@@ -45,11 +45,14 @@ export class RolesService {
     private readonly entitlements: EntitlementService,
   ) {}
 
-  /** The role's system key and effective registered keys, for the granting rules. */
+  /**
+   * The role's system key and effective registered keys, for the granting rules. Stored legacy keys are expanded
+   * like access resolution does (ADR 0037 §5, ADR 0051), so a role compares by what its members can really do.
+   */
   viewOf(role: RoleRow): RoleView {
     return {
       systemKey: role.systemKey,
-      keys: roleKeysOf(
+      keys: storedRoleKeys(
         this.registry,
         role.systemKey,
         role.permissions.map((p) => p.permissionKey),

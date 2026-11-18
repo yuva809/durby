@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { sessionFixture } from '../../test/session-fixture';
 import {
   areaLabel,
+  canDeleteCustomRole,
   canEditCustomRole,
   canOfferPermission,
   canRevokeInvitation,
@@ -66,9 +67,12 @@ describe('usersAccessOf', () => {
     expect(accessAs('manager')).toMatchObject({
       canReadUsers: true,
       canInvite: true,
-      canManageUsers: false,
+      canEditUsers: false,
+      canRemoveUsers: false,
       canReadRoles: true,
-      canManageRoles: false,
+      canCreateRoles: false,
+      canEditRoles: false,
+      canDeleteRoles: false,
     });
     expect(accessAs('staff')).toMatchObject({ canReadUsers: false, canReadRoles: false });
   });
@@ -116,7 +120,7 @@ describe('memberActions', () => {
     expect(memberActions(accessAs('admin'), member(OTHER, 'manager'), ROLES).canRemove).toBe(true);
   });
 
-  it('needs platform.users.manage and the role list', () => {
+  it('needs platform.users.edit or .delete and the role list', () => {
     expect(memberActions(accessAs('manager'), member(OTHER, 'staff'), ROLES).canChange).toBe(false);
     expect(memberActions(accessAs('owner'), member(OTHER, 'staff'), null).canChange).toBe(false);
   });
@@ -152,19 +156,28 @@ describe('custom-role editor', () => {
   it('offers only keys the actor holds', () => {
     const manager = accessAs('manager');
     expect(canOfferPermission(manager, 'platform.users.invite')).toBe(true);
-    expect(canOfferPermission(manager, 'platform.users.manage')).toBe(false);
+    expect(canOfferPermission(manager, 'platform.users.edit')).toBe(false);
     for (const key of PERMISSION_KEYS)
       expect(canOfferPermission(accessAs('owner'), key)).toBe(true);
   });
 
-  it('edits and deletes only custom roles within the actor keys, with platform.roles.manage', () => {
+  it('edits and deletes only custom roles within the actor keys, each with its own key', () => {
     expect(canEditCustomRole(accessAs('admin'), role('Auditor'))).toBe(true);
     expect(canEditCustomRole(accessAs('admin'), role('staff'))).toBe(false);
     expect(canEditCustomRole(accessAs('manager'), role('Auditor'))).toBe(false);
     const limited = usersAccessOf(
-      sessionFixture({ activePermissions: ['platform.roles.manage', 'platform.roles.read'] }),
+      sessionFixture({ activePermissions: ['platform.roles.edit', 'platform.roles.read'] }),
     );
     expect(canEditCustomRole(limited, role('Auditor'))).toBe(false);
+    // ADR 0051: edit and delete are separate boxes.
+    const editOnly = usersAccessOf(
+      sessionFixture({
+        activePermissions: [...role('Auditor').permissions, 'platform.roles.edit'],
+      }),
+    );
+    expect(canEditCustomRole(editOnly, role('Auditor'))).toBe(true);
+    expect(canDeleteCustomRole(editOnly, role('Auditor'))).toBe(false);
+    expect(canDeleteCustomRole(accessAs('admin'), role('Auditor'))).toBe(true);
   });
 
   it('groups keys by area in registry order, each area and key with an en and de label', () => {

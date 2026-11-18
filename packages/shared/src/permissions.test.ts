@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   SYSTEM_ROLE_FEATURES,
   isPermissionKey,
+  LEGACY_PERMISSION_ALIASES,
   MATRIX_COLUMNS,
   type MatrixPlacement,
   PERMISSION_KEYS,
@@ -55,6 +56,20 @@ describe('permission registry', () => {
 });
 
 describe('system roles', () => {
+  // ADR 0051: a role holds all of a split key's replacements or none, so splitting changed no built-in role.
+  it.each(SYSTEM_ROLES)('%s holds each split key whole, and the organization view', (role) => {
+    const keys = systemRolePermissions(role);
+    for (const replacements of [
+      LEGACY_PERMISSION_ALIASES['platform.users.manage']!,
+      LEGACY_PERMISSION_ALIASES['platform.roles.manage']!,
+      ['orders.orders.edit', 'orders.orders.delete'],
+      ['orders.customers.edit', 'orders.customers.delete'],
+    ]) {
+      expect(new Set(replacements.map((key) => keys.has(key as PermissionKey))).size).toBe(1);
+    }
+    expect(keys.has('platform.org.read')).toBe(true);
+  });
+
   it('gives the owner every registered key', () => {
     expect([...systemRolePermissions('owner')].sort()).toEqual([...PERMISSION_KEYS].sort());
   });
@@ -71,7 +86,7 @@ describe('system roles', () => {
 
   it('keeps admin below owner, and staff to reading settings, products, tables and orders', () => {
     expect(systemRolePermissions('admin').has('platform.org.manage')).toBe(false);
-    expect(systemRolePermissions('admin').has('platform.roles.manage')).toBe(true);
+    expect(systemRolePermissions('admin').has('platform.roles.edit')).toBe(true);
     expect(systemRolePermissions('admin').has('catalog.products.edit')).toBe(true);
     expect([...systemRolePermissions('manager')].sort()).toEqual([
       'catalog.products.read',
@@ -88,11 +103,13 @@ describe('system roles', () => {
       'inventory.warehouses.delete',
       'inventory.warehouses.edit',
       'orders.customers.create',
+      'orders.customers.delete',
       'orders.customers.edit',
       'orders.customers.read',
       'orders.delivery.assign',
       'orders.delivery.use',
       'orders.orders.create',
+      'orders.orders.delete',
       'orders.orders.edit',
       'orders.orders.read',
       'orders.picking.use',
@@ -100,6 +117,7 @@ describe('system roles', () => {
       'orders.requests.read',
       'orders.requests.receive',
       'platform.feedback.send',
+      'platform.org.read',
       'platform.roles.read',
       'platform.settings.read',
       'platform.users.invite',
@@ -134,6 +152,7 @@ describe('system roles', () => {
       'orders.customers.read',
       'orders.orders.read',
       'platform.feedback.send',
+      'platform.org.read',
       'platform.settings.read',
       'pos.tables.read',
     ]);
@@ -147,6 +166,7 @@ describe('system roles', () => {
       'orders.requests.read',
       'orders.requests.receive',
       'platform.feedback.send',
+      'platform.org.read',
       'platform.settings.read',
     ]);
     expect([...systemRolePermissions('warehouse')].sort()).toEqual([
@@ -158,11 +178,13 @@ describe('system roles', () => {
       'orders.picking.use',
       'orders.requests.read',
       'platform.feedback.send',
+      'platform.org.read',
       'platform.settings.read',
     ]);
     expect([...systemRolePermissions('driver')].sort()).toEqual([
       'orders.delivery.use',
       'platform.feedback.send',
+      'platform.org.read',
     ]);
     const holders = (key: PermissionKey) =>
       SYSTEM_ROLES.filter((role) => systemRolePermissions(role).has(key));
@@ -184,6 +206,7 @@ describe('system roles', () => {
     expect([...systemRolePermissions('waiter')].sort()).toEqual([
       'catalog.products.read',
       'platform.feedback.send',
+      'platform.org.read',
       'platform.settings.read',
       'pos.bills.print',
       'pos.orders.close',
@@ -201,6 +224,7 @@ describe('system roles', () => {
     expect([...systemRolePermissions('cashier')].sort()).toEqual([
       'catalog.products.read',
       'platform.feedback.send',
+      'platform.org.read',
       'platform.settings.read',
       'pos.bills.print',
       'pos.orders.close',
@@ -267,12 +291,14 @@ describe('system roles', () => {
     expect([...systemRolePermissions('kitchen')].sort()).toEqual([
       ...store,
       'platform.feedback.send',
+      'platform.org.read',
       'platform.settings.read',
       'pos.kitchen.use',
     ]);
     expect([...systemRolePermissions('bar')].sort()).toEqual([
       ...store,
       'platform.feedback.send',
+      'platform.org.read',
       'platform.settings.read',
       'pos.bar.use',
     ]);
@@ -286,6 +312,7 @@ describe('system roles', () => {
   it('gives the host the bookings, the waitlist and the tables, nothing else', () => {
     expect([...systemRolePermissions('host')].sort()).toEqual([
       'platform.feedback.send',
+      'platform.org.read',
       'platform.settings.read',
       'pos.tables.read',
       'reservations.bookings.create',

@@ -132,9 +132,12 @@ export class AuthTestKit {
   /** A membership with the organization's Staff role (created here if the org has none yet). */
   join(tenantId: string, userId: string) {
     return this.tenantContext.run({ tenantId, userId }, async () => {
-      const staff =
-        (await this.tenantDb.role.findFirst({ where: { systemKey: 'staff' } })) ??
-        (await this.tenantDb.role.create({ data: { tenantId, systemKey: 'staff' } }));
+      // One statement (INSERT … ON CONFLICT): tests join users to the same org in parallel.
+      const staff = await this.tenantDb.role.upsert({
+        where: { tenantId_systemKey: { tenantId, systemKey: 'staff' } },
+        create: { tenantId, systemKey: 'staff' },
+        update: {},
+      });
       return this.tenantDb.membership.create({ data: { tenantId, userId, roleId: staff.id } });
     });
   }

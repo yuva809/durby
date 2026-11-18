@@ -19,6 +19,7 @@
     "create-staff": "nest build && node dist/cli/create-staff.js",
     "entitlements": "nest build && node dist/cli/entitlements.js",
     "outbox": "nest build && node dist/cli/outbox.js",
+    "rbac:split": "nest build && node dist/cli/rbac-split.js",
     "worker": "nest build && node dist/worker.js",
     "dev:worker": "nest start --watch --entryFile worker"
   },

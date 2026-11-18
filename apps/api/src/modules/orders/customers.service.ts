@@ -99,6 +99,10 @@ export class CustomersService {
             : body.archived
               ? (current.archivedAt ?? new Date())
               : null;
+        // Archiving or restoring is the Delete box (ADR 0051); the route checks `orders.customers.edit`.
+        if ((archivedAt === null) !== (current.archivedAt === null)) {
+          await this.access.assert('orders.customers.delete');
+        }
         const next: OrderCustomer = {
           ...before,
           name: keep('name', body.name),

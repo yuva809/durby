@@ -294,7 +294,7 @@ export class SalesOrdersService {
   /** Up to packed; after picking the goods go back into the warehouse. */
   cancel(id: string, body: CancelSalesOrderRequest): Promise<SalesOrder> {
     return this.move(id, 'cancelled', {
-      key: 'orders.orders.edit',
+      key: 'orders.orders.delete',
       note: body.reason || null,
       apply: async (tx, before) => {
         if (before.status === 'packed') await this.restock(tx, before);

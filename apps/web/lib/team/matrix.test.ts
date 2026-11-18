@@ -22,9 +22,12 @@ const access = (keys: string[], systemRole: UsersAccess['actor']['systemRole'] =
     actor: { userId: 'me', systemRole, permissions: new Set(keys) },
     canReadUsers: true,
     canInvite: true,
-    canManageUsers: keys.includes('platform.users.manage'),
+    canEditUsers: keys.includes('platform.users.edit'),
+    canRemoveUsers: keys.includes('platform.users.delete'),
     canReadRoles: true,
-    canManageRoles: false,
+    canCreateRoles: false,
+    canEditRoles: false,
+    canDeleteRoles: false,
   }) satisfies UsersAccess;
 
 const member = (over: Partial<TeamMember> = {}): TeamMember => ({
@@ -92,10 +95,21 @@ describe('permissionMatrix (ADR 0050)', () => {
       edit: { key: 'pos.orders.close', note: null },
       delete: { key: 'pos.orders.void', note: null },
     });
-    expect(row('platform.users')?.cells.edit).toEqual({
-      key: 'platform.users.manage',
-      note: 'platform.permissionNotes.usersManage',
+    // ADR 0051: the broad keys are split, so every box means what its column says and none carries a note.
+    expect(row('platform.users')?.cells).toEqual({
+      read: { key: 'platform.users.read', note: null },
+      create: { key: 'platform.users.invite', note: null },
+      edit: { key: 'platform.users.edit', note: null },
+      delete: { key: 'platform.users.delete', note: null },
     });
+    expect(row('platform.roles')?.cells.create?.key).toBe('platform.roles.create');
+    expect(row('platform.org')?.cells.read?.key).toBe('platform.org.read');
+    expect(row('orders.salesOrders')?.cells.delete?.key).toBe('orders.orders.delete');
+    expect(row('orders.customers')?.cells.delete?.key).toBe('orders.customers.delete');
+    const notes = rows.flatMap((r) =>
+      Object.values(r.cells).flatMap((c) => (c?.note ? [c.key] : [])),
+    );
+    expect(notes).toEqual([]);
   });
 
   it('has an en and de label for every section, row and note', () => {
@@ -147,31 +161,45 @@ describe('selectedOf and overridesOf', () => {
     selected.delete('inventory.stock.adjust');
     selected.delete('orders.picking.use');
     selected.add('catalog.products.edit');
-    selected.add('platform.users.manage');
+    selected.add('platform.users.edit');
     expect(JSON.stringify(overridesOf(manager, selected))).toBe(
-      '{"grants":["platform.users.manage","catalog.products.edit"],"denies":["inventory.stock.adjust","orders.picking.use"]}',
+      '{"grants":["platform.users.edit","catalog.products.edit"],"denies":["inventory.stock.adjust","orders.picking.use"]}',
     );
   });
 });
 
 describe('teamRowActions and canToggle', () => {
-  it('never offers actions on yourself or without platform.users.manage', () => {
+  it('never offers actions on yourself or without platform.users.edit or .delete', () => {
     expect(
       teamRowActions(
-        access(['platform.users.manage', 'pos.orders.read']),
+        access(['platform.users.edit', 'platform.users.delete', 'pos.orders.read']),
         member({ userId: 'me' }),
       ),
-    ).toEqual({ self: true, canManage: false });
-    expect(teamRowActions(access(['pos.orders.read']), member()).canManage).toBe(false);
+    ).toEqual({ self: true, canEdit: false, canRemove: false });
+    expect(teamRowActions(access(['pos.orders.read']), member()).canEdit).toBe(false);
   });
 
   it('compares the member by their effective keys', () => {
-    const manager = access(['platform.users.manage', 'pos.orders.read']);
-    expect(teamRowActions(manager, member()).canManage).toBe(true);
+    const manager = access(['platform.users.edit', 'platform.users.delete', 'pos.orders.read']);
+    expect(teamRowActions(manager, member()).canEdit).toBe(true);
     expect(
       teamRowActions(manager, member({ permissions: ['pos.orders.read', 'catalog.products.edit'] }))
-        .canManage,
+        .canEdit,
     ).toBe(false);
+  });
+
+  // ADR 0051: editing and removing are separate boxes.
+  it('offers edit with platform.users.edit and remove with platform.users.delete, each on its own', () => {
+    expect(teamRowActions(access(['platform.users.edit', 'pos.orders.read']), member())).toEqual({
+      self: false,
+      canEdit: true,
+      canRemove: false,
+    });
+    expect(teamRowActions(access(['platform.users.delete', 'pos.orders.read']), member())).toEqual({
+      self: false,
+      canEdit: false,
+      canRemove: true,
+    });
   });
 
   it('lets you tick only keys you hold', () => {
@@ -195,22 +223,22 @@ describe('generatePassword and whatsappUrl', () => {
 });
 
 describe('teamRowActions and canToggle', () => {
-  it('never offers actions on yourself or without platform.users.manage', () => {
+  it('never offers actions on yourself or without platform.users.edit or .delete', () => {
     expect(
       teamRowActions(
-        access(['platform.users.manage', 'pos.orders.read']),
+        access(['platform.users.edit', 'platform.users.delete', 'pos.orders.read']),
         member({ userId: 'me' }),
       ),
-    ).toEqual({ self: true, canManage: false });
-    expect(teamRowActions(access(['pos.orders.read']), member()).canManage).toBe(false);
+    ).toEqual({ self: true, canEdit: false, canRemove: false });
+    expect(teamRowActions(access(['pos.orders.read']), member()).canEdit).toBe(false);
   });
 
   it('compares the member by their effective keys', () => {
-    const manager = access(['platform.users.manage', 'pos.orders.read']);
-    expect(teamRowActions(manager, member()).canManage).toBe(true);
+    const manager = access(['platform.users.edit', 'platform.users.delete', 'pos.orders.read']);
+    expect(teamRowActions(manager, member()).canEdit).toBe(true);
     expect(
       teamRowActions(manager, member({ permissions: ['pos.orders.read', 'catalog.products.edit'] }))
-        .canManage,
+        .canEdit,
     ).toBe(false);
   });
 

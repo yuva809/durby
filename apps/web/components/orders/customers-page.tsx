@@ -32,6 +32,10 @@ export function CustomersPage() {
       organizationId={session.activeOrganizationId}
       canCreate={permissions.has('orders.customers.create')}
       canEdit={permissions.has('orders.customers.edit')}
+      // Archiving goes through the edit route and also needs the Delete box (ADR 0051).
+      canArchive={
+        permissions.has('orders.customers.edit') && permissions.has('orders.customers.delete')
+      }
     />
   );
 }
@@ -40,10 +44,12 @@ function Customers({
   organizationId,
   canCreate,
   canEdit,
+  canArchive,
 }: {
   organizationId: string | null;
   canCreate: boolean;
   canEdit: boolean;
+  canArchive: boolean;
 }) {
   const t = useT();
   const { store } = useAuth();
@@ -97,6 +103,7 @@ function Customers({
                     key={customer.id}
                     customer={customer}
                     canEdit={canEdit}
+                    canArchive={canArchive}
                     onDone={reload}
                   />
                 ))}
@@ -112,10 +119,12 @@ function Customers({
 function CustomerRow({
   customer,
   canEdit,
+  canArchive,
   onDone,
 }: {
   customer: OrderCustomer;
   canEdit: boolean;
+  canArchive: boolean;
   onDone: () => void;
 }) {
   const t = useT();
@@ -142,17 +151,19 @@ function CustomerRow({
       {canEdit && (
         <span className="flex shrink-0 gap-2">
           <CustomerDialog customer={customer} onSaved={onDone} />
-          <ArchiveToggle
-            archived={customer.archivedAt !== null}
-            labels={{
-              archive: t('orders.customers.archive'),
-              unarchive: t('orders.customers.unarchive'),
-              title: t('orders.customers.archiveTitle'),
-              description: t('orders.customers.archiveDescription', { name: customer.name }),
-            }}
-            run={(archived) => updateCustomer(store, action, customer.id, { archived })}
-            onDone={onDone}
-          />
+          {canArchive && (
+            <ArchiveToggle
+              archived={customer.archivedAt !== null}
+              labels={{
+                archive: t('orders.customers.archive'),
+                unarchive: t('orders.customers.unarchive'),
+                title: t('orders.customers.archiveTitle'),
+                description: t('orders.customers.archiveDescription', { name: customer.name }),
+              }}
+              run={(archived) => updateCustomer(store, action, customer.id, { archived })}
+              onDone={onDone}
+            />
+          )}
         </span>
       )}
     </li>

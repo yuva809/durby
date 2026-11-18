@@ -11,6 +11,7 @@ import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import {
   areaLabel,
+  canDeleteCustomRole,
   canEditCustomRole,
   canOfferPermission,
   isLocationScoped,
@@ -60,7 +61,7 @@ function Roles({ access, organizationId }: { access: UsersAccess; organizationId
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t('platform.nav.roles')}</h1>
-        {access.canManageRoles && <RoleDialog access={access} onDone={changed} />}
+        {access.canCreateRoles && <RoleDialog access={access} onDone={changed} />}
       </div>
       <Loaded resource={roles} reload={reload}>
         {(list) => (
@@ -90,10 +91,10 @@ function Roles({ access, organizationId }: { access: UsersAccess; organizationId
                 .map((role) => (
                   <RoleCard key={role.id} role={role}>
                     {canEditCustomRole(access, role) && (
-                      <>
-                        <RoleDialog access={access} role={role} onDone={changed} />
-                        <DeleteRole role={role} onDone={() => changed(role)} />
-                      </>
+                      <RoleDialog access={access} role={role} onDone={changed} />
+                    )}
+                    {canDeleteCustomRole(access, role) && (
+                      <DeleteRole role={role} onDone={() => changed(role)} />
                     )}
                   </RoleCard>
                 ))}
