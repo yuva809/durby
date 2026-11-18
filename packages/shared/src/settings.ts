@@ -326,6 +326,15 @@ export const SETTINGS = {
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
+  // On: a password an owner or admin sets for staff is final; staff never choose or reset their own (ADR 0052).
+  'team.adminsManageSignIn': define({
+    label: 'platform.settings.teamAdminsManageSignIn.name',
+    description: 'platform.settings.teamAdminsManageSignIn.description',
+    schema: z.boolean(),
+    default: false,
+    scopes: ['partner', 'organization'],
+    dataBound: false,
+  }),
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;

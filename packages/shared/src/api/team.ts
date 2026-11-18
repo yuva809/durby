@@ -86,7 +86,18 @@ export const teamMemberSchema = z.object({
   joinedAt: z.iso.datetime(),
   /** Still has to replace the temporary password. */
   passwordChangePending: z.boolean(),
+  /**
+   * An owner or admin may set this member's password (ADR 0052): the account was created by this organization and
+   * belongs to no other one.
+   */
+  passwordSettable: z.boolean(),
 });
+
+/**
+ * POST /team/:id/password (ADR 0052). With `team.adminsManageSignIn` on, the password is final; off, it is
+ * temporary and the member chooses their own at the next sign-in. Every session of the member ends.
+ */
+export const setMemberPasswordRequestSchema = z.object({ password: newPasswordSchema });
 
 export const teamInvitationSchema = z.object({
   invitationId: z.uuid(),
@@ -121,6 +132,7 @@ export type CreateTeamMemberRequest = z.infer<typeof createTeamMemberRequestSche
 export type CreateTeamMemberResponse = z.infer<typeof createTeamMemberResponseSchema>;
 export type UpdateTeamMemberRequest = z.infer<typeof updateTeamMemberRequestSchema>;
 export type TeamMember = z.infer<typeof teamMemberSchema>;
+export type SetMemberPasswordRequest = z.infer<typeof setMemberPasswordRequestSchema>;
 export type TeamInvitation = z.infer<typeof teamInvitationSchema>;
 export type TeamListResponse = z.infer<typeof teamListResponseSchema>;
 export type InvitationLinkResponse = z.infer<typeof invitationLinkResponseSchema>;

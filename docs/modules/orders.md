@@ -144,7 +144,7 @@ transfer number `TRF-…`.
 
 | Who               | Role key         | Does                                                        |
 | ----------------- | ---------------- | ----------------------------------------------------------- |
-| Branch            | `branch`         | Request Stock, follows its requests, confirms receipt       |
+| Branch manager    | `branch`         | Request Stock, follows its requests, confirms receipt       |
 | Owner, Admin      | `owner`, `admin` | Approves (quantities may change, 0 drops a line) or rejects |
 | Warehouse (Lager) | `warehouse`      | Picks and packs on the Picking page, assigns a driver       |
 | Driver            | `driver`         | My Deliveries: Picked up, Delivered                         |
@@ -174,7 +174,8 @@ Every step: row lock, timeline row (append-only `stock_request_events`), audit r
 notes), idempotency key completed in the transaction. Errors: `orders.request_not_found`, `orders.request_invalid`,
 `orders.request_transition`, `orders.request_not_yours`, `orders.driver_not_found`, `inventory.insufficient_stock`.
 
-**Web:** Request Stock (`/requests/new`), Stock Requests (`/requests`, with approve, reject, cancel, receive), the
+**Web:** Stock Requests (`/requests`, one menu item, ADR 0052; with approve, reject, cancel, receive, and a "Request
+stock" button opening `/requests/new`), the
 transfers section of Picking (To pick / Packed / Received, pick with a driver, assign later), My Deliveries
 (`/my-deliveries`); Delivery Tracking shows transfers to those who assign drivers.
 

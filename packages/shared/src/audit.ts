@@ -86,6 +86,11 @@ export const AUDIT_ACTIONS = {
     entityType: 'membership',
     label: 'platform.audit.actions.membershipReactivated',
   },
+  // An owner or admin set the member's password (ADR 0052); never the password itself.
+  'platform.membership.password_set': {
+    entityType: 'membership',
+    label: 'platform.audit.actions.membershipPasswordSet',
+  },
   'platform.invitation.created': {
     entityType: 'invitation',
     label: 'platform.audit.actions.invitationCreated',

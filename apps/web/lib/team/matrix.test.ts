@@ -39,6 +39,7 @@ const member = (over: Partial<TeamMember> = {}): TeamMember => ({
   lastActiveAt: null,
   joinedAt: '2026-11-03T10:00:00.000Z',
   passwordChangePending: false,
+  passwordSettable: false,
   ...over,
 });
 

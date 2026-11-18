@@ -14,6 +14,8 @@ import {
   type CreateTeamMemberRequest,
   type CreateTeamMemberResponse,
   type InvitationLinkResponse,
+  setMemberPasswordRequestSchema,
+  type SetMemberPasswordRequest,
   type TeamListResponse,
   type TeamMember,
   updateTeamMemberRequestSchema,
@@ -56,6 +58,20 @@ export class TeamController {
     @Body(new ZodBody(updateTeamMemberRequestSchema)) body: UpdateTeamMemberRequest,
   ): Promise<TeamMember> {
     return this.team.update(id, body);
+  }
+
+  /** Sets the member's password (ADR 0052); answers the member, never the password. */
+  @RequirePermission('platform.users.manage')
+  @IdempotencyExempt(
+    'the body is a password, which must not be kept even hashed; a replay sets the same password again',
+  )
+  @Post(':id/password')
+  @HttpCode(HttpStatus.OK)
+  setPassword(
+    @Param('id', memberId) id: string,
+    @Body(new ZodBody(setMemberPasswordRequestSchema)) body: SetMemberPasswordRequest,
+  ): Promise<TeamMember> {
+    return this.team.setPassword(id, body.password);
   }
 
   @RequirePermission('platform.users.manage')

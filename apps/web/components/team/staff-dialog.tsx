@@ -68,6 +68,7 @@ export function StaffDialog({
   access,
   activeFeatures,
   organizationName,
+  passwordsFinal = false,
   onSaved,
 }: {
   /** Absent: add someone. */
@@ -81,6 +82,8 @@ export function StaffDialog({
   access: UsersAccess;
   activeFeatures: readonly string[];
   organizationName: string;
+  /** Owners and admins set staff passwords (team.adminsManageSignIn, ADR 0052): the one given here is final. */
+  passwordsFinal?: boolean;
   onSaved: () => void;
 }) {
   const t = useT();
@@ -104,6 +107,7 @@ export function StaffDialog({
           <ResultView
             result={result}
             organizationName={organizationName}
+            passwordsFinal={passwordsFinal}
             onDone={() => {
               setResult(null);
               onOpenChange(false);
@@ -118,6 +122,7 @@ export function StaffDialog({
             locations={locations}
             access={access}
             activeFeatures={activeFeatures}
+            passwordsFinal={passwordsFinal}
             onSaved={(r) => {
               onSaved();
               if (r) setResult(r);
@@ -138,6 +143,7 @@ function StaffForm({
   locations,
   access,
   activeFeatures,
+  passwordsFinal,
   onSaved,
   onCancel,
 }: {
@@ -147,6 +153,7 @@ function StaffForm({
   locations: readonly LocationSummary[] | null;
   access: UsersAccess;
   activeFeatures: readonly string[];
+  passwordsFinal: boolean;
   onSaved: (result: Result | null) => void;
   onCancel: () => void;
 }) {
@@ -359,7 +366,13 @@ function StaffForm({
           )}
           {!editing && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${id}-password`}>{t('platform.team.dialog.password')}</Label>
+              <Label htmlFor={`${id}-password`}>
+                {t(
+                  passwordsFinal
+                    ? 'platform.team.dialog.passwordFinal'
+                    : 'platform.team.dialog.password',
+                )}
+              </Label>
               <div className="flex gap-2">
                 <div className="min-w-0 flex-1">
                   <PasswordInput
@@ -385,7 +398,12 @@ function StaffForm({
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                {t('platform.team.dialog.passwordHint', { min: String(PASSWORD_MIN_LENGTH) })}
+                {t(
+                  passwordsFinal
+                    ? 'platform.team.dialog.passwordHintFinal'
+                    : 'platform.team.dialog.passwordHint',
+                  { min: String(PASSWORD_MIN_LENGTH) },
+                )}
               </p>
               {!password && (
                 <label className="flex min-h-11 items-center gap-3 text-sm">
@@ -716,10 +734,12 @@ function PermissionBox({
 function ResultView({
   result,
   organizationName,
+  passwordsFinal,
   onDone,
 }: {
   result: Result;
   organizationName: string;
+  passwordsFinal: boolean;
   onDone: () => void;
 }) {
   const t = useT();
@@ -739,7 +759,11 @@ function ResultView({
           </DialogTitle>
           <DialogDescription>
             {result.kind === 'created'
-              ? t('platform.team.result.createdBody')
+              ? t(
+                  passwordsFinal
+                    ? 'platform.team.result.createdBodyFinal'
+                    : 'platform.team.result.createdBody',
+                )
               : t('platform.team.result.invitedBody', { days: String(INVITATION_TTL_DAYS) })}
           </DialogDescription>
         </div>

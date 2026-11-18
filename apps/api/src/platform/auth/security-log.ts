@@ -9,6 +9,7 @@ export type SecurityEvent =
   | 'auth.refresh.recovered'
   | 'auth.logout'
   | 'auth.password.reset_requested'
+  | 'auth.password.reset_refused_managed'
   | 'auth.password.reset'
   | 'auth.password.changed'
   | 'auth.locale.changed'

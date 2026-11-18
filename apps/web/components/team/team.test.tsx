@@ -63,6 +63,7 @@ const teamMember = (n: number, over: Partial<TeamMember> = {}): TeamMember => ({
   lastActiveAt: null,
   joinedAt: '2026-11-01T10:00:00.000Z',
   passwordChangePending: false,
+  passwordSettable: false,
   ...over,
 });
 
@@ -110,8 +111,8 @@ function signedInAs(key: SystemRole) {
   });
 }
 
-/** Answers by method and path; records the writes. */
-function api(writes: Record<string, () => Response> = {}) {
+/** Answers by method and path (`gets` before the defaults); records the writes. */
+function api(writes: Record<string, () => Response> = {}, gets: Record<string, unknown> = {}) {
   const sent: { method: string; path: string; body: unknown }[] = [];
   mockState.store.apiFetch.mockImplementation((input: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET';
@@ -125,6 +126,7 @@ function api(writes: Record<string, () => Response> = {}) {
       const answer = writes[`${method} ${path}`];
       return Promise.resolve(answer ? answer() : new Response(null, { status: 204 }));
     }
+    if (path in gets) return Promise.resolve(Response.json(gets[path]));
     if (path === '/api/v1/staff') return Promise.resolve(Response.json(TEAM));
     if (path === '/api/v1/roles') return Promise.resolve(Response.json({ data: ROLES }));
     return Promise.resolve(Response.json({ data: [] }));
@@ -309,6 +311,70 @@ describe('TeamPage', () => {
       expect(sent.map((s) => `${s.method} ${s.path}`)).toContain(
         `POST /api/v1/staff/${id(61)}/deactivate`,
       ),
+    );
+  });
+
+  it('sets a password for a member this organization created; final where owners and admins set them', async () => {
+    signedInAs('owner');
+    const settable = { ...TEAM.members[0]!, passwordSettable: true };
+    const sent = api(
+      { [`POST /api/v1/staff/${id(61)}/password`]: () => Response.json(settable) },
+      {
+        '/api/v1/staff': { ...TEAM, members: [settable, ...TEAM.members.slice(1)] },
+        '/api/v1/settings': {
+          data: [
+            { key: 'team.adminsManageSignIn', value: true, source: 'partner', dataBound: false },
+          ],
+        },
+      },
+    );
+    render(<TeamPage />);
+    const rows = await screen.findAllByTestId('team-row');
+    await userEvent.click(within(rows[1]!).getByTestId('team-row-menu'));
+    expect(screen.queryByTestId('team-set-password')).toBeNull();
+    await userEvent.keyboard('{Escape}');
+
+    await userEvent.click(within(rows[0]!).getByTestId('team-row-menu'));
+    await userEvent.click(await screen.findByTestId('team-set-password'));
+    const dialog = await screen.findByTestId('team-password-dialog');
+    expect(dialog.textContent).toContain('They sign in with this password from now on.');
+    await userEvent.type(within(dialog).getByTestId('team-new-password'), 'short');
+    await userEvent.click(within(dialog).getByTestId('team-new-password-save'));
+    expect(await within(dialog).findByText(/at least 12 characters/)).toBeDefined();
+    await userEvent.clear(within(dialog).getByTestId('team-new-password'));
+    await userEvent.type(within(dialog).getByTestId('team-new-password'), 'a new password 42');
+    await userEvent.click(within(dialog).getByTestId('team-new-password-save'));
+    expect(await screen.findByTestId('team-password-done')).toBeDefined();
+    expect(sent.find((s) => s.path.endsWith('/password'))).toEqual({
+      method: 'POST',
+      path: `/api/v1/staff/${id(61)}/password`,
+      body: { password: 'a new password 42' },
+    });
+  });
+
+  it('calls the password final when adding staff where owners and admins set passwords', async () => {
+    signedInAs('owner');
+    api(
+      {},
+      {
+        '/api/v1/settings': {
+          data: [
+            {
+              key: 'team.adminsManageSignIn',
+              value: true,
+              source: 'organization',
+              dataBound: false,
+            },
+          ],
+        },
+      },
+    );
+    render(<TeamPage />);
+    await screen.findAllByTestId('team-row');
+    await userEvent.click(screen.getByTestId('team-add'));
+    const dialog = await screen.findByTestId('team-dialog');
+    await waitFor(() =>
+      expect(dialog.textContent).toContain('only owners and admins can change it'),
     );
   });
 });

@@ -56,6 +56,7 @@ describe('settings registry', () => {
       'inventory.valuationMethod',
       'inventory.targetFoodCostPercent',
       'inventory.allowNegativeStock',
+      'team.adminsManageSignIn',
     ]);
   });
 

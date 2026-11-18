@@ -330,4 +330,104 @@ describe('manage staff', () => {
         .expect(400);
     });
   });
+
+  /** ADR 0052: owners and admins set staff passwords (team.adminsManageSignIn), or reset temporary ones. */
+  describe('passwords set by owners and admins', () => {
+    const setPassword = (token: string, membershipId: string, password: string) =>
+      request(kit.server)
+        .post(`/api/v1/staff/${membershipId}/password`)
+        .auth(token, { type: 'bearer' })
+        .send({ password });
+
+    const adminsManageSignIn = (token: string) =>
+      request(kit.server)
+        .put('/api/v1/settings/team.adminsManageSignIn')
+        .set('Idempotency-Key', uuidv7())
+        .auth(token, { type: 'bearer' })
+        .send({ value: true })
+        .expect(200);
+
+    async function created(token: string, email: string) {
+      await api(token)
+        .post('', { name: 'Ravi', email, roleId: a.roles.waiter, temporaryPassword: TEMP })
+        .expect(201);
+      return (await api(token).list()).members.find((m) => m.email === email)!;
+    }
+
+    it('makes the given password final: no choosing, changing or resetting it oneself', async () => {
+      await adminsManageSignIn(ownerA.token);
+      const email = newEmail();
+      const ravi = await created(ownerA.token, email);
+      expect(ravi).toMatchObject({ passwordChangePending: false, passwordSettable: true });
+
+      const session = await kit.login(email, TEMP);
+      expect(session.res.body).toMatchObject({ passwordChangeRequired: false });
+      const own = await kit
+        .client()
+        .post('/password/change')
+        .auth(session.accessToken, { type: 'bearer' })
+        .send({ currentPassword: TEMP, newPassword: 'my very own password' })
+        .expect(403);
+      expect(own.body).toMatchObject({ code: 'auth.password_managed' });
+
+      // Forgot password answers as always, but no link is sent.
+      await kit.client().post('/password/forgot').send({ email }).expect(202);
+      await kit.settle();
+      expect(kit.mailer.to(email)).toHaveLength(0);
+
+      // The owner sets a new one: final, the old one and every session end.
+      const next = 'a new password from the owner';
+      const updated = await setPassword(ownerA.token, ravi.membershipId, next).expect(200);
+      expect(updated.body).toMatchObject({ membershipId: ravi.membershipId });
+      await kit.client().post('/login').send({ email, password: TEMP }).expect(401);
+      const again = await kit.login(email, next);
+      expect(again.res.body).toMatchObject({ passwordChangeRequired: false });
+      await request(kit.server)
+        .get('/api/v1/auth/me')
+        .auth(session.accessToken, { type: 'bearer' })
+        .expect(401);
+    });
+
+    it('sets a temporary password while the setting is off', async () => {
+      const email = newEmail();
+      const ravi = await created(ownerA.token, email);
+      await setPassword(ownerA.token, ravi.membershipId, 'a temporary one again').expect(200);
+      const session = await kit.login(email, 'a temporary one again');
+      expect(session.res.body).toMatchObject({ passwordChangeRequired: true });
+    });
+
+    it('never for oneself, other organizations, accounts it did not create, or without the right', async () => {
+      const ravi = await created(ownerA.token, newEmail());
+      const mine = (await api(ownerA.token).list()).members.find((m) => m.userId === ownerA.id)!;
+      expect(mine.passwordSettable).toBe(false);
+      const self = await setPassword(ownerA.token, mine.membershipId, 'another password 1').expect(
+        403,
+      );
+      expect(self.body).toMatchObject({ code: 'rbac.cannot_change_self' });
+
+      // An account that signed up itself (it may belong elsewhere too).
+      const own = await member(a, a.roles.waiter);
+      const ownRow = (await api(ownerA.token).list()).members.find((m) => m.userId === own.id)!;
+      expect(ownRow.passwordSettable).toBe(false);
+      const refused = await setPassword(
+        ownerA.token,
+        ownRow.membershipId,
+        'another password 1',
+      ).expect(403);
+      expect(refused.body).toMatchObject({ code: 'rbac.password_not_settable' });
+
+      // Created here but also a member of B: B's door stays B's.
+      await seed.member(b.id, ravi.userId, b.roles.waiter);
+      const shared = await setPassword(
+        ownerA.token,
+        ravi.membershipId,
+        'another password 1',
+      ).expect(403);
+      expect(shared.body).toMatchObject({ code: 'rbac.password_not_settable' });
+
+      await setPassword(ownerB.token, ravi.membershipId, 'another password 1').expect(404);
+      await setPassword(own.token, ravi.membershipId, 'another password 1').expect(403);
+      await setPassword(ownerA.token, ravi.membershipId, 'short').expect(400);
+    });
+  });
 });

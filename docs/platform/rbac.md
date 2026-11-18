@@ -294,6 +294,12 @@ least-privileged role you can give, never Owner), locations and a permission mat
 from the role, changes are marked, keys you don't hold are locked, modules switched off for the organization are
 not listed. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
 
+**Passwords set by owners and admins (ADR 0052).** "Set password" in a member's menu (`POST /staff/:id/password`,
+`platform.users.manage`) for accounts this organization created that belong to no other organization
+(`passwordSettable`), and only for members the actor may manage. With the setting `team.adminsManageSignIn` on,
+passwords given in Add Staff or here are final (no "Choose your own password", no self change or reset by email);
+off, they are temporary. Every session of the member ends; audited as `platform.membership.password_set`.
+
 ## Rollout (expand/contract, ADR 0004)
 
 `memberships.role_id` was **nullable** in release 1.3 so the previous release could still insert memberships during a

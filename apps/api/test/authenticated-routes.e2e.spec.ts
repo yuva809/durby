@@ -183,6 +183,8 @@ describe('route markers', () => {
       // ADR 0017 §8 (with PATCH /platform/staff/:id above): replay-safe set-state staff writes.
       'POST /api/v1/platform/staff/:id/deactivate',
       'POST /api/v1/platform/staff/invitations',
+      // ADR 0052: the body is a password (never stored, not even hashed); a replay sets it again.
+      'POST /api/v1/staff/:id/password',
       // ADR 0047: the caller's own choices, set-state.
       'PUT /api/v1/notifications/preferences',
       'PUT /api/v1/platform/customers/:id/features/:key',
