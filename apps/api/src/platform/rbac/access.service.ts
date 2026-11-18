@@ -8,7 +8,13 @@ import {
   type TenantPrismaClient,
   type TenantTransactionClient,
 } from '../tenancy';
-import { holds, holdsAnywhere, type ResolvedAccess, resolveAccess } from './access';
+import {
+  holds,
+  holdsAnywhere,
+  holdsAtWarehouse,
+  type ResolvedAccess,
+  resolveAccess,
+} from './access';
 import { PERMISSION_REGISTRY, type PermissionRegistry } from './permission-registry';
 import { rbacErrors } from './rbac-errors';
 
@@ -63,6 +69,30 @@ export class AccessService {
     if (!(await this.can(key, opts))) throw rbacErrors.permissionDenied(key);
   }
 
+  /**
+   * `key` for work in a warehouse (ADR 0057): at the warehouse's location, and the warehouse among the caller's when
+   * they are limited to some. Use it wherever stock moves or is shown per warehouse.
+   */
+  async canAtWarehouse(
+    key: PermissionKey,
+    warehouse: { id: string; locationId: string },
+  ): Promise<boolean> {
+    return holdsAtWarehouse(await this.current(), this.registry, key, warehouse);
+  }
+
+  /** Throws 403 rbac.permission_denied unless `canAtWarehouse(key, warehouse)`. */
+  async assertAtWarehouse(
+    key: PermissionKey,
+    warehouse: { id: string; locationId: string },
+  ): Promise<void> {
+    if (!(await this.canAtWarehouse(key, warehouse))) throw rbacErrors.permissionDenied(key);
+  }
+
+  /** The caller's warehouses (ADR 0057), or null: every warehouse at their locations. For filtering queries. */
+  async warehouseIds(): Promise<ReadonlySet<string> | null> {
+    return (await this.current()).warehouseIds;
+  }
+
   /** `'all'`, or the locations the caller holds `key` for (empty: none). For filtering queries. */
   async locationIdsFor(key: PermissionKey): Promise<'all' | string[]> {
     const access = await this.current();
@@ -97,6 +127,7 @@ export class AccessService {
           },
         },
         locations: { select: { locationId: true } },
+        warehouseIds: true,
       },
     });
     return resolveAccess(this.registry, row);

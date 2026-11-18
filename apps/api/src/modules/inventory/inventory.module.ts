@@ -13,13 +13,14 @@ import { UnitsService } from './units.service';
 import { VariantsService } from './variants.service';
 import { VendorInvoicesController } from './vendor-invoices.controller';
 import { VendorInvoicesService } from './vendor-invoices.service';
+import { InventoryWarehouseDirectoryModule } from './warehouse-directory';
 
 /**
  * Inventory (docs/modules/inventory.md): warehouses, stock items, the stock ledger, recipes and
  * the consumption of table-service sales; units, variants, bills of materials and production (Step 5).
  */
 @Module({
-  imports: [CatalogModule],
+  imports: [CatalogModule, InventoryWarehouseDirectoryModule],
   controllers: [InventoryController, ItemSetupController, VendorInvoicesController],
   providers: [
     InventorySetupService,

@@ -306,6 +306,12 @@ each key on its own, and an action saved without View stays as it is until someo
 editor uses the same matrix component (`PermissionMatrix`) and rule for custom roles. The column header and each
 section header stay in view while the matrix scrolls. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
 
+**Warehouse Access (ADR 0057).** `memberships.warehouse_ids`: empty = every warehouse at the member's locations;
+with ids, only those for warehouse work (stock, documents, invoices, picking, receiving), checked by
+`AccessService.canAtWarehouse`. Set with `warehouseIds` on the staff create and update routes (active warehouses at the
+member's locations, `rbac.warehouse_invalid`; someone limited to some warehouses gives only some of theirs). In the
+operations menu the staff dialog shows Branch Access and Warehouse Access as ticks (none = all).
+
 **Passwords set by owners and admins (ADR 0052).** "Set password" in a member's menu (`POST /staff/:id/password`,
 `platform.users.edit`) for accounts this organization created that belong to no other organization
 (`passwordSettable`), and only for members the actor may manage. With the setting `team.adminsManageSignIn` on,

@@ -314,6 +314,9 @@ model Membership {
   roleId        String                 @map("role_id") @db.Uuid
   /// false: limited to the membership_locations rows (none = no locations).
   allLocations  Boolean                @default(true) @map("all_locations")
+  /// The warehouses the member may work in (ADR 0057); empty = every warehouse at their locations. Checked by the
+  /// service (an array has no foreign key; warehouses are archived, never deleted).
+  warehouseIds  String[]               @default([]) @map("warehouse_ids") @db.Uuid
   /// The person's name and phone in this organization (ADR 0023 §7).
   displayName   String?                @map("display_name")
   phone         String?

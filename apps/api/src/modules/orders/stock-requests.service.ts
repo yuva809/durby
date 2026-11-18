@@ -186,6 +186,16 @@ export class StockRequestsService {
         };
       }
     }
+    // Limited to some warehouses (ADR 0057): the requests going out of or into them (a branch's own still show).
+    const own = query.mine ? null : await this.access.warehouseIds();
+    if (own) {
+      where = {
+        AND: [
+          where,
+          { OR: [{ fromWarehouseId: { in: [...own] } }, { toWarehouseId: { in: [...own] } }] },
+        ],
+      };
+    }
     const rows: SummaryRow[] = await this.db.stockRequest.findMany({
       where,
       select: SUMMARY_SELECT,
@@ -518,7 +528,11 @@ export class StockRequestsService {
       id,
       'received',
       body.note ?? null,
-      (row) => this.access.assert('orders.requests.receive', { locationId: row.locationId }),
+      (row) =>
+        this.access.assertAtWarehouse('orders.requests.receive', {
+          id: row.toWarehouseId,
+          locationId: row.locationId,
+        }),
       async (tx, row) => {
         const sent = row.lines.filter((l) => l.pickedQuantity && !isZero(l.pickedQuantity));
         const received = quantitiesFor(sent, body.lines, (l) => l.pickedQuantity!);
@@ -593,7 +607,10 @@ export class StockRequestsService {
 
   startPicking(id: string): Promise<StockRequest> {
     return this.move(id, 'picking', null, (row) =>
-      this.access.assert('orders.picking.use', { locationId: row.fromLocationId }),
+      this.access.assertAtWarehouse('orders.picking.use', {
+        id: row.fromWarehouseId,
+        locationId: row.fromLocationId,
+      }),
     );
   }
 
@@ -605,7 +622,10 @@ export class StockRequestsService {
       'packed',
       null,
       async (row) => {
-        await this.access.assert('orders.picking.use', { locationId: row.fromLocationId });
+        await this.access.assertAtWarehouse('orders.picking.use', {
+          id: row.fromWarehouseId,
+          locationId: row.fromLocationId,
+        });
         if (body.driverUserId) {
           await this.access.assert('orders.delivery.assign', { locationId: row.fromLocationId });
         }

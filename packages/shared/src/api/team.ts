@@ -18,6 +18,8 @@ const phone = z.string().trim().min(1).max(TEAM_PHONE_MAX_LENGTH);
 const keys = z.array(z.string().min(1).max(100)).max(500);
 /** null = all locations; an array limits the membership to those locations. */
 const locationScope = z.array(z.uuid()).max(500).nullable();
+/** The warehouses a member may work in (ADR 0057): null or empty = every warehouse at their locations. */
+const warehouseScope = z.array(z.uuid()).max(500).nullable();
 
 /** A key may be in grants or in denies, not both. */
 const disjoint = (body: { grants?: string[]; denies?: string[] }) =>
@@ -31,6 +33,7 @@ export const createTeamMemberRequestSchema = z
     phone: phone.optional(),
     roleId: z.uuid(),
     locationIds: locationScope.optional(),
+    warehouseIds: warehouseScope.optional(),
     grants: keys.default([]),
     denies: keys.default([]),
     /** Set: create the account at once (when the email has none); empty: an invitation link. */
@@ -59,6 +62,7 @@ export const updateTeamMemberRequestSchema = z
     phone: phone.nullable().optional(),
     roleId: z.uuid().optional(),
     locationIds: locationScope.optional(),
+    warehouseIds: warehouseScope.optional(),
     grants: keys.optional(),
     denies: keys.optional(),
   })
@@ -76,6 +80,8 @@ export const teamMemberSchema = z.object({
   role: roleRefSchema.nullable(),
   allLocations: z.boolean(),
   locationIds: z.array(z.uuid()),
+  /** The warehouses the member may work in (ADR 0057); empty = every warehouse at their locations. */
+  warehouseIds: z.array(z.uuid()).default([]),
   grants: z.array(z.string()),
   denies: z.array(z.string()),
   /** Registered keys the member holds (role ± overrides, before location scope). */

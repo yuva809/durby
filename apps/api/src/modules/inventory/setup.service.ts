@@ -86,6 +86,8 @@ export class InventorySetupService {
 
   async listWarehouses(query: ListWarehousesQuery): Promise<Warehouse[]> {
     const scope = await this.access.locationIdsFor('inventory.stock.read');
+    // Limited to some warehouses (ADR 0057): those, and the transit one (the road between warehouses).
+    const own = await this.access.warehouseIds();
     let locations: 'all' | string[] = scope;
     if (query.locationId) {
       locations = scope === 'all' || scope.includes(query.locationId) ? [query.locationId] : [];
@@ -94,6 +96,7 @@ export class InventorySetupService {
     const rows = await this.db.warehouse.findMany({
       where: {
         ...(locations === 'all' ? {} : { locationId: { in: locations } }),
+        ...(own ? { OR: [{ id: { in: [...own] } }, { isTransit: true }] } : {}),
         ...(query.includeArchived ? {} : { archivedAt: null }),
       },
       select: WAREHOUSE_SELECT,
@@ -138,15 +141,12 @@ export class InventorySetupService {
     const { userId } = this.tenantContext.require();
     const found = await this.db.warehouse.findUnique({
       where: { id },
-      select: { locationId: true },
+      select: { id: true, locationId: true },
     });
-    if (
-      !found ||
-      !(await this.access.can('inventory.stock.read', { locationId: found.locationId }))
-    ) {
+    if (!found || !(await this.access.canAtWarehouse('inventory.stock.read', found))) {
       throw inventoryErrors.warehouseNotFound();
     }
-    await this.access.assert('inventory.warehouses.edit', { locationId: found.locationId });
+    await this.access.assertAtWarehouse('inventory.warehouses.edit', found);
     // The main warehouse supplies every branch (ADR 0053): chosen only by someone who edits warehouses everywhere.
     if (
       body.isMain !== undefined &&

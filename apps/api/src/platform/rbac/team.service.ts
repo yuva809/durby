@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type {
   CreateTeamMemberRequest,
   CreateTeamMemberResponse,
@@ -34,12 +34,14 @@ import {
 import { PERMISSION_REGISTRY, type PermissionRegistry } from './permission-registry';
 import { isUniqueViolation, rbacErrors } from './rbac-errors';
 import { ROLE_SELECT, RolesService } from './roles.service';
+import { WAREHOUSE_DIRECTORY, type WarehouseDirectory } from './warehouse-port';
 
 const MEMBER_SELECT = {
   id: true,
   userId: true,
   roleId: true,
   allLocations: true,
+  warehouseIds: true,
   displayName: true,
   phone: true,
   deactivatedAt: true,
@@ -73,6 +75,9 @@ export class TeamService {
     private readonly clock: Clock,
     @Inject(INVITATION_SETTINGS) private readonly settings: InvitationSettings,
     @Inject(PERMISSION_REGISTRY) private readonly registry: PermissionRegistry,
+    @Optional()
+    @Inject(WAREHOUSE_DIRECTORY)
+    private readonly warehouses: WarehouseDirectory | null = null,
   ) {}
 
   /** Members (active first, then by name or email), open invitations and the counts. */
@@ -207,6 +212,12 @@ export class TeamService {
       const locationIds = body.locationIds ? await existingLocations(tx, body.locationIds) : [];
       const overrides = normalizeOverrides(this.registry, this.roles.viewOf(role), body);
       if (!canSetOverrides(actor, NO_OVERRIDES, overrides)) throw rbacErrors.notGrantable();
+      const warehouseIds =
+        (await this.warehouseScope(tx, actor, body.warehouseIds ?? null, {
+          owner: role.systemKey === 'owner',
+          allLocations,
+          locationIds,
+        })) ?? [];
       const user = await this.users.createWithTemporaryPassword(tx, {
         email,
         password,
@@ -220,6 +231,7 @@ export class TeamService {
           userId: user.id,
           roleId: role.id,
           allLocations,
+          warehouseIds,
           displayName: body.name,
           phone: body.phone ?? null,
         },
@@ -272,12 +284,32 @@ export class TeamService {
         if (role.id !== target.roleId && target.role.systemKey === 'owner') {
           await this.members.assertAnotherOwner(tx, target.role.id, target.id);
         }
+        const warehouseIds = await this.warehouseScope(
+          tx,
+          actor,
+          body.warehouseIds !== undefined
+            ? body.warehouseIds
+            : body.locationIds !== undefined || role.systemKey === 'owner'
+              ? target.warehouseIds
+              : undefined,
+          {
+            owner: role.systemKey === 'owner',
+            allLocations,
+            locationIds:
+              body.locationIds === undefined
+                ? target.locations.map((l) => l.locationId)
+                : locationIds,
+          },
+          // Warehouses the member already had stay, even where the actor has none (only new ones are checked).
+          target.warehouseIds,
+        );
 
         await tx.membership.update({
           where: { id: target.id },
           data: {
             roleId: role.id,
             allLocations,
+            ...(warehouseIds !== undefined && { warehouseIds }),
             ...(body.name !== undefined && { displayName: body.name }),
             ...(body.phone !== undefined && { phone: body.phone }),
           },
@@ -415,6 +447,41 @@ export class TeamService {
     return target;
   }
 
+  /**
+   * The warehouses to store for a member (ADR 0057); undefined keeps them, none = every warehouse at their locations,
+   * and owners are never limited. Each must be an active warehouse other than the transit one, at one of the member's
+   * locations. An actor limited to some warehouses gives only some of theirs (never "all"); `kept` are ones the member
+   * already had, which stay.
+   */
+  private async warehouseScope(
+    tx: TenantTransactionClient,
+    actor: Awaited<ReturnType<RolesService['actor']>>,
+    ids: readonly string[] | null | undefined,
+    member: { owner: boolean; allLocations: boolean; locationIds: readonly string[] },
+    kept: readonly string[] = [],
+  ): Promise<string[] | undefined> {
+    if (ids === undefined) return undefined;
+    const wanted = member.owner ? [] : [...new Set(ids ?? [])].sort();
+    const own = actor.access.warehouseIds;
+    // Only a change is a grant: what the member already has may stay.
+    const unchanged = wanted.join(',') === [...kept].sort().join(',');
+    if (
+      own &&
+      !member.owner &&
+      !unchanged &&
+      (wanted.length === 0 || wanted.some((id) => !own.has(id) && !kept.includes(id)))
+    ) {
+      throw rbacErrors.notGrantable();
+    }
+    if (wanted.length === 0) return [];
+    const found = this.warehouses ? await this.warehouses.usable(wanted, tx) : [];
+    const usable = found.filter(
+      (w) => member.allLocations || member.locationIds.includes(w.locationId),
+    );
+    if (usable.length !== wanted.length) throw rbacErrors.warehouseInvalid();
+    return wanted;
+  }
+
   /** Replaces the locations (when given) and the overrides of a membership. */
   private async writeScope(
     tx: TenantTransactionClient,
@@ -471,6 +538,7 @@ export class TeamService {
       role: { id: row.role.id, systemKey: row.role.systemKey, name: row.role.name },
       allLocations: row.allLocations,
       locationIds: row.locations.map((l) => l.locationId).sort(),
+      warehouseIds: [...row.warehouseIds].sort(),
       ...overrides,
       permissions: Object.keys(this.registry).filter((key) => keys.has(key)),
       status: row.deactivatedAt === null ? 'active' : 'inactive',
@@ -489,6 +557,7 @@ function snapshotOf(row: MemberRow) {
     roleId: row.roleId,
     allLocations: row.allLocations,
     locationIds: row.locations.map((l) => l.locationId),
+    warehouseIds: row.warehouseIds,
     ...fromRows(row.permissions),
     active: row.deactivatedAt === null,
   });

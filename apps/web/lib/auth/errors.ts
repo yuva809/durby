@@ -73,6 +73,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'rbac.not_grantable': 'platform.errors.notGrantable',
   'rbac.cannot_change_self': 'platform.errors.cannotChangeSelf',
   'rbac.password_not_settable': 'platform.errors.passwordNotSettable',
+  'rbac.warehouse_invalid': 'platform.errors.warehouseInvalid',
   'rbac.last_owner': 'platform.errors.lastOwner',
   'rbac.owner_all_locations': 'platform.errors.ownerAllLocations',
   'rbac.role_not_found': 'platform.errors.roleNotFound',

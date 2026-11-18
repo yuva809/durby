@@ -56,6 +56,7 @@ const teamMember = (n: number, over: Partial<TeamMember> = {}): TeamMember => ({
   role: ref(WAITER),
   allLocations: true,
   locationIds: [],
+  warehouseIds: [],
   grants: [],
   denies: [],
   permissions: WAITER.permissions,

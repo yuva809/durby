@@ -160,10 +160,13 @@ export class VendorInvoicesService {
   async list(query: ListVendorInvoicesQuery): Promise<VendorInvoiceSummary[]> {
     const locations = await this.visibleLocations();
     if (locations !== 'all' && locations.length === 0) return [];
+    const own = await this.access.warehouseIds();
     const rows: Row[] = await this.db.vendorInvoice.findMany({
       where: {
         ...(query.status ? { status: query.status } : {}),
         ...(locations === 'all' ? {} : { warehouse: { locationId: { in: locations } } }),
+        // Limited to some warehouses (ADR 0057): their invoices only.
+        ...(own ? { warehouseId: { in: [...own] } } : {}),
       },
       select: SELECT,
       orderBy: { id: 'desc' },
@@ -218,7 +221,8 @@ export class VendorInvoicesService {
   async update(id: string, body: UpdateVendorInvoiceRequest): Promise<VendorInvoice> {
     const { tenantId, userId } = this.tenantContext.require();
     const current = await this.visible(id);
-    const approver = await this.access.can('inventory.invoices.approve', {
+    const approver = await this.access.canAtWarehouse('inventory.invoices.approve', {
+      id: current.warehouseId,
       locationId: current.warehouse.locationId,
     });
     if (!approver && current.submittedBy !== userId) throw vendorInvoiceErrors.notFound();
@@ -249,7 +253,8 @@ export class VendorInvoicesService {
   async approve(id: string): Promise<VendorInvoice> {
     const { userId } = this.tenantContext.require();
     const row = await this.visible(id);
-    await this.access.assert('inventory.invoices.approve', {
+    await this.access.assertAtWarehouse('inventory.invoices.approve', {
+      id: row.warehouseId,
       locationId: row.warehouse.locationId,
     });
     if (row.status !== 'pending') throw vendorInvoiceErrors.decided();
@@ -288,7 +293,8 @@ export class VendorInvoicesService {
   async reject(id: string, body: RejectVendorInvoiceRequest): Promise<VendorInvoice> {
     const { userId } = this.tenantContext.require();
     const row = await this.visible(id);
-    await this.access.assert('inventory.invoices.approve', {
+    await this.access.assertAtWarehouse('inventory.invoices.approve', {
+      id: row.warehouseId,
       locationId: row.warehouse.locationId,
     });
     if (row.status !== 'pending') throw vendorInvoiceErrors.decided();
@@ -340,6 +346,8 @@ export class VendorInvoicesService {
     if (locations !== 'all' && !locations.includes(row.warehouse.locationId)) {
       throw vendorInvoiceErrors.notFound();
     }
+    const own = await this.access.warehouseIds();
+    if (own && !own.has(row.warehouseId)) throw vendorInvoiceErrors.notFound();
     return row;
   }
 
@@ -347,17 +355,17 @@ export class VendorInvoicesService {
   private async usableWarehouse(id: string): Promise<{ locationId: string }> {
     const warehouse = await this.db.warehouse.findUnique({
       where: { id },
-      select: { locationId: true, archivedAt: true, isTransit: true },
+      select: { id: true, locationId: true, archivedAt: true, isTransit: true },
     });
     if (
       !warehouse ||
       warehouse.archivedAt ||
       warehouse.isTransit ||
-      !(await this.access.can('inventory.stock.read', { locationId: warehouse.locationId }))
+      !(await this.access.canAtWarehouse('inventory.stock.read', warehouse))
     ) {
       throw inventoryErrors.warehouseNotFound();
     }
-    await this.access.assert('inventory.stock.receive', { locationId: warehouse.locationId });
+    await this.access.assertAtWarehouse('inventory.stock.receive', warehouse);
     return warehouse;
   }
 

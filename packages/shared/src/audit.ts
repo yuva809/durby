@@ -490,6 +490,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
     'roleId',
     'allLocations',
     'locationIds',
+    'warehouseIds',
     'grants',
     'denies',
     'active',
