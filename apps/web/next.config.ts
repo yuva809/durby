@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: fileURLToPath(new URL('../..', import.meta.url)),
   // Local two-domain demo (docs/platform/web-shell.md): durby.localhost, partner-demo.localhost.
   allowedDevOrigins: ['*.localhost'],
+  // `next upgrade --agent=security`: keep to security patch releases.
+  experimental: { agentUpgrade: 'security' },
   rewrites() {
     return Promise.resolve([{ source: '/api/v1/:path*', destination: `${apiUrl}/api/v1/:path*` }]);
   },
