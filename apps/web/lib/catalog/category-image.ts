@@ -5,6 +5,7 @@ import {
   CATEGORY_IMAGE_MAX_SIDE,
   type ProductCategory,
   productCategorySchema,
+  TABLE_COLORS,
 } from '@durby/shared';
 import { useEffect, useState } from 'react';
 import { type Api, type Result, write } from '../api-call';
@@ -121,22 +122,11 @@ export async function resizeCategoryImage(file: Blob): Promise<Blob | null> {
   return null;
 }
 
-/** Tile colours for categories without an image: picked by the id, so a category keeps its colour. */
-export const CATEGORY_TILE_COLORS = [
-  '#1e3a8a',
-  '#3b2fc9',
-  '#7c3aed',
-  '#be123c',
-  '#c2410c',
-  '#ca8a04',
-  '#0f766e',
-  '#15803d',
-  '#0369a1',
-  '#9d174d',
-] as const;
+/** Tile colours for categories without an image: the table palette's tokens, picked by the id so a category keeps its colour. */
+const TILE_COLORS = TABLE_COLORS.filter((c) => c !== 'neutral');
 
 export function categoryColor(id: string): string {
   let hash = 0;
   for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return CATEGORY_TILE_COLORS[hash % CATEGORY_TILE_COLORS.length]!;
+  return `var(--table-${TILE_COLORS[hash % TILE_COLORS.length]!})`;
 }

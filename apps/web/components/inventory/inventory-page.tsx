@@ -133,7 +133,7 @@ function Inventory({
     if (readsCategories) reloadCategories();
   };
   // The operations menu (AsiaMight, ADR 0048): one Inventory page opening on category tiles; the other tabs and the
-  // setup pages are in its More menu. Durby's menu keeps the tabs.
+  // setup pages are in its More menu. The default menu keeps the tabs.
   const overview = useNavLayout() === 'operations';
 
   const withData = (render: (data: InventoryData) => ReactNode) => (

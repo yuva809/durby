@@ -325,5 +325,7 @@
   "catalog.categoryDialog.image": "Tile image (optional)",
   "catalog.categoryDialog.imageAdd": "Image",
   "catalog.categoryDialog.imageHint": "Shown on the category's tile on the inventory page. Resized to fit; a transparent background turns white.",
-  "catalog.categoryDialog.imageRemove": "Remove image"
+  "catalog.categoryDialog.imageRemove": "Remove image",
+  "catalog.categoriesPage.items": "{count} items",
+  "catalog.categoriesPage.search": "Search categories"
 }

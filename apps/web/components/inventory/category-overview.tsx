@@ -285,7 +285,11 @@ function Tile({ tile, onOpen }: { tile: CategoryTile; onOpen: () => void }) {
         : (tile.category?.name ?? '');
   const plain = tile.selection.kind !== 'category';
   const background =
-    tile.category && !image ? categoryColor(tile.category.id) : plain ? undefined : '#334155';
+    tile.category && !image
+      ? categoryColor(tile.category.id)
+      : plain
+        ? undefined
+        : 'var(--table-slate)';
   const Icon = tile.selection.kind === 'all' ? LayoutGrid : Package;
   return (
     <button
@@ -293,7 +297,7 @@ function Tile({ tile, onOpen }: { tile: CategoryTile; onOpen: () => void }) {
       onClick={onOpen}
       className={cn(
         'relative flex aspect-[4/3] w-full flex-col justify-between overflow-hidden rounded-xl border p-3 text-left transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:p-4',
-        plain ? 'bg-card text-foreground' : 'border-transparent text-white',
+        plain ? 'bg-card text-foreground' : 'border-transparent text-card',
         tile.selection.kind === 'none' && 'bg-muted',
       )}
       style={background ? { backgroundColor: background } : undefined}
@@ -307,7 +311,7 @@ function Tile({ tile, onOpen }: { tile: CategoryTile; onOpen: () => void }) {
           <img src={image} alt="" className="absolute inset-0 size-full object-cover" />
           <span
             aria-hidden
-            className="absolute inset-0 bg-linear-to-t from-black/70 via-black/10 to-transparent"
+            className="absolute inset-0 bg-linear-to-t from-foreground/70 via-foreground/10 to-transparent"
           />
         </>
       )}
@@ -315,7 +319,7 @@ function Tile({ tile, onOpen }: { tile: CategoryTile; onOpen: () => void }) {
         aria-hidden
         className={cn(
           'relative flex size-8 items-center justify-center rounded-full',
-          plain ? 'bg-muted text-muted-foreground' : 'bg-white/90 text-slate-700',
+          plain ? 'bg-muted text-muted-foreground' : 'bg-card/90 text-foreground',
         )}
       >
         <Icon className="size-4" />
@@ -323,7 +327,7 @@ function Tile({ tile, onOpen }: { tile: CategoryTile; onOpen: () => void }) {
       <span className="relative flex flex-col">
         <span className="truncate text-sm font-semibold sm:text-base">{name}</span>
         <span
-          className={cn('text-xs', plain ? 'text-muted-foreground' : 'text-white/80')}
+          className={cn('text-xs', plain ? 'text-muted-foreground' : 'text-card/80')}
           data-testid="category-tile-count"
         >
           {t('inventory.overview.itemCount', { count: String(tile.count) })}

@@ -38,7 +38,7 @@ const category = (n: number, name: string, parentId: string | null = null) => ({
   id: id(10 + n),
   name,
   sortOrder: n * 10,
-  station: 'kitchen',
+  station: 'kitchen' as const,
   description: null,
   parentId,
   imageVersion: null,

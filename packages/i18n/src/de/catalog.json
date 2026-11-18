@@ -325,5 +325,7 @@
   "catalog.categoryDialog.image": "Kachelbild (optional)",
   "catalog.categoryDialog.imageAdd": "Bild",
   "catalog.categoryDialog.imageHint": "Wird auf der Kachel der Kategorie auf der Lagerseite gezeigt. Wird passend verkleinert; ein transparenter Hintergrund wird weiß.",
-  "catalog.categoryDialog.imageRemove": "Bild entfernen"
+  "catalog.categoryDialog.imageRemove": "Bild entfernen",
+  "catalog.categoriesPage.items": "{count} Artikel",
+  "catalog.categoriesPage.search": "Kategorien suchen"
 }
