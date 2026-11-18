@@ -394,7 +394,10 @@ export class VendorInvoicesService {
       if (mismatched.length > 0) throw inventoryErrors.unitMismatch(mismatched);
     }
     const categories = new Set(
-      body.lines.flatMap((l) => (l.newItem?.categoryId ? [l.newItem.categoryId] : [])),
+      body.lines.flatMap((l) => {
+        const categoryId = l.newItem?.categoryId ?? l.itemDetails?.categoryId;
+        return categoryId ? [categoryId] : [];
+      }),
     );
     for (const categoryId of categories) await this.catalog.assertActiveCategory(categoryId);
   }
@@ -416,11 +419,12 @@ export class VendorInvoicesService {
         newItemName: l.newItem?.name.trim() ?? null,
         newItemSku: l.newItem?.sku ?? null,
         newItemUnit: l.newItem?.unit ?? null,
-        newItemCategoryId: l.newItem?.categoryId ?? null,
-        newItemBrand: l.newItem?.brand ?? null,
-        newItemPackCount: l.newItem?.packCount ?? null,
-        newItemPackSize: l.newItem?.packSize ?? null,
-        newItemPackUnit: l.newItem?.packUnit ?? null,
+        // A new item's details, or what approval sets on the existing item (ADR 0055).
+        newItemCategoryId: (l.newItem ?? l.itemDetails)?.categoryId ?? null,
+        newItemBrand: (l.newItem ?? l.itemDetails)?.brand ?? null,
+        newItemPackCount: (l.newItem ?? l.itemDetails)?.packCount ?? null,
+        newItemPackSize: (l.newItem ?? l.itemDetails)?.packSize ?? null,
+        newItemPackUnit: (l.newItem ?? l.itemDetails)?.packUnit ?? null,
         unitId: l.unitId ?? null,
         quantity: new Decimal(l.quantity).toFixed(3),
         unitCost: new Decimal(l.unitCost).toFixed(4),
@@ -490,7 +494,25 @@ function receiptOf(row: Row): ImportReceiptRequest {
         unitCost: l.unitCost.toFixed(4),
         ...(l.unitId ? { unitId: l.unitId } : {}),
       };
-      if (l.itemId) return { itemId: l.itemId, ...amounts };
+      if (l.itemId) {
+        const details = detailsOf(l);
+        return {
+          itemId: l.itemId,
+          ...amounts,
+          ...(details
+            ? {
+                itemDetails: {
+                  ...(details.categoryId ? { categoryId: details.categoryId } : {}),
+                  ...(details.brand ? { brand: details.brand } : {}),
+                  ...(details.packCount !== null ? { packCount: details.packCount } : {}),
+                  ...(details.packSize && details.packUnit
+                    ? { packSize: details.packSize, packUnit: details.packUnit }
+                    : {}),
+                },
+              }
+            : {}),
+        };
+      }
       return {
         newItem: {
           name: l.newItemName!,
@@ -507,6 +529,19 @@ function receiptOf(row: Row): ImportReceiptRequest {
       };
     }),
   };
+}
+
+/** What an existing item's line sets on it (ADR 0055), or null when nothing. */
+function detailsOf(l: Row['lines'][number]) {
+  if (l.itemId === null) return null;
+  const details = {
+    categoryId: l.newItemCategoryId,
+    brand: l.newItemBrand,
+    packCount: l.newItemPackCount,
+    packSize: l.newItemPackSize?.toFixed(3) ?? null,
+    packUnit: l.newItemPackUnit,
+  };
+  return Object.values(details).some((v) => v !== null) ? details : null;
 }
 
 const value = (l: Row['lines'][number]) =>
@@ -562,6 +597,7 @@ function invoiceOf(row: Row, names: ReadonlyMap<string, string>): VendorInvoice 
               packUnit: l.newItemPackUnit,
             }
           : null,
+      itemDetails: detailsOf(l),
       unitId: l.unitId,
       unitSymbol: l.unit?.symbol ?? null,
       quantity: l.quantity.toFixed(3),

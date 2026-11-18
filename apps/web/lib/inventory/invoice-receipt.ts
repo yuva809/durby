@@ -57,32 +57,95 @@ export function matchInvoice(
   const usable = items.filter((i) => i.archivedAt === null && !parents.has(i.id));
   const bySku = new Map(usable.filter((i) => i.sku).map((i) => [normal(i.sku!), i.id]));
   const byName = new Map(usable.map((i) => [normal(i.name), i.id]));
-  return lines.map((line) => ({
-    line,
-    include: true,
-    target:
+  const byId = new Map(items.map((i) => [i.id, i]));
+  return lines.map((line) => {
+    const target =
       (line.code ? bySku.get(normal(line.code)) : undefined) ??
       byName.get(normal(line.description)) ??
-      NEW_ITEM,
-    quantity: line.quantity,
-    unitCost: line.unitPrice,
-    unitId: '',
-    newUnit,
-    categoryId: '',
-    brand: '',
-    // "5 x 2kg" in the description: the pack size of a new item, ready to check (ADR 0055).
-    pack: parsePackSize(line.description) ?? EMPTY_PACK,
-  }));
+      NEW_ITEM;
+    return {
+      line,
+      include: true,
+      target,
+      quantity: line.quantity,
+      unitCost: line.unitPrice,
+      unitId: '',
+      newUnit,
+      ...detailsFor(line, byId.get(target)),
+    };
+  });
 }
 
-/** Gives every new row without a category this one (the "set for all without one" action). */
+/**
+ * A row's category, brand and pack size (ADR 0055): the matched item's own, its missing pack size read from the
+ * description ("5 x 2kg"); for a new item none but that pack size.
+ */
+export function detailsFor(
+  line: InvoiceLine,
+  item: StockItem | undefined,
+): Pick<InvoiceRow, 'categoryId' | 'brand' | 'pack'> {
+  const read = parsePackSize(line.description) ?? EMPTY_PACK;
+  if (!item) return { categoryId: '', brand: '', pack: read };
+  const own = itemPack(item);
+  return {
+    categoryId: item.categoryId ?? '',
+    brand: item.brand ?? '',
+    pack: own.count === '' && own.size === '' ? read : own,
+  };
+}
+
+/** An item's pack size as typed text. */
+const itemPack = (item: StockItem): PackSize => ({
+  count: item.packCount === null ? '' : String(item.packCount),
+  size: item.packSize?.replace(/\.?0+$/, '') ?? '',
+  unit: item.packUnit ?? '',
+});
+
+/** Another item (or New) for a row: its details follow the item (ADR 0055). */
+export function retarget(row: InvoiceRow, target: string, items: readonly StockItem[]): InvoiceRow {
+  const item = target === NEW_ITEM ? undefined : items.find((i) => i.id === target);
+  return { ...row, target, unitId: '', ...detailsFor(row.line, item) };
+}
+
+/**
+ * What an existing item's row changes on it (ADR 0055): category, brand and pack size where they differ from the
+ * item's; undefined when nothing does. A category is set, never cleared, from an invoice.
+ */
+export function itemDetailsChange(row: InvoiceRow, item: StockItem | undefined) {
+  if (!item) return undefined;
+  const own = itemPack(item);
+  const pack = packFields(row.pack);
+  const sameSize =
+    (row.pack.size.trim() === '' && own.size === '') ||
+    (pack.packSize !== undefined &&
+      own.size !== '' &&
+      Number(pack.packSize) === Number(own.size) &&
+      pack.packUnit === own.unit);
+  const change = {
+    ...(row.categoryId && row.categoryId !== (item.categoryId ?? '')
+      ? { categoryId: row.categoryId }
+      : {}),
+    ...(row.brand.trim() && row.brand.trim() !== (item.brand ?? '')
+      ? { brand: row.brand.trim().slice(0, 100) }
+      : {}),
+    ...(pack.packCount !== undefined && String(pack.packCount) !== own.count
+      ? { packCount: pack.packCount }
+      : {}),
+    ...(!sameSize && pack.packSize !== undefined
+      ? { packSize: pack.packSize, packUnit: pack.packUnit }
+      : {}),
+  };
+  return Object.keys(change).length > 0 ? change : undefined;
+}
+
+/** Gives every row without a category this one, new or existing item (the "set for all without one" action). */
 export function setMissingCategory(rows: readonly InvoiceRow[], categoryId: string): InvoiceRow[] {
-  return rows.map((r) => (r.target === NEW_ITEM && r.categoryId === '' ? { ...r, categoryId } : r));
+  return rows.map((r) => (r.include && r.categoryId === '' ? { ...r, categoryId } : r));
 }
 
-/** New rows still without a category (included ones). */
+/** Included rows still without a category. */
 export const missingCategory = (rows: readonly InvoiceRow[]) =>
-  rows.filter((r) => r.include && r.target === NEW_ITEM && r.categoryId === '').length;
+  rows.filter((r) => r.include && r.categoryId === '').length;
 
 /** What keeps each included row from importing (empty: it can go). */
 export function rowProblems(rows: readonly InvoiceRow[], canCreate: boolean): RowProblem[][] {
@@ -103,7 +166,7 @@ export function rowProblems(rows: readonly InvoiceRow[], canCreate: boolean): Ro
     if (!unitCostSchema.safeParse(clean(row.unitCost)).success) problems.push('unitCost');
     if ((counts.get(keyOf(row)) ?? 0) > 1) problems.push('duplicate');
     if (row.target === NEW_ITEM && !canCreate) problems.push('newNotAllowed');
-    if (row.target === NEW_ITEM && packProblems(row.pack).length > 0) problems.push('pack');
+    if (packProblems(row.pack).length > 0) problems.push('pack');
     return problems;
   });
 }
@@ -115,6 +178,8 @@ export function newItemName(line: InvoiceLine): string {
 
 /** The invoice to submit for approval (ADR 0054): the included rows; call only when rowProblems finds none. */
 export function submitRequest(input: {
+  /** To send only what changes on existing items (ADR 0055). */
+  items?: readonly StockItem[];
   rows: readonly InvoiceRow[];
   warehouseId: string;
   supplier: string;
@@ -146,7 +211,13 @@ export function submitRequest(input: {
           unitCost: clean(r.unitCost),
           ...(r.unitId ? { unitId: r.unitId } : {}),
         };
-        if (r.target !== NEW_ITEM) return { ...base, itemId: r.target };
+        if (r.target !== NEW_ITEM) {
+          const itemDetails = itemDetailsChange(
+            r,
+            input.items?.find((i) => i.id === r.target),
+          );
+          return { ...base, itemId: r.target, ...(itemDetails ? { itemDetails } : {}) };
+        }
         return {
           ...base,
           newItem: {
@@ -163,9 +234,12 @@ export function submitRequest(input: {
 }
 
 /** A stored invoice back as review rows (the approver's edit): every line included, as saved. */
-export function rowsFromInvoice(invoice: VendorInvoice): InvoiceRow[] {
-  return invoice.lines.map((l) => ({
-    line: {
+export function rowsFromInvoice(
+  invoice: VendorInvoice,
+  items: readonly StockItem[] = [],
+): InvoiceRow[] {
+  return invoice.lines.map((l) => {
+    const line = {
       code: l.code,
       description: l.newItem?.name ?? l.description,
       quantity: l.quantity,
@@ -173,25 +247,34 @@ export function rowsFromInvoice(invoice: VendorInvoice): InvoiceRow[] {
       vatRate: null,
       total: l.value,
       checks: true,
-    },
-    include: true,
-    target: l.itemId ?? NEW_ITEM,
-    unitId: l.unitId ?? '',
-    newUnit: l.newItem?.unit ?? 'pc',
-    categoryId: l.newItem?.categoryId ?? '',
-    brand: l.newItem?.brand ?? '',
-    pack: {
-      count:
-        l.newItem?.packCount === null || l.newItem?.packCount === undefined
-          ? ''
-          : String(l.newItem.packCount),
-      size: l.newItem?.packSize?.replace(/\.?0+$/, '') ?? '',
-      unit: l.newItem?.packUnit ?? '',
-    },
-    // "50.000" → "50", "41.5000" → "41.50", "0.4150" → "0.415": as a person types them.
-    quantity: l.quantity.includes('.')
-      ? l.quantity.replace(/0+$/, '').replace(/\.$/, '')
-      : l.quantity,
-    unitCost: l.unitCost.replace(/(\.\d\d\d*?)0+$/, '$1'),
-  }));
+    };
+    // A new item's details as proposed; an existing item's own, with what the line changes on top (ADR 0055).
+    const item = l.itemId ? items.find((i) => i.id === l.itemId) : undefined;
+    const base = detailsFor(line, item);
+    const given = l.newItem ?? l.itemDetails;
+    return {
+      line,
+      include: true,
+      target: l.itemId ?? NEW_ITEM,
+      unitId: l.unitId ?? '',
+      newUnit: l.newItem?.unit ?? 'pc',
+      categoryId: given?.categoryId ?? (l.newItem ? '' : base.categoryId),
+      brand: given?.brand ?? (l.newItem ? '' : base.brand),
+      pack:
+        given && (given.packCount !== null || given.packSize !== null)
+          ? {
+              count: given.packCount === null ? '' : String(given.packCount),
+              size: given.packSize?.replace(/\.?0+$/, '') ?? '',
+              unit: given.packUnit ?? '',
+            }
+          : l.newItem
+            ? EMPTY_PACK
+            : base.pack,
+      // "50.000" → "50", "41.5000" → "41.50", "0.4150" → "0.415": as a person types them.
+      quantity: l.quantity.includes('.')
+        ? l.quantity.replace(/0+$/, '').replace(/\.$/, '')
+        : l.quantity,
+      unitCost: l.unitCost.replace(/(\.\d\d\d*?)0+$/, '$1'),
+    };
+  });
 }

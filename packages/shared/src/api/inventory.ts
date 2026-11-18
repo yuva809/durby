@@ -239,6 +239,14 @@ export const importReceiptLineSchema = z.union([
     quantity: stockQuantitySchema,
     unitCost: unitCostSchema,
     unitId: z.uuid().optional(),
+    /** Set on the item as it is received (ADR 0055): category (null clears), brand, pack size. */
+    itemDetails: z
+      .strictObject({
+        categoryId: z.uuid().nullable().optional(),
+        ...packFields,
+      })
+      .refine(packTogether, PACK_TOGETHER)
+      .optional(),
   }),
   z.strictObject({
     newItem: newInvoiceItemSchema,

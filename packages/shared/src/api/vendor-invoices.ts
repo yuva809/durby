@@ -20,6 +20,23 @@ const text = (max: number) => z.string().trim().min(1).max(max);
 const quantity = z.string().regex(/^\d{1,10}(\.\d{1,3})?$/, 'Invalid quantity');
 const unitCost = z.string().regex(/^\d{1,10}(\.\d{1,4})?$/, 'Invalid cost');
 
+/**
+ * What a line sets on an existing item when approved (ADR 0055): its category (null: uncategorized), brand and pack
+ * size. Only what is given changes.
+ */
+export const vendorInvoiceItemDetailsSchema = z
+  .strictObject({
+    categoryId: z.uuid().nullable().optional(),
+    brand: text(100).optional(),
+    packCount: z.int().min(1).max(100_000).optional(),
+    packSize: quantity.optional(),
+    packUnit: z.enum(STOCK_UNITS).optional(),
+  })
+  .refine((d) => (d.packSize === undefined) === (d.packUnit === undefined), {
+    message: 'A pack size needs its unit',
+    path: ['packUnit'],
+  });
+
 /** A line: an existing item, or a new one created on approval (its SKU the supplier's product id). */
 export const vendorInvoiceLineInputSchema = z
   .strictObject({
@@ -45,6 +62,8 @@ export const vendorInvoiceLineInputSchema = z
       })
       .nullable()
       .optional(),
+    /** With `itemId`: category, brand and pack size to set on that item when approved (ADR 0055). */
+    itemDetails: vendorInvoiceItemDetailsSchema.nullable().optional(),
     /** The unit the supplier invoices in (ADR 0055): quantity and cost are in it. */
     unitId: z.uuid().nullable().optional(),
     quantity,
@@ -52,6 +71,10 @@ export const vendorInvoiceLineInputSchema = z
   })
   .refine((l) => (l.itemId ? 1 : 0) + (l.newItem ? 1 : 0) === 1, {
     message: 'A line is an existing item or a new one',
+  })
+  .refine((l) => !l.itemDetails || l.itemId, {
+    message: 'Item details belong to an existing item',
+    path: ['itemDetails'],
   });
 
 export const submitVendorInvoiceRequestSchema = z
@@ -111,6 +134,17 @@ export const vendorInvoiceLineSchema = z.object({
       packUnit: z.enum(STOCK_UNITS).nullable().default(null),
     })
     .nullable(),
+  /** On an existing item's line: what approval sets on the item (ADR 0055); null when nothing. */
+  itemDetails: z
+    .object({
+      categoryId: z.uuid().nullable(),
+      brand: z.string().nullable(),
+      packCount: z.int().nullable(),
+      packSize: z.string().nullable(),
+      packUnit: z.enum(STOCK_UNITS).nullable(),
+    })
+    .nullable()
+    .default(null),
   /** The unit the supplier invoices in (ADR 0055), with its symbol; quantity and cost are in it. */
   unitId: z.uuid().nullable().default(null),
   unitSymbol: z.string().nullable().default(null),

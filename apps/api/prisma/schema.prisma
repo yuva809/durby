@@ -2411,7 +2411,7 @@ model VendorInvoiceLine {
   newItemSku        String?          @map("new_item_sku")
   newItemUnit       StockUnit?       @map("new_item_unit")
   newItemCategoryId String?          @map("new_item_category_id") @db.Uuid
-  /// The proposed new item's brand and pack size (ADR 0055).
+  /// Brand and pack size (ADR 0055): a new item's, or with new_item_category_id what approval sets on the line's item.
   newItemBrand      String?          @map("new_item_brand")
   newItemPackCount  Int?             @map("new_item_pack_count")
   newItemPackSize   Decimal?         @map("new_item_pack_size") @db.Decimal(14, 3)

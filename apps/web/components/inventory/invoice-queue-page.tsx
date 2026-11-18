@@ -355,11 +355,13 @@ function InvoiceDetail({
   const rejectAction = useActionKey();
   const initialHeader: InvoiceHeader = {
     supplier: invoice.supplier ?? '',
+    invoiceNumber: invoice.invoiceNumber ?? '',
+    invoiceDate: invoice.invoiceDate ?? '',
     note: invoice.note ?? '',
     warehouseId: invoice.warehouseId,
   };
   const [header, setHeader] = useState<InvoiceHeader>(initialHeader);
-  const [rows, setRows] = useState<InvoiceRow[]>(() => rowsFromInvoice(invoice));
+  const [rows, setRows] = useState<InvoiceRow[]>(() => rowsFromInvoice(invoice, items));
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reason, setReason] = useState('');
@@ -373,13 +375,14 @@ function InvoiceDetail({
       saveAction,
       invoice.id,
       submitRequest({
+        items,
         rows,
         warehouseId: header.warehouseId,
         supplier: header.supplier,
         note: header.note,
         invoice: {
-          number: invoice.invoiceNumber,
-          date: invoice.invoiceDate,
+          number: header.invoiceNumber.trim() || null,
+          date: header.invoiceDate.trim() || null,
           total: invoice.printedTotal,
         },
         fileName: invoice.fileName,
