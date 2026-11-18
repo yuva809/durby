@@ -260,6 +260,36 @@ describe('branch stock requests (ADR 0045)', () => {
   });
 
   /** ADR 0053: one main warehouse supplies every branch; a branch without a store gets one with its first request. */
+  /** ADR 0056: with orders.requestsNeedApproval off, a request is approved as it is sent. */
+  it('approves a request as it is sent when stock transfers need no approval', async () => {
+    const s = await setup();
+    await withIdempotencyKey(
+      auth(request(server).put('/api/v1/settings/orders.requestsNeedApproval'), s.owner.token),
+      uuidv7(),
+    )
+      .send({ value: false })
+      .expect(200);
+    const created = stockRequestSchema.parse(
+      (
+        await post(s.branchUser.token, '/stock-requests', {
+          fromWarehouseId: s.main,
+          toWarehouseId: s.branch,
+          lines: [{ itemId: s.rice, quantity: '6' }],
+        }).expect(201)
+      ).body,
+    );
+    expect(created.status).toBe('approved');
+    expect(created.transferNumber).toMatch(/^TRF-\d{4}-\d{6}$/);
+    expect(created.lines[0]).toMatchObject({ quantity: '6.000', approvedQuantity: '6.000' });
+    // Approved by the setting, not by a person.
+    expect(created.events.map((e) => [e.status, e.userId])).toEqual([
+      ['submitted', s.branchUser.userId],
+      ['approved', null],
+    ]);
+    // The warehouse can pick it straight away.
+    await post(s.lager.token, `/stock-requests/${created.id}/start-picking`).expect(201);
+  });
+
   it('supplies every branch from the main warehouse and creates a branch store with the first request', async () => {
     const s = await setup();
     const [, branchLocation] = s.org.locations;

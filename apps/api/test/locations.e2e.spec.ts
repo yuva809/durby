@@ -217,4 +217,43 @@ describe('/locations', () => {
       expect(await names(await tokenAs(a, a.roles.owner))).toEqual(['L1', 'L2']);
     });
   });
+
+  describe('address and archive (ADR 0056)', () => {
+    it('keeps an address, and hides an archived branch unless asked for', async () => {
+      const org = await seed.org('D');
+      const owner = await tokenAs(org, org.roles.owner);
+      const created = locationSchema.parse(
+        (await send(owner, 'post', '', { name: 'Mitte', address: ' Torstraße 1 ' }).expect(201))
+          .body,
+      );
+      expect(created).toMatchObject({ name: 'Mitte', address: 'Torstraße 1', archivedAt: null });
+      const cleared = locationSchema.parse(
+        (await send(owner, 'patch', `/${created.id}`, { address: null }).expect(200)).body,
+      );
+      expect(cleared.address).toBeNull();
+
+      const archived = locationSchema.parse(
+        (await send(owner, 'patch', `/${created.id}`, { archived: true }).expect(200)).body,
+      );
+      expect(archived.archivedAt).not.toBeNull();
+      // Hidden from lists and pickers…
+      expect(await names(owner)).toEqual(['L1', 'L2']);
+      // …but there for the Branches page.
+      const all = locationListResponseSchema.parse(
+        (
+          await request(kit.server)
+            .get('/api/v1/locations?includeArchived=true')
+            .auth(owner, { type: 'bearer' })
+            .expect(200)
+        ).body,
+      ).data;
+      expect(all.map((l) => l.name)).toEqual(['L1', 'L2', 'Mitte']);
+
+      await send(owner, 'patch', `/${created.id}`, { archived: false }).expect(200);
+      expect(await names(owner)).toEqual(['L1', 'L2', 'Mitte']);
+      // Owners only.
+      const staff = await tokenAs(org, org.roles.staff);
+      await send(staff, 'patch', `/${created.id}`, { archived: true }).expect(403);
+    });
+  });
 });

@@ -151,6 +151,10 @@ transfer number `TRF-…`.
 
 The three roles exist in every organization but are listed only with the `orders` module.
 
+**Approval (ADR 0056).** With the setting `orders.requestsNeedApproval` off (Branches page), a request is approved as
+it is sent: lines as asked, its transfer number at once, a timeline step `approved` without a user, no notification
+to approvers.
+
 **Main warehouse and branch stores (ADR 0053).** One warehouse may be the main one (`warehouses.is_main`, chosen in
 its edit dialog by someone with `inventory.warehouses.edit` everywhere): requests then always come from it
 (`orders.request_main_only` otherwise). A request names the branch's warehouse or the branch (`toLocationId`); a branch

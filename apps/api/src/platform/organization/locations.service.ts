@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { LocationSummary } from '@durby/shared';
+import type { LocationSummary, UpdateLocationRequest } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../audit';
 import { IdempotencyService } from '../idempotency';
 import {
@@ -10,7 +10,26 @@ import {
 } from '../tenancy';
 import { isForeignKeyViolation, locationErrors } from './location-errors';
 
-const LOCATION_SELECT = { id: true, brandId: true, name: true } as const;
+export const LOCATION_SELECT = {
+  id: true,
+  brandId: true,
+  name: true,
+  address: true,
+  archivedAt: true,
+} as const;
+
+type LocationRow = {
+  id: string;
+  brandId: string;
+  name: string;
+  address: string | null;
+  archivedAt: Date | null;
+};
+
+export const locationResponse = (row: LocationRow): LocationSummary => ({
+  ...row,
+  archivedAt: row.archivedAt?.toISOString() ?? null,
+});
 
 /**
  * The organization's locations (docs/platform/web-shell.md → Locations). Names are unique per
@@ -28,14 +47,14 @@ export class LocationsService {
   ) {}
 
   /** The organization's first location also creates its brand, named after the organization. */
-  create(name: string): Promise<LocationSummary> {
+  create(name: string, address?: string): Promise<LocationSummary> {
     const { tenantId, userId } = this.tenantContext.require();
     return this.db.$transaction(async (tx) => {
       await lockLocations(tx, tenantId);
       await assertNameFree(tx, name);
       const brandId = (await firstBrand(tx)) ?? (await createBrand(tx, tenantId));
       const row = await tx.location.create({
-        data: { tenantId, brandId, name },
+        data: { tenantId, brandId, name, address: address ?? null },
         select: LOCATION_SELECT,
       });
       await this.audit.record(tx, {
@@ -44,23 +63,40 @@ export class LocationsService {
         entityId: row.id,
         after: snapshot('location', row),
       });
-      await this.idempotency.completeInTransaction(tx, row);
-      return row;
+      const response = locationResponse(row);
+      await this.idempotency.completeInTransaction(tx, response);
+      return response;
     });
   }
 
-  /** Same name again writes nothing. */
-  rename(id: string, name: string): Promise<LocationSummary> {
+  /** Rename, set or clear the address, archive or restore (ADR 0056); the same values again write nothing. */
+  update(id: string, body: UpdateLocationRequest): Promise<LocationSummary> {
     const { tenantId, userId } = this.tenantContext.require();
     return this.db.$transaction(async (tx) => {
       await lockLocations(tx, tenantId);
       const before = await tx.location.findUnique({ where: { id }, select: LOCATION_SELECT });
       if (!before) throw locationErrors.notFound();
-      if (before.name === name) return before;
-      await assertNameFree(tx, name, id);
+      const data = {
+        name: body.name ?? before.name,
+        address: body.address === undefined ? before.address : body.address,
+        archivedAt:
+          body.archived === undefined
+            ? before.archivedAt
+            : body.archived
+              ? (before.archivedAt ?? new Date())
+              : null,
+      };
+      if (
+        data.name === before.name &&
+        data.address === before.address &&
+        data.archivedAt === before.archivedAt
+      ) {
+        return locationResponse(before);
+      }
+      if (data.name !== before.name) await assertNameFree(tx, data.name, id);
       const after = await tx.location.update({
         where: { id },
-        data: { name },
+        data,
         select: LOCATION_SELECT,
       });
       await this.audit.record(tx, {
@@ -70,7 +106,7 @@ export class LocationsService {
         before: snapshot('location', before),
         after: snapshot('location', after),
       });
-      return after;
+      return locationResponse(after);
     });
   }
 

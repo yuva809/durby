@@ -17,6 +17,7 @@ import {
   resolvedSettingSchema,
   type SettingKey,
   settingsResponseSchema,
+  type UpdateLocationRequest,
 } from '@durby/shared';
 import { type Api, list, read, type Result, write } from '../api-call';
 import type { ActionKey } from '../idempotency';
@@ -115,8 +116,23 @@ export const renameOrganization = (store: Api, action: ActionKey, name: string) 
   write(store, action, '/api/v1/organization', 'PATCH', { name }, organizationSchema);
 
 /** Owner only (platform.org.manage); the list is lib/users/api.ts `loadLocations`. */
-export const createLocation = (store: Api, action: ActionKey, name: string) =>
-  write(store, action, '/api/v1/locations', 'POST', { name }, locationSchema);
+export const createLocation = (store: Api, action: ActionKey, name: string, address?: string) =>
+  write(
+    store,
+    action,
+    '/api/v1/locations',
+    'POST',
+    { name, ...(address ? { address } : {}) },
+    locationSchema,
+  );
+
+/** Rename, set or clear the address, archive or restore a branch (ADR 0056). */
+export const updateLocation = (
+  store: Api,
+  action: ActionKey,
+  id: string,
+  body: UpdateLocationRequest,
+) => write(store, action, `/api/v1/locations/${id}`, 'PATCH', body, locationSchema);
 
 export const renameLocation = (store: Api, action: ActionKey, id: string, name: string) =>
   write(store, action, `/api/v1/locations/${id}`, 'PATCH', { name }, locationSchema);

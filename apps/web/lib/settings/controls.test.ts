@@ -100,8 +100,11 @@ describe('setting controls from the registry', () => {
   });
 
   it('offers only keys that allow organization scope', () => {
+    // Whether stock transfers need approval is switched on the Branches page only (ADR 0056).
     expect(ORGANIZATION_SETTING_KEYS).toEqual(
-      SETTING_KEYS.filter((k) => SETTINGS[k].scopes.includes('organization')),
+      SETTING_KEYS.filter(
+        (k) => SETTINGS[k].scopes.includes('organization') && k !== 'orders.requestsNeedApproval',
+      ),
     );
   });
 

@@ -335,6 +335,15 @@ export const SETTINGS = {
     scopes: ['partner', 'organization'],
     dataBound: false,
   }),
+  // Off: a branch's stock request is approved as it is sent, with its transfer number (ADR 0056).
+  'orders.requestsNeedApproval': define({
+    label: 'platform.settings.ordersRequestsNeedApproval.name',
+    description: 'platform.settings.ordersRequestsNeedApproval.description',
+    schema: z.boolean(),
+    default: true,
+    scopes: ['partner', 'organization'],
+    dataBound: false,
+  }),
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;

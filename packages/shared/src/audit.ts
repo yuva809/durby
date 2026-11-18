@@ -671,7 +671,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   bom: ['itemId', 'outputQuantity', 'lineCount', 'itemIds'],
   /** Never `note` or `supplier` (free text). */
   stock_document: ['id', 'number', 'kind', 'warehouseId', 'toWarehouseId', 'reason', 'lineCount'],
-  location: ['id', 'brandId', 'name'],
+  location: ['id', 'brandId', 'name', 'address', 'archivedAt'],
   reservation_table_rule: ['tableId', 'bookingMode', 'minParty', 'maxParty'],
   reservation_combination: [
     'id',
