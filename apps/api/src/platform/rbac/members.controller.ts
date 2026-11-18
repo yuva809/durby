@@ -37,7 +37,7 @@ export class MembersController {
     return { data: await this.members.list() };
   }
 
-  @RequirePermission('platform.users.manage')
+  @RequirePermission('platform.users.edit')
   @Idempotent()
   @Patch(':id')
   update(
@@ -47,7 +47,7 @@ export class MembersController {
     return this.members.update(id, body);
   }
 
-  @RequirePermission('platform.users.manage')
+  @RequirePermission('platform.users.delete')
   @Idempotent()
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)

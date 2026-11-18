@@ -140,7 +140,7 @@ export class OrdersController {
     return this.orders.confirm(orderId);
   }
 
-  @RequirePermission('orders.orders.edit')
+  @RequirePermission('orders.orders.delete')
   @Idempotent({ completion: 'transaction' })
   @Post(':id/cancel')
   cancel(

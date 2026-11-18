@@ -71,6 +71,7 @@ describe('roles API', () => {
     ]);
     expect(data[0]?.permissions).toEqual([...PERMISSION_KEYS]);
     expect(data[2]?.permissions).toEqual([
+      'platform.org.read',
       'platform.users.read',
       'platform.users.invite',
       'platform.roles.read',
@@ -115,9 +116,11 @@ describe('roles API', () => {
       'orders.orders.read',
       'orders.orders.create',
       'orders.orders.edit',
+      'orders.orders.delete',
       'orders.customers.read',
       'orders.customers.create',
       'orders.customers.edit',
+      'orders.customers.delete',
       'orders.picking.use',
       'orders.delivery.use',
       'orders.delivery.assign',
@@ -126,6 +129,7 @@ describe('roles API', () => {
       'orders.requests.receive',
     ]);
     expect(data[3]?.permissions).toEqual([
+      'platform.org.read',
       'platform.settings.read',
       'platform.feedback.send',
       'catalog.products.read',
@@ -226,7 +230,7 @@ describe('roles API', () => {
 
       const roleManager = await tokenAs(a, await roleManagerRole(a));
       await api(roleManager.token)
-        .post('/roles', { name: name(), permissions: ['platform.users.manage'] })
+        .post('/roles', { name: name(), permissions: ['platform.users.edit'] })
         .expect(403);
       await api(roleManager.token)
         .post('/roles', { name: name(), permissions: ['platform.users.read'] })

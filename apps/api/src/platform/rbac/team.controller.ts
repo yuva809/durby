@@ -48,7 +48,7 @@ export class TeamController {
     return this.team.create(body);
   }
 
-  @RequirePermission('platform.users.manage')
+  @RequirePermission('platform.users.edit')
   @Idempotent()
   @Patch(':id')
   update(
@@ -58,7 +58,7 @@ export class TeamController {
     return this.team.update(id, body);
   }
 
-  @RequirePermission('platform.users.manage')
+  @RequirePermission('platform.users.delete')
   @Idempotent()
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
@@ -66,7 +66,7 @@ export class TeamController {
     return this.team.deactivate(id);
   }
 
-  @RequirePermission('platform.users.manage')
+  @RequirePermission('platform.users.delete')
   @Idempotent()
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)

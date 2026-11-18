@@ -24,9 +24,14 @@ export interface UsersAccess {
   actor: GrantingActor;
   canReadUsers: boolean;
   canInvite: boolean;
-  canManageUsers: boolean;
+  /** `platform.users.edit`: change a member's role, locations and permissions (ADR 0051). */
+  canEditUsers: boolean;
+  /** `platform.users.delete`: remove, deactivate and reactivate members. */
+  canRemoveUsers: boolean;
   canReadRoles: boolean;
-  canManageRoles: boolean;
+  canCreateRoles: boolean;
+  canEditRoles: boolean;
+  canDeleteRoles: boolean;
 }
 
 export function usersAccessOf(session: Session): UsersAccess {
@@ -39,9 +44,12 @@ export function usersAccessOf(session: Session): UsersAccess {
     },
     canReadUsers: permissions.has('platform.users.read'),
     canInvite: permissions.has('platform.users.invite'),
-    canManageUsers: permissions.has('platform.users.manage'),
+    canEditUsers: permissions.has('platform.users.edit'),
+    canRemoveUsers: permissions.has('platform.users.delete'),
     canReadRoles: permissions.has('platform.roles.read'),
-    canManageRoles: permissions.has('platform.roles.manage'),
+    canCreateRoles: permissions.has('platform.roles.create'),
+    canEditRoles: permissions.has('platform.roles.edit'),
+    canDeleteRoles: permissions.has('platform.roles.delete'),
   };
 }
 
@@ -63,8 +71,9 @@ export interface MemberActions {
 }
 
 /**
- * The actions to show on a member's row. Needs `platform.users.manage` and the role list (to know
- * the member's current keys); without the list, nothing is offered.
+ * The actions to show on a member's row: change with `platform.users.edit`, remove with `platform.users.delete`,
+ * both only for a member within your keys. Needs the role list (to know the member's current keys); without it,
+ * nothing is offered.
  */
 export function memberActions(
   access: UsersAccess,
@@ -72,7 +81,7 @@ export function memberActions(
   roles: readonly Role[] | null,
 ): MemberActions {
   const self = member.userId === access.actor.userId;
-  if (self || !access.canManageUsers || roles === null) {
+  if (self || !(access.canEditUsers || access.canRemoveUsers) || roles === null) {
     return { self, canChange: false, canRemove: false };
   }
   const current = member.role ? roles.find((r) => r.id === member.role?.id) : undefined;
@@ -82,7 +91,7 @@ export function memberActions(
     role: current ? roleViewOf(current) : null,
   });
   const ok = verdict === 'ok';
-  return { self, canChange: ok, canRemove: ok };
+  return { self, canChange: ok && access.canEditUsers, canRemove: ok && access.canRemoveUsers };
 }
 
 /** Revoking an invitation: `platform.users.invite` and its role must be grantable (api rule). */
@@ -96,11 +105,20 @@ export function canRevokeInvitation(
   return role !== undefined && canGrantRole(access.actor, roleViewOf(role));
 }
 
-/** Edit and delete for a custom role: `platform.roles.manage` and its keys ⊆ the actor's keys. */
+/** Editing a custom role: `platform.roles.edit` and its keys ⊆ the actor's keys. */
 export function canEditCustomRole(access: UsersAccess, role: Role): boolean {
   return (
     role.systemKey === null &&
-    access.canManageRoles &&
+    access.canEditRoles &&
+    canEditRole(access.actor, new Set(role.permissions), new Set())
+  );
+}
+
+/** Deleting a custom role: `platform.roles.delete` and its keys ⊆ the actor's keys. */
+export function canDeleteCustomRole(access: UsersAccess, role: Role): boolean {
+  return (
+    role.systemKey === null &&
+    access.canDeleteRoles &&
     canEditRole(access.actor, new Set(role.permissions), new Set())
   );
 }

@@ -24,8 +24,8 @@ const tab = (
 });
 
 export const SETTINGS_TABS: readonly NavItem[] = [
-  // The organization's name: everyone reads it, owners change it.
-  tab('organization', 'platform.settingsTabs.company'),
+  // The organization's name: every built-in role reads it (platform.org.read, ADR 0051), owners change it.
+  tab('organization', 'platform.settingsTabs.company', 'platform.org.read'),
   tab('locations', 'platform.settingsTabs.locations', 'platform.settings.read'),
   tab('general', 'platform.settingsTabs.general', 'platform.settings.read'),
   // Tables, combinations (R1.5b) and the location's reservation settings (R1.5c).
