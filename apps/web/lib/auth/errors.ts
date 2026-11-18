@@ -19,6 +19,7 @@ import type {
   ReservationErrorCode,
   SettingErrorCode,
   StaffErrorCode,
+  VendorInvoiceErrorCode,
 } from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
 
@@ -43,6 +44,7 @@ export type ApiErrorCode =
   | PosErrorCode
   | ReservationErrorCode
   | StaffErrorCode
+  | VendorInvoiceErrorCode
   | PlatformErrorCode;
 
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
@@ -59,6 +61,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'auth.refresh_reused': 'auth.errors.refreshReused',
   'auth.not_a_member': 'auth.errors.notAMember',
   'auth.password_change_required': 'auth.errors.passwordChangeRequired',
+  'auth.password_managed': 'auth.errors.passwordManaged',
   'auth.origin_rejected': 'auth.errors.originRejected',
   'auth.token_invalid': 'auth.errors.tokenInvalid',
   'auth.unavailable': 'auth.errors.unavailable',
@@ -69,6 +72,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'rbac.route_unmarked': 'platform.errors.routeUnmarked',
   'rbac.not_grantable': 'platform.errors.notGrantable',
   'rbac.cannot_change_self': 'platform.errors.cannotChangeSelf',
+  'rbac.password_not_settable': 'platform.errors.passwordNotSettable',
   'rbac.last_owner': 'platform.errors.lastOwner',
   'rbac.owner_all_locations': 'platform.errors.ownerAllLocations',
   'rbac.role_not_found': 'platform.errors.roleNotFound',
@@ -118,6 +122,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'inventory.same_warehouse': 'inventory.errors.sameWarehouse',
   'inventory.product_not_found': 'inventory.errors.productNotFound',
   'inventory.station_taken': 'inventory.errors.stationTaken',
+  'inventory.main_warehouse_not_allowed': 'inventory.errors.mainWarehouseNotAllowed',
   'inventory.unit_not_found': 'inventory.errors.unitNotFound',
   'inventory.unit_name_taken': 'inventory.errors.unitNameTaken',
   'inventory.unit_mismatch': 'inventory.errors.unitMismatch',
@@ -138,6 +143,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'orders.pick_invalid': 'orders.errors.pickInvalid',
   'orders.request_not_found': 'orders.errors.requestNotFound',
   'orders.request_invalid': 'orders.errors.requestInvalid',
+  'orders.request_main_only': 'orders.errors.requestMainOnly',
   'orders.request_transition': 'orders.errors.requestTransition',
   'orders.request_not_yours': 'orders.errors.requestNotYours',
   'orders.driver_not_found': 'orders.errors.driverNotFound',
@@ -154,6 +160,8 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'catalog.price_rule_not_found': 'catalog.errors.priceRuleNotFound',
   'catalog.price_rule_invalid': 'catalog.errors.priceRuleInvalid',
   'catalog.location_not_found': 'catalog.errors.locationNotFound',
+  'inventory.vendor_invoice_not_found': 'inventory.errors.vendorInvoiceNotFound',
+  'inventory.vendor_invoice_decided': 'inventory.errors.vendorInvoiceDecided',
   'catalog.category_parent_invalid': 'catalog.errors.categoryParentInvalid',
   'catalog.category_image_invalid': 'catalog.errors.categoryImageInvalid',
   'pos.table_not_found': 'pos.errors.tableNotFound',

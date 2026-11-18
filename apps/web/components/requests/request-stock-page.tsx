@@ -1,31 +1,57 @@
 'use client';
 
-import { STOCK_REQUEST_NOTE_MAX_LENGTH, stockQuantitySchema } from '@durby/shared';
-import { Search } from 'lucide-react';
+import {
+  type RequestAvailability,
+  type RequestDestination,
+  type RequestWarehouse,
+  STOCK_REQUEST_NOTE_MAX_LENGTH,
+} from '@durby/shared';
+import { CheckCircle2, Minus, Package, Plus, Search, ShoppingBasket, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { type FormEvent, useId, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
+import { categoryColor } from '../../lib/catalog/category-image';
+import {
+  type Cart,
+  cartLines,
+  cartReady,
+  cartStorageKey,
+  categoriesOf,
+  decrement,
+  increment,
+  OTHER_CATEGORY,
+  parseStoredCart,
+  remove,
+  requestLines,
+  setQuantity,
+  shownItems,
+  validQuantity,
+} from '../../lib/orders/request-cart';
 import {
   createRequest,
   loadAvailability,
+  loadRequestDestinations,
   loadRequestWarehouses,
 } from '../../lib/orders/requests-api';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
+import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '../ui/sheet';
 import { Loaded, NoAccess } from '../users/common';
 import { shortQuantity } from './common';
 
 /**
- * /requests/new, Request Stock (docs/modules/orders.md → Branch requests, ADR 0045): a branch picks the warehouse to
- * ask, sees what it has, enters quantities and sends the request. Needs `orders.requests.create` at the branch.
+ * /requests/new, Request stock (docs/modules/orders.md → Branch requests, ADR 0045, 0053): a branch fills a cart like
+ * a shopping basket (categories, search, + and −) from the main warehouse's items with what it has, then sends it as
+ * one request. Quantities only, never prices. Needs `orders.requests.create` at the branch.
  */
 export function RequestStockPage() {
   const { session } = useAuth();
@@ -38,67 +64,10 @@ export function RequestStockPage() {
 function RequestStock({ organizationId }: { organizationId: string | null }) {
   const t = useT();
   const { store } = useAuth();
-  const id = useId();
-  const action = useActionKey();
   const [warehouses] = useResource(organizationId, () => loadRequestWarehouses(store));
-  const [fromId, setFromId] = useState('');
-  const [toId, setToId] = useState('');
-  const [quantities, setQuantities] = useState<Record<string, string>>({});
-  const [note, setNote] = useState('');
-  const [search, setSearch] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState<string | null>(null);
-
-  const all = warehouses.status === 'ready' ? warehouses.data : [];
-  const destinations = all.filter((w) => w.canRequestInto);
-  const to = toId || destinations[0]?.id || '';
-  const toWarehouse = all.find((w) => w.id === to);
-  // The main warehouse usually: the first one elsewhere.
-  const sources = all.filter((w) => w.id !== to);
-  const from =
-    fromId && fromId !== to
-      ? fromId
-      : (sources.find((w) => w.locationId !== toWarehouse?.locationId) ?? sources[0])?.id || '';
-  const [items] = useResource(from ? `${organizationId}:${from}` : null, () =>
-    loadAvailability(store, from),
-  );
-
-  const chosen = Object.entries(quantities).filter(([, q]) => q.trim() !== '');
-  const invalid = chosen.some(([, q]) => !stockQuantitySchema.safeParse(q.trim()).success);
-
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault();
-    setSent(null);
-    if (chosen.length === 0) {
-      setError(t('orders.requestForm.none'));
-      return;
-    }
-    if (invalid) {
-      setError(t('orders.requestForm.quantityInvalid'));
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    const result = await createRequest(store, action, {
-      fromWarehouseId: from,
-      toWarehouseId: to,
-      lines: chosen.map(([itemId, q]) => ({ itemId, quantity: q.trim() })),
-      ...(note.trim() ? { note: note.trim() } : {}),
-    });
-    setBusy(false);
-    if (!result.ok || !result.data) {
-      setError(t(errorLabel(result.ok ? 'unknown' : result.code)));
-      return;
-    }
-    action.done();
-    setSent(result.data.number);
-    setQuantities({});
-    setNote('');
-  }
-
+  const [destinations] = useResource(organizationId, () => loadRequestDestinations(store));
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex max-w-3xl flex-col gap-1">
           <h1 className="text-2xl font-semibold">{t('platform.nav.requestStock')}</h1>
@@ -109,172 +78,512 @@ function RequestStock({ organizationId }: { organizationId: string | null }) {
         </Button>
       </div>
       <Loaded resource={warehouses} reload={() => undefined}>
-        {() =>
-          destinations.length === 0 ? (
-            <Notice text={t('orders.requestForm.noWarehouse')} tone="info" />
-          ) : (
-            <form className="flex flex-col gap-4" onSubmit={(e) => void onSubmit(e)} noValidate>
-              <Card className="grid gap-4 p-4 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor={`${id}-from`}>{t('orders.requestForm.from')}</Label>
-                  <Select
-                    id={`${id}-from`}
-                    value={from}
-                    onChange={(e) => {
-                      setFromId(e.target.value);
-                      setQuantities({});
-                    }}
-                    data-testid="request-from"
-                  >
-                    {sources.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {`${w.locationName} · ${w.name}`}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor={`${id}-to`}>{t('orders.requestForm.to')}</Label>
-                  <Select
-                    id={`${id}-to`}
-                    value={to}
-                    onChange={(e) => setToId(e.target.value)}
-                    data-testid="request-to"
-                  >
-                    {destinations.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {`${w.locationName} · ${w.name}`}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              </Card>
-
-              <Card className="flex flex-col gap-0 p-0">
-                <div className="relative border-b p-4">
-                  <Label htmlFor={`${id}-search`} className="sr-only">
-                    {t('orders.requestForm.search')}
-                  </Label>
-                  <Search
-                    aria-hidden
-                    className="pointer-events-none absolute top-1/2 left-7 size-4 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <Input
-                    id={`${id}-search`}
-                    type="search"
-                    className="pl-9"
-                    placeholder={t('orders.requestForm.search')}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    data-testid="request-search"
-                  />
-                </div>
-                <Loaded resource={items} reload={() => undefined}>
-                  {(list) => {
-                    const q = search.trim().toLowerCase();
-                    const shown = list.filter(
-                      (i) =>
-                        q === '' ||
-                        i.itemName.toLowerCase().includes(q) ||
-                        (i.sku ?? '').toLowerCase().includes(q),
-                    );
-                    if (shown.length === 0) {
-                      return (
-                        <p className="p-4 text-sm text-muted-foreground">
-                          {t('orders.requestForm.empty')}
-                        </p>
-                      );
-                    }
-                    return (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm" data-testid="request-items">
-                          <thead>
-                            <tr className="border-b text-left text-xs text-muted-foreground uppercase">
-                              <th className="px-4 py-2 font-medium">
-                                {t('orders.requestForm.item')}
-                              </th>
-                              <th className="px-4 py-2 text-right font-medium">
-                                {t('orders.requestForm.available')}
-                              </th>
-                              <th className="px-4 py-2 text-right font-medium">
-                                {t('orders.requestForm.request')}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {shown.map((item) => (
-                              <tr
-                                key={item.itemId}
-                                className="border-b last:border-0"
-                                data-testid="request-item"
-                              >
-                                <td className="px-4 py-2">
-                                  {item.itemName}
-                                  {item.sku && (
-                                    <span className="ml-2 text-muted-foreground">{item.sku}</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-2 text-right tabular-nums">
-                                  {`${shortQuantity(item.available)} ${item.unit}`}
-                                </td>
-                                <td className="px-4 py-2 text-right">
-                                  <Input
-                                    inputMode="decimal"
-                                    className="ml-auto w-24 text-right"
-                                    value={quantities[item.itemId] ?? ''}
-                                    aria-label={t('orders.requestForm.quantity', {
-                                      name: item.itemName,
-                                    })}
-                                    onChange={(e) =>
-                                      setQuantities((v) => ({
-                                        ...v,
-                                        [item.itemId]: e.target.value.replace(',', '.'),
-                                      }))
-                                    }
-                                    data-testid="request-quantity"
-                                  />
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    );
-                  }}
-                </Loaded>
-              </Card>
-
-              <Card className="flex flex-col gap-3 p-4">
-                <div className="grid gap-1.5">
-                  <Label htmlFor={`${id}-note`}>{t('orders.requestForm.note')}</Label>
-                  <Input
-                    id={`${id}-note`}
-                    value={note}
-                    maxLength={STOCK_REQUEST_NOTE_MAX_LENGTH}
-                    onChange={(e) => setNote(e.target.value)}
-                    data-testid="request-note"
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground" data-testid="request-count">
-                  {t('orders.requestForm.selected', { count: String(chosen.length) })}
-                </p>
-                <Notice text={error} tone="error" />
-                {sent && (
-                  <Notice text={t('orders.requestForm.sent', { number: sent })} tone="info" />
-                )}
-                <Button
-                  type="submit"
-                  disabled={busy}
-                  className="self-start"
-                  data-testid="request-submit"
-                >
-                  {t('orders.requestForm.submit')}
-                </Button>
-              </Card>
-            </form>
-          )
-        }
+        {(sources) => (
+          <Loaded resource={destinations} reload={() => undefined}>
+            {(branches) =>
+              branches.length === 0 || !organizationId ? (
+                <Notice text={t('orders.requestForm.noWarehouse')} tone="info" />
+              ) : (
+                <Shop organizationId={organizationId} sources={sources} branches={branches} />
+              )
+            }
+          </Loaded>
+        )}
       </Loaded>
     </div>
   );
+}
+
+function Shop({
+  organizationId,
+  sources,
+  branches,
+}: {
+  organizationId: string;
+  sources: RequestWarehouse[];
+  branches: RequestDestination[];
+}) {
+  const t = useT();
+  const id = useId();
+  const { store } = useAuth();
+  const action = useActionKey();
+  const [branchId, setBranchId] = useState(branches[0]!.locationId);
+  const branch = branches.find((b) => b.locationId === branchId) ?? branches[0]!;
+  // The main warehouse supplies every branch (ADR 0053); without one the branch picks where to ask.
+  const main = sources.find((w) => w.isMain);
+  const choices = sources.filter((w) => w.locationId !== branch.locationId);
+  const [chosenSource, setChosenSource] = useState('');
+  const from =
+    main ?? choices.find((w) => w.id === chosenSource) ?? choices.find((w) => !w.isMain) ?? null;
+  const [items] = useResource(from ? `${organizationId}:${from.id}` : null, () =>
+    loadAvailability(store, from!.id),
+  );
+
+  const key = cartStorageKey(organizationId, branch.locationId);
+  const [cart, setCartState] = useState<Cart>(() => readCart(key));
+  const [cartKey, setCartKey] = useState(key);
+  if (cartKey !== key) {
+    setCartKey(key);
+    setCartState(readCart(key));
+  }
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(cart));
+    } catch {
+      // Private mode or blocked storage: the cart lives only on this page.
+    }
+  }, [key, cart]);
+  const setCart = (next: Cart) => {
+    setCartState(next);
+    setSent(null);
+  };
+
+  const [category, setCategory] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState<{ id: string; number: string } | null>(null);
+
+  const list = items.status === 'ready' ? items.data : [];
+  const lines = cartLines(cart, list);
+  const count = lines.length;
+
+  async function send() {
+    if (!from) return;
+    if (!cartReady(lines)) {
+      setError(t('orders.requestForm.quantityInvalid'));
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const result = await createRequest(store, action, {
+      ...(main ? {} : { fromWarehouseId: from.id }),
+      ...(branch.warehouseId
+        ? { toWarehouseId: branch.warehouseId }
+        : { toLocationId: branch.locationId }),
+      lines: requestLines(lines),
+      ...(note.trim() ? { note: note.trim() } : {}),
+    });
+    setBusy(false);
+    if (!result.ok || !result.data) {
+      setError(t(errorLabel(result.ok ? 'unknown' : result.code)));
+      return;
+    }
+    action.done();
+    setCartState({});
+    setNote('');
+    setOpen(false);
+    setSent({ id: result.data.id, number: result.data.number });
+  }
+
+  return (
+    <>
+      <Card className="grid gap-3 p-4 sm:grid-cols-2">
+        <div className="grid gap-1.5">
+          <Label htmlFor={`${id}-from`}>{t('orders.requestForm.from')}</Label>
+          {main ? (
+            <p
+              id={`${id}-from`}
+              className="flex min-h-11 items-center gap-2 font-medium"
+              data-testid="request-from-main"
+            >
+              <Package aria-hidden className="size-4 text-primary" />
+              {t('orders.requestCart.fromMain', { name: main.name })}
+            </p>
+          ) : (
+            <Select
+              id={`${id}-from`}
+              value={from?.id ?? ''}
+              onChange={(e) => setChosenSource(e.target.value)}
+              data-testid="request-from"
+            >
+              {choices.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.locationName === w.name ? w.name : `${w.name} · ${w.locationName}`}
+                </option>
+              ))}
+            </Select>
+          )}
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`${id}-to`}>{t('orders.requestForm.to')}</Label>
+          {branches.length === 1 ? (
+            <p id={`${id}-to`} className="flex min-h-11 items-center font-medium">
+              {branch.locationName}
+            </p>
+          ) : (
+            <Select
+              id={`${id}-to`}
+              value={branch.locationId}
+              onChange={(e) => setBranchId(e.target.value)}
+              data-testid="request-to"
+            >
+              {branches.map((b) => (
+                <option key={b.locationId} value={b.locationId}>
+                  {b.locationName}
+                </option>
+              ))}
+            </Select>
+          )}
+        </div>
+      </Card>
+
+      {sent && (
+        <Card
+          className="flex flex-wrap items-center justify-between gap-3 border-primary/40 bg-primary/5 p-4"
+          role="status"
+          data-testid="request-sent"
+        >
+          <div className="flex items-start gap-3">
+            <CheckCircle2 aria-hidden className="mt-0.5 size-6 shrink-0 text-primary" />
+            <div className="flex flex-col gap-0.5">
+              <p className="font-semibold">
+                {t('orders.requestCart.sentTitle', { number: sent.number })}
+              </p>
+              <p className="text-sm text-muted-foreground">{t('orders.requestCart.sentHint')}</p>
+            </div>
+          </div>
+          <Button variant="outline" asChild>
+            <Link href={`/requests?open=${sent.id}`}>{t('orders.requestCart.follow')}</Link>
+          </Button>
+        </Card>
+      )}
+
+      {!from ? (
+        <Notice text={t('orders.requestCart.noSource')} tone="info" />
+      ) : (
+        <Loaded resource={items} reload={() => undefined}>
+          {(offered) => (
+            <Catalogue
+              items={offered}
+              cart={cart}
+              onCart={setCart}
+              category={category}
+              onCategory={setCategory}
+              search={search}
+              onSearch={setSearch}
+            />
+          )}
+        </Loaded>
+      )}
+
+      {count > 0 && (
+        <div className="sticky bottom-3 z-30 rounded-xl border bg-card/95 px-4 py-3 shadow-lg backdrop-blur">
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 font-medium" data-testid="request-cart-count">
+              <ShoppingBasket aria-hidden className="size-5 text-primary" />
+              {t('orders.requestCart.bar', { count: String(count) })}
+            </span>
+            <Button onClick={() => setOpen(true)} data-testid="request-cart-open">
+              {t('orders.requestCart.view')}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent
+          side="right"
+          closeLabel={t('platform.common.close')}
+          className="flex w-full flex-col gap-4 sm:max-w-md"
+          data-testid="request-cart"
+        >
+          <div className="flex flex-col gap-1">
+            <SheetTitle>{t('orders.requestCart.title')}</SheetTitle>
+            <SheetDescription>
+              {t('orders.requestCart.route', {
+                from: from?.name ?? '',
+                to: branch.locationName,
+              })}
+            </SheetDescription>
+          </div>
+          {lines.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('orders.requestCart.emptyCart')}</p>
+          ) : (
+            <ul className="-mx-1 flex min-h-0 flex-1 flex-col divide-y overflow-y-auto px-1">
+              {lines.map(({ item, quantity }) => (
+                <li
+                  key={item.itemId}
+                  className="flex items-center gap-3 py-3"
+                  data-testid="request-cart-line"
+                >
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-medium">{item.itemName}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {t('orders.requestCart.available', {
+                        quantity: shortQuantity(item.available),
+                        unit: t(`inventory.units.${item.unit}`),
+                      })}
+                    </span>
+                  </div>
+                  <Stepper
+                    item={item}
+                    quantity={quantity}
+                    onChange={(next) => setCart(next(cart))}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCart(remove(cart, item.itemId))}
+                    aria-label={t('orders.requestCart.remove', { name: item.itemName })}
+                    data-testid="request-cart-remove"
+                  >
+                    <Trash2 aria-hidden />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!branch.warehouseId && lines.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {t('orders.requestCart.newStore', { branch: branch.locationName })}
+            </p>
+          )}
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-note`}>{t('orders.requestForm.note')}</Label>
+            <textarea
+              id={`${id}-note`}
+              value={note}
+              rows={2}
+              maxLength={STOCK_REQUEST_NOTE_MAX_LENGTH}
+              onChange={(e) => setNote(e.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              data-testid="request-note"
+            />
+          </div>
+          <Notice text={error} tone="error" />
+          <div className="mt-auto flex flex-col gap-2">
+            <Button
+              disabled={busy || lines.length === 0}
+              onClick={() => void send()}
+              data-testid="request-submit"
+            >
+              {t('orders.requestCart.send', { count: String(lines.length) })}
+            </Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t('orders.requestCart.continue')}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
+function Catalogue({
+  items,
+  cart,
+  onCart,
+  category,
+  onCategory,
+  search,
+  onSearch,
+}: {
+  items: RequestAvailability[];
+  cart: Cart;
+  onCart: (cart: Cart) => void;
+  category: string | null;
+  onCategory: (category: string | null) => void;
+  search: string;
+  onSearch: (search: string) => void;
+}) {
+  const t = useT();
+  const categories = useMemo(() => categoriesOf(items), [items]);
+  const shown = shownItems(items, category, search);
+  const chip = (active: boolean) =>
+    cn(
+      'flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap transition-colors',
+      active ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:bg-muted',
+    );
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="relative">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+        />
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder={t('orders.requestForm.search')}
+          aria-label={t('orders.requestForm.search')}
+          className="pl-9"
+          data-testid="request-search"
+        />
+      </div>
+      {categories.length > 1 && (
+        <div
+          className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1"
+          role="group"
+          aria-label={t('orders.requestCart.categories')}
+        >
+          <button
+            type="button"
+            className={chip(category === null)}
+            aria-pressed={category === null}
+            onClick={() => onCategory(null)}
+            data-testid="request-category"
+          >
+            {t('orders.requestCart.all')}
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={chip(category === c.id)}
+              aria-pressed={category === c.id}
+              onClick={() => onCategory(c.id)}
+              data-testid="request-category"
+            >
+              {c.id !== OTHER_CATEGORY && (
+                <span
+                  aria-hidden
+                  className="size-2.5 rounded-full"
+                  style={{ background: categoryColor(c.id) }}
+                />
+              )}
+              {c.name ?? t('orders.requestCart.other')}
+              <span className="text-xs opacity-70">{c.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {shown.length === 0 ? (
+        <p className="py-8 text-center text-muted-foreground">{t('orders.requestForm.empty')}</p>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {shown.map((item) => (
+            <li key={item.itemId}>
+              <ItemCard
+                item={item}
+                quantity={cart[item.itemId]}
+                onChange={(next) => onCart(next(cart))}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ItemCard({
+  item,
+  quantity,
+  onChange,
+}: {
+  item: RequestAvailability;
+  quantity: string | undefined;
+  onChange: (next: (cart: Cart) => Cart) => void;
+}) {
+  const t = useT();
+  const out = Number(item.available) <= 0;
+  const color = item.categoryId ? categoryColor(item.categoryId) : null;
+  return (
+    <Card
+      className={cn(
+        'flex h-full flex-col gap-3 p-3',
+        quantity !== undefined && 'border-primary ring-1 ring-primary',
+      )}
+      data-testid="request-item"
+      data-item={item.itemId}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden
+          className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted text-lg font-semibold text-foreground/70"
+          style={color ? { background: color } : undefined}
+        >
+          {item.itemName.slice(0, 1).toUpperCase()}
+        </span>
+        <div className="flex min-w-0 flex-col">
+          <span className="line-clamp-2 font-medium">{item.itemName}</span>
+          {item.sku && <span className="text-xs text-muted-foreground">{item.sku}</span>}
+        </div>
+      </div>
+      <div className="mt-auto flex items-center justify-between gap-2">
+        <span
+          className={cn('text-sm', out ? 'text-destructive' : 'text-muted-foreground')}
+          data-testid="request-item-available"
+        >
+          {out
+            ? t('orders.requestCart.outOfStock')
+            : t('orders.requestCart.available', {
+                quantity: shortQuantity(item.available),
+                unit: t(`inventory.units.${item.unit}`),
+              })}
+        </span>
+        {quantity === undefined ? (
+          <Button
+            className="h-9"
+            variant="outline"
+            onClick={() => onChange((cart) => increment(cart, item.itemId))}
+            aria-label={t('orders.requestCart.addName', { name: item.itemName })}
+            data-testid="request-add"
+          >
+            <Plus aria-hidden />
+            {t('orders.requestCart.add')}
+          </Button>
+        ) : (
+          <Stepper item={item} quantity={quantity} onChange={onChange} />
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function Stepper({
+  item,
+  quantity,
+  onChange,
+}: {
+  item: RequestAvailability;
+  quantity: string;
+  onChange: (next: (cart: Cart) => Cart) => void;
+}) {
+  const t = useT();
+  return (
+    <div className="flex items-center gap-1" data-testid="request-stepper">
+      <Button
+        size="icon"
+        variant="outline"
+        className="size-9"
+        onClick={() => onChange((cart) => decrement(cart, item.itemId))}
+        aria-label={t('orders.requestCart.less', { name: item.itemName })}
+        data-testid="request-less"
+      >
+        <Minus aria-hidden />
+      </Button>
+      <Input
+        inputMode="decimal"
+        value={quantity}
+        onChange={(e) => onChange((cart) => setQuantity(cart, item.itemId, e.target.value))}
+        aria-label={t('orders.requestForm.quantity', { name: item.itemName })}
+        aria-invalid={!validQuantity(quantity) || undefined}
+        className="h-9 w-16 text-center"
+        data-testid="request-quantity"
+      />
+      <Button
+        size="icon"
+        variant="outline"
+        className="size-9"
+        onClick={() => onChange((cart) => increment(cart, item.itemId))}
+        aria-label={t('orders.requestCart.more', { name: item.itemName })}
+        data-testid="request-more"
+      >
+        <Plus aria-hidden />
+      </Button>
+    </div>
+  );
+}
+
+function readCart(key: string): Cart {
+  try {
+    return parseStoredCart(localStorage.getItem(key));
+  } catch {
+    return {};
+  }
 }

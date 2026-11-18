@@ -304,6 +304,12 @@ ticked while View is ("Grant View first"); unticking View clears the row's other
 the row, section and Select all ticks only add actions whose View ends up ticked. A screen rule only: the api checks
 each key on its own, and an action saved without View stays as it is until someone changes it. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
 
+**Passwords set by owners and admins (ADR 0052).** "Set password" in a member's menu (`POST /staff/:id/password`,
+`platform.users.edit`) for accounts this organization created that belong to no other organization
+(`passwordSettable`), and only for members the actor may manage. With the setting `team.adminsManageSignIn` on,
+passwords given in Add Staff or here are final (no "Choose your own password", no self change or reset by email);
+off, they are temporary. Every session of the member ends; audited as `platform.membership.password_set`.
+
 ## Rollout (expand/contract, ADR 0004)
 
 `memberships.role_id` was **nullable** in release 1.3 so the previous release could still insert memberships during a

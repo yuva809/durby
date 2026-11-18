@@ -67,6 +67,7 @@ export const RBAC_ERROR_CODES = [
   'rbac.system_role_immutable',
   'rbac.role_in_use',
   'rbac.role_name_taken',
+  'rbac.password_not_settable',
 ] as const;
 
 export type RbacErrorCode = (typeof RBAC_ERROR_CODES)[number];

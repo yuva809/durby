@@ -144,12 +144,17 @@ transfer number `TRF-…`.
 
 | Who               | Role key         | Does                                                        |
 | ----------------- | ---------------- | ----------------------------------------------------------- |
-| Branch            | `branch`         | Request Stock, follows its requests, confirms receipt       |
+| Branch manager    | `branch`         | Request Stock, follows its requests, confirms receipt       |
 | Owner, Admin      | `owner`, `admin` | Approves (quantities may change, 0 drops a line) or rejects |
 | Warehouse (Lager) | `warehouse`      | Picks and packs on the Picking page, assigns a driver       |
 | Driver            | `driver`         | My Deliveries: Picked up, Delivered                         |
 
 The three roles exist in every organization but are listed only with the `orders` module.
+
+**Main warehouse and branch stores (ADR 0053).** One warehouse may be the main one (`warehouses.is_main`, chosen in
+its edit dialog by someone with `inventory.warehouses.edit` everywhere): requests then always come from it
+(`orders.request_main_only` otherwise). A request names the branch's warehouse or the branch (`toLocationId`); a branch
+without a warehouse gets its store, named like the branch, with its first request.
 
 **Statuses:** `submitted → approved → (picking) → packed → in_transit → delivered → received`; `rejected` or
 `cancelled` before approval only; receipt can be confirmed from `packed` on.
@@ -161,7 +166,8 @@ shortage. Packing is refused below zero stock unless the location allows it.
 | Route (`/api/v1/stock-requests`)                    | Key (where)                                                                                              |
 | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `GET /`, `GET /:id`                                 | signed in; the service shows a branch its own, a warehouse its own, approvers all, a driver `?mine=true` |
-| `GET /warehouses`, `GET /availability/:warehouseId` | `orders.requests.create` (quantities only, no costs)                                                     |
+| `GET /warehouses`, `GET /availability/:warehouseId` | `orders.requests.create` (quantities only, no costs; availability with each item's category)             |
+| `GET /destinations`                                 | `orders.requests.create`: the caller's branches with their warehouse or none yet (ADR 0053)              |
 | `GET /drivers/:warehouseId`                         | `orders.delivery.assign` at the warehouse                                                                |
 | `POST /`, `POST /:id/cancel`                        | `orders.requests.create` at the branch                                                                   |
 | `POST /:id/approve`, `/reject`                      | `orders.requests.approve`                                                                                |
@@ -172,14 +178,17 @@ shortage. Packing is refused below zero stock unless the location allows it.
 
 Every step: row lock, timeline row (append-only `stock_request_events`), audit row (`orders.stock_request.*`, no
 notes), idempotency key completed in the transaction. Errors: `orders.request_not_found`, `orders.request_invalid`,
-`orders.request_transition`, `orders.request_not_yours`, `orders.driver_not_found`, `inventory.insufficient_stock`.
+`orders.request_main_only`, `orders.request_transition`, `orders.request_not_yours`, `orders.driver_not_found`, `inventory.insufficient_stock`.
 
-**Web:** Request Stock (`/requests/new`), Stock Requests (`/requests`, with approve, reject, cancel, receive), the
+**Web:** Stock Requests (`/requests`, one menu item, ADR 0052; with approve, reject, cancel, receive, and a "Request
+stock" button opening the request cart `/requests/new`: categories, search, Add / − / +, a sticky cart bar and a side
+sheet to send; quantities only, kept in the browser until sent, ADR 0053), the
 transfers section of Picking (To pick / Packed / Received, pick with a driver, assign later), My Deliveries
 (`/my-deliveries`); Delivery Tracking shows transfers to those who assign drivers.
 
 **Tests:** `apps/api/src/modules/orders/stock-requests.spec.ts`, `apps/api/test/stock-requests.e2e.spec.ts` (Docker),
-`apps/web/components/requests/requests.test.tsx`, `apps/web/lib/nav/layouts.test.ts` (menus per role).
+`apps/web/components/requests/requests.test.tsx`, `apps/web/lib/orders/request-cart.test.ts`, `apps/web/lib/nav/layouts.test.ts`
+(menus per role).
 
 ## Later
 

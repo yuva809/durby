@@ -18,4 +18,6 @@ export const INVITATION_SETTINGS = Symbol('INVITATION_SETTINGS');
 
 export interface InvitationSettings {
   get(key: 'locale'): Promise<string>;
+  /** Passwords set by owners and admins are final (ADR 0052). */
+  get(key: 'team.adminsManageSignIn'): Promise<boolean>;
 }

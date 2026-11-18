@@ -2,6 +2,7 @@ import {
   type CreateTeamMemberRequest,
   createTeamMemberResponseSchema,
   invitationLinkResponseSchema,
+  type SetMemberPasswordRequest,
   teamListResponseSchema,
   teamMemberSchema,
   type UpdateTeamMemberRequest,
@@ -45,3 +46,11 @@ export const renewInvitationLink = (store: Api, action: ActionKey, invitationId:
     undefined,
     invitationLinkResponseSchema,
   );
+
+/** Sets a member's password for them (ADR 0052): final or temporary as the organization's setting says. */
+export const setTeamMemberPassword = (
+  store: Api,
+  action: ActionKey,
+  id: string,
+  body: SetMemberPasswordRequest,
+) => write(store, action, `/api/v1/staff/${id}/password`, 'POST', body, teamMemberSchema);

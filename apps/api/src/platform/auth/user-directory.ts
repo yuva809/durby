@@ -91,7 +91,14 @@ export class UserDirectory implements AuditActorDirectory {
    */
   async createWithTemporaryPassword(
     tx: TenantTransactionClient,
-    input: { email: string; password: string; locale: string; organizationId: string },
+    input: {
+      email: string;
+      password: string;
+      locale: string;
+      organizationId: string;
+      /** False where owners and admins set staff passwords (ADR 0052): the password is final. */
+      temporary?: boolean;
+    },
   ): Promise<UserProfile> {
     const passwordHash = await this.hasher.hash(input.password);
     return tx.user.create({
@@ -99,11 +106,67 @@ export class UserDirectory implements AuditActorDirectory {
         email: normalizeEmail(input.email),
         locale: input.locale,
         passwordHash,
-        mustChangePassword: true,
+        mustChangePassword: input.temporary ?? true,
         vouchedByOrganizationId: input.organizationId,
       },
       select: { id: true, email: true, locale: true },
     });
+  }
+
+  /**
+   * Which of the given users an owner or admin of `organizationId` may set a password for (ADR 0052): accounts that
+   * organization created, with no membership anywhere else (else it would open another organization's door).
+   */
+  async passwordSettableIn(organizationId: string, ids: readonly string[]): Promise<Set<string>> {
+    if (ids.length === 0) return new Set();
+    const vouched = await this.db.user.findMany({
+      where: { id: { in: [...ids] }, vouchedByOrganizationId: organizationId },
+      select: { id: true },
+    });
+    const only = await Promise.all(
+      vouched.map(async ({ id }) => {
+        const orgs = await this.organizationIdsOf(id);
+        return orgs.every((org) => org === organizationId) ? id : null;
+      }),
+    );
+    return new Set(only.filter((id): id is string => id !== null));
+  }
+
+  /**
+   * Sets a member's password for them (ADR 0052; the caller checked `passwordSettableIn` and the actor's rights):
+   * temporary or final, every refresh token revoked. The caller revokes access
+   * tokens (RevocationService) after the commit.
+   */
+  async setPassword(
+    userId: string,
+    password: string,
+    options: { temporary: boolean; now: Date },
+  ): Promise<void> {
+    const passwordHash = await this.hasher.hash(password);
+    await this.db.$transaction([
+      this.db.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: options.now, revokedReason: 'password_reset' },
+      }),
+      this.db.user.update({
+        where: { id: userId },
+        data: {
+          passwordHash,
+          passwordChangedAt: options.now,
+          mustChangePassword: options.temporary,
+        },
+      }),
+    ]);
+  }
+
+  /** Every organization the user has a membership in, active or not (auth_user_organization_ids, ADR 0006). */
+  private async organizationIdsOf(userId: string): Promise<string[]> {
+    const [, rows] = await this.db.$transaction([
+      this.db.$executeRaw`SELECT set_config('app.user_id', ${userId}, true)`,
+      this.db.$queryRaw<{ organization_id: string }[]>`
+        SELECT organization_id FROM auth_user_organization_ids()`,
+    ]);
+    return rows.map((r) => r.organization_id);
   }
 
   /** Which of the given users still have to replace a temporary password. */

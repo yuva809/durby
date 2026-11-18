@@ -221,6 +221,11 @@ A successful reset sets the password and `password_changed_at`, marks the email 
 the inbox), cancels other open reset tokens, revokes **all** refresh families of the user, writes
 `auth:revoked:user`, and clears the lockout. Issuing a new reset token cancels older unused ones.
 
+**Managed passwords (ADR 0052).** An account created by an organization with `team.adminsManageSignIn` on is
+managed there (`PasswordPolicy`, reading the setting in that organization): `passwordChangeRequired` is never set,
+`POST /auth/password/change` answers 403 `auth.password_managed`, and `POST /auth/password/forgot` sends no mail
+(still 202). Its owners and admins set new passwords from Manage Staff (rbac.md).
+
 ## Language
 
 `users.locale` (`en` | `de`, validated by the api against `LOCALES`; no database constraint, so a new language needs

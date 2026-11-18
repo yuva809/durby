@@ -10,6 +10,7 @@ import { Clock } from './clock';
 import { emailKey, generateToken, hashToken, normalizeEmail } from './crypto';
 import { LockoutService } from './lockout.service';
 import { PasswordHasher } from './password-hasher';
+import { PasswordPolicy } from './password-policy';
 import { RevocationService } from './revocation.service';
 import { SecurityLog } from './security-log';
 
@@ -43,6 +44,7 @@ export class PasswordService {
     private readonly security: SecurityLog,
     private readonly clock: Clock,
     private readonly logger: PinoLogger,
+    private readonly passwordPolicy: PasswordPolicy,
   ) {
     this.logger.setContext(PasswordService.name);
   }
@@ -59,6 +61,11 @@ export class PasswordService {
     this.inBackground('password reset mail', async () => {
       const user = await this.db.user.findUnique({ where: { email: normalizeEmail(email) } });
       if (!user) return;
+      // Set by an owner or admin (ADR 0052): no reset link; the answer is the same, so nothing is revealed.
+      if (await this.passwordPolicy.managed(user)) {
+        this.security.event('auth.password.reset_refused_managed', { userId: user.id, ip });
+        return;
+      }
       await this.sendPasswordSetMail(user.id, { requestOrigin });
       this.security.event('auth.password.reset_requested', { userId: user.id, ip });
     });

@@ -183,3 +183,89 @@ export async function pdfRows(file: Blob): Promise<string[]> {
   if (rows.length === 0) throw new InvoicePdfError('noText');
   return rows;
 }
+
+// --- Photos and scans (ADR 0054) -----------------------------------------------------------------------------
+
+/** A line of text as the on-device recognition reads it: its page and box (any unit, y down). */
+export interface ReadLine {
+  text: string;
+  page: number;
+  box: { x0: number; y0: number; x1: number; y1: number };
+}
+
+/**
+ * Lines read from a photo or scan as table rows: per page, pieces whose vertical centres lie within half a line
+ * height of each other form one row, read left to right (recognition reads columns apart).
+ */
+export function linesToRows(lines: readonly ReadLine[]): string[] {
+  const rows: string[] = [];
+  const pages = [...new Set(lines.map((l) => l.page))].sort((a, b) => a - b);
+  for (const page of pages) {
+    const own = lines
+      .filter((l) => l.page === page && l.text.trim() !== '')
+      .map((l) => ({
+        ...l,
+        mid: (l.box.y0 + l.box.y1) / 2,
+        height: Math.max(1, l.box.y1 - l.box.y0),
+      }))
+      .sort((a, b) => a.mid - b.mid);
+    let current: typeof own = [];
+    const flush = () => {
+      if (current.length === 0) return;
+      rows.push(
+        current
+          .sort((a, b) => a.box.x0 - b.box.x0)
+          .map((l) => l.text.trim())
+          .join(' '),
+      );
+      current = [];
+    };
+    for (const line of own) {
+      const anchor = current[0];
+      if (anchor && Math.abs(line.mid - anchor.mid) > Math.min(anchor.height, line.height) / 2) {
+        flush();
+      }
+      current.push(line);
+    }
+    flush();
+  }
+  return rows;
+}
+
+/**
+ * Photos (JPG, PNG …) or a scanned PDF read on the device with the menu scan's recognition (no upload), as rows.
+ * Less exact than a PDF's own text: every line is checked in the review.
+ */
+export async function scanRows(
+  files: readonly File[],
+  onProgress?: (share: number) => void,
+): Promise<string[]> {
+  const { preparePages, recognizePages, ScanError } = await import('../catalog/menu-scan/ocr');
+  let pages;
+  try {
+    pages = await preparePages(files);
+  } catch (error) {
+    if (error instanceof ScanError && error.kind === 'tooManyPages') {
+      throw new InvoicePdfError('tooManyPages');
+    }
+    throw new InvoicePdfError('unreadable');
+  }
+  // Pages that carry text (a PDF mixed with scans) are read as such; the rest by recognition.
+  const textRows = pages.flatMap((page) =>
+    page.text
+      ? linesToRows(
+          page.text.map((t) => ({
+            text: t.text,
+            page: page.number,
+            box: { x0: t.x, x1: t.x + t.width, y0: t.y - t.size, y1: t.y },
+          })),
+        )
+      : [],
+  );
+  const read = await recognizePages(pages, (p) =>
+    onProgress?.((p.page - 1 + p.progress) / Math.max(1, p.pages)),
+  );
+  const rows = [...textRows, ...linesToRows(read)];
+  if (rows.length === 0) throw new InvoicePdfError('noText');
+  return rows;
+}

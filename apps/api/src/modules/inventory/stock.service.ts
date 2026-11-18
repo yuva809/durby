@@ -212,14 +212,24 @@ export class StockService {
    * existing item, or a new one created first in the same transaction (needs inventory.items.edit; an active
    * category; a name no active item has). Quantities and costs are in the item's unit. All or nothing.
    */
-  async importReceipt(body: ImportReceiptRequest): Promise<StockDocument> {
+  async importReceipt(
+    body: ImportReceiptRequest,
+    options: {
+      complete?: (tx: TenantTransactionClient, document: StockDocument) => Promise<unknown>;
+      /** An approved vendor invoice (ADR 0054): its approval stands in for inventory.items.edit. */
+      newItemsApproved?: boolean;
+    } = {},
+  ): Promise<StockDocument> {
     const { tenantId, userId } = this.tenantContext.require();
     const fresh = body.lines.flatMap((l) => ('newItem' in l ? [l.newItem] : []));
-    if (fresh.length > 0) await this.access.assert('inventory.items.edit');
+    if (fresh.length > 0 && !options.newItemsApproved)
+      await this.access.assert('inventory.items.edit');
     const categoryIds = new Set(fresh.flatMap((n) => (n.categoryId ? [n.categoryId] : [])));
     for (const categoryId of categoryIds) await this.catalog.assertActiveCategory(categoryId);
     // The item of each line, by position: new ones are filled in once created.
     const lineItems = body.lines.map((l) => ('itemId' in l ? l.itemId : null));
+    // Lines in a unit of measurement (ADR 0055): converted to the item's unit, whose base unit it must be.
+    const converted = await this.invoiceUnits(body);
     return this.post({
       kind: 'receipt',
       key: 'inventory.stock.receive',
@@ -242,6 +252,10 @@ export class StockService {
               sku: line.newItem.sku ?? null,
               unit: line.newItem.unit,
               categoryId: line.newItem.categoryId ?? null,
+              brand: line.newItem.brand ?? null,
+              packCount: line.newItem.packCount ?? null,
+              packSize: line.newItem.packSize ?? null,
+              packUnit: line.newItem.packUnit ?? null,
             },
             select: ITEM_SELECT,
           });
@@ -257,19 +271,67 @@ export class StockService {
         return created;
       },
       header: { supplier: body.supplier ?? null, note: body.note || null },
+      complete: options.complete,
       plan: (levels) =>
         body.lines.map((line, index) => {
           const itemId = lineItems[index]!;
-          const quantity = new Decimal(line.quantity);
-          const booked = bookIn(
-            levels.get(body.warehouseId, itemId),
-            quantity,
-            new Decimal(line.unitCost),
-          );
+          const { quantity, unitCost } = converted[index]!;
+          const booked = bookIn(levels.get(body.warehouseId, itemId), quantity, unitCost);
           levels.set(body.warehouseId, itemId, booked.level);
           return { warehouseId: body.warehouseId, itemId, quantity, unitCost: booked.unitCost };
         }),
     });
+  }
+
+  /**
+   * Each import line's quantity and cost in its item's unit: as given, or converted from its unit of measurement
+   * (ADR 0055), whose base unit must be the item's (an existing item's, or the new item's).
+   */
+  private async invoiceUnits(
+    body: ImportReceiptRequest,
+  ): Promise<{ quantity: Decimal; unitCost: Decimal }[]> {
+    const plain = body.lines.map((l) => ({
+      quantity: new Decimal(l.quantity),
+      unitCost: new Decimal(l.unitCost),
+    }));
+    const unitIds = [...new Set(body.lines.flatMap((l) => (l.unitId ? [l.unitId] : [])))];
+    if (unitIds.length === 0) return plain;
+    const existing = body.lines.flatMap((l) => ('itemId' in l ? [l.itemId] : []));
+    const [units, items] = await Promise.all([
+      this.db.unitOfMeasure.findMany({
+        where: { id: { in: unitIds }, archivedAt: null },
+        select: { id: true, baseUnit: true, factor: true },
+      }),
+      this.db.stockItem.findMany({
+        where: { id: { in: existing } },
+        select: { id: true, unit: true },
+      }),
+    ]);
+    const unitById = new Map(units.map((u) => [u.id, u]));
+    const missing = unitIds.filter((id) => !unitById.has(id));
+    if (missing.length > 0) throw inventoryErrors.unitNotFound(missing);
+    const itemUnit = new Map(items.map((i) => [i.id, i.unit]));
+    const mismatched: string[] = [];
+    const result = body.lines.map((line, i) => {
+      const unit = line.unitId ? unitById.get(line.unitId)! : null;
+      if (!unit) return plain[i]!;
+      const base = 'itemId' in line ? itemUnit.get(line.itemId) : line.newItem.unit;
+      const converted =
+        unit.baseUnit === base
+          ? toBaseUnits(
+              new Decimal(line.quantity),
+              new Decimal(line.unitCost),
+              new Decimal(unit.factor.toFixed(6)),
+            )
+          : null;
+      if (!converted) {
+        mismatched.push('itemId' in line ? line.itemId : line.newItem.name);
+        return plain[i]!;
+      }
+      return converted;
+    });
+    if (mismatched.length > 0) throw inventoryErrors.unitMismatch(mismatched);
+    return result;
   }
 
   adjust(body: AdjustmentRequest): Promise<StockDocument> {
@@ -505,6 +567,11 @@ export class StockService {
     create?: (tx: TenantTransactionClient) => Promise<string[]>;
     header: { supplier?: string | null; note: string | null; reason?: AdjustmentReason };
     plan: (levels: Levels) => PlannedMovement[];
+    /**
+     * Runs after the document is booked, in its transaction (a vendor invoice marked approved, ADR 0054); what it
+     * returns is what the idempotency key stores, so a replay answers the same.
+     */
+    complete?: (tx: TenantTransactionClient, document: StockDocument) => Promise<unknown>;
   }): Promise<StockDocument> {
     const { tenantId, userId } = this.tenantContext.require();
     const from = await this.usableWarehouse(input.warehouseId, input.key);
@@ -560,7 +627,8 @@ export class StockService {
         movements,
         levels,
       });
-      await this.idempotency.completeInTransaction(tx, response);
+      const stored = input.complete ? await input.complete(tx, response) : response;
+      await this.idempotency.completeInTransaction(tx, stored);
       return response;
     });
   }

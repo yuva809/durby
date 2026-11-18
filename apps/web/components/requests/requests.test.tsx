@@ -87,6 +87,19 @@ function signedInAs(role: SystemRole) {
   });
 }
 
+/** The request cart's setup (ADR 0053): source warehouses and the branches to request for. */
+const setup = {
+  warehouses: [MAIN, BRANCH] as Record<string, unknown>[],
+  destinations: [
+    {
+      locationId: BRANCH.locationId,
+      locationName: BRANCH.locationName,
+      warehouseId: BRANCH.id as string | null,
+      warehouseName: BRANCH.name as string | null,
+    },
+  ],
+};
+
 /** `detail` answers GET /stock-requests/:id and every list; writes are recorded. */
 function api(detail: ReturnType<typeof request>) {
   const calls: { method: string; path: string; body: unknown }[] = [];
@@ -96,13 +109,31 @@ function api(detail: ReturnType<typeof request>) {
     if (method === 'POST')
       return Promise.resolve(Response.json({ ...detail, number: 'SRQ-2026-000048' }));
     if (input === '/api/v1/stock-requests/warehouses')
-      return Promise.resolve(Response.json({ data: [MAIN, BRANCH] }));
+      return Promise.resolve(Response.json({ data: setup.warehouses }));
+    if (input === '/api/v1/stock-requests/destinations')
+      return Promise.resolve(Response.json({ data: setup.destinations }));
     if (input.startsWith('/api/v1/stock-requests/availability/')) {
       return Promise.resolve(
         Response.json({
           data: [
-            { itemId: id(51), itemName: 'Rice', sku: 'R-1', unit: 'pc', available: '10.000' },
-            { itemId: id(52), itemName: 'Oil', sku: null, unit: 'pc', available: '0.000' },
+            {
+              itemId: id(51),
+              itemName: 'Rice',
+              sku: 'R-1',
+              unit: 'pc',
+              available: '10.000',
+              categoryId: id(70),
+              categoryName: 'Dry goods',
+            },
+            {
+              itemId: id(52),
+              itemName: 'Oil',
+              sku: null,
+              unit: 'pc',
+              available: '0.000',
+              categoryId: null,
+              categoryName: null,
+            },
           ],
         }),
       );
@@ -121,34 +152,94 @@ function api(detail: ReturnType<typeof request>) {
 const posts = (calls: { method: string; path: string; body: unknown }[]) =>
   calls.filter((c) => c.method === 'POST');
 
-describe('Request Stock (branch)', () => {
-  it('shows the main warehouse stock, and sends only the items with a quantity', async () => {
+describe('Request stock cart (branch, ADR 0053)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    setup.warehouses = [{ ...MAIN, isMain: true }, BRANCH];
+    setup.destinations[0]!.warehouseId = BRANCH.id;
+    setup.destinations[0]!.warehouseName = BRANCH.name;
+  });
+
+  it('fills a cart from the main warehouse and sends it for the branch', async () => {
     signedInAs('branch');
     const calls = api(request('submitted'));
     render(<RequestStockPage />);
-    const rows = await screen.findAllByTestId('request-item');
-    expect(rows.map((r) => r.textContent)).toEqual(['RiceR-110 pc', 'Oil0 pc']);
-    expect(screen.getByTestId<HTMLSelectElement>('request-from').value).toBe(MAIN.id);
-    expect(screen.getByTestId<HTMLSelectElement>('request-to').value).toBe(BRANCH.id);
+    const cards = await screen.findAllByTestId('request-item');
+    // In stock first; quantities only, never prices.
+    expect(cards.map((c) => c.textContent)).toEqual([
+      'RRiceR-110 pc availableAdd',
+      'OOilOut of stockAdd',
+    ]);
+    expect(screen.getByTestId('request-from-main').textContent).toContain('Main Warehouse');
+    expect(screen.queryByTestId('request-from')).toBeNull();
 
-    await userEvent.click(screen.getByTestId('request-submit'));
-    expect(await screen.findByText('Enter a quantity for at least one item.')).toBeTruthy();
-    await userEvent.type(screen.getAllByTestId('request-quantity')[0]!, '6');
-    await userEvent.type(screen.getByTestId('request-note'), 'For the weekend');
-    await userEvent.click(screen.getByTestId('request-submit'));
+    await userEvent.click(within(cards[0]!).getByTestId('request-add'));
+    await userEvent.click(within(cards[0]!).getByTestId('request-more'));
+    expect(within(cards[0]!).getByTestId<HTMLInputElement>('request-quantity').value).toBe('2');
+    expect(screen.getByTestId('request-cart-count').textContent).toContain('1 items');
+
+    await userEvent.click(screen.getByTestId('request-cart-open'));
+    const cart = await screen.findByTestId('request-cart');
+    expect(within(cart).getAllByTestId('request-cart-line')).toHaveLength(1);
+    await userEvent.type(within(cart).getByTestId('request-note'), 'For the weekend');
+    await userEvent.click(within(cart).getByTestId('request-submit'));
     await waitFor(() =>
       expect(posts(calls)[0]).toEqual({
         method: 'POST',
         path: '/api/v1/stock-requests',
         body: {
-          fromWarehouseId: MAIN.id,
           toWarehouseId: BRANCH.id,
-          lines: [{ itemId: id(51), quantity: '6' }],
+          lines: [{ itemId: id(51), quantity: '2' }],
           note: 'For the weekend',
         },
       }),
     );
-    expect(await screen.findByText(/Request SRQ-2026-000048 sent/)).toBeTruthy();
+    expect((await screen.findByTestId('request-sent')).textContent).toContain(
+      'Request SRQ-2026-000048 sent',
+    );
+    expect(screen.queryByTestId('request-cart-count')).toBeNull();
+  });
+
+  it('asks by branch when it has no store yet, and lets it pick the source without a main warehouse', async () => {
+    signedInAs('branch');
+    setup.warehouses = [MAIN, BRANCH];
+    setup.destinations[0]!.warehouseId = null;
+    setup.destinations[0]!.warehouseName = null;
+    const calls = api(request('submitted'));
+    render(<RequestStockPage />);
+    expect((await screen.findByTestId<HTMLSelectElement>('request-from')).value).toBe(MAIN.id);
+    const oil = (await screen.findAllByTestId('request-item'))[1]!;
+    await userEvent.click(within(oil).getByTestId('request-add'));
+    await userEvent.click(screen.getByTestId('request-cart-open'));
+    const cart = await screen.findByTestId('request-cart');
+    expect(cart.textContent).toContain('has no store yet');
+    await userEvent.click(within(cart).getByTestId('request-submit'));
+    await waitFor(() =>
+      expect(posts(calls)[0]?.body).toEqual({
+        fromWarehouseId: MAIN.id,
+        toLocationId: BRANCH.locationId,
+        lines: [{ itemId: id(52), quantity: '1' }],
+      }),
+    );
+  });
+
+  it('filters by category and search, and keeps the cart for the next visit', async () => {
+    signedInAs('branch');
+    api(request('submitted'));
+    render(<RequestStockPage />);
+    await screen.findAllByTestId('request-item');
+    const chips = screen.getAllByTestId('request-category');
+    expect(chips.map((c) => c.textContent)).toEqual(['All', 'Dry goods1', 'Other1']);
+    await userEvent.click(chips[2]!);
+    expect(screen.getAllByTestId('request-item').map((c) => c.dataset.item)).toEqual([id(52)]);
+    await userEvent.click(chips[0]!);
+    await userEvent.type(screen.getByTestId('request-search'), 'r-1');
+    expect(screen.getAllByTestId('request-item').map((c) => c.dataset.item)).toEqual([id(51)]);
+    await userEvent.click(screen.getByTestId('request-add'));
+
+    cleanup();
+    render(<RequestStockPage />);
+    expect(await screen.findByTestId('request-cart-count')).toBeTruthy();
   });
 });
 

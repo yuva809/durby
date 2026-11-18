@@ -174,6 +174,18 @@ export IMAGE_TAG="$release"
 if [[ "$skip_migrations" == true ]]; then
   log "skipping migrations (rollback)"
 else
+  # One-off (2026-11-18): 20261119100000_vendor_invoices failed its first run (an enum named by its Prisma name, not
+  # "stock_unit") and is fixed in place. Prisma refuses every later migration while one is failed (P3009) until it is
+  # marked rolled back; do that here, for this migration only and only while it is failed. Remove once applied.
+  vendor_invoices_failed=$(dc exec -T postgres psql -tAq -U postgres -d durby -c \
+    "SELECT count(*) FROM _prisma_migrations WHERE migration_name = '20261119100000_vendor_invoices'
+       AND finished_at IS NULL AND rolled_back_at IS NULL" 2>/dev/null || echo 0)
+  if [[ "${vendor_invoices_failed:-0}" != "0" ]]; then
+    log "marking the failed migration 20261119100000_vendor_invoices rolled back"
+    dc --profile release run --rm migrate node_modules/.bin/prisma migrate resolve \
+      --rolled-back 20261119100000_vendor_invoices ||
+      die "could not mark the failed migration rolled back; still serving ${current:-nothing}"
+  fi
   log "running migrations"
   dc --profile release run --rm migrate || die "migrations failed; still serving ${current:-nothing}"
 fi

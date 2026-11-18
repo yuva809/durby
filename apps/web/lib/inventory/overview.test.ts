@@ -44,6 +44,10 @@ const item = (n: number, name: string, categoryId: string | null, extra: Partial
     variantValues: [],
     salePrice: null,
     categoryId,
+    brand: null,
+    packCount: null,
+    packSize: null,
+    packUnit: null,
     archivedAt: null,
     ...extra,
   }) satisfies StockItem;

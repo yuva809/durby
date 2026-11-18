@@ -9,7 +9,6 @@ import {
   LayoutGrid,
   MapPin,
   Package,
-  PackagePlus,
   Truck,
 } from 'lucide-react';
 import { NAV_GROUPS, NAV_ITEMS, type NavGroup, type NavItem } from './registry';
@@ -62,17 +61,8 @@ const OPERATIONS: NavLayoutDefinition = {
       permission: 'orders.orders.read',
     },
     {
-      // A branch asks the main warehouse for goods (ADR 0045).
-      id: 'request-stock',
-      href: '/requests/new',
-      label: 'platform.nav.requestStock',
-      icon: PackagePlus,
-      group: 'operations',
-      feature: 'orders',
-      permission: 'orders.requests.create',
-    },
-    {
-      // Branch requests by stage; owners and admins approve here.
+      // Branch requests by stage; owners and admins approve here. A branch asks the main warehouse for goods from
+      // its "Request stock" button (ADR 0045, 0052).
       id: 'stock-requests',
       href: '/requests',
       label: 'platform.nav.stockRequests',

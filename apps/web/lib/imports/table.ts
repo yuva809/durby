@@ -4,12 +4,13 @@ import {
   IMPORT_TEMPLATES,
   type ImportKind,
 } from '@durby/shared';
-import { splitCsv } from '../catalog/import-file';
+import { cellText, splitCsv } from '../catalog/import-file';
 
 /**
- * Import Data in the browser (docs/platform/import.md, ADR 0044 step 4): a CSV file becomes the rows of one kind. CSV
- * as in the products import: RFC 4180 quoting, comma or semicolon, UTF-8 with or without BOM. Headers are matched
- * loosely ("Min quantity", "min_quantity" and "MinQuantity" are one column); unknown columns are ignored.
+ * Import Data in the browser (docs/platform/import.md, ADR 0044 step 4, ADR 0054): a CSV or Excel file becomes the
+ * rows of one kind. CSV as in the products import: RFC 4180 quoting, comma or semicolon, UTF-8 with or without BOM.
+ * Excel: the .xlsx workbook, read on the device. Headers are matched loosely ("Min quantity", "min_quantity" and
+ * "MinQuantity" are one column); unknown columns are ignored.
  */
 
 /** "Min quantity" → "minquantity". */
@@ -55,6 +56,7 @@ const ALIASES: Readonly<Record<ImportKind, Record<string, string>>> = {
 
 export type TableProblem =
   | { kind: 'empty' }
+  | { kind: 'unreadable' }
   | { kind: 'missingColumns'; columns: string[] }
   | { kind: 'tooManyRows'; max: number };
 
@@ -79,7 +81,35 @@ const decimal = (value: string) => {
 /** The rows of a CSV file for one kind: every field present (empty when the cell is), blank lines skipped. */
 export function readRows(kind: ImportKind, input: string): ReadRows {
   const text = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input;
-  const [header, ...records] = splitCsv(text, separatorOf(text));
+  return readTableRows(kind, splitCsv(text, separatorOf(text)));
+}
+
+/** An Excel file's name: these are read as a workbook, everything else as CSV text. */
+export const isExcel = (fileName: string) => /\.xlsx$/i.test(fileName);
+
+/**
+ * The rows of an Excel workbook (.xlsx) for one kind: the sheet named like the kind ("Opening stock",
+ * "opening_stock"), else the first. Numbers come as the text Excel stored, never as floats (rule 6).
+ */
+export async function readXlsxRows(kind: ImportKind, file: Blob): Promise<ReadRows> {
+  let sheets: { sheet: string; data: unknown[][] }[];
+  try {
+    const { default: readXlsxFile } = await import('read-excel-file/browser');
+    sheets = await readXlsxFile(file, { parseNumber: (text: string) => ({ number: text }) });
+  } catch {
+    return { ok: false, problem: { kind: 'unreadable' } };
+  }
+  const sheet = sheets.find((s) => normalize(s.sheet) === normalize(kind)) ?? sheets[0];
+  if (!sheet) return { ok: false, problem: { kind: 'empty' } };
+  return readTableRows(
+    kind,
+    sheet.data.map((row) => row.map(cellText)),
+  );
+}
+
+/** The rows of a table (header row first) for one kind, from CSV or Excel alike. */
+export function readTableRows(kind: ImportKind, table: readonly string[][]): ReadRows {
+  const [header, ...records] = table;
   if (!header || header.every((h) => h.trim() === ''))
     return { ok: false, problem: { kind: 'empty' } };
   const columns = header.map((h) => {

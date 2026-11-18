@@ -84,6 +84,7 @@ export function ConfirmAction({
   onDone,
   testId,
   triggerIcon,
+  variant = 'destructive',
 }: {
   trigger: string;
   /** An icon-only trigger; `trigger` becomes its accessible name. */
@@ -94,6 +95,8 @@ export function ConfirmAction({
   run: () => Promise<Result<unknown>>;
   onDone: () => void;
   testId?: string;
+  /** The trigger's and confirm button's look: destructive (the default), or plain for a positive step. */
+  variant?: 'destructive' | 'default';
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -127,7 +130,7 @@ export function ConfirmAction({
             {triggerIcon}
           </Button>
         ) : (
-          <Button variant="destructive" data-testid={testId}>
+          <Button variant={variant} data-testid={testId}>
             {trigger}
           </Button>
         )}
@@ -139,7 +142,7 @@ export function ConfirmAction({
         <AlertDialogFooter>
           <AlertDialogCancel>{t('platform.common.cancel')}</AlertDialogCancel>
           {/* Not AlertDialogAction: that closes the dialog before the answer is known. */}
-          <Button variant="destructive" disabled={busy} onClick={() => void onConfirm()}>
+          <Button variant={variant} disabled={busy} onClick={() => void onConfirm()}>
             {confirm}
           </Button>
         </AlertDialogFooter>

@@ -91,6 +91,7 @@ describe('system roles', () => {
     expect([...systemRolePermissions('manager')].sort()).toEqual([
       'catalog.products.read',
       'inventory.costs.read',
+      'inventory.invoices.approve',
       'inventory.recipes.create',
       'inventory.recipes.delete',
       'inventory.recipes.edit',

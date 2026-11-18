@@ -152,6 +152,9 @@ model Organization {
   notificationPreferences      NotificationPreference[]
   pushSubscriptions            PushSubscription[]
 
+  vendorInvoices     VendorInvoice[]
+  vendorInvoiceLines VendorInvoiceLine[]
+
   @@index([partnerId])
   @@index([planId])
   @@map("organizations")
@@ -853,6 +856,8 @@ model ProductCategory {
   priceRules   PriceRule[]
   image        ProductCategoryImage?
   stockItems   StockItem[]
+
+  vendorInvoiceLines VendorInvoiceLine[]
 
   @@unique([tenantId, id])
   @@index([tenantId, parentId])
@@ -1662,6 +1667,8 @@ model Warehouse {
   suppliesStation PrepStation?    @map("supplies_station")
   /// The organization's "In transit" warehouse (ADR 0045): one at most (partial unique index).
   isTransit       Boolean         @default(false) @map("is_transit")
+  /// Supplies every branch (ADR 0053): branch requests come from it. At most one active per organization.
+  isMain          Boolean         @default(false) @map("is_main")
   archivedAt      DateTime?       @map("archived_at") @db.Timestamptz(6)
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1674,6 +1681,8 @@ model Warehouse {
   salesOrders     SalesOrder[]
   requestsFrom    StockRequest[]  @relation("StockRequestFrom")
   requestsTo      StockRequest[]  @relation("StockRequestTo")
+
+  vendorInvoices VendorInvoice[]
 
   @@unique([tenantId, id])
   @@index([tenantId, locationId])
@@ -1697,6 +1706,11 @@ model StockItem {
   salePrice     Decimal?           @map("sale_price") @db.Decimal(12, 2)
   /// Its category (ADR 0048); null = uncategorized.
   categoryId    String?            @map("category_id") @db.Uuid
+  /// Brand and pack size (ADR 0055): e.g. 12 x 500 g; size and its unit come together.
+  brand         String?
+  packCount     Int?               @map("pack_count")
+  packSize      Decimal?           @map("pack_size") @db.Decimal(14, 3)
+  packUnit      StockUnit?         @map("pack_unit")
   archivedAt    DateTime?          @map("archived_at") @db.Timestamptz(6)
   createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1711,6 +1725,8 @@ model StockItem {
   bomLines      BomLine[]          @relation("BomComponent")
   salesLines    SalesOrderLine[]
   requestLines  StockRequestLine[]
+
+  vendorInvoiceLines VendorInvoiceLine[]
 
   @@unique([tenantId, id])
   /// One variant per combination of values (NULL parents never collide).
@@ -1744,6 +1760,8 @@ model StockDocument {
   warehouse       Warehouse              @relation("StockDocumentWarehouse", fields: [tenantId, warehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   toWarehouse     Warehouse?             @relation("StockDocumentToWarehouse", fields: [tenantId, toWarehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   movements       StockMovement[]
+
+  vendorInvoice VendorInvoice?
 
   @@unique([tenantId, id])
   @@unique([tenantId, number])
@@ -1812,16 +1830,17 @@ model RecipeLine {
 /// A unit of measurement: `factor` of a base unit (Case = 24 pc, Sack = 25 kg). Receipts may be entered in it and are
 /// converted to the item's unit. Archived, never deleted; the base unit never changes (ADR 0038).
 model UnitOfMeasure {
-  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String       @map("tenant_id") @db.Uuid
-  name         String
-  symbol       String
-  baseUnit     StockUnit    @map("base_unit")
-  factor       Decimal      @db.Decimal(14, 6)
-  archivedAt   DateTime?    @map("archived_at") @db.Timestamptz(6)
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id                 String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String              @map("tenant_id") @db.Uuid
+  name               String
+  symbol             String
+  baseUnit           StockUnit           @map("base_unit")
+  factor             Decimal             @db.Decimal(14, 6)
+  archivedAt         DateTime?           @map("archived_at") @db.Timestamptz(6)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization       Organization        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  vendorInvoiceLines VendorInvoiceLine[]
 
   @@unique([tenantId, id])
   @@map("units_of_measure")
@@ -2345,4 +2364,69 @@ model PushSubscription {
   @@unique([tenantId, endpoint])
   @@index([tenantId, userId])
   @@map("push_subscriptions")
+}
+
+/// A vendor invoice read from its PDF or photo, waiting for approval (ADR 0054). Approval books one receipt.
+model VendorInvoice {
+  id            String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String              @map("tenant_id") @db.Uuid
+  number        String
+  status        String              @default("pending")
+  warehouseId   String              @map("warehouse_id") @db.Uuid
+  supplier      String?
+  invoiceNumber String?             @map("invoice_number")
+  invoiceDate   String?             @map("invoice_date")
+  note          String?
+  printedTotal  Decimal?            @map("printed_total") @db.Decimal(12, 2)
+  fileName      String?             @map("file_name")
+  source        String
+  submittedBy   String              @map("submitted_by") @db.Uuid
+  decidedBy     String?             @map("decided_by") @db.Uuid
+  decidedAt     DateTime?           @map("decided_at") @db.Timestamptz(6)
+  rejectReason  String?             @map("reject_reason")
+  documentId    String?             @unique @map("document_id") @db.Uuid
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization  Organization        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  warehouse     Warehouse           @relation(fields: [tenantId, warehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  document      StockDocument?      @relation(fields: [documentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lines         VendorInvoiceLine[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, number])
+  @@index([tenantId, status, id])
+  @@map("vendor_invoices")
+}
+
+/// One line: an existing item, or a new one (name, SKU, unit, category) created on approval.
+model VendorInvoiceLine {
+  id                String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String           @map("tenant_id") @db.Uuid
+  invoiceId         String           @map("invoice_id") @db.Uuid
+  position          Int
+  code              String?
+  description       String
+  itemId            String?          @map("item_id") @db.Uuid
+  newItemName       String?          @map("new_item_name")
+  newItemSku        String?          @map("new_item_sku")
+  newItemUnit       StockUnit?       @map("new_item_unit")
+  newItemCategoryId String?          @map("new_item_category_id") @db.Uuid
+  /// The proposed new item's brand and pack size (ADR 0055).
+  newItemBrand      String?          @map("new_item_brand")
+  newItemPackCount  Int?             @map("new_item_pack_count")
+  newItemPackSize   Decimal?         @map("new_item_pack_size") @db.Decimal(14, 3)
+  newItemPackUnit   StockUnit?       @map("new_item_pack_unit")
+  /// The unit the supplier invoices in (ADR 0055); quantity and cost are in it, converted on approval.
+  unitId            String?          @map("unit_id") @db.Uuid
+  quantity          Decimal          @db.Decimal(14, 3)
+  unitCost          Decimal          @map("unit_cost") @db.Decimal(14, 4)
+  organization      Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoice           VendorInvoice    @relation(fields: [tenantId, invoiceId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  item              StockItem?       @relation(fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  newItemCategory   ProductCategory? @relation(fields: [tenantId, newItemCategoryId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  unit              UnitOfMeasure?   @relation(fields: [tenantId, unitId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, invoiceId, position])
+  @@index([tenantId, unitId])
+  @@map("vendor_invoice_lines")
 }
