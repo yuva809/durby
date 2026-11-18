@@ -37,8 +37,11 @@ test('a changed setting shows in the audit log with its before and after values'
   await page.goto(`${DOMAINS.durby}/audit?entityType=setting_value`);
   const entry = page.getByTestId('audit-entry').first();
   await expect(entry.getByTestId('audit-what')).toHaveText('Setting changed');
-  await expect(entry.getByTestId('audit-who')).toHaveText('owner@durby.local');
-  const value = entry.locator('[data-testid="audit-diff-row"][data-field="value"]');
+  // The table shows the actor's name with their email below it.
+  await expect(entry).toContainText('owner@durby.local');
+  // Before and after are in the row's details, opened with its toggle.
+  await entry.getByTestId('audit-toggle').click();
+  const value = page.locator('[data-testid="audit-diff-row"][data-field="value"]').first();
   await expect(value.getByTestId('audit-before')).toContainText('de');
   await expect(value.getByTestId('audit-after')).toContainText('en');
   await expect(value).toHaveAttribute('data-changed', 'true');

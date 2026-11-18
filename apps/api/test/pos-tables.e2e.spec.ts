@@ -273,6 +273,9 @@ describe('/api/v1/pos/tables', () => {
       shape: 'square',
       color: 'neutral',
       sortOrder: 0,
+      // The first table of a location starts at the floor plan's first slot (tables.service.ts).
+      floorX: 100,
+      floorY: 120,
       archivedAt: null,
     });
     expect(rows[1]).toMatchObject({ before: { seats: 4 }, after: { seats: 6 } });
