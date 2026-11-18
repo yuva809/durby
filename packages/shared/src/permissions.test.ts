@@ -140,6 +140,11 @@ describe('system roles', () => {
       SYSTEM_ROLES.filter((role) => systemRolePermissions(role).has(key));
     expect(holders('orders.requests.approve')).toEqual(['owner', 'admin']);
     expect(SYSTEM_ROLE_FEATURES).toEqual({
+      waiter: 'pos',
+      cashier: 'pos',
+      host: 'reservations',
+      kitchen: 'pos',
+      bar: 'pos',
       branch: 'orders',
       warehouse: 'orders',
       driver: 'orders',
