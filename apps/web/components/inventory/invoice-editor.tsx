@@ -5,17 +5,31 @@ import {
   STOCK_UNITS,
   type StockItem,
   type StockUnit,
+  type UnitOfMeasure,
   type Warehouse,
 } from '@durby/shared';
-import { TriangleAlert } from 'lucide-react';
-import { type ReactNode, useId } from 'react';
+import { Plus, TriangleAlert } from 'lucide-react';
+import { type ReactNode, useId, useRef, useState } from 'react';
 import { useT } from '../../app/labels-provider';
+import { useAuth } from '../../app/providers';
+import { createCategory } from '../../lib/catalog/api';
+import { createUnit } from '../../lib/inventory/api';
 import { lineValue, sumValues } from '../../lib/inventory/format';
-import { type InvoiceRow, NEW_ITEM, type RowProblem } from '../../lib/inventory/invoice-receipt';
+import {
+  type InvoiceRow,
+  missingCategory,
+  NEW_ITEM,
+  type RowProblem,
+  setMissingCategory,
+} from '../../lib/inventory/invoice-receipt';
 import { categoryPath } from '../../lib/inventory/overview';
+import { formatPackSize, packProblems } from '../../lib/inventory/pack-size';
+import { useActionKey } from '../../lib/use-action-key';
 import { cn } from '../../lib/utils';
+import { Field, FormDialog } from '../form-dialog';
 import { useMoney } from '../pos/money';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
@@ -26,8 +40,6 @@ export interface InvoiceHeader {
   supplier: string;
   note: string;
   warehouseId: string;
-  newItemUnit: StockUnit;
-  newItemCategoryId: string;
 }
 
 /** The included rows' value, 2 decimals. */
@@ -40,9 +52,10 @@ export function rowsTotal(rows: readonly InvoiceRow[]): string {
 }
 
 /**
- * The review of a vendor invoice (ADR 0049, 0054): supplier, note, warehouse and how new items are created, then
- * each line (include, item or New, quantity, cost) and the total against the printed one. Used to submit an invoice
- * and by approvers to correct a pending one; `actions` are the page's buttons. `readOnly` shows a decided one.
+ * The review of a vendor invoice (ADR 0049, 0054, 0055): supplier, note and warehouse, then each line: include, item or
+ * New, and for new items their category (with "+" to add one), brand, pack size and unit; for every line the unit it
+ * is invoiced in (a unit of measurement, "+" to add one), quantity, cost; the total against the printed one. Used to
+ * submit an invoice and by approvers to correct a pending one; `actions` are the page's buttons.
  */
 export function InvoiceEditor({
   header,
@@ -52,8 +65,13 @@ export function InvoiceEditor({
   problems,
   items,
   categories,
+  units,
   warehouses,
   canCreate,
+  canCreateCategory = false,
+  canCreateUnit = false,
+  onCategoryCreated,
+  onUnitCreated,
   printedTotal,
   readOnly = false,
   actions,
@@ -65,8 +83,13 @@ export function InvoiceEditor({
   problems: RowProblem[][];
   items: readonly StockItem[];
   categories: readonly ProductCategory[] | null;
+  units: readonly UnitOfMeasure[];
   warehouses: readonly Warehouse[];
   canCreate: boolean;
+  canCreateCategory?: boolean;
+  canCreateUnit?: boolean;
+  onCategoryCreated?: (category: ProductCategory) => void;
+  onUnitCreated?: (unit: UnitOfMeasure) => void;
   printedTotal: string | null;
   readOnly?: boolean;
   actions?: ReactNode;
@@ -74,14 +97,21 @@ export function InvoiceEditor({
   const t = useT();
   const id = useId();
   const money = useMoney();
+  const [bulkCategory, setBulkCategory] = useState('');
   const included = rows.filter((r) => r.include);
   const newCount = included.filter((r) => r.target === NEW_ITEM).length;
+  const withoutCategory = missingCategory(rows);
   const total = rowsTotal(rows);
   const sortedItems = [...items]
     .filter((i) => i.archivedAt === null)
     .sort((a, b) => a.name.localeCompare(b.name));
+  const itemById = new Map(items.map((i) => [i.id, i]));
+  const activeCategories = (categories ?? []).filter((c) => c.archivedAt === null);
+  const activeUnits = units.filter((u) => u.archivedAt === null);
   const update = (index: number, patch: Partial<InvoiceRow>) =>
     onRows(rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  const categoryName = (categoryId: string | null) =>
+    categoryId && categories ? categoryPath(categories, categoryId) : null;
 
   return (
     <div className="flex flex-col gap-4" data-testid="invoice-review">
@@ -125,68 +155,66 @@ export function InvoiceEditor({
             ))}
           </Select>
         </div>
-        {newCount > 0 && !readOnly && (
-          <>
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${id}-unit`}>{t('inventory.invoice.newUnit')}</Label>
-              <Select
-                id={`${id}-unit`}
-                value={header.newItemUnit}
-                onChange={(e) => onHeader({ newItemUnit: e.target.value as StockUnit })}
-                data-testid="invoice-new-unit"
-              >
-                {STOCK_UNITS.map((u) => (
-                  <option key={u} value={u}>
-                    {t(`inventory.units.${u}`)}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            {categories && (
-              <div className="grid gap-1.5">
-                <Label htmlFor={`${id}-category`}>{t('inventory.invoice.newCategory')}</Label>
-                <Select
-                  id={`${id}-category`}
-                  value={header.newItemCategoryId}
-                  onChange={(e) => onHeader({ newItemCategoryId: e.target.value })}
-                  data-testid="invoice-new-category"
-                >
-                  <option value="">{t('inventory.page.uncategorized')}</option>
-                  {categories
-                    .filter((c) => c.archivedAt === null)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {categoryPath(categories, c.id)}
-                      </option>
-                    ))}
-                </Select>
-              </div>
-            )}
-          </>
-        )}
       </Card>
 
-      <p className="text-sm text-muted-foreground" data-testid="invoice-summary">
-        {t('inventory.invoice.summary', {
-          lines: String(rows.length),
-          matched: String(included.length - newCount),
-          fresh: String(newCount),
-        })}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground" data-testid="invoice-summary">
+          {t('inventory.invoice.summary', {
+            lines: String(rows.length),
+            matched: String(included.length - newCount),
+            fresh: String(newCount),
+          })}
+        </p>
+        {!readOnly && categories && withoutCategory > 0 && (
+          <div className="flex flex-wrap items-center gap-2" data-testid="invoice-bulk-category">
+            <Select
+              value={bulkCategory}
+              onChange={(e) => setBulkCategory(e.target.value)}
+              aria-label={t('inventory.invoice.bulkCategory', { count: String(withoutCategory) })}
+              className="w-56"
+              data-testid="invoice-bulk-category-select"
+            >
+              <option value="">
+                {t('inventory.invoice.bulkCategory', { count: String(withoutCategory) })}
+              </option>
+              {activeCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {categoryPath(categories, c.id)}
+                </option>
+              ))}
+            </Select>
+            <Button
+              variant="outline"
+              disabled={bulkCategory === ''}
+              onClick={() => {
+                onRows(setMissingCategory(rows, bulkCategory));
+                setBulkCategory('');
+              }}
+              data-testid="invoice-bulk-category-apply"
+            >
+              {t('inventory.invoice.bulkApply')}
+            </Button>
+          </div>
+        )}
+      </div>
 
       <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[52rem] text-sm" data-testid="invoice-lines">
-          <thead className="bg-muted text-left text-muted-foreground">
+        <table className="w-full min-w-[86rem] text-sm" data-testid="invoice-lines">
+          <thead className="bg-muted text-left text-xs tracking-wide text-muted-foreground uppercase">
             <tr>
               <th className="w-10 px-3 py-2">
                 <span className="sr-only">{t('inventory.invoice.include')}</span>
               </th>
               <th className="px-3 py-2 font-medium">{t('inventory.invoice.line')}</th>
-              <th className="px-3 py-2 font-medium">{t('inventory.fields.item')}</th>
-              <th className="w-28 px-3 py-2 text-right font-medium">
+              <th className="w-56 px-3 py-2 font-medium">{t('inventory.fields.item')}</th>
+              <th className="w-52 px-3 py-2 font-medium">{t('inventory.invoice.category')}</th>
+              <th className="w-36 px-3 py-2 font-medium">{t('inventory.invoice.brand')}</th>
+              <th className="w-60 px-3 py-2 font-medium">{t('inventory.invoice.packSize')}</th>
+              <th className="w-48 px-3 py-2 font-medium">{t('inventory.invoice.unit')}</th>
+              <th className="w-24 px-3 py-2 text-right font-medium">
                 {t('inventory.fields.quantity')}
               </th>
-              <th className="w-32 px-3 py-2 text-right font-medium">
+              <th className="w-28 px-3 py-2 text-right font-medium">
                 {t('inventory.invoice.unitCost')}
               </th>
               <th className="w-28 px-3 py-2 text-right font-medium">
@@ -197,18 +225,24 @@ export function InvoiceEditor({
           <tbody className="divide-y">
             {rows.map((row, index) => {
               const own = problems[index] ?? [];
+              const fresh = row.target === NEW_ITEM;
+              const item = fresh ? null : itemById.get(row.target);
+              const baseUnit: StockUnit = item?.unit ?? row.newUnit;
+              const purchaseUnits = activeUnits.filter((u) => u.baseUnit === baseUnit);
+              const packBad = fresh ? packProblems(row.pack) : [];
               const value = lineValue(
                 row.quantity.replace(',', '.'),
                 row.unitCost.replace(',', '.'),
               );
+              const editable = !readOnly && fresh;
               return (
                 <tr
                   key={index}
-                  className={cn(!row.include && 'opacity-50')}
+                  className={cn('align-top', !row.include && 'opacity-50')}
                   data-testid="invoice-line"
                   data-code={row.line.code ?? ''}
                 >
-                  <td className="px-3 py-2 align-top">
+                  <td className="px-3 py-2">
                     <Checkbox
                       checked={row.include}
                       disabled={readOnly}
@@ -219,7 +253,7 @@ export function InvoiceEditor({
                       data-testid="invoice-line-include"
                     />
                   </td>
-                  <td className="px-3 py-2 align-top">
+                  <td className="px-3 py-2">
                     <span className="flex flex-col gap-0.5">
                       <span className="font-medium">{row.line.description}</span>
                       <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -236,24 +270,24 @@ export function InvoiceEditor({
                       </span>
                     </span>
                   </td>
-                  <td className="px-3 py-2 align-top">
+                  <td className="px-3 py-2">
                     <Select
                       value={row.target}
                       disabled={readOnly}
-                      onChange={(e) => update(index, { target: e.target.value })}
+                      onChange={(e) => update(index, { target: e.target.value, unitId: '' })}
                       aria-label={t('inventory.invoice.itemFor', { name: row.line.description })}
                       data-testid="invoice-line-item"
                     >
                       <option value={NEW_ITEM} disabled={!canCreate && row.target !== NEW_ITEM}>
                         {t('inventory.invoice.newItem')}
                       </option>
-                      {sortedItems.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.sku ? `${item.name} · ${item.sku}` : item.name}
+                      {sortedItems.map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.sku ? `${i.name} · ${i.sku}` : i.name}
                         </option>
                       ))}
                     </Select>
-                    {row.include && row.target === NEW_ITEM && canCreate && (
+                    {row.include && fresh && canCreate && (
                       <Badge className="mt-1" data-testid="invoice-line-new">
                         {t('inventory.invoice.newBadge')}
                       </Badge>
@@ -270,7 +304,188 @@ export function InvoiceEditor({
                         </p>
                       ))}
                   </td>
-                  <td className="px-3 py-2 align-top">
+                  <td className="px-3 py-2">
+                    {fresh ? (
+                      <div className="flex items-center gap-1">
+                        <Select
+                          value={row.categoryId}
+                          disabled={!editable || !categories}
+                          onChange={(e) => update(index, { categoryId: e.target.value })}
+                          aria-label={t('inventory.invoice.categoryFor', {
+                            name: row.line.description,
+                          })}
+                          data-testid="invoice-line-category"
+                        >
+                          <option value="">{t('inventory.page.uncategorized')}</option>
+                          {activeCategories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {categoryPath(categories ?? [], c.id)}
+                            </option>
+                          ))}
+                        </Select>
+                        {editable && canCreateCategory && (
+                          <NewCategory
+                            onCreated={(category) => {
+                              onCategoryCreated?.(category);
+                              update(index, { categoryId: category.id });
+                            }}
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {categoryName(item?.categoryId ?? null) ?? '–'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {fresh ? (
+                      <Input
+                        value={row.brand}
+                        disabled={!editable}
+                        maxLength={100}
+                        placeholder="—"
+                        onChange={(e) => update(index, { brand: e.target.value })}
+                        aria-label={t('inventory.invoice.brandFor', { name: row.line.description })}
+                        data-testid="invoice-line-brand"
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">{item?.brand ?? '–'}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {fresh ? (
+                      <div className="flex flex-col gap-1" data-testid="invoice-line-pack">
+                        <div className="flex items-center gap-1">
+                          <Input
+                            inputMode="numeric"
+                            value={row.pack.count}
+                            disabled={!editable}
+                            placeholder={t('inventory.invoice.packCount')}
+                            aria-label={t('inventory.invoice.packCount')}
+                            aria-invalid={packBad.includes('count') || undefined}
+                            onChange={(e) =>
+                              update(index, { pack: { ...row.pack, count: e.target.value } })
+                            }
+                            className="w-16 text-right"
+                            data-testid="invoice-line-pack-count"
+                          />
+                          <span aria-hidden className="text-muted-foreground">
+                            ×
+                          </span>
+                          <Input
+                            inputMode="decimal"
+                            value={row.pack.size}
+                            disabled={!editable}
+                            placeholder={t('inventory.invoice.packWeight')}
+                            aria-label={t('inventory.invoice.packWeight')}
+                            aria-invalid={packBad.includes('size') || undefined}
+                            onChange={(e) =>
+                              update(index, { pack: { ...row.pack, size: e.target.value } })
+                            }
+                            className="w-20 text-right"
+                            data-testid="invoice-line-pack-size"
+                          />
+                          <Select
+                            value={row.pack.unit}
+                            disabled={!editable}
+                            aria-label={t('inventory.invoice.packUnit')}
+                            aria-invalid={packBad.includes('unit') || undefined}
+                            onChange={(e) =>
+                              update(index, {
+                                pack: { ...row.pack, unit: e.target.value as StockUnit | '' },
+                              })
+                            }
+                            className="w-20"
+                            data-testid="invoice-line-pack-unit"
+                          >
+                            <option value="">–</option>
+                            {STOCK_UNITS.filter((u) => u !== 'pc').map((u) => (
+                              <option key={u} value={u}>
+                                {t(`inventory.units.${u}`)}
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
+                        <span
+                          className={cn(
+                            'text-xs',
+                            packBad.length > 0 ? 'text-destructive' : 'text-muted-foreground',
+                          )}
+                        >
+                          {packBad.length > 0
+                            ? t('inventory.invoice.packInvalid')
+                            : t('inventory.invoice.packHint')}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {(item &&
+                          formatPackSize({
+                            count: item.packCount,
+                            size: item.packSize,
+                            unit: item.packUnit,
+                          })) ||
+                          '–'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-col gap-1">
+                      {fresh && (
+                        <Select
+                          value={row.newUnit}
+                          disabled={!editable}
+                          onChange={(e) =>
+                            // The invoiced-in unit belongs to the item's unit: start again.
+                            update(index, { newUnit: e.target.value as StockUnit, unitId: '' })
+                          }
+                          aria-label={t('inventory.invoice.itemUnit')}
+                          data-testid="invoice-line-unit"
+                        >
+                          {STOCK_UNITS.map((u) => (
+                            <option key={u} value={u}>
+                              {t(`inventory.units.${u}`)}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Select
+                          value={row.unitId}
+                          disabled={readOnly}
+                          onChange={(e) => update(index, { unitId: e.target.value })}
+                          aria-label={t('inventory.invoice.invoicedIn')}
+                          data-testid="invoice-line-invoiced-in"
+                        >
+                          <option value="">
+                            {t('inventory.invoice.perUnit', {
+                              unit: t(`inventory.units.${baseUnit}`),
+                            })}
+                          </option>
+                          {purchaseUnits.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {t('inventory.invoice.unitOption', {
+                                name: u.name,
+                                factor: u.factor.replace(/\.?0+$/, ''),
+                                unit: t(`inventory.units.${u.baseUnit}`),
+                              })}
+                            </option>
+                          ))}
+                        </Select>
+                        {!readOnly && canCreateUnit && (
+                          <NewUnit
+                            baseUnit={baseUnit}
+                            onCreated={(unit) => {
+                              onUnitCreated?.(unit);
+                              update(index, { unitId: unit.id });
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
                     <Input
                       inputMode="decimal"
                       className="text-right"
@@ -282,7 +497,7 @@ export function InvoiceEditor({
                       data-testid="invoice-line-quantity"
                     />
                   </td>
-                  <td className="px-3 py-2 align-top">
+                  <td className="px-3 py-2">
                     <Input
                       inputMode="decimal"
                       className="text-right"
@@ -294,7 +509,7 @@ export function InvoiceEditor({
                       data-testid="invoice-line-cost"
                     />
                   </td>
-                  <td className="px-3 py-2 text-right align-top font-medium tabular-nums">
+                  <td className="px-3 py-2 text-right font-medium tabular-nums">
                     {value ? money(value) : '–'}
                   </td>
                 </tr>
@@ -326,5 +541,134 @@ export function InvoiceEditor({
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </Card>
     </div>
+  );
+}
+
+/** "+" next to a line's category: a category by name, chosen for the line at once. */
+function NewCategory({ onCreated }: { onCreated: (category: ProductCategory) => void }) {
+  const t = useT();
+  const id = useId();
+  const { store } = useAuth();
+  const action = useActionKey();
+  const [name, setName] = useState('');
+  const [checked, setChecked] = useState(false);
+  const created = useRef<ProductCategory | null>(null);
+  return (
+    <FormDialog
+      trigger={t('inventory.invoice.addCategory')}
+      triggerIcon={<Plus aria-hidden />}
+      triggerVariant="outline"
+      triggerClassName="size-9 shrink-0"
+      testId="invoice-add-category"
+      title={t('inventory.invoice.addCategory')}
+      onOpen={() => {
+        setName('');
+        setChecked(false);
+      }}
+      submit={() => {
+        setChecked(true);
+        if (name.trim() === '') return null;
+        return createCategory(store, action, { name: name.trim() }).then((result) => {
+          if (result.ok && result.data) created.current = result.data;
+          return result;
+        });
+      }}
+      onDone={() => {
+        if (created.current) onCreated(created.current);
+      }}
+    >
+      <Field
+        id={`${id}-name`}
+        label={t('inventory.fields.name')}
+        problem={checked && name.trim() === '' ? t('inventory.page.nameRequired') : null}
+      >
+        <Input
+          id={`${id}-name`}
+          value={name}
+          maxLength={100}
+          onChange={(e) => setName(e.target.value)}
+          data-testid="invoice-add-category-name"
+        />
+      </Field>
+    </FormDialog>
+  );
+}
+
+/** "+" next to the invoiced-in unit: e.g. Carton = 12 pc, in the line's item unit, chosen for the line at once. */
+function NewUnit({
+  baseUnit,
+  onCreated,
+}: {
+  baseUnit: StockUnit;
+  onCreated: (unit: UnitOfMeasure) => void;
+}) {
+  const t = useT();
+  const id = useId();
+  const { store } = useAuth();
+  const action = useActionKey();
+  const [name, setName] = useState('');
+  const [factor, setFactor] = useState('');
+  const [checked, setChecked] = useState(false);
+  const cleanFactor = factor.trim().replace(',', '.');
+  const factorBad = !/^\d{1,8}(\.\d{1,6})?$/.test(cleanFactor) || !/[1-9]/.test(cleanFactor);
+  const created = useRef<UnitOfMeasure | null>(null);
+  return (
+    <FormDialog
+      trigger={t('inventory.invoice.addUnit')}
+      triggerIcon={<Plus aria-hidden />}
+      triggerVariant="outline"
+      triggerClassName="size-9 shrink-0"
+      testId="invoice-add-unit"
+      title={t('inventory.invoice.addUnit')}
+      onOpen={() => {
+        setName('');
+        setFactor('');
+        setChecked(false);
+      }}
+      submit={() => {
+        setChecked(true);
+        if (name.trim() === '' || factorBad) return null;
+        return createUnit(store, action, {
+          name: name.trim(),
+          symbol: name.trim().slice(0, 20),
+          baseUnit,
+          factor: cleanFactor,
+        }).then((result) => {
+          if (result.ok && result.data) created.current = result.data;
+          return result;
+        });
+      }}
+      onDone={() => {
+        if (created.current) onCreated(created.current);
+      }}
+    >
+      <Field
+        id={`${id}-name`}
+        label={t('inventory.invoice.unitName')}
+        problem={checked && name.trim() === '' ? t('inventory.page.nameRequired') : null}
+      >
+        <Input
+          id={`${id}-name`}
+          value={name}
+          maxLength={100}
+          placeholder={t('inventory.invoice.unitNamePlaceholder')}
+          onChange={(e) => setName(e.target.value)}
+          data-testid="invoice-add-unit-name"
+        />
+      </Field>
+      <Field
+        id={`${id}-factor`}
+        label={t('inventory.invoice.unitFactor', { unit: t(`inventory.units.${baseUnit}`) })}
+        problem={checked && factorBad ? t('inventory.invoice.unitFactorInvalid') : null}
+      >
+        <Input
+          id={`${id}-factor`}
+          inputMode="decimal"
+          value={factor}
+          onChange={(e) => setFactor(e.target.value)}
+          data-testid="invoice-add-unit-factor"
+        />
+      </Field>
+    </FormDialog>
   );
 }

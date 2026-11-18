@@ -9,6 +9,7 @@ import {
   type VendorInvoiceSource,
 } from '@durby/shared';
 import type { InvoiceLine, ParsedInvoice } from './invoice-pdf';
+import { EMPTY_PACK, type PackSize, packFields, packProblems, parsePackSize } from './pack-size';
 
 /**
  * The review of a vendor invoice before it becomes a goods receipt (ADR 0049): each line matched to a stock item or
@@ -22,11 +23,19 @@ export interface InvoiceRow {
   include: boolean;
   /** A stock item's id, or NEW_ITEM. */
   target: string;
+  /** In `unitId` when one is chosen, else in the item's unit. */
   quantity: string;
   unitCost: string;
+  /** The unit the supplier invoices in (ADR 0055): a unit of measurement's id, or '' for the item's own unit. */
+  unitId: string;
+  /** For a new item (ADR 0055): its unit, category ('' none), brand and pack size. */
+  newUnit: StockUnit;
+  categoryId: string;
+  brand: string;
+  pack: PackSize;
 }
 
-export type RowProblem = 'quantity' | 'unitCost' | 'duplicate' | 'newNotAllowed';
+export type RowProblem = 'quantity' | 'unitCost' | 'duplicate' | 'newNotAllowed' | 'pack';
 
 const normal = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -40,6 +49,7 @@ const clean = (value: string) => value.trim().replace(',', '.');
 export function matchInvoice(
   lines: readonly InvoiceLine[],
   items: readonly StockItem[],
+  newUnit: StockUnit = 'pc',
 ): InvoiceRow[] {
   const parents = new Set(
     items.map((i) => i.parentItemId).filter((id): id is string => id !== null),
@@ -56,8 +66,23 @@ export function matchInvoice(
       NEW_ITEM,
     quantity: line.quantity,
     unitCost: line.unitPrice,
+    unitId: '',
+    newUnit,
+    categoryId: '',
+    brand: '',
+    // "5 x 2kg" in the description: the pack size of a new item, ready to check (ADR 0055).
+    pack: parsePackSize(line.description) ?? EMPTY_PACK,
   }));
 }
+
+/** Gives every new row without a category this one (the "set for all without one" action). */
+export function setMissingCategory(rows: readonly InvoiceRow[], categoryId: string): InvoiceRow[] {
+  return rows.map((r) => (r.target === NEW_ITEM && r.categoryId === '' ? { ...r, categoryId } : r));
+}
+
+/** New rows still without a category (included ones). */
+export const missingCategory = (rows: readonly InvoiceRow[]) =>
+  rows.filter((r) => r.include && r.target === NEW_ITEM && r.categoryId === '').length;
 
 /** What keeps each included row from importing (empty: it can go). */
 export function rowProblems(rows: readonly InvoiceRow[], canCreate: boolean): RowProblem[][] {
@@ -78,6 +103,7 @@ export function rowProblems(rows: readonly InvoiceRow[], canCreate: boolean): Ro
     if (!unitCostSchema.safeParse(clean(row.unitCost)).success) problems.push('unitCost');
     if ((counts.get(keyOf(row)) ?? 0) > 1) problems.push('duplicate');
     if (row.target === NEW_ITEM && !canCreate) problems.push('newNotAllowed');
+    if (row.target === NEW_ITEM && packProblems(row.pack).length > 0) problems.push('pack');
     return problems;
   });
 }
@@ -96,8 +122,6 @@ export function submitRequest(input: {
   invoice: Pick<ParsedInvoice, 'number' | 'date' | 'total'>;
   fileName: string | null;
   source: VendorInvoiceSource;
-  newItemUnit: StockUnit;
-  newItemCategoryId: string | null;
 }): SubmitVendorInvoiceRequest {
   return {
     warehouseId: input.warehouseId,
@@ -120,6 +144,7 @@ export function submitRequest(input: {
           description: r.line.description.slice(0, 300),
           quantity: clean(r.quantity),
           unitCost: clean(r.unitCost),
+          ...(r.unitId ? { unitId: r.unitId } : {}),
         };
         if (r.target !== NEW_ITEM) return { ...base, itemId: r.target };
         return {
@@ -127,8 +152,10 @@ export function submitRequest(input: {
           newItem: {
             name: newItemName(r.line),
             ...(r.line.code ? { sku: r.line.code.slice(0, 50) } : {}),
-            unit: input.newItemUnit,
-            ...(input.newItemCategoryId ? { categoryId: input.newItemCategoryId } : {}),
+            unit: r.newUnit,
+            ...(r.categoryId ? { categoryId: r.categoryId } : {}),
+            ...(r.brand.trim() ? { brand: r.brand.trim().slice(0, 100) } : {}),
+            ...packFields(r.pack),
           },
         };
       }),
@@ -149,6 +176,18 @@ export function rowsFromInvoice(invoice: VendorInvoice): InvoiceRow[] {
     },
     include: true,
     target: l.itemId ?? NEW_ITEM,
+    unitId: l.unitId ?? '',
+    newUnit: l.newItem?.unit ?? 'pc',
+    categoryId: l.newItem?.categoryId ?? '',
+    brand: l.newItem?.brand ?? '',
+    pack: {
+      count:
+        l.newItem?.packCount === null || l.newItem?.packCount === undefined
+          ? ''
+          : String(l.newItem.packCount),
+      size: l.newItem?.packSize?.replace(/\.?0+$/, '') ?? '',
+      unit: l.newItem?.packUnit ?? '',
+    },
     // "50.000" → "50", "41.5000" → "41.50", "0.4150" → "0.415": as a person types them.
     quantity: l.quantity.includes('.')
       ? l.quantity.replace(/0+$/, '').replace(/\.$/, '')

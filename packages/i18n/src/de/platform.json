@@ -1021,5 +1021,9 @@
   "platform.team.setPassword.doneTitle": "Neues Passwort für {name} gesetzt",
   "platform.team.setPassword.doneFinal": "Sie wurden überall abgemeldet und melden sich mit dem neuen Passwort an.",
   "platform.team.setPassword.doneTemporary": "Sie wurden überall abgemeldet; beim nächsten Anmelden wählen sie ihr eigenes Passwort.",
-  "platform.audit.fields.isMain": "Hauptlager"
+  "platform.audit.fields.isMain": "Hauptlager",
+  "platform.audit.fields.brand": "Marke",
+  "platform.audit.fields.packCount": "Packungsanzahl",
+  "platform.audit.fields.packSize": "Packungsgröße",
+  "platform.audit.fields.packUnit": "Packungseinheit"
 }

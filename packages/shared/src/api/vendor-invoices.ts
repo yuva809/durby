@@ -33,9 +33,20 @@ export const vendorInvoiceLineInputSchema = z
         sku: text(50).optional(),
         unit: z.enum(STOCK_UNITS),
         categoryId: z.uuid().nullable().optional(),
+        /** Brand and pack size (ADR 0055), e.g. 12 x 500 g. */
+        brand: text(100).optional(),
+        packCount: z.int().min(1).max(100_000).optional(),
+        packSize: quantity.optional(),
+        packUnit: z.enum(STOCK_UNITS).optional(),
+      })
+      .refine((n) => (n.packSize === undefined) === (n.packUnit === undefined), {
+        message: 'A pack size needs its unit',
+        path: ['packUnit'],
       })
       .nullable()
       .optional(),
+    /** The unit the supplier invoices in (ADR 0055): quantity and cost are in it. */
+    unitId: z.uuid().nullable().optional(),
     quantity,
     unitCost,
   })
@@ -93,8 +104,16 @@ export const vendorInvoiceLineSchema = z.object({
       sku: z.string().nullable(),
       unit: z.enum(STOCK_UNITS),
       categoryId: z.uuid().nullable(),
+      /** ADR 0055; defaults for older apis. */
+      brand: z.string().nullable().default(null),
+      packCount: z.int().nullable().default(null),
+      packSize: z.string().nullable().default(null),
+      packUnit: z.enum(STOCK_UNITS).nullable().default(null),
     })
     .nullable(),
+  /** The unit the supplier invoices in (ADR 0055), with its symbol; quantity and cost are in it. */
+  unitId: z.uuid().nullable().default(null),
+  unitSymbol: z.string().nullable().default(null),
   quantity: z.string(),
   unitCost: z.string(),
   /** quantity × unit cost, 2 decimals. */
