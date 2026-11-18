@@ -108,6 +108,7 @@ function Queue({
         id={openId}
         organizationId={organizationId}
         canApprove={canApprove}
+        canEdit={canApprove || canSubmit}
         readsCategories={readsCategories}
         onBack={() => {
           setOpenId(null);
@@ -254,12 +255,15 @@ function Detail({
   id,
   organizationId,
   canApprove,
+  canEdit,
   readsCategories,
   onBack,
 }: {
   id: string;
   organizationId: string | null;
   canApprove: boolean;
+  /** Approvers and those who receive goods may correct a pending one (the api lets the sender and approvers). */
+  canEdit: boolean;
   readsCategories: boolean;
   onBack: () => void;
 }) {
@@ -292,6 +296,7 @@ function Detail({
                     items={itemList}
                     categories={categories.status === 'ready' ? categories.data : null}
                     canApprove={canApprove}
+                    canEdit={canEdit}
                     onChanged={reload}
                   />
                 )}
@@ -310,6 +315,7 @@ function InvoiceDetail({
   items,
   categories,
   canApprove,
+  canEdit,
   onChanged,
 }: {
   invoice: VendorInvoice;
@@ -317,6 +323,7 @@ function InvoiceDetail({
   items: StockItem[];
   categories: ProductCategory[] | null;
   canApprove: boolean;
+  canEdit: boolean;
   onChanged: () => void;
 }) {
   const t = useT();
@@ -434,7 +441,7 @@ function InvoiceDetail({
         warehouses={warehouses}
         canCreate
         printedTotal={invoice.printedTotal}
-        readOnly={!pending}
+        readOnly={!pending || !canEdit}
         actions={
           pending ? (
             <>

@@ -1,6 +1,6 @@
 import { checkItemRows, checkOpeningStockRows, type ItemImportRow } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
-import { readRows, templateCsv } from './table';
+import { isExcel, readRows, readTableRows, templateCsv } from './table';
 
 describe('readRows (Import Data)', () => {
   it('reads the template columns in any order, with loose headers and semicolons', () => {
@@ -72,5 +72,21 @@ describe('shared row checks', () => {
       { row: 2, field: 'quantity', problem: 'invalid' },
       { row: 2, field: 'unitCost', problem: 'invalid' },
     ]);
+  });
+});
+
+describe('readTableRows (Excel and CSV alike)', () => {
+  it('reads a table the same way as the CSV text it came from', () => {
+    expect(readTableRows('categories', [['Category'], ['Fish'], [''], ['Rice']])).toEqual({
+      ok: true,
+      rows: [{ name: 'Fish' }, { name: 'Rice' }],
+    });
+    expect(readTableRows('categories', [])).toEqual({ ok: false, problem: { kind: 'empty' } });
+  });
+
+  it('knows Excel files by name', () => {
+    expect(isExcel('Stock.XLSX')).toBe(true);
+    expect(isExcel('stock.xls')).toBe(false);
+    expect(isExcel('stock.csv')).toBe(false);
   });
 });

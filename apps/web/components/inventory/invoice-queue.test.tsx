@@ -217,6 +217,18 @@ describe('/inventory/invoices (ADR 0051)', () => {
     expect(screen.queryByTestId('queue-reject')).toBeNull();
   });
 
+  it('shows a pending invoice read-only to someone who may only look at stock', async () => {
+    signedIn(['inventory.stock.read']);
+    mockState.search = `open=${id(9)}`;
+    api();
+    render(<InvoiceQueuePage />);
+    const lines = await screen.findAllByTestId('invoice-line');
+    expect(within(lines[0]!).getByTestId<HTMLInputElement>('invoice-line-quantity').disabled).toBe(
+      true,
+    );
+    expect(screen.queryByTestId('queue-approve')).toBeNull();
+  });
+
   it('shows each status on its own tab', async () => {
     signedIn();
     api(invoice('approved'));

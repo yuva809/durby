@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoice approval: technical and test notes</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#1f7a3d; --ok:#1f7a3d; --warn:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; } }
+  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .done { color: var(--ok); } .open { color: var(--warn); }
+  nav a { color: var(--accent); margin-right: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="#flow">Flow</a><a href="#api">API</a><a href="#import">Import Data</a><a href="#tests">Tests</a></nav>
+  <h1>Vendor invoice approval, photos and Excel</h1>
+  <p class="lead">Vendor invoices are read (PDF or photos), sent for approval, and booked as a goods receipt only once approved. Import Data takes Excel and has a new layout. Decision: ADR 0051. Branch: <code>feature/import-data-redesign</code> (on top of <code>feature/vendor-invoice-import</code>).</p>
+
+  <h2 id="flow">Flow</h2>
+<pre>Staff (inventory.stock.receive)
+  Inventory → Import Vendor Invoice → PDF or photos → review → [Send 24 lines for approval]
+  → "Sent for approval as VIN-2026-000001"          approvers at that location get a notification
+
+Manager / admin (inventory.invoices.approve)
+  Approval queue → Pending → Bonesca · VIN-2026-000001 · 108666 · 24 lines (3 new) · € 5.739,80
+    correct lines → [Approve and book]  → new items created, GR-2026-… booked, sender notified
+                  → [Reject] + reason   → sender notified with the reason</pre>
+
+  <h2 id="api">API</h2>
+  <div class="scroll"><table>
+    <tr><th>Route</th><th>Who</th><th>Notes</th></tr>
+    <tr><td><code>GET /inventory/invoices?status=</code></td><td>inventory.stock.read</td><td>invoices at locations where one may receive or approve</td></tr>
+    <tr><td><code>POST /inventory/invoices</code></td><td>inventory.stock.receive</td><td>pending, number VIN; lines with <code>itemId</code> or <code>newItem</code></td></tr>
+    <tr><td><code>PUT /inventory/invoices/:id</code></td><td>sender or approver</td><td>only while pending</td></tr>
+    <tr><td><code>POST /inventory/invoices/:id/approve</code></td><td>inventory.invoices.approve</td><td>one transaction: new items, receipt, status; 409 if decided or changed meanwhile</td></tr>
+    <tr><td><code>POST /inventory/invoices/:id/reject</code></td><td>inventory.invoices.approve</td><td><code>{ reason }</code></td></tr>
+  </table></div>
+  <p><code>POST /inventory/receipts/import</code> is gone. Photos and scanned PDFs are read on the device (OCR); only the reviewed lines are sent, marked <code>source: scan</code>.</p>
+
+  <h2 id="import">Import Data</h2>
+  <ul>
+    <li>Header "Bring your existing data in" with three steps; one tile per kind (icon, description, CSV · Excel).</li>
+    <li>Vendor invoice tile (PDF · Photos) leads to the upload, with a link to the approval queue.</li>
+    <li><code>.xlsx</code> read on the device: the sheet named like the kind, else the first; numbers as Excel stored them.</li>
+    <li>Required columns are highlighted; <code>.xls</code> and other files are refused with a clear message.</li>
+  </ul>
+
+  <h2 id="tests">Testing</h2>
+  <div class="scroll"><table>
+    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
+    <tr><td>Web unit</td><td><code>lib/inventory/invoice-receipt.test.ts</code></td><td>submit body, printed total, rows from a stored invoice, scanned lines to rows</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/inventory/invoice-import.test.tsx</code></td><td>PDF → submit body; photos as scan; scan fallback; receivers propose new items</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/inventory/invoice-queue.test.tsx</code></td><td>list, correct + approve (save first), reject with reason, read-only viewers, tabs</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/imports/import-page.test.tsx</code>, <code>lib/imports/table.test.ts</code></td><td>Excel sheet and numbers, refused files, invoice tile and queue link</td><td class="done">Pass</td></tr>
+    <tr><td>API unit</td><td>boot, route markers, tenant context</td><td>new tables and routes</td><td class="done">Pass</td></tr>
+    <tr><td>API e2e</td><td><code>test/vendor-invoice.e2e.spec.ts</code></td><td>submit, update, approve books receipt, reject, decided 409, notifications</td><td class="open">Needs Docker / CI</td></tr>
+  </table></div>
+  <h3>Manual</h3>
+  <ul>
+    <li>As staff: Import Vendor Invoice → <code>108666.pdf</code> → Send → done screen with VIN number; stock unchanged.</li>
+    <li>As manager: bell shows "invoice submitted" → Approval queue → open → change a quantity → Approve → receipt number shown; stock up.</li>
+    <li>Take two photos of a paper invoice → lines read, "check every line" hint shown.</li>
+    <li>Import Data → Products → upload an <code>.xlsx</code> → preview shows the rows.</li>
+  </ul>
+</main>
+</body>
+</html>

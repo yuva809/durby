@@ -818,7 +818,7 @@
   "platform.numbering.series.inventoryGoodsIssue.description": "Numbers of the goods that leave for picked sales orders.",
   "platform.numbering.series.inventoryGoodsRestock.name": "Goods back in",
   "platform.numbering.series.inventoryGoodsRestock.description": "Numbers of goods back from cancelled or returned sales orders.",
-  "platform.importPage.intro": "Bring your existing lists into the app from a CSV file (Excel: Save as → CSV). Download a template, fill it in, and check the preview before importing.",
+  "platform.importPage.intro": "Products, stock, categories and customers from the lists you already keep. Nothing is saved until you have checked the preview.",
   "platform.importPage.what": "What to import",
   "platform.importPage.kinds.categories.name": "Product categories",
   "platform.importPage.kinds.categories.description": "Category names; existing ones are kept.",
@@ -834,7 +834,7 @@
   "platform.importPage.kinds.customers.rules": "A row with a code updates the customer with that code, otherwise the customer with the same name; empty cells keep what is there.",
   "platform.importPage.columns": "Columns",
   "platform.importPage.template": "Download template",
-  "platform.importPage.file": "CSV file",
+  "platform.importPage.file": "Choose a CSV or Excel file",
   "platform.importPage.empty": "The file has no rows to import.",
   "platform.importPage.tooManyRows": "At most {max} rows per file. Split it and import the parts one after another.",
   "platform.importPage.missingColumns": "Columns missing: {columns}. Start from the template.",
@@ -976,5 +976,14 @@
   "platform.notifications.kinds.invoiceRejected": "Your vendor invoice was rejected: {number}",
   "platform.notifications.kindNames.invoiceSubmitted": "A vendor invoice waits for approval",
   "platform.notifications.kindNames.invoiceApproved": "My vendor invoice was approved",
-  "platform.notifications.kindNames.invoiceRejected": "My vendor invoice was rejected"
+  "platform.notifications.kindNames.invoiceRejected": "My vendor invoice was rejected",
+  "platform.importPage.heroTitle": "Bring your existing data in",
+  "platform.importPage.steps.template": "Download the template",
+  "platform.importPage.steps.fill": "Fill it in, in Excel or any spreadsheet",
+  "platform.importPage.steps.upload": "Upload it and check the preview",
+  "platform.importPage.formats": "CSV · Excel",
+  "platform.importPage.requiredHint": "Highlighted columns are required; the others may stay empty.",
+  "platform.importPage.fileHint": "Choose a .csv or .xlsx file. In a workbook with several sheets, the sheet named like this import is read, else the first.",
+  "platform.importPage.unreadable": "This file could not be read. Save it as Excel (.xlsx) or CSV and choose it again.",
+  "platform.importPage.reading": "Reading the workbook…"
 }

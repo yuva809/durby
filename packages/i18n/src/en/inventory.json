@@ -340,5 +340,6 @@
   "inventory.invoices.rejectTitle": "Reject {number}?",
   "inventory.invoices.reason": "Reason (the sender sees it)",
   "inventory.invoices.newItemsHint": "New items are created when the invoice is approved.",
-  "inventory.permissionAreas.invoices": "Vendor invoices"
+  "inventory.permissionAreas.invoices": "Vendor invoices",
+  "inventory.invoice.importDataFormats": "PDF · Photos"
 }

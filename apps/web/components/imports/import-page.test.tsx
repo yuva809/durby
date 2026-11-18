@@ -11,6 +11,10 @@ vi.mock('../../app/providers', async () => (await import('../../test/mocks')).pr
 vi.mock('../../app/labels-provider', async () => (await import('../../test/mocks')).labelsMock());
 vi.mock('next/navigation', async () => (await import('../../test/mocks')).navigationMock());
 
+/** The workbook reader works on real .xlsx bytes; here it hands over sheets as it would. */
+const excel = vi.hoisted(() => ({ sheets: [] as { sheet: string; data: unknown[][] }[] }));
+vi.mock('read-excel-file/browser', () => ({ default: () => Promise.resolve(excel.sheets) }));
+
 beforeEach(resetMocks);
 afterEach(cleanup);
 
@@ -93,9 +97,13 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
     const calls = api();
     render(<ImportPage />);
     await userEvent.click(screen.getByTestId('import-kind-items'));
-    expect(screen.getByTestId('import-columns').textContent).toBe(
-      'name, sku, unit, min_quantity, sale_price',
-    );
+    expect(screen.getAllByTestId('import-column').map((c) => c.textContent)).toEqual([
+      'name',
+      'sku',
+      'unit',
+      'min_quantity',
+      'sale_price',
+    ]);
     await userEvent.upload(
       screen.getByTestId('import-file'),
       csv('name,unit,sale_price\nRice,pc,12.90\nOil,box,\n'),
@@ -155,5 +163,62 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
     await userEvent.click(screen.getByTestId('import-kind-customers'));
     await userEvent.upload(screen.getByTestId('import-file'), csv('phone\n123\n'));
     expect(await screen.findByText('Columns missing: name. Start from the template.')).toBeTruthy();
+  });
+
+  it('reads an Excel workbook: the sheet named like the import, numbers as stored', async () => {
+    signedInAs('owner');
+    api();
+    excel.sheets = [
+      { sheet: 'Notes', data: [['ignore me']] },
+      {
+        sheet: 'Items',
+        data: [
+          ['Name', 'Unit', 'Sale price'],
+          ['Rice', 'pc', { number: '12.9000000000000004' }],
+        ],
+      },
+    ];
+    render(<ImportPage />);
+    await userEvent.click(screen.getByTestId('import-kind-items'));
+    await userEvent.upload(
+      screen.getByTestId('import-file'),
+      new File(['xlsx'], 'stock.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }),
+    );
+    const preview = await screen.findByTestId('import-preview');
+    expect(within(preview).getByText('stock.xlsx')).toBeTruthy();
+    expect(within(preview).getByText('12.9')).toBeTruthy();
+  });
+
+  it('says when a file is neither CSV nor Excel', async () => {
+    signedInAs('owner');
+    api();
+    render(<ImportPage />);
+    await userEvent.upload(
+      screen.getByTestId('import-file'),
+      new File(['x'], 'old.xls', { type: 'application/vnd.ms-excel' }),
+      { applyAccept: false },
+    );
+    expect(await screen.findByText(/could not be read/)).toBeTruthy();
+  });
+
+  it('offers vendor invoices and their approval queue to those who receive goods', () => {
+    signedInAs('staff', ['inventory.stock.read', 'inventory.stock.receive']);
+    render(<ImportPage />);
+    expect(screen.getByTestId('import-invoice-open').getAttribute('href')).toBe(
+      '/inventory/invoice',
+    );
+    expect(screen.getByTestId('import-invoice-queue').getAttribute('href')).toBe(
+      '/inventory/invoices',
+    );
+    // Opening stock is theirs too; items are not.
+    expect(screen.getByTestId('import-kind-opening_stock')).toBeTruthy();
+    expect(screen.queryByTestId('import-kind-items')).toBeNull();
+
+    cleanup();
+    signedInAs('staff', ['orders.customers.create']);
+    render(<ImportPage />);
+    expect(screen.queryByTestId('import-invoice')).toBeNull();
   });
 });

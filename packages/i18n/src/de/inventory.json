@@ -340,5 +340,6 @@
   "inventory.invoices.rejectTitle": "{number} ablehnen?",
   "inventory.invoices.reason": "Grund (sieht der Absender)",
   "inventory.invoices.newItemsHint": "Neue Artikel werden bei der Freigabe angelegt.",
-  "inventory.permissionAreas.invoices": "Lieferantenrechnungen"
+  "inventory.permissionAreas.invoices": "Lieferantenrechnungen",
+  "inventory.invoice.importDataFormats": "PDF · Fotos"
 }
