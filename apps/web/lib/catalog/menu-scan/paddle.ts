@@ -21,7 +21,7 @@ const MODEL = {
  * (a dish photo yields `大`, `家`): menus here are in Latin script, so such readings are noise.
  */
 const NOT_LATIN =
-  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303F\uFF00-\uFFEF]/u;
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u;
 /** Readings below this confidence (0–1) are dropped: specks, rules and patterns, not text. */
 const MIN_CONFIDENCE = 0.3;
 /** Crops come from the page at full size: scan pages are at most 2400 px (`ocr.ts`). */
