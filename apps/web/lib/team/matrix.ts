@@ -174,3 +174,90 @@ export function generatePassword(
 /** A WhatsApp share link for `text` (the user picks the chat). */
 export const whatsappUrl = (text: string): string =>
   `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+/*
+ * "Grant View first" (ADR 0050, follow-up 2026-11-18): on a row with a View box, Create, Edit and Delete can only be
+ * ticked while View is. Unticking View clears the row's other actions (the ones you may change). Rows without a View
+ * box don't change. A screen rule only: the api checks each key on its own, and data saved before stays as it is (an
+ * action already ticked without View can be unticked, never ticked again).
+ */
+
+/** Each Create/Edit/Delete key of a row that has a View box → that View key. */
+const VIEW_OF: ReadonlyMap<string, PermissionKey> = (() => {
+  const views = new Map<string, PermissionKey>();
+  for (const key of PERMISSION_KEYS) {
+    const { row, column } = PERMISSIONS[key].matrix;
+    if (column === 'read') views.set(row, key);
+  }
+  const out = new Map<string, PermissionKey>();
+  for (const key of PERMISSION_KEYS) {
+    const { row, column } = PERMISSIONS[key].matrix;
+    const view = views.get(row);
+    if (column !== 'read' && view) out.set(key, view);
+  }
+  return out;
+})();
+
+/** View key → the Create/Edit/Delete keys it gates. */
+const GATED_BY: ReadonlyMap<string, readonly PermissionKey[]> = (() => {
+  const out = new Map<string, PermissionKey[]>();
+  for (const [key, view] of VIEW_OF)
+    out.set(view, [...(out.get(view) ?? []), key as PermissionKey]);
+  return out;
+})();
+
+/** The View key that must be ticked before `key`, or null (a View key itself, or a row without View). */
+export const viewKeyFor = (key: string): PermissionKey | null => VIEW_OF.get(key) ?? null;
+
+/** Whether `key`'s box can't be ticked now: unticked, and its row's View isn't ticked. */
+export function blockedByView(selected: ReadonlySet<string>, key: string): boolean {
+  const view = viewKeyFor(key);
+  return view !== null && !selected.has(view) && !selected.has(key);
+}
+
+/**
+ * One box ticked or unticked. Ticking an action whose View isn't ticked does nothing; unticking a View also unticks
+ * its row's actions that `may` change (locked ones stay).
+ */
+export function tickOne(
+  selected: ReadonlySet<string>,
+  key: string,
+  on: boolean,
+  may: (key: string) => boolean,
+): Set<string> {
+  const next = new Set(selected);
+  if (on) {
+    if (!blockedByView(selected, key)) next.add(key);
+    return next;
+  }
+  next.delete(key);
+  for (const action of GATED_BY.get(key) ?? []) if (may(action)) next.delete(action);
+  return next;
+}
+
+/**
+ * Many boxes at once (a row, a section, Select all, Clear): only the keys `may` change. On: View boxes first, then
+ * each action only if its View ends up ticked. Off: the keys, plus the actions of every View unticked.
+ */
+export function tickMany(
+  selected: ReadonlySet<string>,
+  keys: Iterable<string>,
+  on: boolean,
+  may: (key: string) => boolean,
+): Set<string> {
+  const mine = [...keys].filter(may);
+  const next = new Set(selected);
+  if (on) {
+    for (const key of mine) if (viewKeyFor(key) === null) next.add(key);
+    for (const key of mine) {
+      const view = viewKeyFor(key);
+      if (view !== null && next.has(view)) next.add(key);
+    }
+    return next;
+  }
+  for (const key of mine) next.delete(key);
+  for (const key of mine) {
+    for (const action of GATED_BY.get(key) ?? []) if (may(action)) next.delete(action);
+  }
+  return next;
+}

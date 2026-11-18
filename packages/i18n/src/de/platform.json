@@ -730,6 +730,7 @@
   "platform.team.dialog.clear": "Leeren",
   "platform.team.dialog.changed": "Abweichend von der Rolle",
   "platform.team.dialog.locked": "Sie können nur Berechtigungen vergeben oder entziehen, die Sie selbst haben.",
+  "platform.team.dialog.viewFirst": "Zuerst Ansehen erlauben",
   "platform.team.dialog.ownerAll": "Inhaber haben immer alle Berechtigungen.",
   "platform.team.dialog.hiddenModules": "Nicht aufgeführt, weil für diese Organisation ausgeschaltet: {modules}.",
   "platform.team.dialog.column.module": "Modul",

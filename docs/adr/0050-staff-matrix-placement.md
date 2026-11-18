@@ -42,6 +42,13 @@ as sentences under their area, so the matrix was half grid, half list. Owners as
 orders and Customers and a View box for Organization. No placement carries a `note` any more; the field stays for
 future keys.
 
+**Grant View first (2026-11-18).** On a row with a View box, Create, Edit and Delete are disabled until View is
+ticked (tooltip "Grant View first"), and unticking View clears the row's other actions you may change. The row,
+section and Select all ticks add actions only where View ends up ticked; locked boxes are never changed. Rows without
+a View box are unchanged. It is a screen rule (`tickOne`, `tickMany`, `blockedByView` in `apps/web/lib/team/matrix.ts`):
+no key, api or stored-data change, and an action saved without View keeps its tick (it can be unticked, not ticked
+again) until someone changes it. The Roles page editor doesn't apply it yet.
+
 ## Consequences
 
 - A new permission key needs a matrix cell (and, for a new row, its label in every locale).

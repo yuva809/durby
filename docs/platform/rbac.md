@@ -299,7 +299,10 @@ from the role, changes are marked, keys you don't hold are locked, modules switc
 not listed. The matrix (ADR 0050) has one section per module ("Administration" for platform keys) with a tri-state
 box, then rows with a whole-row box and a View, Create, Edit and Delete cell each. Every key sits in exactly one
 cell, set by its `matrix` placement in `PERMISSIONS`; a cell without a key is a dash. ADR 0051 split the four keys
-that allowed more than their column said, so no box carries an info note any more. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
+that allowed more than their column said, so no box carries an info note any more. On a row with a View box, Create, Edit and Delete can only be
+ticked while View is ("Grant View first"); unticking View clears the row's other actions (those you may change), and
+the row, section and Select all ticks only add actions whose View ends up ticked. A screen rule only: the api checks
+each key on its own, and an action saved without View stays as it is until someone changes it. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
 
 **Passwords set by owners and admins (ADR 0052).** "Set password" in a member's menu (`POST /staff/:id/password`,
 `platform.users.edit`) for accounts this organization created that belong to no other organization

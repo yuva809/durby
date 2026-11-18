@@ -19,6 +19,7 @@ import { errorLabel } from '../../lib/auth/errors';
 import { roleName } from '../../lib/rbac/roles';
 import { createTeamMember, updateTeamMember } from '../../lib/team/api';
 import {
+  blockedByView,
   canToggle,
   generatePassword,
   type MatrixCell,
@@ -27,6 +28,8 @@ import {
   overridesOf,
   permissionMatrix,
   selectedOf,
+  tickMany,
+  tickOne,
 } from '../../lib/team/matrix';
 import { useActionKey } from '../../lib/use-action-key';
 import { permissionLabel, type UsersAccess } from '../../lib/users/access';
@@ -209,26 +212,16 @@ function StaffForm({
     if (next.systemKey === 'owner') setAllLocations(true);
   }
 
+  const may = (key: string) => canToggle(access, key);
+
+  /** One box; "Grant View first": unticking View also clears its row's actions. */
   function toggle(key: string, on: boolean) {
-    setSelected((current) => {
-      const next = new Set(current);
-      if (on) next.add(key);
-      else next.delete(key);
-      return next;
-    });
+    setSelected((current) => tickOne(current, key, on, may));
   }
 
-  /** Ticks or clears a row or section: only the keys you may change. */
+  /** Ticks or clears a row or section: only the keys you may change, actions only with their View. */
   function toggleMany(keys: readonly string[], on: boolean) {
-    setSelected((current) => {
-      const next = new Set(current);
-      for (const key of keys) {
-        if (!canToggle(access, key)) continue;
-        if (on) next.add(key);
-        else next.delete(key);
-      }
-      return next;
-    });
+    setSelected((current) => tickMany(current, keys, on, may));
   }
 
   async function submit() {
@@ -526,16 +519,14 @@ function StaffForm({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setSelected((s) => new Set([...s, ...toggleable]))}
+                  onClick={() => setSelected((s) => tickMany(s, toggleable, true, may))}
                 >
                   {t('platform.team.dialog.selectAll')}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() =>
-                    setSelected((s) => new Set([...s].filter((key) => !toggleable.has(key))))
-                  }
+                  onClick={() => setSelected((s) => tickMany(s, toggleable, false, may))}
                 >
                   {t('platform.team.dialog.clear')}
                 </Button>
@@ -745,9 +736,13 @@ function PermissionBox({
   const t = useT();
   const permission: PermissionKey = cell.key;
   const locked = !canToggle(access, permission);
+  // "Grant View first": an unticked action whose row's View isn't ticked.
+  const blocked = !locked && blockedByView(selected, permission);
   const name = t(permissionLabel(permission));
   const note = cell.note ? t(cell.note) : null;
-  const described = note ? `${name} ${note}` : name;
+  const described = [name, note, blocked ? t('platform.team.dialog.viewFirst') : null]
+    .filter(Boolean)
+    .join(' ');
   return (
     <label
       className={cn(
@@ -758,9 +753,10 @@ function PermissionBox({
     >
       <Checkbox
         checked={selected.has(permission)}
-        disabled={locked}
+        disabled={locked || blocked}
         onCheckedChange={(v) => onToggle(permission, v === true)}
         aria-label={described}
+        data-blocked={blocked || undefined}
         data-testid="team-permission"
         data-key={permission}
       />
