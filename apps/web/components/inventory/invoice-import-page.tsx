@@ -174,6 +174,8 @@ function Flow({
   const [rows, setRows] = useState<InvoiceRow[]>([]);
   const [header, setHeader] = useState<InvoiceHeader>({
     supplier: '',
+    invoiceNumber: '',
+    invoiceDate: '',
     note: '',
     warehouseId: warehouses[0]?.id ?? '',
   });
@@ -223,12 +225,9 @@ function Flow({
     setHeader((h) => ({
       ...h,
       supplier: invoice.supplier ?? '',
-      note: invoice.number
-        ? t('inventory.invoice.notePrefill', {
-            number: invoice.number,
-            date: invoice.date ?? '',
-          }).trim()
-        : '',
+      invoiceNumber: invoice.number ?? '',
+      invoiceDate: invoice.date ?? '',
+      note: '',
     }));
     setError(null);
     const fileName =
@@ -309,11 +308,17 @@ function Flow({
       store,
       action,
       submitRequest({
+        items,
         rows,
         warehouseId: header.warehouseId,
         supplier: header.supplier,
         note: header.note,
-        invoice: review.invoice,
+        // As read, or as corrected in the header.
+        invoice: {
+          number: header.invoiceNumber.trim() || null,
+          date: header.invoiceDate.trim() || null,
+          total: review.invoice.total,
+        },
         fileName: review.fileName,
         source: review.source,
       }),

@@ -170,13 +170,20 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
       CATFISH.id,
     );
     expect(within(lines[1]!).getByTestId('invoice-line-new')).toBeTruthy();
-    expect(screen.getByTestId<HTMLInputElement>('invoice-note').value).toBe(
-      'Order 108666 · 10-11-2026',
-    );
+    expect(screen.getByTestId<HTMLInputElement>('invoice-number').value).toBe('108666');
+    expect(screen.getByTestId<HTMLInputElement>('invoice-date').value).toBe('10-11-2026');
+    expect(screen.getByTestId<HTMLInputElement>('invoice-note').value).toBe('');
+    // Counts like the paper: 2 items, 1 already a product, 1 new; the supplier wasn't read.
+    expect(screen.getByTestId('invoice-summary').textContent).toBe('2 items1 existing1 new');
+    expect(screen.getByTestId('invoice-supplier-hint')).toBeTruthy();
     expect(screen.getByTestId('invoice-total-check').textContent).toContain('Matches');
 
     await userEvent.type(screen.getByTestId('invoice-supplier'), 'Bonesca');
-    // Category for every new line without one, at once; the pack size was read from the description (ADR 0055).
+    // A matched product without a pack size gets the one from the description, editable.
+    expect(within(lines[0]!).getByTestId<HTMLInputElement>('invoice-line-pack-size').value).toBe(
+      '4',
+    );
+    // Category for every line without one, at once; the pack size was read from the description (ADR 0055).
     await userEvent.selectOptions(screen.getByTestId('invoice-bulk-category-select'), FISH.id);
     await userEvent.click(screen.getByTestId('invoice-bulk-category-apply'));
     expect(within(lines[1]!).getByTestId<HTMLSelectElement>('invoice-line-category').value).toBe(
@@ -199,7 +206,6 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
         supplier: 'Bonesca',
         invoiceNumber: '108666',
         invoiceDate: '10-11-2026',
-        note: 'Order 108666 · 10-11-2026',
         printedTotal: '1795.00',
         fileName: '108666.pdf',
         source: 'pdf',
@@ -211,6 +217,8 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
             quantity: '50.00',
             unitCost: '11.00',
             unitId: CARTON.id,
+            // The matched product had no category or pack size: set on it when approved (ADR 0055).
+            itemDetails: { categoryId: FISH.id, packCount: 1, packSize: '4', packUnit: 'kg' },
           },
           {
             code: '1971-002',

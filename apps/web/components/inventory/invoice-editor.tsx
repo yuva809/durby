@@ -19,11 +19,12 @@ import {
   type InvoiceRow,
   missingCategory,
   NEW_ITEM,
+  retarget,
   type RowProblem,
   setMissingCategory,
 } from '../../lib/inventory/invoice-receipt';
 import { categoryPath } from '../../lib/inventory/overview';
-import { formatPackSize, packProblems } from '../../lib/inventory/pack-size';
+import { packProblems } from '../../lib/inventory/pack-size';
 import { useActionKey } from '../../lib/use-action-key';
 import { cn } from '../../lib/utils';
 import { Field, FormDialog } from '../form-dialog';
@@ -38,6 +39,9 @@ import { Select } from '../ui/select';
 
 export interface InvoiceHeader {
   supplier: string;
+  /** The supplier's invoice number and date, as printed (ADR 0055); editable when not read. */
+  invoiceNumber: string;
+  invoiceDate: string;
   note: string;
   warehouseId: string;
 }
@@ -100,6 +104,8 @@ export function InvoiceEditor({
   const [bulkCategory, setBulkCategory] = useState('');
   const included = rows.filter((r) => r.include);
   const newCount = included.filter((r) => r.target === NEW_ITEM).length;
+  const leftOut = rows.length - included.length;
+  const supplierMissing = !readOnly && header.supplier.trim() === '';
   const withoutCategory = missingCategory(rows);
   const total = rowsTotal(rows);
   const sortedItems = [...items]
@@ -110,61 +116,112 @@ export function InvoiceEditor({
   const activeUnits = units.filter((u) => u.archivedAt === null);
   const update = (index: number, patch: Partial<InvoiceRow>) =>
     onRows(rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
-  const categoryName = (categoryId: string | null) =>
-    categoryId && categories ? categoryPath(categories, categoryId) : null;
 
   return (
     <div className="flex flex-col gap-4" data-testid="invoice-review">
-      <Card className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor={`${id}-supplier`}>{t('inventory.invoice.supplier')}</Label>
-          <Input
-            id={`${id}-supplier`}
-            value={header.supplier}
-            disabled={readOnly}
-            placeholder={t('inventory.invoice.supplierPlaceholder')}
-            maxLength={100}
-            onChange={(e) => onHeader({ supplier: e.target.value })}
-            data-testid="invoice-supplier"
-          />
+      <Card className="flex flex-col gap-4 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t('inventory.invoice.detailsTitle')}
+          </h2>
+          <ul className="flex flex-wrap gap-2" data-testid="invoice-summary">
+            <Chip testId="invoice-count-items">
+              {t('inventory.invoice.countItems', { count: String(rows.length) })}
+            </Chip>
+            <Chip testId="invoice-count-existing">
+              {t('inventory.invoice.countExisting', {
+                count: String(included.length - newCount),
+              })}
+            </Chip>
+            <Chip testId="invoice-count-new" strong={newCount > 0}>
+              {t('inventory.invoice.countNew', { count: String(newCount) })}
+            </Chip>
+            {leftOut > 0 && (
+              <Chip testId="invoice-count-left-out">
+                {t('inventory.invoice.countLeftOut', { count: String(leftOut) })}
+              </Chip>
+            )}
+          </ul>
         </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`${id}-note`}>{t('inventory.invoice.note')}</Label>
-          <Input
-            id={`${id}-note`}
-            value={header.note}
-            disabled={readOnly}
-            maxLength={500}
-            onChange={(e) => onHeader({ note: e.target.value })}
-            data-testid="invoice-note"
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`${id}-warehouse`}>{t('inventory.fields.warehouse')}</Label>
-          <Select
-            id={`${id}-warehouse`}
-            value={header.warehouseId}
-            disabled={readOnly}
-            onChange={(e) => onHeader({ warehouseId: e.target.value })}
-            data-testid="invoice-warehouse"
-          >
-            {warehouses.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </Select>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid content-start gap-1.5">
+            <Label htmlFor={`${id}-supplier`}>{t('inventory.invoice.supplier')}</Label>
+            <Input
+              id={`${id}-supplier`}
+              value={header.supplier}
+              disabled={readOnly}
+              placeholder={t('inventory.invoice.supplierPlaceholder')}
+              maxLength={100}
+              onChange={(e) => onHeader({ supplier: e.target.value })}
+              className={cn(supplierMissing && 'border-destructive bg-destructive/5')}
+              aria-describedby={supplierMissing ? `${id}-supplier-hint` : undefined}
+              data-testid="invoice-supplier"
+            />
+            {supplierMissing && (
+              <p
+                id={`${id}-supplier-hint`}
+                className="text-xs text-destructive"
+                data-testid="invoice-supplier-hint"
+              >
+                {t('inventory.invoice.supplierMissing')}
+              </p>
+            )}
+          </div>
+          <div className="grid content-start gap-1.5">
+            <Label htmlFor={`${id}-number`}>{t('inventory.invoice.invoiceNumber')}</Label>
+            <Input
+              id={`${id}-number`}
+              value={header.invoiceNumber}
+              disabled={readOnly}
+              maxLength={50}
+              onChange={(e) => onHeader({ invoiceNumber: e.target.value })}
+              data-testid="invoice-number"
+            />
+          </div>
+          <div className="grid content-start gap-1.5">
+            <Label htmlFor={`${id}-date`}>{t('inventory.invoice.invoiceDate')}</Label>
+            <Input
+              id={`${id}-date`}
+              value={header.invoiceDate}
+              disabled={readOnly}
+              maxLength={20}
+              placeholder={t('inventory.invoice.invoiceDatePlaceholder')}
+              onChange={(e) => onHeader({ invoiceDate: e.target.value })}
+              data-testid="invoice-date"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-note`}>{t('inventory.invoice.note')}</Label>
+            <Input
+              id={`${id}-note`}
+              value={header.note}
+              disabled={readOnly}
+              maxLength={500}
+              onChange={(e) => onHeader({ note: e.target.value })}
+              data-testid="invoice-note"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-warehouse`}>{t('inventory.fields.warehouse')}</Label>
+            <Select
+              id={`${id}-warehouse`}
+              value={header.warehouseId}
+              disabled={readOnly}
+              onChange={(e) => onHeader({ warehouseId: e.target.value })}
+              data-testid="invoice-warehouse"
+            >
+              {warehouses.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
       </Card>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground" data-testid="invoice-summary">
-          {t('inventory.invoice.summary', {
-            lines: String(rows.length),
-            matched: String(included.length - newCount),
-            fresh: String(newCount),
-          })}
-        </p>
+        <span />
         {!readOnly && categories && withoutCategory > 0 && (
           <div className="flex flex-wrap items-center gap-2" data-testid="invoice-bulk-category">
             <Select
@@ -229,12 +286,13 @@ export function InvoiceEditor({
               const item = fresh ? null : itemById.get(row.target);
               const baseUnit: StockUnit = item?.unit ?? row.newUnit;
               const purchaseUnits = activeUnits.filter((u) => u.baseUnit === baseUnit);
-              const packBad = fresh ? packProblems(row.pack) : [];
+              const packBad = packProblems(row.pack);
               const value = lineValue(
                 row.quantity.replace(',', '.'),
                 row.unitCost.replace(',', '.'),
               );
-              const editable = !readOnly && fresh;
+              // Category, brand and pack size: a new item's, or set on the existing item when approved (ADR 0055).
+              const editable = !readOnly;
               return (
                 <tr
                   key={index}
@@ -274,7 +332,13 @@ export function InvoiceEditor({
                     <Select
                       value={row.target}
                       disabled={readOnly}
-                      onChange={(e) => update(index, { target: e.target.value, unitId: '' })}
+                      onChange={(e) =>
+                        onRows(
+                          rows.map((r, i) =>
+                            i === index ? retarget(r, e.target.value, items) : r,
+                          ),
+                        )
+                      }
                       aria-label={t('inventory.invoice.itemFor', { name: row.line.description })}
                       data-testid="invoice-line-item"
                     >
@@ -305,130 +369,108 @@ export function InvoiceEditor({
                       ))}
                   </td>
                   <td className="px-3 py-2">
-                    {fresh ? (
+                    <div className="flex items-center gap-1">
+                      <Select
+                        value={row.categoryId}
+                        disabled={!editable || !categories}
+                        onChange={(e) => update(index, { categoryId: e.target.value })}
+                        aria-label={t('inventory.invoice.categoryFor', {
+                          name: row.line.description,
+                        })}
+                        data-testid="invoice-line-category"
+                      >
+                        <option value="">{t('inventory.page.uncategorized')}</option>
+                        {activeCategories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {categoryPath(categories ?? [], c.id)}
+                          </option>
+                        ))}
+                      </Select>
+                      {editable && canCreateCategory && (
+                        <NewCategory
+                          onCreated={(category) => {
+                            onCategoryCreated?.(category);
+                            update(index, { categoryId: category.id });
+                          }}
+                        />
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <Input
+                      value={row.brand}
+                      disabled={!editable}
+                      maxLength={100}
+                      placeholder="—"
+                      onChange={(e) => update(index, { brand: e.target.value })}
+                      aria-label={t('inventory.invoice.brandFor', { name: row.line.description })}
+                      data-testid="invoice-line-brand"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-col gap-1" data-testid="invoice-line-pack">
                       <div className="flex items-center gap-1">
+                        <Input
+                          inputMode="numeric"
+                          value={row.pack.count}
+                          disabled={!editable}
+                          placeholder={t('inventory.invoice.packCount')}
+                          aria-label={t('inventory.invoice.packCount')}
+                          aria-invalid={packBad.includes('count') || undefined}
+                          onChange={(e) =>
+                            update(index, { pack: { ...row.pack, count: e.target.value } })
+                          }
+                          className="w-16 text-right"
+                          data-testid="invoice-line-pack-count"
+                        />
+                        <span aria-hidden className="text-muted-foreground">
+                          ×
+                        </span>
+                        <Input
+                          inputMode="decimal"
+                          value={row.pack.size}
+                          disabled={!editable}
+                          placeholder={t('inventory.invoice.packWeight')}
+                          aria-label={t('inventory.invoice.packWeight')}
+                          aria-invalid={packBad.includes('size') || undefined}
+                          onChange={(e) =>
+                            update(index, { pack: { ...row.pack, size: e.target.value } })
+                          }
+                          className="w-20 text-right"
+                          data-testid="invoice-line-pack-size"
+                        />
                         <Select
-                          value={row.categoryId}
-                          disabled={!editable || !categories}
-                          onChange={(e) => update(index, { categoryId: e.target.value })}
-                          aria-label={t('inventory.invoice.categoryFor', {
-                            name: row.line.description,
-                          })}
-                          data-testid="invoice-line-category"
+                          value={row.pack.unit}
+                          disabled={!editable}
+                          aria-label={t('inventory.invoice.packUnit')}
+                          aria-invalid={packBad.includes('unit') || undefined}
+                          onChange={(e) =>
+                            update(index, {
+                              pack: { ...row.pack, unit: e.target.value as StockUnit | '' },
+                            })
+                          }
+                          className="w-20"
+                          data-testid="invoice-line-pack-unit"
                         >
-                          <option value="">{t('inventory.page.uncategorized')}</option>
-                          {activeCategories.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {categoryPath(categories ?? [], c.id)}
+                          <option value="">–</option>
+                          {STOCK_UNITS.filter((u) => u !== 'pc').map((u) => (
+                            <option key={u} value={u}>
+                              {t(`inventory.units.${u}`)}
                             </option>
                           ))}
                         </Select>
-                        {editable && canCreateCategory && (
-                          <NewCategory
-                            onCreated={(category) => {
-                              onCategoryCreated?.(category);
-                              update(index, { categoryId: category.id });
-                            }}
-                          />
+                      </div>
+                      <span
+                        className={cn(
+                          'text-xs',
+                          packBad.length > 0 ? 'text-destructive' : 'text-muted-foreground',
                         )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">
-                        {categoryName(item?.categoryId ?? null) ?? '–'}
+                      >
+                        {packBad.length > 0
+                          ? t('inventory.invoice.packInvalid')
+                          : t('inventory.invoice.packHint')}
                       </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    {fresh ? (
-                      <Input
-                        value={row.brand}
-                        disabled={!editable}
-                        maxLength={100}
-                        placeholder="—"
-                        onChange={(e) => update(index, { brand: e.target.value })}
-                        aria-label={t('inventory.invoice.brandFor', { name: row.line.description })}
-                        data-testid="invoice-line-brand"
-                      />
-                    ) : (
-                      <span className="text-muted-foreground">{item?.brand ?? '–'}</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    {fresh ? (
-                      <div className="flex flex-col gap-1" data-testid="invoice-line-pack">
-                        <div className="flex items-center gap-1">
-                          <Input
-                            inputMode="numeric"
-                            value={row.pack.count}
-                            disabled={!editable}
-                            placeholder={t('inventory.invoice.packCount')}
-                            aria-label={t('inventory.invoice.packCount')}
-                            aria-invalid={packBad.includes('count') || undefined}
-                            onChange={(e) =>
-                              update(index, { pack: { ...row.pack, count: e.target.value } })
-                            }
-                            className="w-16 text-right"
-                            data-testid="invoice-line-pack-count"
-                          />
-                          <span aria-hidden className="text-muted-foreground">
-                            ×
-                          </span>
-                          <Input
-                            inputMode="decimal"
-                            value={row.pack.size}
-                            disabled={!editable}
-                            placeholder={t('inventory.invoice.packWeight')}
-                            aria-label={t('inventory.invoice.packWeight')}
-                            aria-invalid={packBad.includes('size') || undefined}
-                            onChange={(e) =>
-                              update(index, { pack: { ...row.pack, size: e.target.value } })
-                            }
-                            className="w-20 text-right"
-                            data-testid="invoice-line-pack-size"
-                          />
-                          <Select
-                            value={row.pack.unit}
-                            disabled={!editable}
-                            aria-label={t('inventory.invoice.packUnit')}
-                            aria-invalid={packBad.includes('unit') || undefined}
-                            onChange={(e) =>
-                              update(index, {
-                                pack: { ...row.pack, unit: e.target.value as StockUnit | '' },
-                              })
-                            }
-                            className="w-20"
-                            data-testid="invoice-line-pack-unit"
-                          >
-                            <option value="">–</option>
-                            {STOCK_UNITS.filter((u) => u !== 'pc').map((u) => (
-                              <option key={u} value={u}>
-                                {t(`inventory.units.${u}`)}
-                              </option>
-                            ))}
-                          </Select>
-                        </div>
-                        <span
-                          className={cn(
-                            'text-xs',
-                            packBad.length > 0 ? 'text-destructive' : 'text-muted-foreground',
-                          )}
-                        >
-                          {packBad.length > 0
-                            ? t('inventory.invoice.packInvalid')
-                            : t('inventory.invoice.packHint')}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">
-                        {(item &&
-                          formatPackSize({
-                            count: item.packCount,
-                            size: item.packSize,
-                            unit: item.packUnit,
-                          })) ||
-                          '–'}
-                      </span>
-                    )}
+                    </div>
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-col gap-1">
@@ -541,6 +583,31 @@ export function InvoiceEditor({
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </Card>
     </div>
+  );
+}
+
+/** One count above the review ("55 items", "39 new"). */
+function Chip({
+  children,
+  strong = false,
+  testId,
+}: {
+  children: ReactNode;
+  strong?: boolean;
+  testId: string;
+}) {
+  return (
+    <li
+      className={cn(
+        'rounded-full border px-3 py-1 text-xs font-semibold tracking-wide uppercase',
+        strong
+          ? 'border-primary/40 bg-primary/10 text-foreground'
+          : 'bg-muted text-muted-foreground',
+      )}
+      data-testid={testId}
+    >
+      {children}
+    </li>
   );
 }
 
