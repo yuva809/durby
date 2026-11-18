@@ -17,7 +17,8 @@ import {
   type PermissionKey,
   type FeatureKey,
 } from '@durby/shared';
-import { Download, FileUp } from 'lucide-react';
+import { Download, FileText, FileUp } from 'lucide-react';
+import Link from 'next/link';
 import { type ChangeEvent, useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
@@ -80,9 +81,13 @@ function Importer({
   organizationId: string | null;
 }) {
   const t = useT();
-  const { store } = useAuth();
+  const { store, session } = useAuth();
   const action = useActionKey();
   const id = useId();
+  // Vendor invoices (PDF) have their own page; offered to those who receive goods (ADR 0049).
+  const receivesInvoices =
+    (session?.activeFeatures.includes('inventory') ?? false) &&
+    (session?.activePermissions.includes('inventory.stock.receive') ?? false);
   const [kind, setKind] = useState<ImportKind>(kinds[0]!);
   const [state, setState] = useState<State>({ step: 'choose', problem: null });
   const [busy, setBusy] = useState(false);
@@ -241,6 +246,27 @@ function Importer({
           <Notice text={tableProblem(state.problem)} tone="error" />
         )}
       </Card>
+
+      {receivesInvoices && (
+        // A supplier's invoice comes as a PDF, not a table: its own page (ADR 0049).
+        <Card
+          className="flex flex-wrap items-center justify-between gap-3 p-4"
+          data-testid="import-invoice"
+        >
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="font-medium">{t('inventory.invoice.importDataTitle')}</span>
+            <span className="text-sm text-muted-foreground">
+              {t('inventory.invoice.importDataHint')}
+            </span>
+          </div>
+          <Button variant="outline" asChild>
+            <Link href="/inventory/invoice">
+              <FileText aria-hidden />
+              {t('inventory.invoice.open')}
+            </Link>
+          </Button>
+        </Card>
+      )}
 
       {state.step === 'preview' && (
         <Card className="flex flex-col gap-4 p-4" data-testid="import-preview">

@@ -29,6 +29,8 @@ import {
   type Recipe,
   type ReceiptRequest,
   receiptRequestSchema,
+  importReceiptRequestSchema,
+  type ImportReceiptRequest,
   type StockDocument,
   type StockItem,
   type StockQuery,
@@ -154,6 +156,19 @@ export class InventoryController {
   @Post('receipts')
   receive(@Body(new ZodBody(receiptRequestSchema)) body: ReceiptRequest): Promise<StockDocument> {
     return this.stockService.receive(body);
+  }
+
+  /**
+   * A vendor invoice read from its PDF in the browser (ADR 0049): one receipt, new items created with it. New items
+   * also need inventory.items.edit (checked by the service).
+   */
+  @RequirePermission('inventory.stock.receive')
+  @Idempotent({ completion: 'transaction' })
+  @Post('receipts/import')
+  importReceipt(
+    @Body(new ZodBody(importReceiptRequestSchema)) body: ImportReceiptRequest,
+  ): Promise<StockDocument> {
+    return this.stockService.importReceipt(body);
   }
 
   @RequirePermission('inventory.stock.adjust')

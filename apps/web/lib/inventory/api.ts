@@ -1,4 +1,5 @@
 import {
+  type ImportReceiptRequest,
   type AdjustmentRequest,
   type Bom,
   bomListResponseSchema,
@@ -99,6 +100,10 @@ export const loadDocument = (store: Api, id: string): Promise<Result<StockDocume
 
 export const postReceipt = (store: Api, action: ActionKey, body: ReceiptRequest) =>
   write(store, action, `${BASE}/receipts`, 'POST', body, stockDocumentSchema);
+
+/** A vendor invoice as one receipt, new items created with it (ADR 0049). */
+export const importReceipt = (store: Api, action: ActionKey, body: ImportReceiptRequest) =>
+  write(store, action, '/api/v1/inventory/receipts/import', 'POST', body, stockDocumentSchema);
 
 export const postAdjustment = (store: Api, action: ActionKey, body: AdjustmentRequest) =>
   write(store, action, `${BASE}/adjustments`, 'POST', body, stockDocumentSchema);

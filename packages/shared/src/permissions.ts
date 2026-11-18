@@ -1,3 +1,4 @@
+import type { FeatureKey } from './features';
 /**
  * Permission key registry (`module.entity.action`). See docs/platform/rbac.md and ADR 0007.
  *
@@ -167,8 +168,17 @@ export const SYSTEM_ROLES = [
 
 export type SystemRole = (typeof SYSTEM_ROLES)[number];
 
-/** System roles that only show where the organization has a feature (ADR 0045): AsiaMight's branch roles. */
-export const SYSTEM_ROLE_FEATURES: Readonly<Partial<Record<SystemRole, 'orders'>>> = {
+/**
+ * System roles that only show where the organization has a feature: the branch roles need orders (ADR 0045); the
+ * till's roles need pos and the host stand's reservations (ADR 0049), so an organization without a till (a
+ * distributor) never sees waiter, cashier, kitchen, bar or host. Members who hold one keep it.
+ */
+export const SYSTEM_ROLE_FEATURES: Readonly<Partial<Record<SystemRole, FeatureKey>>> = {
+  waiter: 'pos',
+  cashier: 'pos',
+  host: 'reservations',
+  kitchen: 'pos',
+  bar: 'pos',
   branch: 'orders',
   warehouse: 'orders',
   driver: 'orders',

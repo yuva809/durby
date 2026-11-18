@@ -162,6 +162,30 @@ describe('roles API', () => {
     expect(shown).toContain('manager');
   });
 
+  // ADR 0049: the till's roles show only with pos, the host's only with reservations.
+  it('lists Waiter, Cashier, Kitchen, Bar and Host only where the organization has the till', async () => {
+    const keys = async (org: SeededOrg) => {
+      const { token } = await tokenAs(org, org.roles.owner);
+      const res = await api(token).get('/roles').expect(200);
+      return (res.body as { data: { systemKey: string | null }[] }).data.map((r) => r.systemKey);
+    };
+    const admin = kit.app.get(EntitlementsAdmin);
+    const distributor = await seed.org('Distributor');
+    await admin.setPlan(distributor.id, 'inventory', 'cli.entitlements');
+    await admin.setOverride(distributor.id, 'pos', false, undefined, 'cli.entitlements');
+    await admin.setOverride(distributor.id, 'reservations', false, undefined, 'cli.entitlements');
+    const shown = await keys(distributor);
+    for (const role of ['waiter', 'cashier', 'kitchen', 'bar', 'host']) {
+      expect(shown).not.toContain(role);
+    }
+    expect(shown).toEqual(expect.arrayContaining(['owner', 'admin', 'manager', 'staff']));
+
+    const restaurant = await seed.org('Restaurant');
+    expect(await keys(restaurant)).toEqual(
+      expect.arrayContaining(['waiter', 'cashier', 'kitchen', 'bar', 'host']),
+    );
+  });
+
   describe('POST /roles', () => {
     it('creates a custom role with registered keys', async () => {
       const { token } = await tokenAs(a, a.roles.admin);
