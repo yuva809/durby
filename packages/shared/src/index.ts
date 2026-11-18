@@ -38,6 +38,7 @@ export * from './events';
 export * from './features';
 export * from './granting';
 export * from './numbering';
+export * from './realtime';
 export * from './permissions';
 export * from './phone';
 export * from './native-print';

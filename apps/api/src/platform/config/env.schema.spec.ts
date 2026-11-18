@@ -126,6 +126,7 @@ describe('appEnvSchema', () => {
       OUTBOX_MAX_ATTEMPTS: 10,
       OUTBOX_LAG_WARN_SECONDS: 60,
       WORKER_CONCURRENCY: 5,
+      REALTIME_HEARTBEAT_MS: 15_000,
       ...RATE_LIMIT_DEFAULTS,
     });
   });

@@ -19,6 +19,7 @@ import { OutboxModule } from './outbox';
 import { ProvisioningModule } from './provisioning';
 import { RateLimitModule } from './rate-limit';
 import { RbacModule } from './rbac';
+import { RealtimeModule } from './realtime';
 import { RedisModule } from './redis';
 import { StaffModule } from './staff';
 import { TenancyModule } from './tenancy';
@@ -37,6 +38,7 @@ import { NotificationsModule } from './notifications';
     MailModule,
     AuditModule,
     OutboxModule,
+    RealtimeModule,
     IdempotencyModule,
     AuthModule,
     StaffModule,

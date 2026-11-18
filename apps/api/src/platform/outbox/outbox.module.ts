@@ -9,6 +9,7 @@ import { OutboxAdmin } from './outbox-admin';
 import { OutboxPublisher } from './outbox-queue';
 import { OutboxWorker } from './outbox-worker';
 import { OutboxService } from './outbox.service';
+import { OutboxWakeup } from './wakeup';
 
 /**
  * Outbox (docs/platform/outbox.md). The api process only writes events (OutboxService) and checks
@@ -27,6 +28,7 @@ import { OutboxService } from './outbox.service';
     OutboxCleanup,
     OutboxLagReporter,
     OutboxWorker,
+    OutboxWakeup,
     OutboxAdmin,
   ],
   exports: [
@@ -38,6 +40,7 @@ import { OutboxService } from './outbox.service';
     OutboxWorker,
     OutboxAdmin,
     OutboxPublisher,
+    OutboxWakeup,
   ],
 })
 export class OutboxModule {}

@@ -1,123 +1,444 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Audit log: technical and test notes</title>
-<style>
-  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#b4441d; --ok:#1f7a3d; --warn:#8a5a00; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; } }
-  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#f08a5d; --ok:#5fcf85; --warn:#f0c060; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
-  h1 { font-size: 26px; margin: 0 0 4px; }
-  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
-  h3 { font-size: 15px; margin: 20px 0 6px; }
-  p.lead { color: var(--muted); margin-top: 0; }
-  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
-  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; }
-  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
-  .scroll { overflow-x: auto; }
-  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; }
-  .done { color: var(--ok); } .open { color: var(--warn); }
-  nav a { color: var(--accent); margin-right: 14px; }
-  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
-</style>
-</head>
-<body>
-<main>
-  <nav><a href="#status">Status</a><a href="#model">Data</a><a href="#api">API</a><a href="#web">Web</a><a href="#export">Export</a><a href="#tests">Tests</a><a href="#gaps">Gaps</a></nav>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Audit log: technical and test notes</title>
+    <style>
+      :root {
+        --fg: #1b1f24;
+        --muted: #5b6670;
+        --line: #d9dee3;
+        --bg: #ffffff;
+        --panel: #f5f7f9;
+        --accent: #b4441d;
+        --ok: #1f7a3d;
+        --warn: #8a5a00;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --fg: #e8ecef;
+          --muted: #9aa5ae;
+          --line: #2e363e;
+          --bg: #14181c;
+          --panel: #1c2228;
+          --accent: #f08a5d;
+          --ok: #5fcf85;
+          --warn: #f0c060;
+        }
+      }
+      :root[data-theme='dark'] {
+        --fg: #e8ecef;
+        --muted: #9aa5ae;
+        --line: #2e363e;
+        --bg: #14181c;
+        --panel: #1c2228;
+        --accent: #f08a5d;
+        --ok: #5fcf85;
+        --warn: #f0c060;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.55 system-ui,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+      }
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+      h1 {
+        font-size: 26px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 19px;
+        margin: 36px 0 10px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 6px;
+      }
+      h3 {
+        font-size: 15px;
+        margin: 20px 0 6px;
+      }
+      p.lead {
+        color: var(--muted);
+        margin-top: 0;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 13px;
+      }
+      code {
+        background: var(--panel);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      pre {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 12px;
+        border-radius: 6px;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8px 0 16px;
+        font-size: 14px;
+      }
+      .scroll {
+        overflow-x: auto;
+      }
+      th,
+      td {
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+        padding: 7px 8px;
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .done {
+        color: var(--ok);
+      }
+      .open {
+        color: var(--warn);
+      }
+      nav a {
+        color: var(--accent);
+        margin-right: 14px;
+      }
+      .callout {
+        border-left: 3px solid var(--accent);
+        background: var(--panel);
+        padding: 10px 14px;
+        margin: 14px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav>
+        <a href="#status">Status</a><a href="#model">Data</a><a href="#api">API</a
+        ><a href="#web">Web</a><a href="#export">Export</a><a href="#tests">Tests</a
+        ><a href="#gaps">Gaps</a>
+      </nav>
 
-  <h1>Audit log</h1>
-  <p class="lead">Every change in an organization, append-only: who did what, when, to which record and where. The viewer is a table with module, branch and date filters, a search, an expandable before/after per row, and CSV export. Code: <code>apps/api/src/platform/audit/</code>, <code>apps/web/components/audit/audit-page.tsx</code>, <code>apps/web/lib/audit/</code> (<code>filters.ts</code>, <code>present.ts</code>, <code>diff.ts</code>). Spec: <code>docs/platform/audit.md</code>, <code>docs/platform/web-shell.md</code> → Audit log viewer. Decision: ADR 0008. Branch: <code>feature/floor-and-split</code>.</p>
+      <h1>Audit log</h1>
+      <p class="lead">
+        Every change in an organization, append-only: who did what, when, to which record and where.
+        The viewer is a table with module, branch and date filters, a search, an expandable
+        before/after per row, and CSV export. Code: <code>apps/api/src/platform/audit/</code>,
+        <code>apps/web/components/audit/audit-page.tsx</code>,
+        <code>apps/web/lib/audit/</code> (<code>filters.ts</code>, <code>present.ts</code>,
+        <code>diff.ts</code>). Spec: <code>docs/platform/audit.md</code>,
+        <code>docs/platform/web-shell.md</code> → Audit log viewer. Decision: ADR 0008. Branch:
+        <code>feature/floor-and-split</code>.
+      </p>
 
-  <h2 id="status">Status</h2>
-  <div class="scroll"><table>
-    <tr><th>Part</th><th>Where</th><th>State</th></tr>
-    <tr><td>Append-only <code>audit_logs</code> per tenant (RLS), written in the change's own transaction</td><td><code>AuditService.record</code></td><td class="done">Built, tested</td></tr>
-    <tr><td>Filters: action, record type, actor, dates; <b>module</b> and <b>branch</b> (new)</td><td><code>audit-logs.service.ts</code></td><td class="done">Built; new filters' e2e need Docker</td></tr>
-    <tr><td>Table view: When / What / Record / By / Where, expandable diff</td><td><code>audit-page.tsx</code></td><td class="done">Built, tested</td></tr>
-    <tr><td>Search (loaded entries) and CSV export (all pages, 5,000 max)</td><td><code>audit-page.tsx</code>, <code>present.ts</code></td><td class="done">Built, tested</td></tr>
-  </table></div>
+      <h2 id="status">Status</h2>
+      <div class="scroll">
+        <table>
+          <tr>
+            <th>Part</th>
+            <th>Where</th>
+            <th>State</th>
+          </tr>
+          <tr>
+            <td>
+              Append-only <code>audit_logs</code> per tenant (RLS), written in the change's own
+              transaction
+            </td>
+            <td><code>AuditService.record</code></td>
+            <td class="done">Built, tested</td>
+          </tr>
+          <tr>
+            <td>
+              Filters: action, record type, actor, dates; <b>module</b> and <b>branch</b> (new)
+            </td>
+            <td><code>audit-logs.service.ts</code></td>
+            <td class="done">Built; new filters' e2e need Docker</td>
+          </tr>
+          <tr>
+            <td>Table view: When / What / Record / By / Where, expandable diff</td>
+            <td><code>audit-page.tsx</code></td>
+            <td class="done">Built, tested</td>
+          </tr>
+          <tr>
+            <td>Search (loaded entries) and CSV export (all pages, 5,000 max)</td>
+            <td><code>audit-page.tsx</code>, <code>present.ts</code></td>
+            <td class="done">Built, tested</td>
+          </tr>
+        </table>
+      </div>
 
-  <h2 id="model">Data</h2>
-<pre>audit_logs   tenant_id, actor (user id | system key), action (registry key), entity_type, entity_id,
+      <h2 id="model">Data</h2>
+      <pre>
+audit_logs   tenant_id, actor (user id | system key), action (registry key), entity_type, entity_id,
              before / after (allow-listed snapshot, JSON), request_id, ip, created_at      append-only, RLS</pre>
-  <p>Snapshots hold only the fields in <code>AUDIT_SNAPSHOT_FIELDS</code> (<code>packages/shared/src/audit.ts</code>): never secrets, notes, guest data or emails. User emails are looked up when the page is read, never stored. The viewer derives everything it shows from these rows.</p>
+      <p>
+        Snapshots hold only the fields in
+        <code>AUDIT_SNAPSHOT_FIELDS</code> (<code>packages/shared/src/audit.ts</code>): never
+        secrets, notes, guest data or emails. User emails are looked up when the page is read, never
+        stored. The viewer derives everything it shows from these rows.
+      </p>
 
-  <h2 id="api">API</h2>
-  <p><code>GET /api/v1/audit-logs</code>, <code>platform.audit.read</code> (Owner, Admin). Newest first, cursor pages (default 50, max 200).</p>
-  <div class="scroll"><table>
-    <tr><th>Query</th><th>Meaning</th></tr>
-    <tr><td><code>action</code></td><td>Registered action key, repeatable</td></tr>
-    <tr><td><code>entityType</code>, <code>entityId</code></td><td>Record type, one record</td></tr>
-    <tr><td><code>actorUserId</code></td><td>One person</td></tr>
-    <tr><td><code>module</code> <em>(new)</em></td><td>An action key's first segment: <code>platform</code>, <code>catalog</code>, <code>inventory</code>, <code>pos</code>, <code>reservations</code></td></tr>
-    <tr><td><code>locationId</code> <em>(new)</em></td><td>Entries whose record is at this location: <code>locationId</code> in the before or after snapshot (JSON path filter)</td></tr>
-    <tr><td><code>from</code>, <code>to</code></td><td>ISO instants on <code>created_at</code> (<code>from</code> ≤ x &lt; <code>to</code>)</td></tr>
-    <tr><td><code>limit</code>, <code>cursor</code></td><td>Page size; <code>meta.nextCursor</code> of the previous page</td></tr>
-  </table></div>
+      <h2 id="api">API</h2>
+      <p>
+        <code>GET /api/v1/audit-logs</code>, <code>platform.audit.read</code> (Owner, Admin). Newest
+        first, cursor pages (default 50, max 200).
+      </p>
+      <div class="scroll">
+        <table>
+          <tr>
+            <th>Query</th>
+            <th>Meaning</th>
+          </tr>
+          <tr>
+            <td><code>action</code></td>
+            <td>Registered action key, repeatable</td>
+          </tr>
+          <tr>
+            <td><code>entityType</code>, <code>entityId</code></td>
+            <td>Record type, one record</td>
+          </tr>
+          <tr>
+            <td><code>actorUserId</code></td>
+            <td>One person</td>
+          </tr>
+          <tr>
+            <td><code>module</code> <em>(new)</em></td>
+            <td>
+              An action key's first segment: <code>platform</code>, <code>catalog</code>,
+              <code>inventory</code>, <code>pos</code>, <code>reservations</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>locationId</code> <em>(new)</em></td>
+            <td>
+              Entries whose record is at this location: <code>locationId</code> in the before or
+              after snapshot (JSON path filter)
+            </td>
+          </tr>
+          <tr>
+            <td><code>from</code>, <code>to</code></td>
+            <td>
+              ISO instants on <code>created_at</code> (<code>from</code> ≤ x &lt; <code>to</code>)
+            </td>
+          </tr>
+          <tr>
+            <td><code>limit</code>, <code>cursor</code></td>
+            <td>Page size; <code>meta.nextCursor</code> of the previous page</td>
+          </tr>
+        </table>
+      </div>
 
-  <h2 id="web">Web</h2>
-  <div class="scroll"><table>
-    <tr><th>Column</th><th>Shows</th><th>From</th></tr>
-    <tr><td>When</td><td><code>YYYY-MM-DD</code> and time</td><td><code>created_at</code> in the organization's time zone setting</td></tr>
-    <tr><td>What</td><td>Action · module, then "Fields: …", "Changed: …" or "Deleted"</td><td>action label; <code>detailOf</code> over the snapshot diff</td></tr>
-    <tr><td>Record</td><td>Name, number, email, menu number or symbol, else —</td><td><code>recordOf</code> (after, else before snapshot)</td></tr>
-    <tr><td>By</td><td>Name; email · role underneath</td><td><code>GET /staff</code> when readable, else the user's email; system actors by label</td></tr>
-    <tr><td>Where</td><td>Branch name, else "Whole organization"</td><td><code>locationId</code> in the snapshot, named from <code>GET /locations</code></td></tr>
-  </table></div>
-  <ul>
-    <li><strong>Row chevron</strong> opens the before/after table (changed fields marked), the record id, request id, IP, and "Only this person".</li>
-    <li><strong>Filters in one row</strong>, applied as they change and kept in the URL: search, module, record type, action (narrowed to the module and type), branch, from, to; Clear.</li>
-    <li><strong>Search</strong> matches record, person, email, role, detail, action, module and place among the <em>loaded</em> entries; it is not sent to the api and typing never reloads. While more pages exist, a note says so.</li>
-    <li>Below 1024 px each row is a card. Labels: <code>platform.auditPage.*</code> (en, de).</li>
-  </ul>
+      <h2 id="web">Web</h2>
+      <div class="scroll">
+        <table>
+          <tr>
+            <th>Column</th>
+            <th>Shows</th>
+            <th>From</th>
+          </tr>
+          <tr>
+            <td>When</td>
+            <td><code>YYYY-MM-DD</code> and time</td>
+            <td><code>created_at</code> in the organization's time zone setting</td>
+          </tr>
+          <tr>
+            <td>What</td>
+            <td>Action · module, then "Fields: …", "Changed: …" or "Deleted"</td>
+            <td>action label; <code>detailOf</code> over the snapshot diff</td>
+          </tr>
+          <tr>
+            <td>Record</td>
+            <td>Name, number, email, menu number or symbol, else —</td>
+            <td><code>recordOf</code> (after, else before snapshot)</td>
+          </tr>
+          <tr>
+            <td>By</td>
+            <td>Name; email · role underneath</td>
+            <td>
+              <code>GET /staff</code> when readable, else the user's email; system actors by label
+            </td>
+          </tr>
+          <tr>
+            <td>Where</td>
+            <td>Branch name, else "Whole organization"</td>
+            <td><code>locationId</code> in the snapshot, named from <code>GET /locations</code></td>
+          </tr>
+        </table>
+      </div>
+      <ul>
+        <li>
+          <strong>Row chevron</strong> opens the before/after table (changed fields marked), the
+          record id, request id, IP, and "Only this person".
+        </li>
+        <li>
+          <strong>Filters in one row</strong>, applied as they change and kept in the URL: search,
+          module, record type, action (narrowed to the module and type), branch, from, to; Clear.
+        </li>
+        <li>
+          <strong>Search</strong> matches record, person, email, role, detail, action, module and
+          place among the <em>loaded</em> entries; it is not sent to the api and typing never
+          reloads. While more pages exist, a note says so.
+        </li>
+        <li>
+          Below 1024 px each row is a card. Labels: <code>platform.auditPage.*</code> (en, de).
+        </li>
+      </ul>
 
-  <h2 id="export">CSV export</h2>
-  <ul>
-    <li>Fetches every page of the current filters (200 per request) up to the newest <b>5,000</b> entries, applies the search, and downloads <code>audit-log-YYYY-MM-DD.csv</code>; a note appears when the export was cut.</li>
-    <li>Columns: When, What, Module, Detail, Record, By, Email, Role, Where, IP, Request id.</li>
-    <li>UTF-8 with a BOM (umlauts, ₹ and € open correctly in Excel); CRLF lines; every cell quoted.</li>
-    <li><strong>Formula injection:</strong> cells starting with <code>= + - @</code>, tab or CR get a leading <code>'</code>, so spreadsheets never run them (<code>csvCell</code>).</li>
-  </ul>
+      <h2 id="export">CSV export</h2>
+      <ul>
+        <li>
+          Fetches every page of the current filters (200 per request) up to the newest
+          <b>5,000</b> entries, applies the search, and downloads
+          <code>audit-log-YYYY-MM-DD.csv</code>; a note appears when the export was cut.
+        </li>
+        <li>
+          Columns: When, What, Module, Detail, Record, By, Email, Role, Where, IP, Request id.
+        </li>
+        <li>
+          UTF-8 with a BOM (umlauts, ₹ and € open correctly in Excel); CRLF lines; every cell
+          quoted.
+        </li>
+        <li>
+          <strong>Formula injection:</strong> cells starting with <code>= + - @</code>, tab or CR
+          get a leading <code>'</code>, so spreadsheets never run them (<code>csvCell</code>).
+        </li>
+      </ul>
 
-  <h2 id="tests">Testing</h2>
-  <h3>Automated</h3>
-  <div class="scroll"><table>
-    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
-    <tr><td>Web</td><td><code>components/audit/audit.test.tsx</code></td><td>no access, row content and time zone, expand diff and details, system and former users, URL filters sent, filters apply on change, search without a reload, load more, stale cursor, errors</td><td class="done">Pass</td></tr>
-    <tr><td>Web</td><td><code>lib/audit/present.test.ts</code></td><td>record name, branch, detail line, who (name, email, role), search, CSV quoting and formula guard</td><td class="done">Pass</td></tr>
-    <tr><td>Web</td><td><code>lib/audit/filters.test.ts</code></td><td>URL round trip, module/branch/search, dropped bad values, day bounds per time zone</td><td class="done">Pass</td></tr>
-    <tr><td>Web</td><td><code>lib/audit/diff.test.ts</code></td><td>diff rows, values, every field/action/entity labelled</td><td class="done">Pass</td></tr>
-    <tr><td>API e2e</td><td><code>test/audit-logs.e2e.spec.ts</code></td><td>shape, paging, filters incl. module and branch, isolation between organizations</td><td class="open">Needs Docker</td></tr>
-  </table></div>
-<pre>cd apps/web &amp;&amp; npx vitest run components/audit lib/audit
+      <h2 id="tests">Testing</h2>
+      <h3>Automated</h3>
+      <div class="scroll">
+        <table>
+          <tr>
+            <th>Layer</th>
+            <th>File</th>
+            <th>Covers</th>
+            <th>Run here</th>
+          </tr>
+          <tr>
+            <td>Web</td>
+            <td><code>components/audit/audit.test.tsx</code></td>
+            <td>
+              no access, row content and time zone, expand diff and details, system and former
+              users, URL filters sent, filters apply on change, search without a reload, load more,
+              stale cursor, errors
+            </td>
+            <td class="done">Pass</td>
+          </tr>
+          <tr>
+            <td>Web</td>
+            <td><code>lib/audit/present.test.ts</code></td>
+            <td>
+              record name, branch, detail line, who (name, email, role), search, CSV quoting and
+              formula guard
+            </td>
+            <td class="done">Pass</td>
+          </tr>
+          <tr>
+            <td>Web</td>
+            <td><code>lib/audit/filters.test.ts</code></td>
+            <td>
+              URL round trip, module/branch/search, dropped bad values, day bounds per time zone
+            </td>
+            <td class="done">Pass</td>
+          </tr>
+          <tr>
+            <td>Web</td>
+            <td><code>lib/audit/diff.test.ts</code></td>
+            <td>diff rows, values, every field/action/entity labelled</td>
+            <td class="done">Pass</td>
+          </tr>
+          <tr>
+            <td>API e2e</td>
+            <td><code>test/audit-logs.e2e.spec.ts</code></td>
+            <td>shape, paging, filters incl. module and branch, isolation between organizations</td>
+            <td class="open">Needs Docker</td>
+          </tr>
+        </table>
+      </div>
+      <pre>
+cd apps/web &amp;&amp; npx vitest run components/audit lib/audit
 cd apps/api &amp;&amp; npx vitest run test/audit-logs.e2e.spec.ts   # Docker</pre>
 
-  <h3>Manual (browser)</h3>
-  <div class="scroll"><table>
-    <tr><th>Step</th><th>Expected</th></tr>
-    <tr><td>Rename a table, then open Audit log as the owner</td><td>Top row: "Table changed · Table service", "Changed: Name", record = new name, By = your name with email · Owner, Where = its branch</td></tr>
-    <tr><td>Click the row's chevron</td><td>Before/after with "Changed" on Name; record id, request id, IP</td></tr>
-    <tr><td>Module → Inventory</td><td>URL gets <code>?module=inventory</code>; only inventory actions; Action list shows only inventory actions</td></tr>
-    <tr><td>Branch → a location</td><td>Only records at that location (tables, warehouses, bookings…)</td></tr>
-    <tr><td>Type part of a product name in Search</td><td>Rows filter while typing, no reload; a note if more pages exist</td></tr>
-    <tr><td>Export CSV</td><td>A CSV with the columns above opens correctly in Excel; a value starting with "=" shows as text</td></tr>
-    <tr><td>Sign in as a Manager</td><td>No Audit log in the menu; <code>/audit</code> shows "no access"</td></tr>
-  </table></div>
+      <h3>Manual (browser)</h3>
+      <div class="scroll">
+        <table>
+          <tr>
+            <th>Step</th>
+            <th>Expected</th>
+          </tr>
+          <tr>
+            <td>Rename a table, then open Audit log as the owner</td>
+            <td>
+              Top row: "Table changed · Table service", "Changed: Name", record = new name, By =
+              your name with email · Owner, Where = its branch
+            </td>
+          </tr>
+          <tr>
+            <td>Click the row's chevron</td>
+            <td>Before/after with "Changed" on Name; record id, request id, IP</td>
+          </tr>
+          <tr>
+            <td>Module → Inventory</td>
+            <td>
+              URL gets <code>?module=inventory</code>; only inventory actions; Action list shows
+              only inventory actions
+            </td>
+          </tr>
+          <tr>
+            <td>Branch → a location</td>
+            <td>Only records at that location (tables, warehouses, bookings…)</td>
+          </tr>
+          <tr>
+            <td>Type part of a product name in Search</td>
+            <td>Rows filter while typing, no reload; a note if more pages exist</td>
+          </tr>
+          <tr>
+            <td>Export CSV</td>
+            <td>
+              A CSV with the columns above opens correctly in Excel; a value starting with "=" shows
+              as text
+            </td>
+          </tr>
+          <tr>
+            <td>Sign in as a Manager</td>
+            <td>No Audit log in the menu; <code>/audit</code> shows "no access"</td>
+          </tr>
+        </table>
+      </div>
 
-  <h2 id="gaps">Known gaps and notes</h2>
-  <div class="callout">
-    <ul>
-      <li>Search covers loaded entries only. Server-side text search over snapshots would need a database index (later).</li>
-      <li>Records without <code>locationId</code> in their snapshot (organization-wide: products, roles, stock items) show "Whole organization" and are not found by the branch filter. Warehouse-level placement (e.g. "Main Warehouse") would need the warehouse id in stock snapshots.</li>
-      <li>The record name is plain text; linking each record type to its page is a follow-up.</li>
-      <li>API e2e tests were not run on the development laptop (no Docker).</li>
-    </ul>
-  </div>
-</main>
-</body>
+      <h2 id="gaps">Known gaps and notes</h2>
+      <div class="callout">
+        <ul>
+          <li>
+            Search covers loaded entries only. Server-side text search over snapshots would need a
+            database index (later).
+          </li>
+          <li>
+            Records without <code>locationId</code> in their snapshot (organization-wide: products,
+            roles, stock items) show "Whole organization" and are not found by the branch filter.
+            Warehouse-level placement (e.g. "Main Warehouse") would need the warehouse id in stock
+            snapshots.
+          </li>
+          <li>
+            The record name is plain text; linking each record type to its page is a follow-up.
+          </li>
+          <li>API e2e tests were not run on the development laptop (no Docker).</li>
+        </ul>
+      </div>
+    </main>
+  </body>
 </html>

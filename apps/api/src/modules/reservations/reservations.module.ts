@@ -7,6 +7,7 @@ import { BookingsService } from './bookings/bookings.service';
 import { GuestsController } from './bookings/guests.controller';
 import { GuestsService } from './bookings/guests.service';
 import { PosEventsHandler } from './bookings/pos-events.handler';
+import { ReservationsRealtimeHandler } from './bookings/realtime.handler';
 import { BookingStatusService } from './bookings/status.service';
 import { FloorController } from './floor.controller';
 import { FloorService } from './floor.service';
@@ -14,16 +15,18 @@ import { CombinationsService } from './setup/combinations.service';
 import { LocationSettingsController } from './setup/location-settings.controller';
 import { LocationSettingsService } from './setup/location-settings.service';
 import { SetupController } from './setup/setup.controller';
+import { ReservationsStreamController } from './stream.controller';
 import { TableRulesService } from './setup/table-rules.service';
 
 /** Reservations and the host stand (docs/modules/reservations.md). Reads pos only through its index. */
 @Module({
   imports: [PosModule],
   // BookingsController last: its GET /reservations/:id must come after the static routes
-  // (/reservations/floor, /availability, /tables, /settings, …), which Express matches in
+  // (/reservations/floor, /stream, /availability, /tables, /settings, …), which Express matches in
   // registration order.
   controllers: [
     FloorController,
+    ReservationsStreamController,
     AvailabilityController,
     SetupController,
     LocationSettingsController,
@@ -40,6 +43,7 @@ import { TableRulesService } from './setup/table-rules.service';
     BookingStatusService,
     GuestsService,
     PosEventsHandler,
+    ReservationsRealtimeHandler,
   ],
 })
 export class ReservationsModule {}

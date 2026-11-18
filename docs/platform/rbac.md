@@ -290,9 +290,13 @@ a table (cards on phones) with permission chips ("Role defaults (N)" or the pers
 share invite link, deactivate/reactivate, remove, cancel invitation). The Add/Edit dialog has the details, an
 a Language select (new people only; default: the organization's, see auth.md → Language), an
 optional temporary password (generate; empty = invitation), role chips (a new person starts with the
-least-privileged role you can give, never Owner), locations and a permission matrix grouped by area: ticks start
+least-privileged role you can give, never Owner), locations and a permission matrix: ticks start
 from the role, changes are marked, keys you don't hold are locked, modules switched off for the organization are
-not listed. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
+not listed. The matrix (ADR 0050) has one section per module ("Administration" for platform keys) with a tri-state
+box, then rows with a whole-row box and a View, Create, Edit and Delete cell each. Every key sits in exactly one
+cell, set by its `matrix` placement in `PERMISSIONS`; a cell without a key is a dash, and a box that allows more
+than its column says (`platform.users.manage`, `platform.roles.manage`, `orders.orders.edit`,
+`orders.customers.edit`) carries an info note. A session with `passwordChangeRequired` sees only "Choose your own password" until it is changed.
 
 **Passwords set by owners and admins (ADR 0052).** "Set password" in a member's menu (`POST /staff/:id/password`,
 `platform.users.manage`) for accounts this organization created that belong to no other organization

@@ -148,6 +148,9 @@ describe('Authenticator (via AccessGuard)', () => {
         organizationId: orgA,
         sessionId,
         passwordChangeRequired: false,
+        // The token's iat and exp: streams end at exp (ADR 0044 §7).
+        issuedAt: expect.any(Number) as unknown,
+        expiresAt: expect.any(Number) as unknown,
       },
       tenant: orgA,
       dbTenant: orgA,

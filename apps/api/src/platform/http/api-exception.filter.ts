@@ -18,7 +18,7 @@ const STATUS_CODES: Readonly<Record<number, string>> = {
   [HttpStatus.FORBIDDEN]: 'http.forbidden',
   [HttpStatus.NOT_FOUND]: 'http.not_found',
   [HttpStatus.METHOD_NOT_ALLOWED]: 'http.method_not_allowed',
-  [HttpStatus.PAYLOAD_TOO_LARGE]: 'http.payload_too_large',
+  [HttpStatus.PAYLOAD_TOO_LARGE]: 'platform.payload_too_large',
   [HttpStatus.UNSUPPORTED_MEDIA_TYPE]: 'http.unsupported_media_type',
   [HttpStatus.TOO_MANY_REQUESTS]: 'http.too_many_requests',
 };
@@ -90,6 +90,15 @@ export function knownErrorResponse(exception: unknown): ErrorResponse | null {
       headers: { 'Retry-After': String(BUSY_RETRY_AFTER_SECONDS) },
     };
   }
+  // A body over the parser's limit (express body-parser, e.g. a tile image over 300 KB): an
+  // http-errors object, not an HttpException. Its message stays out (it is the parser's).
+  if (isBodyTooLarge(exception)) {
+    return {
+      status: HttpStatus.PAYLOAD_TOO_LARGE,
+      body: { code: 'platform.payload_too_large', message: 'The request body is too large.' },
+      headers: {},
+    };
+  }
   if (exception instanceof HttpException) {
     const status = exception.getStatus();
     return {
@@ -99,4 +108,11 @@ export function knownErrorResponse(exception: unknown): ErrorResponse | null {
     };
   }
   return null;
+}
+
+/** body-parser's error for a body over its `limit` (`type` is set by body-parser, `status` by http-errors). */
+function isBodyTooLarge(exception: unknown): boolean {
+  if (typeof exception !== 'object' || exception === null) return false;
+  const { type, status } = exception as { type?: unknown; status?: unknown };
+  return type === 'entity.too.large' && status === HttpStatus.PAYLOAD_TOO_LARGE;
 }

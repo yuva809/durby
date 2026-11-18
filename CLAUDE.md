@@ -45,13 +45,14 @@ Read `docs/architecture/ARCHITECTURE.md` before planning any change. The researc
 - Number series (ADR 0012): keys `module.camelCaseName` in `packages/shared/src/numbering.ts` with name/description labels, the owning feature and default prefix/pattern/reset policy. Allocate with `NumberingService.next(key, tx)` inside the document's own transaction, **as late as possible** (the counter row stays locked until commit). **Every module table that stores a generated number has `UNIQUE (tenant_id, number)`** as a backstop: a prefix/pattern edit can rarely render a number that already exists. Counters only move forward; never delete series or counters.
 - Audit (ADR 0008): actions are keys of `AUDIT_ACTIONS` in `packages/shared` (never free-form strings). Record with `AuditService.record(tx, …)` inside the change's own transaction; `before`/`after` only via the per-entity allow-list, never secrets or emails. No `@Audited` interceptor.
 - Events (ADR 0013): `module.entity.past_tense` (e.g. `inventory.stock.received`), registered with versioned strict payload schemas in `packages/shared/src/events/`. Payloads carry ids, keys and enums only (no personal data, secrets or free text). Write with `OutboxService.add(tx, …)` inside the change's own transaction; a breaking payload change is a new version. Handlers: `@OnEvent(type, { handler: 'module.camelCaseName', versions? })` (the payload versions it reads; default the current one), use only the given `tx` and their own module's tables, and must tolerate redelivery order.
+- Live updates (ADR 0044): a page that must follow other devices subscribes to its module's stream route (`GET /<module>/stream?locationId=`, the module's read key) and reloads through its normal routes. Hints are published by that module's outbox handlers via `RealtimePublisher` and carry ids only; a stream never holds a database connection, and polling stays as the fallback.
 
 ## How to work
 
 - Start every task in plan mode: list files, tables, endpoints, events, tests. Wait for approval.
 - Write or update the spec in `docs/modules/<name>.md` before implementing.
 - Tests first for business logic. Every tenant-scoped feature gets a cross-tenant isolation test.
-- Branches (ADR 0034): feature branches merge into `development` (the dev stack, dev.durby.tech); merging `development` into `main` is a production release (app.durby.tech; staging.durby.tech redirects there, ADR 0039).
+- Branches (ADR 0034, amended 2026-11-18): there is no `development` branch or dev stack for now. Feature branches merge straight into `main`, and every merge to `main` deploys to production (app.durby.tech; staging.durby.tech redirects there, ADR 0039). Merge only after `pnpm lint && pnpm typecheck && pnpm test` pass locally in Docker; nothing runs them on GitHub.
 - Small steps. One feature per session. Commit after each green step.
 - Before saying "done": `pnpm lint && pnpm typecheck && pnpm test` must pass. Report what you ran.
 - Prisma migrations: generate, show me the SQL, never run against anything but local/test DBs.

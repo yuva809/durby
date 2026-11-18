@@ -1,4 +1,4 @@
-import { PERMISSION_KEYS } from '@durby/shared';
+import { PERMISSION_KEYS, systemRolePermissions } from '@durby/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { cookie, startAuthApp, type AuthTestKit } from './support/auth-app';
@@ -8,6 +8,9 @@ import { RbacSeed, type SeededOrg } from './support/rbac';
  * activeRole / activePermissions in the session body and /auth/me (ADR 0007, amendment): only the
  * caller's own membership in the token's active organization, never another user's or org's.
  */
+/** The Staff role's keys in registry order, as the api lists them. */
+const STAFF_PERMISSIONS = [...systemRolePermissions('staff')];
+
 describe('active role and permissions', () => {
   let kit: AuthTestKit;
   let seed: RbacSeed;
@@ -63,12 +66,7 @@ describe('active role and permissions', () => {
       .expect(200);
     expect(access(switched.body)).toEqual({
       activeRole: { id: b.roles.staff, systemKey: 'staff', name: null },
-      activePermissions: [
-        'platform.settings.read',
-        'catalog.products.read',
-        'inventory.stock.read',
-        'pos.tables.read',
-      ],
+      activePermissions: STAFF_PERMISSIONS,
     });
     const token = (switched.body as { accessToken: string }).accessToken;
     expect(access((await me(token)).body).activeRole).toMatchObject({ systemKey: 'staff' });
@@ -86,12 +84,7 @@ describe('active role and permissions', () => {
     expect(access(adminMe.body).activeRole).toMatchObject({ id: a.roles.admin });
     expect(access(staffMe.body)).toEqual({
       activeRole: { id: a.roles.staff, systemKey: 'staff', name: null },
-      activePermissions: [
-        'platform.settings.read',
-        'catalog.products.read',
-        'inventory.stock.read',
-        'pos.tables.read',
-      ],
+      activePermissions: STAFF_PERMISSIONS,
     });
   });
 

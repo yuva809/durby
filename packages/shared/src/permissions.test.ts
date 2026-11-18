@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   SYSTEM_ROLE_FEATURES,
   isPermissionKey,
+  MATRIX_COLUMNS,
+  type MatrixPlacement,
   PERMISSION_KEYS,
   PERMISSIONS,
   SYSTEM_ROLE_GRANTS,
@@ -17,6 +19,32 @@ describe('permission registry', () => {
       expect(['organization', 'location']).toContain(PERMISSIONS[key].scope);
       expect(PERMISSIONS[key].label).toMatch(/^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/);
     }
+  });
+
+  // ADR 0050: every key sits in exactly one cell of the Manage Staff matrix.
+  it('places every key in one matrix cell of a row of its own module', () => {
+    const cells = new Map<string, string>();
+    for (const key of PERMISSION_KEYS) {
+      const placement: MatrixPlacement = PERMISSIONS[key].matrix;
+      const { row, column, note } = placement;
+      expect(MATRIX_COLUMNS).toContain(column);
+      expect(row).toMatch(/^[a-z][a-zA-Z0-9]*\.[a-z][a-zA-Z0-9]*$/);
+      expect(row.split('.')[0]).toBe(key.split('.')[0]);
+      if (note !== undefined)
+        expect(note.startsWith(`${key.split('.')[0]}.permissionNotes.`)).toBe(true);
+      const cell = `${row}:${column}`;
+      expect(cells.get(cell), `${key} and ${cells.get(cell)} share ${cell}`).toBeUndefined();
+      cells.set(cell, key);
+    }
+  });
+
+  it("lists a row's keys next to each other and a module's rows together", () => {
+    const rows = PERMISSION_KEYS.map((key) => PERMISSIONS[key].matrix.row);
+    const runs = rows.filter((row, i) => row !== rows[i - 1]);
+    expect(new Set(runs).size).toBe(runs.length);
+    const modules = runs.map((row) => row.split('.')[0]);
+    const moduleRuns = modules.filter((m, i) => m !== modules[i - 1]);
+    expect(new Set(moduleRuns).size).toBe(moduleRuns.length);
   });
 
   it('recognizes registered keys only', () => {

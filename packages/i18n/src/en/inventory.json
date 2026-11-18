@@ -121,6 +121,15 @@
   "inventory.permissions.costsRead": "See dish costs and margins",
   "inventory.permissionAreas.recipes": "Recipes",
   "inventory.permissionAreas.costs": "Costs",
+  "inventory.permissionRows.stock": "Stock",
+  "inventory.permissionRows.deliveries": "Deliveries",
+  "inventory.permissionRows.adjustments": "Stock adjustments",
+  "inventory.permissionRows.transfers": "Stock transfers",
+  "inventory.permissionRows.production": "Production",
+  "inventory.permissionRows.warehouses": "Warehouses",
+  "inventory.permissionRows.items": "Stock items",
+  "inventory.permissionRows.recipes": "Recipes",
+  "inventory.permissionRows.costs": "Costs",
   "inventory.audit.actions.recipeUpdated": "Recipe changed",
   "inventory.errors.productNotFound": "This product doesn't exist.",
   "inventory.errors.stationTaken": "Another warehouse at this location already supplies this station.",
@@ -341,5 +350,7 @@
   "inventory.invoices.reason": "Reason (the sender sees it)",
   "inventory.invoices.newItemsHint": "New items are created when the invoice is approved.",
   "inventory.permissionAreas.invoices": "Vendor invoices",
-  "inventory.invoice.importDataFormats": "PDF · Photos"
+  "inventory.invoice.importDataFormats": "PDF · Photos",
+  "inventory.permissionRows.invoices": "Vendor invoices",
+  "inventory.permissionNotes.invoicesApprove": "Edit here means approving or rejecting invoices in the approval queue; approving books the goods receipt."
 }

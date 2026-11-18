@@ -1,4 +1,9 @@
-import { FEATURE_KEYS, sessionResponseSchema, type SessionResponse } from '@durby/shared';
+import {
+  FEATURE_KEYS,
+  sessionResponseSchema,
+  systemRolePermissions,
+  type SessionResponse,
+} from '@durby/shared';
 import { v7 as uuidv7 } from 'uuid';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,6 +23,8 @@ import {
 const MIN = 60_000;
 const DAY = 24 * 60 * MIN;
 const NEW_PASSWORD = 'a brand new passphrase';
+/** The Staff role's keys in registry order, as the api lists them. */
+const STAFF_PERMISSIONS = [...systemRolePermissions('staff')];
 
 describe('auth', () => {
   let kit: AuthTestKit;
@@ -59,12 +66,7 @@ describe('auth', () => {
         activeOrganizationId: orgB,
         // kit.join gives the Staff role (see rbac tests for the others); kit orgs are on `full`.
         activeRole: { id: expect.any(String) as string, systemKey: 'staff', name: null },
-        activePermissions: [
-          'platform.settings.read',
-          'catalog.products.read',
-          'inventory.stock.read',
-          'pos.tables.read',
-        ],
+        activePermissions: STAFF_PERMISSIONS,
         activeFeatures: [...FEATURE_KEYS],
         passwordChangeRequired: false,
       });
@@ -549,12 +551,7 @@ describe('auth', () => {
         organizations: [{ id: org, name: 'Org' }],
         activeOrganizationId: org,
         activeRole: { id: expect.any(String) as string, systemKey: 'staff', name: null },
-        activePermissions: [
-          'platform.settings.read',
-          'catalog.products.read',
-          'inventory.stock.read',
-          'pos.tables.read',
-        ],
+        activePermissions: STAFF_PERMISSIONS,
         activeFeatures: [...FEATURE_KEYS],
         passwordChangeRequired: false,
       });

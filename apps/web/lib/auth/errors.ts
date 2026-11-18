@@ -50,6 +50,7 @@ export type ApiErrorCode =
 /** Label shown for each api error code (CLAUDE.md rule 3: no hardcoded UI text). */
 const LABELS: Record<ApiErrorCode, LabelKey> = {
   'platform.busy': 'platform.errors.busy',
+  'platform.payload_too_large': 'platform.errors.payloadTooLarge',
   'platform.notification_not_found': 'platform.errors.notificationNotFound',
   'auth.unauthenticated': 'auth.errors.unauthenticated',
   'auth.invalid_credentials': 'auth.errors.invalidCredentials',

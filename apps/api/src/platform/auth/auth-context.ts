@@ -10,6 +10,9 @@ export interface AuthContextValue {
   sessionId: string;
   /** Only the password change, /auth/me and logout are open (ADR 0023 §3). */
   passwordChangeRequired: boolean;
+  /** The access token's iat and exp (seconds): long-lived responses end at exp (ADR 0044 §7). */
+  issuedAt: number;
+  expiresAt: number;
 }
 
 const CLS_KEY = 'durby:auth';

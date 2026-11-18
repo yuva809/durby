@@ -65,7 +65,7 @@ CATEGORIES                                  [🔍 Find a category or product]
   <div class="scroll"><table>
     <tr><th>Route</th><th>Does</th></tr>
     <tr><td><code>POST / PATCH /catalog/categories</code></td><td>+ <code>description</code>, <code>parentId</code> (400 <code>catalog.category_parent_invalid</code>)</td></tr>
-    <tr><td><code>PUT /catalog/categories/:id/image</code></td><td>raw body, <code>Content-Type</code> image/webp|png|jpeg, ≤ 300 KB (413 above), signature checked (400 <code>catalog.category_image_invalid</code>)</td></tr>
+    <tr><td><code>PUT /catalog/categories/:id/image</code></td><td>raw body, <code>Content-Type</code> image/webp|png|jpeg, ≤ 300 KB (413 <code>platform.payload_too_large</code> above), signature checked (400 <code>catalog.category_image_invalid</code>)</td></tr>
     <tr><td><code>DELETE /catalog/categories/:id/image</code></td><td>removes it (set-state)</td></tr>
     <tr><td><code>GET /catalog/categories/:id/image</code></td><td>the bytes, <code>Cache-Control: private, max-age=31536000, immutable</code> (url carries <code>imageVersion</code>)</td></tr>
     <tr><td><code>POST / PATCH /inventory/items</code></td><td>+ <code>categoryId</code> (active category or null; 404 / 409 <code>catalog.category_archived</code>)</td></tr>

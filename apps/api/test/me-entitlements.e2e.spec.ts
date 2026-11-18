@@ -110,6 +110,7 @@ describe('GET /me/entitlements and activeFeatures', () => {
       'inventory',
       'inventory.counts',
       'inventory.purchasing',
+      'orders',
       'reports',
       'catalog',
     ]);

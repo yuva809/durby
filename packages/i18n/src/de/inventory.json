@@ -121,6 +121,15 @@
   "inventory.permissions.costsRead": "Gerichtskosten und Margen sehen",
   "inventory.permissionAreas.recipes": "Rezepte",
   "inventory.permissionAreas.costs": "Kosten",
+  "inventory.permissionRows.stock": "Bestand",
+  "inventory.permissionRows.deliveries": "Lieferungen",
+  "inventory.permissionRows.adjustments": "Bestandskorrekturen",
+  "inventory.permissionRows.transfers": "Umlagerungen",
+  "inventory.permissionRows.production": "Produktion",
+  "inventory.permissionRows.warehouses": "Lager",
+  "inventory.permissionRows.items": "Lagerartikel",
+  "inventory.permissionRows.recipes": "Rezepte",
+  "inventory.permissionRows.costs": "Kosten",
   "inventory.audit.actions.recipeUpdated": "Rezept geändert",
   "inventory.errors.productNotFound": "Dieses Produkt gibt es nicht.",
   "inventory.errors.stationTaken": "Ein anderes Lager an diesem Standort beliefert diese Station schon.",
@@ -341,5 +350,7 @@
   "inventory.invoices.reason": "Grund (sieht der Absender)",
   "inventory.invoices.newItemsHint": "Neue Artikel werden bei der Freigabe angelegt.",
   "inventory.permissionAreas.invoices": "Lieferantenrechnungen",
-  "inventory.invoice.importDataFormats": "PDF · Fotos"
+  "inventory.invoice.importDataFormats": "PDF · Fotos",
+  "inventory.permissionRows.invoices": "Lieferantenrechnungen",
+  "inventory.permissionNotes.invoicesApprove": "Bearbeiten heißt hier: Rechnungen in der Freigabeliste freigeben oder ablehnen; die Freigabe bucht den Wareneingang."
 }

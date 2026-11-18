@@ -1,3 +1,4 @@
+import { systemRolePermissions } from '@durby/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { cookie, startAuthApp, type AuthTestKit } from './support/auth-app';
@@ -40,18 +41,16 @@ describe('members API', () => {
     return { ...user, membershipId, token: await seed.token(user.id, org.id) };
   }
 
-  /** A custom role that may manage members but holds nothing else of note. */
-  // settings.read too: every system role holds it, and you can only manage roles within your own
-  // keys (ADR 0010 §6).
-  // Holds Staff's keys, so it may manage Staff members (granting needs every key of the role).
+  /**
+   * A custom role that may manage members but holds nothing else of note: Staff's keys (derived, so
+   * it stays a superset when Staff gains one), so it may manage Staff members (granting needs every
+   * key of the role), plus the two member keys.
+   */
   const userManagerRole = (org: SeededOrg) =>
     seed.customRole(org.id, [
       'platform.users.read',
       'platform.users.manage',
-      'platform.settings.read',
-      'catalog.products.read',
-      'pos.tables.read',
-      'inventory.stock.read',
+      ...systemRolePermissions('staff'),
     ]);
 
   describe('GET /members', () => {
