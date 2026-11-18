@@ -153,6 +153,8 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'catalog.price_rule_not_found': 'catalog.errors.priceRuleNotFound',
   'catalog.price_rule_invalid': 'catalog.errors.priceRuleInvalid',
   'catalog.location_not_found': 'catalog.errors.locationNotFound',
+  'catalog.category_parent_invalid': 'catalog.errors.categoryParentInvalid',
+  'catalog.category_image_invalid': 'catalog.errors.categoryImageInvalid',
   'pos.table_not_found': 'pos.errors.tableNotFound',
   'pos.location_not_found': 'pos.errors.locationNotFound',
   'pos.table_name_taken': 'pos.errors.tableNameTaken',

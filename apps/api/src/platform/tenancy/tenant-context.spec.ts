@@ -122,6 +122,7 @@ describe('TENANT_MODELS', () => {
       'ProcessedEvent',
       'Product',
       'ProductCategory',
+      'ProductCategoryImage',
       'PushSubscription',
       'RecipeLine',
       'Reservation',

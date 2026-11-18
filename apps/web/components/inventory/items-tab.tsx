@@ -1,6 +1,12 @@
 'use client';
 
-import { priceSchema, STOCK_UNITS, type StockItem, type StockUnit } from '@durby/shared';
+import {
+  priceSchema,
+  type ProductCategory,
+  STOCK_UNITS,
+  type StockItem,
+  type StockUnit,
+} from '@durby/shared';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -32,7 +38,7 @@ export function ItemsTab({ data }: { data: InventoryData }) {
           />
           {t('inventory.page.showArchived')}
         </label>
-        {canManage && <ItemDialog onDone={data.reload} />}
+        {canManage && <ItemDialog categories={data.categories} onDone={data.reload} />}
       </div>
       {shown.length === 0 ? (
         <p className="text-muted-foreground">{t('inventory.page.noItems')}</p>
@@ -63,7 +69,7 @@ export function ItemsTab({ data }: { data: InventoryData }) {
               </span>
               {canManage && (
                 <span className="flex gap-2">
-                  <ItemDialog item={item} onDone={data.reload} />
+                  <ItemDialog item={item} categories={data.categories} onDone={data.reload} />
                   <ArchiveButton item={item} onDone={data.reload} />
                 </span>
               )}
@@ -99,7 +105,24 @@ function ArchiveButton({ item, onDone }: { item: StockItem; onDone: () => void }
   );
 }
 
-function ItemDialog({ item, onDone }: { item?: StockItem; onDone: () => void }) {
+/**
+ * Create (no `item`) or edit a stock item. `categories`: the organization's, to file it under one (ADR 0048); null
+ * hides the field. `trigger`: the button's text when it isn't the default (e.g. "Add New Item").
+ */
+export function ItemDialog({
+  item,
+  categories,
+  onDone,
+  trigger,
+  defaultCategoryId,
+}: {
+  item?: StockItem;
+  categories: readonly ProductCategory[] | null;
+  onDone: () => void;
+  trigger?: string;
+  /** Pre-filled for a new item, e.g. the category open on the inventory page. */
+  defaultCategoryId?: string | null;
+}) {
   const t = useT();
   const id = useId();
   const { store, session } = useAuth();
@@ -109,7 +132,15 @@ function ItemDialog({ item, onDone }: { item?: StockItem; onDone: () => void }) 
   const [unit, setUnit] = useState<StockUnit>('kg');
   const [min, setMin] = useState('');
   const [salePrice, setSalePrice] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [checked, setChecked] = useState(false);
+  // Active categories to choose from, plus the item's own even if archived meanwhile (it stays until changed).
+  const choices = (categories ?? []).filter(
+    (c) => c.archivedAt === null || c.id === item?.categoryId,
+  );
+  const parentName = new Map((categories ?? []).map((c) => [c.id, c.name]));
+  const choiceLabel = (c: ProductCategory) =>
+    c.parentId ? `${parentName.get(c.parentId) ?? ''} › ${c.name}` : c.name;
   // The default price on sales orders (ADR 0044): only where the organization has orders.
   const sells = session?.activeFeatures.includes('orders') ?? false;
   const priceInvalid =
@@ -119,7 +150,7 @@ function ItemDialog({ item, onDone }: { item?: StockItem; onDone: () => void }) 
 
   return (
     <FormDialog
-      trigger={t(item ? 'inventory.page.edit' : 'inventory.page.addItem')}
+      trigger={trigger ?? t(item ? 'inventory.page.edit' : 'inventory.page.addItem')}
       triggerVariant={item ? 'outline' : 'default'}
       testId={item ? 'item-edit' : 'item-create'}
       title={t(item ? 'inventory.page.editItem' : 'inventory.page.addItem')}
@@ -129,6 +160,7 @@ function ItemDialog({ item, onDone }: { item?: StockItem; onDone: () => void }) 
         setUnit(item?.unit ?? 'kg');
         setMin(item?.minQuantity ? shortQuantity(item.minQuantity) : '');
         setSalePrice(item?.salePrice ?? '');
+        setCategoryId(item ? (item.categoryId ?? '') : (defaultCategoryId ?? ''));
         setChecked(false);
       }}
       submit={() => {
@@ -143,6 +175,7 @@ function ItemDialog({ item, onDone }: { item?: StockItem; onDone: () => void }) 
             unit,
             minQuantity: min.trim() || null,
             ...(sells ? { salePrice: salePrice.trim() || null } : {}),
+            ...(categories ? { categoryId: categoryId || null } : {}),
           });
         }
         return createStockItem(store, action, {
@@ -151,6 +184,7 @@ function ItemDialog({ item, onDone }: { item?: StockItem; onDone: () => void }) 
           ...(sku.trim() ? { sku: sku.trim() } : {}),
           ...(min.trim() ? { minQuantity: min.trim() } : {}),
           ...(sells && salePrice.trim() ? { salePrice: salePrice.trim() } : {}),
+          ...(categories && categoryId ? { categoryId } : {}),
         });
       }}
       onDone={onDone}
@@ -168,6 +202,23 @@ function ItemDialog({ item, onDone }: { item?: StockItem; onDone: () => void }) 
           onChange={(e) => setName(e.target.value)}
         />
       </Field>
+      {categories && (
+        <Field id={`${id}-category`} label={t('inventory.fields.category')} problem={null}>
+          <Select
+            id={`${id}-category`}
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            data-testid="item-category"
+          >
+            <option value="">{t('inventory.page.uncategorized')}</option>
+            {choices.map((c) => (
+              <option key={c.id} value={c.id}>
+                {choiceLabel(c)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id={`${id}-unit`} label={t('inventory.fields.unit')} problem={null}>
           <Select

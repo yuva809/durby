@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventory categories: technical and test notes</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6670; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --accent:#1f7a3d; --ok:#1f7a3d; --warn:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; } }
+  :root[data-theme="dark"] { --fg:#e8ecef; --muted:#9aa5ae; --line:#2e363e; --bg:#14181c; --panel:#1c2228; --accent:#5fcf85; --ok:#5fcf85; --warn:#f0c060; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .done { color: var(--ok); } .open { color: var(--warn); }
+  nav a { color: var(--accent); margin-right: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="#page">Inventory page</a><a href="#categories">Categories</a><a href="#api">API</a><a href="#tests">Tests</a></nav>
+  <h1>Inventory categories and the operations inventory page</h1>
+  <p class="lead">Stock items filed by category, categories with description, secondary categories and tile images, and an Inventory page that opens on category tiles. Operations menu only (app.asiamight.site); the default menu is unchanged. Decision: ADR 0048. Branch: <code>feature/asiamight-inventory</code>.</p>
+
+  <h2 id="page">Inventory page (operations menu)</h2>
+<pre>Inventory                                   [Export] [⋯ More] [Add New Item]
+Live stock and value by category, warehouse and stock level.
+┌──────────────────────────────────────────────────────────────────────┐
+│ [All categories ▾]     [All stock ▾]       [All warehouses ▾]        │
+└──────────────────────────────────────────────────────────────────────┘
+CATEGORIES                                  [🔍 Find a category or product]
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│ ▦        │ │ ◫  image │ │ ◫ colour │ │ ◫        │
+│All items │ │African   │ │Beverages │ │Uncatego- │
+│772 items │ │58 items  │ │68 items  │ │rized 6   │
+└──────────┘ └──────────┘ └──────────┘ └──────────┘</pre>
+  <ul>
+    <li>A top-level tile counts its secondary categories' items too; a tile opens its items (quantity, value, low badge), with chips for its secondary categories.</li>
+    <li><strong>Export</strong>: what is listed, as CSV that Excel opens (UTF-8 with a byte order mark).</li>
+    <li><strong>More</strong>: Receive, Adjust, Transfer, History, Items, Warehouses, then Variants, Attributes, Units, Adjustments, Bills of materials, Production (as permitted).</li>
+    <li>Sidebar: Inventory is one item, no submenu; Product Category stays its own item.</li>
+  </ul>
+
+  <h2 id="categories">Add / edit category</h2>
+  <div class="scroll"><table>
+    <tr><th>Field</th><th>Rules</th></tr>
+    <tr><td>Name</td><td>required, up to 100, unique</td></tr>
+    <tr><td>Description</td><td>optional, up to 500; not in the audit log (free text)</td></tr>
+    <tr><td>Secondary category of</td><td>an active top-level category, not itself; locked for a category that has secondary categories</td></tr>
+    <tr><td>Tile image</td><td>any image the browser reads; resized to WebP ≤ 800 px and ≤ 300 KB; transparent becomes white</td></tr>
+    <tr><td>Kitchen / bar</td><td>only for organizations with the till (<code>pos</code>)</td></tr>
+  </table></div>
+  <p>Product Category page: image or colour, description, item count (stock items without the till, menu products with it), secondary categories indented; drag only top-level ones.</p>
+
+  <h2 id="api">API</h2>
+  <div class="scroll"><table>
+    <tr><th>Route</th><th>Does</th></tr>
+    <tr><td><code>POST / PATCH /catalog/categories</code></td><td>+ <code>description</code>, <code>parentId</code> (400 <code>catalog.category_parent_invalid</code>)</td></tr>
+    <tr><td><code>PUT /catalog/categories/:id/image</code></td><td>raw body, <code>Content-Type</code> image/webp|png|jpeg, ≤ 300 KB (413 above), signature checked (400 <code>catalog.category_image_invalid</code>)</td></tr>
+    <tr><td><code>DELETE /catalog/categories/:id/image</code></td><td>removes it (set-state)</td></tr>
+    <tr><td><code>GET /catalog/categories/:id/image</code></td><td>the bytes, <code>Cache-Control: private, max-age=31536000, immutable</code> (url carries <code>imageVersion</code>)</td></tr>
+    <tr><td><code>POST / PATCH /inventory/items</code></td><td>+ <code>categoryId</code> (active category or null; 404 / 409 <code>catalog.category_archived</code>)</td></tr>
+  </table></div>
+  <p>Migration <code>20261118120000_inventory_categories</code> (expand only): <code>product_categories.description</code>, <code>parent_id</code>; <code>stock_items.category_id</code>; <code>product_category_images</code> (RLS).</p>
+
+  <h2 id="tests">Testing</h2>
+  <div class="scroll"><table>
+    <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
+    <tr><td>API unit</td><td><code>category-image.spec.ts</code></td><td>image types by first bytes; raw upload fingerprint</td><td class="done">Pass</td></tr>
+    <tr><td>Web unit</td><td><code>lib/inventory/overview.test.ts</code></td><td>exact sums, low/out, tiles and counts, selection with secondary categories, CSV</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/inventory/overview.test.tsx</code></td><td>tiles, open a tile and chips, filters and search, export, More and back, item filed under a category, default menu unchanged, category dialog with and without the till</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/catalog/categories-page.test.tsx</code></td><td>item counts and secondary categories without the till</td><td class="done">Pass</td></tr>
+    <tr><td>API e2e</td><td><code>test/inventory-categories.e2e.spec.ts</code></td><td>parent rules, image upload / read / limits / remove, item category rules</td><td class="open">Needs Docker / CI</td></tr>
+  </table></div>
+  <h3>Manual</h3>
+  <ul>
+    <li>Product Category → Add Category: name, description, pick a parent, choose a photo → tile shows the photo on Inventory.</li>
+    <li>Edit a top-level category that has secondary ones: the parent choice is locked.</li>
+    <li>Inventory → Add New Item → pick "African Item › Rice" → the African Item tile count goes up; opening it, the Rice chip lists it.</li>
+    <li>Filter "Low stock" → counts drop to low items; Export → CSV opens in Excel with € and umlauts intact.</li>
+    <li>On a phone (375 px): tiles in two columns, filters stacked, More and Add New Item wrap under the title.</li>
+  </ul>
+</main>
+</body>
+</html>

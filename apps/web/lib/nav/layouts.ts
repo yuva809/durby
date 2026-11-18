@@ -30,7 +30,7 @@ const inventory = item('inventory');
 /**
  * The operations menu (ADR 0044): a distribution business's sidebar in three groups. Same items,
  * features and permissions as Durby's menu where a page exists; items marked `planned` show once
- * their module ships. Product Category is its own item here, so it leaves the Inventory submenu.
+ * their module ships. Inventory is one item without a submenu (ADR 0048); Product Category is its own item.
  */
 const OPERATIONS: NavLayoutDefinition = {
   groups: [
@@ -41,12 +41,8 @@ const OPERATIONS: NavLayoutDefinition = {
   ],
   items: [
     item('home'),
-    {
-      ...inventory,
-      icon: Archive,
-      group: 'operations',
-      children: inventory.children?.filter((page) => page.id !== 'inventory-categories'),
-    },
+    // One item, no submenu (ADR 0048): the page opens on category tiles; its More menu has the other pages.
+    { ...inventory, icon: Archive, group: 'operations', children: undefined },
     {
       id: 'categories',
       href: '/catalog/categories',

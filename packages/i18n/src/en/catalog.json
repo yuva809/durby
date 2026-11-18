@@ -313,5 +313,19 @@
   "catalog.page.dragHint": "Drag categories by their handle to set the menu order. Renumber menu follows it.",
   "catalog.page.dragCategory": "Move {name}",
   "catalog.categoriesPage.intro": "Group your products. Drag a category to change the order everywhere it is listed.",
-  "catalog.categoriesPage.products": "Products: {count}"
+  "catalog.categoriesPage.products": "Products: {count}",
+  "catalog.errors.categoryParentInvalid": "This category can't be a secondary category of that one. Pick a top-level category, and only for a category without secondary categories of its own.",
+  "catalog.errors.categoryImageInvalid": "The image must be a WebP, PNG or JPEG file of at most 300 KB.",
+  "catalog.categoryDialog.namePlaceholder": "e.g. Beverages",
+  "catalog.categoryDialog.description": "Description (optional)",
+  "catalog.categoryDialog.descriptionPlaceholder": "What belongs in this category",
+  "catalog.categoryDialog.parent": "Secondary category of (optional)",
+  "catalog.categoryDialog.noParent": "None (top level)",
+  "catalog.categoryDialog.parentLocked": "This category has secondary categories of its own, so it stays at the top level.",
+  "catalog.categoryDialog.image": "Tile image (optional)",
+  "catalog.categoryDialog.imageAdd": "Image",
+  "catalog.categoryDialog.imageHint": "Shown on the category's tile on the inventory page. Resized to fit; a transparent background turns white.",
+  "catalog.categoryDialog.imageRemove": "Remove image",
+  "catalog.categoriesPage.items": "{count} items",
+  "catalog.categoriesPage.search": "Search categories"
 }

@@ -4,22 +4,38 @@ import type { LabelKey } from '@durby/i18n';
 import type {
   LocationSummary,
   PermissionKey,
+  ProductCategory,
   StockItem,
   UnitOfMeasure,
   Warehouse,
 } from '@durby/shared';
-import { useState } from 'react';
+import { ArrowLeft, MoreHorizontal } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { type ReactNode, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
+import { loadCategories } from '../../lib/catalog/api';
+import { INVENTORY_PAGES } from '../../lib/nav/inventory-pages';
+import { visibleNav } from '../../lib/nav/registry';
 import { loadStockItems, loadUnits, loadWarehouses } from '../../lib/inventory/api';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
 import { cn } from '../../lib/utils';
 import { MoneyProvider } from '../pos/money';
+import { useNavLayout } from '../theme-provider';
+import { Button } from '../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 import { Loaded, NoAccess } from '../users/common';
+import { CategoryOverview } from './category-overview';
 import { DocumentForm } from './document-form';
 import { DocumentsTab } from './documents-tab';
-import { ItemsTab } from './items-tab';
+import { ItemDialog, ItemsTab } from './items-tab';
 import { StockTab } from './stock-tab';
 import { WarehousesTab } from './warehouses-tab';
 
@@ -44,6 +60,11 @@ export interface InventoryData {
   items: StockItem[];
   /** Active units of measurement receipts can be entered in (ADR 0038). */
   units: UnitOfMeasure[];
+  /**
+   * The organization's categories for filing items (ADR 0048), active and archived; null when the person can't read
+   * them (no catalog feature or catalog.products.read): then no category field shows.
+   */
+  categories: ProductCategory[] | null;
   can: (key: PermissionKey) => boolean;
   reload: () => void;
 }
@@ -96,6 +117,12 @@ function Inventory({
   );
   const [items, reloadItems] = useResource(organizationId, () => loadStockItems(store, true));
   const [units] = useResource(organizationId, () => loadUnits(store));
+  const readsCategories =
+    (session?.activeFeatures.includes('catalog') ?? false) &&
+    (session?.activePermissions.includes('catalog.products.read') ?? false);
+  const [categories, reloadCategories] = useResource(readsCategories ? organizationId : null, () =>
+    loadCategories(store, true),
+  );
   const permissions = new Set(session?.activePermissions ?? []);
   const can = (key: PermissionKey) => permissions.has(key);
   const tabs = TABS.filter((x) => !x.permission || can(x.permission));
@@ -103,7 +130,66 @@ function Inventory({
     reloadLocations();
     reloadWarehouses();
     reloadItems();
+    if (readsCategories) reloadCategories();
   };
+  // The operations menu (AsiaMight, ADR 0048): one Inventory page opening on category tiles; the other tabs and the
+  // setup pages are in its More menu. The default menu keeps the tabs.
+  const overview = useNavLayout() === 'operations';
+
+  const withData = (render: (data: InventoryData) => ReactNode) => (
+    <Loaded resource={warehouses} reload={reload}>
+      {(warehouseList) => (
+        <Loaded resource={items} reload={reload}>
+          {(itemList) =>
+            render({
+              locations: locations.status === 'ready' ? locations.data : [],
+              warehouses: warehouseList,
+              items: itemList,
+              units: units.status === 'ready' ? units.data : [],
+              categories: readsCategories && categories.status === 'ready' ? categories.data : null,
+              can,
+              reload,
+            })
+          }
+        </Loaded>
+      )}
+    </Loaded>
+  );
+
+  if (overview) {
+    return withData((data) =>
+      tab === 'stock' ? (
+        <CategoryOverview
+          data={data}
+          actions={
+            <>
+              <MoreMenu tabs={tabs.filter((x) => x.id !== 'stock')} onTab={setTab} />
+              {can('inventory.items.edit') && (
+                <ItemDialog
+                  categories={data.categories}
+                  onDone={data.reload}
+                  trigger={t('inventory.overview.addItem')}
+                />
+              )}
+            </>
+          }
+        />
+      ) : (
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="ghost" onClick={() => setTab('stock')} data-testid="inventory-back">
+              <ArrowLeft aria-hidden />
+              {t('inventory.overview.backToInventory')}
+            </Button>
+            <h1 className="text-2xl font-semibold">
+              {t(TABS.find((x) => x.id === tab)?.label ?? 'inventory.nav.title')}
+            </h1>
+          </div>
+          {tabContent(tab, data)}
+        </div>
+      ),
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -131,36 +217,80 @@ function Inventory({
           ))}
         </ul>
       </nav>
-      <Loaded resource={warehouses} reload={reload}>
-        {(warehouseList) => (
-          <Loaded resource={items} reload={reload}>
-            {(itemList) => {
-              const data: InventoryData = {
-                locations: locations.status === 'ready' ? locations.data : [],
-                warehouses: warehouseList,
-                items: itemList,
-                units: units.status === 'ready' ? units.data : [],
-                can,
-                reload,
-              };
-              switch (tab) {
-                case 'stock':
-                  return <StockTab data={data} />;
-                case 'receive':
-                case 'adjust':
-                case 'transfer':
-                  return <DocumentForm key={tab} kind={tab} data={data} />;
-                case 'documents':
-                  return <DocumentsTab data={data} />;
-                case 'items':
-                  return <ItemsTab data={data} />;
-                case 'warehouses':
-                  return <WarehousesTab data={data} />;
-              }
-            }}
-          </Loaded>
-        )}
-      </Loaded>
+      {withData((data) => tabContent(tab, data))}
     </div>
   );
 }
+
+function tabContent(tab: Tab, data: InventoryData): ReactNode {
+  switch (tab) {
+    case 'stock':
+      return <StockTab data={data} />;
+    case 'receive':
+    case 'adjust':
+    case 'transfer':
+      return <DocumentForm key={tab} kind={tab} data={data} />;
+    case 'documents':
+      return <DocumentsTab data={data} />;
+    case 'items':
+      return <ItemsTab data={data} />;
+    case 'warehouses':
+      return <WarehousesTab data={data} />;
+  }
+}
+
+/**
+ * More (operations menu): the other tabs (receive, adjust, transfer, history, items, warehouses) and the inventory
+ * setup pages the person may open (variants, attributes, units, adjustments, bills of materials, production).
+ */
+function MoreMenu({
+  tabs,
+  onTab,
+}: {
+  tabs: readonly { id: Tab; label: LabelKey }[];
+  onTab: (tab: Tab) => void;
+}) {
+  const t = useT();
+  const router = useRouter();
+  const { session } = useAuth();
+  const pages = session
+    ? visibleNav(
+        INVENTORY_PAGES.filter((page) => SETUP_PAGES.includes(page.id.replace('inventory-', ''))),
+        { activeFeatures: session.activeFeatures, activePermissions: session.activePermissions },
+      )
+    : [];
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" data-testid="inventory-more">
+          <MoreHorizontal aria-hidden />
+          {t('inventory.overview.more')}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        {tabs.map((x) => (
+          <DropdownMenuItem
+            key={x.id}
+            onSelect={() => onTab(x.id)}
+            data-testid={`inventory-more-${x.id}`}
+          >
+            {t(x.label)}
+          </DropdownMenuItem>
+        ))}
+        {pages.length > 0 && <DropdownMenuSeparator />}
+        {pages.map((page) => (
+          <DropdownMenuItem
+            key={page.id}
+            onSelect={() => router.push(page.href)}
+            data-testid={`inventory-more-${page.id}`}
+          >
+            {t(page.label)}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** Setup pages in More: everything of the old submenu but Stock (this page), Products and Categories (own items). */
+const SETUP_PAGES = ['variants', 'attributes', 'units', 'adjustments', 'bom', 'production'];

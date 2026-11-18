@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -8,8 +9,13 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
+  Req,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import {
   categoryBulkRequestSchema,
   type CategoryBulkRequest,
@@ -94,6 +100,45 @@ export class CatalogController {
     @Body(new ZodBody(updateProductCategoryRequestSchema)) body: UpdateProductCategoryRequest,
   ): Promise<ProductCategory> {
     return this.catalog.updateCategory(id, body);
+  }
+
+  /**
+   * The tile image (ADR 0048). The url carries the category's imageVersion, so the browser may keep it: a new image
+   * gets a new version and so a new url.
+   */
+  @RequirePermission('catalog.products.read')
+  @Get('categories/:id/image')
+  async categoryImage(
+    @Param('id', uuidOr(catalogErrors.categoryNotFound)) id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const image = await this.catalog.categoryImage(id);
+    if (!image) throw catalogErrors.categoryNotFound();
+    res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return new StreamableFile(image.data, { type: image.contentType, length: image.data.length });
+  }
+
+  /** The raw file as the body, `Content-Type` image/webp, image/png or image/jpeg (resized by the browser first). */
+  @RequirePermission('catalog.products.edit')
+  @Idempotent()
+  @Put('categories/:id/image')
+  setCategoryImage(
+    @Param('id', uuidOr(catalogErrors.categoryNotFound)) id: string,
+    @Req() req: Request,
+  ): Promise<ProductCategory> {
+    const body: unknown = req.body;
+    if (!Buffer.isBuffer(body)) throw catalogErrors.categoryImageInvalid();
+    return this.catalog.setCategoryImage(id, req.headers['content-type'] ?? '', body);
+  }
+
+  @RequirePermission('catalog.products.edit')
+  @Idempotent()
+  @Delete('categories/:id/image')
+  removeCategoryImage(
+    @Param('id', uuidOr(catalogErrors.categoryNotFound)) id: string,
+  ): Promise<ProductCategory> {
+    return this.catalog.removeCategoryImage(id);
   }
 
   @RequirePermission('catalog.products.read')

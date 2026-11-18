@@ -56,6 +56,20 @@ export const catalogErrors = {
     ),
   categoryArchived: () =>
     new ApiError(HttpStatus.CONFLICT, 'catalog.category_archived', 'The category is archived.'),
+  /** ADR 0048: one level only; the parent must be active, top level and not the category itself. */
+  categoryParentInvalid: () =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'catalog.category_parent_invalid',
+      'This category cannot be a secondary category of that one.',
+    ),
+  /** ADR 0048: WebP, PNG or JPEG, at most CATEGORY_IMAGE_MAX_BYTES, checked by its first bytes. */
+  categoryImageInvalid: () =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'catalog.category_image_invalid',
+      'The image must be a WebP, PNG or JPEG file of at most 300 KB.',
+    ),
   /** Import Data → categories (ADR 0044): the same code, its own row shape. */
   categoryImportInvalid: (rows: DataImportProblemRow[]) =>
     new ApiError(

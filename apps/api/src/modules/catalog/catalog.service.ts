@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   type AuditActor,
+  CATEGORY_IMAGE_MAX_BYTES,
+  type CategoryImageType,
   checkImportRows,
   type CreateProductCategoryRequest,
   type CreateProductRequest,
@@ -11,7 +13,6 @@ import {
   type NumberProductsResponse,
   type OrderCategoriesRequest,
   type RenumberProductsResponse,
-  type PrepStation,
   type Product,
   type ProductCategory,
   type UpdateProductCategoryRequest,
@@ -25,16 +26,9 @@ import {
   type TenantPrismaClient,
   type TenantTransactionClient,
 } from '../../platform/tenancy';
+import { CATEGORY_SELECT, categoryResponse, categorySnapshot } from './category-shape';
 import { catalogErrors, isUniqueViolation, violates } from './catalog-errors';
 import { fixed2 } from './decimal-text';
-
-const CATEGORY_SELECT = {
-  id: true,
-  name: true,
-  sortOrder: true,
-  station: true,
-  archivedAt: true,
-} as const;
 
 const PRODUCT_SELECT = {
   id: true,
@@ -47,14 +41,6 @@ const PRODUCT_SELECT = {
   sortOrder: true,
   archivedAt: true,
 } as const;
-
-type CategoryRow = {
-  id: string;
-  name: string;
-  sortOrder: number;
-  station: PrepStation;
-  archivedAt: Date | null;
-};
 
 /** Prisma returns `numeric` columns as Decimal objects; only their exact text is used here. */
 type DecimalValue = { toFixed(digits: number): string };
@@ -102,6 +88,8 @@ export class CatalogService {
             name: body.name,
             sortOrder: body.sortOrder ?? 0,
             station: body.station ?? 'kitchen',
+            description: body.description || null,
+            parentId: await parentFor(tx, null, body.parentId ?? null),
           },
           select: CATEGORY_SELECT,
         });
@@ -131,9 +119,17 @@ export class CatalogService {
           name: body.name ?? current.name,
           sortOrder: body.sortOrder ?? current.sortOrder,
           station: body.station ?? current.station,
+          description:
+            body.description === undefined ? current.description : body.description || null,
+          parentId:
+            body.parentId === undefined ? current.parentId : await parentFor(tx, id, body.parentId),
           archivedAt: archivedAt(current.archivedAt, body.archived),
         };
-        if (sameSnapshot(categorySnapshot(current), categorySnapshot({ ...current, ...data }))) {
+        // The description is not audited (free text), so it is compared on its own.
+        if (
+          data.description === current.description &&
+          sameSnapshot(categorySnapshot(current), categorySnapshot({ ...current, ...data }))
+        ) {
           return categoryResponse(current);
         }
         const row = await tx.productCategory.update({
@@ -191,6 +187,93 @@ export class CatalogService {
       });
       return ordered.map(categoryResponse);
     });
+  }
+
+  /** For other modules (inventory items, ADR 0048): the category exists and is not archived. */
+  async assertActiveCategory(id: string): Promise<void> {
+    const row = await this.db.productCategory.findUnique({
+      where: { id },
+      select: { archivedAt: true },
+    });
+    if (!row) throw catalogErrors.categoryNotFound();
+    if (row.archivedAt) throw catalogErrors.categoryArchived();
+  }
+
+  /**
+   * A category's tile image (ADR 0048), replacing the current one. `data` is the raw file: its first bytes must say
+   * WebP, PNG or JPEG and match `contentType`. Audited as a category update (its imageVersion changes).
+   */
+  async setCategoryImage(id: string, contentType: string, data: Buffer): Promise<ProductCategory> {
+    const { tenantId, userId } = this.tenantContext.require();
+    if (data.length === 0 || data.length > CATEGORY_IMAGE_MAX_BYTES) {
+      throw catalogErrors.categoryImageInvalid();
+    }
+    const type = imageTypeOf(data);
+    if (!type || type !== contentType) throw catalogErrors.categoryImageInvalid();
+    return this.db.$transaction(async (tx) => {
+      const current = await tx.productCategory.findUnique({
+        where: { id },
+        select: CATEGORY_SELECT,
+      });
+      if (!current) throw catalogErrors.categoryNotFound();
+      const updatedAt = new Date();
+      // A copy on its own ArrayBuffer, as Prisma's Bytes wants.
+      const bytes = new Uint8Array(data);
+      await tx.productCategoryImage.upsert({
+        where: { tenantId_categoryId: { tenantId, categoryId: id } },
+        create: { tenantId, categoryId: id, contentType: type, data: bytes, updatedAt },
+        update: { contentType: type, data: bytes, updatedAt },
+      });
+      const row = await tx.productCategory.findUniqueOrThrow({
+        where: { id },
+        select: CATEGORY_SELECT,
+      });
+      await this.audit.record(tx, {
+        action: 'catalog.product_category.updated',
+        actor: auditActor.user(userId),
+        entityId: id,
+        before: categorySnapshot(current),
+        after: categorySnapshot(row),
+      });
+      return categoryResponse(row);
+    });
+  }
+
+  /** Removes the tile image; none is fine (set-state). */
+  async removeCategoryImage(id: string): Promise<ProductCategory> {
+    const { userId } = this.tenantContext.require();
+    return this.db.$transaction(async (tx) => {
+      const current = await tx.productCategory.findUnique({
+        where: { id },
+        select: CATEGORY_SELECT,
+      });
+      if (!current) throw catalogErrors.categoryNotFound();
+      if (!current.image) return categoryResponse(current);
+      await tx.productCategoryImage.deleteMany({ where: { categoryId: id } });
+      const row = await tx.productCategory.findUniqueOrThrow({
+        where: { id },
+        select: CATEGORY_SELECT,
+      });
+      await this.audit.record(tx, {
+        action: 'catalog.product_category.updated',
+        actor: auditActor.user(userId),
+        entityId: id,
+        before: categorySnapshot(current),
+        after: categorySnapshot(row),
+      });
+      return categoryResponse(row);
+    });
+  }
+
+  /** The tile image's bytes, or null when there is none. */
+  async categoryImage(
+    id: string,
+  ): Promise<{ contentType: string; data: Buffer; updatedAt: Date } | null> {
+    const row = await this.db.productCategoryImage.findFirst({
+      where: { categoryId: id },
+      select: { contentType: true, data: true, updatedAt: true },
+    });
+    return row ? { ...row, data: Buffer.from(row.data) } : null;
   }
 
   /** Products by id, archived ones too, for other modules (inventory recipes, ADR 0028). */
@@ -600,10 +683,6 @@ function productKey(categoryId: string, name: string): string {
   return `${categoryId}:${name.toLowerCase()}`;
 }
 
-function categoryResponse(row: CategoryRow): ProductCategory {
-  return { ...row, archivedAt: row.archivedAt?.toISOString() ?? null };
-}
-
 function productResponse(row: ProductRow): Product {
   return {
     ...row,
@@ -613,10 +692,6 @@ function productResponse(row: ProductRow): Product {
   };
 }
 
-function categorySnapshot(row: CategoryRow) {
-  return snapshot('product_category', row);
-}
-
 /** `description` is free text and not in the allow-list, so snapshot() drops it. */
 function productSnapshot(row: ProductRow) {
   return snapshot('product', productResponse(row));
@@ -624,4 +699,48 @@ function productSnapshot(row: ProductRow) {
 
 function sameSnapshot(a: object, b: object): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * The parent a category may take (ADR 0048): null, or an active top-level category other than itself; a category
+ * with secondary categories of its own stays top level. One level keeps lists and tiles simple.
+ */
+async function parentFor(
+  tx: TenantTransactionClient,
+  id: string | null,
+  parentId: string | null,
+): Promise<string | null> {
+  if (parentId === null) return null;
+  if (parentId === id) throw catalogErrors.categoryParentInvalid();
+  const parent = await tx.productCategory.findUnique({
+    where: { id: parentId },
+    select: { parentId: true, archivedAt: true },
+  });
+  if (!parent || parent.archivedAt || parent.parentId) throw catalogErrors.categoryParentInvalid();
+  if (id) {
+    const child = await tx.productCategory.findFirst({
+      where: { parentId: id },
+      select: { id: true },
+    });
+    if (child) throw catalogErrors.categoryParentInvalid();
+  }
+  return parentId;
+}
+
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/** The image type the file's first bytes say, or null (never trust the declared type alone). */
+export function imageTypeOf(data: Buffer): CategoryImageType | null {
+  if (
+    data.length >= 12 &&
+    data.toString('ascii', 0, 4) === 'RIFF' &&
+    data.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  if (data.length >= 8 && data.subarray(0, 8).equals(PNG)) return 'image/png';
+  if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  return null;
 }

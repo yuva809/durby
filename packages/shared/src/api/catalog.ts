@@ -30,11 +30,26 @@ export const taxRateSchema = z
   .regex(/^\d{1,3}(\.\d{1,2})?$/, 'Invalid rate')
   .refine((value) => Number(value) <= 100, 'Invalid rate');
 
+/** A category's description (ADR 0048). */
+export const CATEGORY_DESCRIPTION_MAX_LENGTH = 500;
+/** Tile images (ADR 0048): resized by the browser before upload; the api refuses anything else. */
+export const CATEGORY_IMAGE_TYPES = ['image/webp', 'image/png', 'image/jpeg'] as const;
+export type CategoryImageType = (typeof CATEGORY_IMAGE_TYPES)[number];
+export const CATEGORY_IMAGE_MAX_BYTES = 300 * 1024;
+/** The longest side the browser resizes a tile image to. */
+export const CATEGORY_IMAGE_MAX_SIDE = 800;
+
 export const productCategorySchema = z.object({
   id: z.uuid(),
   name: z.string(),
   sortOrder: z.int(),
   station: z.enum(PREP_STATIONS),
+  /** ADR 0048; defaults keep the web working against an older api during a deploy. */
+  description: z.string().nullable().default(null),
+  /** Its parent ("secondary") category, one level only; null = top level. */
+  parentId: z.uuid().nullable().default(null),
+  /** Changes when the tile image changes (cache key of its URL); null = no image. */
+  imageVersion: z.string().nullable().default(null),
   archivedAt: z.iso.datetime().nullable(),
 });
 
@@ -53,10 +68,15 @@ export const productSchema = z.object({
   archivedAt: z.iso.datetime().nullable(),
 });
 
+const categoryDescription = z.string().trim().max(CATEGORY_DESCRIPTION_MAX_LENGTH);
+
 export const createProductCategoryRequestSchema = z.strictObject({
   name: name(CATALOG_NAME_MAX_LENGTH),
   sortOrder: sortOrder.optional(),
   station: z.enum(PREP_STATIONS).optional(),
+  /** Empty means none. */
+  description: categoryDescription.optional(),
+  parentId: z.uuid().nullable().optional(),
 });
 
 export const updateProductCategoryRequestSchema = z
@@ -64,6 +84,10 @@ export const updateProductCategoryRequestSchema = z
     name: name(CATALOG_NAME_MAX_LENGTH).optional(),
     sortOrder: sortOrder.optional(),
     station: z.enum(PREP_STATIONS).optional(),
+    /** Empty clears it. */
+    description: categoryDescription.optional(),
+    /** null: top level. */
+    parentId: z.uuid().nullable().optional(),
     archived: z.boolean().optional(),
   })
   .refine((body) => Object.values(body).some((v) => v !== undefined), {
@@ -263,6 +287,8 @@ export const CATALOG_ERROR_CODES = [
   'catalog.price_rule_not_found',
   'catalog.price_rule_invalid',
   'catalog.location_not_found',
+  'catalog.category_parent_invalid',
+  'catalog.category_image_invalid',
 ] as const;
 
 export type CatalogErrorCode = (typeof CATALOG_ERROR_CODES)[number];

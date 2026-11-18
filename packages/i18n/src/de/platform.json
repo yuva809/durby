@@ -912,6 +912,8 @@
   "platform.attention.kinds.draftOrders": "Entwürfe von Verkaufsaufträgen",
   "platform.attention.kinds.lowStock": "Artikel am oder unter Meldebestand",
   "platform.shell.accountCard": "{email}, {organization}: Kontomenü",
+  "platform.audit.fields.parentId": "Unterkategorie von",
+  "platform.audit.fields.imageVersion": "Kachelbild",
   "platform.errors.notificationNotFound": "Diese Benachrichtigung gibt es nicht mehr.",
   "platform.notifications.title": "Neuigkeiten",
   "platform.notifications.empty": "Noch keine Neuigkeiten.",

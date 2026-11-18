@@ -192,6 +192,7 @@ describe('route markers', () => {
 
   it('lists every @Idempotent() route', () => {
     expect(idempotency.filter((r) => r.idempotent).map((r) => r.route)).toEqual([
+      'DELETE /api/v1/catalog/categories/:id/image',
       'DELETE /api/v1/catalog/price-rules/:id',
       'DELETE /api/v1/inventory/boms/:itemId',
       'DELETE /api/v1/invitations/:id',
@@ -305,6 +306,7 @@ describe('route markers', () => {
       'POST /api/v1/stock-requests/:id/receive',
       'POST /api/v1/stock-requests/:id/reject',
       'POST /api/v1/stock-requests/:id/start-picking',
+      'PUT /api/v1/catalog/categories/:id/image',
       'PUT /api/v1/inventory/boms/:itemId',
       'PUT /api/v1/inventory/recipes/:productId',
       'PUT /api/v1/label-overrides/:locale/:key',

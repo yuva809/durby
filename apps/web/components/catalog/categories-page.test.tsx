@@ -34,10 +34,14 @@ const product = (n: number, categoryId: string, archivedAt: string | null = null
   archivedAt,
 });
 
-function signedInAs(role: SystemRole, permissions?: string[]) {
+function signedInAs(
+  role: SystemRole,
+  permissions?: string[],
+  features = ['catalog', 'inventory', 'pos'],
+) {
   mockState.session = sessionFixture({
     activePermissions: permissions ?? [...systemRolePermissions(role)],
-    activeFeatures: ['catalog', 'inventory'],
+    activeFeatures: features,
   });
 }
 
@@ -87,5 +91,45 @@ describe('/catalog/categories (ADR 0044)', () => {
     render(<CategoriesPage />);
     expect(screen.queryByTestId('category-line')).toBeNull();
     expect(mockState.store.apiFetch).not.toHaveBeenCalled();
+  });
+
+  it('without the till (AsiaMight): stock item counts, secondary categories under their parent, no stations (ADR 0048)', async () => {
+    signedInAs('owner', undefined, ['catalog', 'inventory']);
+    const RICE = { ...FOOD, id: id(3), name: 'Rice', parentId: FOOD.id, description: 'Long grain' };
+    const stockItem = (n: number, categoryId: string | null) => ({
+      id: id(40 + n),
+      name: `Item ${n}`,
+      sku: null,
+      unit: 'pc',
+      minQuantity: null,
+      parentItemId: null,
+      variantValues: [],
+      salePrice: null,
+      categoryId,
+      archivedAt: null,
+    });
+    mockState.store.apiFetch.mockImplementation((input: string) => {
+      const path = input.replace(/\?.*$/, '');
+      if (path.endsWith('/categories'))
+        return Promise.resolve(Response.json({ data: [FOOD, RICE, DRINKS] }));
+      if (path === '/api/v1/inventory/items')
+        return Promise.resolve(
+          Response.json({
+            data: [stockItem(1, FOOD.id), stockItem(2, RICE.id), stockItem(3, RICE.id)],
+          }),
+        );
+      return Promise.resolve(Response.json({ data: [] }));
+    });
+    render(<CategoriesPage />);
+    const lines = await screen.findAllByTestId('category-line');
+    expect(lines.map((l) => l.dataset.name)).toEqual(['Food', 'Rice', 'Drinks']);
+    expect(await within(lines[1]!).findByText('2 items')).toBeTruthy();
+    expect(within(lines[0]!).getByText('1 items')).toBeTruthy();
+    expect(within(lines[1]!).getByTestId('category-description-text').textContent).toBe(
+      'Long grain',
+    );
+    // Only top-level categories drag; no kitchen/bar badge without the till.
+    expect(screen.getAllByTestId('category-drag')).toHaveLength(2);
+    expect(screen.queryByText('Bar')).toBeNull();
   });
 });
