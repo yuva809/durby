@@ -53,6 +53,7 @@
   "catalog.permissions.productsEdit": "Produkte und Kategorien bearbeiten",
   "catalog.permissions.productsDelete": "Produkte und Kategorien löschen",
   "catalog.permissionAreas.products": "Produkte",
+  "catalog.permissionRows.products": "Produkte",
   "catalog.audit.actions.productCategoryCreated": "Produktkategorie angelegt",
   "catalog.audit.actions.productCategoryUpdated": "Produktkategorie geändert",
   "catalog.audit.actions.productCategoryDeleted": "Produktkategorie gelöscht",

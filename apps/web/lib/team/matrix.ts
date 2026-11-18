@@ -2,12 +2,15 @@ import {
   canManageMember,
   FEATURES,
   isFeatureKey,
+  type MatrixColumn,
+  type MatrixPlacement,
   PERMISSION_KEYS,
+  PERMISSIONS,
   type PermissionKey,
   type TeamMember,
 } from '@durby/shared';
 import { isLabelKey, type LabelKey } from '@durby/i18n';
-import { type PermissionGroup, permissionGroups, type UsersAccess } from '../users/access';
+import type { UsersAccess } from '../users/access';
 
 /**
  * Manage Staff in the browser (docs/platform/rbac.md → Manage Staff, ADR 0023): the permission
@@ -17,20 +20,83 @@ import { type PermissionGroup, permissionGroups, type UsersAccess } from '../use
 /** A key's module: its first segment (`pos.orders.take` → `pos`). */
 export const moduleOf = (key: string): string => key.split('.')[0] ?? '';
 
+/** A cell of the matrix: the key and, where the box allows more than its column says, the note label (ADR 0050). */
+export interface MatrixCell {
+  key: PermissionKey;
+  note: LabelKey | null;
+}
+
+/** A row: its name and one cell per column (null where no key exists: never invent one). */
+export interface MatrixRow {
+  row: string;
+  label: LabelKey;
+  cells: Record<MatrixColumn, MatrixCell | null>;
+  keys: PermissionKey[];
+}
+
+/** A section: one module (platform first), its name and rows. */
+export interface MatrixSection {
+  module: string;
+  label: LabelKey;
+  rows: MatrixRow[];
+  keys: PermissionKey[];
+}
+
+const FALLBACK: LabelKey = 'platform.rolesPage.otherArea';
+const labelOr = (key: string | undefined): LabelKey => (key && isLabelKey(key) ? key : FALLBACK);
+
+/** A section's name: "Administration" for platform keys, otherwise the module's feature name. */
+export function sectionLabel(module: string): LabelKey {
+  if (module === 'platform') return 'platform.team.dialog.section.platform';
+  return labelOr(isFeatureKey(module) ? FEATURES[module].label : undefined);
+}
+
+/** A row's name: `<module>.permissionRows.<row>`. */
+export function rowLabel(row: string): LabelKey {
+  const [module = '', name = ''] = row.split('.');
+  return labelOr(`${module}.permissionRows.${name}`);
+}
+
 /**
- * The permission areas to show: platform keys always; a module's keys only when its feature is
- * enabled for the organization. `hiddenModules` lists the switched-off ones (their name labels).
+ * The Manage Staff matrix (ADR 0050): sections → rows → View/Create/Edit/Delete cells, from the registry's matrix
+ * placements in registry order. Platform keys always show; a module's only when its feature is enabled for the
+ * organization. `hiddenModules` lists the switched-off ones (their name labels).
  */
-export function visiblePermissions(activeFeatures: readonly string[]): {
-  groups: PermissionGroup[];
+export function permissionMatrix(activeFeatures: readonly string[]): {
+  sections: MatrixSection[];
   hiddenModules: LabelKey[];
 } {
   const enabled = new Set(activeFeatures);
   const shown = (module: string) =>
     module === 'platform' || !isFeatureKey(module) || enabled.has(module);
+  const sections: MatrixSection[] = [];
+  for (const key of PERMISSION_KEYS) {
+    const owner = moduleOf(key);
+    if (!shown(owner)) continue;
+    const placement: MatrixPlacement = PERMISSIONS[key].matrix;
+    const { row, column, note } = placement;
+    let section = sections.find((s) => s.module === owner);
+    if (!section) {
+      section = { module: owner, label: sectionLabel(owner), rows: [], keys: [] };
+      sections.push(section);
+    }
+    let line = section.rows.find((r) => r.row === row);
+    if (!line) {
+      line = {
+        row,
+        label: rowLabel(row),
+        cells: { read: null, create: null, edit: null, delete: null },
+        keys: [],
+      };
+      section.rows.push(line);
+    }
+    line.cells[column] = { key, note: note && isLabelKey(note) ? note : null };
+    line.keys.push(key);
+    section.keys.push(key);
+  }
   const modules = [...new Set(PERMISSION_KEYS.map(moduleOf))];
   return {
-    groups: permissionGroups(PERMISSION_KEYS.filter((key) => shown(moduleOf(key)))),
+    sections,
     hiddenModules: modules
       .filter((module) => !shown(module))
       .flatMap((module) => {
@@ -103,24 +169,3 @@ export function generatePassword(
 /** A WhatsApp share link for `text` (the user picks the chat). */
 export const whatsappUrl = (text: string): string =>
   `https://wa.me/?text=${encodeURIComponent(text)}`;
-
-/** The columns of a business entity's row in the matrix (ADR 0037). */
-export const CRUD_COLUMNS = ['read', 'create', 'edit', 'delete'] as const;
-export type CrudColumn = (typeof CRUD_COLUMNS)[number];
-
-/**
- * An entity's keys as matrix cells: its read, create, edit and delete keys (a column is null where the key doesn't
- * exist), and the other keys of the entity. Null when the entity has no create, edit or delete key (a list then).
- */
-export function crudRow(keys: readonly string[]): {
-  cells: Record<CrudColumn, string | null>;
-  extra: string[];
-} | null {
-  const isWrite = keys.some((key) => /\.(create|edit|delete)$/.test(key));
-  if (!isWrite) return null;
-  const cells = Object.fromEntries(
-    CRUD_COLUMNS.map((verb) => [verb, keys.find((key) => key.endsWith(`.${verb}`)) ?? null]),
-  ) as Record<CrudColumn, string | null>;
-  const used = new Set(Object.values(cells));
-  return { cells, extra: keys.filter((key) => !used.has(key)) };
-}

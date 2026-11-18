@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import type { TeamMember } from '@durby/shared';
+import { dictionaries, LOCALES } from '@durby/i18n';
+import {
+  PERMISSION_KEYS,
+  SYSTEM_ROLES,
+  systemRolePermissions,
+  type TeamMember,
+} from '@durby/shared';
 import type { UsersAccess } from '../users/access';
 import {
   canToggle,
-  crudRow,
   generatePassword,
-  moduleOf,
   overridesOf,
+  permissionMatrix,
   selectedOf,
   teamRowActions,
-  visiblePermissions,
   whatsappUrl,
 } from './matrix';
 
@@ -42,17 +46,71 @@ const member = (over: Partial<TeamMember> = {}): TeamMember => ({
   ...over,
 });
 
-describe('visiblePermissions', () => {
+const ALL_FEATURES = ['catalog', 'inventory', 'pos', 'reservations', 'orders'];
+
+describe('permissionMatrix (ADR 0050)', () => {
   it('shows platform keys always and a module only when its feature is on', () => {
-    const { groups, hiddenModules } = visiblePermissions(['catalog']);
-    const modules = new Set(groups.flatMap((g) => g.keys.map(moduleOf)));
-    expect(modules).toEqual(new Set(['platform', 'catalog']));
+    const { sections, hiddenModules } = permissionMatrix(['catalog']);
+    expect(sections.map((s) => s.module)).toEqual(['platform', 'catalog']);
     expect(hiddenModules).toEqual([
       'platform.features.inventory.name',
       'platform.features.pos.name',
       'platform.features.reservations.name',
       'platform.features.orders.name',
     ]);
+  });
+
+  it('puts every key in exactly one cell, in registry order', () => {
+    const { sections } = permissionMatrix(ALL_FEATURES);
+    expect(sections.map((s) => s.module)).toEqual([
+      'platform',
+      'catalog',
+      'inventory',
+      'pos',
+      'reservations',
+      'orders',
+    ]);
+    const fromCells = sections.flatMap((s) =>
+      s.rows.flatMap((r) => Object.values(r.cells).flatMap((c) => (c ? [c.key] : []))),
+    );
+    expect([...fromCells].sort()).toEqual([...PERMISSION_KEYS].sort());
+    expect(sections.flatMap((s) => s.keys)).toEqual([...PERMISSION_KEYS]);
+  });
+
+  it('places job verbs in their own rows (Picking → Edit, POS orders across all four)', () => {
+    const rows = permissionMatrix(ALL_FEATURES).sections.flatMap((s) => s.rows);
+    const row = (id: string) => rows.find((r) => r.row === id);
+    expect(row('orders.picking')?.cells).toEqual({
+      read: null,
+      create: null,
+      edit: { key: 'orders.picking.use', note: null },
+      delete: null,
+    });
+    expect(row('pos.orders')?.cells).toEqual({
+      read: { key: 'pos.orders.read', note: null },
+      create: { key: 'pos.orders.take', note: null },
+      edit: { key: 'pos.orders.close', note: null },
+      delete: { key: 'pos.orders.void', note: null },
+    });
+    expect(row('platform.users')?.cells.edit).toEqual({
+      key: 'platform.users.manage',
+      note: 'platform.permissionNotes.usersManage',
+    });
+  });
+
+  it('has an en and de label for every section, row and note', () => {
+    const { sections } = permissionMatrix(ALL_FEATURES);
+    const labels = sections.flatMap((s) => [
+      s.label,
+      ...s.rows.flatMap((r) => [
+        r.label,
+        ...Object.values(r.cells).flatMap((c) => (c?.note ? [c.note] : [])),
+      ]),
+    ]);
+    expect(labels).not.toContain('platform.rolesPage.otherArea');
+    for (const locale of LOCALES) {
+      for (const label of labels) expect(dictionaries[locale][label], label).toBeTruthy();
+    }
   });
 });
 
@@ -73,6 +131,26 @@ describe('selectedOf and overridesOf', () => {
       denies: ['pos.bills.print'],
     });
     expect(overridesOf(role, role)).toEqual({ grants: [], denies: [] });
+  });
+
+  // ADR 0050 changes only the layout: what is saved for a role stays exactly the same.
+  it.each(SYSTEM_ROLES)('saves no changes for the %s role defaults', (systemRole) => {
+    const keys = systemRolePermissions(systemRole);
+    expect(JSON.stringify(overridesOf(keys, selectedOf(keys, { grants: [], denies: [] })))).toBe(
+      '{"grants":[],"denies":[]}',
+    );
+  });
+
+  it('saves the same payload as before the matrix layout change', () => {
+    const manager = systemRolePermissions('manager');
+    const selected = new Set(manager);
+    selected.delete('inventory.stock.adjust');
+    selected.delete('orders.picking.use');
+    selected.add('catalog.products.edit');
+    selected.add('platform.users.manage');
+    expect(JSON.stringify(overridesOf(manager, selected))).toBe(
+      '{"grants":["platform.users.manage","catalog.products.edit"],"denies":["inventory.stock.adjust","orders.picking.use"]}',
+    );
   });
 });
 
@@ -116,42 +194,42 @@ describe('generatePassword and whatsappUrl', () => {
   });
 });
 
-describe('crudRow (ADR 0037)', () => {
-  it("puts an entity's keys in its View, Create, Edit and Delete cells", () => {
+describe('teamRowActions and canToggle', () => {
+  it('never offers actions on yourself or without platform.users.manage', () => {
     expect(
-      crudRow([
-        'catalog.products.delete',
-        'catalog.products.read',
-        'catalog.products.edit',
-        'catalog.products.create',
-      ]),
-    ).toEqual({
-      cells: {
-        read: 'catalog.products.read',
-        create: 'catalog.products.create',
-        edit: 'catalog.products.edit',
-        delete: 'catalog.products.delete',
-      },
-      extra: [],
-    });
+      teamRowActions(
+        access(['platform.users.manage', 'pos.orders.read']),
+        member({ userId: 'me' }),
+      ),
+    ).toEqual({ self: true, canManage: false });
+    expect(teamRowActions(access(['pos.orders.read']), member()).canManage).toBe(false);
   });
 
-  it('leaves a cell empty when the entity has no such key, and keeps other keys', () => {
-    const row = crudRow([
-      'reservations.bookings.create',
-      'reservations.bookings.edit',
-      'reservations.bookings.arrive',
-    ]);
-    expect(row?.cells).toEqual({
-      read: null,
-      create: 'reservations.bookings.create',
-      edit: 'reservations.bookings.edit',
-      delete: null,
-    });
-    expect(row?.extra).toEqual(['reservations.bookings.arrive']);
+  it('compares the member by their effective keys', () => {
+    const manager = access(['platform.users.manage', 'pos.orders.read']);
+    expect(teamRowActions(manager, member()).canManage).toBe(true);
+    expect(
+      teamRowActions(manager, member({ permissions: ['pos.orders.read', 'catalog.products.edit'] }))
+        .canManage,
+    ).toBe(false);
   });
 
-  it('is null for a group without create, edit or delete keys (shown as a list)', () => {
-    expect(crudRow(['pos.orders.read', 'pos.orders.take'])).toBeNull();
+  it('lets you tick only keys you hold', () => {
+    expect(canToggle(access(['pos.orders.read']), 'pos.orders.read')).toBe(true);
+    expect(canToggle(access(['pos.orders.read']), 'catalog.products.edit')).toBe(false);
+  });
+});
+
+describe('generatePassword and whatsappUrl', () => {
+  it('makes an unambiguous password of the given length', () => {
+    const password = generatePassword(16, (bytes) => bytes.map((_, i) => i * 7));
+    expect(password).toHaveLength(16);
+    expect(password).not.toMatch(/[0O1lI]/);
+  });
+
+  it('puts the text into a wa.me link', () => {
+    expect(whatsappUrl('Join us: https://x.test/a#token=1')).toBe(
+      'https://wa.me/?text=Join%20us%3A%20https%3A%2F%2Fx.test%2Fa%23token%3D1',
+    );
   });
 });
