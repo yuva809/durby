@@ -1,8 +1,6 @@
 'use client';
 
 import {
-  PREP_STATIONS,
-  type PrepStation,
   type Product,
   type ProductCategory,
   type DishCost,
@@ -40,7 +38,6 @@ import { useAuth } from '../../app/providers';
 import {
   bulkCategories,
   bulkProducts,
-  createCategory,
   createProduct,
   loadCategories,
   loadProducts,
@@ -69,7 +66,10 @@ import { Select } from '../ui/select';
 import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { ArchiveToggle, Field, FormDialog } from '../form-dialog';
 import { BulkBar, type KeptRows } from './bulk-bar';
+import { CategoryDialog } from './category-dialog';
 import { ImportDialog } from './import-dialog';
+
+export { CategoryDialog };
 
 /** /catalog (docs/modules/catalog.md → Web). Editing needs `catalog.products.edit`. */
 export function CatalogPage() {
@@ -226,7 +226,10 @@ function Catalog({
                   testId="renumber-menu"
                 />
               )}
-              <CategoryDialog onDone={reload} />
+              <CategoryDialog
+                categories={categories.status === 'ready' ? categories.data : []}
+                onDone={reload}
+              />
               {openCategories.length > 0 && (
                 <ProductDialog categories={openCategories} onDone={reload} />
               )}
@@ -367,6 +370,7 @@ function Catalog({
                             }
                             onDone={reload}
                             draggable={canReorder}
+                            categories={categories.status === 'ready' ? categories.data : []}
                           />
                         ))}
                       </ul>
@@ -411,6 +415,7 @@ function CategoryRow({
   onPick,
   onDone,
   draggable,
+  categories,
 }: {
   category: ProductCategory;
   selected: boolean;
@@ -421,6 +426,8 @@ function CategoryRow({
   onDone: () => void;
   /** Its handle drags it to a new place in the menu (ADR 0043). */
   draggable: boolean;
+  /** All categories, for the edit dialog's secondary-category choice. */
+  categories: readonly ProductCategory[];
 }) {
   const t = useT();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -474,7 +481,7 @@ function CategoryRow({
       </div>
       {canManage && selected && (
         <div className="flex flex-wrap gap-2 px-2 pb-2">
-          <CategoryDialog category={category} onDone={onDone} />
+          <CategoryDialog category={category} categories={categories} onDone={onDone} />
           <ArchiveCategory category={category} onDone={onDone} />
         </div>
       )}
@@ -674,80 +681,6 @@ function ArchiveProduct({ product, onDone }: { product: Product; onDone: () => v
       run={(archived) => updateProduct(store, action, product.id, { archived })}
       onDone={onDone}
     />
-  );
-}
-
-/** Create (no `category`) or edit a category. Also used by /catalog/categories. */
-export function CategoryDialog({
-  category,
-  onDone,
-}: {
-  category?: ProductCategory;
-  onDone: () => void;
-}) {
-  const t = useT();
-  const { store } = useAuth();
-  const action = useActionKey();
-  const id = useId();
-  const [name, setName] = useState('');
-  const [station, setStation] = useState<PrepStation>('kitchen');
-  const [checked, setChecked] = useState(false);
-  const nameMissing = checked && name.trim() === '';
-
-  return (
-    <FormDialog
-      trigger={t(category ? 'catalog.page.edit' : 'catalog.page.createCategory')}
-      triggerVariant={category ? 'outline' : 'default'}
-      testId={category ? 'category-edit' : 'category-create'}
-      title={t(category ? 'catalog.page.editCategory' : 'catalog.page.createCategory')}
-      onOpen={() => {
-        setName(category?.name ?? '');
-        setStation(category?.station ?? 'kitchen');
-        setChecked(false);
-      }}
-      submit={() => {
-        setChecked(true);
-        if (name.trim() === '') return null;
-        const body = { name: name.trim(), station };
-        return category
-          ? updateCategory(store, action, category.id, body)
-          : createCategory(store, action, body);
-      }}
-      onDone={onDone}
-    >
-      <Field
-        id={`${id}-name`}
-        label={t('catalog.fields.name')}
-        problem={nameMissing ? t('catalog.page.nameRequired') : null}
-      >
-        <Input
-          id={`${id}-name`}
-          value={name}
-          maxLength={CATALOG_NAME_MAX_LENGTH}
-          aria-invalid={nameMissing || undefined}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </Field>
-      {/* Where its items print: drinks on the bar ticket (ADR 0025). */}
-      <Field id={`${id}-station`} label={t('catalog.fields.station')} problem={null}>
-        <Select
-          id={`${id}-station`}
-          value={station}
-          aria-describedby={`${id}-station-hint`}
-          onChange={(e) => setStation(e.target.value as PrepStation)}
-          data-testid="category-station-select"
-        >
-          {PREP_STATIONS.map((value) => (
-            <option key={value} value={value}>
-              {t(`catalog.stations.${value}`)}
-            </option>
-          ))}
-        </Select>
-        <p id={`${id}-station-hint`} className="text-sm text-muted-foreground">
-          {t('catalog.stations.hint')}
-        </p>
-      </Field>
-    </FormDialog>
   );
 }
 

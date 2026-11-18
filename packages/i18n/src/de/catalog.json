@@ -315,5 +315,15 @@
   "catalog.categoriesPage.intro": "Gruppieren Sie Ihre Produkte. Ziehen Sie eine Kategorie, um die Reihenfolge überall zu ändern.",
   "catalog.categoriesPage.products": "Produkte: {count}",
   "catalog.errors.categoryParentInvalid": "Diese Kategorie kann nicht Unterkategorie dieser sein. Wählen Sie eine Hauptkategorie, und nur für eine Kategorie ohne eigene Unterkategorien.",
-  "catalog.errors.categoryImageInvalid": "Das Bild muss eine WebP-, PNG- oder JPEG-Datei mit höchstens 300 KB sein."
+  "catalog.errors.categoryImageInvalid": "Das Bild muss eine WebP-, PNG- oder JPEG-Datei mit höchstens 300 KB sein.",
+  "catalog.categoryDialog.namePlaceholder": "z. B. Getränke",
+  "catalog.categoryDialog.description": "Beschreibung (optional)",
+  "catalog.categoryDialog.descriptionPlaceholder": "Was zu dieser Kategorie gehört",
+  "catalog.categoryDialog.parent": "Unterkategorie von (optional)",
+  "catalog.categoryDialog.noParent": "Keine (Hauptkategorie)",
+  "catalog.categoryDialog.parentLocked": "Diese Kategorie hat eigene Unterkategorien und bleibt daher Hauptkategorie.",
+  "catalog.categoryDialog.image": "Kachelbild (optional)",
+  "catalog.categoryDialog.imageAdd": "Bild",
+  "catalog.categoryDialog.imageHint": "Wird auf der Kachel der Kategorie auf der Lagerseite gezeigt. Wird passend verkleinert; ein transparenter Hintergrund wird weiß.",
+  "catalog.categoryDialog.imageRemove": "Bild entfernen"
 }
