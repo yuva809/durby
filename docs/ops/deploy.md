@@ -338,6 +338,9 @@ Redeploy by hand from GitHub: Actions → **Deploy** → _Run workflow_ on the b
 `bin/deploy.sh <sha>` on the server:
 
 0. **preflight:** checks that `.env` has every required secret (names any that are missing; nothing has changed yet);
+   on a stack with its own Caddy it then writes the generated sites (redirects, partner domains) and runs
+   `caddy validate` on the uploaded Caddyfile: an invalid one stops the deploy here with Caddy's message, before
+   anything is pulled, migrated or switched (the running Caddy keeps the config it has loaded);
 1. pulls the three images for `<sha>` (skipped if already on the host);
 2. starts Postgres and Redis and waits until healthy, then applies the idempotent superuser role script
    `postgres-init/02-rls-definer.sh`;
@@ -348,7 +351,8 @@ Redeploy by hand from GitHub: Actions → **Deploy** → _Run workflow_ on the b
    4b. starts the **outbox worker** (same api image, `node dist/worker.js`, healthcheck on a heartbeat file) if the
    image has the label `org.durby.worker`; for an older image it removes the worker service. If the new worker does
    not become healthy, it restores the previous api, web and worker and fails;
-5. starts/reloads Caddy (picks up Caddyfile changes);
+5. starts/reloads Caddy (picks up Caddyfile changes) and logs the reload's output; a failed reload fails the deploy
+   (the old edge config stays live, the new api and web are already running);
 6. records the release in `state/` and deletes images older than the last 5 releases.
 
 Deploys are serialized: one at a time in GitHub (`concurrency`) and on the server (`flock`).
