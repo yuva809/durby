@@ -261,4 +261,21 @@ describe('category dialog (ADR 0048)', () => {
     expect(screen.getByTestId('category-station-select')).toBeTruthy();
     expect(screen.getByTestId('category-parent')).toHaveProperty('disabled', true);
   });
+
+  it('offers Request stock to those who may request goods, with orders on', async () => {
+    signedIn();
+    api();
+    render(<InventoryPage />, { wrapper: operations });
+    const request = await screen.findByTestId('inventory-request-stock');
+    expect(request.getAttribute('href')).toBe('/requests/new');
+    expect(request.textContent).toBe('Request stock');
+    cleanup();
+
+    // Without orders there are no requests.
+    signedIn(['inventory', 'catalog']);
+    api();
+    render(<InventoryPage />, { wrapper: operations });
+    await screen.findAllByTestId('category-tile');
+    expect(screen.queryByTestId('inventory-request-stock')).toBeNull();
+  });
 });
