@@ -41,16 +41,14 @@ export class WorkspaceService {
       catalog ? this.catalog.searchProducts(q) : [],
       orders ? this.orders.search(q) : [],
       users
-        ? this.members
-            .search(asTenantDb(this.db), q, SEARCH_LIMIT_PER_TYPE)
-            .then((rows) =>
-              rows.map((m): SearchResult => ({
-                type: 'member',
-                id: m.userId,
-                title: m.name,
-                subtitle: null,
-              })),
-            )
+        ? this.members.search(asTenantDb(this.db), q, SEARCH_LIMIT_PER_TYPE).then((rows) =>
+            rows.map((m): SearchResult => ({
+              type: 'member',
+              id: m.userId,
+              title: m.name,
+              subtitle: null,
+            })),
+          )
         : [],
     ]);
     return parts.flat();

@@ -479,11 +479,12 @@ export class SalesOrdersService {
     if (
       !warehouse ||
       warehouse.archivedAt ||
-      !(await this.access.can('orders.orders.read', { locationId: warehouse.locationId }))
+      !(await this.access.canAtWarehouse('orders.orders.read', warehouse))
     ) {
       throw ordersErrors.warehouseNotFound();
     }
-    await this.access.assert(key, { locationId: warehouse.locationId });
+    // At the warehouse, and one of the caller's when they are limited to some (ADR 0057).
+    await this.access.assertAtWarehouse(key, warehouse);
     return warehouse;
   }
 }

@@ -23,6 +23,12 @@ export const rbacErrors = {
       'rbac.cannot_change_self',
       'You cannot change or remove your own membership.',
     ),
+  warehouseInvalid: () =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'rbac.warehouse_invalid',
+      "A warehouse is unknown, archived, the transit one, or not at one of the member's locations.",
+    ),
   passwordNotSettable: () =>
     new ApiError(
       HttpStatus.FORBIDDEN,

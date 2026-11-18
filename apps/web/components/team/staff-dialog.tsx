@@ -9,6 +9,7 @@ import {
   type PermissionKey,
   type Role,
   type TeamMember,
+  type Warehouse,
 } from '@durby/shared';
 import { CheckCircle2, Info, KeyRound, Lock, Mail } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
@@ -41,6 +42,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { PasswordInput } from '../ui/password-input';
 import { Select } from '../ui/select';
+import { useNavLayout } from '../theme-provider';
 import { ShareLink } from './share-link';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -74,6 +76,7 @@ export function StaffDialog({
   activeFeatures,
   organizationName,
   passwordsFinal = false,
+  warehouses = null,
   onSaved,
 }: {
   /** Absent: add someone. */
@@ -87,6 +90,8 @@ export function StaffDialog({
   access: UsersAccess;
   activeFeatures: readonly string[];
   organizationName: string;
+  /** The warehouses a member may be limited to (ADR 0057); null: not offered. */
+  warehouses?: readonly Warehouse[] | null;
   /** Owners and admins set staff passwords (team.adminsManageSignIn, ADR 0052): the one given here is final. */
   passwordsFinal?: boolean;
   onSaved: () => void;
@@ -128,6 +133,7 @@ export function StaffDialog({
             access={access}
             activeFeatures={activeFeatures}
             passwordsFinal={passwordsFinal}
+            warehouses={warehouses}
             onSaved={(r) => {
               onSaved();
               if (r) setResult(r);
@@ -149,6 +155,7 @@ function StaffForm({
   access,
   activeFeatures,
   passwordsFinal,
+  warehouses,
   onSaved,
   onCancel,
 }: {
@@ -159,10 +166,13 @@ function StaffForm({
   access: UsersAccess;
   activeFeatures: readonly string[];
   passwordsFinal: boolean;
+  warehouses: readonly Warehouse[] | null;
   onSaved: (result: Result | null) => void;
   onCancel: () => void;
 }) {
   const t = useT();
+  // The operations menu (AsiaMight, ADR 0057): Branch Access and Warehouse Access as ticks, none = all.
+  const operations = useNavLayout() === 'operations';
   const { store } = useAuth();
   const action = useActionKey();
   const id = useId();
@@ -192,6 +202,7 @@ function StaffForm({
   );
   const [allLocations, setAllLocations] = useState(member?.allLocations ?? true);
   const [locationIds, setLocationIds] = useState<string[]>(member?.locationIds ?? []);
+  const [warehouseIds, setWarehouseIds] = useState<string[]>(member?.warehouseIds ?? []);
   const role = roles.find((r) => r.id === roleId);
   const roleKeys = useMemo(() => new Set(role?.permissions ?? []), [role]);
   const [selected, setSelected] = useState<Set<string>>(() =>
@@ -201,6 +212,13 @@ function StaffForm({
   const [busy, setBusy] = useState(false);
 
   const owner = role?.systemKey === 'owner';
+  const branchesChosen = operations ? locationIds : allLocations ? [] : locationIds;
+  const offeredWarehouses = (warehouses ?? []).filter(
+    (w) =>
+      w.archivedAt === null &&
+      !w.isTransit &&
+      (branchesChosen.length === 0 || branchesChosen.includes(w.locationId)),
+  );
   const { sections, hiddenModules } = permissionMatrix(activeFeatures);
   const visibleKeys = sections.flatMap((s) => s.keys);
   const toggleable = new Set<string>(visibleKeys.filter((key) => canToggle(access, key)));
@@ -236,11 +254,25 @@ function StaffForm({
         t('platform.team.dialog.passwordTooShort', { min: String(PASSWORD_MIN_LENGTH) }),
       );
     }
-    if (!allLocations && locationIds.length === 0) {
+    if (!operations && !allLocations && locationIds.length === 0) {
       return setProblem(t('platform.members.form.locationsRequired'));
     }
     const overrides = owner ? { grants: [], denies: [] } : overridesOf(roleKeys, selected);
-    const scope = allLocations ? null : locationIds;
+    const scope = operations
+      ? owner || locationIds.length === 0
+        ? null
+        : locationIds
+      : allLocations
+        ? null
+        : locationIds;
+    const chosenWarehouses = owner
+      ? []
+      : warehouseIds.filter((wid) => offeredWarehouses.some((w) => w.id === wid));
+    // Warehouses only where they can be set: the operations menu, with the account there (not an invitation).
+    const warehouseScope =
+      operations && warehouses && (editing || password)
+        ? { warehouseIds: chosenWarehouses.length > 0 ? chosenWarehouses : null }
+        : {};
     setBusy(true);
     if (editing) {
       const res = await updateTeamMember(store, action, member.membershipId, {
@@ -248,6 +280,7 @@ function StaffForm({
         phone: phone.trim() || null,
         roleId,
         locationIds: scope,
+        ...warehouseScope,
         ...overrides,
       });
       setBusy(false);
@@ -261,6 +294,7 @@ function StaffForm({
       ...(phone.trim() && { phone: phone.trim() }),
       roleId,
       locationIds: scope,
+      ...warehouseScope,
       ...overrides,
       ...(password && { temporaryPassword: password }),
       sendEmail,
@@ -454,7 +488,19 @@ function StaffForm({
             </div>
           </fieldset>
 
-          {locations && locations.length > 0 && (
+          {operations && locations && locations.length > 0 && (
+            <BranchAccess
+              locations={locations}
+              locationIds={locationIds}
+              onLocationIds={setLocationIds}
+              owner={owner}
+              warehouses={warehouses && (editing || password) ? offeredWarehouses : null}
+              warehousesLater={Boolean(warehouses) && !editing && !password}
+              warehouseIds={warehouseIds}
+              onWarehouseIds={setWarehouseIds}
+            />
+          )}
+          {!operations && locations && locations.length > 0 && (
             <fieldset className="flex flex-col gap-1">
               <legend className="mb-1.5 text-sm font-medium">
                 {t('platform.team.dialog.locations')}
@@ -836,5 +882,96 @@ function ResultView({
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Branch Access and Warehouse Access (ADR 0057), in the operations menu: ticks, none = every branch / every warehouse at
+ * their branches. Owners work everywhere. Warehouses are grouped by branch and can be set once the account exists.
+ */
+function BranchAccess({
+  locations,
+  locationIds,
+  onLocationIds,
+  owner,
+  warehouses,
+  warehousesLater,
+  warehouseIds,
+  onWarehouseIds,
+}: {
+  locations: readonly LocationSummary[];
+  locationIds: readonly string[];
+  onLocationIds: (ids: string[]) => void;
+  owner: boolean;
+  warehouses: readonly Warehouse[] | null;
+  warehousesLater: boolean;
+  warehouseIds: readonly string[];
+  onWarehouseIds: (ids: string[]) => void;
+}) {
+  const t = useT();
+  const toggle = (list: readonly string[], value: string, on: boolean) =>
+    on ? [...list, value] : list.filter((x) => x !== value);
+  const byBranch = locations
+    .map((l) => ({ location: l, list: (warehouses ?? []).filter((w) => w.locationId === l.id) }))
+    .filter((g) => g.list.length > 0);
+  return (
+    <>
+      <fieldset className="flex flex-col gap-1" data-testid="team-branch-access">
+        <legend className="text-sm font-medium">{t('platform.team.dialog.branchAccess')}</legend>
+        <p className="mb-1 text-xs text-muted-foreground">
+          {t(
+            owner
+              ? 'platform.team.dialog.ownerEverywhere'
+              : 'platform.team.dialog.branchAccessHint',
+          )}
+        </p>
+        {!owner &&
+          locations.map((location) => (
+            <label key={location.id} className="flex min-h-11 items-center gap-3 text-sm">
+              <Checkbox
+                checked={locationIds.includes(location.id)}
+                onCheckedChange={(v) => onLocationIds(toggle(locationIds, location.id, v === true))}
+                data-testid="team-branch"
+                data-id={location.id}
+              />
+              {location.name}
+            </label>
+          ))}
+      </fieldset>
+      {!owner && (warehouses || warehousesLater) && (
+        <fieldset className="flex flex-col gap-1" data-testid="team-warehouse-access">
+          <legend className="text-sm font-medium">
+            {t('platform.team.dialog.warehouseAccess')}
+          </legend>
+          <p className="mb-1 text-xs text-muted-foreground">
+            {t(
+              warehousesLater
+                ? 'platform.team.dialog.warehouseAccessLater'
+                : 'platform.team.dialog.warehouseAccessHint',
+            )}
+          </p>
+          {byBranch.map(({ location, list }) => (
+            <div key={location.id} className="flex flex-col">
+              {byBranch.length > 1 && (
+                <span className="pt-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  {location.name}
+                </span>
+              )}
+              {list.map((w) => (
+                <label key={w.id} className="flex min-h-11 items-center gap-3 text-sm">
+                  <Checkbox
+                    checked={warehouseIds.includes(w.id)}
+                    onCheckedChange={(v) => onWarehouseIds(toggle(warehouseIds, w.id, v === true))}
+                    data-testid="team-warehouse"
+                    data-id={w.id}
+                  />
+                  {w.name}
+                </label>
+              ))}
+            </div>
+          ))}
+        </fieldset>
+      )}
+    </>
   );
 }

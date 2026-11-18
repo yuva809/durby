@@ -17,6 +17,11 @@ export interface ResolvedAccess {
   allLocations: boolean;
   /** The locations of a location-limited membership (empty when allLocations). */
   locationIds: ReadonlySet<string>;
+  /**
+   * The warehouses the member may work in (ADR 0057), or null: every warehouse at their locations. Owners are never
+   * limited.
+   */
+  warehouseIds: ReadonlySet<string> | null;
 }
 
 export const NO_ACCESS: ResolvedAccess = Object.freeze({
@@ -29,6 +34,7 @@ export const NO_ACCESS: ResolvedAccess = Object.freeze({
   permissions: new Set<string>(),
   allLocations: false,
   locationIds: new Set<string>(),
+  warehouseIds: new Set<string>(),
 });
 
 /** The membership as loaded for resolution (see AccessService). */
@@ -42,6 +48,8 @@ export interface MembershipAccessRow {
     permissions: readonly { permissionKey: string }[];
   } | null;
   locations: readonly { locationId: string }[];
+  /** The member's warehouses (ADR 0057); empty or absent: every warehouse at their locations. */
+  warehouseIds?: readonly string[];
   /** Per-member overrides (ADR 0023 §1); absent in rows loaded before them. */
   permissions?: readonly { permissionKey: string; effect: 'grant' | 'deny' }[];
   /** A deactivated membership has no access (ADR 0023 §6). */
@@ -134,7 +142,27 @@ export function resolveAccess(
     permissions,
     allLocations: row.allLocations,
     locationIds: new Set(row.allLocations ? [] : row.locations.map((l) => l.locationId)),
+    warehouseIds:
+      row.role?.systemKey === 'owner' || !row.warehouseIds || row.warehouseIds.length === 0
+        ? null
+        : new Set(row.warehouseIds),
   };
+}
+
+/**
+ * `key` for work in a warehouse (ADR 0057): at its location, and the warehouse among the member's when they are
+ * limited to some.
+ */
+export function holdsAtWarehouse(
+  access: ResolvedAccess,
+  registry: PermissionRegistry,
+  key: string,
+  warehouse: { id: string; locationId: string },
+): boolean {
+  return (
+    holds(access, registry, key, warehouse.locationId) &&
+    (access.warehouseIds === null || access.warehouseIds.has(warehouse.id))
+  );
 }
 
 /**

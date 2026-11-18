@@ -55,6 +55,7 @@ const member = (n: number, over: Partial<TeamMember>): TeamMember => ({
   role: roleRef('branch', 1),
   allLocations: false,
   locationIds: [],
+  warehouseIds: [],
   grants: [],
   denies: [],
   permissions: [],

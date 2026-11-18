@@ -1059,5 +1059,13 @@
   "platform.branchesPage.noMatch": "No branches match.",
   "platform.settings.ordersRequestsNeedApproval.name": "Stock transfers need approval",
   "platform.settings.ordersRequestsNeedApproval.description": "On: a branch's stock request waits for an owner or admin. Off: it is approved as it is sent and goes straight to the warehouse.",
-  "platform.audit.fields.address": "Address"
+  "platform.audit.fields.address": "Address",
+  "platform.team.dialog.branchAccess": "Branch Access",
+  "platform.team.dialog.branchAccessHint": "No tick: every branch.",
+  "platform.team.dialog.ownerEverywhere": "Owners work at every branch and in every warehouse.",
+  "platform.team.dialog.warehouseAccess": "Warehouse Access",
+  "platform.team.dialog.warehouseAccessHint": "No tick: every warehouse at their branches. With ticks, stock, invoices, picking and receiving only there.",
+  "platform.team.dialog.warehouseAccessLater": "Warehouse access can be set once they have joined.",
+  "platform.errors.warehouseInvalid": "A chosen warehouse is unknown, archived, or not at one of the person's branches.",
+  "platform.audit.fields.warehouseIds": "Warehouses"
 }

@@ -30,6 +30,7 @@ import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import type { Session } from '../../lib/auth/session';
 import { roleName } from '../../lib/rbac/roles';
+import { loadWarehouses } from '../../lib/inventory/api';
 import { loadSettings } from '../../lib/settings/api';
 import { loadTeam, setTeamMemberActive } from '../../lib/team/api';
 import { teamRowActions } from '../../lib/team/matrix';
@@ -87,6 +88,14 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
   const [team, reload] = useResource(org, () => loadTeam(store));
   const [roles] = useResource(access.canReadRoles ? org : null, () => loadRoles(store));
   const [locations] = useResource(org, () => loadLocations(store));
+  // For Warehouse Access in the staff dialog (ADR 0057): only with inventory and the right to see stock.
+  const [warehouses] = useResource(
+    session.activeFeatures.includes('inventory') &&
+      session.activePermissions.includes('inventory.stock.read')
+      ? org
+      : null,
+    () => loadWarehouses(store),
+  );
   // Passwords set by owners and admins are final (ADR 0052); unreadable settings: the usual temporary ones.
   const [settings] = useResource(org, () => loadSettings(store));
   const passwordsFinal =
@@ -297,6 +306,7 @@ function Team({ session, access }: { session: Session; access: UsersAccess }) {
           activeFeatures={session.activeFeatures}
           organizationName={organizationName}
           passwordsFinal={passwordsFinal}
+          warehouses={warehouses.status === 'ready' ? warehouses.data : null}
           onSaved={reload}
         />
       )}

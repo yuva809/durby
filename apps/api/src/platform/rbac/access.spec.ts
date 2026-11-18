@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   holds,
   holdsAnywhere,
+  holdsAtWarehouse,
   type MembershipAccessRow,
   resolveAccess,
   roleKeysOf,
@@ -169,5 +170,51 @@ describe('per-member overrides and deactivation (ADR 0023)', () => {
     );
     expect(access.membershipId).toBeNull();
     expect(access.permissions.size).toBe(0);
+  });
+});
+
+describe('holdsAtWarehouse (ADR 0057)', () => {
+  const A = { id: 'W-A', locationId: 'L1' };
+  const B = { id: 'W-B', locationId: 'L1' };
+  const elsewhere = { id: 'W-C', locationId: 'L2' };
+
+  it('limits a member with warehouses to those, at their locations', () => {
+    const limited = resolveAccess(
+      registry,
+      row({
+        allLocations: false,
+        role: custom(['test.stock.adjust']),
+        locations: [{ locationId: 'L1' }],
+        warehouseIds: ['W-A'],
+      }),
+    );
+    expect(limited.warehouseIds).toEqual(new Set(['W-A']));
+    expect(holdsAtWarehouse(limited, registry, 'test.stock.adjust', A)).toBe(true);
+    expect(holdsAtWarehouse(limited, registry, 'test.stock.adjust', B)).toBe(false);
+    expect(holdsAtWarehouse(limited, registry, 'test.stock.adjust', elsewhere)).toBe(false);
+    // The location rule still applies: a warehouse id alone never opens another location.
+    expect(holds(limited, registry, 'test.stock.adjust', 'L1')).toBe(true);
+  });
+
+  it('lets a member without warehouses use every warehouse at their locations', () => {
+    const plain = resolveAccess(
+      registry,
+      row({
+        allLocations: false,
+        role: custom(['test.stock.adjust']),
+        locations: [{ locationId: 'L1' }],
+      }),
+    );
+    expect(plain.warehouseIds).toBeNull();
+    expect(holdsAtWarehouse(plain, registry, 'test.stock.adjust', B)).toBe(true);
+    expect(holdsAtWarehouse(plain, registry, 'test.stock.adjust', elsewhere)).toBe(false);
+  });
+
+  it('never limits an owner, whatever is stored', () => {
+    const owner = resolveAccess(
+      registry,
+      row({ role: { id: 'r', systemKey: 'owner', permissions: [] }, warehouseIds: ['W-A'] }),
+    );
+    expect(owner.warehouseIds).toBeNull();
   });
 });

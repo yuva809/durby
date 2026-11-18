@@ -43,6 +43,7 @@ const member = (over: Partial<TeamMember> = {}): TeamMember => ({
   role: { id: '0190a000-0000-7000-8000-000000000601', systemKey: 'waiter', name: null },
   allLocations: true,
   locationIds: [],
+  warehouseIds: [],
   grants: [],
   denies: [],
   permissions: ['pos.orders.read'],

@@ -511,10 +511,10 @@ export class StockService {
     if (!row) throw inventoryErrors.documentNotFound();
     const warehouses = await this.db.warehouse.findMany({
       where: { id: { in: [row.warehouseId, row.toWarehouseId].filter((w): w is string => !!w) } },
-      select: { locationId: true },
+      select: { id: true, locationId: true, isTransit: true },
     });
     const readable = await Promise.all(
-      warehouses.map((w) => this.access.can('inventory.stock.read', { locationId: w.locationId })),
+      warehouses.map((w) => this.canInWarehouse('inventory.stock.read', w)),
     );
     if (!readable.some(Boolean)) throw inventoryErrors.documentNotFound();
     return documentResponse(row);
@@ -524,9 +524,12 @@ export class StockService {
   private async readableWarehouses(query: { locationId?: string; warehouseId?: string }) {
     const scope = await this.access.locationIdsFor('inventory.stock.read');
     if (scope !== 'all' && scope.length === 0) return [];
+    const own = await this.access.warehouseIds();
     const rows = await this.db.warehouse.findMany({
       where: {
         ...(scope === 'all' ? {} : { locationId: { in: scope } }),
+        // Limited to some warehouses (ADR 0057): those only.
+        ...(own ? { id: { in: [...own] } } : {}),
         ...(query.locationId ? { locationId: query.locationId } : {}),
         ...(query.warehouseId ? { id: query.warehouseId } : {}),
       },
@@ -539,17 +542,32 @@ export class StockService {
   private async usableWarehouse(id: string, key: PermissionKey): Promise<WarehouseRef> {
     const warehouse = await this.db.warehouse.findUnique({
       where: { id },
-      select: { id: true, locationId: true, archivedAt: true },
+      select: { id: true, locationId: true, archivedAt: true, isTransit: true },
     });
     if (
       !warehouse ||
       warehouse.archivedAt ||
-      !(await this.access.can('inventory.stock.read', { locationId: warehouse.locationId }))
+      !(await this.canInWarehouse('inventory.stock.read', warehouse))
     ) {
       throw inventoryErrors.warehouseNotFound();
     }
-    await this.access.assert(key, { locationId: warehouse.locationId });
-    return warehouse;
+    // The transit warehouse is everybody's road between warehouses: its location decides (ADR 0057).
+    if (warehouse.isTransit) await this.access.assert(key, { locationId: warehouse.locationId });
+    else await this.access.assertAtWarehouse(key, warehouse);
+    return { id: warehouse.id, locationId: warehouse.locationId };
+  }
+
+  /**
+   * `key` for work in a warehouse (ADR 0057): at its location and, for a member limited to some warehouses, one of
+   * theirs. The transit warehouse is everybody's road between warehouses: its location decides.
+   */
+  private canInWarehouse(
+    key: PermissionKey,
+    warehouse: { id: string; locationId: string; isTransit: boolean },
+  ): Promise<boolean> {
+    return warehouse.isTransit
+      ? this.access.can(key, { locationId: warehouse.locationId })
+      : this.access.canAtWarehouse(key, warehouse);
   }
 
   private async post(input: {
@@ -805,9 +823,15 @@ export class StockService {
   async importOpeningStock(body: ImportOpeningStockRequest): Promise<DataImportResult> {
     const { tenantId, userId } = this.tenantContext.require();
     const scope = await this.access.locationIdsFor('inventory.stock.receive');
+    const own = await this.access.warehouseIds();
     const [warehouses, items] = await Promise.all([
       this.db.warehouse.findMany({
-        where: { archivedAt: null, ...(scope === 'all' ? {} : { locationId: { in: scope } }) },
+        where: {
+          archivedAt: null,
+          ...(scope === 'all' ? {} : { locationId: { in: scope } }),
+          // Limited to some warehouses (ADR 0057): those only.
+          ...(own ? { id: { in: [...own] } } : {}),
+        },
         select: { id: true, name: true, locationId: true },
       }),
       this.db.stockItem.findMany({
