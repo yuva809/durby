@@ -47,7 +47,15 @@ ticked (tooltip "Grant View first"), and unticking View clears the row's other a
 section and Select all ticks add actions only where View ends up ticked; locked boxes are never changed. Rows without
 a View box are unchanged. It is a screen rule (`tickOne`, `tickMany`, `blockedByView` in `apps/web/lib/team/matrix.ts`):
 no key, api or stored-data change, and an action saved without View keeps its tick (it can be unticked, not ticked
-again) until someone changes it. The Roles page editor doesn't apply it yet.
+again) until someone changes it.
+
+**One matrix for staff and roles (2026-11-18, [#129](https://github.com/yuva809/durby/issues/129)).** The matrix is one
+component, `PermissionMatrix` in `apps/web/components/team/permission-matrix.tsx`, used by Add/Edit Staff and by the
+Roles page editor (create and edit a custom role). So the Roles editor has the same sections, rows and cells, the same
+"Grant View first" rule, locked keys you don't hold, switched-off modules hidden (their keys kept) and the sticky
+column and section headers. Saving a role keeps its keys in their saved order and adds new ones in registry order, so
+an unchanged save sends the same list; the dot marks boxes that differ from the saved role. The read-only role cards
+keep their grouped list with the "per location" badge.
 
 ## Consequences
 

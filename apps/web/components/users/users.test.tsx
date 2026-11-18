@@ -296,15 +296,196 @@ describe('RolesPage', () => {
     expect(within(cards[3]!).getAllByText('per location')).toHaveLength(8);
   });
 
-  it('offers only held keys in the editor', async () => {
+  /** Roles plus custom ones; records the role writes and answers them with the saved role. */
+  function rolesApi(custom: Role[] = []) {
+    const sent: { method: string; path: string; body: { name: string; permissions: string[] } }[] =
+      [];
+    mockState.store.apiFetch.mockImplementation((input: string, init?: RequestInit) => {
+      const path = input.replace(/\?.*$/, '');
+      const method = init?.method ?? 'GET';
+      if (method !== 'GET') {
+        const body = JSON.parse(init!.body as string) as { name: string; permissions: string[] };
+        sent.push({ method, path, body });
+        return Promise.resolve(
+          Response.json({
+            id: id(90),
+            systemKey: null,
+            name: body.name,
+            permissions: body.permissions,
+          }),
+        );
+      }
+      if (path === '/api/v1/roles')
+        return Promise.resolve(Response.json({ data: [...ROLES, ...custom] }));
+      return Promise.resolve(Response.json({ data: [] }));
+    });
+    return sent;
+  }
+
+  function adminWith(features: string[]) {
     signedInAs('admin');
-    api(defaults);
+    mockState.session = { ...mockState.session!, activeFeatures: features };
+  }
+
+  const box = (key: string) =>
+    within(screen.getByTestId('role-dialog'))
+      .getAllByTestId('team-permission')
+      .find((b) => b.dataset.key === key)! as HTMLButtonElement;
+
+  async function openEditor(name?: string) {
+    if (name) {
+      const card = (await screen.findAllByTestId('role-card')).find(
+        (c) => c.dataset.role === name,
+      )!;
+      await userEvent.click(within(card).getByTestId('role-edit'));
+    } else {
+      await userEvent.click(await screen.findByTestId('role-create'));
+    }
+    return screen.findByTestId('role-dialog');
+  }
+
+  it('edits a role in the same View / Create / Edit / Delete matrix as Manage Staff', async () => {
+    adminWith(['catalog']);
+    rolesApi();
     render(<RolesPage />);
-    await userEvent.click(await screen.findByTestId('role-create'));
-    const held = screen.getByTestId('permission-platform.users.edit');
-    const notHeld = screen.getByTestId('permission-platform.org.manage');
-    expect((held as HTMLButtonElement).disabled).toBe(false);
-    expect((notHeld as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("Your role doesn't include this")).toBeTruthy();
+    const dialog = await openEditor();
+    const sections = within(dialog).getAllByTestId('team-matrix-section');
+    // Platform first, then the enabled modules only; switched-off ones are named under the matrix.
+    expect(sections.map((s) => s.dataset.section)).toEqual(['platform', 'catalog']);
+    expect(within(dialog).getByText(/switched off for this organization/)).toBeTruthy();
+    const products = within(dialog)
+      .getAllByTestId('team-matrix-row')
+      .find((r) => r.dataset.area === 'catalog.products')!;
+    expect(
+      within(products)
+        .getAllByTestId('team-permission')
+        .map((b) => b.closest('[data-column]')!.getAttribute('data-column')),
+    ).toEqual(['read', 'create', 'edit', 'delete']);
+    // A key the admin doesn't hold is locked.
+    expect(box('platform.org.manage').disabled).toBe(true);
+    expect(box('platform.org.read').disabled).toBe(false);
+    expect(within(dialog).getByTestId('team-matrix-header').className).toMatch(/\bsticky\b/);
+  });
+
+  it('Grant View first: actions wait for View, unticking View clears the row', async () => {
+    adminWith(['catalog']);
+    rolesApi();
+    render(<RolesPage />);
+    await openEditor();
+    const edit = box('catalog.products.edit');
+    expect(edit.disabled).toBe(true);
+    expect(edit.dataset.blocked).toBe('true');
+    expect(edit.getAttribute('aria-label')).toMatch(/Grant View first/);
+    await userEvent.click(box('catalog.products.read'));
+    expect(box('catalog.products.edit').disabled).toBe(false);
+    await userEvent.click(box('catalog.products.edit'));
+    await userEvent.click(box('catalog.products.delete'));
+    expect(box('catalog.products.edit').dataset.state).toBe('checked');
+    await userEvent.click(box('catalog.products.read'));
+    for (const key of [
+      'catalog.products.read',
+      'catalog.products.edit',
+      'catalog.products.delete',
+    ]) {
+      expect(box(key).dataset.state).toBe('unchecked');
+    }
+    expect(box('catalog.products.edit').disabled).toBe(true);
+  });
+
+  it('ticks a section, Select all and Clear consistently: no action without its View', async () => {
+    adminWith(['catalog']);
+    rolesApi();
+    render(<RolesPage />);
+    const dialog = await openEditor();
+    const section = within(dialog)
+      .getAllByTestId('team-permission-section')
+      .find((b) => b.dataset.section === 'catalog')!;
+    await userEvent.click(section);
+    for (const key of [
+      'catalog.products.read',
+      'catalog.products.create',
+      'catalog.products.delete',
+    ]) {
+      expect(box(key).dataset.state).toBe('checked');
+    }
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Select all' }));
+    expect(box('platform.users.read').dataset.state).toBe('checked');
+    expect(box('platform.users.edit').dataset.state).toBe('checked');
+    // The key the admin doesn't hold stays as it was.
+    expect(box('platform.org.manage').dataset.state).toBe('unchecked');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Clear' }));
+    expect(within(dialog).getByTestId('role-selected-count').textContent).toBe('0 selected');
+  });
+
+  it('keeps an old role with an action but no View as it is until someone changes it', async () => {
+    adminWith(['catalog']);
+    const legacy: Role = {
+      id: id(6),
+      systemKey: null,
+      name: 'Legacy',
+      permissions: ['catalog.products.edit'],
+    };
+    const sent = rolesApi([legacy]);
+    render(<RolesPage />);
+    await openEditor('Legacy');
+    const edit = box('catalog.products.edit');
+    expect(edit.dataset.state).toBe('checked');
+    expect(edit.disabled).toBe(false);
+    await userEvent.click(screen.getByTestId('role-save'));
+    expect(sent).toEqual([
+      {
+        method: 'PATCH',
+        path: `/api/v1/roles/${id(6)}`,
+        body: { name: 'Legacy', permissions: ['catalog.products.edit'] },
+      },
+    ]);
+    // Unticking it works; ticking it again then needs View first.
+    await openEditor('Legacy');
+    await userEvent.click(box('catalog.products.edit'));
+    expect(box('catalog.products.edit').dataset.state).toBe('unchecked');
+    expect(box('catalog.products.edit').disabled).toBe(true);
+  });
+
+  it('saves an unchanged custom role with exactly the keys it has, in their order', async () => {
+    // orders is switched off: its key is hidden but kept.
+    adminWith(['catalog']);
+    const keys = [
+      'platform.audit.read',
+      'catalog.products.read',
+      'orders.orders.read',
+      'platform.users.read',
+    ];
+    const custom: Role = { id: id(7), systemKey: null, name: 'Mixed', permissions: keys };
+    const sent = rolesApi([custom]);
+    render(<RolesPage />);
+    await openEditor('Mixed');
+    expect(screen.queryAllByTestId('team-permission-changed')).toHaveLength(0);
+    await userEvent.click(screen.getByTestId('role-save'));
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.body).toEqual({ name: 'Mixed', permissions: keys });
+  });
+
+  it('creates a role with the ticked keys in registry order', async () => {
+    adminWith(['catalog']);
+    const sent = rolesApi();
+    render(<RolesPage />);
+    const dialog = await openEditor();
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'Stock clerk');
+    await userEvent.click(box('catalog.products.read'));
+    await userEvent.click(box('catalog.products.edit'));
+    await userEvent.click(box('platform.audit.read'));
+    // Nothing is saved yet for a new role, so nothing is marked as changed.
+    expect(screen.queryAllByTestId('team-permission-changed')).toHaveLength(0);
+    await userEvent.click(screen.getByTestId('role-save'));
+    expect(sent).toEqual([
+      {
+        method: 'POST',
+        path: '/api/v1/roles',
+        body: {
+          name: 'Stock clerk',
+          permissions: ['platform.audit.read', 'catalog.products.read', 'catalog.products.edit'],
+        },
+      },
+    ]);
   });
 });
