@@ -2,10 +2,14 @@ import {
   type AttentionKind,
   type AttentionResponse,
   attentionResponseSchema,
+  type NotificationListResponse,
+  notificationListResponseSchema,
+  notificationPath,
   type SearchResult,
   searchResponseSchema,
 } from '@durby/shared';
-import { type Api, list, read, type Result } from '../api-call';
+import { type Api, list, read, type Result, write } from '../api-call';
+import { ActionKey } from '../idempotency';
 
 /** The top bar's calls (ADR 0046) and where each result or item leads. */
 
@@ -44,6 +48,21 @@ export const ATTENTION_HREF: Readonly<Record<AttentionKind, string>> = {
   draft_orders: '/orders',
   low_stock: '/inventory',
 };
+
+// --- Updates: stored notifications (ADR 0047) ------------------------------------------------------------------
+
+export const loadNotifications = (store: Api): Promise<Result<NotificationListResponse>> =>
+  read(store, '/api/v1/notifications', notificationListResponseSchema);
+
+/** Each click is its own action: a fresh key per call. */
+export const markNotificationRead = (store: Api, id: string) =>
+  write(store, new ActionKey(), `/api/v1/notifications/${id}/read`, 'POST');
+
+export const markAllNotificationsRead = (store: Api) =>
+  write(store, new ActionKey(), '/api/v1/notifications/read-all', 'POST');
+
+/** Where an update leads (shared with the email and push links). */
+export const notificationHref = notificationPath;
 
 /** `requests_to_approve` → `requestsToApprove`: label keys are camelCase. */
 export const camel = (value: string) =>

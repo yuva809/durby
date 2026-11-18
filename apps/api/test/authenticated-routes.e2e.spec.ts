@@ -44,6 +44,10 @@ describe('route markers', () => {
       'GET /api/v1/auth/me',
       // ADR 0009 §6: reads only the token's active organization's features, for a member.
       'GET /api/v1/me/entitlements',
+      // ADR 0047: the caller's own notifications and choices in the active organization; every query names the caller.
+      'GET /api/v1/notifications',
+      'GET /api/v1/notifications/preferences',
+      'GET /api/v1/notifications/push',
       'GET /api/v1/search',
       // ADR 0045: a request is seen by its branch, its warehouse, approvers and its driver; the service filters.
       'GET /api/v1/stock-requests',
@@ -55,6 +59,12 @@ describe('route markers', () => {
       'POST /api/v1/auth/switch-organization',
       // ADR 0007: writes only the caller's own membership, in the tenant the invitation proves.
       'POST /api/v1/invitations/accept-signed-in',
+      'POST /api/v1/notifications/:id/read',
+      'POST /api/v1/notifications/push/status',
+      'POST /api/v1/notifications/push/subscribe',
+      'POST /api/v1/notifications/push/unsubscribe',
+      'POST /api/v1/notifications/read-all',
+      'PUT /api/v1/notifications/preferences',
     ]);
   });
 
@@ -154,6 +164,13 @@ describe('route markers', () => {
       'POST /api/v1/invitations/accept',
       'POST /api/v1/invitations/accept-signed-in',
       'POST /api/v1/invitations/preview',
+      // ADR 0047: the caller's own read marks and push devices, set-state; push/status reads only (the endpoint goes
+      // in the body, never in a URL).
+      'POST /api/v1/notifications/:id/read',
+      'POST /api/v1/notifications/push/status',
+      'POST /api/v1/notifications/push/subscribe',
+      'POST /api/v1/notifications/push/unsubscribe',
+      'POST /api/v1/notifications/read-all',
       'POST /api/v1/platform/auth/accept',
       'POST /api/v1/platform/auth/login',
       'POST /api/v1/platform/auth/logout',
@@ -166,6 +183,8 @@ describe('route markers', () => {
       // ADR 0017 §8 (with PATCH /platform/staff/:id above): replay-safe set-state staff writes.
       'POST /api/v1/platform/staff/:id/deactivate',
       'POST /api/v1/platform/staff/invitations',
+      // ADR 0047: the caller's own choices, set-state.
+      'PUT /api/v1/notifications/preferences',
       'PUT /api/v1/platform/customers/:id/features/:key',
       'PUT /api/v1/platform/customers/:id/plan',
     ]);

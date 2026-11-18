@@ -22,6 +22,32 @@ const without = (key: keyof typeof validEnv): Record<string, string> =>
   Object.fromEntries(Object.entries(validEnv).filter(([k]) => k !== key));
 
 describe('appEnvSchema', () => {
+  describe('browser push (ADR 0047)', () => {
+    const push = {
+      WEB_PUSH_PUBLIC_KEY: 'B'.repeat(87),
+      WEB_PUSH_PRIVATE_KEY: 'p'.repeat(43),
+      WEB_PUSH_SUBJECT: 'mailto:ops@durby.test',
+    };
+
+    it('is off without keys and on with all three', () => {
+      expect(appEnvSchema.parse(validEnv).WEB_PUSH_PUBLIC_KEY).toBeUndefined();
+      expect(appEnvSchema.parse({ ...validEnv, ...push }).WEB_PUSH_SUBJECT).toBe(
+        'mailto:ops@durby.test',
+      );
+    });
+
+    it('refuses some but not all, and a subject that is not mailto: or https:', () => {
+      expect(
+        appEnvSchema.safeParse({ ...validEnv, WEB_PUSH_PUBLIC_KEY: push.WEB_PUSH_PUBLIC_KEY })
+          .success,
+      ).toBe(false);
+      expect(
+        appEnvSchema.safeParse({ ...validEnv, ...push, WEB_PUSH_SUBJECT: 'ops@durby.test' })
+          .success,
+      ).toBe(false);
+    });
+  });
+
   describe('database pool and transactions (ADR 0021)', () => {
     it("defaults to the libraries' own values", () => {
       const env = appEnvSchema.parse(validEnv);

@@ -211,10 +211,51 @@ describe('session store', () => {
       };
       walk(join(root, 'app'));
       walk(join(root, 'lib'));
-      const offenders = files.filter((f) =>
-        /localStorage|sessionStorage|indexedDB|document\.cookie/.test(readFileSync(f, 'utf8')),
+      // The one exception (ADR 0047): which email is signed in in which account slot. Never a token.
+      const accountsList = join(root, 'lib', 'auth', 'accounts.ts');
+      const offenders = files.filter(
+        (f) =>
+          f !== accountsList &&
+          /localStorage|sessionStorage|indexedDB|document\.cookie/.test(readFileSync(f, 'utf8')),
       );
       expect(offenders).toEqual([]);
+      expect(readFileSync(accountsList, 'utf8')).not.toMatch(/token|accessToken|password/i);
+    });
+
+    it('sends the account slot on auth calls and switches accounts only on success (ADR 0047)', async () => {
+      const { store, fetchImpl } = setup(
+        [
+          Response.json(sessionBody('access-0')),
+          error(401, 'auth.refresh_invalid'),
+          Response.json(sessionBody('access-2')),
+        ],
+        { slot: 0 },
+      );
+      await store.refresh();
+      expect(call(fetchImpl, 0).headers.get('X-Durby-Account')).toBe('0');
+
+      // A dead slot: nothing changes.
+      expect(await store.selectAccount(1)).toEqual({ ok: false, code: 'auth.refresh_invalid' });
+      expect(call(fetchImpl, 1).headers.get('X-Durby-Account')).toBe('1');
+      expect(store.slot()).toBe(0);
+      expect(store.get()?.accessToken).toBe('access-0');
+
+      expect(await store.selectAccount(2)).toEqual({ ok: true });
+      expect(store.slot()).toBe(2);
+      expect(store.get()?.accessToken).toBe('access-2');
+
+      // Signing out another slot leaves this tab's session alone.
+      await store.logoutSlot(0);
+      expect(call(fetchImpl, 3)).toMatchObject({ url: '/api/v1/auth/logout' });
+      expect(call(fetchImpl, 3).headers.get('X-Durby-Account')).toBe('0');
+      expect(store.get()?.accessToken).toBe('access-2');
+    });
+
+    it('signs in another account into its slot', async () => {
+      const { store, fetchImpl } = setup([Response.json(sessionBody('access-3'))]);
+      expect(await store.login('b@b.test', 'pw', 3)).toEqual({ ok: true });
+      expect(call(fetchImpl, 0).headers.get('X-Durby-Account')).toBe('3');
+      expect(store.slot()).toBe(3);
     });
   });
 });

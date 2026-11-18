@@ -85,6 +85,14 @@ export const sessionResponseSchema = meResponseSchema.extend({
 });
 
 /** Stable error codes of the auth endpoints; the web app shows the matching label. */
+/**
+ * Several accounts signed in on one browser (ADR 0047): each has its own refresh cookie, picked by this header on the
+ * auth calls (0 … MAX_SIGNED_IN_ACCOUNTS - 1; none = 0, the cookie as before). The access token says who the caller is;
+ * the slot only says which cookie to read or set.
+ */
+export const ACCOUNT_SLOT_HEADER = 'X-Durby-Account';
+export const MAX_SIGNED_IN_ACCOUNTS = 5;
+
 export const AUTH_ERROR_CODES = [
   'auth.unauthenticated',
   'auth.invalid_credentials',

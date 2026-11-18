@@ -126,40 +126,42 @@ export function QuantitiesDialog({
       onDone={onDone}
     >
       <p className="text-sm text-muted-foreground">{hint}</p>
-      <table className="w-full text-sm" data-testid={`${testId}-lines`}>
-        <thead>
-          <tr className="border-b text-left text-muted-foreground">
-            <th className="py-1 font-medium">{t('orders.requestForm.item')}</th>
-            <th className="py-1 text-right font-medium">{referenceLabel}</th>
-            <th className="py-1 text-right font-medium">
-              <span className="sr-only">{submitLabel}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map((line) => (
-            <tr key={line.id} className="border-b last:border-0">
-              <td className="py-1.5">{line.name}</td>
-              <td className="py-1.5 text-right tabular-nums">
-                {`${shortQuantity(line.reference)} ${line.unit}`}
-              </td>
-              <td className="py-1.5 text-right">
-                <Input
-                  id={`${id}-${line.id}`}
-                  inputMode="decimal"
-                  className="ml-auto w-24 text-right"
-                  value={values[line.id] ?? line.initial}
-                  aria-label={inputLabel(line.name)}
-                  onChange={(e) =>
-                    setValues((v) => ({ ...v, [line.id]: e.target.value.replace(',', '.') }))
-                  }
-                  data-testid={`${testId}-quantity`}
-                />
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" data-testid={`${testId}-lines`}>
+          <thead>
+            <tr className="border-b text-left text-muted-foreground">
+              <th className="py-1 font-medium">{t('orders.requestForm.item')}</th>
+              <th className="py-1 text-right font-medium">{referenceLabel}</th>
+              <th className="py-1 text-right font-medium">
+                <span className="sr-only">{submitLabel}</span>
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {lines.map((line) => (
+              <tr key={line.id} className="border-b last:border-0">
+                <td className="py-1.5">{line.name}</td>
+                <td className="py-1.5 text-right tabular-nums">
+                  {`${shortQuantity(line.reference)} ${line.unit}`}
+                </td>
+                <td className="py-1.5 text-right">
+                  <Input
+                    id={`${id}-${line.id}`}
+                    inputMode="decimal"
+                    className="ml-auto w-24 text-right"
+                    value={values[line.id] ?? line.initial}
+                    aria-label={inputLabel(line.name)}
+                    onChange={(e) =>
+                      setValues((v) => ({ ...v, [line.id]: e.target.value.replace(',', '.') }))
+                    }
+                    data-testid={`${testId}-quantity`}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {checked && !valid && (
         <p role="alert" className="text-sm text-destructive">
           {t('orders.requestsPage.invalid')}
@@ -203,28 +205,30 @@ export function RequestFacts({
           {request.note}
         </p>
       )}
-      <table className="w-full text-sm" data-testid="request-lines">
-        <thead>
-          <tr className="border-b text-left text-muted-foreground">
-            <th className="py-1 font-medium">{t('orders.requestForm.item')}</th>
-            <th className="py-1 text-right font-medium">{t('orders.requestsPage.requested')}</th>
-            <th className="py-1 text-right font-medium">{t('orders.requestsPage.approved')}</th>
-            <th className="py-1 text-right font-medium">{t('orders.requestsPage.picked')}</th>
-            <th className="py-1 text-right font-medium">{t('orders.requestsPage.received')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {request.lines.map((line) => (
-            <tr key={line.id} className="border-b last:border-0" data-testid="request-line">
-              <td className="py-1.5">{line.itemName}</td>
-              <td className="py-1.5 text-right tabular-nums">{`${q(line.quantity)} ${line.unit}`}</td>
-              <td className="py-1.5 text-right tabular-nums">{q(line.approvedQuantity)}</td>
-              <td className="py-1.5 text-right tabular-nums">{q(line.pickedQuantity)}</td>
-              <td className="py-1.5 text-right tabular-nums">{q(line.receivedQuantity)}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" data-testid="request-lines">
+          <thead>
+            <tr className="border-b text-left text-muted-foreground">
+              <th className="py-1 font-medium">{t('orders.requestForm.item')}</th>
+              <th className="py-1 text-right font-medium">{t('orders.requestsPage.requested')}</th>
+              <th className="py-1 text-right font-medium">{t('orders.requestsPage.approved')}</th>
+              <th className="py-1 text-right font-medium">{t('orders.requestsPage.picked')}</th>
+              <th className="py-1 text-right font-medium">{t('orders.requestsPage.received')}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {request.lines.map((line) => (
+              <tr key={line.id} className="border-b last:border-0" data-testid="request-line">
+                <td className="py-1.5">{line.itemName}</td>
+                <td className="py-1.5 text-right tabular-nums">{`${q(line.quantity)} ${line.unit}`}</td>
+                <td className="py-1.5 text-right tabular-nums">{q(line.approvedQuantity)}</td>
+                <td className="py-1.5 text-right tabular-nums">{q(line.pickedQuantity)}</td>
+                <td className="py-1.5 text-right tabular-nums">{q(line.receivedQuantity)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <section className="flex flex-col gap-2" aria-label={t('orders.requestsPage.timeline')}>
         <h3 className="font-medium">{t('orders.requestsPage.timeline')}</h3>
         <ol className="flex flex-col gap-2 border-l pl-4" data-testid="request-timeline">
