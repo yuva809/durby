@@ -224,6 +224,7 @@ describe('route markers', () => {
       'POST /api/v1/inventory/opening-stock/import',
       'POST /api/v1/inventory/productions',
       'POST /api/v1/inventory/receipts',
+      'POST /api/v1/inventory/receipts/import',
       'POST /api/v1/inventory/transfers',
       'POST /api/v1/inventory/units',
       'POST /api/v1/inventory/warehouses',

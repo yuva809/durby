@@ -173,6 +173,46 @@ export const transferRequestSchema = z.strictObject({
   lines: lines(z.strictObject({ itemId: z.uuid(), quantity: stockQuantitySchema })),
 });
 
+/**
+ * A vendor invoice as a goods receipt (ADR 0049): each line an existing item or a new one (created in the same
+ * transaction, its SKU the supplier's product id), with quantity and unit cost in the item's unit.
+ */
+const newInvoiceItemSchema = z.strictObject({
+  name,
+  sku: z.string().trim().min(1).max(50).optional(),
+  unit: z.enum(STOCK_UNITS),
+  categoryId: z.uuid().nullable().optional(),
+});
+
+export const importReceiptLineSchema = z.union([
+  z.strictObject({ itemId: z.uuid(), quantity: stockQuantitySchema, unitCost: unitCostSchema }),
+  z.strictObject({
+    newItem: newInvoiceItemSchema,
+    quantity: stockQuantitySchema,
+    unitCost: unitCostSchema,
+  }),
+]);
+
+export const importReceiptRequestSchema = z
+  .strictObject({
+    warehouseId: z.uuid(),
+    supplier: z.string().trim().min(1).max(INVENTORY_NAME_MAX_LENGTH).optional(),
+    /** e.g. "Order 108666 · 10-11-2026". */
+    note: note.optional(),
+    lines: z.array(importReceiptLineSchema).min(1).max(STOCK_DOCUMENT_MAX_LINES),
+  })
+  .refine(
+    (body) => {
+      const ids = body.lines.flatMap((l) => ('itemId' in l ? [l.itemId] : []));
+      const names = body.lines.flatMap((l) => ('newItem' in l ? [l.newItem.name.trim()] : []));
+      return new Set(ids).size === ids.length && new Set(names).size === names.length;
+    },
+    { message: 'An item can be on the invoice only once' },
+  );
+
+export type ImportReceiptLine = z.infer<typeof importReceiptLineSchema>;
+export type ImportReceiptRequest = z.infer<typeof importReceiptRequestSchema>;
+
 export const stockMovementSchema = z.object({
   id: z.uuid(),
   warehouseId: z.uuid(),

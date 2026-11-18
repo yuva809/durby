@@ -6,6 +6,7 @@ import type {
   DataImportResult,
   ImportOpeningStockRequest,
   EventPayload,
+  ImportReceiptRequest,
   AdjustmentRequest,
   ListStockDocumentsQuery,
   NumberSeriesKey,
@@ -32,7 +33,9 @@ import {
   type TenantPrismaClient,
   type TenantTransactionClient,
 } from '../../platform/tenancy';
+import { CatalogService } from '../catalog';
 import { inventoryErrors } from './inventory-errors';
+import { ITEM_SELECT, itemResponse, itemSnapshot } from './setup.service';
 import { componentNeeds, outputUnitCost, toBaseUnits } from './item-rules';
 import { bookIn, bookOut, costText, type Level, quantityText, valueOf } from './valuation';
 
@@ -129,6 +132,7 @@ export class StockService {
     private readonly idempotency: IdempotencyService,
     private readonly numbering: NumberingService,
     private readonly settings: SettingsService,
+    private readonly catalog: CatalogService,
   ) {}
 
   /**
@@ -195,6 +199,71 @@ export class StockService {
             quantity,
             unitCost: booked.unitCost,
           };
+        }),
+    });
+  }
+
+  /**
+   * A vendor invoice as one goods receipt (docs/modules/inventory.md → Vendor invoices, ADR 0049): lines naming an
+   * existing item, or a new one created first in the same transaction (needs inventory.items.edit; an active
+   * category; a name no active item has). Quantities and costs are in the item's unit. All or nothing.
+   */
+  async importReceipt(body: ImportReceiptRequest): Promise<StockDocument> {
+    const { tenantId, userId } = this.tenantContext.require();
+    const fresh = body.lines.flatMap((l) => ('newItem' in l ? [l.newItem] : []));
+    if (fresh.length > 0) await this.access.assert('inventory.items.edit');
+    const categoryIds = new Set(fresh.flatMap((n) => (n.categoryId ? [n.categoryId] : [])));
+    for (const categoryId of categoryIds) await this.catalog.assertActiveCategory(categoryId);
+    // The item of each line, by position: new ones are filled in once created.
+    const lineItems = body.lines.map((l) => ('itemId' in l ? l.itemId : null));
+    return this.post({
+      kind: 'receipt',
+      key: 'inventory.stock.receive',
+      warehouseId: body.warehouseId,
+      itemIds: lineItems.filter((id): id is string => id !== null),
+      create: async (tx) => {
+        if (fresh.length === 0) return [];
+        const taken = await tx.stockItem.findFirst({
+          where: { name: { in: fresh.map((n) => n.name.trim()) }, archivedAt: null },
+          select: { id: true },
+        });
+        if (taken) throw inventoryErrors.itemNameTaken();
+        const created: string[] = [];
+        for (const [index, line] of body.lines.entries()) {
+          if (!('newItem' in line)) continue;
+          const row = await tx.stockItem.create({
+            data: {
+              tenantId,
+              name: line.newItem.name.trim(),
+              sku: line.newItem.sku ?? null,
+              unit: line.newItem.unit,
+              categoryId: line.newItem.categoryId ?? null,
+            },
+            select: ITEM_SELECT,
+          });
+          await this.audit.record(tx, {
+            action: 'inventory.stock_item.created',
+            actor: auditActor.user(userId),
+            entityId: row.id,
+            after: itemSnapshot(itemResponse(row)),
+          });
+          lineItems[index] = row.id;
+          created.push(row.id);
+        }
+        return created;
+      },
+      header: { supplier: body.supplier ?? null, note: body.note || null },
+      plan: (levels) =>
+        body.lines.map((line, index) => {
+          const itemId = lineItems[index]!;
+          const quantity = new Decimal(line.quantity);
+          const booked = bookIn(
+            levels.get(body.warehouseId, itemId),
+            quantity,
+            new Decimal(line.unitCost),
+          );
+          levels.set(body.warehouseId, itemId, booked.level);
+          return { warehouseId: body.warehouseId, itemId, quantity, unitCost: booked.unitCost };
         }),
     });
   }
@@ -428,6 +497,8 @@ export class StockService {
      * checked; returns more item ids to check and lock (a bill's components).
      */
     prepare?: (tx: TenantTransactionClient) => Promise<string[] | void>;
+    /** Creates items first, in the same transaction (a vendor invoice's new products, ADR 0049); returns their ids. */
+    create?: (tx: TenantTransactionClient) => Promise<string[]>;
     header: { supplier?: string | null; note: string | null; reason?: AdjustmentReason };
     plan: (levels: Levels) => PlannedMovement[];
   }): Promise<StockDocument> {
@@ -440,11 +511,12 @@ export class StockService {
       if ((await this.settings.get('inventory.valuationMethod', {}, tx)) !== 'weighted_average') {
         throw inventoryErrors.valuationUnsupported();
       }
-      await usableItems(tx, input.itemIds);
+      if (input.itemIds.length > 0) await usableItems(tx, input.itemIds);
+      const created = (await input.create?.(tx)) ?? [];
       const more = (await input.prepare?.(tx)) ?? [];
       const extra = more.filter((id) => !input.itemIds.includes(id));
       if (extra.length > 0) await usableItems(tx, extra);
-      const itemIds = [...input.itemIds, ...extra];
+      const itemIds = [...input.itemIds, ...created, ...extra];
 
       const warehouses = [from, ...(to ? [to] : [])];
       const levels = await lockLevels(
