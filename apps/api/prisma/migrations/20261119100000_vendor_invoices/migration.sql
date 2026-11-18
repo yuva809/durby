@@ -1,5 +1,10 @@
 -- Vendor invoices waiting for approval (docs/modules/inventory.md → Vendor invoices, ADR 0054). Read from the
 -- supplier's PDF or photo in the browser; approval books one goods receipt. Tenant data, RLS. Expand only.
+--
+-- Its first run failed in production (the enum is "stock_unit", not Prisma's "StockUnit") and was marked rolled back.
+-- Should that run have left a table behind, it is empty: drop it so this one starts clean.
+DROP TABLE IF EXISTS "vendor_invoice_lines";
+DROP TABLE IF EXISTS "vendor_invoices";
 
 -- CreateTable
 CREATE TABLE "vendor_invoices" (
@@ -37,7 +42,7 @@ CREATE TABLE "vendor_invoice_lines" (
     "item_id" UUID,
     "new_item_name" TEXT,
     "new_item_sku" TEXT,
-    "new_item_unit" "StockUnit",
+    "new_item_unit" "stock_unit",
     "new_item_category_id" UUID,
     "quantity" DECIMAL(14,3) NOT NULL,
     "unit_cost" DECIMAL(14,4) NOT NULL,
