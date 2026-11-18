@@ -202,9 +202,7 @@ function StaffForm({
       !w.isTransit &&
       (branchesChosen.length === 0 || branchesChosen.includes(w.locationId)),
   );
-  const { sections, hiddenModules } = permissionMatrix(activeFeatures);
-  const visibleKeys = sections.flatMap((s) => s.keys);
-  const toggleable = new Set<string>(visibleKeys.filter((key) => canToggle(access, key)));
+  const visibleKeys = permissionMatrix(activeFeatures).sections.flatMap((s) => s.keys);
 
   function chooseRole(next: Role) {
     setRoleId(next.id);
