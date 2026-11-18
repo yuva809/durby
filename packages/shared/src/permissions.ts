@@ -38,15 +38,15 @@ export const PERMISSIONS = {
   // Inventory (docs/modules/inventory.md → Permissions), checked at the warehouse's location.
   'inventory.stock.read': { scope: 'location', label: 'inventory.permissions.stockRead' },
   'inventory.stock.receive': { scope: 'location', label: 'inventory.permissions.stockReceive' },
+  'inventory.stock.adjust': { scope: 'location', label: 'inventory.permissions.stockAdjust' },
+  'inventory.stock.transfer': { scope: 'location', label: 'inventory.permissions.stockTransfer' },
+  // Production orders (ADR 0038): ingredients out, the prepared item in, at the warehouse.
+  'inventory.stock.produce': { scope: 'location', label: 'inventory.permissions.stockProduce' },
   // Vendor invoices (ADR 0051): approve or reject what was read from a supplier's invoice, at the warehouse.
   'inventory.invoices.approve': {
     scope: 'location',
     label: 'inventory.permissions.invoicesApprove',
   },
-  'inventory.stock.adjust': { scope: 'location', label: 'inventory.permissions.stockAdjust' },
-  'inventory.stock.transfer': { scope: 'location', label: 'inventory.permissions.stockTransfer' },
-  // Production orders (ADR 0038): ingredients out, the prepared item in, at the warehouse.
-  'inventory.stock.produce': { scope: 'location', label: 'inventory.permissions.stockProduce' },
   'inventory.warehouses.create': {
     scope: 'location',
     label: 'inventory.permissions.warehousesCreate',
