@@ -1,18 +1,26 @@
 'use client';
 
-import { pickedQuantitySchema, type SalesOrder, type SalesOrderSummary } from '@durby/shared';
+import {
+  pickedQuantitySchema,
+  type SalesOrder,
+  type SalesOrderSummary,
+  type StockUnit,
+} from '@durby/shared';
 import { PackageCheck } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
-import { loadWarehouses } from '../../lib/inventory/api';
+import { loadStock, loadWarehouses } from '../../lib/inventory/api';
 import { loadOrder, loadOrders, pickOrder, startPicking } from '../../lib/orders/api';
 import { compareQuantity } from '../../lib/orders/form';
+import { exceedsStock, pickPlan, shownStock } from '../../lib/orders/shortage';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
+import { cn } from '../../lib/utils';
 import { FormDialog } from '../form-dialog';
 import { MoneyProvider } from '../pos/money';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
@@ -165,17 +173,47 @@ function PickDialog({ order, onDone }: { order: SalesOrderSummary; onDone: () =>
   const [openCount, setOpenCount] = useState(0);
   const [picked, setPicked] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState(false);
-  const [detail] = useResource<SalesOrder>(
+  // The order and what its warehouse has, read each time the dialog opens: a line short of stock starts at what
+  // is there and says how much is missing; more than is there is named before packing (items 16, 18).
+  const [detail] = useResource<{ order: SalesOrder; stock: Map<string, string> | null }>(
     openCount === 0 ? null : `${order.id}:${openCount}`,
-    () =>
-      loadOrder(store, order.id).then((result) => {
-        if (result.ok) {
-          setPicked(Object.fromEntries(result.data.lines.map((l) => [l.id, short(l.quantity)])));
-        }
-        return result;
-      }),
+    async () => {
+      const result = await loadOrder(store, order.id);
+      if (!result.ok) return result;
+      const levels = await loadStock(store, { warehouseId: result.data.warehouseId });
+      const stock = levels.ok ? new Map(levels.data.map((l) => [l.itemId, l.quantity])) : null;
+      setPicked(
+        Object.fromEntries(
+          result.data.lines.map((l) => [
+            l.id,
+            pickPlan(l.quantity, stock ? (stock.get(l.itemId) ?? '0') : null).initial,
+          ]),
+        ),
+      );
+      return { ok: true as const, data: { order: result.data, stock } };
+    },
   );
-  const lines = detail.status === 'ready' ? detail.data.lines : [];
+  const lines = detail.status === 'ready' ? detail.data.order.lines : [];
+  const stock = detail.status === 'ready' ? detail.data.stock : null;
+  const inStock = (itemId: string) => (stock ? (stock.get(itemId) ?? '0') : null);
+  const unit = (value: StockUnit) => t(`inventory.units.${value}`);
+  const shortOf = (l: SalesOrder['lines'][number]) => {
+    const available = inStock(l.itemId);
+    return available === null ? null : pickPlan(l.quantity, available).short;
+  };
+  const beyond = lines.filter((l) => {
+    const available = inStock(l.itemId);
+    return available !== null && exceedsStock((picked[l.id] ?? '').trim(), available);
+  });
+  const stockList = (list: typeof lines) =>
+    list
+      .map((l) =>
+        t('orders.transfers.itemInStock', {
+          name: l.itemName,
+          quantity: `${shownStock(inStock(l.itemId) ?? '0')} ${unit(l.unit)}`,
+        }),
+      )
+      .join(', ');
   const valid = (full: SalesOrder['lines']) =>
     full.every((l) => {
       const value = (picked[l.id] ?? '').trim();
@@ -211,7 +249,7 @@ function PickDialog({ order, onDone }: { order: SalesOrderSummary; onDone: () =>
       onDone={onDone}
     >
       <Loaded resource={detail} reload={() => setOpenCount((n) => n + 1)}>
-        {(full) => (
+        {({ order: full }) => (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-muted-foreground">
               {t('orders.picking.stockNote', { warehouse: full.warehouseName })}
@@ -219,25 +257,60 @@ function PickDialog({ order, onDone }: { order: SalesOrderSummary; onDone: () =>
             <div className="overflow-x-auto">
               <table className="w-full text-sm" data-testid="pick-lines">
                 <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="py-1 font-medium">{t('orders.detail.item')}</th>
-                    <th className="py-1 text-right font-medium">{t('orders.picking.ordered')}</th>
-                    <th className="py-1 text-right font-medium">{t('orders.picking.picked')}</th>
+                  <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
+                    <th className="py-2 pr-2 font-medium">{t('orders.detail.item')}</th>
+                    <th className="w-24 px-2 py-2 text-right font-medium whitespace-nowrap">
+                      {t('orders.picking.ordered')}
+                    </th>
+                    {stock && (
+                      <th className="w-24 px-2 py-2 text-right font-medium whitespace-nowrap">
+                        {t('orders.transfers.inStock')}
+                      </th>
+                    )}
+                    <th className="w-28 py-2 pl-2 text-right font-medium whitespace-nowrap">
+                      {t('orders.picking.picked')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {full.lines.map((line) => (
-                    <tr key={line.id} className="border-b last:border-0">
-                      <td className="py-1.5">{line.itemName}</td>
-                      <td className="py-1.5 text-right tabular-nums">
-                        {`${short(line.quantity)} ${line.unit}`}
+                    <tr key={line.id} className="border-b align-middle last:border-0">
+                      <td className="py-2 pr-2">
+                        <span className="flex flex-wrap items-center gap-2">
+                          {line.itemName}
+                          {shortOf(line) && (
+                            <Badge
+                              className="bg-accent text-accent-foreground"
+                              data-testid="pick-line-short"
+                            >
+                              {t('orders.transfers.short', {
+                                quantity: `${shortOf(line)} ${unit(line.unit)}`,
+                              })}
+                            </Badge>
+                          )}
+                        </span>
                       </td>
-                      <td className="py-1.5 text-right">
+                      <td className="px-2 py-2 text-right whitespace-nowrap tabular-nums">
+                        {`${short(line.quantity)} ${unit(line.unit)}`}
+                      </td>
+                      {stock && (
+                        <td
+                          className={cn(
+                            'px-2 py-2 text-right whitespace-nowrap tabular-nums',
+                            shortOf(line) && 'font-medium text-destructive',
+                          )}
+                          data-testid="pick-available"
+                        >
+                          {`${shownStock(inStock(line.itemId) ?? '0')} ${unit(line.unit)}`}
+                        </td>
+                      )}
+                      <td className="py-2 pl-2 text-right">
                         <Input
                           inputMode="decimal"
                           className="ml-auto w-24 text-right"
                           value={picked[line.id] ?? ''}
                           aria-label={t('orders.picking.pickedOf', { name: line.itemName })}
+                          aria-invalid={beyond.includes(line) || undefined}
                           onChange={(e) =>
                             setPicked((p) => ({
                               ...p,
@@ -266,6 +339,18 @@ function PickDialog({ order, onDone }: { order: SalesOrderSummary; onDone: () =>
             {checked && !valid(full.lines) && (
               <p role="alert" className="text-sm text-destructive">
                 {t('orders.picking.invalid')}
+              </p>
+            )}
+            {beyond.length > 0 && (
+              <p role="alert" className="text-sm text-destructive" data-testid="pick-beyond">
+                {t('orders.transfers.beyondStock', { items: stockList(beyond) })}
+              </p>
+            )}
+            {beyond.length === 0 && stock && full.lines.some((l) => shortOf(l)) && (
+              <p className="rounded-md bg-accent px-3 py-2 text-sm" data-testid="pick-shortage">
+                {t('orders.transfers.shortageNote', {
+                  items: stockList(full.lines.filter((l) => shortOf(l))),
+                })}
               </p>
             )}
             {shortCount > 0 && valid(full.lines) && (

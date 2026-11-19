@@ -69,6 +69,19 @@ function signedInAs(role: SystemRole) {
   });
 }
 
+/** What the order's warehouse has: plenty unless a test says otherwise. */
+const level = (itemId: string, quantity: string) => ({
+  warehouseId: id(1),
+  itemId,
+  itemName: '',
+  unit: 'pc',
+  quantity,
+  averageCost: '1.0000',
+  value: '1.00',
+  low: false,
+});
+let stock = [level(id(51), '10.000'), level(id(52), '10.000')];
+
 function api(lists: Record<string, unknown[]>) {
   const calls: { method: string; path: string; body: unknown }[] = [];
   mockState.store.apiFetch.mockImplementation((input: string, init?: RequestInit) => {
@@ -88,6 +101,7 @@ function api(lists: Record<string, unknown[]>) {
     }
     if (path?.startsWith('/api/v1/orders/'))
       return Promise.resolve(Response.json(detail(1, 'picking')));
+    if (path === '/api/v1/inventory/stock') return Promise.resolve(Response.json({ data: stock }));
     return Promise.resolve(Response.json({ data: [] }));
   });
   return calls;
@@ -114,6 +128,31 @@ describe('Picking (/picking)', () => {
     expect(calls.some((c) => c.path.includes('/orders?status=confirmed&status=picking'))).toBe(
       true,
     );
+  });
+
+  it('picks against what is in stock, naming the shortage (items 16, 18)', async () => {
+    signedInAs('manager');
+    // Rice: 2 of the 3 ordered; oil: plenty.
+    stock = [level(id(51), '2.000'), level(id(52), '10.000')];
+    api({ 'confirmed,picking': [order(1, 'picking')] });
+    render(<PickingPage />);
+    await userEvent.click(await screen.findByTestId('picking-pick'));
+    const dialog = await screen.findByRole('dialog');
+    const inputs = await within(dialog).findAllByTestId<HTMLInputElement>('pick-quantity');
+    expect(inputs.map((i) => i.value)).toEqual(['2', '1.5']);
+    expect(
+      within(dialog)
+        .getAllByTestId('pick-available')
+        .map((c) => c.textContent),
+    ).toEqual(['2 pc', '10 pc']);
+    expect(within(dialog).getByTestId('pick-line-short').textContent).toBe('Short 1 pc');
+    expect(within(dialog).getByTestId('pick-shortage').textContent).toContain(
+      'Rice (2 pc in stock)',
+    );
+    await userEvent.clear(inputs[0]!);
+    await userEvent.type(inputs[0]!, '3');
+    expect(within(dialog).getByTestId('pick-beyond').textContent).toContain('Rice (2 pc in stock)');
+    stock = [level(id(51), '10.000'), level(id(52), '10.000')];
   });
 
   it('picks with the ordered quantities filled in, short lines allowed, over-picking refused', async () => {

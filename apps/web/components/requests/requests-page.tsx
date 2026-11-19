@@ -79,10 +79,8 @@ function Requests({
   const { store, session } = useAuth();
   const operations = useNavLayout() === 'operations';
   const branch = operations && session !== null && isBranchView(session);
-  // Owners and admins open on what waits for them; everyone else on all of their requests (ADR 0059).
-  const [filter, setFilter] = useState<Filter>(
-    permissions.has('orders.requests.approve') ? 'open' : 'all',
-  );
+  // Every request at every stage, from sent to received; the filter narrows it (ADR 0059, 0063).
+  const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
   // A search result or a link opens one in the side panel (?open=<id>, ADR 0046); a new link opens again.
   const urlOpen = useSearchParams().get('open');

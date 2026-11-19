@@ -193,6 +193,24 @@ export function isBranchView(access: NavAccess): boolean {
   );
 }
 
+/**
+ * Someone who drives (item 14): delivers, and neither assigns drivers nor reads stock. Their menu has no Overview,
+ * and `/` opens My Deliveries.
+ */
+export function isDriverView(access: NavAccess): boolean {
+  const holds = (key: PermissionKey) => access.activePermissions.includes(key);
+  return (
+    holds('orders.delivery.use') &&
+    !holds('orders.delivery.assign') &&
+    !holds('inventory.stock.read')
+  );
+}
+
+const DRIVER: NavLayoutDefinition = {
+  ...OPERATIONS,
+  items: OPERATIONS.items.filter((i) => i.id !== 'home'),
+};
+
 const DEFAULT: NavLayoutDefinition = { groups: NAV_GROUPS, items: NAV_ITEMS };
 
 /**
@@ -201,7 +219,8 @@ const DEFAULT: NavLayoutDefinition = { groups: NAV_GROUPS, items: NAV_ITEMS };
  */
 export function navLayout(layout: NavLayout | undefined, access?: NavAccess): NavLayoutDefinition {
   if (layout !== 'operations') return DEFAULT;
-  return access && isBranchView(access) ? BRANCH : OPERATIONS;
+  if (access && isBranchView(access)) return BRANCH;
+  return access && isDriverView(access) ? DRIVER : OPERATIONS;
 }
 
 /** For tests: the branch menu of the operations layout. */

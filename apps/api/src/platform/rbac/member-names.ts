@@ -34,6 +34,8 @@ export class MemberNames {
     key: PermissionKey,
     /** Needed for location-scoped keys; organization-scoped keys (e.g. orders.requests.approve) leave it out. */
     locationId?: string,
+    /** Leaves out those who also hold this key there (e.g. drivers: not who assigns them). */
+    without?: PermissionKey,
   ): Promise<{ userId: string; name: string | null }[]> {
     const rows = await db.membership.findMany({
       where: { deactivatedAt: null },
@@ -56,7 +58,13 @@ export class MemberNames {
       },
     });
     return rows
-      .filter((row) => holds(resolveAccess(this.registry, row), this.registry, key, locationId))
+      .filter((row) => {
+        const access = resolveAccess(this.registry, row);
+        return (
+          holds(access, this.registry, key, locationId) &&
+          (!without || !holds(access, this.registry, without, locationId))
+        );
+      })
       .map((row) => ({ userId: row.userId, name: row.displayName }));
   }
 
