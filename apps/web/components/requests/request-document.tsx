@@ -92,7 +92,10 @@ function Paper({ request: r, kind }: { request: StockRequest; kind: RequestDocum
   const arrived = r.events.find(
     (e) => e.status === 'delivered' || e.status === 'received',
   )?.createdAt;
-  const lines = (oc ? r.lines : r.lines.filter((l) => !zero(l.pickedQuantity))).map((line) => ({
+  // The confirmation lists what was ordered; lines added at packing (item 9) are only on the challan.
+  const lines = (
+    oc ? r.lines.filter((l) => !l.addedAtPacking) : r.lines.filter((l) => !zero(l.pickedQuantity))
+  ).map((line) => ({
     line,
     ...asOrdered(line, oc ? (line.approvedQuantity ?? line.quantity) : line.pickedQuantity!),
   }));
@@ -226,7 +229,10 @@ function Paper({ request: r, kind }: { request: StockRequest; kind: RequestDocum
                 data-testid="document-line"
               >
                 <td className={cn(cell, 'text-center tabular-nums')}>{index + 1}</td>
-                <td className={cell}>{line.itemName}</td>
+                <td className={cell}>
+                  {line.itemName}
+                  {line.addedAtPacking && ` (${t('orders.requestsPage.addedAtPacking')})`}
+                </td>
                 {!oc && <td className={cell}>{line.brand ?? ''}</td>}
                 <td className={cn(cell, 'text-center')}>{pack}</td>
                 <td className={cn(cell, 'text-center')}>{t(`inventory.units.${unit}`)}</td>

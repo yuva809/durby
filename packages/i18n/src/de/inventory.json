@@ -367,6 +367,7 @@
   "inventory.errors.mainWarehouseNotAllowed": "Nur wer Lager an allen Standorten bearbeitet, kann das Hauptlager festlegen.",
   "inventory.page.mainWarehouse": "Hauptlager",
   "inventory.page.mainWarehouseHint": "Beliefert alle Filialen: Filialen fordern Ware immer hier an, und sein Personal kommissioniert und packt für alle. Nur ein Lager kann das Hauptlager sein.",
+  "inventory.page.warehouseLocationHint": "Wo das Lager ist, nicht welche Filialen es beliefert: Das Hauptlager beliefert jede Filiale, egal wo es ist. Geben Sie einem Zentrallager einen eigenen Standort (zuerst unter Filialen anlegen), nicht den eines Geschäfts.",
   "inventory.invoice.bulkCategory": "Kategorie für {count} Positionen ohne eine",
   "inventory.invoice.bulkApply": "Für alle setzen",
   "inventory.invoice.category": "Kategorie",

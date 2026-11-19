@@ -185,6 +185,10 @@ function WarehouseDialog({
               </option>
             ))}
           </Select>
+          {/* A place, not who it supplies: a main warehouse at a shop's location mixes it up with that shop (item 1). */}
+          <p className="text-xs text-muted-foreground" data-testid="warehouse-location-hint">
+            {t('inventory.page.warehouseLocationHint')}
+          </p>
         </Field>
       )}
       <Field

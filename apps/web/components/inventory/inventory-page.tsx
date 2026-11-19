@@ -182,7 +182,7 @@ function Inventory({
             <>
               {requests && (
                 <Button asChild>
-                  <Link href="/requests/new" data-testid="inventory-request-stock">
+                  <Link href="/requests/new?cart=1" data-testid="inventory-request-stock">
                     <ShoppingCart aria-hidden />
                     {t('inventory.overview.requestStock')}
                   </Link>

@@ -165,20 +165,21 @@ without a warehouse gets its store, named like the branch, with its first reques
 
 **Stock:** packing moves the picked goods from the source into **In transit** (`warehouses.is_transit`, one per
 organization); receiving moves what arrived into the branch's warehouse and books the rest out of In transit as a
-shortage. Packing is refused below zero stock unless the location allows it.
+shortage. Packing is refused below zero stock unless the location allows it. Packing may send more than approved and add
+products nobody asked for (lines marked `added_at_packing`, ADR 0066).
 
-| Route (`/api/v1/stock-requests`)                    | Key (where)                                                                                              |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `GET /`, `GET /:id`                                 | signed in; the service shows a branch its own, a warehouse its own, approvers all, a driver `?mine=true` |
-| `GET /warehouses`, `GET /availability/:warehouseId` | `orders.requests.create` (quantities only, no costs; availability with each item's category)             |
-| `GET /destinations`                                 | `orders.requests.create`: the caller's branches with their warehouse or none yet (ADR 0053)              |
-| `GET /drivers/:warehouseId`                         | `orders.delivery.assign` at the warehouse                                                                |
-| `POST /`, `POST /:id/cancel`                        | `orders.requests.create` at the branch                                                                   |
-| `POST /:id/approve`, `/reject`                      | `orders.requests.approve`                                                                                |
-| `POST /:id/start-picking`, `/pack`                  | `orders.picking.use` at the source (+ `orders.delivery.assign` to name a driver)                         |
-| `POST /:id/driver`                                  | `orders.delivery.assign` at the source                                                                   |
-| `POST /:id/pick-up`, `/deliver`                     | `orders.delivery.use`, the assigned driver (or someone who assigns drivers)                              |
-| `POST /:id/receive`                                 | `orders.requests.receive` at the branch                                                                  |
+| Route (`/api/v1/stock-requests`)                    | Key (where)                                                                                                                   |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `GET /`, `GET /:id`                                 | signed in; a branch its own, who picks or assigns at the source its requests, approvers all, a driver `?mine=true` (ADR 0066) |
+| `GET /warehouses`, `GET /availability/:warehouseId` | `orders.requests.create` (quantities only, no costs; availability with each item's category)                                  |
+| `GET /destinations`                                 | `orders.requests.create`: the caller's branches with their warehouse or none yet (ADR 0053)                                   |
+| `GET /drivers/:warehouseId`                         | `orders.delivery.assign` at the warehouse                                                                                     |
+| `POST /`, `POST /:id/cancel`                        | `orders.requests.create` at the branch                                                                                        |
+| `POST /:id/approve`, `/reject`                      | `orders.requests.approve`                                                                                                     |
+| `POST /:id/start-picking`, `/pack`                  | `orders.picking.use` at the source (+ `orders.delivery.assign` to name a driver)                                              |
+| `POST /:id/driver`                                  | `orders.delivery.assign` at the source                                                                                        |
+| `POST /:id/pick-up`, `/deliver`                     | `orders.delivery.use`, the assigned driver (or someone who assigns drivers)                                                   |
+| `POST /:id/receive`                                 | `orders.requests.receive` at the branch                                                                                       |
 
 Every step: row lock, timeline row (append-only `stock_request_events`), audit row (`orders.stock_request.*`, no
 notes), idempotency key completed in the transaction. Errors: `orders.request_not_found`, `orders.request_invalid`,

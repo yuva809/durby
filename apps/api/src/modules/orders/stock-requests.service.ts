@@ -18,6 +18,7 @@ import type {
   StockRequestSummary,
   StockUnit,
 } from '@durby/shared';
+import { STOCK_REQUEST_MAX_LINES } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { EntitlementService } from '../../platform/config/entitlements';
 import { SettingsService } from '../../platform/config/settings';
@@ -67,6 +68,7 @@ const REQUEST_SELECT = {
       approvedQuantity: true,
       pickedQuantity: true,
       receivedQuantity: true,
+      addedAtPacking: true,
       item: {
         select: {
           name: true,
@@ -114,6 +116,7 @@ interface RequestRow extends SummaryRow {
     approvedQuantity: Qty | null;
     pickedQuantity: Qty | null;
     receivedQuantity: Qty | null;
+    addedAtPacking: boolean;
     item: {
       name: string;
       unit: StockUnit;
@@ -190,13 +193,18 @@ export class StockRequestsService {
     } else if (await this.access.can('orders.requests.approve')) {
       where = statusWhere;
     } else {
+      // A branch sees its own requests; only who works the source warehouse (picks, assigns drivers) sees the
+      // requests going out of it. A branch at the same location as the warehouse doesn't see the other branches'
+      // (item 10).
       const read = await this.access.locationIdsFor('orders.requests.read');
+      const picking = await this.access.locationIdsFor('orders.picking.use');
       const assign = await this.access.locationIdsFor('orders.delivery.assign');
-      if (read === 'all' || assign === 'all') {
+      // No branch ticked holds a key everywhere: every request.
+      if (read === 'all' || picking === 'all' || assign === 'all') {
         where = statusWhere;
       } else {
         const branches = read;
-        const sources = [...new Set([...read, ...assign])];
+        const sources = [...new Set([...picking, ...assign])];
         if (branches.length === 0 && sources.length === 0) return [];
         where = {
           ...statusWhere,
@@ -675,7 +683,12 @@ export class StockRequestsService {
     );
   }
 
-  /** What was picked (at most what was approved); the goods move into In transit, optionally with a driver. */
+  /**
+   * What was picked, more than approved allowed: the warehouse may send extra (item 9). `extra` adds products: on a
+   * line dropped at approval it becomes that line's picked quantity, otherwise a new line marked added at packing;
+   * an item on a line still to send is refused (raise that line instead). The goods move into In transit,
+   * optionally with a driver.
+   */
   pack(id: string, body: PackStockRequest): Promise<StockRequest> {
     const { userId } = this.tenantContext.require();
     return this.move(
@@ -692,8 +705,50 @@ export class StockRequestsService {
         }
       },
       async (tx, row) => {
+        const { tenantId } = this.tenantContext.require();
         const toSend = row.lines.filter((l) => l.approvedQuantity && !isZero(l.approvedQuantity));
-        const picked = quantitiesFor(toSend, body.lines, (l) => l.approvedQuantity!);
+        const picked = quantitiesFor(toSend, body.lines, null);
+        const byItem = new Map(row.lines.map((l) => [l.itemId, l]));
+        const added: { itemId: string; quantity: string }[] = [];
+        for (const extra of body.extra ?? []) {
+          const line = byItem.get(extra.itemId);
+          if (line && picked.has(line.id)) throw ordersErrors.requestInvalid();
+          const quantity = new Decimal(extra.quantity).toFixed(3);
+          if (line) picked.set(line.id, quantity);
+          else added.push({ itemId: extra.itemId, quantity });
+        }
+        if (added.length > 0) {
+          const ids = added.map((a) => a.itemId);
+          const items = await tx.stockItem.findMany({
+            where: { id: { in: ids }, archivedAt: null },
+            select: { id: true, _count: { select: { variants: { where: { archivedAt: null } } } } },
+          });
+          const usable = new Set(items.filter((i) => i._count.variants === 0).map((i) => i.id));
+          const missing = ids.filter((itemId) => !usable.has(itemId));
+          if (missing.length > 0) throw ordersErrors.itemNotFound(missing);
+          if (row.lines.length + added.length > STOCK_REQUEST_MAX_LINES) {
+            throw ordersErrors.requestInvalid();
+          }
+          await tx.stockRequestLine.createMany({
+            data: added.map((a, i) => ({
+              tenantId,
+              requestId: row.id,
+              itemId: a.itemId,
+              quantity: a.quantity,
+              approvedQuantity: '0.000',
+              pickedQuantity: a.quantity,
+              addedAtPacking: true,
+              sortOrder: row.lines.length + i,
+            })),
+          });
+        }
+        if (
+          [...picked.values(), ...added.map((a) => a.quantity)].every((q) =>
+            new Decimal(q).isZero(),
+          )
+        ) {
+          throw ordersErrors.requestInvalid();
+        }
         for (const line of row.lines) {
           await tx.stockRequestLine.update({
             where: { id: line.id },
@@ -707,7 +762,12 @@ export class StockRequestsService {
           fromWarehouseId: row.fromWarehouseId,
           toWarehouseId: transit,
           requestId: row.id,
-          lines: toSend.map((l) => ({ itemId: l.itemId, quantity: picked.get(l.id)! })),
+          lines: [
+            ...row.lines
+              .filter((l) => picked.has(l.id))
+              .map((l) => ({ itemId: l.itemId, quantity: picked.get(l.id)! })),
+            ...added,
+          ],
           userId,
         });
         return body.driverUserId ? { driverUserId: body.driverUserId } : {};
@@ -784,7 +844,7 @@ export class StockRequestsService {
       row.driverUserId === userId ||
       (await this.access.can('orders.requests.approve')) ||
       (await this.access.can('orders.requests.read', { locationId: row.locationId })) ||
-      (await this.access.can('orders.requests.read', { locationId: row.fromLocationId })) ||
+      (await this.access.can('orders.picking.use', { locationId: row.fromLocationId })) ||
       (await this.access.can('orders.delivery.assign', { locationId: row.fromLocationId }));
     if (!visible) throw ordersErrors.requestNotFound();
     return row;
@@ -994,6 +1054,7 @@ function requestResponse(
       approvedQuantity: q(l.approvedQuantity),
       pickedQuantity: q(l.pickedQuantity),
       receivedQuantity: q(l.receivedQuantity),
+      addedAtPacking: l.addedAtPacking,
       brand: l.item.brand,
       packCount: l.item.packCount,
       packSize: l.item.packSize?.toFixed(3) ?? null,

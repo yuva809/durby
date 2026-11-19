@@ -76,9 +76,19 @@ export const approveStockRequestSchema = z.strictObject({
 
 export const stockRequestNoteSchema = z.strictObject({ note: note.optional() });
 
-/** Pack: what was picked per line (at most what was approved), and optionally the driver. */
+/**
+ * Pack: what was picked per line, more than approved allowed (the warehouse may send extra, item 9); `extra`:
+ * products added at packing (not on a line still to send); and optionally the driver.
+ */
 export const packStockRequestSchema = z.strictObject({
   lines: lineQuantities,
+  extra: z
+    .array(z.strictObject({ itemId: z.uuid(), quantity: stockQuantitySchema }))
+    .max(STOCK_REQUEST_MAX_LINES)
+    .refine((lines) => new Set(lines.map((l) => l.itemId)).size === lines.length, {
+      message: 'Each item once',
+    })
+    .optional(),
   driverUserId: z.uuid().optional(),
 });
 
@@ -114,6 +124,8 @@ export const stockRequestLineSchema = z.object({
   approvedQuantity: z.string().nullable(),
   pickedQuantity: z.string().nullable(),
   receivedQuantity: z.string().nullable(),
+  /** Not requested: added by the warehouse at packing (item 9). Default for older apis. */
+  addedAtPacking: z.boolean().default(false),
   /** For the documents (ADR 0064): brand, pack size and the best-before packed; defaults for older apis. */
   brand: z.string().nullable().default(null),
   packCount: z.int().nullable().default(null),

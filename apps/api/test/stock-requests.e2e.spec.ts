@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
+  locationSchema,
   productCategoryListResponseSchema,
   productCategorySchema,
   requestDriverListResponseSchema,
@@ -159,9 +160,6 @@ describe('branch stock requests (ADR 0045)', () => {
     // Drivers only: the owner and the warehouse hold the key too but assign rather than drive (item 17).
     expect(drivers.data.map((d) => d.userId)).not.toContain(s.owner.userId);
     expect(drivers.data.map((d) => d.userId)).not.toContain(s.lager.userId);
-    await post(s.lager.token, `/stock-requests/${created.id}/pack`, {
-      lines: [{ lineId: riceLine.id, quantity: '6' }],
-    }).expect(400);
     const packed = stockRequestSchema.parse(
       (
         await post(s.lager.token, `/stock-requests/${created.id}/pack`, {
@@ -513,5 +511,98 @@ describe('branch stock requests (ADR 0045)', () => {
       locationAddress: 'Carl-Schurz-Str. 1, Berlin',
       fromLocationAddress: null,
     });
+  });
+
+  it('lets the warehouse send more than approved and add products at packing (item 9)', async () => {
+    const s = await setup();
+    const created = stockRequestSchema.parse(
+      (
+        await post(s.branchUser.token, '/stock-requests', {
+          fromWarehouseId: s.main,
+          toWarehouseId: s.branch,
+          lines: [{ itemId: s.rice, quantity: '5' }],
+        }).expect(201)
+      ).body,
+    );
+    const riceLine = created.lines[0]!.id;
+    await post(s.owner.token, `/stock-requests/${created.id}/approve`, {
+      lines: [{ lineId: riceLine, quantity: '5' }],
+    }).expect(201);
+    // An item on a line still to send is raised on that line, not added again.
+    await post(s.lager.token, `/stock-requests/${created.id}/pack`, {
+      lines: [{ lineId: riceLine, quantity: '5' }],
+      extra: [{ itemId: s.rice, quantity: '1' }],
+    }).expect(400);
+    // 6 rice for 5 approved, and 2 oil nobody asked for.
+    const packed = stockRequestSchema.parse(
+      (
+        await post(s.lager.token, `/stock-requests/${created.id}/pack`, {
+          lines: [{ lineId: riceLine, quantity: '6' }],
+          extra: [{ itemId: s.oil, quantity: '2' }],
+        }).expect(201)
+      ).body,
+    );
+    expect(
+      packed.lines.map((l) => [
+        l.itemName,
+        l.quantity,
+        l.approvedQuantity,
+        l.pickedQuantity,
+        l.addedAtPacking,
+      ]),
+    ).toEqual([
+      ['Rice', '5.000', '5.000', '6.000', false],
+      ['Oil', '2.000', '0.000', '2.000', true],
+    ]);
+    expect(packed.lineCount).toBe(2);
+    expect(await levels(s.owner.token, s.main)).toEqual({ Oil: '2.000', Rice: '4.000' });
+
+    // The branch confirms both; the extra arrives like any line.
+    await post(s.lager.token, `/stock-requests/${created.id}/pick-up`).expect(201);
+    const oilLine = packed.lines[1]!.id;
+    await post(s.branchUser.token, `/stock-requests/${created.id}/receive`, {
+      lines: [
+        { lineId: riceLine, quantity: '6' },
+        { lineId: oilLine, quantity: '2' },
+      ],
+    }).expect(201);
+    expect(await levels(s.owner.token, s.branch)).toEqual({ Oil: '2.000', Rice: '6.000' });
+  });
+
+  it("keeps each branch to its own requests, also one at the main warehouse's location (item 10)", async () => {
+    const s = await setup();
+    const [mainLocation] = s.org.locations;
+    const third = locationSchema.parse(
+      (await post(s.owner.token, '/locations', { name: 'Third street' }).expect(201)).body,
+    ).id;
+    const other = await member(s.org, 'branch', [third]);
+    // A shop at the main warehouse's own location.
+    const atMain = await member(s.org, 'branch', [mainLocation]);
+    const send = async (token: string, to: { toWarehouseId: string } | { toLocationId: string }) =>
+      stockRequestSchema.parse(
+        (
+          await post(token, '/stock-requests', {
+            fromWarehouseId: s.main,
+            ...to,
+            lines: [{ itemId: s.rice, quantity: '1' }],
+          }).expect(201)
+        ).body,
+      ).id;
+    const mine = await send(s.branchUser.token, { toWarehouseId: s.branch });
+    // The third branch has no store yet: it gets one with this request.
+    const theirs = await send(other.token, { toLocationId: third });
+    const ids = async (token: string) =>
+      stockRequestListResponseSchema
+        .parse((await get(token, '/stock-requests').expect(200)).body)
+        .data.map((r) => r.id);
+
+    expect(await ids(s.branchUser.token)).toEqual([mine]);
+    expect(await ids(other.token)).toEqual([theirs]);
+    // The requests go out of its location, but it doesn't work the warehouse: none of them.
+    expect(await ids(atMain.token)).toEqual([]);
+    await get(s.branchUser.token, `/stock-requests/${theirs}`).expect(404);
+    await get(atMain.token, `/stock-requests/${mine}`).expect(404);
+    // The warehouse there sees both.
+    expect((await ids(s.lager.token)).sort()).toEqual([mine, theirs].sort());
   });
 });

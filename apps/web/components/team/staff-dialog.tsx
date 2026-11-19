@@ -232,6 +232,13 @@ function StaffForm({
     if (!operations && !allLocations && locationIds.length === 0) {
       return setProblem(t('platform.members.form.locationsRequired'));
     }
+    // Branch staff (send requests, don't approve them) work at their branch: with no tick they would see every
+    // branch's requests (item 10).
+    const branchStaff =
+      !owner && selected.has('orders.requests.create') && !selected.has('orders.requests.approve');
+    if (operations && branchStaff && locationIds.length === 0) {
+      return setProblem(t('platform.team.dialog.branchRequired'));
+    }
     const overrides = owner ? { grants: [], denies: [] } : overridesOf(roleKeys, selected);
     const scope = operations
       ? owner || locationIds.length === 0

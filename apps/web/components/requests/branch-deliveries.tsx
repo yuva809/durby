@@ -35,8 +35,18 @@ const RECENT_DAYS = 7;
  * Delivery Tracking for a branch (ADR 0059): its requests from approval to its door, each with the step it is at and
  * the driver once one is assigned, "Confirm receipt" from packed on (in the request's panel on /requests); below, what
  * arrived in the last 7 days.
+ *
+ * `overview`: the same board over every branch for those who send the goods (owner, admin, warehouse): each card
+ * names its branch, what a driver delivered leaves "on the way", and below is what was delivered or received in the
+ * last 7 days. Confirming receipt stays with the branch.
  */
-export function BranchDeliveries({ organizationId }: { organizationId: string | null }) {
+export function BranchDeliveries({
+  organizationId,
+  overview = false,
+}: {
+  organizationId: string | null;
+  overview?: boolean;
+}) {
   const t = useT();
   const { store } = useAuth();
   // Fixed per visit, so "the last 7 days" doesn't move between renders.
@@ -45,8 +55,8 @@ export function BranchDeliveries({ organizationId }: { organizationId: string | 
     loadRequests(store, { status: [...STOCK_REQUEST_TO_PICK, ...STOCK_REQUEST_ON_THE_WAY] }),
   );
   const [received, reloadReceived] = useResource(
-    organizationId === null ? null : `${organizationId}:received`,
-    () => loadRequests(store, { status: ['received'] }),
+    organizationId === null ? null : `${organizationId}:received:${overview}`,
+    () => loadRequests(store, { status: overview ? ['delivered', 'received'] : ['received'] }),
   );
   const time = useMemo(
     () => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }),
@@ -56,41 +66,76 @@ export function BranchDeliveries({ organizationId }: { organizationId: string | 
   const days = String(RECENT_DAYS);
 
   return (
-    <div className="flex flex-col gap-6" data-testid="branch-deliveries">
+    <div
+      className="flex flex-col gap-6"
+      data-testid={overview ? 'branch-deliveries-overview' : 'branch-deliveries'}
+    >
       <div className="flex max-w-3xl flex-col gap-1">
-        <h1 className="text-2xl font-semibold">{t('platform.nav.deliveries')}</h1>
-        <p className="text-muted-foreground">{t('orders.branchDeliveries.intro')}</p>
+        <h1 className="text-2xl font-semibold">
+          {t(overview ? 'orders.branchDeliveries.overviewTitle' : 'platform.nav.deliveries')}
+        </h1>
+        <p className="text-muted-foreground">
+          {t(overview ? 'orders.branchDeliveries.overviewIntro' : 'orders.branchDeliveries.intro')}
+        </p>
       </div>
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">{t('orders.branchDeliveries.onTheWay')}</h2>
+        <h2 className="text-lg font-semibold">
+          {t(
+            overview
+              ? 'orders.branchDeliveries.overviewOnTheWay'
+              : 'orders.branchDeliveries.onTheWay',
+          )}
+        </h2>
         <Loaded resource={open} reload={reloadOpen}>
-          {(rows) =>
-            rows.length === 0 ? (
+          {(all) => {
+            // Delivered by the driver: on its way for the branch until it confirms, done for the sender.
+            const rows = overview ? all.filter((r) => r.status !== 'delivered') : all;
+            return rows.length === 0 ? (
               <Card
                 className="flex flex-col items-center gap-2 px-6 py-12 text-center"
                 data-testid="branch-deliveries-empty"
               >
                 <Truck aria-hidden className="size-8 text-muted-foreground" />
-                <p className="text-muted-foreground">{t('orders.branchDeliveries.empty')}</p>
+                <p className="text-muted-foreground">
+                  {t(
+                    overview
+                      ? 'orders.branchDeliveries.overviewEmpty'
+                      : 'orders.branchDeliveries.empty',
+                  )}
+                </p>
               </Card>
             ) : (
               <ul className="grid gap-3 lg:grid-cols-2">
                 {rows.map((r) => (
-                  <TrackingCard key={r.id} request={r} when={formatTime(r.updatedAt)} />
+                  <TrackingCard
+                    key={r.id}
+                    request={r}
+                    when={formatTime(r.updatedAt)}
+                    overview={overview}
+                  />
                 ))}
               </ul>
-            )
-          }
+            );
+          }}
         </Loaded>
       </section>
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">{t('orders.branchDeliveries.received', { days })}</h2>
+        <h2 className="text-lg font-semibold">
+          {t(overview ? 'orders.branchDeliveries.delivered' : 'orders.branchDeliveries.received', {
+            days,
+          })}
+        </h2>
         <Loaded resource={received} reload={reloadReceived}>
           {(rows) => {
             const recent = rows.filter((r) => Date.parse(r.updatedAt) >= since);
             return recent.length === 0 ? (
               <p className="text-sm text-muted-foreground" data-testid="branch-received-empty">
-                {t('orders.branchDeliveries.noneReceived', { days })}
+                {t(
+                  overview
+                    ? 'orders.branchDeliveries.noneDelivered'
+                    : 'orders.branchDeliveries.noneReceived',
+                  { days },
+                )}
               </p>
             ) : (
               <ul className="divide-y rounded-lg border bg-card" data-testid="branch-received">
@@ -99,9 +144,19 @@ export function BranchDeliveries({ organizationId }: { organizationId: string | 
                     key={r.id}
                     className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
                   >
-                    <Link href={`/requests?open=${r.id}`} className="font-medium">
-                      {requestTitle(r)}
-                    </Link>
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Link href={`/requests?open=${r.id}`} className="font-medium">
+                        {requestTitle(r)}
+                      </Link>
+                      {overview && (
+                        <>
+                          <span className="text-muted-foreground">
+                            {t('orders.branchDeliveries.to', { branch: r.locationName })}
+                          </span>
+                          <RequestStatusBadge status={r.status} />
+                        </>
+                      )}
+                    </span>
                     <span className="text-muted-foreground">
                       {t('orders.requestsPage.items', { count: String(r.lineCount) })} ·{' '}
                       {formatTime(r.updatedAt)}
@@ -117,7 +172,15 @@ export function BranchDeliveries({ organizationId }: { organizationId: string | 
   );
 }
 
-function TrackingCard({ request: r, when }: { request: StockRequestSummary; when: string }) {
+function TrackingCard({
+  request: r,
+  when,
+  overview,
+}: {
+  request: StockRequestSummary;
+  when: string;
+  overview: boolean;
+}) {
   const t = useT();
   const current = (STEPS as readonly StockRequestStatus[]).indexOf(r.status);
   return (
@@ -128,6 +191,14 @@ function TrackingCard({ request: r, when }: { request: StockRequestSummary; when
           <RequestStatusBadge status={r.status} />
         </div>
         <p className="text-sm text-muted-foreground">
+          {overview && (
+            <>
+              <span className="font-medium text-foreground" data-testid="tracking-branch">
+                {t('orders.branchDeliveries.to', { branch: r.locationName })}
+              </span>
+              <br />
+            </>
+          )}
           {t('orders.branchDeliveries.from', {
             warehouse: `${r.fromLocationName} · ${r.fromWarehouseName}`,
           })}
@@ -169,11 +240,13 @@ function TrackingCard({ request: r, when }: { request: StockRequestSummary; when
         </ol>
         {RECEIVABLE.includes(r.status) && (
           <div className="mt-auto flex flex-wrap gap-2">
-            <Button asChild>
-              <Link href={`/requests?open=${r.id}`} data-testid="tracking-receive">
-                {t('orders.requestsPage.receive')}
-              </Link>
-            </Button>
+            {!overview && (
+              <Button asChild>
+                <Link href={`/requests?open=${r.id}`} data-testid="tracking-receive">
+                  {t('orders.requestsPage.receive')}
+                </Link>
+              </Button>
+            )}
             {/* The Delivery Challan to check the goods against (ADR 0064). */}
             <Button variant="outline" asChild>
               <Link

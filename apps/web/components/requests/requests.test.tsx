@@ -231,6 +231,14 @@ describe('Request stock cart (branch, ADR 0053)', () => {
     expect(screen.queryByTestId('request-cart-count')).toBeNull();
   });
 
+  it('opens the request to send straight away from the shop\'s "View request" (item 5)', async () => {
+    signedInAs('branch');
+    mockState.search = 'cart=1';
+    api(request('submitted'));
+    render(<RequestStockPage />);
+    expect(await screen.findByTestId('request-cart')).toBeTruthy();
+  });
+
   it('asks by branch when it has no store yet, and lets it pick the source without a main warehouse', async () => {
     signedInAs('branch');
     setup.warehouses = [MAIN, BRANCH];
@@ -490,6 +498,23 @@ describe('A branch’s Order History and Delivery Tracking (ADR 0059)', () => {
   });
 });
 
+describe('Delivery Tracking for owners (operations menu, item 6)', () => {
+  it("shows every branch's deliveries, named by branch, without confirming receipt", async () => {
+    signedInAs('owner');
+    api(request('in_transit', { driverUserId: id(60), driverName: 'Ali' }));
+    render(<DeliveriesPage />, { wrapper: operations });
+    const board = await screen.findByTestId('branch-deliveries-overview');
+    expect(within(board).getByRole('heading', { level: 1 }).textContent).toBe(
+      'Deliveries to branches',
+    );
+    const card = await within(board).findByTestId('tracking-card');
+    expect(within(card).getByTestId('tracking-branch').textContent).toBe('To Kurfürstenstraße');
+    expect(within(card).queryByTestId('tracking-receive')).toBeNull();
+    // The sales orders' board below has its own title.
+    expect(screen.getByRole('heading', { name: 'Sales order deliveries' })).toBeTruthy();
+  });
+});
+
 describe('Transfers on the Picking page (warehouse)', () => {
   afterEach(() => {
     setup.stock = PLENTY;
@@ -545,6 +570,41 @@ describe('Transfers on the Picking page (warehouse)', () => {
           { lineId: id(41), quantity: '3' },
           { lineId: id(42), quantity: '0' },
         ],
+      }),
+    );
+  });
+
+  it('sends more than approved and adds a product nobody asked for (item 9)', async () => {
+    signedInAs('warehouse');
+    setup.stock = [level(id(51), '10.000'), { ...level(id(53), '7.000'), itemName: 'Salt' }];
+    const calls = api(
+      request('approved', { lines: [line(1, 'Rice', { approvedQuantity: '5.000' })] }),
+    );
+    render(<TransfersPicking organizationId={mockState.session!.activeOrganizationId} />);
+    const row = await screen.findByTestId('transfer-row');
+    await userEvent.click(await within(row).findByTestId('transfer-pack'));
+    const dialog = (await screen.findAllByRole('dialog')).at(-1)!;
+    const extra = await within(dialog).findByTestId('pack-extra');
+    // What the warehouse has, without the lines already being sent.
+    const options = within(extra)
+      .getAllByRole('option')
+      .map((o) => o.textContent);
+    expect(options).toEqual(['Choose a product', 'Salt (7 pc)']);
+    const [rice] = within(dialog).getAllByTestId<HTMLInputElement>('transfer-pack-quantity');
+    await userEvent.clear(rice!);
+    await userEvent.type(rice!, '6');
+    // Nothing chosen: named, not added.
+    await userEvent.click(within(extra).getByTestId('pack-extra-add'));
+    expect(within(extra).getByRole('alert').textContent).toContain('Choose a product');
+    await userEvent.selectOptions(within(extra).getByTestId('pack-extra-item'), id(53));
+    await userEvent.type(within(extra).getByTestId('pack-extra-quantity'), '2');
+    await userEvent.click(within(extra).getByTestId('pack-extra-add'));
+    expect(within(extra).getByTestId('pack-extra-lines').textContent).toContain('Salt2 pc');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() =>
+      expect(posts(calls)[0]?.body).toEqual({
+        lines: [{ lineId: id(41), quantity: '6' }],
+        extra: [{ itemId: id(53), quantity: '2' }],
       }),
     );
   });
