@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { type SystemRole, systemRolePermissions } from '@durby/shared';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockState, resetMocks } from '../../test/mocks';
@@ -99,6 +99,7 @@ function api(extra: Record<string, () => Response> = {}) {
               averageCost: '0.4500',
               value: '10.80',
               low: false,
+              expiresOn: '2999-12-31',
             },
             {
               warehouseId: STORE.id,
@@ -109,6 +110,7 @@ function api(extra: Record<string, () => Response> = {}) {
               averageCost: '3.0000',
               value: '13.50',
               low: true,
+              expiresOn: '2020-01-15',
             },
           ],
         }),
@@ -142,6 +144,13 @@ describe('InventoryPage', () => {
     expect(rows.map((r) => r.dataset.name)).toEqual(['Cola 0.33', 'Tomatoes']);
     expect(within(rows[1]!).getByTestId('stock-quantity').textContent).toBe('4.5 kg');
     expect(within(rows[1]!).getByTestId('stock-low')).toBeTruthy();
+    // Best before (ADR 0062): the earliest date of what is there, red when past.
+    expect(within(rows[0]!).getByTestId('stock-expiry').textContent).toBe(
+      new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' }).format(
+        new Date('2999-12-31T00:00:00Z'),
+      ),
+    );
+    expect(within(rows[1]!).getByTestId('stock-expiry').dataset.expired).toBe('true');
     expect(screen.getByTestId('stock-total').textContent).toBe('Stock value: €24.30');
     await userEvent.click(screen.getByRole('checkbox', { name: 'Low stock only' }));
     expect(screen.getAllByTestId('stock-row').map((r) => r.dataset.name)).toEqual(['Tomatoes']);
@@ -169,6 +178,7 @@ describe('InventoryPage', () => {
     await userEvent.selectOptions(screen.getAllByTestId('doc-item')[0]!, TOMATOES.id);
     await userEvent.type(screen.getAllByTestId('doc-quantity')[0]!, '10');
     await userEvent.type(screen.getAllByTestId('doc-cost')[0]!, '2,5');
+    fireEvent.change(screen.getAllByTestId('doc-expiry')[0]!, { target: { value: '2027-03-31' } });
     await userEvent.click(screen.getByTestId('doc-add-line'));
     await userEvent.selectOptions(screen.getAllByTestId('doc-item')[1]!, COLA.id);
     await userEvent.type(screen.getAllByTestId('doc-quantity')[1]!, '24');
@@ -184,7 +194,7 @@ describe('InventoryPage', () => {
           warehouseId: STORE.id,
           supplier: 'Metro',
           lines: [
-            { itemId: TOMATOES.id, quantity: '10', unitCost: '2.5' },
+            { itemId: TOMATOES.id, quantity: '10', unitCost: '2.5', expiresOn: '2027-03-31' },
             { itemId: COLA.id, quantity: '24', unitCost: '0.45' },
           ],
         },

@@ -40,6 +40,8 @@ interface Line {
   unitCost: string;
   /** A unit of measurement the receipt line is entered in; '' = the item's own unit (ADR 0038). */
   unitId: string;
+  /** Best before, "2027-03-31" or '' (receipts, ADR 0062). */
+  expiresOn: string;
 }
 
 const emptyLine = (key: number): Line => ({
@@ -48,6 +50,7 @@ const emptyLine = (key: number): Line => ({
   quantity: '',
   unitCost: '',
   unitId: '',
+  expiresOn: '',
 });
 
 const KEYS: Record<Kind, PermissionKey> = {
@@ -148,6 +151,7 @@ export function DocumentForm({ kind, data }: { kind: Kind; data: InventoryData }
               quantity: l.quantity.trim(),
               unitCost: l.unitCost.trim(),
               ...(l.unitId ? { unitId: l.unitId } : {}),
+              ...(l.expiresOn ? { expiresOn: l.expiresOn } : {}),
             })),
           })
         : kind === 'adjust'
@@ -272,7 +276,12 @@ export function DocumentForm({ kind, data }: { kind: Kind; data: InventoryData }
             return (
               <li
                 key={line.key}
-                className="grid grid-cols-2 items-end gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+                className={cn(
+                  'grid grid-cols-2 items-end gap-2',
+                  kind === 'receive'
+                    ? 'sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]'
+                    : 'sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]',
+                )}
                 data-testid="doc-line"
               >
                 <div className="col-span-2 grid gap-1.5 sm:col-span-1">
@@ -361,6 +370,20 @@ export function DocumentForm({ kind, data }: { kind: Kind; data: InventoryData }
                   </div>
                 ) : (
                   <span className="hidden sm:block" />
+                )}
+                {kind === 'receive' && (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`${id}-expiry-${line.key}`}>
+                      {t('inventory.fields.expiresOn')}
+                    </Label>
+                    <Input
+                      id={`${id}-expiry-${line.key}`}
+                      type="date"
+                      value={line.expiresOn}
+                      onChange={(e) => change(line.key, { expiresOn: e.target.value })}
+                      data-testid="doc-expiry"
+                    />
+                  </div>
                 )}
                 <div className="flex items-center justify-end gap-2">
                   {value && (

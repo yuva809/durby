@@ -45,7 +45,7 @@ describe('shared row checks', () => {
   it('flags bad units, prices, quantities and duplicates', () => {
     const rows: ItemImportRow[] = [
       { name: 'Rice', unit: 'pc', salePrice: '1.999' },
-      { name: 'rice', unit: 'box' },
+      { name: 'rice', unit: 'crate' },
       { name: 'Oil', sku: 'O-1', unit: 'l', minQuantity: '-1' },
     ];
     expect(checkItemRows(rows)).toEqual([

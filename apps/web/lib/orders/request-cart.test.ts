@@ -33,6 +33,7 @@ const item = (
   available,
   categoryId,
   categoryName,
+  expiresOn: null,
 });
 
 const ITEMS = [

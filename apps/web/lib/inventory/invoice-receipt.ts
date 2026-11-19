@@ -47,6 +47,8 @@ export interface InvoiceRow {
   unitCost: string;
   /** The unit the supplier invoices in (ADR 0055): a unit of measurement's id, or '' for the item's own unit. */
   unitId: string;
+  /** Best before as printed, "2027-03-31", or '' (ADR 0062). */
+  expiresOn: string;
   /** For a new item (ADR 0055): its unit, category ('' none), brand and pack size. */
   newUnit: StockUnit;
   categoryId: string;
@@ -89,6 +91,7 @@ export function matchInvoice(
       target,
       ...amountsOf(line, countAs),
       unitId: '',
+      expiresOn: '',
       newUnit,
       ...detailsFor(line, byId.get(target)),
     };
@@ -229,6 +232,7 @@ export function submitRequest(input: {
           quantity: clean(r.quantity),
           unitCost: clean(r.unitCost),
           ...(r.unitId ? { unitId: r.unitId } : {}),
+          ...(r.expiresOn ? { expiresOn: r.expiresOn } : {}),
         };
         if (r.target !== NEW_ITEM) {
           const itemDetails = itemDetailsChange(
@@ -276,6 +280,7 @@ export function rowsFromInvoice(
       include: true,
       target: l.itemId ?? NEW_ITEM,
       unitId: l.unitId ?? '',
+      expiresOn: l.expiresOn ?? '',
       newUnit: l.newItem?.unit ?? 'pc',
       categoryId: given?.categoryId ?? (l.newItem ? '' : base.categoryId),
       brand: given?.brand ?? (l.newItem ? '' : base.brand),

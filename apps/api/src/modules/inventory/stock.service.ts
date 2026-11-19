@@ -76,6 +76,7 @@ const DOCUMENT_SELECT = {
       quantity: true,
       unitCost: true,
       value: true,
+      expiresOn: true,
       item: { select: { name: true, unit: true } },
     },
     orderBy: { id: 'asc' },
@@ -101,17 +102,22 @@ interface DocumentRow {
     quantity: DecimalValue;
     unitCost: DecimalValue;
     value: DecimalValue;
+    expiresOn: Date | null;
     item: { name: string; unit: StockUnit };
   }[];
 }
 
-/** One movement to write: signed quantity in a warehouse. */
+/** One movement to write: signed quantity in a warehouse, with the expiry date the goods carry (ADR 0062). */
 interface PlannedMovement {
   warehouseId: string;
   itemId: string;
   quantity: Decimal;
   unitCost: Decimal;
+  expiresOn?: string | null;
 }
+
+/** A date column as "2027-03-31" (Prisma reads DATE as UTC midnight). */
+const dateText = (value: Date | null) => (value ? value.toISOString().slice(0, 10) : null);
 
 interface WarehouseRef {
   id: string;
@@ -144,6 +150,8 @@ export class StockService {
    * unit must be the item's unit.
    */
   receive(body: ReceiptRequest): Promise<StockDocument> {
+    // Best before per line, as given (ADR 0062).
+    const expiry = body.lines.map((l) => l.expiresOn ?? null);
     let lines = body.lines.map((l) => ({
       itemId: l.itemId,
       quantity: new Decimal(l.quantity),
@@ -193,15 +201,21 @@ export class StockService {
       },
       header: { supplier: body.supplier ?? null, note: body.note || null },
       plan: (levels) =>
-        lines.map((line) => {
+        lines.map((line, index) => {
           const quantity = line.quantity;
-          const booked = bookIn(levels.get(body.warehouseId, line.itemId), quantity, line.unitCost);
+          const booked = bookIn(
+            levels.get(body.warehouseId, line.itemId),
+            quantity,
+            line.unitCost,
+            expiry[index] ?? null,
+          );
           levels.set(body.warehouseId, line.itemId, booked.level);
           return {
             warehouseId: body.warehouseId,
             itemId: line.itemId,
             quantity,
             unitCost: booked.unitCost,
+            expiresOn: booked.expiresOn,
           };
         }),
     });
@@ -287,9 +301,20 @@ export class StockService {
         body.lines.map((line, index) => {
           const itemId = lineItems[index]!;
           const { quantity, unitCost } = converted[index]!;
-          const booked = bookIn(levels.get(body.warehouseId, itemId), quantity, unitCost);
+          const booked = bookIn(
+            levels.get(body.warehouseId, itemId),
+            quantity,
+            unitCost,
+            line.expiresOn ?? null,
+          );
           levels.set(body.warehouseId, itemId, booked.level);
-          return { warehouseId: body.warehouseId, itemId, quantity, unitCost: booked.unitCost };
+          return {
+            warehouseId: body.warehouseId,
+            itemId,
+            quantity,
+            unitCost: booked.unitCost,
+            expiresOn: booked.expiresOn,
+          };
         }),
     });
   }
@@ -436,8 +461,13 @@ export class StockService {
           const quantity = new Decimal(line.quantity);
           const out = bookOut(levels.get(body.fromWarehouseId, line.itemId), quantity);
           levels.set(body.fromWarehouseId, line.itemId, out.level);
-          // The stock brings its cost along, like a receipt at the source's average.
-          const into = bookIn(levels.get(body.toWarehouseId, line.itemId), quantity, out.unitCost);
+          // The stock brings its cost and expiry date along, like a receipt at the source's average.
+          const into = bookIn(
+            levels.get(body.toWarehouseId, line.itemId),
+            quantity,
+            out.unitCost,
+            out.expiresOn,
+          );
           levels.set(body.toWarehouseId, line.itemId, into.level);
           return [
             {
@@ -451,6 +481,7 @@ export class StockService {
               itemId: line.itemId,
               quantity,
               unitCost: out.unitCost,
+              expiresOn: out.expiresOn,
             },
           ];
         }),
@@ -531,6 +562,7 @@ export class StockService {
         itemId: true,
         quantity: true,
         averageCost: true,
+        expiresOn: true,
         item: { select: { name: true, unit: true, minQuantity: true } },
       },
       orderBy: [{ item: { name: 'asc' } }, { itemId: 'asc' }, { warehouseId: 'asc' }],
@@ -548,6 +580,7 @@ export class StockService {
         averageCost: prices ? costText(averageCost) : null,
         value: prices ? valueOf(quantity, averageCost).toFixed(2) : null,
         low: min !== null && quantity.lte(min),
+        expiresOn: quantity.greaterThan(0) ? dateText(row.expiresOn) : null,
       };
     });
   }
@@ -1064,9 +1097,15 @@ export class StockService {
         { warehouseId: from.id, itemId, quantity: quantity.negated(), unitCost: out.unitCost },
       ];
       if (toId) {
-        const into = bookIn(levels.get(toId, itemId), quantity, out.unitCost);
+        const into = bookIn(levels.get(toId, itemId), quantity, out.unitCost, out.expiresOn);
         levels.set(toId, itemId, into.level);
-        moves.push({ warehouseId: toId, itemId, quantity, unitCost: out.unitCost });
+        moves.push({
+          warehouseId: toId,
+          itemId,
+          quantity,
+          unitCost: out.unitCost,
+          expiresOn: out.expiresOn,
+        });
       }
       return moves;
     });
@@ -1148,6 +1187,7 @@ export class StockService {
         quantity: quantityText(m.quantity),
         unitCost: costText(m.unitCost),
         value: valueOf(m.quantity, m.unitCost).toFixed(2),
+        expiresOn: m.expiresOn ? new Date(`${m.expiresOn}T00:00:00.000Z`) : null,
       })),
     });
     for (const [warehouseId, itemId, level] of input.levels.entries()) {
@@ -1155,6 +1195,7 @@ export class StockService {
         UPDATE stock_levels
         SET quantity = ${quantityText(level.quantity)}::numeric,
             average_cost = ${costText(level.averageCost)}::numeric,
+            expires_on = ${level.expiresOn}::date,
             updated_at = now()
         WHERE warehouse_id = ${warehouseId}::uuid AND item_id = ${itemId}::uuid`;
     }
@@ -1274,13 +1315,16 @@ async function lockLevels(
   const locked = new Map<string, Level>();
   const touched = new Set<string>();
   for (const [warehouseId, itemId] of pairs) {
-    const [row] = await tx.$queryRaw<{ quantity: string; average_cost: string }[]>`
-      SELECT quantity::text, average_cost::text FROM stock_levels
+    const [row] = await tx.$queryRaw<
+      { quantity: string; average_cost: string; expires_on: string | null }[]
+    >`
+      SELECT quantity::text, average_cost::text, expires_on::text FROM stock_levels
       WHERE warehouse_id = ${warehouseId}::uuid AND item_id = ${itemId}::uuid
       FOR UPDATE`;
     const level = {
       quantity: new Decimal(row!.quantity),
       averageCost: new Decimal(row!.average_cost),
+      expiresOn: row!.expires_on,
     };
     map.set(`${warehouseId}:${itemId}`, level);
     locked.set(`${warehouseId}:${itemId}`, level);
@@ -1333,6 +1377,7 @@ function documentResponse(row: DocumentRow): StockDocument {
       quantity: m.quantity.toFixed(3),
       unitCost: m.unitCost.toFixed(4),
       value: m.value.toFixed(2),
+      expiresOn: dateText(m.expiresOn),
     })),
   };
 }

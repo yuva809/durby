@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { systemRolePermissions } from '@durby/shared';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockState, resetMocks } from '../../test/mocks';
@@ -197,6 +197,11 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
       within(lines[0]!).getByTestId('invoice-line-invoiced-in'),
       CARTON.id,
     );
+    // Costs are read and sent, not shown (ADR 0062); best before as printed.
+    expect(screen.queryByTestId('invoice-line-cost')).toBeNull();
+    fireEvent.change(within(lines[0]!).getByTestId('invoice-line-expiry'), {
+      target: { value: '2027-03-31' },
+    });
     await userEvent.click(screen.getByTestId('invoice-submit'));
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(writes[0]).toEqual({
@@ -217,6 +222,7 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
             quantity: '50.00',
             unitCost: '11.00',
             unitId: CARTON.id,
+            expiresOn: '2027-03-31',
             // The matched product had no category or pack size: set on it when approved (ADR 0055).
             itemDetails: { categoryId: FISH.id, packCount: 1, packSize: '4', packUnit: 'kg' },
           },
@@ -299,13 +305,11 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
     render(<InvoiceImportPage />);
     await userEvent.upload(await screen.findByTestId('invoice-file'), pdfFile());
     expect(await screen.findAllByTestId('invoice-line')).toHaveLength(3);
+    // Costs are not shown on the import (ADR 0062): the quantities here, the costs in what is sent.
     const amounts = () =>
       screen
         .getAllByTestId('invoice-line')
-        .map((l) => [
-          within(l).getByTestId<HTMLInputElement>('invoice-line-quantity').value,
-          within(l).getByTestId<HTMLInputElement>('invoice-line-cost').value,
-        ]);
+        .map((l) => within(l).getByTestId<HTMLInputElement>('invoice-line-quantity').value);
     const first = screen.getAllByTestId('invoice-line')[0]!;
     expect(within(first).getByTestId('invoice-line-packed').textContent).toBe(
       '4 CAR × 12 = 48 pcs',
@@ -316,20 +320,12 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
     );
     // As invoiced first: cartons at the carton price.
     expect(screen.getByTestId('invoice-count-invoiced').getAttribute('aria-checked')).toBe('true');
-    expect(amounts()).toEqual([
-      ['4', '30.12'],
-      ['10', '10.54'],
-      ['10', '10.15'],
-    ]);
+    expect(amounts()).toEqual(['4', '10', '10']);
     expect(screen.getByTestId('invoice-total-check').textContent).toContain('Matches');
 
     // By the piece: 0.25375 a sardine tin is kept as 0.2538, 2 cents over the paper, said so.
     await userEvent.click(screen.getByTestId('invoice-count-pieces'));
-    expect(amounts()).toEqual([
-      ['48', '2.51'],
-      ['400', '0.2635'],
-      ['400', '0.2538'],
-    ]);
+    expect(amounts()).toEqual(['48', '400', '400']);
     expect(screen.getByTestId('invoice-total-check').textContent).toContain(
       'apart from €0.02 from rounding piece prices',
     );

@@ -1,4 +1,5 @@
 import type { ProductCategory, StockItem, StockLevel } from '@durby/shared';
+import { earliestDate } from './expiry';
 
 /**
  * The inventory overview of the operations menu (docs/modules/inventory.md → Overview, ADR 0048): stock items with
@@ -19,6 +20,8 @@ export interface ItemRow {
   value: string | null;
   /** At or below the reorder level in any warehouse shown. */
   low: boolean;
+  /** The earliest best-before of what is in stock, across the warehouses shown (ADR 0062). */
+  expiresOn: string | null;
 }
 
 /** Exact decimal sums: amounts are strings (CLAUDE.md rule 6), counted in thousandths. */
@@ -74,6 +77,7 @@ export function itemRows(items: readonly StockItem[], levels: readonly StockLeve
             )
           : null,
         low: own.some((l) => l.low),
+        expiresOn: earliestDate(own.map((l) => l.expiresOn)),
       };
     });
 }

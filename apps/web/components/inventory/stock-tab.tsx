@@ -16,6 +16,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Loaded } from '../users/common';
+import { ExpiryDate } from './expiry-date';
 import { type InventoryData, warehouseLabel } from './inventory-page';
 import { useSeesPrices } from './use-sees-prices';
 
@@ -110,6 +111,7 @@ export function StockTab({ data }: { data: InventoryData }) {
                       <th className="px-4 py-2 text-right font-medium">
                         {t('inventory.fields.quantity')}
                       </th>
+                      <th className="px-4 py-2 font-medium">{t('inventory.fields.expiresOn')}</th>
                       {prices && (
                         <th className="px-4 py-2 text-right font-medium">
                           {t('inventory.fields.averageCost')}
@@ -156,6 +158,9 @@ export function StockTab({ data }: { data: InventoryData }) {
                           data-testid="stock-quantity"
                         >
                           {`${shortQuantity(l.quantity)} ${t(`inventory.units.${l.unit}`)}`}
+                        </td>
+                        <td className="text-sm md:px-4 md:py-2">
+                          <ExpiryDate value={l.expiresOn} testId="stock-expiry" />
                         </td>
                         {prices && l.averageCost !== null && (
                           <td className="text-muted-foreground tabular-nums md:px-4 md:py-2 md:text-right">

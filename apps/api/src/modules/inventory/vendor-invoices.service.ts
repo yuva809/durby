@@ -85,6 +85,7 @@ const SELECT = {
       unitId: true,
       quantity: true,
       unitCost: true,
+      expiresOn: true,
       item: { select: { name: true } },
       unit: { select: { symbol: true } },
     },
@@ -131,6 +132,7 @@ interface Row {
     unitId: string | null;
     quantity: Dec;
     unitCost: Dec;
+    expiresOn: Date | null;
     item: { name: string } | null;
     unit: { symbol: string } | null;
   }[];
@@ -436,6 +438,7 @@ export class VendorInvoicesService {
         unitId: l.unitId ?? null,
         quantity: new Decimal(l.quantity).toFixed(3),
         unitCost: new Decimal(l.unitCost).toFixed(4),
+        expiresOn: l.expiresOn ? new Date(`${l.expiresOn}T00:00:00.000Z`) : null,
       })),
     });
   }
@@ -501,6 +504,7 @@ function receiptOf(row: Row): ImportReceiptRequest {
         quantity: l.quantity.toFixed(3),
         unitCost: l.unitCost.toFixed(4),
         ...(l.unitId ? { unitId: l.unitId } : {}),
+        ...(l.expiresOn ? { expiresOn: l.expiresOn.toISOString().slice(0, 10) } : {}),
       };
       if (l.itemId) {
         const details = detailsOf(l);
@@ -611,6 +615,7 @@ function invoiceOf(row: Row, names: ReadonlyMap<string, string>): VendorInvoice 
       quantity: l.quantity.toFixed(3),
       unitCost: l.unitCost.toFixed(4),
       value: value(l).toFixed(2),
+      expiresOn: l.expiresOn ? l.expiresOn.toISOString().slice(0, 10) : null,
     })),
   };
 }
