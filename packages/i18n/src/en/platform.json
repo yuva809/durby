@@ -1026,6 +1026,7 @@
   "platform.team.setPassword.doneTemporary": "They were signed out everywhere; at the next sign-in they choose their own password.",
   "platform.audit.fields.isMain": "Main warehouse",
   "platform.audit.fields.suppliesLocationIds": "Branches supplied",
+  "platform.audit.fields.isWarehouseSite": "Warehouse place",
   "platform.audit.fields.brand": "Brand",
   "platform.audit.fields.packCount": "Pack count",
   "platform.audit.fields.packSize": "Pack size",

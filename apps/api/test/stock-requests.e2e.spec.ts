@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
+  locationListResponseSchema,
   locationSchema,
   productCategoryListResponseSchema,
   productCategorySchema,
@@ -703,5 +704,36 @@ describe('branch stock requests (ADR 0045)', () => {
       200,
     );
     expect((await destinations(thirdUser.token))[0]?.supplierWarehouseId).toBe(s.main);
+  });
+  it('gives a warehouse added without a location a place of its own, which is no branch (ADR 0068)', async () => {
+    const s = await setup();
+    const [, branchLocation] = s.org.locations;
+    // Only who creates warehouses everywhere: a place of its own is in nobody's list yet.
+    await post(s.lager.token, '/inventory/warehouses', { name: 'North Depot' }).expect(403);
+    const depot = warehouseSchema.parse(
+      (
+        await post(s.owner.token, '/inventory/warehouses', {
+          name: 'North Depot',
+          suppliesLocationIds: [branchLocation],
+        }).expect(201)
+      ).body,
+    );
+    const placeOf = async () =>
+      locationListResponseSchema
+        .parse((await get(s.owner.token, '/locations').expect(200)).body)
+        .data.find((l) => l.id === depot.locationId);
+    expect(await placeOf()).toMatchObject({ name: 'North Depot', isWarehouseSite: true });
+    // Renamed with its warehouse.
+    await patch(s.owner.token, `/inventory/warehouses/${depot.id}`, { name: 'Depot Nord' }).expect(
+      200,
+    );
+    expect((await placeOf())?.name).toBe('Depot Nord');
+    // Not a branch to request for; the branch it supplies orders from it.
+    const destinations = (await get(s.owner.token, '/stock-requests/destinations').expect(200))
+      .body as { data: { locationId: string; supplierWarehouseId: string | null }[] };
+    expect(destinations.data.map((d) => d.locationId)).not.toContain(depot.locationId);
+    expect(
+      destinations.data.find((d) => d.locationId === branchLocation)?.supplierWarehouseId,
+    ).toBe(depot.id);
   });
 });

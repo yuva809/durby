@@ -1026,6 +1026,7 @@
   "platform.team.setPassword.doneTemporary": "Sie wurden überall abgemeldet; beim nächsten Anmelden wählen sie ihr eigenes Passwort.",
   "platform.audit.fields.isMain": "Hauptlager",
   "platform.audit.fields.suppliesLocationIds": "Belieferte Filialen",
+  "platform.audit.fields.isWarehouseSite": "Lagerstandort",
   "platform.audit.fields.brand": "Marke",
   "platform.audit.fields.packCount": "Packungsanzahl",
   "platform.audit.fields.packSize": "Packungsgröße",

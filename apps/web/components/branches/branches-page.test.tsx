@@ -44,6 +44,15 @@ const OLD = {
   address: 'Marktplatz 1',
   archivedAt: '2026-11-01T10:00:00.000Z',
 };
+/** A warehouse's own place (ADR 0068): not listed as a branch. */
+const DEPOT = {
+  id: id(4),
+  name: 'North Depot',
+  brandId: id(90),
+  address: null,
+  archivedAt: null,
+  isWarehouseSite: true,
+};
 
 const roleRef = (key: SystemRole, n: number) => ({ id: id(40 + n), systemKey: key, name: null });
 const member = (n: number, over: Partial<TeamMember>): TeamMember => ({
@@ -126,7 +135,7 @@ function api(approval = true) {
       return Promise.resolve(Response.json({ ...HAGELBERGER, ...(body as object) }));
     }
     const answers: Record<string, unknown> = {
-      '/api/v1/locations?includeArchived=true': { data: [HAGELBERGER, KURFUERSTEN, OLD] },
+      '/api/v1/locations?includeArchived=true': { data: [HAGELBERGER, KURFUERSTEN, OLD, DEPOT] },
       '/api/v1/staff': TEAM,
       '/api/v1/inventory/warehouses': {
         data: [
@@ -157,7 +166,7 @@ const card = async (name: string) =>
   (await screen.findAllByTestId('branch-card')).find((c) => c.dataset.name === name)!;
 
 describe('/branches (ADR 0056)', () => {
-  it('shows each branch with its address, the staff limited to it and its warehouses', async () => {
+  it('shows each branch with its address and the staff limited to it, not warehouse places', async () => {
     signedInAs('owner');
     api();
     render(<BranchesPage />);
@@ -175,18 +184,11 @@ describe('/branches (ADR 0056)', () => {
       ).toEqual(['DilaBranch manager']),
     );
     expect(within(hagel).getByTestId('branch-staff').textContent).toContain('Staff (1)');
-    await waitFor(() =>
-      expect(within(hagel).getByTestId('branch-warehouses').textContent).toBe('1 warehouse'),
-    );
-    expect(within(hagel).getByTestId('branch-warehouses').getAttribute('href')).toBe(
-      '/inventory/warehouses',
-    );
 
     const kurf = await card(KURFUERSTEN.name);
     expect(within(kurf).getByTestId('branch-address').textContent).toBe('No address yet');
-    await waitFor(() =>
-      expect(within(kurf).getByTestId('branch-warehouses').textContent).toBe('2 warehouses'),
-    );
+    // Warehouses are managed under Inventory; a warehouse's own place (ADR 0068) is no branch.
+    expect(screen.queryByTestId('branch-warehouses')).toBeNull();
   });
 
   it('searches by name or address, and shows archived branches on request', async () => {

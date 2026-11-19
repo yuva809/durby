@@ -24,7 +24,14 @@ describe('audit presentation', () => {
 
   it('places it at its location, or nowhere for organization-wide records', () => {
     const locations = [
-      { id: LOC, name: 'Main street', brandId: LOC, address: null, archivedAt: null },
+      {
+        id: LOC,
+        name: 'Main street',
+        brandId: LOC,
+        address: null,
+        archivedAt: null,
+        isWarehouseSite: false,
+      },
     ];
     expect(whereOf(entry(null, { locationId: LOC }), locations)).toBe('Main street');
     expect(whereOf(entry(null, { name: 'Soup' }), locations)).toBeNull();
