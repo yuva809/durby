@@ -176,6 +176,8 @@ function Inventory({
       tab === 'stock' ? (
         <CategoryOverview
           data={data}
+          // Who sends requests (a branch) shops the main warehouse's stock per category (ADR 0065).
+          branchShop={requests}
           actions={
             <>
               {requests && (

@@ -34,6 +34,7 @@ import { Loaded } from '../users/common';
 import { type InventoryData, warehouseLabel } from './inventory-page';
 import { useSeesPrices } from './use-sees-prices';
 import { ExpiryDate } from './expiry-date';
+import { BranchShop } from '../requests/branch-shop';
 
 const selectionKey = (s: CategorySelection) =>
   s.kind === 'category' ? s.id : s.kind === 'none' ? 'none' : '';
@@ -45,7 +46,16 @@ const selectionOf = (key: string): CategorySelection =>
  * categories as tiles (All items, each top-level category, Uncategorized) with their item counts; a tile opens its
  * items with their stock. The page header comes with it: Export downloads what is listed; `actions` follow it.
  */
-export function CategoryOverview({ data, actions }: { data: InventoryData; actions: ReactNode }) {
+export function CategoryOverview({
+  data,
+  actions,
+  branchShop = false,
+}: {
+  data: InventoryData;
+  actions: ReactNode;
+  /** A branch's view (ADR 0065): a category lists what the main warehouse has, with the request cart. */
+  branchShop?: boolean;
+}) {
   const t = useT();
   // A branch sees quantities only (ADR 0060): no value column, total or export column.
   const prices = useSeesPrices();
@@ -184,6 +194,7 @@ export function CategoryOverview({ data, actions }: { data: InventoryData; actio
               if (open) {
                 return (
                   <CategoryItems
+                    shop={branchShop}
                     selection={open}
                     categories={categories}
                     rows={listed}
@@ -354,6 +365,7 @@ function Tile({ tile, onOpen }: { tile: CategoryTile; onOpen: () => void }) {
 
 /** A category opened: its secondary categories as chips, then its items with their stock. */
 function CategoryItems({
+  shop,
   selection,
   categories,
   rows,
@@ -364,6 +376,7 @@ function CategoryItems({
   money,
   searchId,
 }: {
+  shop: boolean;
   selection: CategorySelection;
   categories: readonly ProductCategory[];
   rows: ItemRow[];
@@ -427,7 +440,9 @@ function CategoryItems({
           ))}
         </div>
       )}
-      {rows.length === 0 ? (
+      {shop ? (
+        <BranchShop itemIds={rows.map((r) => r.item.id)} />
+      ) : rows.length === 0 ? (
         <Card className="flex flex-col items-center gap-2 px-6 py-10 text-center">
           <Boxes aria-hidden className="size-8 text-muted-foreground" />
           <p className="text-muted-foreground">{t('inventory.overview.empty')}</p>

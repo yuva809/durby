@@ -47,9 +47,54 @@ export const withinStock = (quantity: string, available: string) => {
   return q !== null && q <= most(available);
 };
 
-/** Whether one more fits (the "+" button): below what the warehouse has. */
-export const canAddMore = (quantity: string | undefined, available: string) =>
-  (thousandths(quantity ?? '0') ?? 0n) < most(available);
+/**
+ * Whether one more fits (the "+" button): below what the warehouse has; by the box (`step` pieces, ADR 0065) only a
+ * whole box.
+ */
+export const canAddMore = (quantity: string | undefined, available: string, step = 1) => {
+  const current = thousandths(quantity ?? '0') ?? 0n;
+  return step > 1 ? current + BigInt(step) * 1000n <= most(available) : current < most(available);
+};
+
+/** Pieces in a box (ADR 0065): items counted in pieces with a pack count above 1; null for the others. */
+export function piecesPerBox(item: { unit: string; packCount: number | null }): number | null {
+  return item.unit === 'pc' && item.packCount !== null && item.packCount > 1
+    ? item.packCount
+    : null;
+}
+
+/** Pieces as boxes ("24" with 12 a box → "2"; "18" → "1.5"). */
+export function boxesOf(quantity: string, perBox: number): string {
+  const pieces = thousandths(quantity) ?? 0n;
+  return plain((pieces + BigInt(perBox) / 2n) / BigInt(perBox));
+}
+
+/** Boxes typed as pieces ("2" with 12 a box → "24"); null when not a quantity. */
+export function piecesOf(boxes: string, perBox: number): string | null {
+  const value = thousandths(boxes);
+  return value === null || value < 0n ? null : plain(value * BigInt(perBox));
+}
+
+/** Box or piece per item (ADR 0065): item id → how it is ordered; items with boxes default to the box. */
+export type CartUnits = Readonly<Record<string, 'box' | 'piece'>>;
+
+export const unitsStorageKey = (organizationId: string, locationId: string) =>
+  `request-cart-units:${organizationId}:${locationId}`;
+
+export function parseStoredUnits(text: string | null): CartUnits {
+  if (!text) return {};
+  try {
+    const value: unknown = JSON.parse(text);
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return {};
+    return Object.fromEntries(
+      Object.entries(value).filter(
+        (e): e is [string, 'box' | 'piece'] => e[1] === 'box' || e[1] === 'piece',
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
 
 /** What the warehouse has, as the page shows it ("2.000" → "2"; below zero "0"). */
 export const availableText = (available: string) => plain(most(available));
@@ -58,13 +103,17 @@ export const availableText = (available: string) => plain(most(available));
  * One more (whole steps; "1.5" becomes "2.5"), never beyond what the warehouse has: below a whole step it goes to the
  * limit, at the limit nothing changes. Without `available` there is no limit.
  */
-export function increment(cart: Cart, itemId: string, available?: string): Cart {
+export function increment(cart: Cart, itemId: string, available?: string, step = 1): Cart {
   const current = thousandths(cart[itemId] ?? '0') ?? 0n;
-  let next = (current < 0n ? 0n : current) + 1000n;
+  let next = (current < 0n ? 0n : current) + BigInt(step) * 1000n;
   if (available !== undefined) {
     const limit = most(available);
     if (current >= limit) return cart;
-    if (next > limit) next = limit;
+    // By the box only whole boxes; otherwise up to what is there.
+    if (next > limit) {
+      if (step > 1) return cart;
+      next = limit;
+    }
   }
   return { ...cart, [itemId]: plain(next) };
 }
@@ -74,10 +123,10 @@ export const beyondStock = (lines: ReturnType<typeof cartLines>) =>
   lines.filter((l) => validQuantity(l.quantity) && !withinStock(l.quantity, l.item.available));
 
 /** One less; at 1 or below the item leaves the cart. */
-export function decrement(cart: Cart, itemId: string): Cart {
+export function decrement(cart: Cart, itemId: string, step = 1): Cart {
   const current = Number(clean(cart[itemId] ?? '0'));
-  if (!Number.isFinite(current) || current <= 1) return remove(cart, itemId);
-  return { ...cart, [itemId]: trim(current - 1) };
+  if (!Number.isFinite(current) || current <= step) return remove(cart, itemId);
+  return { ...cart, [itemId]: trim(current - step) };
 }
 
 /** As typed; an empty field keeps the line (the person is still typing), "0" removes it. */
