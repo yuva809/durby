@@ -13,6 +13,7 @@ import type {
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
+import { createWarehouseSite, renameWarehouseSite } from '../../platform/organization';
 import { AccessService } from '../../platform/rbac';
 import { CatalogService } from '../catalog';
 import {
@@ -113,25 +114,35 @@ export class InventorySetupService {
 
   async createWarehouse(body: CreateWarehouseRequest): Promise<Warehouse> {
     const { tenantId, userId } = this.tenantContext.require();
-    const location = await this.db.location.findUnique({
-      where: { id: body.locationId },
-      select: { id: true },
-    });
-    if (!location) throw inventoryErrors.locationNotFound();
-    await this.access.assert('inventory.warehouses.create', { locationId: body.locationId });
+    if (body.locationId === undefined) {
+      // A place of its own (ADR 0068) is in nobody's location list yet: for who creates warehouses everywhere.
+      if ((await this.access.locationIdsFor('inventory.warehouses.create')) !== 'all') {
+        throw inventoryErrors.mainWarehouseNotAllowed();
+      }
+    } else {
+      const location = await this.db.location.findUnique({
+        where: { id: body.locationId },
+        select: { id: true },
+      });
+      if (!location) throw inventoryErrors.locationNotFound();
+      await this.access.assert('inventory.warehouses.create', { locationId: body.locationId });
+    }
     const supplies = body.suppliesLocationIds ?? [];
     if (body.isMain || supplies.length > 0) await this.assertChoosesSupply();
     if (body.isMain && supplies.length > 0) throw inventoryErrors.suppliesInvalid();
     return this.unique(inventoryErrors.warehouseNameTaken, () =>
       this.db.$transaction(async (tx) => {
+        const locationId =
+          body.locationId ??
+          (await createWarehouseSite(tx, this.audit, tenantId, userId, body.name)).id;
         if (body.isMain) await this.stepDownMain(tx, userId, null);
         if (supplies.length > 0) {
-          await this.releaseSupplies(tx, userId, null, body.locationId, supplies);
+          await this.releaseSupplies(tx, userId, null, locationId, supplies);
         }
         const row = await tx.warehouse.create({
           data: {
             tenantId,
-            locationId: body.locationId,
+            locationId,
             name: body.name,
             sortOrder: body.sortOrder ?? 0,
             isMain: body.isMain ?? false,
@@ -232,6 +243,11 @@ export class InventorySetupService {
           return warehouseResponse(current);
         }
         const row = await tx.warehouse.update({ where: { id }, data, select: WAREHOUSE_SELECT });
+        // Its own place (ADR 0068) is named like it.
+        if (data.name !== current.name) {
+          const { tenantId } = this.tenantContext.require();
+          await renameWarehouseSite(tx, this.audit, tenantId, userId, current.locationId, data.name);
+        }
         await this.audit.record(tx, {
           action: 'inventory.warehouse.updated',
           actor: auditActor.user(userId),

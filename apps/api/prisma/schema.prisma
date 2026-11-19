@@ -183,6 +183,8 @@ model Location {
   address                 String?
   /// Archived (ADR 0056): hidden from lists and pickers, its data kept.
   archivedAt              DateTime?                @map("archived_at") @db.Timestamptz(6)
+  /// A warehouse's own place (ADR 0068), not a branch.
+  isWarehouseSite         Boolean                  @default(false) @map("is_warehouse_site")
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization            Organization             @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)

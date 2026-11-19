@@ -5,16 +5,13 @@ import {
   LOCATION_NAME_MAX_LENGTH,
   type LocationSummary,
   type TeamMember,
-  type Warehouse,
 } from '@durby/shared';
-import { Archive, ArchiveRestore, Building2, ChevronRight, Pencil, Search } from 'lucide-react';
-import Link from 'next/link';
+import { Archive, ArchiveRestore, Building2, Pencil, Search } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
-import { loadWarehouses } from '../../lib/inventory/api';
 import { roleName } from '../../lib/rbac/roles';
 import { createLocation, loadSettings, putSetting, updateLocation } from '../../lib/settings/api';
 import { loadTeam } from '../../lib/team/api';
@@ -33,7 +30,7 @@ const APPROVAL = 'orders.requestsNeedApproval';
 
 /**
  * /branches (operations menu, ADR 0056): the organization's branches as cards (address, the staff limited to the
- * branch with their roles, its warehouses), searchable, archived ones on request; whether branch stock requests wait
+ * branch with their roles), searchable, archived ones on request; whether branch stock requests wait
  * for approval. Everyone with platform.settings.read sees it; owners (platform.org.manage) add, edit and archive;
  * platform.settings.manage changes the approval setting.
  */
@@ -50,7 +47,6 @@ export function BranchesPage() {
       canSetApproval={permissions.has('platform.settings.manage')}
       withRequests={features.has('orders')}
       readsStaff={permissions.has('platform.users.read')}
-      readsWarehouses={features.has('inventory') && permissions.has('inventory.stock.read')}
     />
   );
 }
@@ -61,26 +57,20 @@ function Branches({
   canSetApproval,
   withRequests,
   readsStaff,
-  readsWarehouses,
 }: {
   organizationId: string | null;
   canManage: boolean;
   canSetApproval: boolean;
   withRequests: boolean;
   readsStaff: boolean;
-  readsWarehouses: boolean;
 }) {
   const t = useT();
   const { store } = useAuth();
   const [locations, reload] = useResource(organizationId, () => loadLocations(store, true));
   const [team] = useResource(readsStaff ? organizationId : null, () => loadTeam(store));
-  const [warehouses] = useResource(readsWarehouses ? organizationId : null, () =>
-    loadWarehouses(store),
-  );
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const members = team.status === 'ready' ? team.data.members : null;
-  const warehouseList = warehouses.status === 'ready' ? warehouses.data : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -130,6 +120,7 @@ function Branches({
         {(list) => {
           const needle = search.trim().toLowerCase();
           const shown = list
+            .filter((l) => !l.isWarehouseSite)
             .filter((l) => showArchived || l.archivedAt === null)
             .filter(
               (l) =>
@@ -162,7 +153,6 @@ function Branches({
                   <BranchCard
                     location={location}
                     staff={members && staffOf(members, location.id)}
-                    warehouses={warehouseList && warehousesOf(warehouseList, location.id)}
                     canManage={canManage}
                     onChanged={reload}
                   />
@@ -182,20 +172,14 @@ export const staffOf = (members: readonly TeamMember[], locationId: string) =>
     (m) => m.status === 'active' && !m.allLocations && m.locationIds.includes(locationId),
   );
 
-/** The branch's own warehouses (not the transit one, not archived ones). */
-export const warehousesOf = (warehouses: readonly Warehouse[], locationId: string) =>
-  warehouses.filter((w) => w.locationId === locationId && w.archivedAt === null && !w.isTransit);
-
 function BranchCard({
   location,
   staff,
-  warehouses,
   canManage,
   onChanged,
 }: {
   location: LocationSummary;
   staff: TeamMember[] | null;
-  warehouses: Warehouse[] | null;
   canManage: boolean;
   onChanged: () => void;
 }) {
@@ -232,7 +216,7 @@ function BranchCard({
       >
         {location.address ?? t('platform.branchesPage.noAddress')}
       </p>
-      {(staff || warehouses) && <hr className="border-border" />}
+      {staff && <hr className="border-border" />}
       {staff && (
         <div className="flex flex-col gap-2" data-testid="branch-staff">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -255,18 +239,6 @@ function BranchCard({
             </ul>
           )}
         </div>
-      )}
-      {warehouses && (
-        <Link
-          href="/inventory/warehouses"
-          className="mt-auto inline-flex items-center gap-1 self-start font-medium text-primary hover:underline"
-          data-testid="branch-warehouses"
-        >
-          {warehouses.length === 1
-            ? t('platform.branchesPage.warehouseOne')
-            : t('platform.branchesPage.warehouseMany', { count: String(warehouses.length) })}
-          <ChevronRight aria-hidden className="size-4" />
-        </Link>
       )}
     </Card>
   );

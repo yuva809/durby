@@ -16,6 +16,8 @@ export const locationSchema = z.object({
   address: z.string().nullable().default(null),
   /** Archived (ADR 0056): hidden from lists and pickers, its data kept. */
   archivedAt: z.iso.datetime().nullable().default(null),
+  /** A warehouse's own place (ADR 0068), not a branch. Default for older apis. */
+  isWarehouseSite: z.boolean().default(false),
 });
 
 export const locationListResponseSchema = z.object({ data: z.array(locationSchema) });

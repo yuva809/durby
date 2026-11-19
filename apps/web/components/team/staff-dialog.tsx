@@ -681,7 +681,7 @@ function BranchAccess({
           )}
         </p>
         {!owner &&
-          locations.map((location) => (
+          locations.filter((location) => !location.isWarehouseSite).map((location) => (
             <label key={location.id} className="flex min-h-11 items-center gap-3 text-sm">
               <Checkbox
                 checked={locationIds.includes(location.id)}
@@ -707,11 +707,9 @@ function BranchAccess({
           </p>
           {byBranch.map(({ location, list }) => (
             <div key={location.id} className="flex flex-col">
-              {byBranch.length > 1 && (
-                <span className="pt-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  {location.name}
-                </span>
-              )}
+              <span className="pt-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {location.name}
+              </span>
               {list.map((w) => (
                 <label key={w.id} className="flex min-h-11 items-center gap-3 text-sm">
                   <Checkbox
