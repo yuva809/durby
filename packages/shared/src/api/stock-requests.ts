@@ -200,6 +200,9 @@ export const requestDestinationSchema = z.object({
   locationName: z.string(),
   warehouseId: z.uuid().nullable(),
   warehouseName: z.string().nullable(),
+  /** Where its goods come from (ADR 0067): the warehouse supplying it, else the main one; null: none set up. */
+  supplierWarehouseId: z.uuid().nullable().default(null),
+  supplierWarehouseName: z.string().nullable().default(null),
 });
 export const requestDestinationListResponseSchema = z.object({
   data: z.array(requestDestinationSchema),

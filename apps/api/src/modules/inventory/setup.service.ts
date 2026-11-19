@@ -15,7 +15,12 @@ import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
 import { AccessService } from '../../platform/rbac';
 import { CatalogService } from '../catalog';
-import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../../platform/tenancy';
+import {
+  TENANT_PRISMA,
+  TenantContext,
+  type TenantPrismaClient,
+  type TenantTransactionClient,
+} from '../../platform/tenancy';
 import { inventoryErrors, isUniqueViolation } from './inventory-errors';
 
 const WAREHOUSE_SELECT = {
@@ -26,6 +31,7 @@ const WAREHOUSE_SELECT = {
   suppliesStation: true,
   isTransit: true,
   isMain: true,
+  suppliesLocationIds: true,
   archivedAt: true,
 } as const;
 
@@ -113,14 +119,23 @@ export class InventorySetupService {
     });
     if (!location) throw inventoryErrors.locationNotFound();
     await this.access.assert('inventory.warehouses.create', { locationId: body.locationId });
+    const supplies = body.suppliesLocationIds ?? [];
+    if (body.isMain || supplies.length > 0) await this.assertChoosesSupply();
+    if (body.isMain && supplies.length > 0) throw inventoryErrors.suppliesInvalid();
     return this.unique(inventoryErrors.warehouseNameTaken, () =>
       this.db.$transaction(async (tx) => {
+        if (body.isMain) await this.stepDownMain(tx, userId, null);
+        if (supplies.length > 0) {
+          await this.releaseSupplies(tx, userId, null, body.locationId, supplies);
+        }
         const row = await tx.warehouse.create({
           data: {
             tenantId,
             locationId: body.locationId,
             name: body.name,
             sortOrder: body.sortOrder ?? 0,
+            isMain: body.isMain ?? false,
+            suppliesLocationIds: supplies,
           },
           select: WAREHOUSE_SELECT,
         });
@@ -147,12 +162,12 @@ export class InventorySetupService {
       throw inventoryErrors.warehouseNotFound();
     }
     await this.access.assertAtWarehouse('inventory.warehouses.edit', found);
-    // The main warehouse supplies every branch (ADR 0053): chosen only by someone who edits warehouses everywhere.
-    if (
-      body.isMain !== undefined &&
-      (await this.access.locationIdsFor('inventory.warehouses.edit')) !== 'all'
-    ) {
-      throw inventoryErrors.mainWarehouseNotAllowed();
+    // Which branches it supplies (ADR 0053, 0067): chosen only by someone who edits warehouses everywhere.
+    if (body.isMain !== undefined || body.suppliesLocationIds !== undefined) {
+      await this.assertChoosesSupply();
+    }
+    if (body.isMain && (body.suppliesLocationIds?.length ?? 0) > 0) {
+      throw inventoryErrors.suppliesInvalid();
     }
     return this.unique(inventoryErrors.warehouseNameTaken, () =>
       this.db.$transaction(async (tx) => {
@@ -168,28 +183,34 @@ export class InventorySetupService {
           archivedAt: archivedAt(current.archivedAt, body.archived),
           // Never the transit one; an archived warehouse stops being the main one.
           isMain: !current.isTransit && (body.isMain ?? current.isMain),
+          // Main supplies every branch, so no list; supplying some branches makes it not the main one (ADR 0067).
+          suppliesLocationIds: body.suppliesLocationIds ?? current.suppliesLocationIds,
         };
-        if (data.archivedAt !== null) data.isMain = false;
+        if (body.suppliesLocationIds !== undefined && body.suppliesLocationIds.length > 0) {
+          if (current.isTransit) throw inventoryErrors.suppliesInvalid();
+          if (body.isMain === undefined) data.isMain = false;
+        }
+        if (data.isMain) data.suppliesLocationIds = [];
+        // An archived warehouse supplies nobody: its branches go back to the main one.
+        if (data.archivedAt !== null) {
+          data.isMain = false;
+          data.suppliesLocationIds = [];
+        }
         // One active main warehouse per organization (warehouses_one_main_key): the previous one steps down.
-        if (data.isMain && !current.isMain) {
-          const previous = await tx.warehouse.findMany({
-            where: { isMain: true, archivedAt: null, id: { not: id } },
-            select: WAREHOUSE_SELECT,
-          });
-          for (const other of previous) {
-            const row = await tx.warehouse.update({
-              where: { id: other.id },
-              data: { isMain: false },
-              select: WAREHOUSE_SELECT,
-            });
-            await this.audit.record(tx, {
-              action: 'inventory.warehouse.updated',
-              actor: auditActor.user(userId),
-              entityId: other.id,
-              before: snapshot('warehouse', other),
-              after: snapshot('warehouse', row),
-            });
-          }
+        if (data.isMain && !current.isMain) await this.stepDownMain(tx, userId, id);
+        // One supplier per branch: a branch ticked here leaves the warehouse that supplied it.
+        if (data.suppliesLocationIds.length > 0) {
+          const added = data.suppliesLocationIds.filter(
+            (l) => !current.suppliesLocationIds.includes(l),
+          );
+          await this.releaseSupplies(
+            tx,
+            userId,
+            id,
+            current.locationId,
+            data.suppliesLocationIds,
+            added,
+          );
         }
         // One active warehouse per location supplies each station (the partial unique index).
         if (data.suppliesStation && data.archivedAt === null) {
@@ -221,6 +242,77 @@ export class InventorySetupService {
         return warehouseResponse(row);
       }),
     );
+  }
+
+  /** Choosing who supplies which branch (ADR 0053, 0067) needs warehouses edited everywhere. */
+  private async assertChoosesSupply(): Promise<void> {
+    if ((await this.access.locationIdsFor('inventory.warehouses.edit')) !== 'all') {
+      throw inventoryErrors.mainWarehouseNotAllowed();
+    }
+  }
+
+  /** The active main warehouse (other than `keep`) stops being it; audited. */
+  private async stepDownMain(tx: TenantTransactionClient, userId: string, keep: string | null) {
+    const previous = await tx.warehouse.findMany({
+      where: { isMain: true, archivedAt: null, ...(keep ? { id: { not: keep } } : {}) },
+      select: WAREHOUSE_SELECT,
+    });
+    for (const other of previous) {
+      const row = await tx.warehouse.update({
+        where: { id: other.id },
+        data: { isMain: false },
+        select: WAREHOUSE_SELECT,
+      });
+      await this.audit.record(tx, {
+        action: 'inventory.warehouse.updated',
+        actor: auditActor.user(userId),
+        entityId: other.id,
+        before: snapshot('warehouse', other),
+        after: snapshot('warehouse', row),
+      });
+    }
+  }
+
+  /**
+   * Before `self` (null: being created, at `ownLocationId`) supplies `locationIds`: they must be existing locations
+   * other than its own, and each of `moved` (default: all) leaves the warehouse that supplied it, audited. Under an
+   * organization-wide lock, so two edits can't give one branch two suppliers.
+   */
+  private async releaseSupplies(
+    tx: TenantTransactionClient,
+    userId: string,
+    self: string | null,
+    ownLocationId: string,
+    locationIds: readonly string[],
+    moved: readonly string[] = locationIds,
+  ) {
+    const { tenantId } = this.tenantContext.require();
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`warehouse_supplies:${tenantId}`}, 0))`;
+    if (locationIds.includes(ownLocationId)) throw inventoryErrors.suppliesInvalid();
+    const found = await tx.location.count({ where: { id: { in: [...locationIds] } } });
+    if (found !== locationIds.length) throw inventoryErrors.locationNotFound();
+    if (moved.length === 0) return;
+    const others = await tx.warehouse.findMany({
+      where: {
+        suppliesLocationIds: { hasSome: [...moved] },
+        ...(self ? { id: { not: self } } : {}),
+      },
+      select: WAREHOUSE_SELECT,
+    });
+    for (const other of others) {
+      const row = await tx.warehouse.update({
+        where: { id: other.id },
+        data: { suppliesLocationIds: other.suppliesLocationIds.filter((l) => !moved.includes(l)) },
+        select: WAREHOUSE_SELECT,
+      });
+      await this.audit.record(tx, {
+        action: 'inventory.warehouse.updated',
+        actor: auditActor.user(userId),
+        entityId: other.id,
+        before: snapshot('warehouse', other),
+        after: snapshot('warehouse', row),
+      });
+    }
   }
 
   async listItems(query: ListStockItemsQuery): Promise<StockItem[]> {

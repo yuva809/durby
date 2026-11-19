@@ -29,6 +29,7 @@ const warehouse = (n: number, name: string, suppliesStation: string | null = nul
   name,
   sortOrder: 0,
   suppliesStation,
+  suppliesLocationIds: [] as string[],
   archivedAt: null,
 });
 const STORE = warehouse(1, 'Main store', 'kitchen');
@@ -310,6 +311,49 @@ describe('InventoryPage', () => {
     expect(screen.getByTestId('warehouse-create')).toBeTruthy();
   });
 
+  it('adds a warehouse that supplies only the branches ticked, moving one from another (ADR 0067)', async () => {
+    signedInAs('owner');
+    const NORTH = { id: id(2), name: 'North branch', brandId: id(90) };
+    const SOUTH = { id: id(3), name: 'South branch', brandId: id(90) };
+    const writes = api({
+      'GET /api/v1/locations': () => Response.json({ data: [MAIN_LOCATION, NORTH, SOUTH] }),
+      'GET /api/v1/inventory/warehouses': () =>
+        Response.json({ data: [{ ...STORE, suppliesLocationIds: [SOUTH.id] }, BAR] }),
+      'POST /api/v1/inventory/warehouses': () => Response.json(STORE),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('warehouses'));
+    // The list says whom a warehouse supplies.
+    expect(screen.getByTestId('warehouse-supplies').textContent).toBe('Supplies: South branch');
+    await userEvent.click(screen.getByTestId('warehouse-create'));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'Second warehouse');
+    // Starts as no branch; choose some.
+    expect(within(dialog).getByTestId<HTMLInputElement>('warehouse-supply-none').checked).toBe(
+      true,
+    );
+    await userEvent.click(within(dialog).getByTestId('warehouse-supply-some'));
+    // Nothing ticked: named, not sent.
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    expect(within(dialog).getByText('Tick at least one branch.')).toBeTruthy();
+    // Its own location isn't offered; a branch supplied elsewhere says from where.
+    const branches = within(dialog).getAllByTestId('warehouse-supply-branch');
+    expect(branches.map((b) => b.dataset.id)).toEqual([NORTH.id, SOUTH.id]);
+    expect(within(dialog).getByTestId('warehouse-supply-branches').textContent).toContain(
+      'South branch · now from Main store',
+    );
+    await userEvent.click(branches[0]!);
+    await userEvent.click(branches[1]!);
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() =>
+      expect(writes.find((w) => w.method === 'POST')?.body).toEqual({
+        locationId: MAIN_LOCATION.id,
+        name: 'Second warehouse',
+        suppliesLocationIds: [NORTH.id, SOUTH.id],
+      }),
+    );
+  });
+
   it('makes a warehouse the main one, sending the switch only when it changes (ADR 0053)', async () => {
     signedInAs('owner');
     const writes = api({
@@ -320,7 +364,8 @@ describe('InventoryPage', () => {
     await userEvent.click(await tab('warehouses'));
     const row = screen.getAllByTestId('warehouse-row')[0]!;
     await userEvent.click(within(row).getByTestId('warehouse-edit'));
-    await userEvent.click(await screen.findByTestId('warehouse-is-main'));
+    // "Which branches does it supply?" → every branch.
+    await userEvent.click(await screen.findByTestId('warehouse-supply-all'));
     await userEvent.click(screen.getByTestId('form-save'));
     await waitFor(() =>
       expect(writes.find((w) => w.method === 'PATCH')?.body).toEqual({

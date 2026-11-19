@@ -47,7 +47,7 @@ export const ordersErrors = {
     new ApiError(
       HttpStatus.BAD_REQUEST,
       'orders.request_main_only',
-      'Requests come from the main warehouse.',
+      'Requests come from the warehouse that supplies the branch.',
     ),
   /** Requests come from the branches: who approves them doesn't send them. */
   requestBranchOnly: () =>

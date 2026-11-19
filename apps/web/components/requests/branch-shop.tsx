@@ -43,8 +43,11 @@ export function BranchShop({ itemIds }: { itemIds: readonly string[] }) {
       {(sources) => (
         <Loaded resource={destinations} reload={() => undefined}>
           {(branches) => {
-            const main = sources.find((w) => w.isMain);
             const branch = branches[0];
+            // The warehouse supplying the branch (ADR 0067), else the main one.
+            const main =
+              sources.find((w) => w.id === branch?.supplierWarehouseId) ??
+              sources.find((w) => w.isMain);
             if (!main || !branch || !organizationId) {
               return <Notice text={t('orders.requestForm.noWarehouse')} tone="info" />;
             }
