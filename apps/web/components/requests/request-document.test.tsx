@@ -4,6 +4,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockState, resetMocks } from '../../test/mocks';
 import { sessionFixture } from '../../test/session-fixture';
+import { BrandProvider } from '../theme-provider';
 import { RequestDocument } from './request-document';
 
 vi.mock('../../app/providers', async () => (await import('../../test/mocks')).providersMock());
@@ -67,28 +68,62 @@ function answer(detail: ReturnType<typeof request>) {
   mockState.store.apiFetch.mockImplementation(() => Promise.resolve(Response.json(detail)));
 }
 
+const brand = ({ children }: { children: React.ReactNode }) => (
+  <BrandProvider
+    brand={{
+      productName: 'AsiaMight',
+      logoUrl: '/brand/asiamight/logo.webp',
+      navLayout: 'operations',
+    }}
+  >
+    {children}
+  </BrandProvider>
+);
+
 describe('a branch request’s documents (ADR 0064)', () => {
-  it('confirms the order as soon as it is sent: what was asked, for whom, no prices', async () => {
-    answer(request('submitted'));
-    render(<RequestDocument id={id(10)} kind="oc" />);
-    const paper = await screen.findByTestId('document-oc');
-    expect(within(paper).getByRole('heading', { name: 'Order Confirmation' })).toBeTruthy();
-    expect(within(paper).getByTestId('document-number').textContent).toBe('SRQ-2026-000047');
-    expect(within(paper).getByTestId('document-to').textContent).toContain(
-      'Carl-Schurz-Str. 1, Berlin',
+  it('confirms the order as soon as it is sent, in the distributor’s layout, no prices', async () => {
+    answer(
+      request('submitted', {
+        lines: [
+          line(1, 'Rice'),
+          // 12 a box: 24 pieces are 2 boxes.
+          line(2, 'Golden Morn', {
+            quantity: '24.000',
+            packCount: 12 as never,
+            packSize: '300.000',
+            packUnit: 'g',
+          }),
+        ],
+      }),
     );
-    expect(paper.textContent).toContain('Sam Example');
-    expect(paper.textContent).toContain('For the weekend');
-    const lines = within(paper).getAllByTestId('document-line');
-    // #, item, unit, requested, approved (not yet).
-    expect(lines.map((l) => l.textContent)).toEqual(['1Ricepc6–', '2Oilpc6–']);
+    render(<RequestDocument id={id(10)} kind="oc" />, { wrapper: brand });
+    const paper = await screen.findByTestId('document-oc');
+    expect(within(paper).getByTestId('document-logo').getAttribute('src')).toBe(
+      '/brand/asiamight/logo.webp',
+    );
+    expect(within(paper).getByRole('heading', { name: 'Order Confirmation' })).toBeTruthy();
+    expect(within(paper).getByTestId('document-facts').textContent).toContain('13 / 11 / 2026');
+    expect(within(paper).getByTestId('document-facts').textContent).toContain('Sam Example');
+    expect(within(paper).getByTestId('document-to').textContent).toContain(
+      'Address: Carl-Schurz-Str. 1, Berlin',
+    );
+    // S.No, product, pack size, unit, quantity.
+    expect(
+      within(paper)
+        .getAllByTestId('document-line')
+        .map((l) => l.textContent),
+    ).toEqual(['1Ricepc6', '2Golden Morn12 × 300 gbox2']);
+    expect(within(paper).getByTestId('document-notes').textContent).toContain(
+      'Totals: 6 pc and 2 box.',
+    );
+    expect(paper.textContent).toContain('Confirmed By (Shop)');
     expect(paper.textContent).not.toMatch(/€/);
     expect(screen.getByTestId('document-print')).toBeTruthy();
   });
 
-  it('has a delivery challan once packed: what was sent, its driver, room to sign', async () => {
+  it('confirms the delivery once packed: dispatched, brand, best before, driver', async () => {
     answer(request('approved'));
-    render(<RequestDocument id={id(10)} kind="dc" />);
+    render(<RequestDocument id={id(10)} kind="dc" />, { wrapper: brand });
     expect(await screen.findByText(/ready once the order is packed/)).toBeTruthy();
     expect(screen.queryByTestId('document-dc')).toBeNull();
     cleanup();
@@ -97,7 +132,12 @@ describe('a branch request’s documents (ADR 0064)', () => {
       request('packed', {
         driverName: 'Ali',
         lines: [
-          line(1, 'Rice', { approvedQuantity: '5.000', pickedQuantity: '4.000' }),
+          line(1, 'Rice', {
+            approvedQuantity: '5.000',
+            pickedQuantity: '4.000',
+            brand: 'Tilda',
+            expiresOn: '2028-02-28',
+          }),
           line(2, 'Oil', { approvedQuantity: '1.000', pickedQuantity: '0.000' }),
         ],
         events: [
@@ -111,17 +151,16 @@ describe('a branch request’s documents (ADR 0064)', () => {
         ],
       }),
     );
-    render(<RequestDocument id={id(10)} kind="dc" />);
+    render(<RequestDocument id={id(10)} kind="dc" />, { wrapper: brand });
     const paper = await screen.findByTestId('document-dc');
-    expect(within(paper).getByRole('heading', { name: 'Delivery Challan' })).toBeTruthy();
-    expect(within(paper).getByTestId('document-number').textContent).toBe('TRF-2026-000047');
-    expect(paper.textContent).toContain('Ali');
-    // Only what was sent; the received column is left to write in.
+    expect(within(paper).getByRole('heading', { name: 'Delivery Confirmation' })).toBeTruthy();
+    expect(within(paper).getByTestId('document-facts').textContent).toContain('Ali');
+    // Only what was sent: S.No, product, brand, pack, unit, batch/expiry, quantity.
     expect(
       within(paper)
         .getAllByTestId('document-line')
         .map((l) => l.textContent),
-    ).toEqual(['1Ricepc4']);
-    expect(paper.textContent).toContain('Received by (name, signature, date)');
+    ).toEqual(['1RiceTildapcexp 2028-02-28 × 44']);
+    expect(paper.textContent).toContain('Received By (Shop)');
   });
 });
