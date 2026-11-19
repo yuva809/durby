@@ -1064,6 +1064,7 @@
   "platform.audit.fields.address": "Adresse",
   "platform.team.dialog.branchAccess": "Filialzugriff",
   "platform.team.dialog.branchAccessHint": "Kein Haken: alle Filialen.",
+  "platform.team.dialog.branchRequired": "Haken Sie die Filiale an, in der diese Person arbeitet: ohne Haken sähe sie die Anforderungen aller Filialen.",
   "platform.team.dialog.ownerEverywhere": "Inhaber arbeiten in allen Filialen und Lagern.",
   "platform.team.dialog.warehouseAccess": "Lagerzugriff",
   "platform.team.dialog.warehouseAccessHint": "Kein Haken: alle Lager ihrer Filialen. Mit Haken: Bestand, Rechnungen, Kommissionieren und Annehmen nur dort.",

@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { Card } from '../components/ui/card';
-import { Wordmark } from '../components/wordmark';
+import { AuthLogo, AuthName } from '../components/wordmark';
 import { cn } from '../lib/utils';
 
 /**
- * The sign-in pages' frame: the partner's wordmark over a roomy card, on a soft glow in the theme's
+ * The sign-in pages' frame: the partner's logo in the top-left corner and its name over a roomy card, on a soft glow in the theme's
  * primary colour (tokens only, ADR 0015). `description`: one line under the title.
  */
 export function AuthCard({
@@ -17,13 +17,14 @@ export function AuthCard({
   children: ReactNode;
 }) {
   return (
-    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12">
+    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 pt-24 pb-12 sm:py-12">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--primary)_16%,transparent),transparent_65%)]"
       />
+      <AuthLogo />
       <div className="relative flex w-full max-w-md flex-col gap-8">
-        <Wordmark className="self-center" />
+        <AuthName />
         <Card className="rounded-2xl p-6 shadow-lg sm:p-10">
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           {description && <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>}

@@ -2302,6 +2302,8 @@ model StockRequestLine {
   approvedQuantity Decimal?     @map("approved_quantity") @db.Decimal(14, 3)
   pickedQuantity   Decimal?     @map("picked_quantity") @db.Decimal(14, 3)
   receivedQuantity Decimal?     @map("received_quantity") @db.Decimal(14, 3)
+  /// Not requested: the warehouse added it at packing (item 9); quantity is what was packed.
+  addedAtPacking   Boolean      @default(false) @map("added_at_packing")
   sortOrder        Int          @default(0) @map("sort_order")
   organization     Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   request          StockRequest @relation(fields: [tenantId, requestId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)

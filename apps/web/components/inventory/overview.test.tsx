@@ -273,7 +273,7 @@ describe('category dialog (ADR 0048)', () => {
     api();
     render(<InventoryPage />, { wrapper: operations });
     const request = await screen.findByTestId('inventory-request-stock');
-    expect(request.getAttribute('href')).toBe('/requests/new');
+    expect(request.getAttribute('href')).toBe('/requests/new?cart=1');
     expect(request.textContent).toBe('Request cart');
     cleanup();
 
@@ -413,7 +413,9 @@ describe('category dialog (ADR 0048)', () => {
     await userEvent.click(within(rows[0]!).getByTestId('request-more'));
     // The request cart's own cart, ready to send.
     expect(screen.getByTestId('branch-shop-count').textContent).toContain('1 items');
-    expect(screen.getByTestId('branch-shop-open').getAttribute('href')).toBe('/requests/new');
+    expect(screen.getByTestId('branch-shop-open').getAttribute('href')).toBe(
+      '/requests/new?cart=1',
+    );
     const stored = Object.entries(localStorage).find(([k]) => k.startsWith('request-cart:'));
     expect(JSON.parse(stored![1] as string)).toEqual({ [YAM.id]: '25' });
   });

@@ -1064,6 +1064,7 @@
   "platform.audit.fields.address": "Address",
   "platform.team.dialog.branchAccess": "Branch Access",
   "platform.team.dialog.branchAccessHint": "No tick: every branch.",
+  "platform.team.dialog.branchRequired": "Tick the branch this person works at: without one they would see every branch's requests.",
   "platform.team.dialog.ownerEverywhere": "Owners work at every branch and in every warehouse.",
   "platform.team.dialog.warehouseAccess": "Warehouse Access",
   "platform.team.dialog.warehouseAccessHint": "No tick: every warehouse at their branches. With ticks, stock, invoices, picking and receiving only there.",

@@ -8,6 +8,7 @@ import {
 } from '@durby/shared';
 import { CheckCircle2, Package, Search, ShoppingBasket, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
@@ -191,7 +192,8 @@ function Shop({
 
   const [category, setCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [open, setOpen] = useState(false);
+  // From the shop's "View request" (?cart=1): straight to sending the request, not the product list (item 5).
+  const [open, setOpen] = useState(useSearchParams().get('cart') === '1');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const sidebar = (onNavigate?: () => void) => (
     <>
       <div className="flex h-16 shrink-0 items-center px-6">
-        <Wordmark />
+        <Wordmark withName />
       </div>
       {(session?.organizations.length ?? 0) > 1 && (
         <div className="px-3 pb-2" data-testid="sidebar-switch">

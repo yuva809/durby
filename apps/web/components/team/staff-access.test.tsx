@@ -47,6 +47,7 @@ const ROLES: Role[] = [
   role('admin', 2),
   role('manager', 3),
   role('warehouse', 4),
+  role('branch', 5),
 ];
 const WAREHOUSE_ROLE = ROLES[3]!;
 const ref = (r: Role) => ({ id: r.id, systemKey: r.systemKey, name: r.name });
@@ -189,6 +190,28 @@ describe('Branch Access and Warehouse Access (ADR 0057)', () => {
       expect(sent.find((s) => s.method === 'PATCH')?.body).toMatchObject({
         locationIds: null,
         warehouseIds: null,
+      }),
+    );
+  });
+
+  it('needs a branch tick for branch staff: without one they would see every branch (item 10)', async () => {
+    signedInAsOwner();
+    const sent = api([member({ role: ref(ROLES[4]!), permissions: ROLES[4]!.permissions })]);
+    render(<TeamPage />);
+    const dialog = await editFirst();
+    const branchAccess = await within(dialog).findByTestId('team-branch-access');
+    await userEvent.click(within(dialog).getByTestId('team-save'));
+    expect(await within(dialog).findByText(/Tick the branch this person works at/)).toBeTruthy();
+    expect(sent.filter((s) => s.method === 'PATCH')).toEqual([]);
+    await userEvent.click(
+      within(branchAccess)
+        .getAllByTestId('team-branch')
+        .find((b) => b.dataset.id === BRANCH.id)!,
+    );
+    await userEvent.click(within(dialog).getByTestId('team-save'));
+    await waitFor(() =>
+      expect(sent.find((s) => s.method === 'PATCH')?.body).toMatchObject({
+        locationIds: [BRANCH.id],
       }),
     );
   });

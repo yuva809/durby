@@ -137,7 +137,7 @@ function Shop({
                   {t('orders.requestCart.bar', { count: String(count) })}
                 </span>
                 <Button asChild>
-                  <Link href="/requests/new" data-testid="branch-shop-open">
+                  <Link href="/requests/new?cart=1" data-testid="branch-shop-open">
                     {t('orders.requestCart.view')}
                   </Link>
                 </Button>

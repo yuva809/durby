@@ -367,6 +367,7 @@
   "inventory.errors.mainWarehouseNotAllowed": "Only someone who edits warehouses at every location can choose the main warehouse.",
   "inventory.page.mainWarehouse": "Main warehouse",
   "inventory.page.mainWarehouseHint": "Supplies every branch: branches always request goods from it, and its staff pick and pack for all of them. Only one warehouse can be the main one.",
+  "inventory.page.warehouseLocationHint": "Where the warehouse is, not which branches it supplies: the main warehouse supplies every branch wherever it is. Give a central warehouse its own location (add it under Branches first), not a shop's.",
   "inventory.invoice.bulkCategory": "Category for {count} lines without one",
   "inventory.invoice.bulkApply": "Set for all",
   "inventory.invoice.category": "Category",

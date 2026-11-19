@@ -16,6 +16,7 @@ import { Input } from '../ui/input';
 import { TransfersPicking } from '../requests/transfers-picking';
 import { Loaded, NoAccess } from '../users/common';
 import { BranchDeliveries } from '../requests/branch-deliveries';
+import { useNavLayout } from '../theme-provider';
 
 const BOARD_LIMIT = 200;
 const RECENT_DAYS = 7;
@@ -27,6 +28,8 @@ const RECENT_DAYS = 7;
  */
 export function DeliveriesPage() {
   const { session } = useAuth();
+  // Where branches order from a main warehouse (ADR 0059), most deliveries are to branches (item 6).
+  const operations = useNavLayout() === 'operations';
   if (!session) return null;
   const permissions = session.activePermissions;
   const deliveries =
@@ -42,9 +45,15 @@ export function DeliveriesPage() {
           <TransfersPicking organizationId={session.activeOrganizationId} initialTab="packed" />
         </div>
       )}
+      {operations && permissions.includes('orders.requests.read') && (
+        <div className="mb-8">
+          <BranchDeliveries organizationId={session.activeOrganizationId} overview />
+        </div>
+      )}
       <Deliveries
         organizationId={session.activeOrganizationId}
         canDeliver={permissions.includes('orders.delivery.use')}
+        salesOnly={operations}
       />
     </MoneyProvider>
   );
@@ -53,10 +62,13 @@ export function DeliveriesPage() {
 function Deliveries({
   organizationId,
   canDeliver,
+  salesOnly = false,
 }: {
   organizationId: string | null;
   /** Sales-order steps (dispatch, delivered, came back) need orders.delivery.use. */
   canDeliver: boolean;
+  /** Under the branch deliveries: titled as the Sales Orders' deliveries. */
+  salesOnly?: boolean;
 }) {
   const t = useT();
   const { store } = useAuth();
@@ -81,7 +93,10 @@ function Deliveries({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">{t('platform.nav.deliveries')}</h1>
+        {/* Beside the branch deliveries, these are the Sales Orders' (item 6). */}
+        <h1 className="text-2xl font-semibold">
+          {t(salesOnly ? 'orders.delivery.salesTitle' : 'platform.nav.deliveries')}
+        </h1>
         <p className="text-muted-foreground">{t('orders.delivery.intro')}</p>
       </div>
       <Loaded resource={open} reload={reloadOpen}>

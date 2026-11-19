@@ -300,8 +300,20 @@ export function RequestFacts({
           <tbody>
             {request.lines.map((line) => (
               <tr key={line.id} className="border-b last:border-0" data-testid="request-line">
-                <td className="py-1.5">{line.itemName}</td>
-                <td className="py-1.5 text-right tabular-nums">{`${q(line.quantity)} ${line.unit}`}</td>
+                <td className="py-1.5">
+                  <span className="flex flex-wrap items-center gap-2">
+                    {line.itemName}
+                    {/* Not requested: the warehouse sent it along (item 9). */}
+                    {line.addedAtPacking && (
+                      <Badge data-testid="request-line-extra">
+                        {t('orders.requestsPage.addedAtPacking')}
+                      </Badge>
+                    )}
+                  </span>
+                </td>
+                <td className="py-1.5 text-right tabular-nums">
+                  {line.addedAtPacking ? '–' : `${q(line.quantity)} ${line.unit}`}
+                </td>
                 <td className="py-1.5 text-right tabular-nums">{q(line.approvedQuantity)}</td>
                 <td className="py-1.5 text-right tabular-nums">{q(line.pickedQuantity)}</td>
                 <td className="py-1.5 text-right tabular-nums">{q(line.receivedQuantity)}</td>
