@@ -681,17 +681,21 @@ function BranchAccess({
           )}
         </p>
         {!owner &&
-          locations.filter((location) => !location.isWarehouseSite).map((location) => (
-            <label key={location.id} className="flex min-h-11 items-center gap-3 text-sm">
-              <Checkbox
-                checked={locationIds.includes(location.id)}
-                onCheckedChange={(v) => onLocationIds(toggle(locationIds, location.id, v === true))}
-                data-testid="team-branch"
-                data-id={location.id}
-              />
-              {location.name}
-            </label>
-          ))}
+          locations
+            .filter((location) => !location.isWarehouseSite)
+            .map((location) => (
+              <label key={location.id} className="flex min-h-11 items-center gap-3 text-sm">
+                <Checkbox
+                  checked={locationIds.includes(location.id)}
+                  onCheckedChange={(v) =>
+                    onLocationIds(toggle(locationIds, location.id, v === true))
+                  }
+                  data-testid="team-branch"
+                  data-id={location.id}
+                />
+                {location.name}
+              </label>
+            ))}
       </fieldset>
       {!owner && (warehouses || warehousesLater) && (
         <fieldset className="flex flex-col gap-1" data-testid="team-warehouse-access">

@@ -44,9 +44,10 @@ export function LocationsPage({ title = 'platform.nav.locations' }: { title?: La
       </div>
       <Loaded resource={locations} reload={reload}>
         {(list) => {
-          const visible = title === 'platform.nav.branches'
-            ? list.filter((location) => !location.isWarehouseSite)
-            : list;
+          const visible =
+            title === 'platform.nav.branches'
+              ? list.filter((location) => !location.isWarehouseSite)
+              : list;
           return visible.length === 0 ? (
             <Card
               className="flex flex-col items-center gap-2 px-6 py-12 text-center"

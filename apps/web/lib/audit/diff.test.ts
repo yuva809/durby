@@ -17,7 +17,16 @@ const ctx: FormatContext = {
   locale: 'en',
   timeZone: 'Europe/Berlin',
   roles: [{ id: ROLE, systemKey: 'manager', name: null, permissions: [] }],
-  locations: [{ id: LOC, name: 'Main street', brandId: ROLE, address: null, archivedAt: null }],
+  locations: [
+    {
+      id: LOC,
+      name: 'Main street',
+      brandId: ROLE,
+      address: null,
+      archivedAt: null,
+      isWarehouseSite: false,
+    },
+  ],
 };
 
 describe('audit diff', () => {

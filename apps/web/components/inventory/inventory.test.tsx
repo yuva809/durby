@@ -336,8 +336,12 @@ describe('InventoryPage', () => {
     // Nothing ticked: named, not sent.
     await userEvent.click(within(dialog).getByTestId('form-save'));
     expect(within(dialog).getByText('Tick at least one branch.')).toBeTruthy();
-    // Its own location isn't offered; a branch supplied elsewhere says from where.
-    const branches = within(dialog).getAllByTestId('warehouse-supply-branch');
+    // No location to choose: it gets a place of its own (ADR 0068), so every branch is offered; a branch supplied
+    // elsewhere says from where.
+    expect(within(dialog).queryByLabelText('Location')).toBeNull();
+    const branches = within(dialog)
+      .getAllByTestId('warehouse-supply-branch')
+      .filter((b) => b.dataset.id !== MAIN_LOCATION.id);
     expect(branches.map((b) => b.dataset.id)).toEqual([NORTH.id, SOUTH.id]);
     expect(within(dialog).getByTestId('warehouse-supply-branches').textContent).toContain(
       'South branch · now from Main store',
@@ -347,7 +351,6 @@ describe('InventoryPage', () => {
     await userEvent.click(within(dialog).getByTestId('form-save'));
     await waitFor(() =>
       expect(writes.find((w) => w.method === 'POST')?.body).toEqual({
-        locationId: MAIN_LOCATION.id,
         name: 'Second warehouse',
         suppliesLocationIds: [NORTH.id, SOUTH.id],
       }),
