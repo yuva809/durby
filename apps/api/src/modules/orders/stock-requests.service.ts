@@ -298,6 +298,10 @@ export class StockRequestsService {
           variantValues: true,
           categoryId: true,
           category: { select: { name: true } },
+          brand: true,
+          packCount: true,
+          packSize: true,
+          packUnit: true,
           _count: { select: { variants: { where: { archivedAt: null } } } },
         },
         orderBy: [{ name: 'asc' }, { id: 'asc' }],
@@ -334,6 +338,10 @@ export class StockRequestsService {
         categoryId: categoryOf(i).categoryId,
         categoryName: categoryOf(i).category?.name ?? null,
         expiresOn: expiry.get(i.id) ?? null,
+        brand: i.brand,
+        packCount: i.packCount,
+        packSize: i.packSize?.toFixed(3) ?? null,
+        packUnit: i.packUnit,
       }));
   }
 

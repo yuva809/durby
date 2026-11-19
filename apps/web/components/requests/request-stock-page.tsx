@@ -6,7 +6,7 @@ import {
   type RequestWarehouse,
   STOCK_REQUEST_NOTE_MAX_LENGTH,
 } from '@durby/shared';
-import { CheckCircle2, Minus, Package, Plus, Search, ShoppingBasket, Trash2 } from 'lucide-react';
+import { CheckCircle2, Package, Search, ShoppingBasket, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
@@ -17,22 +17,18 @@ import { categoryColor } from '../../lib/catalog/category-image';
 import {
   availableText,
   beyondStock,
-  canAddMore,
   type Cart,
   cartLines,
   cartReady,
   cartStorageKey,
+  type CartUnits,
   categoriesOf,
-  decrement,
-  increment,
   OTHER_CATEGORY,
   parseStoredCart,
   remove,
   requestLines,
-  setQuantity,
   shownItems,
-  validQuantity,
-  withinStock,
+  unitsStorageKey,
 } from '../../lib/orders/request-cart';
 import {
   createRequest,
@@ -51,6 +47,7 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '../ui/sheet';
 import { Loaded, NoAccess } from '../users/common';
+import { AvailableText, CartControl, useCartUnits } from './cart-controls';
 
 /**
  * /requests/new, Request stock (docs/modules/orders.md → Branch requests, ADR 0045, 0053): a branch fills a cart like
@@ -173,6 +170,7 @@ function Shop({
   );
 
   const key = cartStorageKey(organizationId, branch.locationId);
+  const [units, setUnit] = useCartUnits(unitsStorageKey(organizationId, branch.locationId));
   const [cart, setCartState] = useState<Cart>(() => readCart(key));
   const [cartKey, setCartKey] = useState(key);
   if (cartKey !== key) {
@@ -340,6 +338,8 @@ function Shop({
               items={offered}
               cart={cart}
               onCart={setCart}
+              units={units}
+              onUnit={setUnit}
               category={category}
               onCategory={setCategory}
               search={search}
@@ -396,10 +396,12 @@ function Shop({
                     <span className="truncate font-medium">{item.itemName}</span>
                     <AvailableText item={item} quantity={quantity} />
                   </div>
-                  <Stepper
+                  <CartControl
                     item={item}
                     quantity={quantity}
                     onChange={(next) => setCart(next(cart))}
+                    unit={units[item.itemId]}
+                    onUnit={(unit) => setUnit(item.itemId, unit)}
                   />
                   <Button
                     variant="ghost"
@@ -454,6 +456,8 @@ function Catalogue({
   items,
   cart,
   onCart,
+  units,
+  onUnit,
   category,
   onCategory,
   search,
@@ -462,6 +466,8 @@ function Catalogue({
   items: RequestAvailability[];
   cart: Cart;
   onCart: (cart: Cart) => void;
+  units: CartUnits;
+  onUnit: (itemId: string, unit: 'box' | 'piece') => void;
   category: string | null;
   onCategory: (category: string | null) => void;
   search: string;
@@ -539,6 +545,8 @@ function Catalogue({
                 item={item}
                 quantity={cart[item.itemId]}
                 onChange={(next) => onCart(next(cart))}
+                unit={units[item.itemId]}
+                onUnit={(unit) => onUnit(item.itemId, unit)}
               />
             </li>
           ))}
@@ -552,10 +560,14 @@ function ItemCard({
   item,
   quantity,
   onChange,
+  unit,
+  onUnit,
 }: {
   item: RequestAvailability;
   quantity: string | undefined;
   onChange: (next: (cart: Cart) => Cart) => void;
+  unit: 'box' | 'piece' | undefined;
+  onUnit: (unit: 'box' | 'piece') => void;
 }) {
   const t = useT();
   const out = Number(item.available) <= 0;
@@ -590,104 +602,15 @@ function ItemCard({
         ) : (
           <AvailableText item={item} quantity={quantity} testId="request-item-available" />
         )}
-        {quantity === undefined ? (
-          <Button
-            className="h-9"
-            variant="outline"
-            // Nothing there, nothing to ask for (a branch can't ask beyond what the warehouse has).
-            disabled={out}
-            onClick={() => onChange((cart) => increment(cart, item.itemId, item.available))}
-            aria-label={t('orders.requestCart.addName', { name: item.itemName })}
-            data-testid="request-add"
-          >
-            <Plus aria-hidden />
-            {t('orders.requestCart.add')}
-          </Button>
-        ) : (
-          <Stepper item={item} quantity={quantity} onChange={onChange} />
-        )}
+        <CartControl
+          item={item}
+          quantity={quantity}
+          onChange={onChange}
+          unit={unit}
+          onUnit={onUnit}
+        />
       </div>
     </Card>
-  );
-}
-
-/**
- * What the warehouse has for a line; red with "Only 2 pc available" when more is asked for, which blocks sending.
- */
-function AvailableText({
-  item,
-  quantity,
-  testId,
-}: {
-  item: RequestAvailability;
-  quantity: string | undefined;
-  testId?: string;
-}) {
-  const t = useT();
-  const values = {
-    quantity: availableText(item.available),
-    unit: t(`inventory.units.${item.unit}`),
-  };
-  const beyond =
-    quantity !== undefined && quantity.trim() !== '' && !withinStock(quantity, item.available);
-  return (
-    <span
-      className={cn('text-sm', beyond ? 'font-medium text-destructive' : 'text-muted-foreground')}
-      data-testid={testId}
-    >
-      {beyond
-        ? t('orders.requestCart.onlyAvailable', values)
-        : t('orders.requestCart.available', values)}
-    </span>
-  );
-}
-
-function Stepper({
-  item,
-  quantity,
-  onChange,
-}: {
-  item: RequestAvailability;
-  quantity: string;
-  onChange: (next: (cart: Cart) => Cart) => void;
-}) {
-  const t = useT();
-  return (
-    <div className="flex items-center gap-1" data-testid="request-stepper">
-      <Button
-        size="icon"
-        variant="outline"
-        className="size-9"
-        onClick={() => onChange((cart) => decrement(cart, item.itemId))}
-        aria-label={t('orders.requestCart.less', { name: item.itemName })}
-        data-testid="request-less"
-      >
-        <Minus aria-hidden />
-      </Button>
-      <Input
-        inputMode="decimal"
-        value={quantity}
-        onChange={(e) => onChange((cart) => setQuantity(cart, item.itemId, e.target.value))}
-        aria-label={t('orders.requestForm.quantity', { name: item.itemName })}
-        aria-invalid={
-          !validQuantity(quantity) || !withinStock(quantity, item.available) || undefined
-        }
-        className="h-9 w-16 text-center"
-        data-testid="request-quantity"
-      />
-      <Button
-        size="icon"
-        variant="outline"
-        className="size-9"
-        // Not beyond what the warehouse has.
-        disabled={!canAddMore(quantity, item.available)}
-        onClick={() => onChange((cart) => increment(cart, item.itemId, item.available))}
-        aria-label={t('orders.requestCart.more', { name: item.itemName })}
-        data-testid="request-more"
-      >
-        <Plus aria-hidden />
-      </Button>
-    </div>
   );
 }
 

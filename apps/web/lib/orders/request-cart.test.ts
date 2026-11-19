@@ -2,6 +2,9 @@ import type { RequestAvailability } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import {
   availableText,
+  boxesOf,
+  piecesOf,
+  piecesPerBox,
   beyondStock,
   canAddMore,
   cartLines,
@@ -34,6 +37,10 @@ const item = (
   categoryId,
   categoryName,
   expiresOn: null,
+  brand: null,
+  packCount: null,
+  packSize: null,
+  packUnit: null,
 });
 
 const ITEMS = [
@@ -119,5 +126,25 @@ describe('request cart (ADR 0053)', () => {
     expect(parseStoredCart(JSON.stringify({ [id(2)]: '3', bad: '1', [id(3)]: 4 }))).toEqual({
       [id(2)]: '3',
     });
+  });
+
+  it('orders by the box: whole boxes within what is there, kept as pieces (ADR 0065)', () => {
+    expect(piecesPerBox({ unit: 'pc', packCount: 12 })).toBe(12);
+    expect(piecesPerBox({ unit: 'pc', packCount: 1 })).toBeNull();
+    expect(piecesPerBox({ unit: 'kg', packCount: 12 })).toBeNull();
+    // Catfish: 50 there, 12 a box.
+    let cart = increment({}, id(2), '50.000', 12);
+    cart = increment(cart, id(2), '50.000', 12);
+    expect(cart).toEqual({ [id(2)]: '24' });
+    expect(boxesOf('24', 12)).toBe('2');
+    expect(piecesOf('3', 12)).toBe('36');
+    expect(piecesOf('x', 12)).toBeNull();
+    // A fifth box (60) is more than there is.
+    cart = increment(increment(cart, id(2), '50.000', 12), id(2), '50.000', 12);
+    expect(cart).toEqual({ [id(2)]: '48' });
+    expect(increment(cart, id(2), '50.000', 12)).toBe(cart);
+    expect(canAddMore('48', '50.000', 12)).toBe(false);
+    expect(decrement(cart, id(2), 12)).toEqual({ [id(2)]: '36' });
+    expect(decrement({ [id(2)]: '12' }, id(2), 12)).toEqual({});
   });
 });

@@ -203,6 +203,11 @@ export const requestAvailabilitySchema = z.object({
   /** For grouping the request cart (ADR 0053). Defaults for older apis. */
   categoryId: z.uuid().nullable().default(null),
   categoryName: z.string().nullable().default(null),
+  /** Brand and pack size (ADR 0055), for the branch's list and ordering by the box (ADR 0065). */
+  brand: z.string().nullable().default(null),
+  packCount: z.int().nullable().default(null),
+  packSize: z.string().nullable().default(null),
+  packUnit: z.enum(STOCK_UNITS).nullable().default(null),
 });
 export const requestAvailabilityResponseSchema = z.object({
   data: z.array(requestAvailabilitySchema),

@@ -330,12 +330,91 @@ describe('category dialog (ADR 0048)', () => {
     expect(
       await screen.findByText('Live stock by category, warehouse and stock level.'),
     ).toBeTruthy();
+    expect(screen.queryByText('Value')).toBeNull();
+  });
+
+  it('lists a category as a branch shops it: brand, pack, main stock, best before, by the box (ADR 0065)', async () => {
+    localStorage.clear();
+    signedIn(['inventory', 'catalog', 'orders'], 'branch');
+    const offer = (item: typeof YAM, available: string, extra: Record<string, unknown> = {}) => ({
+      itemId: item.id,
+      itemName: item.name,
+      sku: null,
+      unit: 'pc',
+      available,
+      categoryId: item.categoryId,
+      categoryName: null,
+      expiresOn: null,
+      brand: null,
+      packCount: null,
+      packSize: null,
+      packUnit: null,
+      ...extra,
+    });
+    mockState.store.apiFetch.mockImplementation((input: string) => {
+      const path = input.replace(/\?.*$/, '');
+      const answers: Record<string, unknown> = {
+        '/api/v1/inventory/warehouses': { data: [WAREHOUSE] },
+        '/api/v1/inventory/items': { data: [YAM, BASMATI, COLA, LOOSE] },
+        '/api/v1/inventory/categories': { data: [FOOD, RICE, DRINKS] },
+        '/api/v1/inventory/stock': { data: [] },
+        '/api/v1/stock-requests/warehouses': {
+          data: [
+            {
+              id: WAREHOUSE.id,
+              name: 'Main',
+              locationId: LOCATION.id,
+              locationName: 'Main street',
+              canRequestInto: false,
+              isMain: true,
+            },
+          ],
+        },
+        '/api/v1/stock-requests/destinations': {
+          data: [
+            { locationId: id(70), locationName: 'Spandau', warehouseId: null, warehouseName: null },
+          ],
+        },
+        [`/api/v1/stock-requests/availability/${WAREHOUSE.id}`]: {
+          data: [
+            offer(YAM, '30.000', {
+              brand: 'Golden Morn',
+              packCount: 12,
+              packSize: '300.000',
+              packUnit: 'g',
+              expiresOn: '2999-03-31',
+            }),
+            offer(BASMATI, '5.000'),
+            offer(COLA, '9.000'),
+          ],
+        },
+      };
+      return Promise.resolve(Response.json(answers[path] ?? { data: [] }));
+    });
+    render(<InventoryPage />, { wrapper: operations });
     const tiles = await screen.findAllByTestId('category-tile');
     await userEvent.click(tiles[1]!);
-    const rows = await screen.findAllByTestId('overview-row');
+    const rows = await screen.findAllByTestId('branch-shop-row');
+    // The category's items only, with what the main warehouse has.
     expect(rows.map((r) => r.getAttribute('data-name'))).toEqual(['Yam flour', 'Basmati rice']);
-    expect(within(rows[0]!).getByTestId('overview-quantity').textContent).toBe('4 pc');
-    expect(screen.queryByTestId('overview-total')).toBeNull();
-    expect(screen.queryByText('Value')).toBeNull();
+    expect(rows[0]!.textContent).toContain('Golden Morn');
+    expect(within(rows[0]!).getByTestId('branch-shop-pack').textContent).toBe('12 × 300 g');
+    expect(within(rows[0]!).getByTestId('branch-shop-available').textContent).toBe('30');
+
+    // By the box (12 a box): two boxes are 24 pieces; a third would be more than the 30 there.
+    await userEvent.click(within(rows[0]!).getByTestId('request-add'));
+    await userEvent.click(within(rows[0]!).getByTestId('request-more'));
+    expect(within(rows[0]!).getByTestId<HTMLInputElement>('request-quantity').value).toBe('2');
+    expect(within(rows[0]!).getByTestId('request-pieces').textContent).toBe('= 24 pc');
+    expect(within(rows[0]!).getByTestId('request-more')).toHaveProperty('disabled', true);
+    // By the piece the same 24, one at a time.
+    await userEvent.click(within(rows[0]!).getByTestId('request-unit-piece'));
+    expect(within(rows[0]!).getByTestId<HTMLInputElement>('request-quantity').value).toBe('24');
+    await userEvent.click(within(rows[0]!).getByTestId('request-more'));
+    // The request cart's own cart, ready to send.
+    expect(screen.getByTestId('branch-shop-count').textContent).toContain('1 items');
+    expect(screen.getByTestId('branch-shop-open').getAttribute('href')).toBe('/requests/new');
+    const stored = Object.entries(localStorage).find(([k]) => k.startsWith('request-cart:'));
+    expect(JSON.parse(stored![1] as string)).toEqual({ [YAM.id]: '25' });
   });
 });
