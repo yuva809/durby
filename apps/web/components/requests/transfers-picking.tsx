@@ -10,6 +10,7 @@ import { ChevronRight, Package, Search } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
+import { loadStock } from '../../lib/inventory/api';
 import {
   assignDriver,
   loadDrivers,
@@ -18,6 +19,7 @@ import {
   packRequest,
   startPickingRequest,
 } from '../../lib/orders/requests-api';
+import { pickPlan } from '../../lib/orders/shortage';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
@@ -241,7 +243,11 @@ function DriverSelect({
   );
 }
 
-/** Pick: the request's approved lines with what came off the shelves; then packed, optionally with a driver. */
+/**
+ * Pick: the request's approved lines with what came off the shelves; then packed, optionally with a driver. What the
+ * source warehouse has is read each time the dialog opens: a line short of stock starts at what is there and says how
+ * much is missing, and asking for more than is there is named before packing.
+ */
 function PackDialog({
   request: r,
   canAssign,
@@ -255,8 +261,15 @@ function PackDialog({
   const { store } = useAuth();
   const action = useActionKey();
   const [driver, setDriver] = useState('');
+  const [opened, setOpened] = useState(0);
   const [detail] = useResource(r.id, () => loadRequest(store, r.id));
+  // Read when opened, and again on every opening: stock moves between picks. Without stock access, none is shown.
+  const [stock] = useResource(opened > 0 ? `${r.fromWarehouseId}:${opened}` : null, () =>
+    loadStock(store, { warehouseId: r.fromWarehouseId }),
+  );
   if (detail.status !== 'ready') return null;
+  const inStock =
+    stock.status === 'ready' ? new Map(stock.data.map((l) => [l.itemId, l.quantity])) : null;
   const lines = detail.data.lines.filter(
     (l) => l.approvedQuantity !== null && !/^0(\.0+)?$/.test(l.approvedQuantity),
   );
@@ -269,15 +282,23 @@ function PackDialog({
       hint={t('orders.transfers.stockNote', { warehouse: r.fromWarehouseName })}
       submitLabel={t('orders.transfers.submit')}
       referenceLabel={t('orders.requestsPage.approved')}
+      availableLabel={t('orders.transfers.inStock')}
       inputLabel={(name) => t('orders.transfers.pickedOf', { name })}
-      lines={lines.map((l) => ({
-        id: l.id,
-        name: l.itemName,
-        unit: l.unit,
-        reference: l.approvedQuantity!,
-        max: l.approvedQuantity,
-        initial: l.approvedQuantity!.replace(/\.?0+$/, ''),
-      }))}
+      onOpen={() => setOpened((n) => n + 1)}
+      lines={lines.map((l) => {
+        // An item with no stock row has none.
+        const available = inStock ? (inStock.get(l.itemId) ?? '0') : null;
+        const plan = pickPlan(l.approvedQuantity!, available);
+        return {
+          id: l.id,
+          name: l.itemName,
+          unit: l.unit,
+          reference: l.approvedQuantity!,
+          max: l.approvedQuantity,
+          initial: plan.initial,
+          ...(available === null ? {} : { available, short: plan.short }),
+        };
+      })}
       run={(quantities) =>
         packRequest(store, action, r.id, {
           lines: quantities,

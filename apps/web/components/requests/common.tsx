@@ -10,6 +10,7 @@ import { type ReactNode, useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import type { Result } from '../../lib/api-call';
 import { compareQuantity } from '../../lib/orders/form';
+import { exceedsStock, shownStock } from '../../lib/orders/shortage';
 import { cn } from '../../lib/utils';
 import { FormDialog } from '../form-dialog';
 import { Badge } from '../ui/badge';
@@ -60,11 +61,16 @@ export interface QuantityLine {
   max: string | null;
   /** The value the input starts with. */
   initial: string;
+  /** What is in stock where it comes from (picking); absent: not shown. */
+  available?: string;
+  /** How much of `reference` isn't in stock (picking); null or absent: nothing. */
+  short?: string | null;
 }
 
 /**
  * A dialog that asks a quantity per line (approve, pack, receive): 3 decimals, 0 allowed, at most `max`. `run` gets
- * every line's quantity.
+ * every line's quantity. With `available` (picking) it shows what is in stock, marks lines short of stock and names
+ * those asked for beyond it, so a shortage is plain before the api refuses to book below zero.
  */
 export function QuantitiesDialog({
   trigger,
@@ -78,6 +84,8 @@ export function QuantitiesDialog({
   lines,
   run,
   onDone,
+  onOpen,
+  availableLabel,
   children,
 }: {
   trigger: string;
@@ -92,6 +100,10 @@ export function QuantitiesDialog({
   lines: readonly QuantityLine[];
   run: (quantities: { lineId: string; quantity: string }[]) => Promise<Result<unknown>>;
   onDone: () => void;
+  /** Each time the dialog opens, e.g. to read the stock again. */
+  onOpen?: () => void;
+  /** The column of `available`, e.g. "In stock". */
+  availableLabel?: string;
   children?: ReactNode;
 }) {
   const t = useT();
@@ -99,6 +111,21 @@ export function QuantitiesDialog({
   const [values, setValues] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState(false);
   const valueOf = (line: QuantityLine) => (values[line.id] ?? line.initial).trim();
+  const withStock = lines.some((line) => line.available !== undefined);
+  const short = lines.filter((line) => line.short);
+  // Asked for beyond what is in stock: the api refuses that unless the location allows negative stock.
+  const beyond = lines.filter(
+    (line) => line.available !== undefined && exceedsStock(valueOf(line), line.available),
+  );
+  const stockList = (list: readonly QuantityLine[]) =>
+    list
+      .map((line) =>
+        t('orders.transfers.itemInStock', {
+          name: line.name,
+          quantity: `${shownStock(line.available ?? '0')} ${line.unit}`,
+        }),
+      )
+      .join(', ');
   const valid = lines.every((line) => {
     const v = valueOf(line);
     return (
@@ -117,6 +144,7 @@ export function QuantitiesDialog({
       onOpen={() => {
         setValues({});
         setChecked(false);
+        onOpen?.();
       }}
       submit={() => {
         setChecked(true);
@@ -132,6 +160,7 @@ export function QuantitiesDialog({
             <tr className="border-b text-left text-muted-foreground">
               <th className="py-1 font-medium">{t('orders.requestForm.item')}</th>
               <th className="py-1 text-right font-medium">{referenceLabel}</th>
+              {withStock && <th className="py-1 text-right font-medium">{availableLabel}</th>}
               <th className="py-1 text-right font-medium">
                 <span className="sr-only">{submitLabel}</span>
               </th>
@@ -139,11 +168,36 @@ export function QuantitiesDialog({
           </thead>
           <tbody>
             {lines.map((line) => (
-              <tr key={line.id} className="border-b last:border-0">
-                <td className="py-1.5">{line.name}</td>
+              <tr key={line.id} className="border-b last:border-0" data-testid={`${testId}-line`}>
+                <td className="py-1.5">
+                  <span className="flex flex-wrap items-center gap-2">
+                    {line.name}
+                    {line.short && (
+                      <Badge
+                        className="bg-accent text-accent-foreground"
+                        data-testid={`${testId}-short`}
+                      >
+                        {t('orders.transfers.short', { quantity: `${line.short} ${line.unit}` })}
+                      </Badge>
+                    )}
+                  </span>
+                </td>
                 <td className="py-1.5 text-right tabular-nums">
                   {`${shortQuantity(line.reference)} ${line.unit}`}
                 </td>
+                {withStock && (
+                  <td
+                    className={cn(
+                      'py-1.5 text-right tabular-nums',
+                      line.short && 'font-medium text-destructive',
+                    )}
+                    data-testid={`${testId}-available`}
+                  >
+                    {line.available === undefined
+                      ? ''
+                      : `${shownStock(line.available)} ${line.unit}`}
+                  </td>
+                )}
                 <td className="py-1.5 text-right">
                   <Input
                     id={`${id}-${line.id}`}
@@ -151,6 +205,7 @@ export function QuantitiesDialog({
                     className="ml-auto w-24 text-right"
                     value={values[line.id] ?? line.initial}
                     aria-label={inputLabel(line.name)}
+                    aria-invalid={beyond.includes(line) || undefined}
                     onChange={(e) =>
                       setValues((v) => ({ ...v, [line.id]: e.target.value.replace(',', '.') }))
                     }
@@ -162,6 +217,16 @@ export function QuantitiesDialog({
           </tbody>
         </table>
       </div>
+      {short.length > 0 && beyond.length === 0 && (
+        <p className="rounded-md bg-accent px-3 py-2 text-sm" data-testid={`${testId}-shortage`}>
+          {t('orders.transfers.shortageNote', { items: stockList(short) })}
+        </p>
+      )}
+      {beyond.length > 0 && (
+        <p role="alert" className="text-sm text-destructive" data-testid={`${testId}-beyond`}>
+          {t('orders.transfers.beyondStock', { items: stockList(beyond) })}
+        </p>
+      )}
       {checked && !valid && (
         <p role="alert" className="text-sm text-destructive">
           {t('orders.requestsPage.invalid')}

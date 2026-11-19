@@ -188,7 +188,10 @@ notes), idempotency key completed in the transaction. Errors: `orders.request_no
 stock" button opening the request cart `/requests/new`: categories, search, Add / − / +, a sticky cart bar and a side
 sheet to send; quantities only, kept in the browser until sent, ADR 0053), the
 transfers section of Picking (To pick / Packed / Received, pick with a driver, assign later), My Deliveries
-(`/my-deliveries`); Delivery Tracking shows transfers to those who assign drivers. Stock Requests is a table (request,
+(`/my-deliveries`); Delivery Tracking shows transfers to those who assign drivers. Picking reads the source
+warehouse's stock when its dialog opens: an In stock column, a line short of stock starts at what is there and says
+how much is missing ("Short 2 pc"), and quantities beyond the stock are named before packing (packing below zero is
+refused unless the location allows negative stock). Stock Requests is a table (request,
 branch, items, requested by, date, status, transfer number) searched by number and filtered by stage.
 
 **A branch's view (ADR 0059).** In the operations menu a branch (asks for goods, neither approves nor reads sales
