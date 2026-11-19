@@ -491,4 +491,24 @@ describe('branch stock requests (ADR 0045)', () => {
     }).expect(403);
     expect((res.body as { code: string }).code).toBe('orders.request_branch_only');
   });
+
+  it('gives a request the addresses its documents print (ADR 0064)', async () => {
+    const s = await setup();
+    await patch(s.owner.token, `/locations/${s.org.locations[1]}`, {
+      address: 'Carl-Schurz-Str. 1, Berlin',
+    }).expect(200);
+    const created = stockRequestSchema.parse(
+      (
+        await post(s.branchUser.token, '/stock-requests', {
+          fromWarehouseId: s.main,
+          toWarehouseId: s.branch,
+          lines: [{ itemId: s.rice, quantity: '1' }],
+        }).expect(201)
+      ).body,
+    );
+    expect(created).toMatchObject({
+      locationAddress: 'Carl-Schurz-Str. 1, Berlin',
+      fromLocationAddress: null,
+    });
+  });
 });

@@ -50,8 +50,8 @@ const SUMMARY_SELECT = {
   requestedByUserId: true,
   createdAt: true,
   updatedAt: true,
-  location: { select: { name: true } },
-  fromWarehouse: { select: { name: true, location: { select: { name: true } } } },
+  location: { select: { name: true, address: true } },
+  fromWarehouse: { select: { name: true, location: { select: { name: true, address: true } } } },
   toWarehouse: { select: { name: true } },
   _count: { select: { lines: true } },
 } as const;
@@ -90,8 +90,8 @@ interface SummaryRow {
   requestedByUserId: string;
   createdAt: Date;
   updatedAt: Date;
-  location: { name: string };
-  fromWarehouse: { name: string; location: { name: string } };
+  location: { name: string; address: string | null };
+  fromWarehouse: { name: string; location: { name: string; address: string | null } };
   toWarehouse: { name: string };
   _count: { lines: number };
 }
@@ -940,6 +940,9 @@ function requestResponse(row: RequestRow, names: ReadonlyMap<string, string>): S
   return {
     ...summaryResponse(row, names),
     note: row.note,
+    // For the documents (ADR 0064).
+    locationAddress: row.location.address,
+    fromLocationAddress: row.fromWarehouse.location.address,
     lines: row.lines.map((l) => ({
       id: l.id,
       itemId: l.itemId,

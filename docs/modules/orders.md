@@ -200,6 +200,12 @@ them (Stock Requests merged into it; owners and admins approve there); customer 
 goods and don't approve them, and the api answers 403 `orders.request_branch_only` to an approver. Approving shows
 Requested, On hand (the source warehouse's stock) and To send; a short line starts at what is there.
 
+**Documents (ADR 0064).** Every request has an Order Confirmation from the moment it is sent
+(`/requests/:id/oc`, numbered like the request) and, once packed, a Delivery Challan (`/requests/:id/dc`, numbered
+like the transfer, with the driver, a column for what arrived and lines to sign): printable A4 pages, quantities
+only, linked from Order History's OC / DC column, the request's panel, the cart after sending and the branch's
+Delivery Tracking.
+
 **A branch's view (ADR 0059).** In the operations menu a branch (asks for goods, neither approves nor reads sales
 orders) has its own menu: Inventory (category tiles from `GET /api/v1/inventory/categories`, a "Request cart"
 button), Order History (`/requests`), Delivery Tracking (`/deliveries`: its requests with their steps, the driver and

@@ -8,7 +8,7 @@ import {
   type StockRequestStatus,
   type StockRequestSummary,
 } from '@durby/shared';
-import { ClipboardList, Plus, Search } from 'lucide-react';
+import { ClipboardList, FileText, Plus, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -35,6 +35,7 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet';
 import { Loaded, NoAccess } from '../users/common';
+import { hasDeliveryDocument } from './request-document';
 import {
   NoteDialog,
   QuantitiesDialog,
@@ -271,13 +272,48 @@ function RequestTable({
                 <RequestStatusBadge status={r.status} />
               </td>
               <td className="hidden px-4 py-2 whitespace-nowrap lg:table-cell">
-                {r.transferNumber ?? '—'}
+                <DocumentLinks request={r} />
               </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * A request's documents in the table (ADR 0064): its Order Confirmation from the start, its Delivery Challan once
+ * packed; each opens in a new tab to print or save as PDF.
+ */
+function DocumentLinks({ request: r }: { request: StockRequestSummary }) {
+  const t = useT();
+  const link = 'text-primary hover:underline';
+  return (
+    <span className="flex flex-col text-xs">
+      <Link
+        href={`/requests/${r.id}/oc`}
+        target="_blank"
+        rel="noopener"
+        className={link}
+        data-testid="request-oc-link"
+      >
+        {t('orders.documents.ocShort')} {r.number}
+      </Link>
+      {hasDeliveryDocument(r.status) && r.transferNumber ? (
+        <Link
+          href={`/requests/${r.id}/dc`}
+          target="_blank"
+          rel="noopener"
+          className={link}
+          data-testid="request-dc-link"
+        >
+          {t('orders.documents.dcShort')} {r.transferNumber}
+        </Link>
+      ) : (
+        <span className="text-muted-foreground">{t('orders.documents.dcShort')} —</span>
+      )}
+    </span>
   );
 }
 
@@ -320,6 +356,22 @@ function RequestPanel({
                 <RequestStatusBadge status={r.status} />
               </div>
               <Actions request={r} permissions={permissions} onDone={changed} />
+              <div className="flex flex-wrap gap-2" data-testid="request-documents">
+                <Button variant="outline" asChild>
+                  <Link href={`/requests/${r.id}/oc`} target="_blank" rel="noopener">
+                    <FileText aria-hidden />
+                    {t('orders.documents.oc')}
+                  </Link>
+                </Button>
+                {hasDeliveryDocument(r.status) && (
+                  <Button variant="outline" asChild>
+                    <Link href={`/requests/${r.id}/dc`} target="_blank" rel="noopener">
+                      <FileText aria-hidden />
+                      {t('orders.documents.dc')}
+                    </Link>
+                  </Button>
+                )}
+              </div>
               <RequestFacts request={r} formatTime={formatTime} />
             </div>
           )}
