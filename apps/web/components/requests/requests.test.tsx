@@ -313,9 +313,13 @@ describe('Request cart without a branch (ADR 0059)', () => {
     ];
   });
 
-  it('shows an owner how to set one up, and tells a branch whom to ask', async () => {
+  it('shows someone who sets up staff how to set one up, and tells a branch whom to ask', async () => {
     setup.destinations = [];
-    signedInAs('owner');
+    // Asks for goods (no approving) and manages staff.
+    mockState.session = sessionFixture({
+      activePermissions: ['orders.requests.read', 'orders.requests.create', 'platform.users.edit'],
+      activeFeatures: ['inventory', 'catalog', 'orders'],
+    });
     api(request('submitted'));
     render(<RequestStockPage />);
     const setupCard = await screen.findByTestId('request-no-branch-setup');
@@ -336,16 +340,30 @@ describe('Request cart without a branch (ADR 0059)', () => {
 });
 
 describe('Stock Requests', () => {
-  it('lets the owner approve with changed quantities', async () => {
+  it('lets the owner approve with changed quantities, against what is on hand', async () => {
     signedInAs('owner');
+    // 10 rice on hand, only 4 oil of the 6 asked for.
+    setup.stock = [level(id(51), '10.000'), level(id(52), '4.000')];
     const calls = api(request('submitted'));
     render(<RequestsPage />);
     await userEvent.click(await screen.findByTestId('request-row'));
     const panel = await screen.findByTestId('request-panel');
     await userEvent.click(await within(panel).findByTestId('request-approve'));
     const dialog = (await screen.findAllByRole('dialog')).at(-1)!;
+    // Requested, on hand and what to send, under their headings; a short line starts at what is there.
+    await waitFor(() =>
+      expect(
+        within(dialog)
+          .getAllByTestId('request-approve-available')
+          .map((cell) => cell.textContent),
+      ).toEqual(['10 pc', '4 pc']),
+    );
+    expect(within(dialog).getByRole('columnheader', { name: 'On hand' })).toBeTruthy();
+    expect(within(dialog).getByRole('columnheader', { name: 'To send' })).toBeTruthy();
+    expect(within(dialog).getByTestId('request-approve-short').textContent).toBe('Short 2 pc');
     const inputs = within(dialog).getAllByTestId<HTMLInputElement>('request-approve-quantity');
-    expect(inputs.map((i) => i.value)).toEqual(['6', '6']);
+    expect(inputs.map((i) => i.value)).toEqual(['6', '4']);
+    setup.stock = PLENTY;
     await userEvent.clear(inputs[1]!);
     await userEvent.type(inputs[1]!, '0');
     await userEvent.click(within(dialog).getByTestId('form-save'));
@@ -424,12 +442,21 @@ describe('A branch’s Order History and Delivery Tracking (ADR 0059)', () => {
     );
   });
 
-  it('keeps Stock Requests and the approval queue for owners', async () => {
+  it('gives owners Order History with the approval queue, and no request cart', async () => {
     signedInAs('owner');
     api(request('submitted'));
     render(<RequestsPage />, { wrapper: operations });
-    expect(await screen.findByRole('heading', { name: 'Stock Requests' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Order History' })).toBeTruthy();
     expect(screen.getByTestId<HTMLSelectElement>('requests-status').value).toBe('open');
+    // Branches send requests; who approves them doesn't.
+    expect(screen.queryByTestId('requests-new')).toBeNull();
+    cleanup();
+
+    signedInAs('owner');
+    api(request('submitted'));
+    render(<RequestStockPage />, { wrapper: operations });
+    expect(await screen.findByTestId('request-branch-only')).toBeTruthy();
+    expect(screen.queryByTestId('request-item')).toBeNull();
   });
 
   it('follows the branch’s requests to its door and links to confirming receipt', async () => {

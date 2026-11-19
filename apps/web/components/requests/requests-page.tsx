@@ -14,6 +14,7 @@ import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
+import { loadStock } from '../../lib/inventory/api';
 import {
   approveRequest,
   cancelRequest,
@@ -23,6 +24,7 @@ import {
   rejectRequest,
 } from '../../lib/orders/requests-api';
 import { isBranchView } from '../../lib/nav/layouts';
+import { pickPlan } from '../../lib/orders/shortage';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
@@ -74,7 +76,8 @@ function Requests({
 }) {
   const t = useT();
   const { store, session } = useAuth();
-  const branch = useNavLayout() === 'operations' && session !== null && isBranchView(session);
+  const operations = useNavLayout() === 'operations';
+  const branch = operations && session !== null && isBranchView(session);
   // Owners and admins open on what waits for them; everyone else on all of their requests (ADR 0059).
   const [filter, setFilter] = useState<Filter>(
     permissions.has('orders.requests.approve') ? 'open' : 'all',
@@ -106,20 +109,22 @@ function Requests({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">
-            {t(branch ? 'platform.nav.orderHistory' : 'platform.nav.stockRequests')}
+            {t(operations ? 'platform.nav.orderHistory' : 'platform.nav.stockRequests')}
           </h1>
           <p className="text-muted-foreground">
             {t(branch ? 'orders.requestsPage.branchIntro' : 'orders.requestsPage.intro')}
           </p>
         </div>
-        {permissions.has('orders.requests.create') && (
-          <Button asChild>
-            <Link href="/requests/new" data-testid="requests-new">
-              <Plus aria-hidden />
-              {t('orders.requestsPage.newRequest')}
-            </Link>
-          </Button>
-        )}
+        {/* Branches send requests; those who approve them don't (item 8). */}
+        {permissions.has('orders.requests.create') &&
+          !permissions.has('orders.requests.approve') && (
+            <Button asChild>
+              <Link href="/requests/new" data-testid="requests-new">
+                <Plus aria-hidden />
+                {t('orders.requestsPage.newRequest')}
+              </Link>
+            </Button>
+          )}
       </div>
       <Card className="flex flex-col gap-0 p-0">
         <div className="flex flex-col gap-3 border-b p-3 sm:flex-row">
@@ -335,7 +340,6 @@ function Actions({
 }) {
   const t = useT();
   const { store } = useAuth();
-  const approveAction = useActionKey();
   const rejectAction = useActionKey();
   const cancelAction = useActionKey();
   const receiveAction = useActionKey();
@@ -346,26 +350,7 @@ function Actions({
   );
   const actions = [
     submitted && permissions.has('orders.requests.approve') && (
-      <QuantitiesDialog
-        key="approve"
-        trigger={t('orders.requestsPage.approve')}
-        testId="request-approve"
-        title={t('orders.requestsPage.approveTitle', { number: r.number })}
-        hint={t('orders.requestsPage.approveHint')}
-        submitLabel={t('orders.requestsPage.approve')}
-        referenceLabel={t('orders.requestsPage.requested')}
-        inputLabel={(name) => t('orders.requestsPage.send', { name })}
-        lines={r.lines.map((l) => ({
-          id: l.id,
-          name: l.itemName,
-          unit: l.unit,
-          reference: l.quantity,
-          max: null,
-          initial: l.quantity.replace(/\.?0+$/, ''),
-        }))}
-        run={(lines) => approveRequest(store, approveAction, r.id, { lines })}
-        onDone={onDone}
-      />
+      <ApproveDialog key="approve" request={r} onDone={onDone} />
     ),
     submitted && permissions.has('orders.requests.approve') && (
       <NoteDialog
@@ -400,6 +385,7 @@ function Actions({
         hint={t('orders.requestsPage.receiveHint')}
         submitLabel={t('orders.requestsPage.receive')}
         referenceLabel={t('orders.requestsPage.picked')}
+        quantityLabel={t('orders.requestsPage.arrivedColumn')}
         inputLabel={(name) => t('orders.requestsPage.arrived', { name })}
         lines={sent.map((l) => ({
           id: l.id,
@@ -419,5 +405,51 @@ function Actions({
     <div className="flex flex-wrap gap-2" data-testid="request-actions">
       {actions}
     </div>
+  );
+}
+
+/**
+ * Approve: each line as asked against what the source warehouse has on hand, read when the dialog opens; a line short
+ * of stock starts at what is there and says how much is missing. The quantity to send is the approver's.
+ */
+function ApproveDialog({ request: r, onDone }: { request: StockRequest; onDone: () => void }) {
+  const t = useT();
+  const { store } = useAuth();
+  const action = useActionKey();
+  const [opened, setOpened] = useState(0);
+  const [stock] = useResource(opened > 0 ? `${r.fromWarehouseId}:${opened}` : null, () =>
+    loadStock(store, { warehouseId: r.fromWarehouseId }),
+  );
+  const onHand =
+    stock.status === 'ready' ? new Map(stock.data.map((l) => [l.itemId, l.quantity])) : null;
+  return (
+    <QuantitiesDialog
+      trigger={t('orders.requestsPage.approve')}
+      testId="request-approve"
+      title={t('orders.requestsPage.approveTitle', { number: r.number })}
+      hint={t('orders.requestsPage.approveHint')}
+      submitLabel={t('orders.requestsPage.approve')}
+      referenceLabel={t('orders.requestsPage.requested')}
+      availableLabel={t('orders.requestsPage.onHand')}
+      quantityLabel={t('orders.requestsPage.toSend')}
+      inputLabel={(name) => t('orders.requestsPage.send', { name })}
+      onOpen={() => setOpened((n) => n + 1)}
+      lines={r.lines.map((l) => {
+        // An item with no stock row has none.
+        const available = onHand ? (onHand.get(l.itemId) ?? '0') : null;
+        const plan = pickPlan(l.quantity, available);
+        return {
+          id: l.id,
+          name: l.itemName,
+          unit: l.unit,
+          reference: l.quantity,
+          max: null,
+          initial: plan.initial,
+          ...(available === null ? {} : { available, short: plan.short }),
+        };
+      })}
+      run={(lines) => approveRequest(store, action, r.id, { lines })}
+      onDone={onDone}
+    />
   );
 }

@@ -136,7 +136,10 @@ function Inventory({
   const can = (key: PermissionKey) => permissions.has(key);
   // A branch asks the main warehouse for goods from here too (ADR 0045, 0053): the request cart.
   const requests =
-    (session?.activeFeatures.includes('orders') ?? false) && can('orders.requests.create');
+    (session?.activeFeatures.includes('orders') ?? false) &&
+    can('orders.requests.create') &&
+    // Branches send requests; those who approve them don't.
+    !can('orders.requests.approve');
   const tabs = TABS.filter((x) => !x.permission || can(x.permission));
   const reload = () => {
     reloadLocations();

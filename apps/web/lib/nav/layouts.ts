@@ -61,24 +61,24 @@ const OPERATIONS: NavLayoutDefinition = {
       permission: 'catalog.products.read',
     },
     {
-      id: 'orders',
-      href: '/orders',
-      label: 'platform.nav.orderHistory',
-      icon: Package,
-      group: 'operations',
-      feature: 'orders',
-      permission: 'orders.orders.read',
-    },
-    {
-      // Branch requests by stage; owners and admins approve here. A branch asks the main warehouse for goods from
-      // its "Request stock" button (ADR 0045, 0052).
-      id: 'stock-requests',
+      // Every branch request by stage: owners and admins approve here, branches follow theirs (ADR 0045, 0063).
+      id: 'order-history',
       href: '/requests',
-      label: 'platform.nav.stockRequests',
+      label: 'platform.nav.orderHistory',
       icon: ClipboardList,
       group: 'operations',
       feature: 'orders',
       permission: 'orders.requests.read',
+    },
+    {
+      // Customer orders (ADR 0044), now under their own name (ADR 0063).
+      id: 'orders',
+      href: '/orders',
+      label: 'platform.nav.salesOrders',
+      icon: Package,
+      group: 'operations',
+      feature: 'orders',
+      permission: 'orders.orders.read',
     },
     {
       id: 'picking',

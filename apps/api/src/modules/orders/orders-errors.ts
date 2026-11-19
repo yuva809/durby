@@ -49,6 +49,13 @@ export const ordersErrors = {
       'orders.request_main_only',
       'Requests come from the main warehouse.',
     ),
+  /** Requests come from the branches: who approves them doesn't send them. */
+  requestBranchOnly: () =>
+    new ApiError(
+      HttpStatus.FORBIDDEN,
+      'orders.request_branch_only',
+      'Requests come from the branches; approvers do not send them.',
+    ),
   /** More than the source warehouse has (a branch can't ask for 4 when 2 are there). */
   requestAboveStock: (itemIds: string[]) =>
     new ApiError(

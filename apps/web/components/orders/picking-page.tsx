@@ -84,7 +84,7 @@ function Picking({ organizationId }: { organizationId: string | null }) {
         )}
       </div>
       <TransfersPicking organizationId={organizationId} />
-      <h2 className="text-lg font-semibold">{t('platform.nav.orderHistory')}</h2>
+      <h2 className="text-lg font-semibold">{t('platform.nav.salesOrders')}</h2>
       <Loaded resource={queue} reload={reload}>
         {(page) => {
           // Oldest first: the order that has waited longest is picked first.

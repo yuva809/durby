@@ -268,8 +268,8 @@ describe('category dialog (ADR 0048)', () => {
     expect(screen.getByTestId('category-parent')).toHaveProperty('disabled', true);
   });
 
-  it('offers the request cart to those who may request goods, with orders on', async () => {
-    signedIn();
+  it('offers the request cart to branches, not to who approves requests', async () => {
+    signedIn(['inventory', 'catalog', 'orders'], 'branch');
     api();
     render(<InventoryPage />, { wrapper: operations });
     const request = await screen.findByTestId('inventory-request-stock');
@@ -277,8 +277,15 @@ describe('category dialog (ADR 0048)', () => {
     expect(request.textContent).toBe('Request cart');
     cleanup();
 
+    signedIn();
+    api();
+    render(<InventoryPage />, { wrapper: operations });
+    await screen.findAllByTestId('category-tile');
+    expect(screen.queryByTestId('inventory-request-stock')).toBeNull();
+    cleanup();
+
     // Without orders there are no requests.
-    signedIn(['inventory', 'catalog']);
+    signedIn(['inventory', 'catalog'], 'branch');
     api();
     render(<InventoryPage />, { wrapper: operations });
     await screen.findAllByTestId('category-tile');

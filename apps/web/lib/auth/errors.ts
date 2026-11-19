@@ -146,6 +146,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'orders.request_invalid': 'orders.errors.requestInvalid',
   'orders.request_main_only': 'orders.errors.requestMainOnly',
   'orders.request_above_stock': 'orders.errors.requestAboveStock',
+  'orders.request_branch_only': 'orders.errors.requestBranchOnly',
   'orders.request_transition': 'orders.errors.requestTransition',
   'orders.request_not_yours': 'orders.errors.requestNotYours',
   'orders.driver_not_found': 'orders.errors.driverNotFound',

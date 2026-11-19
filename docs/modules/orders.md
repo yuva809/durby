@@ -194,6 +194,12 @@ how much is missing ("Short 2 pc"), and quantities beyond the stock are named be
 refused unless the location allows negative stock). Stock Requests is a table (request,
 branch, items, requested by, date, status, transfer number) searched by number and filtered by stage.
 
+**Order History (ADR 0063).** In the operations menu Order History is the branch requests for everyone who reads
+them (Stock Requests merged into it; owners and admins approve there); customer orders are **Sales Orders**
+(`/orders`). Requests come from the branches only: the cart and "Request stock" are offered to those who ask for
+goods and don't approve them, and the api answers 403 `orders.request_branch_only` to an approver. Approving shows
+Requested, On hand (the source warehouse's stock) and To send; a short line starts at what is there.
+
 **A branch's view (ADR 0059).** In the operations menu a branch (asks for goods, neither approves nor reads sales
 orders) has its own menu: Inventory (category tiles from `GET /api/v1/inventory/categories`, a "Request cart"
 button), Order History (`/requests`), Delivery Tracking (`/deliveries`: its requests with their steps, the driver and

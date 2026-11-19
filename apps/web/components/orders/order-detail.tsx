@@ -90,7 +90,7 @@ export function OrderDetail({
         </Loaded>
         {order.status !== 'ready' && (
           // Radix needs a title while the order loads; the loaded one brings its own.
-          <SheetTitle>{t('platform.nav.orderHistory')}</SheetTitle>
+          <SheetTitle>{t('platform.nav.salesOrders')}</SheetTitle>
         )}
       </SheetContent>
     </Sheet>

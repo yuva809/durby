@@ -812,6 +812,7 @@
   "platform.nav.groups.tools": "Tools & utilities",
   "platform.nav.productCategories": "Product Category",
   "platform.nav.orderHistory": "Order History",
+  "platform.nav.salesOrders": "Sales Orders",
   "platform.nav.picking": "Picking",
   "platform.nav.branches": "Branches",
   "platform.nav.deliveries": "Delivery Tracking",
