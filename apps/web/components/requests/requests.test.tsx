@@ -236,8 +236,8 @@ describe('Request stock cart (branch, ADR 0053)', () => {
     const calls = api(request('submitted'));
     render(<RequestStockPage />);
     expect((await screen.findByTestId<HTMLSelectElement>('request-from')).value).toBe(MAIN.id);
-    const oil = (await screen.findAllByTestId('request-item'))[1]!;
-    await userEvent.click(within(oil).getByTestId('request-add'));
+    const rice = (await screen.findAllByTestId('request-item'))[0]!;
+    await userEvent.click(within(rice).getByTestId('request-add'));
     await userEvent.click(screen.getByTestId('request-cart-open'));
     const cart = await screen.findByTestId('request-cart');
     expect(cart.textContent).toContain('has no store yet');
@@ -246,9 +246,39 @@ describe('Request stock cart (branch, ADR 0053)', () => {
       expect(posts(calls)[0]?.body).toEqual({
         fromWarehouseId: MAIN.id,
         toLocationId: BRANCH.locationId,
-        lines: [{ itemId: id(52), quantity: '1' }],
+        lines: [{ itemId: id(51), quantity: '1' }],
       }),
     );
+  });
+
+  it('asks for no more than the main warehouse has, and lays out the cart', async () => {
+    signedInAs('branch');
+    const calls = api(request('submitted'));
+    render(<RequestStockPage />);
+    const [rice, oil] = await screen.findAllByTestId('request-item');
+    // Nothing there, nothing to add.
+    expect(within(oil!).getByTestId('request-add')).toHaveProperty('disabled', true);
+    // 10 there: "+" stops at 10.
+    await userEvent.click(within(rice!).getByTestId('request-add'));
+    const quantity = within(rice!).getByTestId<HTMLInputElement>('request-quantity');
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '10');
+    expect(within(rice!).getByTestId('request-more')).toHaveProperty('disabled', true);
+    // Typed beyond it: named, and not sent.
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '12');
+    expect(within(rice!).getByTestId('request-item-available').textContent).toBe(
+      'Only 10 pc available',
+    );
+    await userEvent.click(screen.getByTestId('request-cart-open'));
+    const cart = await screen.findByTestId('request-cart');
+    // The cart's title and route show (not only for screen readers).
+    expect(within(cart).getByText('Your request')).toBeTruthy();
+    await userEvent.click(within(cart).getByTestId('request-submit'));
+    expect(
+      within(cart).getByText(/More than the main warehouse has: Rice \(10 pc available\)/),
+    ).toBeTruthy();
+    expect(posts(calls)).toEqual([]);
   });
 
   it('filters by category and search, and keeps the cart for the next visit', async () => {
