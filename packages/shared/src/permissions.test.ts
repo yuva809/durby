@@ -92,6 +92,7 @@ describe('system roles', () => {
       'catalog.products.read',
       'inventory.costs.read',
       'inventory.invoices.approve',
+      'inventory.prices.read',
       'inventory.recipes.create',
       'inventory.recipes.delete',
       'inventory.recipes.edit',
@@ -149,6 +150,7 @@ describe('system roles', () => {
     ]);
     expect([...systemRolePermissions('staff')].sort()).toEqual([
       'catalog.products.read',
+      'inventory.prices.read',
       'inventory.stock.read',
       'orders.customers.read',
       'orders.orders.read',
@@ -171,6 +173,7 @@ describe('system roles', () => {
       'platform.settings.read',
     ]);
     expect([...systemRolePermissions('warehouse')].sort()).toEqual([
+      'inventory.prices.read',
       'inventory.stock.adjust',
       'inventory.stock.read',
       'inventory.stock.receive',
@@ -190,6 +193,10 @@ describe('system roles', () => {
     const holders = (key: PermissionKey) =>
       SYSTEM_ROLES.filter((role) => systemRolePermissions(role).has(key));
     expect(holders('orders.requests.approve')).toEqual(['owner', 'admin']);
+    // ADR 0060: everyone who reads stock sees its prices and values, but a branch: quantities only.
+    expect(holders('inventory.prices.read')).toEqual(
+      holders('inventory.stock.read').filter((role) => role !== 'branch'),
+    );
     expect(SYSTEM_ROLE_FEATURES).toEqual({
       waiter: 'pos',
       cashier: 'pos',
@@ -284,6 +291,7 @@ describe('system roles', () => {
   it('gives Kitchen and Bar their screen, the settings and their stores, nothing else', () => {
     // Inventory (docs/modules/inventory.md): their stores' stock, deliveries, waste and production (ADR 0038).
     const store = [
+      'inventory.prices.read',
       'inventory.stock.adjust',
       'inventory.stock.produce',
       'inventory.stock.read',

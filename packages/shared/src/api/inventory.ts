@@ -284,10 +284,10 @@ export const stockMovementSchema = z.object({
   unit: z.enum(STOCK_UNITS),
   /** Signed, 3 decimals. */
   quantity: z.string(),
-  /** 4 decimals. */
-  unitCost: z.string(),
-  /** Signed, 2 decimals. */
-  value: z.string(),
+  /** 4 decimals; null without inventory.prices.read (ADR 0060). */
+  unitCost: z.string().nullable(),
+  /** Signed, 2 decimals; null without inventory.prices.read. */
+  value: z.string().nullable(),
 });
 
 export const stockDocumentSummarySchema = z.object({
@@ -302,8 +302,8 @@ export const stockDocumentSummarySchema = z.object({
   supplier: z.string().nullable(),
   note: z.string().nullable(),
   lineCount: z.int(),
-  /** Sum of the line values in `warehouseId` (signed, 2 decimals). */
-  value: z.string(),
+  /** Sum of the line values in `warehouseId` (signed, 2 decimals); null without inventory.prices.read (ADR 0060). */
+  value: z.string().nullable(),
   createdAt: z.iso.datetime(),
 });
 
@@ -324,9 +324,10 @@ export const stockLevelSchema = z.object({
   unit: z.enum(STOCK_UNITS),
   /** 3 decimals, may be negative when allowed. */
   quantity: z.string(),
-  averageCost: z.string(),
+  /** 4 decimals; null without inventory.prices.read (ADR 0060), like `value`. */
+  averageCost: z.string().nullable(),
   /** quantity × average cost, 2 decimals. */
-  value: z.string(),
+  value: z.string().nullable(),
   /** At or below the item's reorder level. */
   low: z.boolean(),
 });

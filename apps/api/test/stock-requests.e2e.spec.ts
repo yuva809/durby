@@ -379,4 +379,42 @@ describe('branch stock requests (ADR 0045)', () => {
     // Not for those who don't read stock.
     await get(s.driver.token, '/inventory/categories').expect(403);
   });
+
+  it('shows a branch quantities, not prices and values (ADR 0060)', async () => {
+    const s = await setup();
+    await post(s.owner.token, '/inventory/receipts', {
+      warehouseId: s.branch,
+      lines: [{ itemId: s.rice, quantity: '2', unitCost: '3.00' }],
+    }).expect(201);
+    await patch(s.owner.token, `/inventory/items/${s.rice}`, { salePrice: '4.50' }).expect(200);
+
+    const stock = async (token: string) =>
+      stockLevelListResponseSchema.parse(
+        (await get(token, `/inventory/stock?warehouseId=${s.branch}`).expect(200)).body,
+      ).data;
+    expect(await stock(s.owner.token)).toMatchObject([
+      { quantity: '2.000', averageCost: '3.0000', value: '6.00' },
+    ]);
+    expect(await stock(s.branchUser.token)).toMatchObject([
+      { quantity: '2.000', averageCost: null, value: null },
+    ]);
+
+    const documents = (
+      await get(s.branchUser.token, `/inventory/documents?warehouseId=${s.branch}`).expect(200)
+    ).body as { data: { id: string; value: string | null }[] };
+    expect(documents.data[0]?.value).toBeNull();
+    const document = (
+      await get(s.branchUser.token, `/inventory/documents/${documents.data[0]!.id}`).expect(200)
+    ).body as { lines: { quantity: string; unitCost: string | null; value: string | null }[] };
+    expect(document.lines[0]).toMatchObject({ quantity: '2.000', unitCost: null, value: null });
+
+    const items = (await get(s.branchUser.token, '/inventory/items').expect(200)).body as {
+      data: { id: string; salePrice: string | null }[];
+    };
+    expect(items.data.find((i) => i.id === s.rice)?.salePrice).toBeNull();
+    const owned = (await get(s.owner.token, '/inventory/items').expect(200)).body as {
+      data: { id: string; salePrice: string | null }[];
+    };
+    expect(owned.data.find((i) => i.id === s.rice)?.salePrice).toBe('4.50');
+  });
 });

@@ -50,6 +50,12 @@ StockLevel             stock_levels        projection per warehouse and item: qu
 | `inventory.warehouses.manage` | create, rename, archive warehouses      | ✓     | ✓       |       |         |     |                       |
 | `inventory.items.manage`      | stock items (organization scope)        | ✓     |         |       |         |     |                       |
 
+**Prices and values (ADR 0060).** `inventory.prices.read` (location scope, "See prices and values"): every
+built-in role that reads stock but the Branch manager; custom roles got it with the release. Without it `GET /stock` answers
+`averageCost` and `value` as null, documents (`GET /documents`, `/documents/:id` and the receipt, adjustment and
+transfer answers) their values and unit costs, items their `salePrice`, and a sale price sent with an item is
+ignored. The pages leave out those columns, totals and export columns. Audit rows keep the values.
+
 ## API (`/api/v1/inventory`, `@RequireFeature('inventory')`)
 
 | Method + path           | Permission                    | Idempotency                 | Body / query                                                                 |

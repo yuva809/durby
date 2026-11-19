@@ -17,10 +17,15 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Loaded } from '../users/common';
 import { type InventoryData, warehouseLabel } from './inventory-page';
+import { useSeesPrices } from './use-sees-prices';
 
-/** What is in stock, per warehouse or for all of them: quantity, average cost, value, low. */
+/**
+ * What is in stock, per warehouse or for all of them: quantity, average cost, value, low. Without prices (ADR 0060)
+ * quantities only.
+ */
 export function StockTab({ data }: { data: InventoryData }) {
   const t = useT();
+  const prices = useSeesPrices();
   const id = useId();
   const money = useMoney();
   const { store } = useAuth();
@@ -87,11 +92,13 @@ export function StockTab({ data }: { data: InventoryData }) {
           }
           return (
             <div className="flex flex-col gap-3">
-              <p className="font-semibold" data-testid="stock-total">
-                {t('inventory.page.totalValue', {
-                  value: money(sumValues(shown.map((l) => l.value))),
-                })}
-              </p>
+              {prices && (
+                <p className="font-semibold" data-testid="stock-total">
+                  {t('inventory.page.totalValue', {
+                    value: money(sumValues(shown.map((l) => l.value ?? '0'))),
+                  })}
+                </p>
+              )}
               <Card className="overflow-x-auto p-0">
                 <table className="w-full text-sm">
                   <thead className="hidden bg-muted text-left text-muted-foreground md:table-header-group">
@@ -103,12 +110,16 @@ export function StockTab({ data }: { data: InventoryData }) {
                       <th className="px-4 py-2 text-right font-medium">
                         {t('inventory.fields.quantity')}
                       </th>
-                      <th className="px-4 py-2 text-right font-medium">
-                        {t('inventory.fields.averageCost')}
-                      </th>
-                      <th className="px-4 py-2 text-right font-medium">
-                        {t('inventory.fields.value')}
-                      </th>
+                      {prices && (
+                        <th className="px-4 py-2 text-right font-medium">
+                          {t('inventory.fields.averageCost')}
+                        </th>
+                      )}
+                      {prices && (
+                        <th className="px-4 py-2 text-right font-medium">
+                          {t('inventory.fields.value')}
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -146,12 +157,16 @@ export function StockTab({ data }: { data: InventoryData }) {
                         >
                           {`${shortQuantity(l.quantity)} ${t(`inventory.units.${l.unit}`)}`}
                         </td>
-                        <td className="text-muted-foreground tabular-nums md:px-4 md:py-2 md:text-right">
-                          {money(l.averageCost)}
-                        </td>
-                        <td className="ml-auto font-medium tabular-nums md:px-4 md:py-2 md:text-right">
-                          {money(l.value)}
-                        </td>
+                        {prices && l.averageCost !== null && (
+                          <td className="text-muted-foreground tabular-nums md:px-4 md:py-2 md:text-right">
+                            {money(l.averageCost)}
+                          </td>
+                        )}
+                        {prices && l.value !== null && (
+                          <td className="ml-auto font-medium tabular-nums md:px-4 md:py-2 md:text-right">
+                            {money(l.value)}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

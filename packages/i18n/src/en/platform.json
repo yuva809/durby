@@ -120,6 +120,7 @@
   "platform.audit.actions.featureOverrideDeleted": "Feature override removed",
   "platform.audit.actions.planFeaturesChanged": "Plan contents changed",
   "platform.audit.actions.permissionKeysSplit": "Permissions split into create, edit and delete",
+  "platform.audit.actions.permissionKeysAdded": "Permission added to custom roles",
   "platform.audit.entities.featureOverride": "Feature override",
   "platform.audit.entities.plan": "Plan",
   "platform.audit.actors.cliEntitlements": "Entitlements command",

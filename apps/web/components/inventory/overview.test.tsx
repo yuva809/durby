@@ -63,13 +63,14 @@ const YAM = item(1, 'Yam flour', FOOD.id);
 const BASMATI = item(2, 'Basmati rice', RICE.id);
 const COLA = item(3, 'Cola', DRINKS.id);
 const LOOSE = item(4, 'Loose item', null);
-const level = (itemId: string, quantity: string, value: string, low = false) => ({
+const level = (itemId: string, quantity: string, value: string | null, low = false) => ({
   warehouseId: WAREHOUSE.id,
   itemId,
   itemName: '',
   unit: 'pc',
   quantity,
-  averageCost: '1.0000',
+  // Without inventory.prices.read the api sends no costs or values (ADR 0060).
+  averageCost: value === null ? null : '1.0000',
   value,
   low,
 });
@@ -301,5 +302,33 @@ describe('category dialog (ADR 0048)', () => {
     expect(paths.some((p) => p.startsWith('/api/v1/inventory/categories'))).toBe(true);
     expect(paths.some((p) => p.startsWith('/api/v1/catalog/'))).toBe(false);
     expect(screen.getByTestId('inventory-request-stock').textContent).toBe('Request cart');
+  });
+
+  it('shows a branch quantities only: no value column, total or export value (ADR 0060)', async () => {
+    signedIn(['inventory', 'catalog', 'orders'], 'branch');
+    api();
+    mockState.store.apiFetch.mockImplementation((input: string) => {
+      const path = input.replace(/\?.*$/, '');
+      const answers: Record<string, unknown> = {
+        '/api/v1/inventory/warehouses': { data: [WAREHOUSE] },
+        '/api/v1/inventory/items': { data: [YAM, BASMATI, COLA, LOOSE] },
+        '/api/v1/inventory/categories': { data: [FOOD, RICE, DRINKS] },
+        '/api/v1/inventory/stock': {
+          data: [level(YAM.id, '4.000', null, true), level(BASMATI.id, '10.000', null)],
+        },
+      };
+      return Promise.resolve(Response.json(answers[path] ?? { data: [] }));
+    });
+    render(<InventoryPage />, { wrapper: operations });
+    expect(
+      await screen.findByText('Live stock by category, warehouse and stock level.'),
+    ).toBeTruthy();
+    const tiles = await screen.findAllByTestId('category-tile');
+    await userEvent.click(tiles[1]!);
+    const rows = await screen.findAllByTestId('overview-row');
+    expect(rows.map((r) => r.getAttribute('data-name'))).toEqual(['Yam flour', 'Basmati rice']);
+    expect(within(rows[0]!).getByTestId('overview-quantity').textContent).toBe('4 pc');
+    expect(screen.queryByTestId('overview-total')).toBeNull();
+    expect(screen.queryByText('Value')).toBeNull();
   });
 });

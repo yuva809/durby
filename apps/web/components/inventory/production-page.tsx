@@ -357,7 +357,7 @@ function ProductionForm({
                     <span className="text-muted-foreground tabular-nums">
                       {t('inventory.production.lines', { count: String(doc.lineCount) })}
                       {doc.note ? ` · ${doc.note}` : ''}
-                      {` · ${money(doc.value)}`}
+                      {doc.value !== null && ` · ${money(doc.value)}`}
                     </span>
                   </div>
                 ))}

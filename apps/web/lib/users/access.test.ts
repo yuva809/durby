@@ -197,6 +197,7 @@ describe('custom-role editor', () => {
       'inventory.items',
       'inventory.recipes',
       'inventory.costs',
+      'inventory.prices',
       'pos.tables',
       'pos.orders',
       'pos.bills',
