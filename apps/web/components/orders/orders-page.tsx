@@ -32,7 +32,7 @@ export function OrdersPage() {
   const { session } = useAuth();
   if (!session) return null;
   const permissions = new Set(session.activePermissions);
-  if (!permissions.has('orders.orders.read')) return <NoAccess title="platform.nav.orderHistory" />;
+  if (!permissions.has('orders.orders.read')) return <NoAccess title="platform.nav.salesOrders" />;
   return (
     <MoneyProvider>
       <Orders
@@ -142,7 +142,7 @@ function Orders({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">{t('platform.nav.orderHistory')}</h1>
+          <h1 className="text-2xl font-semibold">{t('platform.nav.salesOrders')}</h1>
           <p className="text-muted-foreground">{t('orders.page.intro')}</p>
         </div>
         <div className="flex flex-wrap gap-2">

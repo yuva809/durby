@@ -40,7 +40,6 @@ import {
   loadRequestDestinations,
   loadRequestWarehouses,
 } from '../../lib/orders/requests-api';
-import { isBranchView } from '../../lib/nav/layouts';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
@@ -63,14 +62,32 @@ export function RequestStockPage() {
   if (!session) return null;
   if (!session.activePermissions.includes('orders.requests.create'))
     return <NoAccess title="platform.nav.requestStock" />;
+  // Branches send requests; those who approve them do that in Order History.
+  if (session.activePermissions.includes('orders.requests.approve')) {
+    return <BranchOnly />;
+  }
   return <RequestStock organizationId={session.activeOrganizationId} />;
+}
+
+/** For those who approve requests: branches send them; approving happens in Order History. */
+function BranchOnly() {
+  const t = useT();
+  return (
+    <div className="flex max-w-3xl flex-col gap-3" data-testid="request-branch-only">
+      <h1 className="text-2xl font-semibold">{t('platform.nav.requestStock')}</h1>
+      <Notice text={t('orders.requestForm.branchOnly')} tone="info" />
+      <Button variant="outline" asChild className="self-start">
+        <Link href="/requests">{t('platform.nav.orderHistory')}</Link>
+      </Button>
+    </div>
+  );
 }
 
 function RequestStock({ organizationId }: { organizationId: string | null }) {
   const t = useT();
   const { store, session } = useAuth();
   // A branch calls its requests Order History (ADR 0059).
-  const branch = useNavLayout() === 'operations' && session !== null && isBranchView(session);
+  const operations = useNavLayout() === 'operations';
   // Who can give people their branch can also fix an empty list.
   const setsUpStaff = session?.activePermissions.includes('platform.users.edit') ?? false;
   const [warehouses] = useResource(organizationId, () => loadRequestWarehouses(store));
@@ -84,7 +101,7 @@ function RequestStock({ organizationId }: { organizationId: string | null }) {
         </div>
         <Button variant="outline" asChild>
           <Link href="/requests">
-            {t(branch ? 'platform.nav.orderHistory' : 'platform.nav.stockRequests')}
+            {t(operations ? 'platform.nav.orderHistory' : 'platform.nav.stockRequests')}
           </Link>
         </Button>
       </div>

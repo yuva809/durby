@@ -481,4 +481,14 @@ describe('branch stock requests (ADR 0045)', () => {
     }).expect(201);
     expect((await level(s.branch))?.expiresOn ?? null).toBeNull();
   });
+
+  it('takes requests from the branches only: who approves them cannot send one', async () => {
+    const s = await setup();
+    const res = await post(s.owner.token, '/stock-requests', {
+      fromWarehouseId: s.main,
+      toWarehouseId: s.branch,
+      lines: [{ itemId: s.rice, quantity: '1' }],
+    }).expect(403);
+    expect((res.body as { code: string }).code).toBe('orders.request_branch_only');
+  });
 });

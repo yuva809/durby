@@ -2,6 +2,7 @@
 
 import {
   pickedQuantitySchema,
+  type StockUnit,
   type StockRequest,
   type StockRequestStatus,
   type StockRequestSummary,
@@ -54,7 +55,7 @@ export function requestTitle(r: Pick<StockRequestSummary, 'number' | 'transferNu
 export interface QuantityLine {
   id: string;
   name: string;
-  unit: string;
+  unit: StockUnit;
   /** Shown beside the input (requested, approved, packed). */
   reference: string;
   /** What the line may be at most (null: no cap). */
@@ -86,6 +87,7 @@ export function QuantitiesDialog({
   onDone,
   onOpen,
   availableLabel,
+  quantityLabel,
   children,
 }: {
   trigger: string;
@@ -104,6 +106,8 @@ export function QuantitiesDialog({
   onOpen?: () => void;
   /** The column of `available`, e.g. "In stock". */
   availableLabel?: string;
+  /** The heading of the quantities typed, e.g. "To send"; without it the column has none on screen. */
+  quantityLabel?: string;
   children?: ReactNode;
 }) {
   const t = useT();
@@ -122,7 +126,7 @@ export function QuantitiesDialog({
       .map((line) =>
         t('orders.transfers.itemInStock', {
           name: line.name,
-          quantity: `${shownStock(line.available ?? '0')} ${line.unit}`,
+          quantity: `${shownStock(line.available ?? '0')} ${t(`inventory.units.${line.unit}`)}`,
         }),
       )
       .join(', ');
@@ -157,19 +161,29 @@ export function QuantitiesDialog({
       <div className="overflow-x-auto">
         <table className="w-full text-sm" data-testid={`${testId}-lines`}>
           <thead>
-            <tr className="border-b text-left text-muted-foreground">
-              <th className="py-1 font-medium">{t('orders.requestForm.item')}</th>
-              <th className="py-1 text-right font-medium">{referenceLabel}</th>
-              {withStock && <th className="py-1 text-right font-medium">{availableLabel}</th>}
-              <th className="py-1 text-right font-medium">
-                <span className="sr-only">{submitLabel}</span>
+            <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
+              <th className="py-2 pr-2 font-medium">{t('orders.requestForm.item')}</th>
+              <th className="w-24 px-2 py-2 text-right font-medium whitespace-nowrap">
+                {referenceLabel}
+              </th>
+              {withStock && (
+                <th className="w-24 px-2 py-2 text-right font-medium whitespace-nowrap">
+                  {availableLabel}
+                </th>
+              )}
+              <th className="w-28 py-2 pl-2 text-right font-medium whitespace-nowrap">
+                {quantityLabel ?? <span className="sr-only">{submitLabel}</span>}
               </th>
             </tr>
           </thead>
           <tbody>
             {lines.map((line) => (
-              <tr key={line.id} className="border-b last:border-0" data-testid={`${testId}-line`}>
-                <td className="py-1.5">
+              <tr
+                key={line.id}
+                className="border-b align-middle last:border-0"
+                data-testid={`${testId}-line`}
+              >
+                <td className="py-2 pr-2">
                   <span className="flex flex-wrap items-center gap-2">
                     {line.name}
                     {line.short && (
@@ -177,28 +191,30 @@ export function QuantitiesDialog({
                         className="bg-accent text-accent-foreground"
                         data-testid={`${testId}-short`}
                       >
-                        {t('orders.transfers.short', { quantity: `${line.short} ${line.unit}` })}
+                        {t('orders.transfers.short', {
+                          quantity: `${line.short} ${t(`inventory.units.${line.unit}`)}`,
+                        })}
                       </Badge>
                     )}
                   </span>
                 </td>
-                <td className="py-1.5 text-right tabular-nums">
-                  {`${shortQuantity(line.reference)} ${line.unit}`}
+                <td className="px-2 py-2 text-right whitespace-nowrap tabular-nums">
+                  {`${shortQuantity(line.reference)} ${t(`inventory.units.${line.unit}`)}`}
                 </td>
                 {withStock && (
                   <td
                     className={cn(
-                      'py-1.5 text-right tabular-nums',
+                      'px-2 py-2 text-right whitespace-nowrap tabular-nums',
                       line.short && 'font-medium text-destructive',
                     )}
                     data-testid={`${testId}-available`}
                   >
                     {line.available === undefined
                       ? ''
-                      : `${shownStock(line.available)} ${line.unit}`}
+                      : `${shownStock(line.available)} ${t(`inventory.units.${line.unit}`)}`}
                   </td>
                 )}
-                <td className="py-1.5 text-right">
+                <td className="py-2 pl-2 text-right">
                   <Input
                     id={`${id}-${line.id}`}
                     inputMode="decimal"

@@ -359,6 +359,8 @@ export class StockRequestsService {
 
   async create(body: CreateStockRequest): Promise<StockRequest> {
     const { tenantId, userId } = this.tenantContext.require();
+    // Branches send requests; owners and admins approve them, never send them.
+    if (await this.access.can('orders.requests.approve')) throw ordersErrors.requestBranchOnly();
     const from = await this.source(body.fromWarehouseId);
     const target = await this.target(body);
     await this.access.assert('orders.requests.create', { locationId: target.locationId });

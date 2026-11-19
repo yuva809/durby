@@ -60,8 +60,8 @@ describe('nav layouts (ADR 0044)', () => {
       operations: [
         'inventory',
         'categories',
+        'order-history',
         'orders',
-        'stock-requests',
         'picking',
         'branches',
         'deliveries',
@@ -105,8 +105,8 @@ describe('the operations menu per branch role (ADR 0045, 0059)', () => {
     expect(menu('warehouse')).toEqual([
       'home',
       'inventory',
+      'order-history',
       'orders',
-      'stock-requests',
       'picking',
       'branches',
       'deliveries',
@@ -117,9 +117,7 @@ describe('the operations menu per branch role (ADR 0045, 0059)', () => {
     ]);
     expect(menu('driver')).toEqual(['home', 'my-deliveries', 'settings', 'feedback']);
     // The new-request form belongs to Stock Requests: one menu item (ADR 0052); for a branch, to its Order History.
-    expect(activeNavItem(navLayout('operations').items, '/requests/new')?.id).toBe(
-      'stock-requests',
-    );
+    expect(activeNavItem(navLayout('operations').items, '/requests/new')?.id).toBe('order-history');
     expect(activeNavItem(BRANCH_NAV_LAYOUT.items, '/requests/new')?.id).toBe('order-history');
   });
 

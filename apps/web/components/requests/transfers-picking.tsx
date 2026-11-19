@@ -283,6 +283,7 @@ function PackDialog({
       submitLabel={t('orders.transfers.submit')}
       referenceLabel={t('orders.requestsPage.approved')}
       availableLabel={t('orders.transfers.inStock')}
+      quantityLabel={t('orders.transfers.pickedColumn')}
       inputLabel={(name) => t('orders.transfers.pickedOf', { name })}
       onOpen={() => setOpened((n) => n + 1)}
       lines={lines.map((l) => {
