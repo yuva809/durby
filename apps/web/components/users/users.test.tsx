@@ -292,8 +292,9 @@ describe('RolesPage', () => {
     ]);
     expect(screen.queryByTestId('role-create')).toBeNull();
     expect(screen.queryByTestId('role-edit')).toBeNull();
-    // Staff's location-scope keys: organization, settings, feedback, products, stock, tables, orders, customers.
-    expect(within(cards[3]!).getAllByText('per location')).toHaveLength(8);
+    // Staff's location-scope keys: organization, settings, feedback, products, stock, prices and values (ADR 0060),
+    // tables, orders, customers.
+    expect(within(cards[3]!).getAllByText('per location')).toHaveLength(9);
   });
 
   /** Roles plus custom ones; records the role writes and answers them with the saved role. */

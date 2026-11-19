@@ -169,26 +169,28 @@ export class InventoryController {
   @RequirePermission('inventory.stock.receive')
   @Idempotent({ completion: 'transaction' })
   @Post('receipts')
-  receive(@Body(new ZodBody(receiptRequestSchema)) body: ReceiptRequest): Promise<StockDocument> {
-    return this.stockService.receive(body);
+  async receive(
+    @Body(new ZodBody(receiptRequestSchema)) body: ReceiptRequest,
+  ): Promise<StockDocument> {
+    return this.stockService.forViewer(await this.stockService.receive(body));
   }
 
   @RequirePermission('inventory.stock.adjust')
   @Idempotent({ completion: 'transaction' })
   @Post('adjustments')
-  adjust(
+  async adjust(
     @Body(new ZodBody(adjustmentRequestSchema)) body: AdjustmentRequest,
   ): Promise<StockDocument> {
-    return this.stockService.adjust(body);
+    return this.stockService.forViewer(await this.stockService.adjust(body));
   }
 
   @RequirePermission('inventory.stock.transfer')
   @Idempotent({ completion: 'transaction' })
   @Post('transfers')
-  transfer(
+  async transfer(
     @Body(new ZodBody(transferRequestSchema)) body: TransferRequest,
   ): Promise<StockDocument> {
-    return this.stockService.transfer(body);
+    return this.stockService.forViewer(await this.stockService.transfer(body));
   }
 
   @RequirePermission('inventory.stock.read')

@@ -229,12 +229,24 @@ export class InventorySetupService {
       select: ITEM_SELECT,
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
     });
-    return rows.map(itemResponse);
+    const prices = await this.seesPrices();
+    return rows.map((row) => priced(itemResponse(row), prices));
+  }
+
+  /**
+   * Whether the caller sees prices and values (ADR 0060): inventory.prices.read at any of their locations. A member's
+   * location limits hold for all of their keys alike, so that is where they read stock too.
+   */
+  private async seesPrices(): Promise<boolean> {
+    const at = await this.access.locationIdsFor('inventory.prices.read');
+    return at === 'all' || at.length > 0;
   }
 
   async createItem(body: CreateStockItemRequest): Promise<StockItem> {
     const { tenantId, userId } = this.tenantContext.require();
     if (body.categoryId) await this.catalog.assertActiveCategory(body.categoryId);
+    // A sale price only from someone who sees prices (ADR 0060).
+    const prices = await this.seesPrices();
     return this.unique(inventoryErrors.itemNameTaken, () =>
       this.db.$transaction(async (tx) => {
         const row = await tx.stockItem.create({
@@ -244,7 +256,7 @@ export class InventorySetupService {
             sku: body.sku ?? null,
             unit: body.unit,
             minQuantity: body.minQuantity ?? null,
-            salePrice: body.salePrice ?? null,
+            salePrice: prices ? (body.salePrice ?? null) : null,
             categoryId: body.categoryId ?? null,
             brand: body.brand ?? null,
             packCount: body.packCount ?? null,
@@ -253,13 +265,14 @@ export class InventorySetupService {
           },
           select: ITEM_SELECT,
         });
-        const response = itemResponse(row);
+        const item = itemResponse(row);
         await this.audit.record(tx, {
           action: 'inventory.stock_item.created',
           actor: auditActor.user(userId),
           entityId: row.id,
-          after: itemSnapshot(response),
+          after: itemSnapshot(item),
         });
+        const response = priced(item, prices);
         await this.idempotency.completeInTransaction(tx, response);
         return response;
       }),
@@ -269,6 +282,8 @@ export class InventorySetupService {
   async updateItem(id: string, body: UpdateStockItemRequest): Promise<StockItem> {
     const { userId } = this.tenantContext.require();
     if (body.categoryId) await this.catalog.assertActiveCategory(body.categoryId);
+    // Without prices the sale price stays as it is, whatever is sent (ADR 0060).
+    const prices = await this.seesPrices();
     return this.unique(inventoryErrors.itemNameTaken, () =>
       this.db.$transaction(async (tx) => {
         const current = await tx.stockItem.findUnique({ where: { id }, select: ITEM_SELECT });
@@ -293,7 +308,7 @@ export class InventorySetupService {
                 ? null
                 : fixed3(body.minQuantity),
           salePrice:
-            body.salePrice === undefined
+            body.salePrice === undefined || !prices
               ? before.salePrice
               : body.salePrice === null
                 ? null
@@ -311,7 +326,7 @@ export class InventorySetupService {
           archivedAt: archivedAt(current.archivedAt, body.archived)?.toISOString() ?? null,
         };
         if (JSON.stringify(itemSnapshot(before)) === JSON.stringify(itemSnapshot(next))) {
-          return before;
+          return priced(before, prices);
         }
         const row = await tx.stockItem.update({
           where: { id },
@@ -338,7 +353,7 @@ export class InventorySetupService {
           before: itemSnapshot(before),
           after: itemSnapshot(after),
         });
-        return after;
+        return priced(after, prices);
       }),
     );
   }
@@ -369,6 +384,10 @@ function fixed3(value: string): string {
 function warehouseResponse(row: WarehouseRow): Warehouse {
   return { ...row, archivedAt: row.archivedAt?.toISOString() ?? null };
 }
+
+/** An item as the caller may see it (ADR 0060): no sale price without inventory.prices.read. */
+const priced = (item: StockItem, prices: boolean): StockItem =>
+  prices ? item : { ...item, salePrice: null };
 
 export function itemResponse(row: ItemRow): StockItem {
   return {

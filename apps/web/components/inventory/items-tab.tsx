@@ -141,8 +141,11 @@ export function ItemDialog({
   const parentName = new Map((categories ?? []).map((c) => [c.id, c.name]));
   const choiceLabel = (c: ProductCategory) =>
     c.parentId ? `${parentName.get(c.parentId) ?? ''} › ${c.name}` : c.name;
-  // The default price on sales orders (ADR 0044): only where the organization has orders.
-  const sells = session?.activeFeatures.includes('orders') ?? false;
+  // The default price on sales orders (ADR 0044): only where the organization has orders, and only for those who see
+  // prices (ADR 0060); otherwise it is neither shown nor sent, so it stays as it is.
+  const sells =
+    (session?.activeFeatures.includes('orders') ?? false) &&
+    (session?.activePermissions.includes('inventory.prices.read') ?? false);
   const priceInvalid =
     checked && salePrice.trim() !== '' && !priceSchema.safeParse(salePrice.trim()).success;
   const nameMissing = checked && name.trim() === '';

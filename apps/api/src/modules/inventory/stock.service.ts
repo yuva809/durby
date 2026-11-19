@@ -522,6 +522,8 @@ export class StockService {
   async stock(query: StockQuery): Promise<StockLevel[]> {
     const warehouses = await this.readableWarehouses(query);
     if (warehouses.length === 0) return [];
+    // Quantities for everyone who reads stock; costs and values only for those who see prices (ADR 0060).
+    const prices = await this.seesPrices();
     const rows = await this.db.stockLevel.findMany({
       where: { warehouseId: { in: warehouses } },
       select: {
@@ -543,8 +545,8 @@ export class StockService {
         itemName: row.item.name,
         unit: row.item.unit,
         quantity: quantityText(quantity),
-        averageCost: costText(averageCost),
-        value: valueOf(quantity, averageCost).toFixed(2),
+        averageCost: prices ? costText(averageCost) : null,
+        value: prices ? valueOf(quantity, averageCost).toFixed(2) : null,
         low: min !== null && quantity.lte(min),
       };
     });
@@ -562,7 +564,30 @@ export class StockService {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: DOCUMENT_LIST_LIMIT,
     });
-    return rows.map(summaryOf);
+    const prices = await this.seesPrices();
+    return rows.map((row) => (prices ? summaryOf(row) : { ...summaryOf(row), value: null }));
+  }
+
+  /**
+   * A document as the caller may see it (ADR 0060): without unit costs and values unless they hold
+   * inventory.prices.read. Audit rows and stored documents keep them.
+   */
+  async forViewer(document: StockDocument): Promise<StockDocument> {
+    if (await this.seesPrices()) return document;
+    return {
+      ...document,
+      value: null,
+      lines: document.lines.map((line) => ({ ...line, unitCost: null, value: null })),
+    };
+  }
+
+  /**
+   * Whether the caller sees prices and values (ADR 0060): inventory.prices.read at any of their locations. A member's
+   * location limits hold for all of their keys alike, so that is where they read stock too.
+   */
+  private async seesPrices(): Promise<boolean> {
+    const at = await this.access.locationIdsFor('inventory.prices.read');
+    return at === 'all' || at.length > 0;
   }
 
   async document(id: string): Promise<StockDocument> {
@@ -579,7 +604,7 @@ export class StockService {
       warehouses.map((w) => this.canInWarehouse('inventory.stock.read', w)),
     );
     if (!readable.some(Boolean)) throw inventoryErrors.documentNotFound();
-    return documentResponse(row);
+    return this.forViewer(documentResponse(row));
   }
 
   /** Warehouse ids the caller may read, narrowed by the query. */

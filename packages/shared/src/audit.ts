@@ -153,6 +153,11 @@ export const AUDIT_ACTIONS = {
     entityType: 'organization',
     label: 'platform.audit.actions.permissionKeysSplit',
   },
+  // ADR 0060: the migration that gave every custom role a new key its members had in effect (actor `migration`).
+  'platform.permission_keys.added': {
+    entityType: 'organization',
+    label: 'platform.audit.actions.permissionKeysAdded',
+  },
   'platform.setting_value.created': {
     entityType: 'setting_value',
     label: 'platform.audit.actions.settingValueCreated',
@@ -480,7 +485,7 @@ export function auditEntityLabel(type: AuditEntityType): string {
  * password or token hashes, tokens, links or email addresses: audit rows can't be updated or erased.
  */
 export const AUDIT_SNAPSHOT_FIELDS = {
-  /** rowsAdded: stored permission rows the ADR 0051 migration added. */
+  /** rowsAdded: stored permission rows the ADR 0051 and ADR 0060 migrations added. */
   organization: ['id', 'partnerId', 'name', 'planId', 'rowsAdded'],
   role: ['id', 'systemKey', 'name', 'permissions'],
   /** grants/denies: per-member permission changes; active: false while deactivated (ADR 0023). */

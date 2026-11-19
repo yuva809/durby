@@ -32,6 +32,7 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Loaded } from '../users/common';
 import { type InventoryData, warehouseLabel } from './inventory-page';
+import { useSeesPrices } from './use-sees-prices';
 
 const selectionKey = (s: CategorySelection) =>
   s.kind === 'category' ? s.id : s.kind === 'none' ? 'none' : '';
@@ -45,6 +46,8 @@ const selectionOf = (key: string): CategorySelection =>
  */
 export function CategoryOverview({ data, actions }: { data: InventoryData; actions: ReactNode }) {
   const t = useT();
+  // A branch sees quantities only (ADR 0060): no value column, total or export column.
+  const prices = useSeesPrices();
   const id = useId();
   const money = useMoney();
   const { store } = useAuth();
@@ -80,7 +83,7 @@ export function CategoryOverview({ data, actions }: { data: InventoryData; actio
         t('inventory.fields.category'),
         t('inventory.fields.unit'),
         t('inventory.fields.quantity'),
-        t('inventory.fields.value'),
+        ...(prices ? [t('inventory.fields.value')] : []),
         t('inventory.overview.lowStock'),
       ],
       listed.map((r) => [
@@ -89,7 +92,7 @@ export function CategoryOverview({ data, actions }: { data: InventoryData; actio
         categoryPath(categories, r.item.categoryId),
         t(`inventory.units.${r.item.unit}`),
         shortQuantity(r.quantity),
-        r.value,
+        ...(prices ? [r.value ?? ''] : []),
         r.low ? t('inventory.overview.yes') : '',
       ]),
     );
@@ -106,7 +109,9 @@ export function CategoryOverview({ data, actions }: { data: InventoryData; actio
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">{t('inventory.nav.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('inventory.overview.intro')}</p>
+          <p className="text-sm text-muted-foreground">
+            {t(prices ? 'inventory.overview.intro' : 'inventory.overview.introQuantities')}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2" data-testid="overview-actions">
           <Button
@@ -181,10 +186,14 @@ export function CategoryOverview({ data, actions }: { data: InventoryData; actio
                     selection={open}
                     categories={categories}
                     rows={listed}
-                    total={sumDecimals(
-                      listed.map((r) => r.value),
-                      2,
-                    )}
+                    total={
+                      prices
+                        ? sumDecimals(
+                            listed.map((r) => r.value ?? '0'),
+                            2,
+                          )
+                        : null
+                    }
                     query={query}
                     onQuery={setQuery}
                     onOpen={setOpen}
@@ -228,7 +237,12 @@ export function CategoryOverview({ data, actions }: { data: InventoryData; actio
                       <h2 className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                         {t('inventory.overview.products')}
                       </h2>
-                      <ItemTable rows={found} categories={categories} money={money} />
+                      <ItemTable
+                        rows={found}
+                        categories={categories}
+                        money={money}
+                        prices={prices}
+                      />
                     </section>
                   )}
                 </div>
@@ -352,7 +366,8 @@ function CategoryItems({
   selection: CategorySelection;
   categories: readonly ProductCategory[];
   rows: ItemRow[];
-  total: string;
+  /** The value of what is listed; null without prices (ADR 0060). */
+  total: string | null;
   query: string;
   onQuery: (value: string) => void;
   onOpen: (selection: CategorySelection | null) => void;
@@ -418,10 +433,12 @@ function CategoryItems({
         </Card>
       ) : (
         <>
-          <p className="font-semibold" data-testid="overview-total">
-            {t('inventory.page.totalValue', { value: money(total) })}
-          </p>
-          <ItemTable rows={rows} categories={categories} money={money} />
+          {total !== null && (
+            <p className="font-semibold" data-testid="overview-total">
+              {t('inventory.page.totalValue', { value: money(total) })}
+            </p>
+          )}
+          <ItemTable rows={rows} categories={categories} money={money} prices={total !== null} />
         </>
       )}
     </div>
@@ -432,10 +449,13 @@ function ItemTable({
   rows,
   categories,
   money,
+  prices,
 }: {
   rows: readonly ItemRow[];
   categories: readonly ProductCategory[];
   money: (amount: string) => string;
+  /** With the value column (ADR 0060). */
+  prices: boolean;
 }) {
   const t = useT();
   return (
@@ -446,7 +466,9 @@ function ItemTable({
             <th className="px-4 py-2 font-medium">{t('inventory.fields.item')}</th>
             <th className="px-4 py-2 font-medium">{t('inventory.fields.category')}</th>
             <th className="px-4 py-2 text-right font-medium">{t('inventory.fields.quantity')}</th>
-            <th className="px-4 py-2 text-right font-medium">{t('inventory.fields.value')}</th>
+            {prices && (
+              <th className="px-4 py-2 text-right font-medium">{t('inventory.fields.value')}</th>
+            )}
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -484,9 +506,11 @@ function ItemTable({
               >
                 {`${shortQuantity(row.quantity)} ${t(`inventory.units.${row.item.unit}`)}`}
               </td>
-              <td className="ml-auto font-medium tabular-nums md:px-4 md:py-2 md:text-right">
-                {money(row.value)}
-              </td>
+              {prices && row.value !== null && (
+                <td className="ml-auto font-medium tabular-nums md:px-4 md:py-2 md:text-right">
+                  {money(row.value)}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

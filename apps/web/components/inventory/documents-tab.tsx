@@ -79,7 +79,9 @@ export function DocumentsTab({ data }: { data: InventoryData }) {
                     </span>
                   </span>
                   <span className="flex flex-col items-end">
-                    <span className="font-medium tabular-nums">{money(d.value)}</span>
+                    {d.value !== null && (
+                      <span className="font-medium tabular-nums">{money(d.value)}</span>
+                    )}
                     <span className="text-sm text-muted-foreground">
                       {date.format(new Date(d.createdAt))}
                     </span>
@@ -135,7 +137,10 @@ function DocumentDetail({
                     <span className="text-muted-foreground"> · {names.get(l.warehouseId)}</span>
                   </span>
                   <span className="tabular-nums">
-                    {`${shortQuantity(l.quantity)} ${t(`inventory.units.${l.unit}`)} × ${money(l.unitCost)} = ${money(l.value)}`}
+                    {`${shortQuantity(l.quantity)} ${t(`inventory.units.${l.unit}`)}`}
+                    {l.unitCost !== null &&
+                      l.value !== null &&
+                      ` × ${money(l.unitCost)} = ${money(l.value)}`}
                   </span>
                 </li>
               ))}

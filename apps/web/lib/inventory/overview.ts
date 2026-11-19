@@ -16,7 +16,7 @@ export interface ItemRow {
   /** Over the warehouses shown, 3 decimals. */
   quantity: string;
   /** Over the warehouses shown, 2 decimals. */
-  value: string;
+  value: string | null;
   /** At or below the reorder level in any warehouse shown. */
   low: boolean;
 }
@@ -66,10 +66,13 @@ export function itemRows(items: readonly StockItem[], levels: readonly StockLeve
           own.map((l) => l.quantity),
           3,
         ),
-        value: sumDecimals(
-          own.map((l) => l.value),
-          2,
-        ),
+        // Null when the api left values out (no inventory.prices.read, ADR 0060).
+        value: own.every((l) => l.value !== null)
+          ? sumDecimals(
+              own.map((l) => l.value ?? '0'),
+              2,
+            )
+          : null,
         low: own.some((l) => l.low),
       };
     });
