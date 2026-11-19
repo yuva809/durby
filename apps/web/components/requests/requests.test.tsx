@@ -225,6 +225,9 @@ describe('Request stock cart (branch, ADR 0053)', () => {
     expect((await screen.findByTestId('request-sent')).textContent).toContain(
       'Request SRQ-2026-000048 sent',
     );
+    expect(screen.getByTestId('request-sent-oc').getAttribute('href')).toBe(
+      `/requests/${id(10)}/oc`,
+    );
     expect(screen.queryByTestId('request-cart-count')).toBeNull();
   });
 
@@ -422,8 +425,13 @@ describe('A branch’s Order History and Delivery Tracking (ADR 0059)', () => {
     const row = await screen.findByTestId('request-table-row');
     expect(row.textContent).toContain('SRQ-2026-000047');
     expect(row.textContent).toContain('Kurfürstenstraße');
-    expect(row.textContent).toContain('TRF-2026-000047');
     expect(within(row).getByTestId('request-requested-by').textContent).toBe('Sam Example');
+    // Its documents (ADR 0064): the order confirmation now, the delivery challan once packed.
+    expect(within(row).getByTestId('request-oc-link').getAttribute('href')).toBe(
+      `/requests/${id(10)}/oc`,
+    );
+    expect(within(row).getByTestId('request-oc-link').textContent).toBe('OC SRQ-2026-000047');
+    expect(within(row).queryByTestId('request-dc-link')).toBeNull();
     // A branch opens on all of its requests; an owner on what waits for approval.
     expect(screen.getByTestId<HTMLSelectElement>('requests-status').value).toBe('all');
     expect(calls.some((c) => c.path === '/api/v1/stock-requests')).toBe(true);

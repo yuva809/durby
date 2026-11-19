@@ -149,6 +149,9 @@ export const stockRequestSummarySchema = z.object({
 
 export const stockRequestSchema = stockRequestSummarySchema.extend({
   note: z.string().nullable(),
+  /** The branch's and the source location's address, for the documents (ADR 0064); defaults for older apis. */
+  locationAddress: z.string().nullable().default(null),
+  fromLocationAddress: z.string().nullable().default(null),
   lines: z.array(stockRequestLineSchema),
   /** Oldest first. */
   events: z.array(stockRequestEventSchema),

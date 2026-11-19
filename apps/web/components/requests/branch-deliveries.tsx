@@ -168,11 +168,24 @@ function TrackingCard({ request: r, when }: { request: StockRequestSummary; when
           })}
         </ol>
         {RECEIVABLE.includes(r.status) && (
-          <Button asChild className="mt-auto self-start">
-            <Link href={`/requests?open=${r.id}`} data-testid="tracking-receive">
-              {t('orders.requestsPage.receive')}
-            </Link>
-          </Button>
+          <div className="mt-auto flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href={`/requests?open=${r.id}`} data-testid="tracking-receive">
+                {t('orders.requestsPage.receive')}
+              </Link>
+            </Button>
+            {/* The Delivery Challan to check the goods against (ADR 0064). */}
+            <Button variant="outline" asChild>
+              <Link
+                href={`/requests/${r.id}/dc`}
+                target="_blank"
+                rel="noopener"
+                data-testid="tracking-dc"
+              >
+                {t('orders.documents.dc')}
+              </Link>
+            </Button>
+          </div>
         )}
       </Card>
     </li>

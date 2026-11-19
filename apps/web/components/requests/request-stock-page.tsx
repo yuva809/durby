@@ -313,9 +313,21 @@ function Shop({
               <p className="text-sm text-muted-foreground">{t('orders.requestCart.sentHint')}</p>
             </div>
           </div>
-          <Button variant="outline" asChild>
-            <Link href={`/requests?open=${sent.id}`}>{t('orders.requestCart.follow')}</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link
+                href={`/requests/${sent.id}/oc`}
+                target="_blank"
+                rel="noopener"
+                data-testid="request-sent-oc"
+              >
+                {t('orders.documents.oc')}
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={`/requests?open=${sent.id}`}>{t('orders.requestCart.follow')}</Link>
+            </Button>
+          </div>
         </Card>
       )}
 
