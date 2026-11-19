@@ -56,6 +56,12 @@ export const inventoryErrors = {
       'inventory.main_warehouse_not_allowed',
       'Only someone who edits warehouses at every location can choose the main warehouse.',
     ),
+  suppliesInvalid: () =>
+    new ApiError(
+      HttpStatus.BAD_REQUEST,
+      'inventory.supplies_invalid',
+      'A warehouse supplies other locations, not its own; the main one supplies every branch.',
+    ),
   stationTaken: () =>
     new ApiError(
       HttpStatus.CONFLICT,

@@ -1669,29 +1669,31 @@ enum StockAdjustmentReason {
 
 /// A store at a location (main store, kitchen, bar, cold room). Archived, never deleted.
 model Warehouse {
-  id              String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId        String          @map("tenant_id") @db.Uuid
-  locationId      String          @map("location_id") @db.Uuid
-  name            String
-  sortOrder       Int             @default(0) @map("sort_order")
+  id                  String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String          @map("tenant_id") @db.Uuid
+  locationId          String          @map("location_id") @db.Uuid
+  name                String
+  sortOrder           Int             @default(0) @map("sort_order")
   /// Sales of this station at the location take their stock from here (warehouses_supplies_station_key).
-  suppliesStation PrepStation?    @map("supplies_station")
+  suppliesStation     PrepStation?    @map("supplies_station")
   /// The organization's "In transit" warehouse (ADR 0045): one at most (partial unique index).
-  isTransit       Boolean         @default(false) @map("is_transit")
+  isTransit           Boolean         @default(false) @map("is_transit")
   /// Supplies every branch (ADR 0053): branch requests come from it. At most one active per organization.
-  isMain          Boolean         @default(false) @map("is_main")
-  archivedAt      DateTime?       @map("archived_at") @db.Timestamptz(6)
-  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization    Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  location        Location        @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  documents       StockDocument[] @relation("StockDocumentWarehouse")
-  incoming        StockDocument[] @relation("StockDocumentToWarehouse")
-  movements       StockMovement[]
-  levels          StockLevel[]
-  salesOrders     SalesOrder[]
-  requestsFrom    StockRequest[]  @relation("StockRequestFrom")
-  requestsTo      StockRequest[]  @relation("StockRequestTo")
+  isMain              Boolean         @default(false) @map("is_main")
+  /// The branches (locations) it supplies (ADR 0067); empty: none, or every branch for the main one.
+  suppliesLocationIds String[]        @default([]) @map("supplies_location_ids") @db.Uuid
+  archivedAt          DateTime?       @map("archived_at") @db.Timestamptz(6)
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization        Organization    @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location            Location        @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  documents           StockDocument[] @relation("StockDocumentWarehouse")
+  incoming            StockDocument[] @relation("StockDocumentToWarehouse")
+  movements           StockMovement[]
+  levels              StockLevel[]
+  salesOrders         SalesOrder[]
+  requestsFrom        StockRequest[]  @relation("StockRequestFrom")
+  requestsTo          StockRequest[]  @relation("StockRequestTo")
 
   vendorInvoices VendorInvoice[]
 

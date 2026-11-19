@@ -291,20 +291,28 @@ export class StockRequestsService {
       }),
       this.db.warehouse.findMany({
         where: { archivedAt: null, isTransit: false },
-        select: { id: true, name: true, locationId: true, isMain: true },
+        select: { id: true, name: true, locationId: true, isMain: true, suppliesLocationIds: true },
         orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
       }),
     ]);
     const main = warehouses.find((w) => w.isMain);
+    const supplies = (w: (typeof warehouses)[number]) =>
+      w.isMain || w.suppliesLocationIds.length > 0;
     return locations
       .filter((l) => !main || l.id !== main.locationId)
       .map((l) => {
-        const own = warehouses.find((w) => w.locationId === l.id && !w.isMain);
+        const own = warehouses.find((w) => w.locationId === l.id && !supplies(w));
+        // The warehouse ticked for this branch, else the main one (ADR 0067).
+        const supplier =
+          warehouses.find((w) => w.suppliesLocationIds.includes(l.id) && w.locationId !== l.id) ??
+          main;
         return {
           locationId: l.id,
           locationName: l.name,
           warehouseId: own?.id ?? null,
           warehouseName: own?.name ?? null,
+          supplierWarehouseId: supplier?.id ?? null,
+          supplierWarehouseName: supplier?.name ?? null,
         };
       });
   }
@@ -406,8 +414,8 @@ export class StockRequestsService {
     const { tenantId, userId } = this.tenantContext.require();
     // Branches send requests; owners and admins approve them, never send them.
     if (await this.access.can('orders.requests.approve')) throw ordersErrors.requestBranchOnly();
-    const from = await this.source(body.fromWarehouseId);
     const target = await this.target(body);
+    const from = await this.source(body.fromWarehouseId, target.locationId);
     await this.access.assert('orders.requests.create', { locationId: target.locationId });
     return this.db.$transaction(async (tx) => {
       // A branch without a warehouse gets its store with its first request (ADR 0053).
@@ -496,17 +504,30 @@ export class StockRequestsService {
     });
   }
 
-  /** Where goods come from: the main warehouse when there is one (only it), else the one named. */
-  private async source(fromWarehouseId: string | undefined) {
-    const main = await this.db.warehouse.findFirst({
-      where: { isMain: true, archivedAt: null },
-      select: { id: true, locationId: true },
-    });
-    if (main) {
-      if (fromWarehouseId !== undefined && fromWarehouseId !== main.id) {
+  /**
+   * Where goods for the branch at `locationId` come from: the warehouse that supplies it (ADR 0067), else the main
+   * warehouse (ADR 0053), only that one; with neither, the one named.
+   */
+  private async source(fromWarehouseId: string | undefined, locationId: string) {
+    const supplier =
+      (await this.db.warehouse.findFirst({
+        where: {
+          archivedAt: null,
+          isTransit: false,
+          suppliesLocationIds: { has: locationId },
+          locationId: { not: locationId },
+        },
+        select: { id: true, locationId: true },
+      })) ??
+      (await this.db.warehouse.findFirst({
+        where: { isMain: true, archivedAt: null },
+        select: { id: true, locationId: true },
+      }));
+    if (supplier) {
+      if (fromWarehouseId !== undefined && fromWarehouseId !== supplier.id) {
         throw ordersErrors.mainOnly();
       }
-      return main;
+      return supplier;
     }
     if (fromWarehouseId === undefined) throw ordersErrors.requestInvalid();
     const from = await this.db.warehouse.findUnique({
@@ -537,7 +558,13 @@ export class StockRequestsService {
     });
     if (!location) throw ordersErrors.warehouseNotFound();
     const own = await this.db.warehouse.findFirst({
-      where: { locationId, archivedAt: null, isTransit: false, isMain: false },
+      where: {
+        locationId,
+        archivedAt: null,
+        isTransit: false,
+        isMain: false,
+        suppliesLocationIds: { isEmpty: true },
+      },
       select: { id: true },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
     });
@@ -555,7 +582,13 @@ export class StockRequestsService {
     locationId: string,
   ): Promise<{ id: string; locationId: string }> {
     const existing = await tx.warehouse.findFirst({
-      where: { locationId, archivedAt: null, isTransit: false, isMain: false },
+      where: {
+        locationId,
+        archivedAt: null,
+        isTransit: false,
+        isMain: false,
+        suppliesLocationIds: { isEmpty: true },
+      },
       select: { id: true, locationId: true },
     });
     if (existing) return existing;

@@ -411,5 +411,16 @@
   "inventory.invoice.countAs": "Gepackte Positionen zählen",
   "inventory.invoice.countInvoiced": "Wie berechnet",
   "inventory.invoice.countPieces": "Nach Stück",
-  "inventory.invoice.countAsHint": "Wie berechnet: die Packungen zum Packungspreis. Nach Stück: jedes Stück zum Stückpreis."
+  "inventory.invoice.countAsHint": "Wie berechnet: die Packungen zum Packungspreis. Nach Stück: jedes Stück zum Stückpreis.",
+  "inventory.page.supplyTitle": "Welche Filialen beliefert es?",
+  "inventory.page.supplyAll": "Alle Filialen (Hauptlager)",
+  "inventory.page.supplyAllHint": "Filialen, die bei keinem anderen Lager angehakt sind, bestellen hier. Nur ein Lager kann das Hauptlager sein.",
+  "inventory.page.supplySome": "Nur diese Filialen",
+  "inventory.page.supplySomeHint": "Ihre Anforderungen kommen aus diesem Lager.",
+  "inventory.page.supplyNone": "Keine Filiale",
+  "inventory.page.supplyNoneHint": "Das eigene Lager einer Filiale oder ein Lagerraum.",
+  "inventory.page.supplyNow": "jetzt aus {name}",
+  "inventory.page.supplyPick": "Haken Sie mindestens eine Filiale an.",
+  "inventory.page.suppliesBranches": "Beliefert: {names}",
+  "inventory.errors.suppliesInvalid": "Ein Lager beliefert andere Filialen, nicht seinen eigenen Standort."
 }

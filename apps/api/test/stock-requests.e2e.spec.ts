@@ -605,4 +605,103 @@ describe('branch stock requests (ADR 0045)', () => {
     // The warehouse there sees both.
     expect((await ids(s.lager.token)).sort()).toEqual([mine, theirs].sort());
   });
+  it('sends a branch to the warehouse that supplies it, else to the main one (ADR 0067)', async () => {
+    const s = await setup();
+    const [mainLocation, branchLocation] = s.org.locations;
+    await patch(s.owner.token, `/inventory/warehouses/${s.main}`, { isMain: true }).expect(200);
+    const third = locationSchema.parse(
+      (await post(s.owner.token, '/locations', { name: 'Third street' }).expect(201)).body,
+    ).id;
+    const thirdUser = await member(s.org, 'branch', [third]);
+
+    // A warehouse supplies other branches, never its own location.
+    const own = await post(s.owner.token, '/inventory/warehouses', {
+      locationId: branchLocation,
+      name: 'Depot',
+      suppliesLocationIds: [branchLocation],
+    }).expect(400);
+    expect((own.body as { code: string }).code).toBe('inventory.supplies_invalid');
+    // Only someone who edits warehouses everywhere chooses whom it supplies.
+    await patch(s.branchUser.token, `/inventory/warehouses/${s.branch}`, {
+      suppliesLocationIds: [third],
+    }).expect(403);
+    const depot = warehouseSchema.parse(
+      (
+        await post(s.owner.token, '/inventory/warehouses', {
+          locationId: branchLocation,
+          name: 'Depot',
+          suppliesLocationIds: [third],
+        }).expect(201)
+      ).body,
+    );
+    expect(depot.suppliesLocationIds).toEqual([third]);
+    await post(s.owner.token, '/inventory/receipts', {
+      warehouseId: depot.id,
+      lines: [{ itemId: s.rice, quantity: '5', unitCost: '2.00' }],
+    }).expect(201);
+
+    type Destination = {
+      locationId: string;
+      warehouseId: string | null;
+      supplierWarehouseId: string | null;
+    };
+    const destinations = async (token: string) =>
+      (
+        (await get(token, '/stock-requests/destinations').expect(200)).body as {
+          data: Destination[];
+        }
+      ).data;
+    // The depot supplies the third branch; the depot is no branch's store.
+    expect(await destinations(thirdUser.token)).toEqual([
+      expect.objectContaining({
+        locationId: third,
+        warehouseId: null,
+        supplierWarehouseId: depot.id,
+      }),
+    ]);
+    // The branch at the depot's own location keeps its store and the main warehouse.
+    expect(await destinations(s.branchUser.token)).toEqual([
+      expect.objectContaining({
+        locationId: branchLocation,
+        warehouseId: s.branch,
+        supplierWarehouseId: s.main,
+      }),
+    ]);
+
+    const fromDepot = stockRequestSchema.parse(
+      (
+        await post(thirdUser.token, '/stock-requests', {
+          toLocationId: third,
+          lines: [{ itemId: s.rice, quantity: '2' }],
+        }).expect(201)
+      ).body,
+    );
+    expect(fromDepot.fromWarehouseId).toBe(depot.id);
+    // The main warehouse is not its source any more.
+    const refused = await post(thirdUser.token, '/stock-requests', {
+      fromWarehouseId: s.main,
+      toLocationId: third,
+      lines: [{ itemId: s.rice, quantity: '1' }],
+    }).expect(400);
+    expect((refused.body as { code: string }).code).toBe('orders.request_main_only');
+
+    // Ticked on another warehouse, the branch moves there; archived, a supplier gives its branches back to main.
+    const second = warehouseSchema.parse(
+      (
+        await post(s.owner.token, '/inventory/warehouses', {
+          locationId: mainLocation,
+          name: 'Second depot',
+          suppliesLocationIds: [third],
+        }).expect(201)
+      ).body,
+    );
+    const list = warehouseListResponseSchema.parse(
+      (await get(s.owner.token, '/inventory/warehouses').expect(200)).body,
+    ).data;
+    expect(list.find((w) => w.id === depot.id)?.suppliesLocationIds).toEqual([]);
+    await patch(s.owner.token, `/inventory/warehouses/${second.id}`, { archived: true }).expect(
+      200,
+    );
+    expect((await destinations(thirdUser.token))[0]?.supplierWarehouseId).toBe(s.main);
+  });
 });

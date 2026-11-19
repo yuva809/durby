@@ -411,5 +411,16 @@
   "inventory.invoice.countAs": "Count packed lines",
   "inventory.invoice.countInvoiced": "As invoiced",
   "inventory.invoice.countPieces": "By the piece",
-  "inventory.invoice.countAsHint": "As invoiced: the packs at the pack price. By the piece: every piece at the piece price."
+  "inventory.invoice.countAsHint": "As invoiced: the packs at the pack price. By the piece: every piece at the piece price.",
+  "inventory.page.supplyTitle": "Which branches does it supply?",
+  "inventory.page.supplyAll": "Every branch (main warehouse)",
+  "inventory.page.supplyAllHint": "Branches not ticked on another warehouse order from here. Only one warehouse can be the main one.",
+  "inventory.page.supplySome": "Only these branches",
+  "inventory.page.supplySomeHint": "Their requests come from this warehouse.",
+  "inventory.page.supplyNone": "No branch",
+  "inventory.page.supplyNoneHint": "A branch's own store, or a store room.",
+  "inventory.page.supplyNow": "now from {name}",
+  "inventory.page.supplyPick": "Tick at least one branch.",
+  "inventory.page.suppliesBranches": "Supplies: {names}",
+  "inventory.errors.suppliesInvalid": "A warehouse supplies other branches, not its own location."
 }

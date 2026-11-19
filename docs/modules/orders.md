@@ -160,6 +160,11 @@ its edit dialog by someone with `inventory.warehouses.edit` everywhere): request
 (`orders.request_main_only` otherwise). A request names the branch's warehouse or the branch (`toLocationId`); a branch
 without a warehouse gets its store, named like the branch, with its first request.
 
+**Warehouses supply branches (ADR 0067).** A warehouse may instead supply only the branches ticked on it
+(`warehouses.supplies_location_ids`; one supplier per branch, ticking moves a branch). A branch's requests come from
+the warehouse that has it ticked, else the main one; destinations carry `supplierWarehouseId`. A supplying warehouse is
+never a branch's store.
+
 **Statuses:** `submitted → approved → (picking) → packed → in_transit → delivered → received`; `rejected` or
 `cancelled` before approval only; receipt can be confirmed from `packed` on.
 

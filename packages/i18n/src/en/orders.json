@@ -287,7 +287,7 @@
   "orders.myDeliveries.deliver": "Delivered",
   "orders.myDeliveries.deliverTitle": "Delivered {number}?",
   "orders.myDeliveries.note": "Received by, or a note (optional)",
-  "orders.requestCart.fromMain": "{name} (main warehouse)",
+  "orders.requestCart.fromMain": "{name} (supplies your branch)",
   "orders.requestCart.categories": "Categories",
   "orders.requestCart.all": "All",
   "orders.requestCart.other": "Other",

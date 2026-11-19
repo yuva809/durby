@@ -160,8 +160,9 @@ function Shop({
   const action = useActionKey();
   const [branchId, setBranchId] = useState(branches[0]!.locationId);
   const branch = branches.find((b) => b.locationId === branchId) ?? branches[0]!;
-  // The main warehouse supplies every branch (ADR 0053); without one the branch picks where to ask.
-  const main = sources.find((w) => w.isMain);
+  // The warehouse supplying this branch (ADR 0067), else the main one (ADR 0053); without either the branch picks.
+  const main =
+    sources.find((w) => w.id === branch.supplierWarehouseId) ?? sources.find((w) => w.isMain);
   const choices = sources.filter((w) => w.locationId !== branch.locationId);
   const [chosenSource, setChosenSource] = useState('');
   const from =

@@ -78,13 +78,24 @@ export const warehouseSchema = z.object({
   isTransit: z.boolean().default(false),
   /** Supplies every branch (ADR 0053): branch requests always come from it. At most one active. */
   isMain: z.boolean().default(false),
+  /** The branches (locations) it supplies (ADR 0067): their requests come from it. Default for older apis. */
+  suppliesLocationIds: z.array(z.uuid()).default([]),
   archivedAt: z.iso.datetime().nullable(),
 });
+
+/** The branches a warehouse supplies (ADR 0067): each once, at most 500. */
+const suppliesLocationIds = z
+  .array(z.uuid())
+  .max(500)
+  .refine((ids) => new Set(ids).size === ids.length, { message: 'Each branch once' });
 
 export const createWarehouseRequestSchema = z.strictObject({
   locationId: z.uuid(),
   name,
   sortOrder: sortOrder.optional(),
+  /** Supplies every branch (ADR 0053), or `suppliesLocationIds`: only those (ADR 0067); not both. */
+  isMain: z.boolean().optional(),
+  suppliesLocationIds: suppliesLocationIds.optional(),
 });
 
 export const updateWarehouseRequestSchema = z
@@ -94,6 +105,8 @@ export const updateWarehouseRequestSchema = z
     suppliesStation: z.enum(PREP_STATIONS).nullable().optional(),
     /** Make it the main warehouse (another one stops being it), or not (ADR 0053). */
     isMain: z.boolean().optional(),
+    /** The branches it supplies (ADR 0067), replacing the list; a branch supplied by another moves here. */
+    suppliesLocationIds: suppliesLocationIds.optional(),
     archived: z.boolean().optional(),
   })
   .refine((body) => Object.values(body).some((v) => v !== undefined), {
@@ -598,6 +611,7 @@ export type ProductionRequest = z.infer<typeof productionRequestSchema>;
 export const INVENTORY_ERROR_CODES = [
   'inventory.warehouse_not_found',
   'inventory.main_warehouse_not_allowed',
+  'inventory.supplies_invalid',
   'inventory.location_not_found',
   'inventory.item_not_found',
   'inventory.document_not_found',
