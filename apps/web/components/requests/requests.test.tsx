@@ -455,7 +455,8 @@ describe('A branch’s Order History and Delivery Tracking (ADR 0059)', () => {
     api(request('submitted'));
     render(<RequestsPage />, { wrapper: operations });
     expect(await screen.findByRole('heading', { name: 'Order History' })).toBeTruthy();
-    expect(screen.getByTestId<HTMLSelectElement>('requests-status').value).toBe('open');
+    // Every stage, from sent to received (item 11).
+    expect(screen.getByTestId<HTMLSelectElement>('requests-status').value).toBe('all');
     // Branches send requests; who approves them doesn't.
     expect(screen.queryByTestId('requests-new')).toBeNull();
     cleanup();

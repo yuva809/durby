@@ -380,10 +380,12 @@ export class StockRequestsService {
     });
     if (!warehouse) throw ordersErrors.warehouseNotFound();
     await this.access.assert('orders.delivery.assign', { locationId: warehouse.locationId });
+    // Drivers only: owners, admins and the warehouse hold the key too, but assign rather than drive (item 17).
     const holders = await this.members.holders(
       asTenantDb(this.db),
       'orders.delivery.use',
       warehouse.locationId,
+      'orders.delivery.assign',
     );
     return holders.map((h) => ({ userId: h.userId, name: h.name ?? '' }));
   }

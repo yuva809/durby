@@ -32,6 +32,9 @@ import { useNavLayout } from '../theme-provider';
 import { PermissionMatrix } from './permission-matrix';
 import { ShareLink } from './share-link';
 
+/** Keys of warehouse work: who holds one gets Warehouse Access (item 12). */
+const WAREHOUSE_WORK = ['orders.picking.use', 'inventory.stock.receive', 'inventory.stock.adjust'];
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Result =
@@ -203,6 +206,9 @@ function StaffForm({
       (branchesChosen.length === 0 || branchesChosen.includes(w.locationId)),
   );
   const visibleKeys = permissionMatrix(activeFeatures).sections.flatMap((s) => s.keys);
+  // Warehouse Access is for people who work in a warehouse (pick, receive, adjust); a branch manager or a driver
+  // works at their branch (item 12).
+  const warehouseWork = WAREHOUSE_WORK.some((key) => selected.has(key));
 
   function chooseRole(next: Role) {
     setRoleId(next.id);
@@ -234,9 +240,10 @@ function StaffForm({
       : allLocations
         ? null
         : locationIds;
-    const chosenWarehouses = owner
-      ? []
-      : warehouseIds.filter((wid) => offeredWarehouses.some((w) => w.id === wid));
+    const chosenWarehouses =
+      owner || !warehouseWork
+        ? []
+        : warehouseIds.filter((wid) => offeredWarehouses.some((w) => w.id === wid));
     // Warehouses only where they can be set: the operations menu, with the account there (not an invitation).
     const warehouseScope =
       operations && warehouses && (editing || password)
@@ -464,8 +471,10 @@ function StaffForm({
               locationIds={locationIds}
               onLocationIds={setLocationIds}
               owner={owner}
-              warehouses={warehouses && (editing || password) ? offeredWarehouses : null}
-              warehousesLater={Boolean(warehouses) && !editing && !password}
+              warehouses={
+                warehouseWork && warehouses && (editing || password) ? offeredWarehouses : null
+              }
+              warehousesLater={warehouseWork && Boolean(warehouses) && !editing && !password}
               warehouseIds={warehouseIds}
               onWarehouseIds={setWarehouseIds}
             />
@@ -705,6 +714,11 @@ function BranchAccess({
                     data-id={w.id}
                   />
                   {w.name}
+                  {w.isMain && (
+                    <span className="text-xs text-muted-foreground">
+                      {t('inventory.page.mainWarehouse')}
+                    </span>
+                  )}
                 </label>
               ))}
             </div>

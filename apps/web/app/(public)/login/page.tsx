@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { type FormEvent, useEffect, useState, useSyncExternalStore } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { type FormEvent, Suspense, useEffect, useState } from 'react';
 import { errorLabel } from '../../../lib/auth/errors';
 import { safeNextPath } from '../../../lib/auth/next-path';
 import { t } from '../../../lib/i18n';
@@ -15,26 +15,30 @@ import { useAccounts, useAuth } from '../../providers';
 /** Names of the password fields' show/hide button. */
 const passwordLabels = { show: t('auth.password.show'), hide: t('auth.password.hide') };
 
-const noSubscription = () => () => undefined;
-
-/** `?add=1`: a signed-in person adds another account (ADR 0047); the current one stays signed in. */
-function addingAccount(): boolean {
-  return new URLSearchParams(window.location.search).get('add') === '1';
-}
-
 /** Where to go after signing in: the guard's `next` (same-origin only) or home. */
 function nextPath(): string {
   return safeNextPath(new URLSearchParams(window.location.search).get('next'));
 }
 
 export default function LoginPage() {
+  // The query comes from the router (useSearchParams needs a Suspense boundary).
+  return (
+    <Suspense fallback={null}>
+      <Login />
+    </Suspense>
+  );
+}
+
+function Login() {
   const { store, status } = useAuth();
   const accounts = useAccounts();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // The server has no URL query here: false there, the real value once hydrated.
-  const adding = useSyncExternalStore(noSubscription, addingAccount, () => false);
+  // `?add=1`: a signed-in person adds another account (ADR 0047); the current one stays signed in. Read from the
+  // route, not window.location: after the menu's navigation the address can still be the old one, and the page
+  // then sent the person straight back (item 15).
+  const adding = useSearchParams().get('add') === '1';
 
   useEffect(() => {
     if (status === 'authenticated' && !adding) router.replace(nextPath());

@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useNavLayout } from '../../components/theme-provider';
-import { isBranchView } from '../../lib/nav/layouts';
+import { isBranchView, isDriverView } from '../../lib/nav/layouts';
 import { useT } from '../labels-provider';
 import { useAuth } from '../providers';
 
@@ -15,12 +15,16 @@ export default function HomePage() {
   const { session } = useAuth();
   const t = useT();
   const router = useRouter();
-  const branch = useNavLayout() === 'operations' && session !== null && isBranchView(session);
+  const operations = useNavLayout() === 'operations' && session !== null;
+  const branch = operations && isBranchView(session);
+  // A driver's menu has no Overview either (item 14): they start on their deliveries.
+  const driver = operations && isDriverView(session);
   useEffect(() => {
     if (branch) router.replace('/inventory');
-  }, [branch, router]);
+    else if (driver) router.replace('/my-deliveries');
+  }, [branch, driver, router]);
   const organization = session?.organizations.find((o) => o.id === session.activeOrganizationId);
-  if (branch) return null;
+  if (branch || driver) return null;
 
   return (
     <div className="flex flex-col gap-2">

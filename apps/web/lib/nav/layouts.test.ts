@@ -115,7 +115,8 @@ describe('the operations menu per branch role (ADR 0045, 0059)', () => {
       'import',
       'feedback',
     ]);
-    expect(menu('driver')).toEqual(['home', 'my-deliveries', 'settings', 'feedback']);
+    // No Overview for a driver (item 14).
+    expect(menu('driver')).toEqual(['my-deliveries', 'settings', 'feedback']);
     // The new-request form belongs to Stock Requests: one menu item (ADR 0052); for a branch, to its Order History.
     expect(activeNavItem(navLayout('operations').items, '/requests/new')?.id).toBe('order-history');
     expect(activeNavItem(BRANCH_NAV_LAYOUT.items, '/requests/new')?.id).toBe('order-history');

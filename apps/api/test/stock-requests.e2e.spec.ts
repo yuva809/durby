@@ -156,6 +156,9 @@ describe('branch stock requests (ADR 0045)', () => {
       (await get(s.lager.token, `/stock-requests/drivers/${s.main}`).expect(200)).body,
     );
     expect(drivers.data.map((d) => d.userId)).toContain(s.driver.userId);
+    // Drivers only: the owner and the warehouse hold the key too but assign rather than drive (item 17).
+    expect(drivers.data.map((d) => d.userId)).not.toContain(s.owner.userId);
+    expect(drivers.data.map((d) => d.userId)).not.toContain(s.lager.userId);
     await post(s.lager.token, `/stock-requests/${created.id}/pack`, {
       lines: [{ lineId: riceLine.id, quantity: '6' }],
     }).expect(400);
