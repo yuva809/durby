@@ -90,7 +90,8 @@ const suppliesLocationIds = z
   .refine((ids) => new Set(ids).size === ids.length, { message: 'Each branch once' });
 
 export const createWarehouseRequestSchema = z.strictObject({
-  locationId: z.uuid(),
+  /** Where it is; absent: a place of its own, named like it (ADR 0068). */
+  locationId: z.uuid().optional(),
   name,
   sortOrder: sortOrder.optional(),
   /** Supplies every branch (ADR 0053), or `suppliesLocationIds`: only those (ADR 0067); not both. */

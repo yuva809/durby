@@ -16,6 +16,7 @@ export const LOCATION_SELECT = {
   name: true,
   address: true,
   archivedAt: true,
+  isWarehouseSite: true,
 } as const;
 
 type LocationRow = {
@@ -24,6 +25,7 @@ type LocationRow = {
   name: string;
   address: string | null;
   archivedAt: Date | null;
+  isWarehouseSite: boolean;
 };
 
 export const locationResponse = (row: LocationRow): LocationSummary => ({
@@ -162,4 +164,70 @@ async function createBrand(tx: Tx, tenantId: string): Promise<string> {
     select: { id: true },
   });
   return brand.id;
+}
+
+/**
+ * A warehouse's own place (ADR 0068), inside the caller's transaction: named like the warehouse ("Depot", else
+ * "Depot (2)" … when a location has that name), in the organization's brand, audited as created by `userId`.
+ */
+export async function createWarehouseSite(
+  tx: Tx,
+  audit: AuditService,
+  tenantId: string,
+  userId: string,
+  name: string,
+): Promise<LocationSummary> {
+  await lockLocations(tx, tenantId);
+  const brandId = (await firstBrand(tx)) ?? (await createBrand(tx, tenantId));
+  let candidate = name;
+  for (let n = 2; await nameTaken(tx, candidate); n++) candidate = `${name} (${n})`;
+  const row = await tx.location.create({
+    data: { tenantId, brandId, name: candidate, isWarehouseSite: true },
+    select: LOCATION_SELECT,
+  });
+  await audit.record(tx, {
+    action: 'platform.location.created',
+    actor: auditActor.user(userId),
+    entityId: row.id,
+    after: snapshot('location', row),
+  });
+  return locationResponse(row);
+}
+
+/** Renames a warehouse's own place with it (ADR 0068), when the name is free; audited. */
+export async function renameWarehouseSite(
+  tx: Tx,
+  audit: AuditService,
+  tenantId: string,
+  userId: string,
+  locationId: string,
+  name: string,
+): Promise<void> {
+  await lockLocations(tx, tenantId);
+  const before = await tx.location.findUnique({ where: { id: locationId }, select: LOCATION_SELECT });
+  if (!before?.isWarehouseSite || before.name === name) return;
+  if (await nameTaken(tx, name, locationId)) return;
+  const row = await tx.location.update({
+    where: { id: locationId },
+    data: { name },
+    select: LOCATION_SELECT,
+  });
+  await audit.record(tx, {
+    action: 'platform.location.updated',
+    actor: auditActor.user(userId),
+    entityId: row.id,
+    before: snapshot('location', before),
+    after: snapshot('location', row),
+  });
+}
+
+async function nameTaken(tx: Tx, name: string, exceptId?: string): Promise<boolean> {
+  const taken = await tx.location.findFirst({
+    where: {
+      name: { equals: name, mode: 'insensitive' },
+      ...(exceptId ? { id: { not: exceptId } } : {}),
+    },
+    select: { id: true },
+  });
+  return taken !== null;
 }

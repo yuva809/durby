@@ -285,7 +285,12 @@ export class StockRequestsService {
     if (scope !== 'all' && scope.length === 0) return [];
     const [locations, warehouses] = await Promise.all([
       this.db.location.findMany({
-        where: { archivedAt: null, ...(scope === 'all' ? {} : { id: { in: scope } }) },
+        // A warehouse's own place (ADR 0068) is no branch.
+        where: {
+          archivedAt: null,
+          isWarehouseSite: false,
+          ...(scope === 'all' ? {} : { id: { in: scope } }),
+        },
         select: { id: true, name: true },
         orderBy: [{ name: 'asc' }, { id: 'asc' }],
       }),

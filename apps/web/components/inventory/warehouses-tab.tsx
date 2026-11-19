@@ -161,7 +161,6 @@ function WarehouseDialog({
   const { store } = useAuth();
   const action = useActionKey();
   const [name, setName] = useState('');
-  const [locationId, setLocationId] = useState('');
   const [suppliesStation, setSuppliesStation] = useState<'kitchen' | 'bar' | null>(null);
   const [supply, setSupply] = useState<Supply>('none');
   const [supplied, setSupplied] = useState<string[]>([]);
@@ -170,7 +169,8 @@ function WarehouseDialog({
   const operations = useNavLayout() === 'operations';
   const nameMissing = checked && name.trim() === '';
   const noneTicked = checked && supply === 'some' && supplied.length === 0;
-  const here = warehouse?.locationId ?? locationId;
+  const here = warehouse?.locationId ?? '';
+  const branches = data.locations.filter((location) => !location.isWarehouseSite);
   // Who supplies each branch now, to say where a ticked branch moves from.
   const supplierOf = (location: string) =>
     data.warehouses.find(
@@ -186,7 +186,6 @@ function WarehouseDialog({
       title={t(warehouse ? 'inventory.page.editWarehouse' : 'inventory.page.addWarehouse')}
       onOpen={() => {
         setName(warehouse?.name ?? '');
-        setLocationId(warehouse?.locationId ?? data.locations[0]?.id ?? '');
         setSuppliesStation(warehouse?.suppliesStation ?? null);
         setSupply(supplyOf(warehouse));
         setSupplied(warehouse?.suppliesLocationIds ?? []);
@@ -201,7 +200,6 @@ function WarehouseDialog({
         const ids = supply === 'some' ? supplied.filter((l) => l !== here) : [];
         if (!warehouse) {
           return createWarehouse(store, action, {
-            locationId,
             name: name.trim(),
             ...(isMain ? { isMain } : {}),
             ...(ids.length > 0 ? { suppliesLocationIds: ids } : {}),
@@ -217,25 +215,6 @@ function WarehouseDialog({
       }}
       onDone={onDone}
     >
-      {!warehouse && data.locations.length > 1 && (
-        <Field id={`${id}-location`} label={t('inventory.fields.location')} problem={null}>
-          <Select
-            id={`${id}-location`}
-            value={locationId}
-            onChange={(e) => setLocationId(e.target.value)}
-          >
-            {data.locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </Select>
-          {/* A place, not who it supplies: a main warehouse at a shop's location mixes it up with that shop (item 1). */}
-          <p className="text-xs text-muted-foreground" data-testid="warehouse-location-hint">
-            {t('inventory.page.warehouseLocationHint')}
-          </p>
-        </Field>
-      )}
       <Field
         id={`${id}-name`}
         label={t('inventory.fields.name')}
@@ -267,7 +246,7 @@ function WarehouseDialog({
           <legend className="mb-1 text-sm font-medium">{t('inventory.page.supplyTitle')}</legend>
           {(['all', 'some', 'none'] as const)
             // Only these branches: when there is another location to tick.
-            .filter((choice) => choice !== 'some' || data.locations.some((l) => l.id !== here))
+            .filter((choice) => choice !== 'some' || branches.some((l) => l.id !== here))
             .map((choice) => (
               <label
                 key={choice}
@@ -293,7 +272,7 @@ function WarehouseDialog({
             ))}
           {supply === 'some' && (
             <div className="flex flex-col gap-1 pl-3" data-testid="warehouse-supply-branches">
-              {data.locations
+              {branches
                 .filter((l) => l.id !== here)
                 .map((l) => {
                   const from = supplierOf(l.id);

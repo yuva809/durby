@@ -43,8 +43,11 @@ export function LocationsPage({ title = 'platform.nav.locations' }: { title?: La
         {canManage && <LocationDialog onDone={reload} />}
       </div>
       <Loaded resource={locations} reload={reload}>
-        {(list) =>
-          list.length === 0 ? (
+        {(list) => {
+          const visible = title === 'platform.nav.branches'
+            ? list.filter((location) => !location.isWarehouseSite)
+            : list;
+          return visible.length === 0 ? (
             <Card
               className="flex flex-col items-center gap-2 px-6 py-12 text-center"
               data-testid="locations-empty"
@@ -55,7 +58,7 @@ export function LocationsPage({ title = 'platform.nav.locations' }: { title?: La
           ) : (
             <Card className="max-w-2xl p-0">
               <ul className="divide-y divide-border" data-testid="location-list">
-                {list.map((location) => (
+                {visible.map((location) => (
                   <li
                     key={location.id}
                     className="flex items-center justify-between gap-3 px-4 py-3"
@@ -75,8 +78,8 @@ export function LocationsPage({ title = 'platform.nav.locations' }: { title?: La
                 ))}
               </ul>
             </Card>
-          )
-        }
+          );
+        }}
       </Loaded>
       {!canManage && (
         <p className="text-sm text-muted-foreground">{t('platform.locationsPage.readOnly')}</p>
