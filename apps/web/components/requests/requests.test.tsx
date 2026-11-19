@@ -91,8 +91,23 @@ function signedInAs(role: SystemRole) {
   });
 }
 
+/** A stock level at the main warehouse (what picking checks against). */
+const level = (itemId: string, quantity: string) => ({
+  warehouseId: MAIN.id,
+  itemId,
+  itemName: '',
+  unit: 'pc',
+  quantity,
+  averageCost: '1.0000',
+  value: '1.00',
+  low: false,
+});
+/** Plenty of rice and oil unless a test says otherwise. */
+const PLENTY = [level(id(51), '10.000'), level(id(52), '10.000')];
+
 /** The request cart's setup (ADR 0053): source warehouses and the branches to request for. */
 const setup = {
+  stock: PLENTY,
   warehouses: [MAIN, BRANCH] as Record<string, unknown>[],
   destinations: [
     {
@@ -112,6 +127,8 @@ function api(detail: ReturnType<typeof request>) {
     calls.push({ method, path: input, body: init?.body ? JSON.parse(init.body as string) : null });
     if (method === 'POST')
       return Promise.resolve(Response.json({ ...detail, number: 'SRQ-2026-000048' }));
+    if (input.startsWith('/api/v1/inventory/stock'))
+      return Promise.resolve(Response.json({ data: setup.stock }));
     if (input === '/api/v1/stock-requests/warehouses')
       return Promise.resolve(Response.json({ data: setup.warehouses }));
     if (input === '/api/v1/stock-requests/destinations')
@@ -408,6 +425,64 @@ describe('A branch’s Order History and Delivery Tracking (ADR 0059)', () => {
 });
 
 describe('Transfers on the Picking page (warehouse)', () => {
+  afterEach(() => {
+    setup.stock = PLENTY;
+  });
+
+  it('shows what is in stock, starts a short line at what is there and names too much', async () => {
+    signedInAs('warehouse');
+    // Rice: 3 on the shelf of 5 approved; no oil at all.
+    setup.stock = [level(id(51), '3.000')];
+    const calls = api(
+      request('approved', {
+        lines: [
+          line(1, 'Rice', { approvedQuantity: '5.000' }),
+          line(2, 'Oil', { approvedQuantity: '2.000' }),
+        ],
+      }),
+    );
+    render(<TransfersPicking organizationId={mockState.session!.activeOrganizationId} />);
+    const row = await screen.findByTestId('transfer-row');
+    await userEvent.click(await within(row).findByTestId('transfer-pack'));
+    const dialog = (await screen.findAllByRole('dialog')).at(-1)!;
+    await waitFor(() =>
+      expect(
+        within(dialog)
+          .getAllByTestId('transfer-pack-available')
+          .map((cell) => cell.textContent),
+      ).toEqual(['3 pc', '0 pc']),
+    );
+    const inputs = within(dialog).getAllByTestId<HTMLInputElement>('transfer-pack-quantity');
+    expect(inputs.map((i) => i.value)).toEqual(['3', '0']);
+    expect(
+      within(dialog)
+        .getAllByTestId('transfer-pack-short')
+        .map((badge) => badge.textContent),
+    ).toEqual(['Short 2 pc', 'Short 2 pc']);
+    expect(within(dialog).getByTestId('transfer-pack-shortage').textContent).toContain(
+      'Rice (3 pc in stock), Oil (0 pc in stock)',
+    );
+
+    // More than the shelf has is named before packing.
+    await userEvent.clear(inputs[0]!);
+    await userEvent.type(inputs[0]!, '4');
+    expect(within(dialog).getByTestId('transfer-pack-beyond').textContent).toContain(
+      'Rice (3 pc in stock)',
+    );
+    await userEvent.clear(inputs[0]!);
+    await userEvent.type(inputs[0]!, '3');
+    expect(within(dialog).queryByTestId('transfer-pack-beyond')).toBeNull();
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() =>
+      expect(posts(calls)[0]?.body).toEqual({
+        lines: [
+          { lineId: id(41), quantity: '3' },
+          { lineId: id(42), quantity: '0' },
+        ],
+      }),
+    );
+  });
+
   it('packs the approved lines with a driver', async () => {
     signedInAs('warehouse');
     const calls = api(
