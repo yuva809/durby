@@ -67,7 +67,16 @@ const REQUEST_SELECT = {
       approvedQuantity: true,
       pickedQuantity: true,
       receivedQuantity: true,
-      item: { select: { name: true, unit: true } },
+      item: {
+        select: {
+          name: true,
+          unit: true,
+          brand: true,
+          packCount: true,
+          packSize: true,
+          packUnit: true,
+        },
+      },
     },
     orderBy: { sortOrder: 'asc' },
   },
@@ -105,7 +114,14 @@ interface RequestRow extends SummaryRow {
     approvedQuantity: Qty | null;
     pickedQuantity: Qty | null;
     receivedQuantity: Qty | null;
-    item: { name: string; unit: StockUnit };
+    item: {
+      name: string;
+      unit: StockUnit;
+      brand: string | null;
+      packCount: number | null;
+      packSize: Qty | null;
+      packUnit: StockUnit | null;
+    };
   }[];
   events: {
     id: string;
@@ -214,7 +230,18 @@ export class StockRequestsService {
     if (!(await this.entitlements.isEnabled('orders'))) throw ordersErrors.requestNotFound();
     const row = await this.readable(id);
     const names = await this.members.forUsers(asTenantDb(this.db), namedUsers(row));
-    return requestResponse(row, names);
+    // The best-before the goods were packed with: the earliest on the request's incoming movements.
+    const moved = await this.db.stockMovement.findMany({
+      where: { document: { sourceRequestId: id }, quantity: { gt: 0 }, expiresOn: { not: null } },
+      select: { itemId: true, expiresOn: true },
+    });
+    const expiry = new Map<string, string>();
+    for (const m of moved) {
+      const date = m.expiresOn!.toISOString().slice(0, 10);
+      const known = expiry.get(m.itemId);
+      if (!known || date < known) expiry.set(m.itemId, date);
+    }
+    return requestResponse(row, names, expiry);
   }
 
   /** Every active warehouse a request can name (never the transit one), and where the caller may request into. */
@@ -943,7 +970,12 @@ function summaryResponse(row: SummaryRow, names: ReadonlyMap<string, string>): S
   };
 }
 
-function requestResponse(row: RequestRow, names: ReadonlyMap<string, string>): StockRequest {
+function requestResponse(
+  row: RequestRow,
+  names: ReadonlyMap<string, string>,
+  /** Item id → the best-before its goods were packed with (ADR 0062, for the delivery document). */
+  expiry: ReadonlyMap<string, string> = new Map(),
+): StockRequest {
   const q = (v: Qty | null) => v?.toFixed(3) ?? null;
   return {
     ...summaryResponse(row, names),
@@ -960,6 +992,11 @@ function requestResponse(row: RequestRow, names: ReadonlyMap<string, string>): S
       approvedQuantity: q(l.approvedQuantity),
       pickedQuantity: q(l.pickedQuantity),
       receivedQuantity: q(l.receivedQuantity),
+      brand: l.item.brand,
+      packCount: l.item.packCount,
+      packSize: l.item.packSize?.toFixed(3) ?? null,
+      packUnit: l.item.packUnit,
+      expiresOn: expiry.get(l.itemId) ?? null,
     })),
     events: row.events.map((e) => ({
       id: e.id,

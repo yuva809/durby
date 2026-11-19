@@ -114,6 +114,12 @@ export const stockRequestLineSchema = z.object({
   approvedQuantity: z.string().nullable(),
   pickedQuantity: z.string().nullable(),
   receivedQuantity: z.string().nullable(),
+  /** For the documents (ADR 0064): brand, pack size and the best-before packed; defaults for older apis. */
+  brand: z.string().nullable().default(null),
+  packCount: z.int().nullable().default(null),
+  packSize: z.string().nullable().default(null),
+  packUnit: z.enum(STOCK_UNITS).nullable().default(null),
+  expiresOn: z.string().nullable().default(null),
 });
 
 export const stockRequestEventSchema = z.object({
