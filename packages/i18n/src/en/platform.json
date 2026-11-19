@@ -839,7 +839,7 @@
   "platform.importPage.kinds.categories.rules": "One category per row. Names already there (any case) are skipped; new ones are added at the end.",
   "platform.importPage.kinds.items.name": "Products / stock items",
   "platform.importPage.kinds.items.description": "Create or update items by SKU or name.",
-  "platform.importPage.kinds.items.rules": "Unit: kg, g, l, ml or pc. A row with a SKU updates the item with that SKU, otherwise the item with the same name; empty cells keep what is there.",
+  "platform.importPage.kinds.items.rules": "Unit: kg, g, l, ml, pc, box, bucket, bag or packet. A row with a SKU updates the item with that SKU, otherwise the item with the same name; empty cells keep what is there.",
   "platform.importPage.kinds.openingStock.name": "Opening stock",
   "platform.importPage.kinds.openingStock.description": "Quantities and costs per warehouse.",
   "platform.importPage.kinds.openingStock.rules": "Warehouse by name, item by SKU or name. Each warehouse gets one goods receipt with its rows, at the unit costs given.",

@@ -106,7 +106,7 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
     ]);
     await userEvent.upload(
       screen.getByTestId('import-file'),
-      csv('name,unit,sale_price\nRice,pc,12.90\nOil,box,\n'),
+      csv('name,unit,sale_price\nRice,pc,12.90\nOil,crate,\n'),
     );
     const preview = await screen.findByTestId('import-preview');
     expect(within(preview).getByText('2 rows')).toBeTruthy();

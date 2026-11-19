@@ -417,4 +417,43 @@ describe('branch stock requests (ADR 0045)', () => {
     };
     expect(owned.data.find((i) => i.id === s.rice)?.salePrice).toBe('4.50');
   });
+
+  it('keeps the earliest best-before per warehouse and carries it to the branch (ADR 0062)', async () => {
+    const s = await setup();
+    const receive = (expiresOn: string) =>
+      post(s.owner.token, '/inventory/receipts', {
+        warehouseId: s.main,
+        lines: [{ itemId: s.rice, quantity: '5', unitCost: '2.00', expiresOn }],
+      }).expect(201);
+    await receive('2027-05-01');
+    await receive('2027-03-31');
+    const level = async (warehouseId: string) =>
+      stockLevelListResponseSchema
+        .parse(
+          (await get(s.owner.token, `/inventory/stock?warehouseId=${warehouseId}`).expect(200))
+            .body,
+        )
+        .data.find((l) => l.itemId === s.rice);
+    expect((await level(s.main))?.expiresOn).toBe('2027-03-31');
+
+    // Transferred to the branch, the date goes along; the request cart shows the main warehouse's.
+    await post(s.owner.token, '/inventory/transfers', {
+      fromWarehouseId: s.main,
+      toWarehouseId: s.branch,
+      lines: [{ itemId: s.rice, quantity: '2' }],
+    }).expect(201);
+    expect((await level(s.branch))?.expiresOn).toBe('2027-03-31');
+    const offered = (
+      await get(s.branchUser.token, `/stock-requests/availability/${s.main}`).expect(200)
+    ).body as { data: { itemId: string; expiresOn: string | null }[] };
+    expect(offered.data.find((a) => a.itemId === s.rice)?.expiresOn).toBe('2027-03-31');
+
+    // Nothing left at the branch: no date.
+    await post(s.owner.token, '/inventory/adjustments', {
+      warehouseId: s.branch,
+      reason: 'waste',
+      lines: [{ itemId: s.rice, quantity: '-2' }],
+    }).expect(201);
+    expect((await level(s.branch))?.expiresOn ?? null).toBeNull();
+  });
 });

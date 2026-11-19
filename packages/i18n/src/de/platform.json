@@ -839,7 +839,7 @@
   "platform.importPage.kinds.categories.rules": "Eine Kategorie pro Zeile. Vorhandene Namen (Groß-/Kleinschreibung egal) werden übersprungen; neue kommen ans Ende.",
   "platform.importPage.kinds.items.name": "Produkte / Lagerartikel",
   "platform.importPage.kinds.items.description": "Artikel nach Artikelnummer oder Name anlegen oder ändern.",
-  "platform.importPage.kinds.items.rules": "Einheit: kg, g, l, ml oder pc. Eine Zeile mit Artikelnummer ändert den Artikel mit dieser Nummer, sonst den mit gleichem Namen; leere Zellen behalten den Wert.",
+  "platform.importPage.kinds.items.rules": "Einheit: kg, g, l, ml, pc, box, bucket, bag oder packet. Eine Zeile mit Artikelnummer ändert den Artikel mit dieser Nummer, sonst den mit gleichem Namen; leere Zellen behalten den Wert.",
   "platform.importPage.kinds.openingStock.name": "Anfangsbestand",
   "platform.importPage.kinds.openingStock.description": "Mengen und Kosten je Lager.",
   "platform.importPage.kinds.openingStock.rules": "Lager nach Name, Artikel nach Artikelnummer oder Name. Jedes Lager erhält einen Wareneingang mit seinen Zeilen zu den angegebenen Kosten.",

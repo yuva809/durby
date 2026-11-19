@@ -304,10 +304,17 @@ export class StockRequestsService {
       }),
       this.db.stockLevel.findMany({
         where: { warehouseId },
-        select: { itemId: true, quantity: true },
+        select: { itemId: true, quantity: true, expiresOn: true },
       }),
     ]);
     const quantity = new Map(levels.map((l) => [l.itemId, l.quantity.toFixed(3)]));
+    // The earliest best-before of what is there (ADR 0062); none once it is gone.
+    const expiry = new Map(
+      levels.map((l) => [
+        l.itemId,
+        l.expiresOn && l.quantity.greaterThan(0) ? l.expiresOn.toISOString().slice(0, 10) : null,
+      ]),
+    );
     const names = new Map(items.map((i) => [i.id, i.name]));
     // Variants take their parent's category (ADR 0048).
     const byId = new Map(items.map((i) => [i.id, i]));
@@ -326,6 +333,7 @@ export class StockRequestsService {
         available: quantity.get(i.id) ?? '0.000',
         categoryId: categoryOf(i).categoryId,
         categoryName: categoryOf(i).category?.name ?? null,
+        expiresOn: expiry.get(i.id) ?? null,
       }));
   }
 

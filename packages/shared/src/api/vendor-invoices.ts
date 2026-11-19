@@ -68,6 +68,8 @@ export const vendorInvoiceLineInputSchema = z
     unitId: z.uuid().nullable().optional(),
     quantity,
     unitCost,
+    /** Best before, as printed (ADR 0062): goes with the goods into stock on approval. */
+    expiresOn: z.iso.date().nullable().optional(),
   })
   .refine((l) => (l.itemId ? 1 : 0) + (l.newItem ? 1 : 0) === 1, {
     message: 'A line is an existing item or a new one',
@@ -152,6 +154,8 @@ export const vendorInvoiceLineSchema = z.object({
   unitCost: z.string(),
   /** quantity × unit cost, 2 decimals. */
   value: z.string(),
+  /** Best before (ADR 0062); default for older apis. */
+  expiresOn: z.string().nullable().default(null),
 });
 
 export const vendorInvoiceSummarySchema = z.object({

@@ -33,6 +33,7 @@ import { Select } from '../ui/select';
 import { Loaded } from '../users/common';
 import { type InventoryData, warehouseLabel } from './inventory-page';
 import { useSeesPrices } from './use-sees-prices';
+import { ExpiryDate } from './expiry-date';
 
 const selectionKey = (s: CategorySelection) =>
   s.kind === 'category' ? s.id : s.kind === 'none' ? 'none' : '';
@@ -466,6 +467,7 @@ function ItemTable({
             <th className="px-4 py-2 font-medium">{t('inventory.fields.item')}</th>
             <th className="px-4 py-2 font-medium">{t('inventory.fields.category')}</th>
             <th className="px-4 py-2 text-right font-medium">{t('inventory.fields.quantity')}</th>
+            <th className="px-4 py-2 font-medium">{t('inventory.fields.expiresOn')}</th>
             {prices && (
               <th className="px-4 py-2 text-right font-medium">{t('inventory.fields.value')}</th>
             )}
@@ -505,6 +507,9 @@ function ItemTable({
                 data-testid="overview-quantity"
               >
                 {`${shortQuantity(row.quantity)} ${t(`inventory.units.${row.item.unit}`)}`}
+              </td>
+              <td className="text-sm md:px-4 md:py-2">
+                <ExpiryDate value={row.expiresOn} testId="overview-expiry" />
               </td>
               {prices && row.value !== null && (
                 <td className="ml-auto font-medium tabular-nums md:px-4 md:py-2 md:text-right">

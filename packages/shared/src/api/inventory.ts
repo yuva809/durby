@@ -8,7 +8,8 @@ export const INVENTORY_NOTE_MAX_LENGTH = 500;
 export const STOCK_DOCUMENT_MAX_LINES = 200;
 
 /** Units of a stock item; fixed once the item has movements. */
-export const STOCK_UNITS = ['kg', 'g', 'l', 'ml', 'pc'] as const;
+/** How stock is counted. Box, bucket, bag and packet for goods bought and counted that way (ADR 0062). */
+export const STOCK_UNITS = ['kg', 'g', 'l', 'ml', 'pc', 'box', 'bucket', 'bag', 'packet'] as const;
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
 export const STOCK_DOCUMENT_KINDS = [
@@ -188,6 +189,9 @@ const lines = <T extends z.ZodType<{ itemId: string }>>(line: T) =>
     .max(STOCK_DOCUMENT_MAX_LINES)
     .refine(uniqueItems, { message: 'An item can be on a document only once' });
 
+/** A best-before date, "2027-03-31" (ADR 0062). */
+export const expiryDateSchema = z.iso.date();
+
 export const receiptRequestSchema = z.strictObject({
   warehouseId: z.uuid(),
   supplier: z.string().trim().min(1).max(INVENTORY_NAME_MAX_LENGTH).optional(),
@@ -200,6 +204,8 @@ export const receiptRequestSchema = z.strictObject({
       /** Per `unitId` when given, else per the item's unit. */
       unitCost: unitCostSchema,
       unitId: z.uuid().optional(),
+      /** Best before, as printed (ADR 0062): the warehouse keeps the earliest date of what it holds. */
+      expiresOn: expiryDateSchema.optional(),
     }),
   ),
 });
@@ -239,6 +245,8 @@ export const importReceiptLineSchema = z.union([
     quantity: stockQuantitySchema,
     unitCost: unitCostSchema,
     unitId: z.uuid().optional(),
+    /** Best before (ADR 0062). */
+    expiresOn: expiryDateSchema.optional(),
     /** Set on the item as it is received (ADR 0055): category (null clears), brand, pack size. */
     itemDetails: z
       .strictObject({
@@ -253,6 +261,8 @@ export const importReceiptLineSchema = z.union([
     quantity: stockQuantitySchema,
     unitCost: unitCostSchema,
     unitId: z.uuid().optional(),
+    /** Best before (ADR 0062). */
+    expiresOn: expiryDateSchema.optional(),
   }),
 ]);
 
@@ -288,6 +298,8 @@ export const stockMovementSchema = z.object({
   unitCost: z.string().nullable(),
   /** Signed, 2 decimals; null without inventory.prices.read. */
   value: z.string().nullable(),
+  /** The expiry date the goods came with (ADR 0062); null when none was given. */
+  expiresOn: z.string().nullable().default(null),
 });
 
 export const stockDocumentSummarySchema = z.object({
@@ -330,6 +342,8 @@ export const stockLevelSchema = z.object({
   value: z.string().nullable(),
   /** At or below the item's reorder level. */
   low: z.boolean(),
+  /** The earliest expiry date of what is in stock (ADR 0062); null when unknown or nothing there. */
+  expiresOn: z.string().nullable().default(null),
 });
 
 export const stockQuerySchema = z.object({

@@ -1638,6 +1638,10 @@ enum StockUnit {
   l
   ml
   pc
+  box
+  bucket
+  bag
+  packet
 
   @@map("stock_unit")
 }
@@ -1789,6 +1793,8 @@ model StockMovement {
   quantity     Decimal       @db.Decimal(14, 3)
   unitCost     Decimal       @map("unit_cost") @db.Decimal(14, 4)
   value        Decimal       @db.Decimal(14, 2)
+  /// The expiry date the goods came with (ADR 0062): given on receipts, carried along on transfers.
+  expiresOn    DateTime?     @map("expires_on") @db.Date
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   organization Organization  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   document     StockDocument @relation(fields: [tenantId, documentId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
@@ -1808,6 +1814,8 @@ model StockLevel {
   itemId       String       @map("item_id") @db.Uuid
   quantity     Decimal      @db.Decimal(14, 3)
   averageCost  Decimal      @map("average_cost") @db.Decimal(14, 4)
+  /// The earliest expiry date of what is in stock (ADR 0062); cleared when nothing is left.
+  expiresOn    DateTime?    @map("expires_on") @db.Date
   updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   warehouse    Warehouse    @relation(fields: [tenantId, warehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
@@ -2427,6 +2435,8 @@ model VendorInvoiceLine {
   unitId            String?          @map("unit_id") @db.Uuid
   quantity          Decimal          @db.Decimal(14, 3)
   unitCost          Decimal          @map("unit_cost") @db.Decimal(14, 4)
+  /// Best before, as printed (ADR 0062).
+  expiresOn         DateTime?        @map("expires_on") @db.Date
   organization      Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   invoice           VendorInvoice    @relation(fields: [tenantId, invoiceId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
   item              StockItem?       @relation(fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)

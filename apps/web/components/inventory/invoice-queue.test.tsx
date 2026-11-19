@@ -76,6 +76,7 @@ function invoice(status: VendorInvoice['status'] = 'pending'): VendorInvoice {
         quantity: '50.000',
         unitCost: '11.0000',
         value: '550.00',
+        expiresOn: null,
       },
       {
         id: id(12),
@@ -100,6 +101,7 @@ function invoice(status: VendorInvoice['status'] = 'pending'): VendorInvoice {
         quantity: '30.000',
         unitCost: '41.5000',
         value: '1245.00',
+        expiresOn: null,
       },
     ],
   };

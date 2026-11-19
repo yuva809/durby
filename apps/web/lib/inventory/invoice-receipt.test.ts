@@ -210,6 +210,7 @@ describe('a stored invoice back as rows (ADR 0054)', () => {
           quantity: '50.000',
           unitCost: '11.0000',
           value: '550.00',
+          expiresOn: null,
         },
         {
           id: id(72),
@@ -234,6 +235,7 @@ describe('a stored invoice back as rows (ADR 0054)', () => {
           quantity: '120',
           unitCost: '0.4150',
           value: '49.80',
+          expiresOn: null,
         },
       ]),
     );

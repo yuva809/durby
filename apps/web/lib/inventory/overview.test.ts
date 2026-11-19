@@ -69,6 +69,7 @@ const level = (itemId: string, warehouseId: string, quantity: string, value: str
     averageCost: '1.0000',
     value,
     low,
+    expiresOn: null,
   }) satisfies StockLevel;
 const LEVELS = [
   level(BASMATI.id, 'w1', '10.500', '21.00'),
@@ -129,5 +130,16 @@ describe('inventory overview (ADR 0048)', () => {
     const csv = toCsv(['Item', 'Value'], [['Rice, "basmati"', '25.00']]);
     expect(csv.charCodeAt(0)).toBe(0xfeff);
     expect(csv.slice(1)).toBe('Item,Value\r\n"Rice, ""basmati""",25.00\r\n');
+  });
+
+  it('shows the earliest best-before across the warehouses (ADR 0062)', () => {
+    const dated = [
+      { ...level(BASMATI.id, 'w1', '10.500', '21.00'), expiresOn: '2027-05-01' },
+      { ...level(BASMATI.id, 'w2', '2.000', '4.00'), expiresOn: '2027-03-31' },
+      level(COLA.id, 'w1', '1.000', '1.00'),
+    ];
+    const byName = new Map(itemRows([BASMATI, COLA], dated).map((r) => [r.item.name, r]));
+    expect(byName.get(BASMATI.name)?.expiresOn).toBe('2027-03-31');
+    expect(byName.get(COLA.name)?.expiresOn).toBeNull();
   });
 });

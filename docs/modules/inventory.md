@@ -37,6 +37,14 @@ StockLevel             stock_levels        projection per warehouse and item: qu
   that would take a level below zero answers 409 `inventory.insufficient_stock` (`details.itemIds`).
 - **Corrections** are new documents; nothing is edited or deleted (CLAUDE.md rule 7).
 - An item's **unit** can't change once it has movements (409 `inventory.unit_locked`).
+- **Units** (ADR 0062): `kg` `g` `l` `ml` `pc` (the piece, Stück) and `box` `bucket` `bag` `packet` for goods bought
+  and counted that way.
+- **Best before** (ADR 0062): receipt, import receipt and vendor invoice lines may carry `expiresOn` ("2027-03-31").
+  `stock_levels.expires_on` keeps the earliest date of what is in stock (goods coming in: the earlier of the level's
+  and theirs; goods without a date leave it; transfers and branch requests carry it along; nothing left, no date);
+  `stock_movements.expires_on` records the date goods came or went with. Stock, document lines, vendor invoice lines
+  and the request cart's availability answer it; the stock tab and the overview show it, red once past. The earliest
+  date, not batches.
 
 ## Permissions (location scope at the warehouse's location unless noted)
 

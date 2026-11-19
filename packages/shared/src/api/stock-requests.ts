@@ -189,6 +189,8 @@ export const requestWarehouseListResponseSchema = z.object({
 
 /** What a source warehouse has, for the request form (no costs). */
 export const requestAvailabilitySchema = z.object({
+  /** The earliest expiry date of what the warehouse holds (ADR 0062); default for older apis. */
+  expiresOn: z.string().nullable().default(null),
   itemId: z.uuid(),
   itemName: z.string(),
   sku: z.string().nullable(),

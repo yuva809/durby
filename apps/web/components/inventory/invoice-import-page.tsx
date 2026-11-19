@@ -395,6 +395,7 @@ function Flow({
         onCategoryCreated={onCategoryCreated}
         onUnitCreated={onUnitCreated}
         printedTotal={step.invoice.total}
+        showCosts={false}
         skipped={step.invoice.skipped}
         actions={
           <>

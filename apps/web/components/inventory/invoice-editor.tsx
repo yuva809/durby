@@ -36,6 +36,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select } from '../ui/select';
+import { ExpiryDate } from './expiry-date';
 
 export interface InvoiceHeader {
   supplier: string;
@@ -95,6 +96,7 @@ export function InvoiceEditor({
   onCategoryCreated,
   onUnitCreated,
   printedTotal,
+  showCosts = true,
   skipped = NONE_SKIPPED,
   readOnly = false,
   actions,
@@ -114,6 +116,11 @@ export function InvoiceEditor({
   onCategoryCreated?: (category: ProductCategory) => void;
   onUnitCreated?: (unit: UnitOfMeasure) => void;
   printedTotal: string | null;
+  /**
+   * The unit cost and value columns. The import leaves them out (they are still read from the invoice and saved,
+   * ADR 0062); a line whose cost needs fixing shows them anyway.
+   */
+  showCosts?: boolean;
   /** Non-goods lines left out when reading (transport, "order confirmed", ADR 0058), by description. */
   skipped?: readonly string[];
   readOnly?: boolean;
@@ -128,6 +135,7 @@ export function InvoiceEditor({
   const leftOut = rows.length - included.length;
   const supplierMissing = !readOnly && header.supplier.trim() === '';
   const withoutCategory = missingCategory(rows);
+  const costsShown = showCosts || problems.some((p) => p.includes('unitCost'));
   const total = rowsTotal(rows);
   const check = printedTotal ? totalCheck(rows, printedTotal) : null;
   const sortedItems = [...items]
@@ -298,12 +306,17 @@ export function InvoiceEditor({
               <th className="w-24 px-3 py-2 text-right font-medium">
                 {t('inventory.fields.quantity')}
               </th>
-              <th className="w-28 px-3 py-2 text-right font-medium">
-                {t('inventory.invoice.unitCost')}
-              </th>
-              <th className="w-28 px-3 py-2 text-right font-medium">
-                {t('inventory.fields.value')}
-              </th>
+              <th className="w-40 px-3 py-2 font-medium">{t('inventory.fields.expiresOn')}</th>
+              {costsShown && (
+                <th className="w-28 px-3 py-2 text-right font-medium">
+                  {t('inventory.invoice.unitCost')}
+                </th>
+              )}
+              {costsShown && (
+                <th className="w-28 px-3 py-2 text-right font-medium">
+                  {t('inventory.fields.value')}
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -582,20 +595,39 @@ export function InvoiceEditor({
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <Input
-                      inputMode="decimal"
-                      className="text-right"
-                      value={row.unitCost}
-                      disabled={readOnly}
-                      aria-label={t('inventory.invoice.unitCost')}
-                      aria-invalid={own.includes('unitCost') || undefined}
-                      onChange={(e) => update(index, { unitCost: e.target.value })}
-                      data-testid="invoice-line-cost"
-                    />
+                    {readOnly ? (
+                      <ExpiryDate value={row.expiresOn || null} />
+                    ) : (
+                      <Input
+                        type="date"
+                        value={row.expiresOn}
+                        onChange={(e) => update(index, { expiresOn: e.target.value })}
+                        aria-label={t('inventory.invoice.expiryFor', {
+                          name: row.line.description,
+                        })}
+                        data-testid="invoice-line-expiry"
+                      />
+                    )}
                   </td>
-                  <td className="px-3 py-2 text-right font-medium tabular-nums">
-                    {value ? money(value) : '–'}
-                  </td>
+                  {costsShown && (
+                    <td className="px-3 py-2">
+                      <Input
+                        inputMode="decimal"
+                        className="text-right"
+                        value={row.unitCost}
+                        disabled={readOnly}
+                        aria-label={t('inventory.invoice.unitCost')}
+                        aria-invalid={own.includes('unitCost') || undefined}
+                        onChange={(e) => update(index, { unitCost: e.target.value })}
+                        data-testid="invoice-line-cost"
+                      />
+                    </td>
+                  )}
+                  {costsShown && (
+                    <td className="px-3 py-2 text-right font-medium tabular-nums">
+                      {value ? money(value) : '–'}
+                    </td>
+                  )}
                 </tr>
               );
             })}
