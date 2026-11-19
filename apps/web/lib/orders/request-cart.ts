@@ -19,12 +19,59 @@ export const validQuantity = (value: string) => {
   return stockQuantitySchema.safeParse(q).success && Number(q) > 0;
 };
 
-/** One more (whole steps; "1.5" becomes "2.5"). */
-export function increment(cart: Cart, itemId: string): Cart {
-  const current = Number(clean(cart[itemId] ?? '0'));
-  const next = Number.isFinite(current) ? current + 1 : 1;
-  return { ...cart, [itemId]: trim(next) };
+/** Thousandths ("2.5" → 2500n), exact (CLAUDE.md rule 6); null when not a quantity. */
+function thousandths(value: string): bigint | null {
+  const match = /^(-?)(\d+)(?:\.(\d{1,3}))?$/.exec(clean(value));
+  if (!match) return null;
+  const digits = BigInt(`${match[2]}${(match[3] ?? '').padEnd(3, '0')}`);
+  return match[1] ? -digits : digits;
 }
+
+/** 2500n → "2.5". */
+function plain(value: bigint): string {
+  const fraction = String(value % 1000n)
+    .padStart(3, '0')
+    .replace(/0+$/, '');
+  return fraction ? `${value / 1000n}.${fraction}` : String(value / 1000n);
+}
+
+/** What the warehouse has, in thousandths; below zero counts as none. */
+const most = (available: string) => {
+  const there = thousandths(available) ?? 0n;
+  return there < 0n ? 0n : there;
+};
+
+/** Within what the warehouse has: a branch can't ask for 4 when 2 are there. */
+export const withinStock = (quantity: string, available: string) => {
+  const q = thousandths(quantity);
+  return q !== null && q <= most(available);
+};
+
+/** Whether one more fits (the "+" button): below what the warehouse has. */
+export const canAddMore = (quantity: string | undefined, available: string) =>
+  (thousandths(quantity ?? '0') ?? 0n) < most(available);
+
+/** What the warehouse has, as the page shows it ("2.000" → "2"; below zero "0"). */
+export const availableText = (available: string) => plain(most(available));
+
+/**
+ * One more (whole steps; "1.5" becomes "2.5"), never beyond what the warehouse has: below a whole step it goes to the
+ * limit, at the limit nothing changes. Without `available` there is no limit.
+ */
+export function increment(cart: Cart, itemId: string, available?: string): Cart {
+  const current = thousandths(cart[itemId] ?? '0') ?? 0n;
+  let next = (current < 0n ? 0n : current) + 1000n;
+  if (available !== undefined) {
+    const limit = most(available);
+    if (current >= limit) return cart;
+    if (next > limit) next = limit;
+  }
+  return { ...cart, [itemId]: plain(next) };
+}
+
+/** Lines asking for more than the warehouse has (they block sending). */
+export const beyondStock = (lines: ReturnType<typeof cartLines>) =>
+  lines.filter((l) => validQuantity(l.quantity) && !withinStock(l.quantity, l.item.available));
 
 /** One less; at 1 or below the item leaves the cart. */
 export function decrement(cart: Cart, itemId: string): Cart {
@@ -54,9 +101,10 @@ export function cartLines(cart: Cart, items: readonly RequestAvailability[]) {
   });
 }
 
-/** Every line has a quantity the api takes. */
+/** Every line has a quantity the api takes, within what the warehouse has. */
 export const cartReady = (lines: ReturnType<typeof cartLines>) =>
-  lines.length > 0 && lines.every((l) => validQuantity(l.quantity));
+  lines.length > 0 &&
+  lines.every((l) => validQuantity(l.quantity) && withinStock(l.quantity, l.item.available));
 
 /** The request's lines, in cart order. */
 export const requestLines = (lines: ReturnType<typeof cartLines>) =>

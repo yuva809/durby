@@ -15,6 +15,9 @@ import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { categoryColor } from '../../lib/catalog/category-image';
 import {
+  availableText,
+  beyondStock,
+  canAddMore,
   type Cart,
   cartLines,
   cartReady,
@@ -29,6 +32,7 @@ import {
   setQuantity,
   shownItems,
   validQuantity,
+  withinStock,
 } from '../../lib/orders/request-cart';
 import {
   createRequest,
@@ -48,7 +52,6 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '../ui/sheet';
 import { Loaded, NoAccess } from '../users/common';
-import { shortQuantity } from './common';
 
 /**
  * /requests/new, Request stock (docs/modules/orders.md → Branch requests, ADR 0045, 0053): a branch fills a cart like
@@ -186,7 +189,22 @@ function Shop({
   async function send() {
     if (!from) return;
     if (!cartReady(lines)) {
-      setError(t('orders.requestForm.quantityInvalid'));
+      const beyond = beyondStock(lines);
+      setError(
+        beyond.length > 0
+          ? t('orders.requestCart.beyondStock', {
+              items: beyond
+                .map((l) =>
+                  t('orders.requestCart.itemAvailable', {
+                    name: l.item.itemName,
+                    quantity: availableText(l.item.available),
+                    unit: t(`inventory.units.${l.item.unit}`),
+                  }),
+                )
+                .join(', '),
+            })
+          : t('orders.requestForm.quantityInvalid'),
+      );
       return;
     }
     setBusy(true);
@@ -320,12 +338,15 @@ function Shop({
         <SheetContent
           side="right"
           closeLabel={t('platform.common.close')}
-          className="flex w-full flex-col gap-4 sm:max-w-md"
+          className="flex w-full flex-col gap-4 p-5 sm:max-w-md"
           data-testid="request-cart"
         >
-          <div className="flex flex-col gap-1">
-            <SheetTitle>{t('orders.requestCart.title')}</SheetTitle>
-            <SheetDescription>
+          {/* Clear of the close button in the corner. */}
+          <div className="flex flex-col gap-1 pr-10">
+            <SheetTitle className="not-sr-only text-xl font-semibold">
+              {t('orders.requestCart.title')}
+            </SheetTitle>
+            <SheetDescription className="not-sr-only text-sm text-muted-foreground">
               {t('orders.requestCart.route', {
                 from: from?.name ?? '',
                 to: branch.locationName,
@@ -335,7 +356,7 @@ function Shop({
           {lines.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('orders.requestCart.emptyCart')}</p>
           ) : (
-            <ul className="-mx-1 flex min-h-0 flex-1 flex-col divide-y overflow-y-auto px-1">
+            <ul className="flex min-h-0 flex-1 flex-col divide-y overflow-y-auto border-y">
               {lines.map(({ item, quantity }) => (
                 <li
                   key={item.itemId}
@@ -344,12 +365,7 @@ function Shop({
                 >
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate font-medium">{item.itemName}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {t('orders.requestCart.available', {
-                        quantity: shortQuantity(item.available),
-                        unit: t(`inventory.units.${item.unit}`),
-                      })}
-                    </span>
+                    <AvailableText item={item} quantity={quantity} />
                   </div>
                   <Stepper
                     item={item}
@@ -538,22 +554,20 @@ function ItemCard({
         </div>
       </div>
       <div className="mt-auto flex items-center justify-between gap-2">
-        <span
-          className={cn('text-sm', out ? 'text-destructive' : 'text-muted-foreground')}
-          data-testid="request-item-available"
-        >
-          {out
-            ? t('orders.requestCart.outOfStock')
-            : t('orders.requestCart.available', {
-                quantity: shortQuantity(item.available),
-                unit: t(`inventory.units.${item.unit}`),
-              })}
-        </span>
+        {out ? (
+          <span className="text-sm text-destructive" data-testid="request-item-available">
+            {t('orders.requestCart.outOfStock')}
+          </span>
+        ) : (
+          <AvailableText item={item} quantity={quantity} testId="request-item-available" />
+        )}
         {quantity === undefined ? (
           <Button
             className="h-9"
             variant="outline"
-            onClick={() => onChange((cart) => increment(cart, item.itemId))}
+            // Nothing there, nothing to ask for (a branch can't ask beyond what the warehouse has).
+            disabled={out}
+            onClick={() => onChange((cart) => increment(cart, item.itemId, item.available))}
             aria-label={t('orders.requestCart.addName', { name: item.itemName })}
             data-testid="request-add"
           >
@@ -565,6 +579,37 @@ function ItemCard({
         )}
       </div>
     </Card>
+  );
+}
+
+/**
+ * What the warehouse has for a line; red with "Only 2 pc available" when more is asked for, which blocks sending.
+ */
+function AvailableText({
+  item,
+  quantity,
+  testId,
+}: {
+  item: RequestAvailability;
+  quantity: string | undefined;
+  testId?: string;
+}) {
+  const t = useT();
+  const values = {
+    quantity: availableText(item.available),
+    unit: t(`inventory.units.${item.unit}`),
+  };
+  const beyond =
+    quantity !== undefined && quantity.trim() !== '' && !withinStock(quantity, item.available);
+  return (
+    <span
+      className={cn('text-sm', beyond ? 'font-medium text-destructive' : 'text-muted-foreground')}
+      data-testid={testId}
+    >
+      {beyond
+        ? t('orders.requestCart.onlyAvailable', values)
+        : t('orders.requestCart.available', values)}
+    </span>
   );
 }
 
@@ -595,7 +640,9 @@ function Stepper({
         value={quantity}
         onChange={(e) => onChange((cart) => setQuantity(cart, item.itemId, e.target.value))}
         aria-label={t('orders.requestForm.quantity', { name: item.itemName })}
-        aria-invalid={!validQuantity(quantity) || undefined}
+        aria-invalid={
+          !validQuantity(quantity) || !withinStock(quantity, item.available) || undefined
+        }
         className="h-9 w-16 text-center"
         data-testid="request-quantity"
       />
@@ -603,7 +650,9 @@ function Stepper({
         size="icon"
         variant="outline"
         className="size-9"
-        onClick={() => onChange((cart) => increment(cart, item.itemId))}
+        // Not beyond what the warehouse has.
+        disabled={!canAddMore(quantity, item.available)}
+        onClick={() => onChange((cart) => increment(cart, item.itemId, item.available))}
         aria-label={t('orders.requestCart.more', { name: item.itemName })}
         data-testid="request-more"
       >

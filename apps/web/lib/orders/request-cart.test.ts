@@ -1,6 +1,9 @@
 import type { RequestAvailability } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  availableText,
+  beyondStock,
+  canAddMore,
   cartLines,
   cartReady,
   categoriesOf,
@@ -10,6 +13,7 @@ import {
   requestLines,
   setQuantity,
   shownItems,
+  withinStock,
 } from './request-cart';
 
 const id = (n: number) => `0190a000-0000-7000-8000-0000000053${String(n).padStart(2, '0')}`;
@@ -62,6 +66,29 @@ describe('request cart (ADR 0053)', () => {
     ]);
     expect(setQuantity(cart, id(3), '0')).toEqual({ [id(2)]: '2,5' });
     expect(cartReady(cartLines({ [id(2)]: '1.23456' }, ITEMS))).toBe(false);
+  });
+
+  it('never asks for more than the warehouse has', () => {
+    // Tape: 3 there.
+    let cart = increment({}, id(4), '3.000');
+    cart = increment(cart, id(4), '3.000');
+    cart = increment(cart, id(4), '3.000');
+    expect(cart).toEqual({ [id(4)]: '3' });
+    expect(increment(cart, id(4), '3.000')).toBe(cart);
+    expect(canAddMore('3', '3.000')).toBe(false);
+    expect(canAddMore('2', '3.000')).toBe(true);
+    // Below a whole step to the limit; nothing there, nothing to add.
+    expect(increment({ [id(4)]: '2.5' }, id(4), '3.000')).toEqual({ [id(4)]: '3' });
+    expect(increment({}, id(1), '0.000')).toEqual({});
+    expect(increment({}, id(1), '-2.000')).toEqual({});
+    // Typed beyond it: not sent, and named.
+    const typed = setQuantity({}, id(4), '4');
+    expect(withinStock('4', '3.000')).toBe(false);
+    expect(withinStock('3', '3.000')).toBe(true);
+    expect(cartReady(cartLines(typed, ITEMS))).toBe(false);
+    expect(beyondStock(cartLines(typed, ITEMS)).map((l) => l.item.itemName)).toEqual(['Tape']);
+    expect(availableText('-1.000')).toBe('0');
+    expect(availableText('2.500')).toBe('2.5');
   });
 
   it('drops lines whose item is no longer offered', () => {

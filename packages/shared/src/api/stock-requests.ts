@@ -226,6 +226,7 @@ export const STOCK_REQUEST_ERROR_CODES = [
   'orders.request_not_found',
   'orders.request_invalid',
   'orders.request_main_only',
+  'orders.request_above_stock',
   'orders.request_transition',
   'orders.request_not_yours',
   'orders.driver_not_found',

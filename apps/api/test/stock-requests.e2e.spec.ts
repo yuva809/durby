@@ -240,6 +240,25 @@ describe('branch stock requests (ADR 0045)', () => {
     }).expect(409);
   });
 
+  it('refuses a request for more than the warehouse has', async () => {
+    const s = await setup();
+    // 4 oil there: 9 is refused, naming the item; 4 goes through.
+    const res = await post(s.branchUser.token, '/stock-requests', {
+      fromWarehouseId: s.main,
+      toWarehouseId: s.branch,
+      lines: [{ itemId: s.oil, quantity: '9' }],
+    }).expect(409);
+    expect(res.body as { code: string; details: unknown }).toMatchObject({
+      code: 'orders.request_above_stock',
+      details: { itemIds: [s.oil] },
+    });
+    await post(s.branchUser.token, '/stock-requests', {
+      fromWarehouseId: s.main,
+      toWarehouseId: s.branch,
+      lines: [{ itemId: s.oil, quantity: '4' }],
+    }).expect(201);
+  });
+
   it('refuses to pack more than is on the shelf', async () => {
     const s = await setup();
     const created = stockRequestSchema.parse(
@@ -247,16 +266,22 @@ describe('branch stock requests (ADR 0045)', () => {
         await post(s.branchUser.token, '/stock-requests', {
           fromWarehouseId: s.main,
           toWarehouseId: s.branch,
-          lines: [{ itemId: s.oil, quantity: '9' }],
+          lines: [{ itemId: s.oil, quantity: '4' }],
         }).expect(201)
       ).body,
     );
     const line = created.lines[0]!.id;
     await post(s.owner.token, `/stock-requests/${created.id}/approve`, {
-      lines: [{ lineId: line, quantity: '9' }],
+      lines: [{ lineId: line, quantity: '4' }],
+    }).expect(201);
+    // Two bottles broke after approval: 2 left.
+    await post(s.owner.token, '/inventory/adjustments', {
+      warehouseId: s.main,
+      reason: 'breakage',
+      lines: [{ itemId: s.oil, quantity: '-2' }],
     }).expect(201);
     const res = await post(s.lager.token, `/stock-requests/${created.id}/pack`, {
-      lines: [{ lineId: line, quantity: '9' }],
+      lines: [{ lineId: line, quantity: '4' }],
     }).expect(409);
     expect((res.body as { code: string }).code).toBe('inventory.insufficient_stock');
   });
