@@ -3,7 +3,7 @@
 - Status: accepted
 - Date: 2026-11-20
 - Step: order taking, second row of the tracker group "L3 FOH Service & POS → Order taking" ("Handheld waiter app").
-  Builds on [ADR 0015](0015-theming.md) (themed per partner) and [ADR 0047](0047-notifications-and-accounts.md) (the push
+  Builds on [ADR 0015](0015-admin-web-shell.md) (themed per partner) and [ADR 0047](0047-notifications-and-accounts.md) (the push
   service worker at `/sw.js`).
 
 ## Context
