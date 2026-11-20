@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-11-20
-- Builds on [ADR 0010](0010-settings.md) (settings) and [ADR 0044](0044-sales-orders.md) (Sales Orders).
+- Builds on [ADR 0010](0010-settings.md) (settings) and [ADR 0044](0044-operations-menu-orders-fulfilment.md) (Sales Orders).
 
 ## Context
 
