@@ -54,71 +54,76 @@ export function WarehousesTab({ data }: { data: InventoryData }) {
           <WarehouseDialog data={data} onDone={data.reload} />
         )}
       </div>
-      {locations.map((location) => {
-        const list = data.warehouses.filter(
-          (w) => w.locationId === location.id && (showArchived || w.archivedAt === null),
-        );
-        return (
-          <section
-            key={location.id}
-            className="flex flex-col gap-2"
-            data-testid="warehouse-location"
-          >
-            {location.name && <h2 className="font-semibold">{location.name}</h2>}
-            {list.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('inventory.page.noWarehouses')}</p>
-            ) : (
-              <Card className="divide-y p-0">
-                {list.map((w) => (
-                  <div
-                    key={w.id}
-                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                    data-testid="warehouse-row"
-                    data-name={w.name}
-                  >
-                    <span className="flex items-center gap-2 font-medium">
-                      {w.name}
-                      {w.suppliesStation && (
-                        <Badge className="bg-muted text-foreground">
-                          {t(`inventory.stations.${w.suppliesStation}`)}
-                        </Badge>
-                      )}
-                      {w.isMain && (
-                        <Badge
-                          className="bg-primary text-primary-foreground"
-                          data-testid="warehouse-main"
+      {/* One message for the whole page when there is no warehouse at all, not one per location. */}
+      {data.warehouses.some((w) => showArchived || w.archivedAt === null) ? (
+        locations.map((location) => {
+          const list = data.warehouses.filter(
+            (w) => w.locationId === location.id && (showArchived || w.archivedAt === null),
+          );
+          return (
+            <section
+              key={location.id}
+              className="flex flex-col gap-2"
+              data-testid="warehouse-location"
+            >
+              {location.name && <h2 className="font-semibold">{location.name}</h2>}
+              {list.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t('inventory.page.noWarehouses')}</p>
+              ) : (
+                <Card className="divide-y p-0">
+                  {list.map((w) => (
+                    <div
+                      key={w.id}
+                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                      data-testid="warehouse-row"
+                      data-name={w.name}
+                    >
+                      <span className="flex items-center gap-2 font-medium">
+                        {w.name}
+                        {w.suppliesStation && (
+                          <Badge className="bg-muted text-foreground">
+                            {t(`inventory.stations.${w.suppliesStation}`)}
+                          </Badge>
+                        )}
+                        {w.isMain && (
+                          <Badge
+                            className="bg-primary text-primary-foreground"
+                            data-testid="warehouse-main"
+                          >
+                            {t('inventory.page.mainWarehouse')}
+                          </Badge>
+                        )}
+                        {w.archivedAt && <Badge>{t('inventory.page.archived')}</Badge>}
+                      </span>
+                      {w.suppliesLocationIds.length > 0 && (
+                        <span
+                          className="basis-full text-sm text-muted-foreground"
+                          data-testid="warehouse-supplies"
                         >
-                          {t('inventory.page.mainWarehouse')}
-                        </Badge>
+                          {t('inventory.page.suppliesBranches', {
+                            names: w.suppliesLocationIds
+                              .map((l) => data.locations.find((x) => x.id === l)?.name ?? '')
+                              .filter(Boolean)
+                              .join(', '),
+                          })}
+                        </span>
                       )}
-                      {w.archivedAt && <Badge>{t('inventory.page.archived')}</Badge>}
-                    </span>
-                    {w.suppliesLocationIds.length > 0 && (
-                      <span
-                        className="basis-full text-sm text-muted-foreground"
-                        data-testid="warehouse-supplies"
-                      >
-                        {t('inventory.page.suppliesBranches', {
-                          names: w.suppliesLocationIds
-                            .map((l) => data.locations.find((x) => x.id === l)?.name ?? '')
-                            .filter(Boolean)
-                            .join(', '),
-                        })}
-                      </span>
-                    )}
-                    {canManage && (
-                      <span className="flex gap-2">
-                        <WarehouseDialog data={data} warehouse={w} onDone={data.reload} />
-                        <ArchiveButton warehouse={w} onDone={data.reload} />
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </Card>
-            )}
-          </section>
-        );
-      })}
+                      {canManage && (
+                        <span className="flex gap-2">
+                          <WarehouseDialog data={data} warehouse={w} onDone={data.reload} />
+                          <ArchiveButton warehouse={w} onDone={data.reload} />
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </Card>
+              )}
+            </section>
+          );
+        })
+      ) : (
+        <p className="text-sm text-muted-foreground">{t('inventory.page.noWarehouses')}</p>
+      )}
     </div>
   );
 }
