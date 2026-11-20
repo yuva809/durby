@@ -36,8 +36,11 @@ export class WorkspaceService {
       this.entitlements.isEnabled('orders'),
       this.access.can('platform.users.read'),
     ]);
+    const branches = this.searchBranches(q);
     const parts = await Promise.all([
       inventory ? this.inventory.searchItems(q) : [],
+      inventory ? this.inventory.searchWarehouses(q) : [],
+      branches,
       catalog ? this.catalog.searchProducts(q) : [],
       orders ? this.orders.search(q) : [],
       users
@@ -52,6 +55,29 @@ export class WorkspaceService {
         : [],
     ]);
     return parts.flat();
+  }
+
+  /** Branches by name, at the caller's locations; warehouse places (ADR 0068) are not branches. */
+  private async searchBranches(q: string): Promise<SearchResult[]> {
+    const scope = await this.access.locationIdsFor('platform.settings.read');
+    if (scope !== 'all' && scope.length === 0) return [];
+    const rows = await asTenantDb(this.db).location.findMany({
+      where: {
+        archivedAt: null,
+        isWarehouseSite: false,
+        name: { contains: q, mode: 'insensitive' },
+        ...(scope === 'all' ? {} : { id: { in: scope } }),
+      },
+      select: { id: true, name: true, address: true },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      take: SEARCH_LIMIT_PER_TYPE,
+    });
+    return rows.map((l) => ({
+      type: 'branch',
+      id: l.id,
+      title: l.name,
+      subtitle: l.address ?? null,
+    }));
   }
 
   async attention(): Promise<AttentionResponse> {

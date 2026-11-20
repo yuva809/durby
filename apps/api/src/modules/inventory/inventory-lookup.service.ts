@@ -38,6 +38,32 @@ export class InventoryLookup {
     }));
   }
 
+  /** Warehouses by name, at the caller's branches (and the ones that supply them, ADR 0071), not archived. */
+  async searchWarehouses(q: string): Promise<SearchResult[]> {
+    const scope = await this.access.locationIdsFor('inventory.stock.read');
+    if (scope !== 'all' && scope.length === 0) return [];
+    const rows = await this.db.warehouse.findMany({
+      where: {
+        archivedAt: null,
+        isTransit: false,
+        name: { contains: q, mode: 'insensitive' },
+        ...(scope === 'all'
+          ? {}
+          : {
+              OR: [
+                { locationId: { in: scope } },
+                { isMain: true },
+                { suppliesLocationIds: { hasSome: scope } },
+              ],
+            }),
+      },
+      select: { id: true, name: true },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      take: SEARCH_LIMIT_PER_TYPE,
+    });
+    return rows.map((w) => ({ type: 'warehouse', id: w.id, title: w.name, subtitle: null }));
+  }
+
   /** Item-and-warehouse pairs at or below the item's reorder level. */
   async lowStockCount(): Promise<number> {
     const scope = await this.access.locationIdsFor('inventory.stock.read');
