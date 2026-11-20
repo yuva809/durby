@@ -459,6 +459,16 @@ items" dialog that opens the new table afterwards.
 Errors: `pos.table_occupied`, `pos.order_not_same_location` (existing), `pos.line_billed` (existing),
 `pos.transfer_exceeds` (quantity over what is left).
 
+## Step 8: floor plan designer and generator (ADR 0073)
+
+A plan per dining area, saved as append-only versions (`pos_floor_plan_versions`: area, sequence, layout JSON). The
+layout holds table references and wall, bar and decor pieces on a 0–1000 grid. The generator makes a draft from a table
+count, seats per table and room size; the designer edits it (drag, resize, snap to 10 units, add and delete pieces).
+Publishing copies table positions and sizes (`dining_tables.floor_x`, `floor_y`, `floor_w`, `floor_h`) so the floor
+and order screens read the same columns. Restoring a version writes a new version. Viewing needs `pos.tables.read`;
+saving, restoring and publishing need `pos.tables.edit`. Audited as `pos.floor_plan.saved`, `.restored`, `.published`.
+No rotation in version one.
+
 ## QR menu (ADR 0026)
 
 Every dining table has a `menu_token` (24 random URL-safe characters, unique per tenant). Its QR code links to
