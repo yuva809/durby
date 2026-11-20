@@ -317,6 +317,7 @@
   "catalog.categoriesPage.products": "Produkte: {count}",
   "catalog.errors.categoryParentInvalid": "Diese Kategorie kann nicht Unterkategorie dieser sein. Wählen Sie eine Hauptkategorie, und nur für eine Kategorie ohne eigene Unterkategorien.",
   "catalog.errors.categoryImageInvalid": "Das Bild muss eine WebP-, PNG- oder JPEG-Datei mit höchstens 300 KB sein.",
+  "catalog.errors.productImageInvalid": "Das Bild muss eine WebP-, PNG- oder JPEG-Datei mit höchstens 300 KB sein.",
   "catalog.categoryDialog.namePlaceholder": "z. B. Getränke",
   "catalog.categoryDialog.description": "Beschreibung (optional)",
   "catalog.categoryDialog.descriptionPlaceholder": "Was zu dieser Kategorie gehört",
@@ -327,6 +328,10 @@
   "catalog.categoryDialog.imageAdd": "Bild",
   "catalog.categoryDialog.imageHint": "Wird auf der Kachel der Kategorie auf der Lagerseite gezeigt. Wird passend verkleinert; ein transparenter Hintergrund wird weiß.",
   "catalog.categoryDialog.imageRemove": "Bild entfernen",
+  "catalog.productDialog.image": "Bild (optional)",
+  "catalog.productDialog.imageAdd": "Bild",
+  "catalog.productDialog.imageHint": "Wird im QR-Menü und am Kiosk gezeigt. Wird passend verkleinert; ein transparenter Hintergrund wird weiß.",
+  "catalog.productDialog.imageRemove": "Bild entfernen",
   "catalog.categoriesPage.items": "{count} Artikel",
   "catalog.categoriesPage.search": "Kategorien suchen"
 }

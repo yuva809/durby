@@ -317,6 +317,7 @@
   "catalog.categoriesPage.products": "Products: {count}",
   "catalog.errors.categoryParentInvalid": "This category can't be a secondary category of that one. Pick a top-level category, and only for a category without secondary categories of its own.",
   "catalog.errors.categoryImageInvalid": "The image must be a WebP, PNG or JPEG file of at most 300 KB.",
+  "catalog.errors.productImageInvalid": "The picture must be a WebP, PNG or JPEG file of at most 300 KB.",
   "catalog.categoryDialog.namePlaceholder": "e.g. Beverages",
   "catalog.categoryDialog.description": "Description (optional)",
   "catalog.categoryDialog.descriptionPlaceholder": "What belongs in this category",
@@ -327,6 +328,10 @@
   "catalog.categoryDialog.imageAdd": "Image",
   "catalog.categoryDialog.imageHint": "Shown on the category's tile on the inventory page. Resized to fit; a transparent background turns white.",
   "catalog.categoryDialog.imageRemove": "Remove image",
+  "catalog.productDialog.image": "Picture (optional)",
+  "catalog.productDialog.imageAdd": "Picture",
+  "catalog.productDialog.imageHint": "Shown on the QR menu and the kiosk. Resized to fit; a transparent background turns white.",
+  "catalog.productDialog.imageRemove": "Remove picture",
   "catalog.categoriesPage.items": "{count} items",
   "catalog.categoriesPage.search": "Search categories"
 }

@@ -66,6 +66,8 @@ export const productSchema = z.object({
   taxRate: z.string(),
   sortOrder: z.int(),
   archivedAt: z.iso.datetime().nullable(),
+  /** Changes when the picture changes (its url's cache key); null = no picture (ADR 0049). */
+  imageVersion: z.string().nullable().default(null),
 });
 
 const categoryDescription = z.string().trim().max(CATEGORY_DESCRIPTION_MAX_LENGTH);
@@ -289,6 +291,7 @@ export const CATALOG_ERROR_CODES = [
   'catalog.location_not_found',
   'catalog.category_parent_invalid',
   'catalog.category_image_invalid',
+  'catalog.product_image_invalid',
 ] as const;
 
 export type CatalogErrorCode = (typeof CATALOG_ERROR_CODES)[number];

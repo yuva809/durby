@@ -14,6 +14,7 @@ const product = (name: string, menuNumber: string | null, categoryId = FOOD): Pr
   taxRate: '7.00',
   sortOrder: 0,
   archivedAt: null,
+  imageVersion: null,
 });
 const MENU = [
   product('Curry', '1'),

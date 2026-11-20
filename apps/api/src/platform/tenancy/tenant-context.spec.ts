@@ -123,6 +123,7 @@ describe('TENANT_MODELS', () => {
       'Product',
       'ProductCategory',
       'ProductCategoryImage',
+      'ProductImage',
       'PushSubscription',
       'RecipeLine',
       'Reservation',

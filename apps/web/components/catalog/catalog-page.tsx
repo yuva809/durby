@@ -29,9 +29,9 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, ScanText, Tags } from 'lucide-react';
+import { GripVertical, ImagePlus, ScanText, Tags, X } from 'lucide-react';
 import Link from 'next/link';
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -54,6 +54,8 @@ import { loadCosts } from '../../lib/inventory/api';
 import { loadLocations } from '../../lib/users/api';
 import { errorLabel } from '../../lib/auth/errors';
 import { useActionKey } from '../../lib/use-action-key';
+import { resizeCategoryImage } from '../../lib/catalog/category-image';
+import { removeProductImage, uploadProductImage } from '../../lib/catalog/product-image';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
 import { Badge } from '../ui/badge';
@@ -708,6 +710,23 @@ function ProductDialog({
     taxRate: '',
   });
   const [checked, setChecked] = useState(false);
+  // The picture goes once the product exists (ADR 0049): keep it, set a new resized one, or remove it.
+  const [picture, setPicture] = useState<
+    { kind: 'keep' } | { kind: 'set'; blob: Blob; preview: string } | { kind: 'remove' }
+  >({ kind: 'keep' });
+  const [pictureProblem, setPictureProblem] = useState<string | null>(null);
+  const pictureAction = useActionKey();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setPictureProblem(null);
+    const blob = await resizeCategoryImage(file);
+    if (!blob) {
+      setPictureProblem(t('catalog.errors.productImageInvalid'));
+      return;
+    }
+    setPicture({ kind: 'set', blob, preview: URL.createObjectURL(blob) });
+  };
   const set = (field: keyof typeof form) => (value: string) =>
     setForm((current) => ({ ...current, [field]: value }));
   const problems = {
@@ -731,6 +750,8 @@ function ProductDialog({
       testId={product ? 'product-edit' : 'product-create'}
       title={t(product ? 'catalog.page.editProduct' : 'catalog.page.createProduct')}
       onOpen={() => {
+        setPicture({ kind: 'keep' });
+        setPictureProblem(null);
         setForm({
           menuNumber: product?.menuNumber ?? '',
           name: product?.name ?? '',
@@ -755,9 +776,22 @@ function ProductDialog({
           price: form.price.trim(),
           taxRate: form.taxRate.trim(),
         };
-        return product
-          ? updateProduct(store, action, product.id, { ...body, menuNumber: menuNumber || null })
-          : createProduct(store, action, { ...body, ...(menuNumber && { menuNumber }) });
+        return (async () => {
+          const saved = product
+            ? await updateProduct(store, action, product.id, {
+                ...body,
+                menuNumber: menuNumber || null,
+              })
+            : await createProduct(store, action, { ...body, ...(menuNumber && { menuNumber }) });
+          if (!saved.ok || !saved.data) return saved;
+          if (picture.kind === 'set') {
+            return uploadProductImage(store, pictureAction, saved.data.id, picture.blob);
+          }
+          if (picture.kind === 'remove' && saved.data.imageVersion) {
+            return removeProductImage(store, pictureAction, saved.data.id);
+          }
+          return saved;
+        })();
       }}
       onDone={onDone}
     >
@@ -836,6 +870,68 @@ function ProductDialog({
           onChange={(e) => set('description')(e.target.value)}
         />
       </Field>
+      <div className="grid gap-1.5">
+        <span className="text-sm font-medium" id={`${id}-picture-label`}>
+          {t('catalog.productDialog.image')}
+        </span>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            aria-labelledby={`${id}-picture-label`}
+            className="relative flex size-20 shrink-0 flex-col items-center justify-center gap-1 overflow-hidden rounded-lg border border-dashed border-input bg-muted text-xs font-medium text-muted-foreground hover:bg-accent"
+            data-testid="product-image-pick"
+          >
+            {picture.kind === 'set' ? (
+              // An object URL of the picked file: next/image can't optimize those.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={picture.preview}
+                alt=""
+                className="absolute inset-0 size-full object-cover"
+              />
+            ) : (
+              <>
+                <ImagePlus aria-hidden className="size-5" />
+                {t('catalog.productDialog.imageAdd')}
+              </>
+            )}
+          </button>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-muted-foreground">{t('catalog.productDialog.imageHint')}</p>
+            {(picture.kind === 'set' || (picture.kind === 'keep' && product?.imageVersion)) && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="self-start"
+                onClick={() => setPicture({ kind: 'remove' })}
+                data-testid="product-image-remove"
+              >
+                <X aria-hidden />
+                {t('catalog.productDialog.imageRemove')}
+              </Button>
+            )}
+          </div>
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+          onChange={(e) => {
+            void pick(e.target.files?.[0]);
+            e.target.value = '';
+          }}
+          data-testid="product-image-file"
+        />
+        {pictureProblem && (
+          <p role="alert" className="text-sm text-destructive">
+            {pictureProblem}
+          </p>
+        )}
+      </div>
     </FormDialog>
   );
 }
