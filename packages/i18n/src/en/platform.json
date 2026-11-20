@@ -1072,6 +1072,8 @@
   "platform.branchesPage.noMatch": "No branches match.",
   "platform.settings.ordersRequestsNeedApproval.name": "Stock transfers need approval",
   "platform.settings.ordersRequestsNeedApproval.description": "On: a branch's stock request waits for an owner or admin. Off: it is approved as it is sent and goes straight to the warehouse.",
+  "platform.settings.ordersShowSalesOrders.name": "Show Sales Orders in the menu",
+  "platform.settings.ordersShowSalesOrders.description": "On: the Sales Orders page is in the menu. Off: it is hidden from the menu for this organization.",
   "platform.audit.fields.address": "Address",
   "platform.team.dialog.branchAccess": "Branch Access",
   "platform.team.dialog.branchAccessHint": "No tick: every branch.",
