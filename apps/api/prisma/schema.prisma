@@ -126,6 +126,7 @@ model Organization {
   posGuestCheckShares          PosGuestCheckShare[]
   posBillCancellations         PosBillCancellation[]
   posOrderDiscounts            PosOrderDiscount[]
+  productImages                ProductImage[]
   posOrderDiscountLines        PosOrderDiscountLine[]
   diningAreas                  DiningArea[]
   reservationTableRules        ReservationTableRule[]
@@ -906,10 +907,25 @@ model Product {
   category     ProductCategory @relation(fields: [tenantId, categoryId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   orderLines   PosOrderLine[]
   priceRules   PriceRule[]
+  image        ProductImage?
 
   @@unique([tenantId, id])
   @@index([tenantId, categoryId])
   @@map("products")
+}
+
+/// A product's picture (ADR 0049): resized by the browser to WebP/PNG/JPEG, at most 300 KB. Kept apart so lists stay light.
+model ProductImage {
+  tenantId     String       @map("tenant_id") @db.Uuid
+  productId    String       @map("product_id") @db.Uuid
+  contentType  String       @map("content_type")
+  data         Bytes
+  updatedAt    DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  product      Product      @relation(fields: [tenantId, productId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([tenantId, productId])
+  @@map("product_images")
 }
 
 // ---------------------------------------------------------------------------

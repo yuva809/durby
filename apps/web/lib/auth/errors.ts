@@ -168,6 +168,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'inventory.vendor_invoice_decided': 'inventory.errors.vendorInvoiceDecided',
   'catalog.category_parent_invalid': 'catalog.errors.categoryParentInvalid',
   'catalog.category_image_invalid': 'catalog.errors.categoryImageInvalid',
+  'catalog.product_image_invalid': 'catalog.errors.productImageInvalid',
   'pos.table_not_found': 'pos.errors.tableNotFound',
   'pos.location_not_found': 'pos.errors.locationNotFound',
   'pos.table_name_taken': 'pos.errors.tableNameTaken',

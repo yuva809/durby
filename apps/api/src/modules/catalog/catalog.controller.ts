@@ -141,6 +141,42 @@ export class CatalogController {
     return this.catalog.removeCategoryImage(id);
   }
 
+  /** The product's picture (ADR 0049), served like a category's tile image. */
+  @RequirePermission('catalog.products.read')
+  @Get('products/:id/image')
+  async productImage(
+    @Param('id', uuidOr(catalogErrors.productNotFound)) id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const image = await this.catalog.productImage(id);
+    if (!image) throw catalogErrors.productNotFound();
+    res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return new StreamableFile(image.data, { type: image.contentType, length: image.data.length });
+  }
+
+  /** The raw file as the body, `Content-Type` image/webp, image/png or image/jpeg (resized by the browser first). */
+  @RequirePermission('catalog.products.edit')
+  @Idempotent()
+  @Put('products/:id/image')
+  setProductImage(
+    @Param('id', uuidOr(catalogErrors.productNotFound)) id: string,
+    @Req() req: Request,
+  ): Promise<Product> {
+    const body: unknown = req.body;
+    if (!Buffer.isBuffer(body)) throw catalogErrors.productImageInvalid();
+    return this.catalog.setProductImage(id, req.headers['content-type'] ?? '', body);
+  }
+
+  @RequirePermission('catalog.products.edit')
+  @Idempotent()
+  @Delete('products/:id/image')
+  removeProductImage(
+    @Param('id', uuidOr(catalogErrors.productNotFound)) id: string,
+  ): Promise<Product> {
+    return this.catalog.removeProductImage(id);
+  }
+
   @RequirePermission('catalog.products.read')
   @Get('products')
   async listProducts(

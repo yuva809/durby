@@ -40,15 +40,17 @@ const PRODUCT_SELECT = {
   taxRate: true,
   sortOrder: true,
   archivedAt: true,
+  image: { select: { updatedAt: true } },
 } as const;
 
 /** Prisma returns `numeric` columns as Decimal objects; only their exact text is used here. */
 type DecimalValue = { toFixed(digits: number): string };
 
-type ProductRow = Omit<Product, 'price' | 'taxRate' | 'archivedAt'> & {
+type ProductRow = Omit<Product, 'price' | 'taxRate' | 'archivedAt' | 'imageVersion'> & {
   price: DecimalValue;
   taxRate: DecimalValue;
   archivedAt: Date | null;
+  image: { updatedAt: Date } | null;
 };
 
 /**
@@ -271,6 +273,71 @@ export class CatalogService {
   ): Promise<{ contentType: string; data: Buffer; updatedAt: Date } | null> {
     const row = await this.db.productCategoryImage.findFirst({
       where: { categoryId: id },
+      select: { contentType: true, data: true, updatedAt: true },
+    });
+    return row ? { ...row, data: Buffer.from(row.data) } : null;
+  }
+
+  /**
+   * A product's picture (ADR 0049), replacing the current one. Same rules as a category's tile image: the first bytes
+   * say WebP, PNG or JPEG and match `contentType`. Audited as a product update (its imageVersion changes).
+   */
+  async setProductImage(id: string, contentType: string, data: Buffer): Promise<Product> {
+    const { tenantId, userId } = this.tenantContext.require();
+    if (data.length === 0 || data.length > CATEGORY_IMAGE_MAX_BYTES) {
+      throw catalogErrors.productImageInvalid();
+    }
+    const type = imageTypeOf(data);
+    if (!type || type !== contentType) throw catalogErrors.productImageInvalid();
+    return this.db.$transaction(async (tx) => {
+      const current = await tx.product.findUnique({ where: { id }, select: PRODUCT_SELECT });
+      if (!current) throw catalogErrors.productNotFound();
+      const updatedAt = new Date();
+      // A copy on its own ArrayBuffer, as Prisma's Bytes wants.
+      const bytes = new Uint8Array(data);
+      await tx.productImage.upsert({
+        where: { tenantId_productId: { tenantId, productId: id } },
+        create: { tenantId, productId: id, contentType: type, data: bytes, updatedAt },
+        update: { contentType: type, data: bytes, updatedAt },
+      });
+      const row = await tx.product.findUniqueOrThrow({ where: { id }, select: PRODUCT_SELECT });
+      await this.audit.record(tx, {
+        action: 'catalog.product.updated',
+        actor: auditActor.user(userId),
+        entityId: id,
+        before: productSnapshot(current),
+        after: productSnapshot(row),
+      });
+      return productResponse(row);
+    });
+  }
+
+  /** Removes the picture; none is fine (set-state). */
+  async removeProductImage(id: string): Promise<Product> {
+    const { userId } = this.tenantContext.require();
+    return this.db.$transaction(async (tx) => {
+      const current = await tx.product.findUnique({ where: { id }, select: PRODUCT_SELECT });
+      if (!current) throw catalogErrors.productNotFound();
+      if (!current.image) return productResponse(current);
+      await tx.productImage.deleteMany({ where: { productId: id } });
+      const row = await tx.product.findUniqueOrThrow({ where: { id }, select: PRODUCT_SELECT });
+      await this.audit.record(tx, {
+        action: 'catalog.product.updated',
+        actor: auditActor.user(userId),
+        entityId: id,
+        before: productSnapshot(current),
+        after: productSnapshot(row),
+      });
+      return productResponse(row);
+    });
+  }
+
+  /** The picture's bytes, or null when there is none. */
+  async productImage(
+    id: string,
+  ): Promise<{ contentType: string; data: Buffer; updatedAt: Date } | null> {
+    const row = await this.db.productImage.findFirst({
+      where: { productId: id },
       select: { contentType: true, data: true, updatedAt: true },
     });
     return row ? { ...row, data: Buffer.from(row.data) } : null;
@@ -684,11 +751,13 @@ function productKey(categoryId: string, name: string): string {
 }
 
 function productResponse(row: ProductRow): Product {
+  const { image, ...rest } = row;
   return {
-    ...row,
+    ...rest,
     price: row.price.toFixed(2),
     taxRate: row.taxRate.toFixed(2),
     archivedAt: row.archivedAt?.toISOString() ?? null,
+    imageVersion: image ? String(image.updatedAt.getTime()) : null,
   };
 }
 

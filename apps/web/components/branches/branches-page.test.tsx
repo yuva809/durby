@@ -1,11 +1,16 @@
 // @vitest-environment jsdom
-import { systemRolePermissions, type SystemRole, type TeamMember } from '@durby/shared';
+import {
+  systemRolePermissions,
+  type SystemRole,
+  type TeamMember,
+  type Warehouse,
+} from '@durby/shared';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockState, resetMocks } from '../../test/mocks';
 import { sessionFixture } from '../../test/session-fixture';
-import { BranchesPage } from './branches-page';
+import { BranchesPage, supplierOf } from './branches-page';
 import { BranchesRoute } from './branches-route';
 
 vi.mock('../../app/providers', async () => (await import('../../test/mocks')).providersMock());
@@ -93,6 +98,7 @@ const warehouse = (n: number, locationId: string, extra: Record<string, unknown>
   name: `Store ${n}`,
   sortOrder: 0,
   suppliesStation: null,
+  suppliesLocationIds: [],
   isTransit: false,
   isMain: false,
   archivedAt: null,
@@ -107,7 +113,7 @@ function signedInAs(role: SystemRole) {
 }
 
 /** Answers the page's reads; records the writes and answers them with what they would return. */
-function api(approval = true) {
+function api(approval = true, warehouses?: unknown[]) {
   const writes: { method: string; path: string; body: unknown }[] = [];
   mockState.store.apiFetch.mockImplementation((input: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET';
@@ -138,11 +144,17 @@ function api(approval = true) {
       '/api/v1/locations?includeArchived=true': { data: [HAGELBERGER, KURFUERSTEN, OLD, DEPOT] },
       '/api/v1/staff': TEAM,
       '/api/v1/inventory/warehouses': {
-        data: [
-          warehouse(1, HAGELBERGER.id),
+        data: warehouses ?? [
+          // The main warehouse supplies every branch it does not share with a ticked warehouse.
+          warehouse(1, HAGELBERGER.id, { isMain: true }),
           warehouse(2, KURFUERSTEN.id),
-          warehouse(3, KURFUERSTEN.id),
-          warehouse(4, KURFUERSTEN.id, { archivedAt: '2026-11-02T10:00:00.000Z' }),
+          // Supplies Kurfürstenstraße (ADR 0067).
+          warehouse(3, KURFUERSTEN.id, { suppliesLocationIds: [KURFUERSTEN.id] }),
+          // Archived: supplies nobody, so it does not count.
+          warehouse(4, KURFUERSTEN.id, {
+            archivedAt: '2026-11-02T10:00:00.000Z',
+            suppliesLocationIds: [KURFUERSTEN.id],
+          }),
           warehouse(5, HAGELBERGER.id, { isTransit: true }),
         ],
       },
@@ -283,6 +295,38 @@ describe('/branches (ADR 0056)', () => {
     expect(screen.queryByTestId('branch-archive')).toBeNull();
     const toggle = await screen.findByTestId('branches-approval-toggle');
     expect(toggle).toHaveProperty('disabled', true);
+  });
+});
+
+describe('/branches shows the supplying warehouse (ADR 0067)', () => {
+  it('names the warehouse that ticks each branch, else the main warehouse, skipping archived ones', async () => {
+    signedInAs('owner');
+    api();
+    render(<BranchesPage />);
+    expect(
+      within(await card('Asia Might Kurfürstenstraße')).getByTestId('branch-supplier').textContent,
+    ).toBe('Supplied by Store 3');
+    expect(
+      within(await card('Asia Might Hagelberger')).getByTestId('branch-supplier').textContent,
+    ).toBe('Supplied by Store 1 (main warehouse)');
+  });
+
+  it('lists the branches still without a supplier, with a link to set one', async () => {
+    signedInAs('owner');
+    // No main warehouse and nothing ticked: both branches need a supplier.
+    api(true, [warehouse(2, KURFUERSTEN.id)]);
+    render(<BranchesPage />);
+    const missing = await screen.findByTestId('branches-suppliers-missing');
+    expect(missing.textContent).toBe('Branches without a supplying warehouse: 2.');
+    const link = within(await card('Asia Might Kurfürstenstraße')).getByTestId(
+      'branch-choose-supplier',
+    );
+    expect(link.getAttribute('href')).toBe('/inventory/warehouses');
+  });
+
+  it('finds no supplier when no warehouse ticks the branch and there is no main one', () => {
+    const none = [warehouse(1, HAGELBERGER.id)] as unknown as Warehouse[];
+    expect(supplierOf(none, KURFUERSTEN.id)).toBeNull();
   });
 });
 
