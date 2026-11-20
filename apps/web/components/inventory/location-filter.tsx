@@ -43,17 +43,11 @@ export function LocationFilter({
           ))}
       </optgroup>
       <optgroup label={t('inventory.page.groupBranches')}>
-        {data.locations
-          .filter((l) =>
-            data.warehouses.some(
-              (w) => w.locationId === l.id && w.archivedAt === null && !w.isTransit,
-            ),
-          )
-          .map((l) => (
-            <option key={l.id} value={`l:${l.id}`}>
-              {l.name}
-            </option>
-          ))}
+        {data.locations.map((l) => (
+          <option key={l.id} value={`l:${l.id}`}>
+            {l.name}
+          </option>
+        ))}
       </optgroup>
       <option value="">{t('inventory.page.allLocations')}</option>
     </Select>

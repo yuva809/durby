@@ -31,8 +31,9 @@ import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Loaded } from '../users/common';
-import { type InventoryData, warehouseLabel } from './inventory-page';
+import { type InventoryData } from './inventory-page';
 import { useSeesPrices } from './use-sees-prices';
+import { LocationFilter, stockQueryOf } from './location-filter';
 import { ExpiryDate } from './expiry-date';
 import { BranchShop } from '../requests/branch-shop';
 
@@ -64,12 +65,12 @@ export function CategoryOverview({
   const { store } = useAuth();
   const categories = data.categories ?? [];
   const active = data.warehouses.filter((w) => w.archivedAt === null && !w.isTransit);
-  const [warehouseId, setWarehouseId] = useState('');
+  const [filter, setFilter] = useState('');
   const [stockState, setStockState] = useState<StockState>('all');
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<CategorySelection | null>(null);
-  const [stock, reload] = useResource(`overview:${warehouseId}`, () =>
-    loadStock(store, warehouseId ? { warehouseId } : {}),
+  const [stock, reload] = useResource(`overview:${filter}`, () =>
+    loadStock(store, stockQueryOf(filter)),
   );
 
   // What is listed, for the page and for Export: the open category's items, else what the search finds, else all.
@@ -174,19 +175,13 @@ export function CategoryOverview({
               <option value="low">{t('inventory.overview.lowStock')}</option>
               <option value="out">{t('inventory.overview.outOfStock')}</option>
             </Select>
-            <Select
-              aria-label={t('inventory.fields.warehouse')}
-              value={warehouseId}
-              onChange={(e) => setWarehouseId(e.target.value)}
-              data-testid="overview-warehouse"
-            >
-              <option value="">{t('inventory.page.allWarehouses')}</option>
-              {active.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {warehouseLabel(data, w)}
-                </option>
-              ))}
-            </Select>
+            <LocationFilter
+              id="overview-location"
+              value={filter}
+              data={data}
+              onChange={setFilter}
+              testId="overview-warehouse"
+            />
           </Card>
 
           <Loaded resource={stock} reload={reload}>
