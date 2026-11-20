@@ -8,6 +8,7 @@ import {
   type StockUnit,
   type Warehouse,
 } from '@durby/shared';
+import { useSearchParams } from 'next/navigation';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -22,6 +23,7 @@ import { Card } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Select } from '../ui/select';
+import { LocationFilter, stockQueryOf } from './location-filter';
 import type { InventoryData } from './inventory-page';
 
 /** Stock items: name, article number, unit and reorder level; managed with inventory.items.edit. */
@@ -29,22 +31,47 @@ export function ItemsTab({ data }: { data: InventoryData }) {
   const t = useT();
   const { store } = useAuth();
   const [showArchived, setShowArchived] = useState(false);
+  // The search: starts with ?q= from the top bar, then what is typed here.
+  const [query, setQuery] = useState(useSearchParams().get('q') ?? '');
+  const needle = query.trim().toLowerCase();
   // A warehouse filter shows only the items it holds, with its own quantity (stock is kept per warehouse).
-  const [warehouseId, setWarehouseId] = useState('');
-  const [levels] = useResource(warehouseId ? `items-stock:${warehouseId}` : null, () =>
-    loadStock(store, { warehouseId }),
+  // The filter: "w:<warehouse>" for one warehouse, "l:<branch>" for a branch's warehouse, "" for all locations.
+  const [filter, setFilter] = useState('');
+  const [levels] = useResource(filter ? `items-stock:${filter}` : null, () =>
+    loadStock(store, stockQueryOf(filter)),
   );
   const here =
-    warehouseId && levels.status === 'ready'
+    filter && levels.status === 'ready'
       ? new Map(levels.data.map((l) => [l.itemId, l.quantity]))
       : null;
+  // Where each item is held, in every warehouse (shown on each card).
+  const [allLevels] = useResource('items-stock:all', () => loadStock(store, {}));
+  const warehouseName = (id: string) => data.warehouses.find((w) => w.id === id)?.name ?? '';
+  const heldIn = (itemId: string) =>
+    allLevels.status === 'ready'
+      ? allLevels.data.filter((l) => l.itemId === itemId && l.quantity !== '0')
+      : [];
   const canManage = data.can('inventory.items.edit');
   const shown = data.items.filter(
-    (i) => (showArchived || i.archivedAt === null) && (here === null || here.has(i.id)),
+    (i) =>
+      (showArchived || i.archivedAt === null) &&
+      (here === null || here.has(i.id)) &&
+      (needle === '' ||
+        i.name.toLowerCase().includes(needle) ||
+        (i.sku ?? '').toLowerCase().includes(needle)),
   );
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('inventory.page.searchItems')}
+          aria-label={t('inventory.page.searchItems')}
+          className="min-w-60 flex-1"
+          data-testid="items-search"
+        />
         <label className="flex min-h-11 items-center gap-2 text-sm">
           <Checkbox
             checked={showArchived}
@@ -52,26 +79,18 @@ export function ItemsTab({ data }: { data: InventoryData }) {
           />
           {t('inventory.page.showArchived')}
         </label>
-        <Select
-          value={warehouseId}
-          onChange={(e) => setWarehouseId(e.target.value)}
-          className="w-auto"
-          aria-label={t('inventory.fields.warehouse')}
-          data-testid="items-warehouse"
-        >
-          <option value="">{t('inventory.page.allWarehouses')}</option>
-          {data.warehouses
-            .filter((w) => w.archivedAt === null)
-            .map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-        </Select>
+        <LocationFilter
+          id="items-location"
+          value={filter}
+          data={data}
+          onChange={setFilter}
+          testId="items-warehouse"
+        />
         {canManage && (
           <ItemDialog
             categories={data.categories}
             warehouses={data.warehouses}
+            locations={data.locations}
             onDone={data.reload}
           />
         )}
@@ -79,23 +98,18 @@ export function ItemsTab({ data }: { data: InventoryData }) {
       {shown.length === 0 ? (
         <p className="text-muted-foreground">{t('inventory.page.noItems')}</p>
       ) : (
-        <Card className="divide-y p-0">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="item-grid">
           {shown.map((item) => (
-            <div
+            <Card
               key={item.id}
-              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+              className="flex flex-col justify-between gap-4 p-4"
               data-testid="item-row"
               data-name={item.name}
             >
-              <span className="flex flex-col">
-                <span className="flex items-center gap-2 font-medium">
+              <div className="flex flex-col gap-2">
+                <span className="flex flex-wrap items-center gap-2 font-medium">
                   {item.name}
                   {item.archivedAt && <Badge>{t('inventory.page.archived')}</Badge>}
-                  {here && (
-                    <span className="text-sm font-normal tabular-nums" data-testid="item-here">
-                      {shortQuantity(here.get(item.id) ?? '0')} {t(`inventory.units.${item.unit}`)}
-                    </span>
-                  )}
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {[
@@ -107,16 +121,34 @@ export function ItemsTab({ data }: { data: InventoryData }) {
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
-              </span>
+                {here ? (
+                  <span className="text-sm tabular-nums" data-testid="item-here">
+                    {shortQuantity(here.get(item.id) ?? '0')} {t(`inventory.units.${item.unit}`)}
+                  </span>
+                ) : (
+                  <ul className="flex flex-col gap-1 text-sm" data-testid="item-warehouses">
+                    {heldIn(item.id).length === 0 ? (
+                      <li className="text-muted-foreground">{t('inventory.page.notInStock')}</li>
+                    ) : (
+                      heldIn(item.id).map((l) => (
+                        <li key={l.warehouseId} data-testid="item-warehouse-row">
+                          {warehouseName(l.warehouseId)}: {shortQuantity(l.quantity)}{' '}
+                          {t(`inventory.units.${item.unit}`)}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
               {canManage && (
                 <span className="flex gap-2">
                   <ItemDialog item={item} categories={data.categories} onDone={data.reload} />
                   <ArchiveButton item={item} onDone={data.reload} />
                 </span>
               )}
-            </div>
+            </Card>
           ))}
-        </Card>
+        </div>
       )}
     </div>
   );
@@ -157,6 +189,7 @@ export function ItemDialog({
   trigger,
   defaultCategoryId,
   warehouses,
+  locations,
 }: {
   item?: StockItem;
   categories: readonly ProductCategory[] | null;
@@ -166,6 +199,8 @@ export function ItemDialog({
   defaultCategoryId?: string | null;
   /** New items only: the warehouse that gets the opening stock (stock is kept per warehouse). */
   warehouses?: readonly Warehouse[];
+  /** New items only: the branches to choose the opening stock's warehouse from. */
+  locations?: InventoryData['locations'];
 }) {
   const t = useT();
   const id = useId();
@@ -177,12 +212,18 @@ export function ItemDialog({
   const [min, setMin] = useState('');
   const [salePrice, setSalePrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [branchId, setBranchId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
   const [opening, setOpening] = useState('');
   const [unitCost, setUnitCost] = useState('');
   const [checked, setChecked] = useState(false);
   const receiptAction = useActionKey();
   const activeWarehouses = (warehouses ?? []).filter((w) => w.archivedAt === null);
+  // The warehouses that serve a branch: the main one, its own store, and any that supplies it (ADR 0067).
+  const warehousesFor = (branch: string) =>
+    activeWarehouses.filter(
+      (w) => w.isMain || w.locationId === branch || w.suppliesLocationIds.includes(branch),
+    );
   const openingInvalid = checked && opening.trim() !== '' && !isQuantity(opening.trim());
   // Active categories to choose from, plus the item's own even if archived meanwhile (it stays until changed).
   const choices = (categories ?? []).filter(
@@ -215,7 +256,10 @@ export function ItemDialog({
         setSalePrice(item?.salePrice ?? '');
         setCategoryId(item ? (item.categoryId ?? '') : (defaultCategoryId ?? ''));
         // The main warehouse by default, else the first active one.
-        setWarehouseId((activeWarehouses.find((w) => w.isMain) ?? activeWarehouses[0])?.id ?? '');
+        const startBranch =
+          activeWarehouses.find((w) => w.isMain)?.locationId ?? locations?.[0]?.id ?? '';
+        setBranchId(startBranch);
+        setWarehouseId(warehousesFor(startBranch)[0]?.id ?? '');
         setOpening('');
         setUnitCost('');
         setChecked(false);
@@ -345,6 +389,26 @@ export function ItemDialog({
       )}
       {!item && activeWarehouses.length > 0 && (
         <>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {t('inventory.page.pricingStock')}
+          </p>
+          <Field id={`${id}-branch`} label={t('inventory.fields.location')} problem={null}>
+            <Select
+              id={`${id}-branch`}
+              value={branchId}
+              onChange={(e) => {
+                setBranchId(e.target.value);
+                setWarehouseId(warehousesFor(e.target.value)[0]?.id ?? '');
+              }}
+              data-testid="item-branch"
+            >
+              {(locations ?? []).map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <Field id={`${id}-warehouse`} label={t('inventory.fields.warehouse')} problem={null}>
             <Select
               id={`${id}-warehouse`}
@@ -352,7 +416,7 @@ export function ItemDialog({
               onChange={(e) => setWarehouseId(e.target.value)}
               data-testid="item-warehouse"
             >
-              {activeWarehouses.map((w) => (
+              {warehousesFor(branchId).map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.isMain ? `${w.name} (${t('inventory.page.mainWarehouse')})` : w.name}
                 </option>

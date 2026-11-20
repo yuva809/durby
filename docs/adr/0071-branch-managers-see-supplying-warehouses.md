@@ -17,8 +17,9 @@ that warehouse. The branch could request from a warehouse it could not see.
    that supply them: the main warehouse, and any warehouse ticked for one of their branches.
 2. The per-member warehouse limit of ADR 0057 still applies on top: a member limited to some warehouses sees only those
    (and the transit one).
-3. Seeing a supplying warehouse is a read only. Stock, receipts and changes are still checked against the warehouse's
-   own branch, so a branch manager cannot act on the supplier's stock through this list.
+3. Seeing a supplying warehouse is read only. Its stock can be read too (stock lists and the Items filter), so a branch
+   sees the stock it requests from. Receipts, adjustments and transfers are still checked against the warehouse's own
+   branch, so a branch manager cannot act on the supplier's stock.
 
 ## Consequences
 

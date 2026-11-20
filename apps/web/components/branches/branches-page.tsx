@@ -447,7 +447,7 @@ function BranchCard({
       )}
       {connected !== undefined && (
         <Link
-          href="/inventory/warehouses"
+          href={`/inventory/warehouses?branch=${location.id}`}
           className="mt-auto inline-flex items-center gap-1 self-start font-medium text-primary hover:underline"
           data-testid="branch-warehouses"
         >

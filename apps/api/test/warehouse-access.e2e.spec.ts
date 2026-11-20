@@ -130,6 +130,37 @@ describe('warehouse access (ADR 0057)', () => {
     expect(names).toEqual(['Cold room', 'Depot', 'Dry store']);
   });
 
+  it('lets a branch manager read the stock of the warehouse that supplies the branch, not another store', async () => {
+    const s = await setup();
+    const [main, other] = s.org.locations;
+    const depot = warehouseSchema.parse(
+      (
+        await send('post', s.owner.token, '/inventory/warehouses', {
+          locationId: other,
+          name: 'Depot',
+        }).expect(201)
+      ).body,
+    );
+    await send('patch', s.owner.token, `/inventory/warehouses/${depot.id}`, {
+      suppliesLocationIds: [main],
+    }).expect(200);
+    await send('post', s.owner.token, '/inventory/receipts', {
+      warehouseId: depot.id,
+      lines: [{ itemId: s.item, quantity: '30', unitCost: '1.00' }],
+    }).expect(201);
+    await send('post', s.owner.token, '/inventory/receipts', {
+      warehouseId: s.branch,
+      lines: [{ itemId: s.item, quantity: '7', unitCost: '1.00' }],
+    }).expect(201);
+
+    const seen = (warehouseId: string) =>
+      get(s.manager.token, `/inventory/stock?warehouseId=${warehouseId}`).expect(200);
+    const depotRows = (await seen(depot.id)).body as { data: { quantity: string }[] };
+    expect(depotRows.data.map((r) => r.quantity)).toEqual(['30.000']);
+    const storeRows = (await seen(s.branch)).body as { data: unknown[] };
+    expect(storeRows.data).toEqual([]);
+  });
+
   it('only allows warehouses at the member’s locations, and only what the actor may give', async () => {
     const s = await setup();
     const elsewhere = await send('patch', s.owner.token, `/staff/${s.managerMembership}`, {

@@ -201,7 +201,7 @@ describe('/branches (ADR 0056)', () => {
     expect(within(kurf).getByTestId('branch-address').textContent).toBe('No address yet');
     // Each card links to its warehouses; a warehouse's own place (ADR 0068) is no branch and has no card.
     expect(within(kurf).getByTestId('branch-warehouses').getAttribute('href')).toBe(
-      '/inventory/warehouses',
+      `/inventory/warehouses?branch=${KURFUERSTEN.id}`,
     );
     expect(cards.map((c) => c.dataset.name)).not.toContain(DEPOT.name);
   });
