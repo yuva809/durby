@@ -88,6 +88,8 @@ function api(checks = 1) {
               area: null,
               shape: 'square',
               color: 'neutral',
+              seatedAt: null,
+              lastOrderAt: null,
               order: {
                 id: id(61),
                 number: 'ORD-2026-000007',

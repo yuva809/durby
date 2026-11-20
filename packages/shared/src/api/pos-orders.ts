@@ -171,6 +171,10 @@ export const floorTableSchema = z.object({
   color: z.enum(TABLE_COLORS),
   /** The table's open order, or null when it is free. */
   order: orderSummarySchema.nullable(),
+  /** When the open order was opened: the guests sat down (ADR 0069). Null when the table is free. */
+  seatedAt: z.iso.datetime().nullable(),
+  /** When the open order's newest ticket was sent (ADR 0069). Null when the table is free or has no ticket. */
+  lastOrderAt: z.iso.datetime().nullable(),
 });
 
 export const floorResponseSchema = z.object({ data: z.array(floorTableSchema) });
@@ -179,7 +183,7 @@ export const floorResponseSchema = z.object({ data: z.array(floorTableSchema) })
 export const stationProcessingSchema = z.object({ kitchen: z.boolean(), bar: z.boolean() });
 
 export const tableOrderResponseSchema = z.object({
-  table: floorTableSchema.omit({ order: true }),
+  table: floorTableSchema.omit({ order: true, seatedAt: true, lastOrderAt: true }),
   order: orderSchema.nullable(),
   processing: stationProcessingSchema,
 });
@@ -193,6 +197,33 @@ export const listOrdersQuerySchema = z.object({
 
 export const orderListResponseSchema = z.object({ data: z.array(orderSummarySchema) });
 
+/** Moves an open order to a free table at its location (ADR 0069). */
+export const moveOrderRequestSchema = z.object({ tableId: z.uuid() });
+
+export type MoveOrderRequest = z.infer<typeof moveOrderRequestSchema>;
+
+/** Merges the order in the path into the open order `orderId` at the same location (ADR 0069). */
+export const mergeOrderRequestSchema = z.object({ orderId: z.uuid() });
+
+export type MergeOrderRequest = z.infer<typeof mergeOrderRequestSchema>;
+
+/**
+ * Moves sent items off an order to a new order at a free table (ADR 0069). The source gets a void for them, the new
+ * order a sale at the same price.
+ */
+export const transferOrderRequestSchema = z.strictObject({
+  tableId: z.uuid(),
+  lines: z.array(z.strictObject({ lineId: z.uuid(), quantity })).min(1).max(TICKET_MAX_LINES),
+});
+
+/** The order the items left, and the new order they went to. */
+export const transferOrderResponseSchema = z.object({
+  source: orderSchema,
+  target: orderSchema,
+});
+
+export type TransferOrderRequest = z.infer<typeof transferOrderRequestSchema>;
+export type TransferOrderResponse = z.infer<typeof transferOrderResponseSchema>;
 export type SendTicketRequest = z.infer<typeof sendTicketRequestSchema>;
 export type VoidLinesRequest = z.infer<typeof voidLinesRequestSchema>;
 export type UpdateOrderRequest = z.infer<typeof updateOrderRequestSchema>;

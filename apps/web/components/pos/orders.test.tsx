@@ -61,6 +61,8 @@ const TABLE = {
   area: null,
   shape: 'square',
   color: 'neutral',
+  seatedAt: null,
+  lastOrderAt: null,
 };
 const FOOD = { id: id(4), name: 'Food', sortOrder: 0, station: 'kitchen', archivedAt: null };
 const product = (n: number, name: string, price: string, taxRate: string) => ({
@@ -326,6 +328,37 @@ describe('FloorPage ready', () => {
     const tiles = await screen.findAllByTestId('floor-table');
     expect(within(tiles[0]!).getByTestId('floor-ready').textContent).toBe('Ready to serve: 2');
     expect(within(tiles[1]!).queryByTestId('floor-ready')).toBeNull();
+  });
+
+  it('shows how long a table has been seated and since its last order (ADR 0069)', async () => {
+    signedInAs('waiter');
+    const now = Date.now();
+    const seated = new Date(now - 42 * 60_000).toISOString();
+    const last = new Date(now - 5 * 60_000).toISOString();
+    api({
+      ...SETTINGS,
+      'GET /api/v1/locations': () => Response.json({ data: [LOCATION] }),
+      'GET /api/v1/pos/floor': () =>
+        Response.json({
+          data: [
+            {
+              ...TABLE,
+              seatedAt: seated,
+              lastOrderAt: last,
+              order: { ...ORDER, openedAt: seated, tickets: undefined, totals: undefined },
+            },
+            { ...TABLE, id: id(5), name: 'T2', seatedAt: null, lastOrderAt: null, order: null },
+          ],
+        }),
+    });
+    render(<FloorPage />);
+    const [occupied, free] = await screen.findAllByTestId('floor-table');
+    expect(within(occupied!).getByTestId('floor-seated').textContent).toBe('Seated 42 min');
+    expect(within(occupied!).getByTestId('floor-last-order').textContent).toBe(
+      'Last order 5 min ago',
+    );
+    expect(within(free!).queryByTestId('floor-seated')).toBeNull();
+    expect(within(free!).queryByTestId('floor-last-order')).toBeNull();
   });
 });
 
@@ -735,6 +768,104 @@ describe('OrderPage (till)', () => {
     // No payment details: no amounts, VAT or totals.
     expect(slip.textContent).not.toMatch(/€|VAT|TOTAL|receipt/i);
     expect(screen.getByTestId('close-order')).toBeTruthy();
+  });
+
+  it('moves the open order to a free table at its location (ADR 0069)', async () => {
+    signedInAs('waiter');
+    const writes = api({
+      ...withOrder(ORDER),
+      'GET /api/v1/pos/floor': () =>
+        Response.json({
+          data: [
+            { ...TABLE, order: ORDER },
+            { ...TABLE, id: id(5), name: 'T2', seatedAt: null, lastOrderAt: null, order: null },
+          ],
+        }),
+      [`POST /api/v1/pos/orders/${ORDER.id}/move`]: () =>
+        Response.json({ ...ORDER, tableId: id(5), tableName: 'T2' }),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    await userEvent.click(await screen.findByTestId('move-order'));
+    await userEvent.selectOptions(await screen.findByTestId('move-table'), id(5));
+    await userEvent.click(screen.getByTestId('form-save'));
+    await waitFor(() =>
+      expect(writes).toContainEqual({
+        method: 'POST',
+        path: `/api/v1/pos/orders/${ORDER.id}/move`,
+        body: { tableId: id(5) },
+      }),
+    );
+  });
+
+  it('merges the open order into another open order at its location and opens that table (ADR 0069)', async () => {
+    signedInAs('waiter');
+    const other = { ...ORDER, id: id(25), tableId: id(5), number: 'ORD-2026-000002' };
+    const writes = api({
+      ...withOrder(ORDER),
+      'GET /api/v1/pos/floor': () =>
+        Response.json({
+          data: [
+            { ...TABLE, order: ORDER },
+            {
+              ...TABLE,
+              id: id(5),
+              name: 'T2',
+              seatedAt: null,
+              lastOrderAt: null,
+              order: { ...other, tickets: undefined, totals: undefined },
+            },
+          ],
+        }),
+      [`POST /api/v1/pos/orders/${ORDER.id}/merge`]: () => Response.json({ ...other }),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    await userEvent.click(await screen.findByTestId('merge-order'));
+    await userEvent.selectOptions(await screen.findByTestId('merge-table'), id(5));
+    await userEvent.click(screen.getByTestId('form-save'));
+    await waitFor(() =>
+      expect(writes).toContainEqual({
+        method: 'POST',
+        path: `/api/v1/pos/orders/${ORDER.id}/merge`,
+        body: { orderId: other.id },
+      }),
+    );
+    await waitFor(() => expect(mockState.router.push).toHaveBeenCalledWith(`/service/${id(5)}`));
+  });
+
+  it('moves chosen items to a new order at a free table and opens it (ADR 0069)', async () => {
+    signedInAs('waiter');
+    const next = {
+      ...ORDER,
+      id: id(26),
+      number: 'ORD-2026-000002',
+      tableId: id(5),
+      tableName: 'T2',
+    };
+    const writes = api({
+      ...withOrder(ORDER),
+      'GET /api/v1/pos/floor': () =>
+        Response.json({
+          data: [
+            { ...TABLE, order: ORDER },
+            { ...TABLE, id: id(5), name: 'T2', seatedAt: null, lastOrderAt: null, order: null },
+          ],
+        }),
+      [`POST /api/v1/pos/orders/${ORDER.id}/transfer`]: () =>
+        Response.json({ source: ORDER, target: next }),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    await userEvent.click(await screen.findByTestId('transfer-order'));
+    await userEvent.type(await screen.findByTestId('transfer-quantity'), '1');
+    await userEvent.selectOptions(await screen.findByTestId('transfer-table'), id(5));
+    await userEvent.click(screen.getByTestId('form-save'));
+    await waitFor(() =>
+      expect(writes).toContainEqual({
+        method: 'POST',
+        path: `/api/v1/pos/orders/${ORDER.id}/transfer`,
+        body: { tableId: id(5), lines: [{ lineId: id(31), quantity: 1 }] },
+      }),
+    );
+    await waitFor(() => expect(mockState.router.push).toHaveBeenCalledWith(`/service/${id(5)}`));
   });
 
   it('lets a waiter print the bill with prices, like the cashier', async () => {

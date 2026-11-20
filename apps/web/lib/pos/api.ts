@@ -18,6 +18,9 @@ import {
   floorResponseSchema,
   type Order,
   orderSchema,
+  transferOrderResponseSchema,
+  type TransferOrderRequest,
+  type TransferOrderResponse,
   type SendTicketRequest,
   type UpdateOrderRequest,
   type SendTicketResponse,
@@ -176,6 +179,47 @@ export const closeOrder = (
   orderId: string,
 ): Promise<Result<Order | null>> =>
   write(store, action, `/api/v1/pos/orders/${orderId}/close`, 'POST', undefined, orderSchema);
+
+/** Merges the order `orderId` into the open order `targetOrderId` at the same location (ADR 0069). */
+export const mergeOrder = (
+  store: Api,
+  action: ActionKey,
+  orderId: string,
+  targetOrderId: string,
+): Promise<Result<Order | null>> =>
+  write(
+    store,
+    action,
+    `/api/v1/pos/orders/${orderId}/merge`,
+    'POST',
+    { orderId: targetOrderId },
+    orderSchema,
+  );
+
+/** Moves sent items to a new order at a free table at the same location (ADR 0069). */
+export const transferOrder = (
+  store: Api,
+  action: ActionKey,
+  orderId: string,
+  body: TransferOrderRequest,
+): Promise<Result<TransferOrderResponse | null>> =>
+  write(
+    store,
+    action,
+    `/api/v1/pos/orders/${orderId}/transfer`,
+    'POST',
+    body,
+    transferOrderResponseSchema,
+  );
+
+/** Moves an open order to a free table at its location (ADR 0069). */
+export const moveOrder = (
+  store: Api,
+  action: ActionKey,
+  orderId: string,
+  tableId: string,
+): Promise<Result<Order | null>> =>
+  write(store, action, `/api/v1/pos/orders/${orderId}/move`, 'POST', { tableId }, orderSchema);
 
 /** Calls of the tables page's areas (docs/modules/pos.md → Areas). */
 
