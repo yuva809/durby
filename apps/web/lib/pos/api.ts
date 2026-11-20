@@ -177,6 +177,22 @@ export const closeOrder = (
 ): Promise<Result<Order | null>> =>
   write(store, action, `/api/v1/pos/orders/${orderId}/close`, 'POST', undefined, orderSchema);
 
+/** Merges the order `orderId` into the open order `targetOrderId` at the same location (ADR 0069). */
+export const mergeOrder = (
+  store: Api,
+  action: ActionKey,
+  orderId: string,
+  targetOrderId: string,
+): Promise<Result<Order | null>> =>
+  write(
+    store,
+    action,
+    `/api/v1/pos/orders/${orderId}/merge`,
+    'POST',
+    { orderId: targetOrderId },
+    orderSchema,
+  );
+
 /** Moves an open order to a free table at its location (ADR 0069). */
 export const moveOrder = (
   store: Api,

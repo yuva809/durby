@@ -13,6 +13,7 @@ import {
   type SendTicketResponse,
   type StationProcessing,
   type TableOrderResponse,
+  type MergeOrderRequest,
   type MoveOrderRequest,
   type UpdateOrderRequest,
   type VoidLinesRequest,
@@ -444,6 +445,69 @@ export class OrdersService {
       if (isUniqueViolation(error)) throw posErrors.tableOccupied();
       throw error;
     }
+  }
+
+  /**
+   * Merges the open order `sourceId` into the open order `body.orderId` at the same location (ADR 0069). Each of the
+   * source's tickets gets a placement in the target, so its lines follow it; the source closes (`pos.order.merged`)
+   * and its table is freed through `pos.order.closed`. The target keeps its number. Refused when the source has billed
+   * items or an active discount, which would stay on the source.
+   */
+  async merge(sourceId: string, body: MergeOrderRequest): Promise<Order> {
+    const { tenantId, userId } = this.tenantContext.require();
+    if (body.orderId === sourceId) throw posErrors.mergeSameOrder();
+    const source = await this.readableOrder(sourceId);
+    await this.access.assert('pos.orders.take', { locationId: source.locationId });
+    const target = await this.readableOrder(body.orderId);
+    if (target.locationId !== source.locationId) throw posErrors.orderNotSameLocation();
+    return this.db.$transaction(async (tx) => {
+      // Locked in id order, so two merges in opposite directions cannot wait on each other.
+      for (const id of [sourceId, body.orderId].sort()) {
+        if ((await this.lockOrder(tx, id)) !== 'open') throw posErrors.orderClosed();
+      }
+      const billed = await tx.posBillItem.findFirst({
+        where: { orderId: sourceId, bill: { cancellation: null } },
+        select: { orderLineId: true },
+      });
+      if (billed) throw posErrors.lineBilled(billed.orderLineId);
+      if ((await activeDiscounts(tx, sourceId)).rows.length > 0) throw posErrors.discountActive();
+
+      const before = await tx.posOrder.findUniqueOrThrow({
+        where: { id: sourceId },
+        select: ORDER_SELECT,
+      });
+      const tickets = [...(await currentOrderByTicket(tx, [sourceId])).keys()];
+      if (tickets.length > 0) {
+        await tx.posTicketPlacement.createMany({
+          data: tickets.map((ticketId) => ({
+            tenantId,
+            ticketId,
+            orderId: body.orderId,
+            createdByUserId: userId,
+          })),
+        });
+      }
+      const after = await tx.posOrder.update({
+        where: { id: sourceId },
+        data: { status: 'closed', closedAt: new Date(), closedByUserId: userId },
+        select: ORDER_SELECT,
+      });
+      await this.audit.record(tx, {
+        action: 'pos.order.merged',
+        actor: auditActor.user(userId),
+        entityId: sourceId,
+        before: orderSnapshot(before),
+        after: orderSnapshot(after),
+      });
+      // The source's table is free now: consumers react as to a close (ADR 0019 §7).
+      await this.outbox.add(tx, {
+        type: 'pos.order.closed',
+        payload: { orderId: sourceId, locationId: after.locationId, tableId: after.tableId },
+      });
+      const response = await this.load(tx, body.orderId);
+      await this.idempotency.completeInTransaction(tx, response);
+      return response;
+    });
   }
 
   /** Closes the order and frees its table; closing a closed order changes nothing. */

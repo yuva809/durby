@@ -24,6 +24,12 @@ export const posErrors = {
     ),
   tableArchived: () =>
     new ApiError(HttpStatus.CONFLICT, 'pos.table_archived', 'That table is archived.'),
+  mergeSameOrder: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.merge_same_order',
+      'An order cannot be merged into itself.',
+    ),
   orderNotSameLocation: () =>
     new ApiError(
       HttpStatus.CONFLICT,

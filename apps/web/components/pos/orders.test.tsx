@@ -797,6 +797,41 @@ describe('OrderPage (till)', () => {
     );
   });
 
+  it('merges the open order into another open order at its location and opens that table (ADR 0069)', async () => {
+    signedInAs('waiter');
+    const other = { ...ORDER, id: id(25), tableId: id(5), number: 'ORD-2026-000002' };
+    const writes = api({
+      ...withOrder(ORDER),
+      'GET /api/v1/pos/floor': () =>
+        Response.json({
+          data: [
+            { ...TABLE, order: ORDER },
+            {
+              ...TABLE,
+              id: id(5),
+              name: 'T2',
+              seatedAt: null,
+              lastOrderAt: null,
+              order: { ...other, tickets: undefined, totals: undefined },
+            },
+          ],
+        }),
+      [`POST /api/v1/pos/orders/${ORDER.id}/merge`]: () => Response.json({ ...other }),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    await userEvent.click(await screen.findByTestId('merge-order'));
+    await userEvent.selectOptions(await screen.findByTestId('merge-table'), id(5));
+    await userEvent.click(screen.getByTestId('form-save'));
+    await waitFor(() =>
+      expect(writes).toContainEqual({
+        method: 'POST',
+        path: `/api/v1/pos/orders/${ORDER.id}/merge`,
+        body: { orderId: other.id },
+      }),
+    );
+    await waitFor(() => expect(mockState.router.push).toHaveBeenCalledWith(`/service/${id(5)}`));
+  });
+
   it('lets a waiter print the bill with prices, like the cashier', async () => {
     signedInAs('waiter');
     api(withOrder(ORDER));

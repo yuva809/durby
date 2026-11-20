@@ -425,6 +425,15 @@ not reprinted. Refused with `pos.table_occupied`, `pos.table_archived`, `pos.ord
 table). The till's order page has a "Move to table" dialog. Other devices see the change at their next refresh;
 the live-update hint for it is not built yet.
 
+**Step 5 (merge) is built.** `POST /pos/orders/:id/merge {orderId}` (`pos.orders.take`, completion in the
+transaction) merges the open order `:id` (the source) into the open order `orderId` (the target) at the same
+location. Each of the source's tickets gets a placement in the target, so its lines follow it; no kitchen ticket is
+written. The source closes (`pos.order.merged`, and `pos.order.closed` through the outbox to free its table). The
+target keeps its number. Refused with `pos.merge_same_order`, `pos.order_not_same_location`, `pos.order_closed`,
+`pos.line_billed` (the source has billed items) and `pos.discount_active` (the source has a discount, which would stay
+on it). The till's order page has a "Merge into another order" dialog that opens the target table afterwards.
+Open point: ticket numbers are per order, so a merged ticket keeps its old number in the target.
+
 - **Placements**: `pos_ticket_placements (ticket_id, order_id, created_by_user_id, created_at)`, append-only, RLS.
   Every ticket has one row from the moment it is written. An order's tickets and lines are the ones whose latest
   placement points at it.

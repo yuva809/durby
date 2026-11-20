@@ -242,6 +242,7 @@ export const AUDIT_ACTIONS = {
   'pos.order.opened': { entityType: 'pos_order', label: 'pos.audit.actions.orderOpened' },
   'pos.order.closed': { entityType: 'pos_order', label: 'pos.audit.actions.orderClosed' },
   'pos.order.moved': { entityType: 'pos_order', label: 'pos.audit.actions.orderMoved' },
+  'pos.order.merged': { entityType: 'pos_order', label: 'pos.audit.actions.orderMerged' },
   'pos.order.updated': { entityType: 'pos_order', label: 'pos.audit.actions.orderUpdated' },
   'pos.bill.created': { entityType: 'pos_bill', label: 'pos.audit.actions.billCreated' },
   'pos.bill.cancelled': { entityType: 'pos_bill', label: 'pos.audit.actions.billCancelled' },

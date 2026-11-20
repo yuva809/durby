@@ -201,6 +201,11 @@ export const orderListResponseSchema = z.object({ data: z.array(orderSummarySche
 export const moveOrderRequestSchema = z.object({ tableId: z.uuid() });
 
 export type MoveOrderRequest = z.infer<typeof moveOrderRequestSchema>;
+
+/** Merges the order in the path into the open order `orderId` at the same location (ADR 0069). */
+export const mergeOrderRequestSchema = z.object({ orderId: z.uuid() });
+
+export type MergeOrderRequest = z.infer<typeof mergeOrderRequestSchema>;
 export type SendTicketRequest = z.infer<typeof sendTicketRequestSchema>;
 export type VoidLinesRequest = z.infer<typeof voidLinesRequestSchema>;
 export type UpdateOrderRequest = z.infer<typeof updateOrderRequestSchema>;

@@ -105,6 +105,7 @@ export const POS_ERROR_CODES = [
   'pos.table_occupied',
   'pos.table_archived',
   'pos.order_not_same_location',
+  'pos.merge_same_order',
   'pos.product_unavailable',
   'pos.line_not_found',
   'pos.void_exceeds',

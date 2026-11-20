@@ -86,7 +86,7 @@ import { PrinterCommandRunner } from './printer-command-runner';
 import { CheckReceipt } from './check-receipt';
 import { tableColors } from './table-icon';
 import { DiscountDialog, DiscountList } from './discount-dialog';
-import { MoveDialog } from './move-dialog';
+import { MergeDialog, MoveDialog } from './move-dialog';
 import { SplitDialog } from './split-dialog';
 import { VoidDialog } from './void-dialog';
 
@@ -542,6 +542,7 @@ function TableOrder({
                 order && order.status === 'open' ? (
                   <>
                     {access.canTake && <MoveDialog order={order} onDone={reload} />}
+                    {access.canTake && <MergeDialog order={order} />}
                     {access.canClose && (
                       <ConfirmAction
                         testId="close-order"

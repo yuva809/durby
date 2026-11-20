@@ -177,6 +177,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'pos.table_occupied': 'pos.errors.tableOccupied',
   'pos.table_archived': 'pos.errors.tableArchived',
   'pos.order_not_same_location': 'pos.errors.orderNotSameLocation',
+  'pos.merge_same_order': 'pos.errors.mergeSameOrder',
   'pos.product_unavailable': 'pos.errors.productUnavailable',
   'pos.line_not_found': 'pos.errors.lineNotFound',
   'pos.void_exceeds': 'pos.errors.voidExceeds',
