@@ -148,8 +148,8 @@ function api(approval = true, warehouses?: unknown[]) {
           // The main warehouse supplies every branch it does not share with a ticked warehouse.
           warehouse(1, HAGELBERGER.id, { isMain: true }),
           warehouse(2, KURFUERSTEN.id),
-          // Supplies Kurfürstenstraße (ADR 0067).
-          warehouse(3, KURFUERSTEN.id, { suppliesLocationIds: [KURFUERSTEN.id] }),
+          // Supplies Kurfürstenstraße from the depot (a warehouse never supplies its own location, ADR 0067).
+          warehouse(3, DEPOT.id, { suppliesLocationIds: [KURFUERSTEN.id] }),
           // Archived: supplies nobody, so it does not count.
           warehouse(4, KURFUERSTEN.id, {
             archivedAt: '2026-11-02T10:00:00.000Z',
@@ -329,17 +329,52 @@ describe('/branches shows the supplying warehouse (ADR 0067)', () => {
     ).toBe('Supplied by Store 1 (main warehouse)');
   });
 
-  it('lists the branches still without a supplier, with a link to set one', async () => {
+  it('lists the branches still without a supplier, with a selector to set one', async () => {
     signedInAs('owner');
     // No main warehouse and nothing ticked: both branches need a supplier.
     api(true, [warehouse(2, KURFUERSTEN.id)]);
     render(<BranchesPage />);
     const missing = await screen.findByTestId('branches-suppliers-missing');
     expect(missing.textContent).toBe('Branches without a supplying warehouse: 2.');
-    const link = within(await card('Asia Might Kurfürstenstraße')).getByTestId(
-      'branch-choose-supplier',
+    // Someone who may choose suppliers gets the selector, with the prompt as its empty choice.
+    const select = within(await card('Asia Might Kurfürstenstraße')).getByTestId<HTMLSelectElement>(
+      'branch-supplier-select',
     );
-    expect(link.getAttribute('href')).toBe('/inventory/warehouses');
+    expect(select.value).toBe('');
+    expect(select.selectedOptions[0]?.textContent).toBe('Choose a supplier…');
+  });
+
+  it('chooses the default supplier from the branch: main removes the branch from its warehouse', async () => {
+    signedInAs('owner');
+    const writes = api();
+    render(<BranchesPage />);
+    const select = within(await card('Asia Might Kurfürstenstraße')).getByTestId<HTMLSelectElement>(
+      'branch-supplier-select',
+    );
+    expect(select.value).toBe(id(23)); // Store 3 ticks this branch.
+    await userEvent.selectOptions(select, 'main');
+    await waitFor(() => expect(writes.length).toBe(1));
+    expect(writes[0]).toEqual({
+      method: 'PATCH',
+      path: `/api/v1/inventory/warehouses/${id(23)}`,
+      body: { suppliesLocationIds: [] },
+    });
+  });
+
+  it('chooses a warehouse as the default supplier: it takes the branch', async () => {
+    signedInAs('owner');
+    const writes = api();
+    render(<BranchesPage />);
+    const select = within(await card('Asia Might Hagelberger')).getByTestId(
+      'branch-supplier-select',
+    );
+    await userEvent.selectOptions(select, id(22)); // Store 2, at Kurfürstenstraße.
+    await waitFor(() => expect(writes.length).toBe(1));
+    expect(writes[0]).toEqual({
+      method: 'PATCH',
+      path: `/api/v1/inventory/warehouses/${id(22)}`,
+      body: { suppliesLocationIds: [HAGELBERGER.id] },
+    });
   });
 
   it('finds no supplier when no warehouse ticks the branch and there is no main one', () => {
