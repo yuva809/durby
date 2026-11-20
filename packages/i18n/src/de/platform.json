@@ -1055,6 +1055,8 @@
   "platform.branchesPage.supplier": "Beliefert von {name}",
   "platform.branchesPage.supplierMain": "Beliefert von {name} (Hauptlager)",
   "platform.branchesPage.noSupplier": "Noch kein belieferndes Lager: Anfragen fordern die Filiale auf, eines zu wählen.",
+  "platform.branchesPage.chooseSupplier": "Lager wählen",
+  "platform.branchesPage.suppliersMissing": "Filialen ohne belieferndes Lager: {count}.",
   "platform.branchesPage.warehouseOne": "1 Lager",
   "platform.branchesPage.warehouseMany": "{count} Lager",
   "platform.branchesPage.archive": "{name} archivieren",
