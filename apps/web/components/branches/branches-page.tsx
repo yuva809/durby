@@ -7,22 +7,25 @@ import {
   type TeamMember,
   type Warehouse,
 } from '@durby/shared';
-import { Archive, ArchiveRestore, Building2, Pencil, Search } from 'lucide-react';
+import { Archive, ArchiveRestore, Building2, ChevronRight, Pencil, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
+import type { Api, Result } from '../../lib/api-call';
 import { errorLabel } from '../../lib/auth/errors';
-import { loadWarehouses } from '../../lib/inventory/api';
+import { loadWarehouses, updateWarehouse } from '../../lib/inventory/api';
 import { roleName } from '../../lib/rbac/roles';
 import { createLocation, loadSettings, putSetting, updateLocation } from '../../lib/settings/api';
 import { loadTeam } from '../../lib/team/api';
+import type { ActionKey } from '../../lib/idempotency';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
 import { cn } from '../../lib/utils';
 import { Field, FormDialog } from '../form-dialog';
+import { Select } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -51,6 +54,7 @@ export function BranchesPage() {
       withRequests={features.has('orders')}
       readsStaff={permissions.has('platform.users.read')}
       readsWarehouses={permissions.has('inventory.stock.read')}
+      canSetSupplier={permissions.has('inventory.warehouses.edit')}
     />
   );
 }
@@ -62,6 +66,7 @@ function Branches({
   withRequests,
   readsStaff,
   readsWarehouses,
+  canSetSupplier,
 }: {
   organizationId: string | null;
   canManage: boolean;
@@ -69,18 +74,23 @@ function Branches({
   withRequests: boolean;
   readsStaff: boolean;
   readsWarehouses: boolean;
+  canSetSupplier: boolean;
 }) {
   const t = useT();
   const { store } = useAuth();
   const [locations, reload] = useResource(organizationId, () => loadLocations(store, true));
   const [team] = useResource(readsStaff ? organizationId : null, () => loadTeam(store));
-  const [warehouses] = useResource(readsWarehouses ? organizationId : null, () =>
+  const [warehouses, reloadWarehouses] = useResource(readsWarehouses ? organizationId : null, () =>
     loadWarehouses(store),
   );
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const members = team.status === 'ready' ? team.data.members : null;
   const warehouseList = warehouses.status === 'ready' ? warehouses.data : null;
+  const reloadAll = () => {
+    reload();
+    reloadWarehouses();
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -89,7 +99,13 @@ function Branches({
           <h1 className="text-2xl font-semibold">{t('platform.nav.branches')}</h1>
           <p className="text-muted-foreground">{t('platform.branchesPage.intro')}</p>
         </div>
-        {canManage && <BranchDialog onDone={reload} />}
+        {canManage && (
+          <BranchDialog
+            onDone={reloadAll}
+            warehouses={warehouseList ?? undefined}
+            canSetSupplier={canSetSupplier}
+          />
+        )}
       </div>
 
       {withRequests && <ApprovalCard organizationId={organizationId} canSet={canSetApproval} />}
@@ -181,9 +197,15 @@ function Branches({
                     <BranchCard
                       location={location}
                       supplier={warehouseList ? supplierOf(warehouseList, location.id) : undefined}
+                      connected={
+                        warehouseList ? connectedOf(warehouseList, location.id) : undefined
+                      }
+                      warehouses={warehouseList ?? undefined}
+                      canSetSupplier={canSetSupplier}
+                      onWarehousesChanged={reloadWarehouses}
                       staff={members && staffOf(members, location.id)}
                       canManage={canManage}
-                      onChanged={reload}
+                      onChanged={reloadAll}
                     />
                   </li>
                 ))}
@@ -209,30 +231,105 @@ export const staffOf = (members: readonly TeamMember[], locationId: string) =>
 export function supplierOf(
   warehouses: readonly Warehouse[],
   locationId: string,
-): { name: string; main: boolean } | null {
+): { warehouse: Warehouse; main: boolean } | null {
   const live = warehouses.filter((w) => w.archivedAt === null && !w.isTransit);
   const ticked = live.find((w) => !w.isMain && w.suppliesLocationIds.includes(locationId));
-  if (ticked) return { name: ticked.name, main: false };
+  if (ticked) return { warehouse: ticked, main: false };
   const main = live.find((w) => w.isMain);
-  return main ? { name: main.name, main: true } : null;
+  return main ? { warehouse: main, main: true } : null;
+}
+
+/**
+ * The warehouses connected to a branch: its own store (at its location) and the one that supplies it (ADR 0067),
+ * each once. Archived and transit warehouses are left out.
+ */
+export function connectedOf(warehouses: readonly Warehouse[], locationId: string): Warehouse[] {
+  const live = warehouses.filter((w) => w.archivedAt === null && !w.isTransit);
+  const own = live.filter((w) => w.locationId === locationId);
+  const supplier = supplierOf(warehouses, locationId)?.warehouse;
+  if (supplier && !own.some((w) => w.id === supplier.id)) return [...own, supplier];
+  return own;
+}
+
+/**
+ * Makes `choice` ("main" or a warehouse id) the supplier of the branch at `locationId` (ADR 0067). "main" takes the
+ * branch off the warehouse that ticks it; a warehouse takes it (the server moves it from its previous supplier).
+ * Null when nothing changes.
+ */
+export async function saveSupplier(
+  store: Api,
+  action: ActionKey,
+  locationId: string,
+  warehouses: readonly Warehouse[],
+  choice: string,
+): Promise<Result<unknown> | null> {
+  const live = warehouses.filter((w) => w.archivedAt === null && !w.isTransit);
+  if (choice === 'main') {
+    const ticker = live.find((w) => !w.isMain && w.suppliesLocationIds.includes(locationId));
+    if (!ticker) return null;
+    return updateWarehouse(store, action, ticker.id, {
+      suppliesLocationIds: ticker.suppliesLocationIds.filter((l) => l !== locationId),
+    });
+  }
+  // A warehouse never supplies its own location.
+  const target = live.find((w) => w.id === choice && !w.isMain && w.locationId !== locationId);
+  if (!target || target.suppliesLocationIds.includes(locationId)) return null;
+  return updateWarehouse(store, action, target.id, {
+    suppliesLocationIds: [...target.suppliesLocationIds, locationId],
+  });
 }
 
 function BranchCard({
   location,
   supplier,
+  connected,
+  warehouses,
+  canSetSupplier,
+  onWarehousesChanged,
   staff,
   canManage,
   onChanged,
 }: {
   location: LocationSummary;
   /** Undefined while the warehouses are not loaded (or not readable): the line is not shown. */
-  supplier: { name: string; main: boolean } | null | undefined;
+  supplier: { warehouse: Warehouse; main: boolean } | null | undefined;
+  /** The connected warehouses; undefined while not loaded. */
+  connected: Warehouse[] | undefined;
+  /** Every warehouse, for the default supplier choice; undefined while not loaded. */
+  warehouses: Warehouse[] | undefined;
+  /** Choosing whom a warehouse supplies needs inventory.warehouses.edit everywhere (ADR 0067). */
+  canSetSupplier: boolean;
+  onWarehousesChanged: () => void;
   staff: TeamMember[] | null;
   canManage: boolean;
   onChanged: () => void;
 }) {
   const t = useT();
+  const { store } = useAuth();
+  const action = useActionKey();
+  const supplierId = useId();
+  const [saving, setSaving] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const archived = location.archivedAt !== null;
+  const live = (warehouses ?? []).filter((w) => w.archivedAt === null && !w.isTransit);
+  const mainWarehouse = live.find((w) => w.isMain) ?? null;
+  // A warehouse at this branch's own location does not supply it (ADR 0067).
+  const candidates = live.filter((w) => !w.isMain && w.locationId !== location.id);
+
+  /**
+   * Makes `choice` the branch's supplier: "main" removes the branch from the warehouse that ticks it, a warehouse
+   * takes the branch (leaving the one that supplied it: the server moves it, ADR 0067).
+   */
+  async function chooseSupplier(choice: string) {
+    if (!warehouses) return;
+    setFailure(null);
+    setSaving(true);
+    const result = await saveSupplier(store, action, location.id, warehouses, choice);
+    setSaving(false);
+    if (result === null) return;
+    if (result.ok) onWarehousesChanged();
+    else setFailure(t(errorLabel(result.code)));
+  }
   return (
     <Card
       className={cn('flex h-full flex-col gap-4 p-5', archived && 'opacity-75')}
@@ -253,7 +350,15 @@ function BranchCard({
         </div>
         {canManage && (
           <div className="flex shrink-0 gap-2">
-            {!archived && <BranchDialog location={location} onDone={onChanged} />}
+            {!archived && (
+              <BranchDialog
+                location={location}
+                onDone={onChanged}
+                warehouses={warehouses}
+                canSetSupplier={canSetSupplier}
+                supplier={supplier}
+              />
+            )}
             <ArchiveBranch location={location} onDone={onChanged} />
           </div>
         )}
@@ -272,11 +377,42 @@ function BranchCard({
                 supplier.main
                   ? 'platform.branchesPage.supplierMain'
                   : 'platform.branchesPage.supplier',
-                { name: supplier.name },
+                { name: supplier.warehouse.name },
               )}
         </p>
       )}
-      {supplier === null && !archived && canManage && (
+      {warehouses !== undefined && canSetSupplier && !archived && (
+        <Field
+          id={`${supplierId}-select`}
+          label={t('platform.branchesPage.defaultSupplier')}
+          problem={failure}
+        >
+          <Select
+            id={`${supplierId}-select`}
+            data-testid="branch-supplier-select"
+            value={supplier ? (supplier.main ? 'main' : supplier.warehouse.id) : ''}
+            disabled={saving}
+            onChange={(e) => void chooseSupplier(e.target.value)}
+          >
+            {supplier === null && (
+              <option value="" disabled>
+                {t('platform.branchesPage.chooseSupplierOption')}
+              </option>
+            )}
+            {mainWarehouse && (
+              <option value="main">
+                {t('platform.branchesPage.mainWarehouseOption', { name: mainWarehouse.name })}
+              </option>
+            )}
+            {candidates.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
+      {supplier === null && !archived && canManage && !canSetSupplier && (
         <Link
           href="/inventory/warehouses"
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
@@ -308,6 +444,18 @@ function BranchCard({
             </ul>
           )}
         </div>
+      )}
+      {connected !== undefined && (
+        <Link
+          href="/inventory/warehouses"
+          className="mt-auto inline-flex items-center gap-1 self-start font-medium text-primary hover:underline"
+          data-testid="branch-warehouses"
+        >
+          {connected.length === 1
+            ? t('platform.branchesPage.warehouseOne')
+            : t('platform.branchesPage.warehouseMany', { count: String(connected.length) })}
+          <ChevronRight aria-hidden className="size-4" />
+        </Link>
       )}
     </Card>
   );
@@ -377,15 +525,38 @@ function ApprovalCard({
 }
 
 /** Add a branch (no `location`), or change its name and address. */
-function BranchDialog({ location, onDone }: { location?: LocationSummary; onDone: () => void }) {
+function BranchDialog({
+  location,
+  onDone,
+  warehouses,
+  canSetSupplier = false,
+  supplier,
+}: {
+  location?: LocationSummary;
+  onDone: () => void;
+  /** Every warehouse, for the supplier choice; undefined while not loaded (the section is then not shown). */
+  warehouses?: Warehouse[];
+  canSetSupplier?: boolean;
+  /** The branch's current supplier (edit only). */
+  supplier?: { warehouse: Warehouse; main: boolean } | null;
+}) {
   const t = useT();
   const { store } = useAuth();
   const action = useActionKey();
+  const supplierAction = useActionKey();
   const id = useId();
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [choice, setChoice] = useState('');
+  const [initial, setInitial] = useState('');
   const [checked, setChecked] = useState(false);
   const problem = checked && name.trim() === '' ? t('platform.locationsPage.nameRequired') : null;
+  const live = (warehouses ?? []).filter((w) => w.archivedAt === null && !w.isTransit);
+  const mainWarehouse = live.find((w) => w.isMain) ?? null;
+  // A branch's own location is never offered as its supplier (ADR 0067); a new branch has none yet.
+  const options = live.filter((w) => !w.isMain && w.locationId !== location?.id);
+  const showSupplier =
+    canSetSupplier && warehouses !== undefined && (mainWarehouse !== null || options.length > 0);
   return (
     <FormDialog
       trigger={
@@ -406,18 +577,42 @@ function BranchDialog({ location, onDone }: { location?: LocationSummary; onDone
         setName(location?.name ?? '');
         setAddress(location?.address ?? '');
         setChecked(false);
+        // A new branch is supplied by the main warehouse unless another is chosen (ADR 0067).
+        const start = location
+          ? supplier
+            ? supplier.main
+              ? 'main'
+              : supplier.warehouse.id
+            : ''
+          : mainWarehouse
+            ? 'main'
+            : '';
+        setChoice(start);
+        setInitial(start);
       }}
       submit={() => {
         setChecked(true);
         const trimmed = name.trim();
         if (trimmed === '') return null;
         const where = address.trim();
-        return location
-          ? updateLocation(store, action, location.id, {
-              ...(trimmed !== location.name ? { name: trimmed } : {}),
-              address: where === '' ? null : where,
-            })
-          : createLocation(store, action, trimmed, where || undefined);
+        const supplierChanged = showSupplier && choice !== '' && choice !== initial;
+        return (async () => {
+          const branch = location
+            ? await updateLocation(store, action, location.id, {
+                ...(trimmed !== location.name ? { name: trimmed } : {}),
+                address: where === '' ? null : where,
+              })
+            : await createLocation(store, action, trimmed, where || undefined);
+          if (!branch.ok || !branch.data || !supplierChanged || !warehouses) return branch;
+          const saved = await saveSupplier(
+            store,
+            supplierAction,
+            branch.data.id,
+            warehouses,
+            choice,
+          );
+          return saved && !saved.ok ? saved : branch;
+        })();
       }}
       onDone={onDone}
     >
@@ -441,7 +636,63 @@ function BranchDialog({ location, onDone }: { location?: LocationSummary; onDone
           data-testid="branch-address-input"
         />
       </Field>
+      {showSupplier && (
+        <fieldset className="flex flex-col gap-2" data-testid="branch-supplier-choice">
+          <legend className="text-sm font-medium">
+            {t('platform.branchesPage.defaultSupplier')}
+          </legend>
+          <p className="text-sm text-muted-foreground">{t('platform.branchesPage.supplierHint')}</p>
+          {mainWarehouse && (
+            <SupplierOption
+              name={`${id}-supplier`}
+              value="main"
+              label={t('platform.branchesPage.mainWarehouseOption', { name: mainWarehouse.name })}
+              checked={choice === 'main'}
+              onPick={() => setChoice('main')}
+            />
+          )}
+          {options.map((w) => (
+            <SupplierOption
+              key={w.id}
+              name={`${id}-supplier`}
+              value={w.id}
+              label={w.name}
+              checked={choice === w.id}
+              onPick={() => setChoice(w.id)}
+            />
+          ))}
+        </fieldset>
+      )}
     </FormDialog>
+  );
+}
+
+/** One warehouse as the radio choice of a branch's supplier. */
+function SupplierOption({
+  name,
+  value,
+  label,
+  checked,
+  onPick,
+}: {
+  name: string;
+  value: string;
+  label: string;
+  checked: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border bg-card px-3">
+      <input
+        type="radio"
+        name={name}
+        value={value}
+        checked={checked}
+        onChange={onPick}
+        className="size-4 accent-primary"
+      />
+      <span>{label}</span>
+    </label>
   );
 }
 
