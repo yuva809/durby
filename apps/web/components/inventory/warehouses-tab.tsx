@@ -9,7 +9,6 @@ import { useActionKey } from '../../lib/use-action-key';
 import { Field, FormDialog } from '../form-dialog';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Card } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Select } from '../ui/select';
@@ -24,10 +23,11 @@ const supplyOf = (w: Warehouse | undefined): Supply =>
 const sameIds = (a: readonly string[], b: readonly string[]) =>
   a.length === b.length && a.every((x) => b.includes(x));
 
-/** Warehouses per location (main store, kitchen, bar, cold room); managed with the key there. */
+/** Warehouses (main store, kitchen, bar, cold room): one list, each with its location and the branches it supplies. */
 export function WarehousesTab({ data }: { data: InventoryData }) {
   const t = useT();
   const [showArchived, setShowArchived] = useState(false);
+  const [query, setQuery] = useState('');
   const canManage = data.can('inventory.warehouses.edit');
   const locations =
     data.locations.length > 0
@@ -40,9 +40,31 @@ export function WarehousesTab({ data }: { data: InventoryData }) {
   if (locations.length === 0) {
     return <p className="text-muted-foreground">{t('inventory.page.noLocations')}</p>;
   }
+  // Every warehouse in one list, the main one first; each shows its own location.
+  const visible = data.warehouses
+    .filter((w) => showArchived || w.archivedAt === null)
+    .sort((a, b) => Number(b.isMain) - Number(a.isMain));
+  const locationName = (id: string) => data.locations.find((l) => l.id === id)?.name ?? '';
+  // Search by warehouse name or by the branches it supplies.
+  const needle = query.trim().toLowerCase();
+  const shown = visible.filter(
+    (w) =>
+      needle === '' ||
+      w.name.toLowerCase().includes(needle) ||
+      w.suppliesLocationIds.some((l) => locationName(l).toLowerCase().includes(needle)),
+  );
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('inventory.page.searchWarehouses')}
+          aria-label={t('inventory.page.searchWarehouses')}
+          className="min-w-60 flex-1"
+          data-testid="warehouse-search"
+        />
         <label className="flex min-h-11 items-center gap-2 text-sm">
           <Checkbox
             checked={showArchived}
@@ -54,75 +76,74 @@ export function WarehousesTab({ data }: { data: InventoryData }) {
           <WarehouseDialog data={data} onDone={data.reload} />
         )}
       </div>
-      {/* One message for the whole page when there is no warehouse at all, not one per location. */}
-      {data.warehouses.some((w) => showArchived || w.archivedAt === null) ? (
-        locations.map((location) => {
-          const list = data.warehouses.filter(
-            (w) => w.locationId === location.id && (showArchived || w.archivedAt === null),
-          );
-          return (
-            <section
-              key={location.id}
-              className="flex flex-col gap-2"
-              data-testid="warehouse-location"
-            >
-              {location.name && <h2 className="font-semibold">{location.name}</h2>}
-              {list.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('inventory.page.noWarehouses')}</p>
-              ) : (
-                <Card className="divide-y p-0">
-                  {list.map((w) => (
-                    <div
-                      key={w.id}
-                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                      data-testid="warehouse-row"
-                      data-name={w.name}
-                    >
-                      <span className="flex items-center gap-2 font-medium">
-                        {w.name}
-                        {w.suppliesStation && (
-                          <Badge className="bg-muted text-foreground">
-                            {t(`inventory.stations.${w.suppliesStation}`)}
-                          </Badge>
-                        )}
-                        {w.isMain && (
-                          <Badge
-                            className="bg-primary text-primary-foreground"
-                            data-testid="warehouse-main"
-                          >
-                            {t('inventory.page.mainWarehouse')}
-                          </Badge>
-                        )}
-                        {w.archivedAt && <Badge>{t('inventory.page.archived')}</Badge>}
-                      </span>
-                      {w.suppliesLocationIds.length > 0 && (
-                        <span
-                          className="basis-full text-sm text-muted-foreground"
-                          data-testid="warehouse-supplies"
-                        >
-                          {t('inventory.page.suppliesBranches', {
-                            names: w.suppliesLocationIds
-                              .map((l) => data.locations.find((x) => x.id === l)?.name ?? '')
-                              .filter(Boolean)
-                              .join(', '),
-                          })}
-                        </span>
-                      )}
-                      {canManage && (
-                        <span className="flex gap-2">
-                          <WarehouseDialog data={data} warehouse={w} onDone={data.reload} />
-                          <ArchiveButton warehouse={w} onDone={data.reload} />
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </Card>
-              )}
-            </section>
-          );
-        })
-      ) : (
+      {visible.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('inventory.page.noWarehouses')}</p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border bg-card">
+          <table className="w-full text-left text-sm" data-testid="warehouse-list">
+            <thead className="text-xs uppercase text-muted-foreground">
+              <tr className="border-b">
+                <th className="px-4 py-3 font-medium">{t('inventory.page.warehouseColumn')}</th>
+                <th className="px-4 py-3 font-medium">{t('inventory.page.branchesColumn')}</th>
+                <th className="px-4 py-3 font-medium">{t('inventory.page.statusColumn')}</th>
+                {canManage && <th className="px-4 py-3" />}
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((w) => (
+                <tr
+                  key={w.id}
+                  className="border-b last:border-0"
+                  data-testid="warehouse-row"
+                  data-name={w.name}
+                >
+                  <td className="px-4 py-3 font-medium">
+                    <span className="flex flex-wrap items-center gap-2">
+                      {w.name}
+                      {w.isMain && (
+                        <Badge
+                          className="bg-primary text-primary-foreground"
+                          data-testid="warehouse-main"
+                        >
+                          {t('inventory.page.mainWarehouse')}
+                        </Badge>
+                      )}
+                      {w.suppliesStation && (
+                        <Badge className="bg-muted text-foreground">
+                          {t(`inventory.stations.${w.suppliesStation}`)}
+                        </Badge>
+                      )}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3" data-testid="warehouse-supplies">
+                    <span className="flex flex-wrap gap-2">
+                      {w.isMain ? (
+                        <Badge>{t('inventory.page.allBranches')}</Badge>
+                      ) : w.suppliesLocationIds.length === 0 ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        w.suppliesLocationIds.map((l) => <Badge key={l}>{locationName(l)}</Badge>)
+                      )}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge>
+                      {w.archivedAt ? t('inventory.page.archived') : t('inventory.page.active')}
+                    </Badge>
+                  </td>
+                  {canManage && (
+                    <td className="px-4 py-3">
+                      <span className="flex justify-end gap-2">
+                        <WarehouseDialog data={data} warehouse={w} onDone={data.reload} />
+                        <ArchiveButton warehouse={w} onDone={data.reload} />
+                      </span>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
