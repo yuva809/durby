@@ -5,6 +5,7 @@ import {
   LOCATION_NAME_MAX_LENGTH,
   type LocationSummary,
   type TeamMember,
+  type Warehouse,
 } from '@durby/shared';
 import { Archive, ArchiveRestore, Building2, Pencil, Search } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -12,6 +13,7 @@ import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
+import { loadWarehouses } from '../../lib/inventory/api';
 import { roleName } from '../../lib/rbac/roles';
 import { createLocation, loadSettings, putSetting, updateLocation } from '../../lib/settings/api';
 import { loadTeam } from '../../lib/team/api';
@@ -47,6 +49,7 @@ export function BranchesPage() {
       canSetApproval={permissions.has('platform.settings.manage')}
       withRequests={features.has('orders')}
       readsStaff={permissions.has('platform.users.read')}
+      readsWarehouses={permissions.has('inventory.stock.read')}
     />
   );
 }
@@ -57,20 +60,26 @@ function Branches({
   canSetApproval,
   withRequests,
   readsStaff,
+  readsWarehouses,
 }: {
   organizationId: string | null;
   canManage: boolean;
   canSetApproval: boolean;
   withRequests: boolean;
   readsStaff: boolean;
+  readsWarehouses: boolean;
 }) {
   const t = useT();
   const { store } = useAuth();
   const [locations, reload] = useResource(organizationId, () => loadLocations(store, true));
   const [team] = useResource(readsStaff ? organizationId : null, () => loadTeam(store));
+  const [warehouses] = useResource(readsWarehouses ? organizationId : null, () =>
+    loadWarehouses(store),
+  );
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const members = team.status === 'ready' ? team.data.members : null;
+  const warehouseList = warehouses.status === 'ready' ? warehouses.data : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -152,6 +161,7 @@ function Branches({
                 <li key={location.id}>
                   <BranchCard
                     location={location}
+                    supplier={warehouseList ? supplierOf(warehouseList, location.id) : undefined}
                     staff={members && staffOf(members, location.id)}
                     canManage={canManage}
                     onChanged={reload}
@@ -172,13 +182,31 @@ export const staffOf = (members: readonly TeamMember[], locationId: string) =>
     (m) => m.status === 'active' && !m.allLocations && m.locationIds.includes(locationId),
   );
 
+/**
+ * The warehouse that supplies a branch (ADR 0067): one that has the branch ticked, else the main warehouse, else
+ * none. Archived and transit warehouses supply nobody. Mirrors the rule the request flow uses on the API.
+ */
+export function supplierOf(
+  warehouses: readonly Warehouse[],
+  locationId: string,
+): { name: string; main: boolean } | null {
+  const live = warehouses.filter((w) => w.archivedAt === null && !w.isTransit);
+  const ticked = live.find((w) => !w.isMain && w.suppliesLocationIds.includes(locationId));
+  if (ticked) return { name: ticked.name, main: false };
+  const main = live.find((w) => w.isMain);
+  return main ? { name: main.name, main: true } : null;
+}
+
 function BranchCard({
   location,
+  supplier,
   staff,
   canManage,
   onChanged,
 }: {
   location: LocationSummary;
+  /** Undefined while the warehouses are not loaded (or not readable): the line is not shown. */
+  supplier: { name: string; main: boolean } | null | undefined;
   staff: TeamMember[] | null;
   canManage: boolean;
   onChanged: () => void;
@@ -216,6 +244,18 @@ function BranchCard({
       >
         {location.address ?? t('platform.branchesPage.noAddress')}
       </p>
+      {supplier !== undefined && !archived && (
+        <p className="text-sm" data-testid="branch-supplier">
+          {supplier === null
+            ? t('platform.branchesPage.noSupplier')
+            : t(
+                supplier.main
+                  ? 'platform.branchesPage.supplierMain'
+                  : 'platform.branchesPage.supplier',
+                { name: supplier.name },
+              )}
+        </p>
+      )}
       {staff && <hr className="border-border" />}
       {staff && (
         <div className="flex flex-col gap-2" data-testid="branch-staff">
