@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import { headers } from 'next/headers';
 import { cache, type ReactNode } from 'react';
 import { DEFAULT_LOCALE } from '@durby/i18n';
+import { ServiceWorkerRegistration } from '../components/pwa/service-worker';
 import { BrandProvider } from '../components/theme-provider';
 import { fetchTheme, tokensCss } from '../lib/theme';
 import { LabelsProvider } from './labels-provider';
@@ -20,7 +21,11 @@ const requestTheme = cache(async () => fetchTheme((await headers()).get('host'))
 
 export async function generateMetadata(): Promise<Metadata> {
   const { productName } = await requestTheme();
-  return { title: { default: productName, template: `%s · ${productName}` } };
+  return {
+    title: { default: productName, template: `%s · ${productName}` },
+    manifest: '/manifest.webmanifest',
+    appleWebApp: { capable: true, title: productName, statusBarStyle: 'default' },
+  };
 }
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
@@ -44,6 +49,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <AuthProvider>
             <LabelsProvider>{children}</LabelsProvider>
           </AuthProvider>
+          <ServiceWorkerRegistration />
         </BrandProvider>
       </body>
     </html>
