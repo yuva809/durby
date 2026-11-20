@@ -404,6 +404,13 @@ Reasons are free text and stay out of snapshots.
   amount, reason); lines show how much is billed; the order's bills list their checks.
 - **Settings → Service:** the discount reasons.
 
+## Step 6: seat numbers (ADR 0070)
+
+An item sent to the kitchen may name a seat (1–20). The seat is stored on the line, copied to the void of that line
+and to a transfer's sale line, and never changed (a correction is void and resend). Bills are unchanged: "bill seat
+N" is a bill of the unbilled lines whose seat is N. Lines without a seat are billed as before. The order response
+carries `seat` on each line.
+
 ## QR menu (ADR 0026)
 
 Every dining table has a `menu_token` (24 random URL-safe characters, unique per tenant). Its QR code links to
