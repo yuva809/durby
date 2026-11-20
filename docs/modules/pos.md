@@ -404,6 +404,26 @@ Reasons are free text and stay out of snapshots.
   amount, reason); lines show how much is billed; the order's bills list their checks.
 - **Settings → Service:** the discount reasons.
 
+## Step 5: table management (ADR 0069)
+
+Moves and merges of open orders, and transfers of items, run on placement rows: an append-only record of which
+order a ticket belongs to now. Tickets and lines are never rewritten (ADR 0069).
+
+- **Placements**: `pos_ticket_placements (ticket_id, order_id, created_by_user_id, created_at)`, append-only, RLS.
+  Every ticket has one row from the moment it is written. An order's tickets and lines are the ones whose latest
+  placement points at it.
+- **Floor timer**: each tile shows `seatedAt` (the order's opening time) and `lastOrderAt` (newest ticket). Display only.
+- **Move** `POST /pos/orders/:id/move {tableId}`: the target is a free, non-archived table at the same location. Only
+  the order's table changes; no ticket, no kitchen print. Audit `pos.order.moved`. Permission `pos.orders.take`.
+- **Merge** `POST /pos/orders/:id/merge {orderId}`: the source's tickets get placements to the target, the source closes
+  with `pos.order.merged`, its table is released through `pos.order.closed`. Both open, same location, no billed lines.
+- **Transfer** `POST /pos/orders/:id/transfer {lines:[{lineId, quantity}], to:{tableId}|{newOrder:true}}`: the
+  portions become a void ticket on the source and a sale ticket on the destination, both with price snapshots. Only
+  unbilled portions. Audit `pos.order.transferred`.
+
+Errors: `pos.table_occupied`, `pos.order_not_same_location` (existing), `pos.line_billed` (existing),
+`pos.transfer_exceeds` (quantity over what is left).
+
 ## QR menu (ADR 0026)
 
 Every dining table has a `menu_token` (24 random URL-safe characters, unique per tenant). Its QR code links to
