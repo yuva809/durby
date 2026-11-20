@@ -18,14 +18,18 @@ export class InventoryLookup {
   async searchItems(q: string): Promise<SearchResult[]> {
     const scope = await this.access.locationIdsFor('inventory.stock.read');
     if (scope !== 'all' && scope.length === 0) return [];
+    // Every word must match somewhere (name, SKU or category), in any order: "rice bas" finds "Basmati rice".
+    const words = q.split(/\s+/).filter((w) => w !== '');
     const rows = await this.db.stockItem.findMany({
       where: {
         archivedAt: null,
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { sku: { contains: q, mode: 'insensitive' } },
-          { category: { name: { contains: q, mode: 'insensitive' } } },
-        ],
+        AND: words.map((w) => ({
+          OR: [
+            { name: { contains: w, mode: 'insensitive' } },
+            { sku: { contains: w, mode: 'insensitive' } },
+            { category: { name: { contains: w, mode: 'insensitive' } } },
+          ],
+        })),
       },
       select: { id: true, name: true, sku: true, unit: true },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],

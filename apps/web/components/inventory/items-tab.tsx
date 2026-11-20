@@ -33,7 +33,12 @@ export function ItemsTab({ data }: { data: InventoryData }) {
   const [showArchived, setShowArchived] = useState(false);
   // The search: starts with ?q= from the top bar, then what is typed here.
   const [query, setQuery] = useState(useSearchParams().get('q') ?? '');
-  const needle = query.trim().toLowerCase();
+  // Each word typed must appear in the name or SKU, in any order.
+  const words = query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w !== '');
   // A warehouse filter shows only the items it holds, with its own quantity (stock is kept per warehouse).
   // The filter: "w:<warehouse>" for one warehouse, "l:<branch>" for a branch's warehouse, "" for all locations.
   const [filter, setFilter] = useState('');
@@ -56,9 +61,9 @@ export function ItemsTab({ data }: { data: InventoryData }) {
     (i) =>
       (showArchived || i.archivedAt === null) &&
       (here === null || here.has(i.id)) &&
-      (needle === '' ||
-        i.name.toLowerCase().includes(needle) ||
-        (i.sku ?? '').toLowerCase().includes(needle)),
+      words.every(
+        (w) => i.name.toLowerCase().includes(w) || (i.sku ?? '').toLowerCase().includes(w),
+      ),
   );
   return (
     <div className="flex flex-col gap-4">
