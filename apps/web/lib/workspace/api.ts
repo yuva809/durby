@@ -24,6 +24,10 @@ export function resultHref(result: Pick<SearchResult, 'type' | 'id' | 'title'>):
   switch (result.type) {
     case 'stock_item':
       return `/inventory/items?q=${encodeURIComponent(result.title)}`;
+    case 'warehouse':
+      return '/inventory/warehouses';
+    case 'branch':
+      return '/branches';
     case 'product':
       return '/catalog';
     case 'customer':

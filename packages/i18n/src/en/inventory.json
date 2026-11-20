@@ -97,7 +97,7 @@
   "inventory.page.notInStock": "Not in stock",
   "inventory.page.filterLocation": "Filter by location",
   "inventory.page.groupWarehouses": "Warehouse (main stock)",
-  "inventory.page.groupBranches": "Branch (same as its warehouse)",
+  "inventory.page.groupBranches": "Branch (own stock)",
   "inventory.page.allLocations": "All locations",
   "inventory.page.pricingStock": "Pricing & stock",
   "inventory.page.showingBranch": "Showing the warehouses of {name}",

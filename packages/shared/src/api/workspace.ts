@@ -7,6 +7,8 @@ import { z } from 'zod';
 
 export const SEARCH_RESULT_TYPES = [
   'stock_item',
+  'warehouse',
+  'branch',
   'product',
   'customer',
   'sales_order',

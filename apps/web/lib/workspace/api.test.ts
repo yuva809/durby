@@ -7,4 +7,11 @@ describe('resultHref', () => {
       '/inventory/items?q=Basmati%20rice',
     );
   });
+
+  it('opens a warehouse on the warehouses page and a branch on the branches page', () => {
+    expect(resultHref({ type: 'warehouse', id: 'w1', title: 'Depot' })).toBe(
+      '/inventory/warehouses',
+    );
+    expect(resultHref({ type: 'branch', id: 'b1', title: 'Hagelberger' })).toBe('/branches');
+  });
 });

@@ -916,6 +916,8 @@
   "platform.search.none": "Nichts gefunden.",
   "platform.search.groups.pages": "Seiten",
   "platform.search.groups.stockItem": "Lagerartikel",
+  "platform.search.groups.warehouse": "Lager",
+  "platform.search.groups.branch": "Filialen",
   "platform.search.groups.product": "Produkte",
   "platform.search.groups.customer": "Kunden",
   "platform.search.groups.salesOrder": "Verkaufsaufträge",
