@@ -208,3 +208,18 @@ describe('menu switches (ADR 0073 settings)', () => {
     );
   });
 });
+
+describe('start page (ADR 0075)', () => {
+  it('hides the Overview item when the start page is Inventory', () => {
+    const home = {
+      id: 'home',
+      href: '/',
+      label: 'platform.nav.home',
+      icon: () => null,
+      group: 'main',
+    } as unknown as NavItem;
+    const base = { activeFeatures: [], activePermissions: [] };
+    expect(visibleNav([home], base)).toHaveLength(1);
+    expect(visibleNav([home], { ...base, hideHome: true })).toHaveLength(0);
+  });
+});
