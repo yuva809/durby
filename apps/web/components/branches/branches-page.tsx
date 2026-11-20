@@ -7,7 +7,7 @@ import {
   type TeamMember,
   type Warehouse,
 } from '@durby/shared';
-import { Archive, ArchiveRestore, Building2, Pencil, Search } from 'lucide-react';
+import { Archive, ArchiveRestore, Building2, ChevronRight, Pencil, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
@@ -181,6 +181,9 @@ function Branches({
                     <BranchCard
                       location={location}
                       supplier={warehouseList ? supplierOf(warehouseList, location.id) : undefined}
+                      connected={
+                        warehouseList ? connectedOf(warehouseList, location.id) : undefined
+                      }
                       staff={members && staffOf(members, location.id)}
                       canManage={canManage}
                       onChanged={reload}
@@ -209,24 +212,39 @@ export const staffOf = (members: readonly TeamMember[], locationId: string) =>
 export function supplierOf(
   warehouses: readonly Warehouse[],
   locationId: string,
-): { name: string; main: boolean } | null {
+): { warehouse: Warehouse; main: boolean } | null {
   const live = warehouses.filter((w) => w.archivedAt === null && !w.isTransit);
   const ticked = live.find((w) => !w.isMain && w.suppliesLocationIds.includes(locationId));
-  if (ticked) return { name: ticked.name, main: false };
+  if (ticked) return { warehouse: ticked, main: false };
   const main = live.find((w) => w.isMain);
-  return main ? { name: main.name, main: true } : null;
+  return main ? { warehouse: main, main: true } : null;
+}
+
+/**
+ * The warehouses connected to a branch: its own store (at its location) and the one that supplies it (ADR 0067),
+ * each once. Archived and transit warehouses are left out.
+ */
+export function connectedOf(warehouses: readonly Warehouse[], locationId: string): Warehouse[] {
+  const live = warehouses.filter((w) => w.archivedAt === null && !w.isTransit);
+  const own = live.filter((w) => w.locationId === locationId);
+  const supplier = supplierOf(warehouses, locationId)?.warehouse;
+  if (supplier && !own.some((w) => w.id === supplier.id)) return [...own, supplier];
+  return own;
 }
 
 function BranchCard({
   location,
   supplier,
+  connected,
   staff,
   canManage,
   onChanged,
 }: {
   location: LocationSummary;
   /** Undefined while the warehouses are not loaded (or not readable): the line is not shown. */
-  supplier: { name: string; main: boolean } | null | undefined;
+  supplier: { warehouse: Warehouse; main: boolean } | null | undefined;
+  /** The connected warehouses; undefined while not loaded. */
+  connected: Warehouse[] | undefined;
   staff: TeamMember[] | null;
   canManage: boolean;
   onChanged: () => void;
@@ -272,7 +290,7 @@ function BranchCard({
                 supplier.main
                   ? 'platform.branchesPage.supplierMain'
                   : 'platform.branchesPage.supplier',
-                { name: supplier.name },
+                { name: supplier.warehouse.name },
               )}
         </p>
       )}
@@ -308,6 +326,18 @@ function BranchCard({
             </ul>
           )}
         </div>
+      )}
+      {connected !== undefined && (
+        <Link
+          href="/inventory/warehouses"
+          className="mt-auto inline-flex items-center gap-1 self-start font-medium text-primary hover:underline"
+          data-testid="branch-warehouses"
+        >
+          {connected.length === 1
+            ? t('platform.branchesPage.warehouseOne')
+            : t('platform.branchesPage.warehouseMany', { count: String(connected.length) })}
+          <ChevronRight aria-hidden className="size-4" />
+        </Link>
       )}
     </Card>
   );

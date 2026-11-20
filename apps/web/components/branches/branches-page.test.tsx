@@ -199,8 +199,11 @@ describe('/branches (ADR 0056)', () => {
 
     const kurf = await card(KURFUERSTEN.name);
     expect(within(kurf).getByTestId('branch-address').textContent).toBe('No address yet');
-    // Warehouses are managed under Inventory; a warehouse's own place (ADR 0068) is no branch.
-    expect(screen.queryByTestId('branch-warehouses')).toBeNull();
+    // Each card links to its warehouses; a warehouse's own place (ADR 0068) is no branch and has no card.
+    expect(within(kurf).getByTestId('branch-warehouses').getAttribute('href')).toBe(
+      '/inventory/warehouses',
+    );
+    expect(cards.map((c) => c.dataset.name)).not.toContain(DEPOT.name);
   });
 
   it('searches by name or address, and shows archived branches on request', async () => {
@@ -299,6 +302,21 @@ describe('/branches (ADR 0056)', () => {
 });
 
 describe('/branches shows the supplying warehouse (ADR 0067)', () => {
+  it('links each branch to its connected warehouses: its own store and its supplier', async () => {
+    signedInAs('owner');
+    api();
+    render(<BranchesPage />);
+    // Kurfürstenstraße: its own store (Store 2) and the one that supplies it (Store 3); archived Store 4 is left out.
+    expect(
+      within(await card('Asia Might Kurfürstenstraße')).getByTestId('branch-warehouses')
+        .textContent,
+    ).toBe('2 warehouses');
+    // Hagelberger: the main warehouse is its own store too, and the transit one is left out.
+    expect(
+      within(await card('Asia Might Hagelberger')).getByTestId('branch-warehouses').textContent,
+    ).toBe('1 warehouse');
+  });
+
   it('names the warehouse that ticks each branch, else the main warehouse, skipping archived ones', async () => {
     signedInAs('owner');
     api();
