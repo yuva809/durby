@@ -324,7 +324,7 @@ describe('InventoryPage', () => {
     render(<InventoryPage />);
     await userEvent.click(await tab('warehouses'));
     // The list says whom a warehouse supplies.
-    expect(screen.getByTestId('warehouse-supplies').textContent).toBe('Supplies: South branch');
+    expect(screen.getAllByTestId('warehouse-supplies').map((c) => c.textContent)).toContain('South branch');
     await userEvent.click(screen.getByTestId('warehouse-create'));
     const dialog = await screen.findByRole('dialog');
     await userEvent.type(within(dialog).getByLabelText('Name'), 'Second warehouse');
