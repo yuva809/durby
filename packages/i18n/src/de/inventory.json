@@ -97,7 +97,7 @@
   "inventory.page.notInStock": "Nicht auf Lager",
   "inventory.page.filterLocation": "Nach Standort filtern",
   "inventory.page.groupWarehouses": "Lager (Hauptbestand)",
-  "inventory.page.groupBranches": "Filiale (wie ihr Lager)",
+  "inventory.page.groupBranches": "Filiale (eigener Bestand)",
   "inventory.page.allLocations": "Alle Standorte",
   "inventory.page.pricingStock": "Preise & Bestand",
   "inventory.page.showingBranch": "Lager von {name}",
