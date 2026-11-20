@@ -647,7 +647,16 @@ export class StockService {
     const own = await this.access.warehouseIds();
     const rows = await this.db.warehouse.findMany({
       where: {
-        ...(scope === 'all' ? {} : { locationId: { in: scope } }),
+        // At their branches, and the warehouses that supply those branches (ADR 0071): read only.
+        ...(scope === 'all'
+          ? {}
+          : {
+              OR: [
+                { locationId: { in: scope } },
+                { isMain: true },
+                { suppliesLocationIds: { hasSome: scope } },
+              ],
+            }),
         // Limited to some warehouses (ADR 0057): those only.
         ...(own ? { id: { in: [...own] } } : {}),
         ...(query.locationId ? { locationId: query.locationId } : {}),
