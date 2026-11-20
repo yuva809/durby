@@ -375,7 +375,10 @@ describe('manage staff', () => {
       await kit.settle();
       expect(kit.mailer.to(email)).toHaveLength(0);
 
-      // The owner sets a new one: final, the old one and every session end.
+      // The owner sets a new one: final, the old one and every session end. The clock stands still: without a
+      // second passing, the member's sign-in and the change share a second, and a token from the very second of a
+      // password change survives by design (RevocationService.revokeUser).
+      kit.clock.advance(1_000);
       const next = 'a new password from the owner';
       const updated = await setPassword(ownerA.token, ravi.membershipId, next).expect(200);
       expect(updated.body).toMatchObject({ membershipId: ravi.membershipId });
