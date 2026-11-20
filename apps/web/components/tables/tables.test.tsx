@@ -106,10 +106,10 @@ const answers = {
   'GET /api/v1/pos/floor': () =>
     Response.json({
       data: [
-        { ...T1, order: ORDER },
-        { ...T2, order: null },
-        { ...TERRACE_1, order: null },
-        { ...LOOSE, order: null },
+        { ...T1, order: ORDER, seatedAt: null, lastOrderAt: null },
+        { ...T2, order: null, seatedAt: null, lastOrderAt: null },
+        { ...TERRACE_1, order: null, seatedAt: null, lastOrderAt: null },
+        { ...LOOSE, order: null, seatedAt: null, lastOrderAt: null },
       ],
     }),
 };

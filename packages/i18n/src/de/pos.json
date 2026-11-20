@@ -69,6 +69,8 @@
   "pos.floor.free": "Frei",
   "pos.floor.open": "Belegt",
   "pos.floor.items": "{count} Positionen",
+  "pos.floor.seated": "Sitzt seit {time}",
+  "pos.floor.lastOrder": "Letzte Bestellung vor {time}",
   "pos.order.back": "Tische",
   "pos.order.guests": "Gäste",
   "pos.order.guestCount": "{count} Gäste",

@@ -798,7 +798,7 @@ function OrderHeader({
   now,
   actions,
 }: {
-  table: Omit<FloorTable, 'order'>;
+  table: Omit<FloorTable, 'order' | 'seatedAt' | 'lastOrderAt'>;
   order: Order | null;
   now: number;
   actions: ReactNode;

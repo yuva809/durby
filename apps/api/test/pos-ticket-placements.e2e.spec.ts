@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
   diningTableSchema,
+  floorResponseSchema,
   orderListResponseSchema,
   orderSchema,
   productCategorySchema,
@@ -178,6 +179,25 @@ describe('pos ticket placements', () => {
     );
     expect(backInA.tickets.map((t) => t.id)).toEqual([a.ticketId]);
     expect(backInA.totals.itemCount).toBe(2);
+  });
+
+  it('shows on the floor when each open table was seated and when it last got a ticket', async () => {
+    const r = await setup();
+    const first = await send(r.owner, r.t1, [{ productId: r.soup, quantity: 1 }]);
+    await send(r.owner, r.t1, [{ productId: r.cola, quantity: 1 }]);
+    const floor = floorResponseSchema.parse((await get(r.owner, '/pos/floor').expect(200)).body);
+    const occupied = floor.data.find((t) => t.id === r.t1);
+    const order = orderSchema.parse(
+      (await get(r.owner, `/pos/orders/${first.order.id}`).expect(200)).body,
+    );
+    const newest = order.tickets
+      .map((t) => t.createdAt)
+      .sort()
+      .at(-1);
+    expect(occupied?.seatedAt).toBe(order.openedAt);
+    expect(occupied?.lastOrderAt).toBe(newest);
+    const free = floor.data.find((t) => t.id === r.t2);
+    expect(free).toMatchObject({ order: null, seatedAt: null, lastOrderAt: null });
   });
 
   it('keeps placements to its own organization', async () => {

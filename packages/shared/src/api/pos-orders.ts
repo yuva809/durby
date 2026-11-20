@@ -171,6 +171,10 @@ export const floorTableSchema = z.object({
   color: z.enum(TABLE_COLORS),
   /** The table's open order, or null when it is free. */
   order: orderSummarySchema.nullable(),
+  /** When the open order was opened: the guests sat down (ADR 0069). Null when the table is free. */
+  seatedAt: z.iso.datetime().nullable(),
+  /** When the open order's newest ticket was sent (ADR 0069). Null when the table is free or has no ticket. */
+  lastOrderAt: z.iso.datetime().nullable(),
 });
 
 export const floorResponseSchema = z.object({ data: z.array(floorTableSchema) });
@@ -179,7 +183,7 @@ export const floorResponseSchema = z.object({ data: z.array(floorTableSchema) })
 export const stationProcessingSchema = z.object({ kitchen: z.boolean(), bar: z.boolean() });
 
 export const tableOrderResponseSchema = z.object({
-  table: floorTableSchema.omit({ order: true }),
+  table: floorTableSchema.omit({ order: true, seatedAt: true, lastOrderAt: true }),
   order: orderSchema.nullable(),
   processing: stationProcessingSchema,
 });

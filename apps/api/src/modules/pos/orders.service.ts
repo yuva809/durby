@@ -158,7 +158,19 @@ export class OrdersService {
       tableId: { in: tables.map((t) => t.id) },
     });
     const byTable = new Map(open.map((o) => [o.tableId, o]));
-    return tables.map((table) => ({ ...table, order: byTable.get(table.id) ?? null }));
+    const lastOrder = await this.lastTicketAt(
+      asTenantDb(this.db),
+      open.map((o) => o.id),
+    );
+    return tables.map((table) => {
+      const order = byTable.get(table.id) ?? null;
+      return {
+        ...table,
+        order,
+        seatedAt: order?.openedAt ?? null,
+        lastOrderAt: order ? (lastOrder.get(order.id) ?? null) : null,
+      };
+    });
   }
 
   async tableOrder(tableId: string): Promise<TableOrderResponse> {
@@ -738,6 +750,23 @@ export class OrdersService {
         })),
       })),
     };
+  }
+
+  /** When each order's newest ticket was sent, for the orders in `orderIds` that have one (ADR 0069). */
+  private async lastTicketAt(db: Db, orderIds: readonly string[]): Promise<Map<string, string>> {
+    const byTicket = await currentOrderByTicket(db, orderIds);
+    const tickets = await db.posKitchenTicket.findMany({
+      where: { id: { in: [...byTicket.keys()] } },
+      select: { id: true, createdAt: true },
+    });
+    const latest = new Map<string, Date>();
+    for (const ticket of tickets) {
+      const order = byTicket.get(ticket.id);
+      if (!order) continue;
+      const seen = latest.get(order);
+      if (!seen || ticket.createdAt > seen) latest.set(order, ticket.createdAt);
+    }
+    return new Map([...latest].map(([order, at]) => [order, at.toISOString()]));
   }
 
   /** Portions of each line of the order on bills that are not cancelled (ADR 0036). */

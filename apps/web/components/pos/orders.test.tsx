@@ -61,6 +61,8 @@ const TABLE = {
   area: null,
   shape: 'square',
   color: 'neutral',
+  seatedAt: null,
+  lastOrderAt: null,
 };
 const FOOD = { id: id(4), name: 'Food', sortOrder: 0, station: 'kitchen', archivedAt: null };
 const product = (n: number, name: string, price: string, taxRate: string) => ({
@@ -326,6 +328,37 @@ describe('FloorPage ready', () => {
     const tiles = await screen.findAllByTestId('floor-table');
     expect(within(tiles[0]!).getByTestId('floor-ready').textContent).toBe('Ready to serve: 2');
     expect(within(tiles[1]!).queryByTestId('floor-ready')).toBeNull();
+  });
+
+  it('shows how long a table has been seated and since its last order (ADR 0069)', async () => {
+    signedInAs('waiter');
+    const now = Date.now();
+    const seated = new Date(now - 42 * 60_000).toISOString();
+    const last = new Date(now - 5 * 60_000).toISOString();
+    api({
+      ...SETTINGS,
+      'GET /api/v1/locations': () => Response.json({ data: [LOCATION] }),
+      'GET /api/v1/pos/floor': () =>
+        Response.json({
+          data: [
+            {
+              ...TABLE,
+              seatedAt: seated,
+              lastOrderAt: last,
+              order: { ...ORDER, openedAt: seated, tickets: undefined, totals: undefined },
+            },
+            { ...TABLE, id: id(5), name: 'T2', seatedAt: null, lastOrderAt: null, order: null },
+          ],
+        }),
+    });
+    render(<FloorPage />);
+    const [occupied, free] = await screen.findAllByTestId('floor-table');
+    expect(within(occupied!).getByTestId('floor-seated').textContent).toBe('Seated 42 min');
+    expect(within(occupied!).getByTestId('floor-last-order').textContent).toBe(
+      'Last order 5 min ago',
+    );
+    expect(within(free!).queryByTestId('floor-seated')).toBeNull();
+    expect(within(free!).queryByTestId('floor-last-order')).toBeNull();
   });
 });
 

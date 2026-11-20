@@ -414,6 +414,10 @@ ticket insert, and the backfill gives every existing ticket one. Every read of a
 (order load, summaries, voids, billing, discounts) resolves the current order through the latest placement
 (`ticket-placements.ts`). No move, merge or transfer exists yet, so nothing changes for users in this step.
 
+**Step 3 (floor timer) is built.** The floor response gives each table `seatedAt` (the open order's `openedAt`) and
+`lastOrderAt` (its newest ticket's time), both null for a free table. The tile shows "Seated {time}" and "Last order
+{time} ago", refreshed by the floor's existing 30 s clock. Display only.
+
 - **Placements**: `pos_ticket_placements (ticket_id, order_id, created_by_user_id, created_at)`, append-only, RLS.
   Every ticket has one row from the moment it is written. An order's tickets and lines are the ones whose latest
   placement points at it.
