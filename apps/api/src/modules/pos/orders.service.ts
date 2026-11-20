@@ -13,6 +13,7 @@ import {
   type SendTicketResponse,
   type StationProcessing,
   type TableOrderResponse,
+  type MoveOrderRequest,
   type UpdateOrderRequest,
   type VoidLinesRequest,
 } from '@durby/shared';
@@ -394,6 +395,55 @@ export class OrdersService {
       await this.setCovers(tx, orderId, body.covers, userId);
       return this.load(tx, orderId);
     });
+  }
+
+  /**
+   * Moves an open order to a free table at its location (ADR 0069). Only the order's table changes: no ticket is
+   * written, so the kitchen is not reprinted. Moving to the table it is on changes nothing.
+   */
+  async move(orderId: string, body: MoveOrderRequest): Promise<Order> {
+    const { userId } = this.tenantContext.require();
+    const order = await this.readableOrder(orderId);
+    await this.access.assert('pos.orders.take', { locationId: order.locationId });
+    try {
+      return await this.db.$transaction(async (tx) => {
+        if ((await this.lockOrder(tx, orderId)) !== 'open') throw posErrors.orderClosed();
+        const target = await tx.diningTable.findUnique({
+          where: { id: body.tableId },
+          select: { id: true, locationId: true, archivedAt: true },
+        });
+        if (!target) throw posErrors.tableNotFound();
+        const before = await tx.posOrder.findUniqueOrThrow({
+          where: { id: orderId },
+          select: ORDER_SELECT,
+        });
+        if (target.locationId !== before.locationId) throw posErrors.orderNotSameLocation();
+        if (target.archivedAt !== null) throw posErrors.tableArchived();
+        if (before.tableId === target.id) return this.load(tx, orderId);
+        const occupied = await tx.posOrder.findFirst({
+          where: { tableId: target.id, status: 'open' },
+          select: { id: true },
+        });
+        if (occupied) throw posErrors.tableOccupied();
+        const after = await tx.posOrder.update({
+          where: { id: orderId },
+          data: { tableId: target.id },
+          select: ORDER_SELECT,
+        });
+        await this.audit.record(tx, {
+          action: 'pos.order.moved',
+          actor: auditActor.user(userId),
+          entityId: orderId,
+          before: orderSnapshot(before),
+          after: orderSnapshot(after),
+        });
+        return this.load(tx, orderId);
+      });
+    } catch (error) {
+      // Two moves to the same free table at once: the partial unique index on open orders decides.
+      if (isUniqueViolation(error)) throw posErrors.tableOccupied();
+      throw error;
+    }
   }
 
   /** Closes the order and frees its table; closing a closed order changes nothing. */

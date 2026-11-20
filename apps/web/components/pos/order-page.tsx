@@ -86,6 +86,7 @@ import { PrinterCommandRunner } from './printer-command-runner';
 import { CheckReceipt } from './check-receipt';
 import { tableColors } from './table-icon';
 import { DiscountDialog, DiscountList } from './discount-dialog';
+import { MoveDialog } from './move-dialog';
 import { SplitDialog } from './split-dialog';
 import { VoidDialog } from './void-dialog';
 
@@ -538,16 +539,21 @@ function TableOrder({
               order={order}
               now={now}
               actions={
-                order && order.status === 'open' && access.canClose ? (
-                  <ConfirmAction
-                    testId="close-order"
-                    trigger={t('pos.order.close')}
-                    title={t('pos.order.closeTitle', { number: order.number })}
-                    description={t('pos.order.closeDescription')}
-                    confirm={t('pos.order.close')}
-                    run={() => closeOrder(store, closeAction, order.id)}
-                    onDone={reload}
-                  />
+                order && order.status === 'open' ? (
+                  <>
+                    {access.canTake && <MoveDialog order={order} onDone={reload} />}
+                    {access.canClose && (
+                      <ConfirmAction
+                        testId="close-order"
+                        trigger={t('pos.order.close')}
+                        title={t('pos.order.closeTitle', { number: order.number })}
+                        description={t('pos.order.closeDescription')}
+                        confirm={t('pos.order.close')}
+                        run={() => closeOrder(store, closeAction, order.id)}
+                        onDone={reload}
+                      />
+                    )}
+                  </>
                 ) : null
               }
             />

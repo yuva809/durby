@@ -8,6 +8,8 @@ import {
   type Order,
   type OrderListResponse,
   type SendTicketRequest,
+  moveOrderRequestSchema,
+  type MoveOrderRequest,
   sendTicketRequestSchema,
   type SendTicketResponse,
   type TableOrderResponse,
@@ -94,6 +96,16 @@ export class OrdersController {
     @Body(new ZodBody(voidLinesRequestSchema)) body: VoidLinesRequest,
   ): Promise<SendTicketResponse> {
     return this.orders.voidLines(id, body);
+  }
+
+  @RequirePermission('pos.orders.take')
+  @Idempotent()
+  @Post('orders/:id/move')
+  move(
+    @Param('id', new ParseUUIDPipe({ exceptionFactory: posErrors.orderNotFound })) id: string,
+    @Body(new ZodBody(moveOrderRequestSchema)) body: MoveOrderRequest,
+  ): Promise<Order> {
+    return this.orders.move(id, body);
   }
 
   @RequirePermission('pos.orders.close')

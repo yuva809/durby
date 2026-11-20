@@ -197,6 +197,10 @@ export const listOrdersQuerySchema = z.object({
 
 export const orderListResponseSchema = z.object({ data: z.array(orderSummarySchema) });
 
+/** Moves an open order to a free table at its location (ADR 0069). */
+export const moveOrderRequestSchema = z.object({ tableId: z.uuid() });
+
+export type MoveOrderRequest = z.infer<typeof moveOrderRequestSchema>;
 export type SendTicketRequest = z.infer<typeof sendTicketRequestSchema>;
 export type VoidLinesRequest = z.infer<typeof voidLinesRequestSchema>;
 export type UpdateOrderRequest = z.infer<typeof updateOrderRequestSchema>;

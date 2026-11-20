@@ -770,6 +770,33 @@ describe('OrderPage (till)', () => {
     expect(screen.getByTestId('close-order')).toBeTruthy();
   });
 
+  it('moves the open order to a free table at its location (ADR 0069)', async () => {
+    signedInAs('waiter');
+    const writes = api({
+      ...withOrder(ORDER),
+      'GET /api/v1/pos/floor': () =>
+        Response.json({
+          data: [
+            { ...TABLE, order: ORDER },
+            { ...TABLE, id: id(5), name: 'T2', seatedAt: null, lastOrderAt: null, order: null },
+          ],
+        }),
+      [`POST /api/v1/pos/orders/${ORDER.id}/move`]: () =>
+        Response.json({ ...ORDER, tableId: id(5), tableName: 'T2' }),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    await userEvent.click(await screen.findByTestId('move-order'));
+    await userEvent.selectOptions(await screen.findByTestId('move-table'), id(5));
+    await userEvent.click(screen.getByTestId('form-save'));
+    await waitFor(() =>
+      expect(writes).toContainEqual({
+        method: 'POST',
+        path: `/api/v1/pos/orders/${ORDER.id}/move`,
+        body: { tableId: id(5) },
+      }),
+    );
+  });
+
   it('lets a waiter print the bill with prices, like the cashier', async () => {
     signedInAs('waiter');
     api(withOrder(ORDER));

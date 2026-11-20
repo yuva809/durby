@@ -418,6 +418,13 @@ ticket insert, and the backfill gives every existing ticket one. Every read of a
 `lastOrderAt` (its newest ticket's time), both null for a free table. The tile shows "Seated {time}" and "Last order
 {time} ago", refreshed by the floor's existing 30 s clock. Display only.
 
+**Step 4 (move order) is built.** `POST /pos/orders/:id/move {tableId}` (`pos.orders.take`) moves an open order to a
+free, non-archived table at its location. Only the order's table changes: no ticket is written, so the kitchen is
+not reprinted. Refused with `pos.table_occupied`, `pos.table_archived`, `pos.order_not_same_location` and
+`pos.order_closed`. Moving to the table it is on changes nothing. Audited as `pos.order.moved` (before and after the
+table). The till's order page has a "Move to table" dialog. Other devices see the change at their next refresh;
+the live-update hint for it is not built yet.
+
 - **Placements**: `pos_ticket_placements (ticket_id, order_id, created_by_user_id, created_at)`, append-only, RLS.
   Every ticket has one row from the moment it is written. An order's tickets and lines are the ones whose latest
   placement points at it.
