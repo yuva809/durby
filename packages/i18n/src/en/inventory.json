@@ -68,6 +68,7 @@
   "inventory.fields.unit": "Unit",
   "inventory.fields.minQuantity": "Reorder level",
   "inventory.fields.location": "Location",
+  "inventory.fields.branch": "Branch",
   "inventory.fields.warehouse": "Warehouse",
   "inventory.fields.fromWarehouse": "From",
   "inventory.fields.toWarehouse": "To",

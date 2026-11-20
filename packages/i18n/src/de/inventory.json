@@ -68,6 +68,7 @@
   "inventory.fields.unit": "Einheit",
   "inventory.fields.minQuantity": "Mindestbestand",
   "inventory.fields.location": "Standort",
+  "inventory.fields.branch": "Filiale",
   "inventory.fields.warehouse": "Lager",
   "inventory.fields.fromWarehouse": "Von",
   "inventory.fields.toWarehouse": "Nach",
