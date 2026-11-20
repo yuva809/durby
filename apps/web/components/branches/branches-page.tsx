@@ -8,6 +8,7 @@ import {
   type Warehouse,
 } from '@durby/shared';
 import { Archive, ArchiveRestore, Building2, Pencil, Search } from 'lucide-react';
+import Link from 'next/link';
 import { useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
@@ -155,20 +156,39 @@ function Branches({
               </p>
             );
           }
+          // The checklist: branches that still need a supplying warehouse (ADR 0067).
+          const missing = warehouseList
+            ? list.filter(
+                (l) =>
+                  l.archivedAt === null &&
+                  !l.isWarehouseSite &&
+                  supplierOf(warehouseList, l.id) === null,
+              ).length
+            : 0;
           return (
-            <ul className="grid gap-4 md:grid-cols-2" data-testid="branch-list">
-              {shown.map((location) => (
-                <li key={location.id}>
-                  <BranchCard
-                    location={location}
-                    supplier={warehouseList ? supplierOf(warehouseList, location.id) : undefined}
-                    staff={members && staffOf(members, location.id)}
-                    canManage={canManage}
-                    onChanged={reload}
-                  />
-                </li>
-              ))}
-            </ul>
+            <>
+              {missing > 0 && (
+                <p
+                  className="text-sm font-medium text-destructive"
+                  data-testid="branches-suppliers-missing"
+                >
+                  {t('platform.branchesPage.suppliersMissing', { count: String(missing) })}
+                </p>
+              )}
+              <ul className="grid gap-4 md:grid-cols-2" data-testid="branch-list">
+                {shown.map((location) => (
+                  <li key={location.id}>
+                    <BranchCard
+                      location={location}
+                      supplier={warehouseList ? supplierOf(warehouseList, location.id) : undefined}
+                      staff={members && staffOf(members, location.id)}
+                      canManage={canManage}
+                      onChanged={reload}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </>
           );
         }}
       </Loaded>
@@ -255,6 +275,15 @@ function BranchCard({
                 { name: supplier.name },
               )}
         </p>
+      )}
+      {supplier === null && !archived && canManage && (
+        <Link
+          href="/inventory/warehouses"
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          data-testid="branch-choose-supplier"
+        >
+          {t('platform.branchesPage.chooseSupplier')}
+        </Link>
       )}
       {staff && <hr className="border-border" />}
       {staff && (

@@ -113,7 +113,7 @@ function signedInAs(role: SystemRole) {
 }
 
 /** Answers the page's reads; records the writes and answers them with what they would return. */
-function api(approval = true) {
+function api(approval = true, warehouses?: unknown[]) {
   const writes: { method: string; path: string; body: unknown }[] = [];
   mockState.store.apiFetch.mockImplementation((input: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET';
@@ -144,7 +144,7 @@ function api(approval = true) {
       '/api/v1/locations?includeArchived=true': { data: [HAGELBERGER, KURFUERSTEN, OLD, DEPOT] },
       '/api/v1/staff': TEAM,
       '/api/v1/inventory/warehouses': {
-        data: [
+        data: warehouses ?? [
           // The main warehouse supplies every branch it does not share with a ticked warehouse.
           warehouse(1, HAGELBERGER.id, { isMain: true }),
           warehouse(2, KURFUERSTEN.id),
@@ -309,6 +309,19 @@ describe('/branches shows the supplying warehouse (ADR 0067)', () => {
     expect(
       within(await card('Asia Might Hagelberger')).getByTestId('branch-supplier').textContent,
     ).toBe('Supplied by Store 1 (main warehouse)');
+  });
+
+  it('lists the branches still without a supplier, with a link to set one', async () => {
+    signedInAs('owner');
+    // No main warehouse and nothing ticked: both branches need a supplier.
+    api(true, [warehouse(2, KURFUERSTEN.id)]);
+    render(<BranchesPage />);
+    const missing = await screen.findByTestId('branches-suppliers-missing');
+    expect(missing.textContent).toBe('Branches without a supplying warehouse: 2.');
+    const link = within(await card('Asia Might Kurfürstenstraße')).getByTestId(
+      'branch-choose-supplier',
+    );
+    expect(link.getAttribute('href')).toBe('/inventory/warehouses');
   });
 
   it('finds no supplier when no warehouse ticks the branch and there is no main one', () => {
