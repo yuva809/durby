@@ -14,6 +14,8 @@ import {
   type StationProcessing,
   type TableOrderResponse,
   type MergeOrderRequest,
+  type TransferOrderRequest,
+  type TransferOrderResponse,
   type MoveOrderRequest,
   type UpdateOrderRequest,
   type VoidLinesRequest,
@@ -322,67 +324,178 @@ export class OrdersService {
     await this.access.assert('pos.orders.void', { locationId: order.locationId });
     return this.db.$transaction(async (tx) => {
       if ((await this.lockOrder(tx, orderId)) !== 'open') throw posErrors.orderClosed();
-      const placedTicketIds = ticketIdsOf(await currentOrderByTicket(tx, [orderId]), orderId);
-      const lines = await tx.posOrderLine.findMany({
-        where: { ticketId: { in: placedTicketIds } },
-        select: LINE_SELECT,
-      });
-      const left = remainingOf(lines);
-      const sentLines = new Map(lines.filter((l) => l.quantity > 0).map((l) => [l.id, l]));
-      const requested = new Map<string, number>();
-      for (const { lineId, quantity } of body.lines) {
-        if (!sentLines.has(lineId)) throw posErrors.lineNotFound();
-        requested.set(lineId, (requested.get(lineId) ?? 0) + quantity);
-      }
-      for (const [lineId, quantity] of requested) {
-        if (quantity > (left.get(lineId) ?? 0)) throw posErrors.voidExceeds(lineId);
-      }
-      // Only unbilled portions: a billed item is voided after its bill is cancelled (ADR 0036).
-      const unbilled = unbilledOf(left, await this.billed(tx, orderId));
-      for (const [lineId, quantity] of requested) {
-        if (quantity > (unbilled.get(lineId) ?? 0)) throw posErrors.lineBilled(lineId);
-      }
-      // A discounted item can't be voided until its discount is removed (ADR 0036 §5).
-      const discounted = (await activeDiscounts(tx, orderId)).lineAmount;
-      for (const lineId of requested.keys()) {
-        if (discounted.has(lineId)) throw posErrors.discountActive();
-      }
-      // A void goes to the station that got the item, whatever its category says now.
-      // A void goes where the item went: its ticket's station, and straight to the bill when the
-      // item did (ADR 0031).
-      const sentTickets = new Map(
-        (
-          await tx.posKitchenTicket.findMany({
-            where: { id: { in: placedTicketIds } },
-            select: { id: true, station: true, direct: true },
-          })
-        ).map((t) => [t.id, t]),
-      );
+      const portions = await this.takeOff(tx, orderId, body.lines);
       const ticketIds = await this.writeTickets(
         tx,
         orderId,
         'void',
-        [...requested].map(([lineId, quantity]) => {
-          const line = sentLines.get(lineId)!;
-          const sent = sentTickets.get(line.ticketId)!;
-          return {
-            station: sent.station,
-            direct: sent.direct,
-            line: {
-              productId: line.productId,
-              productName: line.productName,
-              unitPrice: line.unitPrice.toFixed(2),
-              taxRate: line.taxRate.toFixed(2),
-              quantity: -quantity,
-              note: null,
-              voidsLineId: lineId,
-            },
-          };
-        }),
+        portions.map(({ line, quantity, station, direct }) => ({
+          station,
+          direct,
+          line: {
+            productId: line.productId,
+            productName: line.productName,
+            unitPrice: line.unitPrice.toFixed(2),
+            taxRate: line.taxRate.toFixed(2),
+            quantity: -quantity,
+            note: null,
+            voidsLineId: line.id,
+          },
+        })),
       );
       const response = await this.response(tx, orderId, ticketIds);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
+    });
+  }
+
+  /**
+   * Moves sent items to a new order at a free table (ADR 0069, step 6). The source gets a void for them; the new order
+   * gets a sale of the same products at the same prices, so its ticket shows what it sells. Both are normal tickets.
+   * Only unbilled items without a discount move. The destination table must be free and at the same location.
+   */
+  async transfer(sourceId: string, body: TransferOrderRequest): Promise<TransferOrderResponse> {
+    const { tenantId, userId } = this.tenantContext.require();
+    const source = await this.readableOrder(sourceId);
+    await this.access.assert('pos.orders.take', { locationId: source.locationId });
+    return this.db.$transaction(async (tx) => {
+      if ((await this.lockOrder(tx, sourceId)) !== 'open') throw posErrors.orderClosed();
+      const table = await tx.diningTable.findUnique({
+        where: { id: body.tableId },
+        select: { id: true, locationId: true, archivedAt: true },
+      });
+      if (!table) throw posErrors.tableNotFound();
+      if (table.locationId !== source.locationId) throw posErrors.orderNotSameLocation();
+      if (table.archivedAt !== null) throw posErrors.tableArchived();
+      const occupied = await tx.posOrder.findFirst({
+        where: { tableId: table.id, status: 'open' },
+        select: { id: true },
+      });
+      if (occupied) throw posErrors.tableOccupied();
+
+      const portions = await this.takeOff(tx, sourceId, body.lines);
+      await this.writeTickets(
+        tx,
+        sourceId,
+        'void',
+        portions.map(({ line, quantity, station, direct }) => ({
+          station,
+          direct,
+          line: {
+            productId: line.productId,
+            productName: line.productName,
+            unitPrice: line.unitPrice.toFixed(2),
+            taxRate: line.taxRate.toFixed(2),
+            quantity: -quantity,
+            note: null,
+            voidsLineId: line.id,
+          },
+        })),
+      );
+
+      // As late as possible: the counter row stays locked until commit (ADR 0012).
+      const { number } = await this.numbering.next('pos.order', tx);
+      const created = await tx.posOrder.create({
+        data: {
+          tenantId,
+          locationId: table.locationId,
+          tableId: table.id,
+          number,
+          openedByUserId: userId,
+        },
+        select: ORDER_SELECT,
+      });
+      await this.audit.record(tx, {
+        action: 'pos.order.transferred',
+        actor: auditActor.user(userId),
+        entityId: created.id,
+        after: orderSnapshot(created),
+      });
+      // A party sits at the new table: consumers (reservations) react through the outbox (ADR 0019 §7).
+      await this.outbox.add(tx, {
+        type: 'pos.order.opened',
+        payload: {
+          orderId: created.id,
+          locationId: table.locationId,
+          tableId: table.id,
+          openedAt: created.openedAt.toISOString(),
+        },
+      });
+      const processing = await this.processing(table.locationId, tx);
+      await this.writeTickets(
+        tx,
+        created.id,
+        'order',
+        portions.map(({ line, quantity, station }) => ({
+          station,
+          direct: !processing[station],
+          line: {
+            productId: line.productId,
+            productName: line.productName,
+            unitPrice: line.unitPrice.toFixed(2),
+            taxRate: line.taxRate.toFixed(2),
+            quantity,
+            note: null,
+            voidsLineId: null,
+          },
+        })),
+      );
+      const response = {
+        source: await this.load(tx, sourceId),
+        target: await this.load(tx, created.id),
+      };
+      await this.idempotency.completeInTransaction(tx, response);
+      return response;
+    });
+  }
+
+  /**
+   * The sent portions that `requested` takes off an order (a void or a transfer): each line must be sent, within what
+   * is left, unbilled, and without a discount (ADR 0036 §5). Each comes with its ticket's station: a void goes where
+   * the item went, straight to the bill when it did (ADR 0031).
+   */
+  private async takeOff(
+    tx: TenantTransactionClient,
+    orderId: string,
+    requested: readonly { lineId: string; quantity: number }[],
+  ) {
+    const placedTicketIds = ticketIdsOf(await currentOrderByTicket(tx, [orderId]), orderId);
+    const lines = await tx.posOrderLine.findMany({
+      where: { ticketId: { in: placedTicketIds } },
+      select: LINE_SELECT,
+    });
+    const left = remainingOf(lines);
+    const sentLines = new Map(lines.filter((l) => l.quantity > 0).map((l) => [l.id, l]));
+    const wanted = new Map<string, number>();
+    for (const { lineId, quantity } of requested) {
+      if (!sentLines.has(lineId)) throw posErrors.lineNotFound();
+      wanted.set(lineId, (wanted.get(lineId) ?? 0) + quantity);
+    }
+    for (const [lineId, quantity] of wanted) {
+      if (quantity > (left.get(lineId) ?? 0)) throw posErrors.voidExceeds(lineId);
+    }
+    // Only unbilled portions: a billed item moves after its bill is cancelled (ADR 0036).
+    const unbilled = unbilledOf(left, await this.billed(tx, orderId));
+    for (const [lineId, quantity] of wanted) {
+      if (quantity > (unbilled.get(lineId) ?? 0)) throw posErrors.lineBilled(lineId);
+    }
+    // A discounted item can't move until its discount is removed (ADR 0036 §5).
+    const discounted = (await activeDiscounts(tx, orderId)).lineAmount;
+    for (const lineId of wanted.keys()) {
+      if (discounted.has(lineId)) throw posErrors.discountActive();
+    }
+    const sentTickets = new Map(
+      (
+        await tx.posKitchenTicket.findMany({
+          where: { id: { in: placedTicketIds } },
+          select: { id: true, station: true, direct: true },
+        })
+      ).map((t) => [t.id, t]),
+    );
+    return [...wanted].map(([lineId, quantity]) => {
+      const line = sentLines.get(lineId)!;
+      const sent = sentTickets.get(line.ticketId)!;
+      return { line, quantity, station: sent.station, direct: sent.direct };
     });
   }
 

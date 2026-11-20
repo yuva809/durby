@@ -87,6 +87,7 @@ import { CheckReceipt } from './check-receipt';
 import { tableColors } from './table-icon';
 import { DiscountDialog, DiscountList } from './discount-dialog';
 import { MergeDialog, MoveDialog } from './move-dialog';
+import { TransferDialog } from './transfer-dialog';
 import { SplitDialog } from './split-dialog';
 import { VoidDialog } from './void-dialog';
 
@@ -543,6 +544,7 @@ function TableOrder({
                   <>
                     {access.canTake && <MoveDialog order={order} onDone={reload} />}
                     {access.canTake && <MergeDialog order={order} />}
+                    {access.canTake && <TransferDialog order={order} />}
                     {access.canClose && (
                       <ConfirmAction
                         testId="close-order"

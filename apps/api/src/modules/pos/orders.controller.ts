@@ -12,6 +12,9 @@ import {
   type MergeOrderRequest,
   moveOrderRequestSchema,
   type MoveOrderRequest,
+  transferOrderRequestSchema,
+  type TransferOrderRequest,
+  type TransferOrderResponse,
   sendTicketRequestSchema,
   type SendTicketResponse,
   type TableOrderResponse,
@@ -118,6 +121,16 @@ export class OrdersController {
     @Body(new ZodBody(mergeOrderRequestSchema)) body: MergeOrderRequest,
   ): Promise<Order> {
     return this.orders.merge(id, body);
+  }
+
+  @RequirePermission('pos.orders.take')
+  @Idempotent({ completion: 'transaction' })
+  @Post('orders/:id/transfer')
+  transfer(
+    @Param('id', new ParseUUIDPipe({ exceptionFactory: posErrors.orderNotFound })) id: string,
+    @Body(new ZodBody(transferOrderRequestSchema)) body: TransferOrderRequest,
+  ): Promise<TransferOrderResponse> {
+    return this.orders.transfer(id, body);
   }
 
   @RequirePermission('pos.orders.close')

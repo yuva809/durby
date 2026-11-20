@@ -434,6 +434,16 @@ target keeps its number. Refused with `pos.merge_same_order`, `pos.order_not_sam
 on it). The till's order page has a "Merge into another order" dialog that opens the target table afterwards.
 Open point: ticket numbers are per order, so a merged ticket keeps its old number in the target.
 
+**Step 6 (transfer) is built.** `POST /pos/orders/:id/transfer {tableId, lines: [{lineId, quantity}]}`
+(`pos.orders.take`, completion in the transaction) takes chosen sent items off the order into a new order at a free
+table at its location. The source gets a void ticket for them (negative lines, the same as a void); the new order gets
+a sale ticket of the same products at the price they were sold at, and its own number. Both are normal tickets, so
+the kitchen prints the sale at the new table (a transfer is not a move: the items are made again for the new table).
+Refused with `pos.void_exceeds`, `pos.line_billed`, `pos.discount_active`, `pos.table_occupied`,
+`pos.table_archived`, `pos.order_not_same_location`, `pos.order_closed` and `pos.line_not_found`. Audited as
+`pos.order.transferred` on the new order. The response carries both orders. The till's order page has an "Transfer
+items" dialog that opens the new table afterwards.
+
 - **Placements**: `pos_ticket_placements (ticket_id, order_id, created_by_user_id, created_at)`, append-only, RLS.
   Every ticket has one row from the moment it is written. An order's tickets and lines are the ones whose latest
   placement points at it.

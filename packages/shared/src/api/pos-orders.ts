@@ -206,6 +206,24 @@ export type MoveOrderRequest = z.infer<typeof moveOrderRequestSchema>;
 export const mergeOrderRequestSchema = z.object({ orderId: z.uuid() });
 
 export type MergeOrderRequest = z.infer<typeof mergeOrderRequestSchema>;
+
+/**
+ * Moves sent items off an order to a new order at a free table (ADR 0069). The source gets a void for them, the new
+ * order a sale at the same price.
+ */
+export const transferOrderRequestSchema = z.strictObject({
+  tableId: z.uuid(),
+  lines: z.array(z.strictObject({ lineId: z.uuid(), quantity })).min(1).max(TICKET_MAX_LINES),
+});
+
+/** The order the items left, and the new order they went to. */
+export const transferOrderResponseSchema = z.object({
+  source: orderSchema,
+  target: orderSchema,
+});
+
+export type TransferOrderRequest = z.infer<typeof transferOrderRequestSchema>;
+export type TransferOrderResponse = z.infer<typeof transferOrderResponseSchema>;
 export type SendTicketRequest = z.infer<typeof sendTicketRequestSchema>;
 export type VoidLinesRequest = z.infer<typeof voidLinesRequestSchema>;
 export type UpdateOrderRequest = z.infer<typeof updateOrderRequestSchema>;

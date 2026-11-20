@@ -832,6 +832,42 @@ describe('OrderPage (till)', () => {
     await waitFor(() => expect(mockState.router.push).toHaveBeenCalledWith(`/service/${id(5)}`));
   });
 
+  it('moves chosen items to a new order at a free table and opens it (ADR 0069)', async () => {
+    signedInAs('waiter');
+    const next = {
+      ...ORDER,
+      id: id(26),
+      number: 'ORD-2026-000002',
+      tableId: id(5),
+      tableName: 'T2',
+    };
+    const writes = api({
+      ...withOrder(ORDER),
+      'GET /api/v1/pos/floor': () =>
+        Response.json({
+          data: [
+            { ...TABLE, order: ORDER },
+            { ...TABLE, id: id(5), name: 'T2', seatedAt: null, lastOrderAt: null, order: null },
+          ],
+        }),
+      [`POST /api/v1/pos/orders/${ORDER.id}/transfer`]: () =>
+        Response.json({ source: ORDER, target: next }),
+    });
+    render(<OrderPage tableId={TABLE.id} />, { wrapper: Brand });
+    await userEvent.click(await screen.findByTestId('transfer-order'));
+    await userEvent.type(await screen.findByTestId('transfer-quantity'), '1');
+    await userEvent.selectOptions(await screen.findByTestId('transfer-table'), id(5));
+    await userEvent.click(screen.getByTestId('form-save'));
+    await waitFor(() =>
+      expect(writes).toContainEqual({
+        method: 'POST',
+        path: `/api/v1/pos/orders/${ORDER.id}/transfer`,
+        body: { tableId: id(5), lines: [{ lineId: id(31), quantity: 1 }] },
+      }),
+    );
+    await waitFor(() => expect(mockState.router.push).toHaveBeenCalledWith(`/service/${id(5)}`));
+  });
+
   it('lets a waiter print the bill with prices, like the cashier', async () => {
     signedInAs('waiter');
     api(withOrder(ORDER));

@@ -41,6 +41,9 @@ reference the same links (ADR 0036). So an item cannot change order by rewriting
 4. **Split and transfer.** `POST /pos/orders/:id/transfer` moves chosen portions to another table or a new order. The
    source gets a void ticket for the portions (negative lines, as a void does), and the destination gets a sale ticket
    with the same product and price snapshot. Both are normal tickets, so the audit trail and kitchen history stay whole.
+   **Amended while building step 6:** a new order needs a table of its own (one open order per table, ADR 0016), and the
+   source keeps its table, so the destination is always a free table at the same location, where a new order opens with
+   its own number. Transfers to an open order are not offered (that is a merge).
    Only unbilled portions can move. Audited as `pos.order.transferred`.
 
 5. **Timer.** The floor summary carries `seatedAt` (the order's `openedAt`) and `lastOrderAt` (the newest ticket's
