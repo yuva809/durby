@@ -95,6 +95,7 @@ const line = (
   voidsLineId: null,
   remaining,
   billedQuantity: 0,
+  seat: null,
   total: times(p.price, quantity),
   createdAt: '2026-10-27T12:00:00.000Z',
 });

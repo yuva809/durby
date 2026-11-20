@@ -411,6 +411,10 @@ and to a transfer's sale line, and never changed (a correction is void and resen
 N" is a bill of the unbilled lines whose seat is N. Lines without a seat are billed as before. The order response
 carries `seat` on each line.
 
+Status: built on `feature/order-taking`: the column and check, send, voids, bill-by-seat in the till (cart seat field
+and the split dialog's seat picker). The transfer rule (ADR 0070 decision 4) applies once the table-management branch is
+merged, since transfer is not on this branch yet.
+
 ## QR menu (ADR 0026)
 
 Every dining table has a `menu_token` (24 random URL-safe characters, unique per tenant). Its QR code links to

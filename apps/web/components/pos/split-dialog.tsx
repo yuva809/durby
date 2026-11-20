@@ -13,6 +13,7 @@ import { cn } from '../../lib/utils';
 import { FormDialog } from '../form-dialog';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
+import { Select } from '../ui/select';
 import { useMoney } from './money';
 
 type Mode = 'items' | 'equal' | 'merge';
@@ -52,6 +53,19 @@ export function SplitDialog({
   const [others, setOthers] = useState<FloorTable[]>([]);
   const [chosen, setChosen] = useState<string[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
+  const [seatPick, setSeatPick] = useState('');
+  // The seats that have something left to bill (ADR 0070); "bill seat N" fills the items for that seat.
+  const seats = [...new Set(lines.map((l) => l.seat).filter((s): s is number => s !== null))].sort(
+    (a, b) => a - b,
+  );
+  const pickSeat = (value: string) => {
+    setSeatPick(value);
+    setProblem(null);
+    const seat = Number(value);
+    setCounts(
+      Object.fromEntries(lines.map((l) => [l.id, value !== '' && l.seat === seat ? l.left : 0])),
+    );
+  };
 
   useEffect(() => {
     if (mode !== 'merge') return;
@@ -96,6 +110,7 @@ export function SplitDialog({
         setShares(startShares);
         setChosen([]);
         setProblem(null);
+        setSeatPick('');
       }}
       submit={() => {
         setProblem(null);
@@ -158,6 +173,21 @@ export function SplitDialog({
 
       {mode === 'items' && (
         <div className="flex flex-col gap-2" data-testid="split-items">
+          {seats.length > 0 && (
+            <Select
+              aria-label={t('pos.split.bySeat')}
+              value={seatPick}
+              onChange={(e) => pickSeat(e.target.value)}
+              data-testid="split-seat"
+            >
+              <option value="">{t('pos.split.seatNone')}</option>
+              {seats.map((seat) => (
+                <option key={seat} value={String(seat)}>
+                  {t('pos.split.seat', { seat: String(seat) })}
+                </option>
+              ))}
+            </Select>
+          )}
           <div className="flex justify-end gap-2">
             <Button
               type="button"

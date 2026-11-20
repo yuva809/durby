@@ -8,6 +8,7 @@ import {
   type Order,
   ORDER_LINE_MAX_QUANTITY,
   ORDER_MAX_COVERS,
+  MAX_SEAT,
   ORDER_NOTE_MAX_LENGTH,
   type PrepStation,
   type Product,
@@ -130,7 +131,15 @@ interface CartLine {
   station: PrepStation;
   quantity: number;
   note: string;
+  /** The guest's seat as typed: 1–20 when valid, else not sent (ADR 0070). */
+  seat: string;
 }
+
+/** A seat number from the cart's text, or null when it is not a seat (ADR 0070). */
+const seatOf = (text: string): number | null => {
+  const n = Number(text);
+  return Number.isInteger(n) && n >= 1 && n <= MAX_SEAT ? n : null;
+};
 
 /**
  * "Send to kitchen", "Send to bar", "Send to kitchen & bar" or "Add to bill", by the stations in
@@ -446,7 +455,7 @@ function TableOrder({
               ? { ...l, quantity: Math.min(l.quantity + 1, ORDER_LINE_MAX_QUANTITY) }
               : l,
           )
-        : [...lines, { product, station, quantity: 1, note: '' }],
+        : [...lines, { product, station, quantity: 1, note: '', seat: '' }],
     );
   };
   const change = (productId: string, patch: Partial<CartLine>) =>
@@ -464,11 +473,15 @@ function TableOrder({
     setBusy(true);
     setError(null);
     const result = await sendTicket(store, action, tableId, {
-      lines: cart.map((l) => ({
-        productId: l.product.id,
-        quantity: l.quantity,
-        note: l.note.trim(),
-      })),
+      lines: cart.map((l) => {
+        const seat = seatOf(l.seat);
+        return {
+          productId: l.product.id,
+          quantity: l.quantity,
+          note: l.note.trim(),
+          ...(seat === null ? {} : { seat }),
+        };
+      }),
       ...(covers === null ? {} : { covers }),
     });
     setBusy(false);
@@ -1026,6 +1039,19 @@ function CartRow({
           {money(times(line.product.price, line.quantity))}
         </span>
       </div>
+      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+        {t('pos.order.seat', { name })}
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={MAX_SEAT}
+          className="h-8 w-20 text-sm"
+          value={line.seat}
+          onChange={(e) => onChange(line.product.id, { seat: e.target.value })}
+          data-testid="cart-seat"
+        />
+      </label>
       {noteOpen ? (
         <>
           <label htmlFor={`${id}-note`} className="sr-only">

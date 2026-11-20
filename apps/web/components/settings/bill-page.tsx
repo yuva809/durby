@@ -684,6 +684,7 @@ function sampleTicket(station: PrepStation, productName: string, quantity: numbe
         quantity,
         note: null,
         voidsLineId: null,
+        seat: null,
         remaining: quantity,
         billedQuantity: 0,
         total: '0.00',
