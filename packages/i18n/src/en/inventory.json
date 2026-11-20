@@ -93,6 +93,8 @@
   "inventory.page.totalValue": "Stock value: {value}",
   "inventory.page.emptyStock": "No stock yet. Receive a delivery to start.",
   "inventory.page.noWarehouses": "No warehouses yet. Add one under Warehouses.",
+  "inventory.fields.openingStock": "Opening stock",
+  "inventory.page.allWarehouses": "All warehouses",
   "inventory.page.warehouseColumn": "Warehouse",
   "inventory.page.branchesColumn": "Branches",
   "inventory.page.statusColumn": "Status",

@@ -6,13 +6,15 @@ import {
   STOCK_UNITS,
   type StockItem,
   type StockUnit,
+  type Warehouse,
 } from '@durby/shared';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
-import { createStockItem, updateStockItem } from '../../lib/inventory/api';
+import { createStockItem, loadStock, postReceipt, updateStockItem } from '../../lib/inventory/api';
 import { isQuantity, shortQuantity } from '../../lib/inventory/format';
 import { useActionKey } from '../../lib/use-action-key';
+import { useResource } from '../../lib/use-resource';
 import { Field, FormDialog } from '../form-dialog';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -25,9 +27,21 @@ import type { InventoryData } from './inventory-page';
 /** Stock items: name, article number, unit and reorder level; managed with inventory.items.edit. */
 export function ItemsTab({ data }: { data: InventoryData }) {
   const t = useT();
+  const { store } = useAuth();
   const [showArchived, setShowArchived] = useState(false);
+  // A warehouse filter shows only the items it holds, with its own quantity (stock is kept per warehouse).
+  const [warehouseId, setWarehouseId] = useState('');
+  const [levels] = useResource(warehouseId ? `items-stock:${warehouseId}` : null, () =>
+    loadStock(store, { warehouseId }),
+  );
+  const here =
+    warehouseId && levels.status === 'ready'
+      ? new Map(levels.data.map((l) => [l.itemId, l.quantity]))
+      : null;
   const canManage = data.can('inventory.items.edit');
-  const shown = data.items.filter((i) => showArchived || i.archivedAt === null);
+  const shown = data.items.filter(
+    (i) => (showArchived || i.archivedAt === null) && (here === null || here.has(i.id)),
+  );
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -38,7 +52,29 @@ export function ItemsTab({ data }: { data: InventoryData }) {
           />
           {t('inventory.page.showArchived')}
         </label>
-        {canManage && <ItemDialog categories={data.categories} onDone={data.reload} />}
+        <Select
+          value={warehouseId}
+          onChange={(e) => setWarehouseId(e.target.value)}
+          className="w-auto"
+          aria-label={t('inventory.fields.warehouse')}
+          data-testid="items-warehouse"
+        >
+          <option value="">{t('inventory.page.allWarehouses')}</option>
+          {data.warehouses
+            .filter((w) => w.archivedAt === null)
+            .map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+        </Select>
+        {canManage && (
+          <ItemDialog
+            categories={data.categories}
+            warehouses={data.warehouses}
+            onDone={data.reload}
+          />
+        )}
       </div>
       {shown.length === 0 ? (
         <p className="text-muted-foreground">{t('inventory.page.noItems')}</p>
@@ -55,6 +91,11 @@ export function ItemsTab({ data }: { data: InventoryData }) {
                 <span className="flex items-center gap-2 font-medium">
                   {item.name}
                   {item.archivedAt && <Badge>{t('inventory.page.archived')}</Badge>}
+                  {here && (
+                    <span className="text-sm font-normal tabular-nums" data-testid="item-here">
+                      {shortQuantity(here.get(item.id) ?? '0')} {t(`inventory.units.${item.unit}`)}
+                    </span>
+                  )}
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {[
@@ -115,6 +156,7 @@ export function ItemDialog({
   onDone,
   trigger,
   defaultCategoryId,
+  warehouses,
 }: {
   item?: StockItem;
   categories: readonly ProductCategory[] | null;
@@ -122,6 +164,8 @@ export function ItemDialog({
   trigger?: string;
   /** Pre-filled for a new item, e.g. the category open on the inventory page. */
   defaultCategoryId?: string | null;
+  /** New items only: the warehouse that gets the opening stock (stock is kept per warehouse). */
+  warehouses?: readonly Warehouse[];
 }) {
   const t = useT();
   const id = useId();
@@ -133,7 +177,13 @@ export function ItemDialog({
   const [min, setMin] = useState('');
   const [salePrice, setSalePrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [warehouseId, setWarehouseId] = useState('');
+  const [opening, setOpening] = useState('');
+  const [unitCost, setUnitCost] = useState('');
   const [checked, setChecked] = useState(false);
+  const receiptAction = useActionKey();
+  const activeWarehouses = (warehouses ?? []).filter((w) => w.archivedAt === null);
+  const openingInvalid = checked && opening.trim() !== '' && !isQuantity(opening.trim());
   // Active categories to choose from, plus the item's own even if archived meanwhile (it stays until changed).
   const choices = (categories ?? []).filter(
     (c) => c.archivedAt === null || c.id === item?.categoryId,
@@ -164,6 +214,10 @@ export function ItemDialog({
         setMin(item?.minQuantity ? shortQuantity(item.minQuantity) : '');
         setSalePrice(item?.salePrice ?? '');
         setCategoryId(item ? (item.categoryId ?? '') : (defaultCategoryId ?? ''));
+        // The main warehouse by default, else the first active one.
+        setWarehouseId((activeWarehouses.find((w) => w.isMain) ?? activeWarehouses[0])?.id ?? '');
+        setOpening('');
+        setUnitCost('');
         setChecked(false);
       }}
       submit={() => {
@@ -181,14 +235,29 @@ export function ItemDialog({
             ...(categories ? { categoryId: categoryId || null } : {}),
           });
         }
-        return createStockItem(store, action, {
-          name: name.trim(),
-          unit,
-          ...(sku.trim() ? { sku: sku.trim() } : {}),
-          ...(min.trim() ? { minQuantity: min.trim() } : {}),
-          ...(sells && salePrice.trim() ? { salePrice: salePrice.trim() } : {}),
-          ...(categories && categoryId ? { categoryId } : {}),
-        });
+        const openingQty = opening.trim();
+        if (openingQty !== '' && (!isQuantity(openingQty) || warehouseId === '')) return null;
+        return (async () => {
+          const created = await createStockItem(store, action, {
+            name: name.trim(),
+            unit,
+            ...(sku.trim() ? { sku: sku.trim() } : {}),
+            ...(min.trim() ? { minQuantity: min.trim() } : {}),
+            ...(sells && salePrice.trim() ? { salePrice: salePrice.trim() } : {}),
+            ...(categories && categoryId ? { categoryId } : {}),
+          });
+          // Opening stock goes into the chosen warehouse only, as a receipt.
+          if (!created.ok || !created.data || openingQty === '' || Number(openingQty) <= 0) {
+            return created;
+          }
+          const receipt = await postReceipt(store, receiptAction, {
+            warehouseId,
+            lines: [
+              { itemId: created.data.id, quantity: openingQty, unitCost: unitCost.trim() || '0' },
+            ],
+          });
+          return receipt.ok ? created : receipt;
+        })();
       }}
       onDone={onDone}
     >
@@ -273,6 +342,47 @@ export function ItemDialog({
             data-testid="item-sale-price"
           />
         </Field>
+      )}
+      {!item && activeWarehouses.length > 0 && (
+        <>
+          <Field id={`${id}-warehouse`} label={t('inventory.fields.warehouse')} problem={null}>
+            <Select
+              id={`${id}-warehouse`}
+              value={warehouseId}
+              onChange={(e) => setWarehouseId(e.target.value)}
+              data-testid="item-warehouse"
+            >
+              {activeWarehouses.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.isMain ? `${w.name} (${t('inventory.page.mainWarehouse')})` : w.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field
+            id={`${id}-opening`}
+            label={t('inventory.fields.openingStock')}
+            problem={openingInvalid ? t('inventory.page.quantityInvalid') : null}
+          >
+            <Input
+              id={`${id}-opening`}
+              inputMode="decimal"
+              value={opening}
+              aria-invalid={openingInvalid || undefined}
+              onChange={(e) => setOpening(e.target.value)}
+              data-testid="item-opening"
+            />
+          </Field>
+          <Field id={`${id}-cost`} label={t('inventory.fields.unitCost')} problem={null}>
+            <Input
+              id={`${id}-cost`}
+              inputMode="decimal"
+              value={unitCost}
+              onChange={(e) => setUnitCost(e.target.value)}
+              data-testid="item-unit-cost"
+            />
+          </Field>
+        </>
       )}
     </FormDialog>
   );
