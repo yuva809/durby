@@ -189,3 +189,22 @@ describe('activeNavItem', () => {
     expect(activeNavItem(NAV_ITEMS, path)?.id).toBe(id);
   });
 });
+
+describe('menu switches (ADR 0073 settings)', () => {
+  it('hides a menu item while the setting it names is off for the organization', () => {
+    const item = {
+      id: 'orders',
+      href: '/orders',
+      label: 'platform.nav.salesOrders',
+      icon: () => null,
+      group: 'operations',
+      menuSetting: 'orders.showSalesOrders',
+    } as unknown as NavItem;
+    const base = { activeFeatures: [], activePermissions: [] };
+    expect(visibleNav([item], base)).toHaveLength(1);
+    expect(visibleNav([item], { ...base, offSettings: [] })).toHaveLength(1);
+    expect(visibleNav([item], { ...base, offSettings: ['orders.showSalesOrders'] })).toHaveLength(
+      0,
+    );
+  });
+});

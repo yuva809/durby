@@ -1072,6 +1072,8 @@
   "platform.branchesPage.noMatch": "Keine Filiale passt.",
   "platform.settings.ordersRequestsNeedApproval.name": "Warenanforderungen brauchen eine Freigabe",
   "platform.settings.ordersRequestsNeedApproval.description": "An: Die Warenanforderung einer Filiale wartet auf Inhaber oder Admin. Aus: Sie ist mit dem Senden freigegeben und geht direkt ans Lager.",
+  "platform.settings.ordersShowSalesOrders.name": "Verkaufsaufträge im Menü zeigen",
+  "platform.settings.ordersShowSalesOrders.description": "An: die Seite Verkaufsaufträge ist im Menü. Aus: sie ist für diese Organisation im Menü ausgeblendet.",
   "platform.audit.fields.address": "Adresse",
   "platform.team.dialog.branchAccess": "Filialzugriff",
   "platform.team.dialog.branchAccessHint": "Kein Haken: alle Filialen.",

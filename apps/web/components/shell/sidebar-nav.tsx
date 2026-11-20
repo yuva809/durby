@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
+import { loadSettings } from '../../lib/settings/api';
+import { useResource } from '../../lib/use-resource';
 import { useNavLayout } from '../theme-provider';
 import { navLayout } from '../../lib/nav/layouts';
 import { activeNavItem, type NavAccess, type NavItem, visibleNav } from '../../lib/nav/registry';
@@ -20,12 +22,18 @@ const ITEM_CLASS =
  * on tablets.
  */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
-  const { session } = useAuth();
+  const { session, store } = useAuth();
   const t = useT();
   const pathname = usePathname();
+  // The organization's switches (settings, e.g. orders.showSalesOrders): a menu item may be hidden by one that is off.
+  const [settings] = useResource(session?.activeOrganizationId ?? null, () => loadSettings(store));
   const access: NavAccess = {
     activeFeatures: session?.activeFeatures ?? [],
     activePermissions: session?.activePermissions ?? [],
+    offSettings:
+      settings.status === 'ready'
+        ? settings.data.filter((s) => s.value === false).map((s) => s.key)
+        : [],
   };
   const layout = navLayout(useNavLayout(), access);
   const items = visibleNav(layout.items, access);

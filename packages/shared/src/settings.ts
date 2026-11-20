@@ -344,6 +344,15 @@ export const SETTINGS = {
     scopes: ['partner', 'organization'],
     dataBound: false,
   }),
+  // Off: the Sales Orders menu is hidden for the organization (the page stays reachable by its address).
+  'orders.showSalesOrders': define({
+    label: 'platform.settings.ordersShowSalesOrders.name',
+    description: 'platform.settings.ordersShowSalesOrders.description',
+    schema: z.boolean(),
+    default: true,
+    scopes: ['partner', 'organization'],
+    dataBound: false,
+  }),
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;
