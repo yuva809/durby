@@ -93,6 +93,7 @@
   "inventory.page.totalValue": "Stock value: {value}",
   "inventory.page.emptyStock": "No stock yet. Receive a delivery to start.",
   "inventory.page.noWarehouses": "No warehouses yet. Add one under Warehouses.",
+  "inventory.page.notInStock": "Not in stock",
   "inventory.page.filterLocation": "Filter by location",
   "inventory.page.groupWarehouses": "Warehouse (main stock)",
   "inventory.page.groupBranches": "Branch (same as its warehouse)",

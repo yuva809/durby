@@ -40,6 +40,13 @@ export function ItemsTab({ data }: { data: InventoryData }) {
     filter && levels.status === 'ready'
       ? new Map(levels.data.map((l) => [l.itemId, l.quantity]))
       : null;
+  // Where each item is held, in every warehouse (shown on each card).
+  const [allLevels] = useResource('items-stock:all', () => loadStock(store, {}));
+  const warehouseName = (id: string) => data.warehouses.find((w) => w.id === id)?.name ?? '';
+  const heldIn = (itemId: string) =>
+    allLevels.status === 'ready'
+      ? allLevels.data.filter((l) => l.itemId === itemId && l.quantity !== '0')
+      : [];
   const canManage = data.can('inventory.items.edit');
   const shown = data.items.filter(
     (i) => (showArchived || i.archivedAt === null) && (here === null || here.has(i.id)),
@@ -73,23 +80,18 @@ export function ItemsTab({ data }: { data: InventoryData }) {
       {shown.length === 0 ? (
         <p className="text-muted-foreground">{t('inventory.page.noItems')}</p>
       ) : (
-        <Card className="divide-y p-0">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="item-grid">
           {shown.map((item) => (
-            <div
+            <Card
               key={item.id}
-              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+              className="flex flex-col justify-between gap-4 p-4"
               data-testid="item-row"
               data-name={item.name}
             >
-              <span className="flex flex-col">
-                <span className="flex items-center gap-2 font-medium">
+              <div className="flex flex-col gap-2">
+                <span className="flex flex-wrap items-center gap-2 font-medium">
                   {item.name}
                   {item.archivedAt && <Badge>{t('inventory.page.archived')}</Badge>}
-                  {here && (
-                    <span className="text-sm font-normal tabular-nums" data-testid="item-here">
-                      {shortQuantity(here.get(item.id) ?? '0')} {t(`inventory.units.${item.unit}`)}
-                    </span>
-                  )}
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {[
@@ -101,16 +103,34 @@ export function ItemsTab({ data }: { data: InventoryData }) {
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
-              </span>
+                {here ? (
+                  <span className="text-sm tabular-nums" data-testid="item-here">
+                    {shortQuantity(here.get(item.id) ?? '0')} {t(`inventory.units.${item.unit}`)}
+                  </span>
+                ) : (
+                  <ul className="flex flex-col gap-1 text-sm" data-testid="item-warehouses">
+                    {heldIn(item.id).length === 0 ? (
+                      <li className="text-muted-foreground">{t('inventory.page.notInStock')}</li>
+                    ) : (
+                      heldIn(item.id).map((l) => (
+                        <li key={l.warehouseId} data-testid="item-warehouse-row">
+                          {warehouseName(l.warehouseId)}: {shortQuantity(l.quantity)}{' '}
+                          {t(`inventory.units.${item.unit}`)}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
               {canManage && (
                 <span className="flex gap-2">
                   <ItemDialog item={item} categories={data.categories} onDone={data.reload} />
                   <ArchiveButton item={item} onDone={data.reload} />
                 </span>
               )}
-            </div>
+            </Card>
           ))}
-        </Card>
+        </div>
       )}
     </div>
   );
