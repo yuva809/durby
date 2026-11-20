@@ -57,6 +57,8 @@ export function WarehousesTab({ data }: { data: InventoryData }) {
       {/* One message for the whole page when there is no warehouse at all, not one per location. */}
       {data.warehouses.some((w) => showArchived || w.archivedAt === null) ? (
         locations.map((location) => {
+          // The branch has no store of its own yet: its goods come from this warehouse (ADR 0067).
+          const supplier = supplierOf(data.warehouses, location.id);
           const list = data.warehouses.filter(
             (w) => w.locationId === location.id && (showArchived || w.archivedAt === null),
           );
@@ -68,7 +70,11 @@ export function WarehousesTab({ data }: { data: InventoryData }) {
             >
               {location.name && <h2 className="font-semibold">{location.name}</h2>}
               {list.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('inventory.page.noWarehouses')}</p>
+                <p className="text-sm text-muted-foreground" data-testid="warehouse-empty">
+                  {supplier
+                    ? t('inventory.page.suppliedBy', { name: supplier.name })
+                    : t('inventory.page.noWarehouses')}
+                </p>
               ) : (
                 <Card className="divide-y p-0">
                   {list.map((w) => (
@@ -125,6 +131,16 @@ export function WarehousesTab({ data }: { data: InventoryData }) {
         <p className="text-sm text-muted-foreground">{t('inventory.page.noWarehouses')}</p>
       )}
     </div>
+  );
+}
+
+/** The warehouse that supplies a location (ADR 0067): one ticked for it, else the main warehouse. */
+function supplierOf(warehouses: readonly Warehouse[], locationId: string): Warehouse | null {
+  const live = warehouses.filter((w) => w.archivedAt === null && !w.isTransit);
+  return (
+    live.find((w) => !w.isMain && w.suppliesLocationIds.includes(locationId)) ??
+    live.find((w) => w.isMain) ??
+    null
   );
 }
 

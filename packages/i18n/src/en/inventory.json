@@ -93,6 +93,7 @@
   "inventory.page.totalValue": "Stock value: {value}",
   "inventory.page.emptyStock": "No stock yet. Receive a delivery to start.",
   "inventory.page.noWarehouses": "No warehouses yet. Add one under Warehouses.",
+  "inventory.page.suppliedBy": "Supplied by {name}",
   "inventory.page.noItems": "No stock items yet. Add them under Items.",
   "inventory.page.noLocations": "There are no locations yet.",
   "inventory.page.addLine": "Add item",
