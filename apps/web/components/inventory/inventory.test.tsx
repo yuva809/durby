@@ -311,6 +311,26 @@ describe('InventoryPage', () => {
     expect(screen.getByTestId('warehouse-create')).toBeTruthy();
   });
 
+  it('opens the warehouses of the branch a branch card links to, not all of them', async () => {
+    signedInAs('owner');
+    const NORTH = { id: id(2), name: 'North branch', brandId: id(90) };
+    const SOUTH = { id: id(3), name: 'South branch', brandId: id(90) };
+    api({
+      'GET /api/v1/locations': () => Response.json({ data: [MAIN_LOCATION, NORTH, SOUTH] }),
+      'GET /api/v1/inventory/warehouses': () =>
+        Response.json({
+          data: [
+            { ...STORE, id: id(31), name: 'North store', locationId: NORTH.id, suppliesStation: null },
+            { ...STORE, id: id(32), name: 'South store', locationId: SOUTH.id, suppliesStation: null },
+          ],
+        }),
+    });
+    mockState.search = `branch=${NORTH.id}`;
+    render(<InventoryPage />);
+    await userEvent.click(await tab('warehouses'));
+    expect(screen.getAllByTestId('warehouse-row').map((r) => r.dataset.name)).toEqual(['North store']);
+  });
+
   it('adds a warehouse that supplies only the branches ticked, moving one from another (ADR 0067)', async () => {
     signedInAs('owner');
     const NORTH = { id: id(2), name: 'North branch', brandId: id(90) };
