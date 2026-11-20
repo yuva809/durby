@@ -415,6 +415,12 @@ Status: built on `feature/order-taking`: the column and check, send, voids, bill
 and the split dialog's seat picker). The transfer rule (ADR 0070 decision 4) applies once the table-management branch is
 merged, since transfer is not on this branch yet.
 
+## Step 7: handheld waiter app (ADR 0072)
+
+The till is installable on a phone: a web manifest (name and logo from the partner's theme, start at `/service`,
+standalone display) and a service worker that caches only the app's static files. Pages, API responses and sign-in
+state are never cached. Online only: sending an order needs the connection. The push handler (ADR 0047) is unchanged.
+
 ## QR menu (ADR 0026)
 
 Every dining table has a `menu_token` (24 random URL-safe characters, unique per tenant). Its QR code links to
