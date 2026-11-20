@@ -24,6 +24,7 @@ export class InventoryLookup {
         OR: [
           { name: { contains: q, mode: 'insensitive' } },
           { sku: { contains: q, mode: 'insensitive' } },
+          { category: { name: { contains: q, mode: 'insensitive' } } },
         ],
       },
       select: { id: true, name: true, sku: true, unit: true },
@@ -35,6 +36,40 @@ export class InventoryLookup {
       id: i.id,
       title: i.name,
       subtitle: i.sku ?? null,
+    }));
+  }
+
+  /** Stock documents by number or supplier, in the warehouses the caller reads (ADR 0071 rules). */
+  async searchDocuments(q: string): Promise<SearchResult[]> {
+    const scope = await this.access.locationIdsFor('inventory.stock.read');
+    if (scope !== 'all' && scope.length === 0) return [];
+    const rows = await this.db.stockDocument.findMany({
+      where: {
+        OR: [
+          { number: { contains: q, mode: 'insensitive' } },
+          { supplier: { contains: q, mode: 'insensitive' } },
+        ],
+        ...(scope === 'all'
+          ? {}
+          : {
+              warehouse: {
+                OR: [
+                  { locationId: { in: scope } },
+                  { isMain: true },
+                  { suppliesLocationIds: { hasSome: scope } },
+                ],
+              },
+            }),
+      },
+      select: { id: true, number: true, supplier: true },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: SEARCH_LIMIT_PER_TYPE,
+    });
+    return rows.map((d) => ({
+      type: 'stock_document',
+      id: d.id,
+      title: d.number,
+      subtitle: d.supplier ?? null,
     }));
   }
 

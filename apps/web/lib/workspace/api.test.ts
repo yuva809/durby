@@ -8,6 +8,12 @@ describe('resultHref', () => {
     );
   });
 
+  it('opens a stock document on the Documents page', () => {
+    expect(resultHref({ type: 'stock_document', id: 'd1', title: 'GRN-2026-000001' })).toBe(
+      '/inventory/documents',
+    );
+  });
+
   it('opens a warehouse on the warehouses page and a branch on the branches page', () => {
     expect(resultHref({ type: 'warehouse', id: 'w1', title: 'Depot' })).toBe(
       '/inventory/warehouses',

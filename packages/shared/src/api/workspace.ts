@@ -9,6 +9,7 @@ export const SEARCH_RESULT_TYPES = [
   'stock_item',
   'warehouse',
   'branch',
+  'stock_document',
   'product',
   'customer',
   'sales_order',
