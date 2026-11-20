@@ -30,12 +30,16 @@ export function ItemsTab({ data }: { data: InventoryData }) {
   const { store } = useAuth();
   const [showArchived, setShowArchived] = useState(false);
   // A warehouse filter shows only the items it holds, with its own quantity (stock is kept per warehouse).
-  const [warehouseId, setWarehouseId] = useState('');
-  const [levels] = useResource(warehouseId ? `items-stock:${warehouseId}` : null, () =>
-    loadStock(store, { warehouseId }),
+  // The filter: "w:<warehouse>" for one warehouse, "l:<branch>" for a branch's warehouse, "" for all locations.
+  const [filter, setFilter] = useState('');
+  const [levels] = useResource(filter ? `items-stock:${filter}` : null, () =>
+    loadStock(
+      store,
+      filter.startsWith('w:') ? { warehouseId: filter.slice(2) } : { locationId: filter.slice(2) },
+    ),
   );
   const here =
-    warehouseId && levels.status === 'ready'
+    filter && levels.status === 'ready'
       ? new Map(levels.data.map((l) => [l.itemId, l.quantity]))
       : null;
   const canManage = data.can('inventory.items.edit');
@@ -53,20 +57,29 @@ export function ItemsTab({ data }: { data: InventoryData }) {
           {t('inventory.page.showArchived')}
         </label>
         <Select
-          value={warehouseId}
-          onChange={(e) => setWarehouseId(e.target.value)}
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
           className="w-auto"
-          aria-label={t('inventory.fields.warehouse')}
+          aria-label={t('inventory.page.filterLocation')}
           data-testid="items-warehouse"
         >
-          <option value="">{t('inventory.page.allWarehouses')}</option>
-          {data.warehouses
-            .filter((w) => w.archivedAt === null)
-            .map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
+          <optgroup label={t('inventory.page.groupWarehouses')}>
+            {data.warehouses
+              .filter((w) => w.archivedAt === null)
+              .map((w) => (
+                <option key={w.id} value={`w:${w.id}`}>
+                  {w.isMain ? `${w.name} (${t('inventory.page.mainWarehouse')})` : w.name}
+                </option>
+              ))}
+          </optgroup>
+          <optgroup label={t('inventory.page.groupBranches')}>
+            {data.locations.map((l) => (
+              <option key={l.id} value={`l:${l.id}`}>
+                {l.name}
               </option>
             ))}
+          </optgroup>
+          <option value="">{t('inventory.page.allLocations')}</option>
         </Select>
         {canManage && (
           <ItemDialog
@@ -345,6 +358,9 @@ export function ItemDialog({
       )}
       {!item && activeWarehouses.length > 0 && (
         <>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {t('inventory.page.pricingStock')}
+          </p>
           <Field id={`${id}-warehouse`} label={t('inventory.fields.warehouse')} problem={null}>
             <Select
               id={`${id}-warehouse`}
