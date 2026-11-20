@@ -13,6 +13,10 @@ import {
   type SendTicketResponse,
   type StationProcessing,
   type TableOrderResponse,
+  type MergeOrderRequest,
+  type TransferOrderRequest,
+  type TransferOrderResponse,
+  type MoveOrderRequest,
   type UpdateOrderRequest,
   type VoidLinesRequest,
 } from '@durby/shared';
@@ -38,6 +42,7 @@ import { activeDiscounts } from './discounts.service';
 import { lineTotal, orderTotals } from './order-totals';
 import { isUniqueViolation, posErrors } from './pos-errors';
 import { PrintJobsService } from './print-jobs.service';
+import { currentOrderByTicket, ticketIdsOf } from './ticket-placements';
 import { LATEST_STATUS, statusOf } from './ticket-status';
 
 type Db = TenantDb;
@@ -157,7 +162,19 @@ export class OrdersService {
       tableId: { in: tables.map((t) => t.id) },
     });
     const byTable = new Map(open.map((o) => [o.tableId, o]));
-    return tables.map((table) => ({ ...table, order: byTable.get(table.id) ?? null }));
+    const lastOrder = await this.lastTicketAt(
+      asTenantDb(this.db),
+      open.map((o) => o.id),
+    );
+    return tables.map((table) => {
+      const order = byTable.get(table.id) ?? null;
+      return {
+        ...table,
+        order,
+        seatedAt: order?.openedAt ?? null,
+        lastOrderAt: order ? (lastOrder.get(order.id) ?? null) : null,
+      };
+    });
   }
 
   async tableOrder(tableId: string): Promise<TableOrderResponse> {
@@ -307,63 +324,178 @@ export class OrdersService {
     await this.access.assert('pos.orders.void', { locationId: order.locationId });
     return this.db.$transaction(async (tx) => {
       if ((await this.lockOrder(tx, orderId)) !== 'open') throw posErrors.orderClosed();
-      const lines = await tx.posOrderLine.findMany({ where: { orderId }, select: LINE_SELECT });
-      const left = remainingOf(lines);
-      const sentLines = new Map(lines.filter((l) => l.quantity > 0).map((l) => [l.id, l]));
-      const requested = new Map<string, number>();
-      for (const { lineId, quantity } of body.lines) {
-        if (!sentLines.has(lineId)) throw posErrors.lineNotFound();
-        requested.set(lineId, (requested.get(lineId) ?? 0) + quantity);
-      }
-      for (const [lineId, quantity] of requested) {
-        if (quantity > (left.get(lineId) ?? 0)) throw posErrors.voidExceeds(lineId);
-      }
-      // Only unbilled portions: a billed item is voided after its bill is cancelled (ADR 0036).
-      const unbilled = unbilledOf(left, await this.billed(tx, orderId));
-      for (const [lineId, quantity] of requested) {
-        if (quantity > (unbilled.get(lineId) ?? 0)) throw posErrors.lineBilled(lineId);
-      }
-      // A discounted item can't be voided until its discount is removed (ADR 0036 §5).
-      const discounted = (await activeDiscounts(tx, orderId)).lineAmount;
-      for (const lineId of requested.keys()) {
-        if (discounted.has(lineId)) throw posErrors.discountActive();
-      }
-      // A void goes to the station that got the item, whatever its category says now.
-      // A void goes where the item went: its ticket's station, and straight to the bill when the
-      // item did (ADR 0031).
-      const sentTickets = new Map(
-        (
-          await tx.posKitchenTicket.findMany({
-            where: { orderId },
-            select: { id: true, station: true, direct: true },
-          })
-        ).map((t) => [t.id, t]),
-      );
+      const portions = await this.takeOff(tx, orderId, body.lines);
       const ticketIds = await this.writeTickets(
         tx,
         orderId,
         'void',
-        [...requested].map(([lineId, quantity]) => {
-          const line = sentLines.get(lineId)!;
-          const sent = sentTickets.get(line.ticketId)!;
-          return {
-            station: sent.station,
-            direct: sent.direct,
-            line: {
-              productId: line.productId,
-              productName: line.productName,
-              unitPrice: line.unitPrice.toFixed(2),
-              taxRate: line.taxRate.toFixed(2),
-              quantity: -quantity,
-              note: null,
-              voidsLineId: lineId,
-            },
-          };
-        }),
+        portions.map(({ line, quantity, station, direct }) => ({
+          station,
+          direct,
+          line: {
+            productId: line.productId,
+            productName: line.productName,
+            unitPrice: line.unitPrice.toFixed(2),
+            taxRate: line.taxRate.toFixed(2),
+            quantity: -quantity,
+            note: null,
+            voidsLineId: line.id,
+          },
+        })),
       );
       const response = await this.response(tx, orderId, ticketIds);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
+    });
+  }
+
+  /**
+   * Moves sent items to a new order at a free table (ADR 0069, step 6). The source gets a void for them; the new order
+   * gets a sale of the same products at the same prices, so its ticket shows what it sells. Both are normal tickets.
+   * Only unbilled items without a discount move. The destination table must be free and at the same location.
+   */
+  async transfer(sourceId: string, body: TransferOrderRequest): Promise<TransferOrderResponse> {
+    const { tenantId, userId } = this.tenantContext.require();
+    const source = await this.readableOrder(sourceId);
+    await this.access.assert('pos.orders.take', { locationId: source.locationId });
+    return this.db.$transaction(async (tx) => {
+      if ((await this.lockOrder(tx, sourceId)) !== 'open') throw posErrors.orderClosed();
+      const table = await tx.diningTable.findUnique({
+        where: { id: body.tableId },
+        select: { id: true, locationId: true, archivedAt: true },
+      });
+      if (!table) throw posErrors.tableNotFound();
+      if (table.locationId !== source.locationId) throw posErrors.orderNotSameLocation();
+      if (table.archivedAt !== null) throw posErrors.tableArchived();
+      const occupied = await tx.posOrder.findFirst({
+        where: { tableId: table.id, status: 'open' },
+        select: { id: true },
+      });
+      if (occupied) throw posErrors.tableOccupied();
+
+      const portions = await this.takeOff(tx, sourceId, body.lines);
+      await this.writeTickets(
+        tx,
+        sourceId,
+        'void',
+        portions.map(({ line, quantity, station, direct }) => ({
+          station,
+          direct,
+          line: {
+            productId: line.productId,
+            productName: line.productName,
+            unitPrice: line.unitPrice.toFixed(2),
+            taxRate: line.taxRate.toFixed(2),
+            quantity: -quantity,
+            note: null,
+            voidsLineId: line.id,
+          },
+        })),
+      );
+
+      // As late as possible: the counter row stays locked until commit (ADR 0012).
+      const { number } = await this.numbering.next('pos.order', tx);
+      const created = await tx.posOrder.create({
+        data: {
+          tenantId,
+          locationId: table.locationId,
+          tableId: table.id,
+          number,
+          openedByUserId: userId,
+        },
+        select: ORDER_SELECT,
+      });
+      await this.audit.record(tx, {
+        action: 'pos.order.transferred',
+        actor: auditActor.user(userId),
+        entityId: created.id,
+        after: orderSnapshot(created),
+      });
+      // A party sits at the new table: consumers (reservations) react through the outbox (ADR 0019 §7).
+      await this.outbox.add(tx, {
+        type: 'pos.order.opened',
+        payload: {
+          orderId: created.id,
+          locationId: table.locationId,
+          tableId: table.id,
+          openedAt: created.openedAt.toISOString(),
+        },
+      });
+      const processing = await this.processing(table.locationId, tx);
+      await this.writeTickets(
+        tx,
+        created.id,
+        'order',
+        portions.map(({ line, quantity, station }) => ({
+          station,
+          direct: !processing[station],
+          line: {
+            productId: line.productId,
+            productName: line.productName,
+            unitPrice: line.unitPrice.toFixed(2),
+            taxRate: line.taxRate.toFixed(2),
+            quantity,
+            note: null,
+            voidsLineId: null,
+          },
+        })),
+      );
+      const response = {
+        source: await this.load(tx, sourceId),
+        target: await this.load(tx, created.id),
+      };
+      await this.idempotency.completeInTransaction(tx, response);
+      return response;
+    });
+  }
+
+  /**
+   * The sent portions that `requested` takes off an order (a void or a transfer): each line must be sent, within what
+   * is left, unbilled, and without a discount (ADR 0036 §5). Each comes with its ticket's station: a void goes where
+   * the item went, straight to the bill when it did (ADR 0031).
+   */
+  private async takeOff(
+    tx: TenantTransactionClient,
+    orderId: string,
+    requested: readonly { lineId: string; quantity: number }[],
+  ) {
+    const placedTicketIds = ticketIdsOf(await currentOrderByTicket(tx, [orderId]), orderId);
+    const lines = await tx.posOrderLine.findMany({
+      where: { ticketId: { in: placedTicketIds } },
+      select: LINE_SELECT,
+    });
+    const left = remainingOf(lines);
+    const sentLines = new Map(lines.filter((l) => l.quantity > 0).map((l) => [l.id, l]));
+    const wanted = new Map<string, number>();
+    for (const { lineId, quantity } of requested) {
+      if (!sentLines.has(lineId)) throw posErrors.lineNotFound();
+      wanted.set(lineId, (wanted.get(lineId) ?? 0) + quantity);
+    }
+    for (const [lineId, quantity] of wanted) {
+      if (quantity > (left.get(lineId) ?? 0)) throw posErrors.voidExceeds(lineId);
+    }
+    // Only unbilled portions: a billed item moves after its bill is cancelled (ADR 0036).
+    const unbilled = unbilledOf(left, await this.billed(tx, orderId));
+    for (const [lineId, quantity] of wanted) {
+      if (quantity > (unbilled.get(lineId) ?? 0)) throw posErrors.lineBilled(lineId);
+    }
+    // A discounted item can't move until its discount is removed (ADR 0036 §5).
+    const discounted = (await activeDiscounts(tx, orderId)).lineAmount;
+    for (const lineId of wanted.keys()) {
+      if (discounted.has(lineId)) throw posErrors.discountActive();
+    }
+    const sentTickets = new Map(
+      (
+        await tx.posKitchenTicket.findMany({
+          where: { id: { in: placedTicketIds } },
+          select: { id: true, station: true, direct: true },
+        })
+      ).map((t) => [t.id, t]),
+    );
+    return [...wanted].map(([lineId, quantity]) => {
+      const line = sentLines.get(lineId)!;
+      const sent = sentTickets.get(line.ticketId)!;
+      return { line, quantity, station: sent.station, direct: sent.direct };
     });
   }
 
@@ -376,6 +508,118 @@ export class OrdersService {
       if ((await this.lockOrder(tx, orderId)) !== 'open') throw posErrors.orderClosed();
       await this.setCovers(tx, orderId, body.covers, userId);
       return this.load(tx, orderId);
+    });
+  }
+
+  /**
+   * Moves an open order to a free table at its location (ADR 0069). Only the order's table changes: no ticket is
+   * written, so the kitchen is not reprinted. Moving to the table it is on changes nothing.
+   */
+  async move(orderId: string, body: MoveOrderRequest): Promise<Order> {
+    const { userId } = this.tenantContext.require();
+    const order = await this.readableOrder(orderId);
+    await this.access.assert('pos.orders.take', { locationId: order.locationId });
+    try {
+      return await this.db.$transaction(async (tx) => {
+        if ((await this.lockOrder(tx, orderId)) !== 'open') throw posErrors.orderClosed();
+        const target = await tx.diningTable.findUnique({
+          where: { id: body.tableId },
+          select: { id: true, locationId: true, archivedAt: true },
+        });
+        if (!target) throw posErrors.tableNotFound();
+        const before = await tx.posOrder.findUniqueOrThrow({
+          where: { id: orderId },
+          select: ORDER_SELECT,
+        });
+        if (target.locationId !== before.locationId) throw posErrors.orderNotSameLocation();
+        if (target.archivedAt !== null) throw posErrors.tableArchived();
+        if (before.tableId === target.id) return this.load(tx, orderId);
+        const occupied = await tx.posOrder.findFirst({
+          where: { tableId: target.id, status: 'open' },
+          select: { id: true },
+        });
+        if (occupied) throw posErrors.tableOccupied();
+        const after = await tx.posOrder.update({
+          where: { id: orderId },
+          data: { tableId: target.id },
+          select: ORDER_SELECT,
+        });
+        await this.audit.record(tx, {
+          action: 'pos.order.moved',
+          actor: auditActor.user(userId),
+          entityId: orderId,
+          before: orderSnapshot(before),
+          after: orderSnapshot(after),
+        });
+        return this.load(tx, orderId);
+      });
+    } catch (error) {
+      // Two moves to the same free table at once: the partial unique index on open orders decides.
+      if (isUniqueViolation(error)) throw posErrors.tableOccupied();
+      throw error;
+    }
+  }
+
+  /**
+   * Merges the open order `sourceId` into the open order `body.orderId` at the same location (ADR 0069). Each of the
+   * source's tickets gets a placement in the target, so its lines follow it; the source closes (`pos.order.merged`)
+   * and its table is freed through `pos.order.closed`. The target keeps its number. Refused when the source has billed
+   * items or an active discount, which would stay on the source.
+   */
+  async merge(sourceId: string, body: MergeOrderRequest): Promise<Order> {
+    const { tenantId, userId } = this.tenantContext.require();
+    if (body.orderId === sourceId) throw posErrors.mergeSameOrder();
+    const source = await this.readableOrder(sourceId);
+    await this.access.assert('pos.orders.take', { locationId: source.locationId });
+    const target = await this.readableOrder(body.orderId);
+    if (target.locationId !== source.locationId) throw posErrors.orderNotSameLocation();
+    return this.db.$transaction(async (tx) => {
+      // Locked in id order, so two merges in opposite directions cannot wait on each other.
+      for (const id of [sourceId, body.orderId].sort()) {
+        if ((await this.lockOrder(tx, id)) !== 'open') throw posErrors.orderClosed();
+      }
+      const billed = await tx.posBillItem.findFirst({
+        where: { orderId: sourceId, bill: { cancellation: null } },
+        select: { orderLineId: true },
+      });
+      if (billed) throw posErrors.lineBilled(billed.orderLineId);
+      if ((await activeDiscounts(tx, sourceId)).rows.length > 0) throw posErrors.discountActive();
+
+      const before = await tx.posOrder.findUniqueOrThrow({
+        where: { id: sourceId },
+        select: ORDER_SELECT,
+      });
+      const tickets = [...(await currentOrderByTicket(tx, [sourceId])).keys()];
+      if (tickets.length > 0) {
+        await tx.posTicketPlacement.createMany({
+          data: tickets.map((ticketId) => ({
+            tenantId,
+            ticketId,
+            orderId: body.orderId,
+            createdByUserId: userId,
+          })),
+        });
+      }
+      const after = await tx.posOrder.update({
+        where: { id: sourceId },
+        data: { status: 'closed', closedAt: new Date(), closedByUserId: userId },
+        select: ORDER_SELECT,
+      });
+      await this.audit.record(tx, {
+        action: 'pos.order.merged',
+        actor: auditActor.user(userId),
+        entityId: sourceId,
+        before: orderSnapshot(before),
+        after: orderSnapshot(after),
+      });
+      // The source's table is free now: consumers react as to a close (ADR 0019 §7).
+      await this.outbox.add(tx, {
+        type: 'pos.order.closed',
+        payload: { orderId: sourceId, locationId: after.locationId, tableId: after.tableId },
+      });
+      const response = await this.load(tx, body.orderId);
+      await this.idempotency.completeInTransaction(tx, response);
+      return response;
     });
   }
 
@@ -627,9 +871,10 @@ export class OrdersService {
       where: { id: orderId },
       select: { ...ORDER_SELECT, openedByUserId: true },
     });
+    const ticketIds = ticketIdsOf(await currentOrderByTicket(db, [orderId]), orderId);
     const [tickets, lines, names, billed, bills] = await Promise.all([
       db.posKitchenTicket.findMany({
-        where: { orderId },
+        where: { id: { in: ticketIds } },
         select: {
           id: true,
           sequence: true,
@@ -641,7 +886,11 @@ export class OrdersService {
         },
         orderBy: { sequence: 'asc' },
       }),
-      db.posOrderLine.findMany({ where: { orderId }, select: LINE_SELECT, orderBy: { id: 'asc' } }),
+      db.posOrderLine.findMany({
+        where: { ticketId: { in: ticketIds } },
+        select: LINE_SELECT,
+        orderBy: { id: 'asc' },
+      }),
       this.memberNames.forUsers(db, [openedByUserId]),
       this.billed(db, orderId),
       db.posBillOrder.findMany({
@@ -730,6 +979,23 @@ export class OrdersService {
     };
   }
 
+  /** When each order's newest ticket was sent, for the orders in `orderIds` that have one (ADR 0069). */
+  private async lastTicketAt(db: Db, orderIds: readonly string[]): Promise<Map<string, string>> {
+    const byTicket = await currentOrderByTicket(db, orderIds);
+    const tickets = await db.posKitchenTicket.findMany({
+      where: { id: { in: [...byTicket.keys()] } },
+      select: { id: true, createdAt: true },
+    });
+    const latest = new Map<string, Date>();
+    for (const ticket of tickets) {
+      const order = byTicket.get(ticket.id);
+      if (!order) continue;
+      const seen = latest.get(order);
+      if (!seen || ticket.createdAt > seen) latest.set(order, ticket.createdAt);
+    }
+    return new Map([...latest].map(([order, at]) => [order, at.toISOString()]));
+  }
+
   /** Portions of each line of the order on bills that are not cancelled (ADR 0036). */
   private async billed(db: Db, orderId: string): Promise<Map<string, number>> {
     return billedByLine(
@@ -754,12 +1020,14 @@ export class OrdersService {
     });
     if (orders.length === 0) return [];
     const ids = orders.map((o) => o.id);
+    const byTicket = await currentOrderByTicket(db, ids);
+    const ticketIds = [...byTicket.keys()];
     const [lines, tickets, billedItems] = await Promise.all([
       db.posOrderLine.findMany({
-        where: { orderId: { in: ids } },
+        where: { ticketId: { in: ticketIds } },
         select: {
           id: true,
-          orderId: true,
+          ticketId: true,
           unitPrice: true,
           taxRate: true,
           quantity: true,
@@ -767,8 +1035,8 @@ export class OrdersService {
         },
       }),
       db.posKitchenTicket.findMany({
-        where: { orderId: { in: ids } },
-        select: { orderId: true, statusChanges: LATEST_STATUS },
+        where: { id: { in: ticketIds } },
+        select: { id: true, statusChanges: LATEST_STATUS },
       }),
       db.posBillItem.findMany({
         where: { orderId: { in: ids }, bill: { cancellation: null } },
@@ -783,12 +1051,14 @@ export class OrdersService {
     );
     const ready = new Map<string, number>();
     for (const t of tickets) {
-      if (statusOf(t.statusChanges) === 'ready')
-        ready.set(t.orderId, (ready.get(t.orderId) ?? 0) + 1);
+      const order = byTicket.get(t.id);
+      if (order && statusOf(t.statusChanges) === 'ready')
+        ready.set(order, (ready.get(order) ?? 0) + 1);
     }
     const byOrder = new Map<string, (typeof lines)[number][]>();
     for (const line of lines) {
-      byOrder.set(line.orderId, [...(byOrder.get(line.orderId) ?? []), line]);
+      const order = byTicket.get(line.ticketId);
+      if (order) byOrder.set(order, [...(byOrder.get(order) ?? []), line]);
     }
     return orders.map((order) => {
       const own = byOrder.get(order.id) ?? [];

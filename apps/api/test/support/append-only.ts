@@ -14,6 +14,7 @@ export const APPEND_ONLY_TABLES = [
   'pos_guest_checks',
   'pos_kitchen_tickets',
   'pos_order_lines',
+  'pos_ticket_placements',
   'pos_ticket_status_changes',
   'reservation_status_changes',
   'stock_documents',

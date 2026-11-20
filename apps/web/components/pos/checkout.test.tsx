@@ -45,6 +45,8 @@ const TABLE = {
   area: null,
   shape: 'square',
   color: 'neutral',
+  seatedAt: null,
+  lastOrderAt: null,
 };
 const SUMMARY = {
   id: id(20),
