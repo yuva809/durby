@@ -377,6 +377,38 @@ describe('/branches shows the supplying warehouse (ADR 0067)', () => {
     });
   });
 
+  it('sets the supplier in the branch dialog when a branch is added', async () => {
+    signedInAs('owner');
+    const writes = api();
+    render(<BranchesPage />);
+    await screen.findAllByTestId('branch-card');
+    await userEvent.click(screen.getByTestId('branch-create'));
+    await userEvent.type(await screen.findByTestId('branch-name'), 'Asia Might Mitte');
+    await userEvent.click(screen.getByRole('radio', { name: 'Store 2' }));
+    await userEvent.click(screen.getByTestId('form-save'));
+    await waitFor(() =>
+      expect(writes.find((w) => w.path === `/api/v1/inventory/warehouses/${id(22)}`)).toEqual({
+        method: 'PATCH',
+        path: `/api/v1/inventory/warehouses/${id(22)}`,
+        // The new branch (the create answer's id) is supplied by Store 2.
+        body: { suppliesLocationIds: [id(9)] },
+      }),
+    );
+  });
+
+  it('shows the current supplier selected when a branch is edited', async () => {
+    signedInAs('owner');
+    api();
+    render(<BranchesPage />);
+    const kurf = await card(KURFUERSTEN.name);
+    await userEvent.click(within(kurf).getByTestId('branch-edit'));
+    await screen.findByTestId('branch-supplier-choice');
+    expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Store 3' }).checked).toBe(true);
+    expect(
+      screen.getByRole<HTMLInputElement>('radio', { name: 'Store 1 (main warehouse)' }).checked,
+    ).toBe(false);
+  });
+
   it('finds no supplier when no warehouse ticks the branch and there is no main one', () => {
     const none = [warehouse(1, HAGELBERGER.id)] as unknown as Warehouse[];
     expect(supplierOf(none, KURFUERSTEN.id)).toBeNull();

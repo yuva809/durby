@@ -13,11 +13,13 @@ import { useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
+import type { Api, Result } from '../../lib/api-call';
 import { errorLabel } from '../../lib/auth/errors';
 import { loadWarehouses, updateWarehouse } from '../../lib/inventory/api';
 import { roleName } from '../../lib/rbac/roles';
 import { createLocation, loadSettings, putSetting, updateLocation } from '../../lib/settings/api';
 import { loadTeam } from '../../lib/team/api';
+import type { ActionKey } from '../../lib/idempotency';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
@@ -85,6 +87,10 @@ function Branches({
   const [showArchived, setShowArchived] = useState(false);
   const members = team.status === 'ready' ? team.data.members : null;
   const warehouseList = warehouses.status === 'ready' ? warehouses.data : null;
+  const reloadAll = () => {
+    reload();
+    reloadWarehouses();
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -93,7 +99,13 @@ function Branches({
           <h1 className="text-2xl font-semibold">{t('platform.nav.branches')}</h1>
           <p className="text-muted-foreground">{t('platform.branchesPage.intro')}</p>
         </div>
-        {canManage && <BranchDialog onDone={reload} />}
+        {canManage && (
+          <BranchDialog
+            onDone={reloadAll}
+            warehouses={warehouseList ?? undefined}
+            canSetSupplier={canSetSupplier}
+          />
+        )}
       </div>
 
       {withRequests && <ApprovalCard organizationId={organizationId} canSet={canSetApproval} />}
@@ -193,7 +205,7 @@ function Branches({
                       onWarehousesChanged={reloadWarehouses}
                       staff={members && staffOf(members, location.id)}
                       canManage={canManage}
-                      onChanged={reload}
+                      onChanged={reloadAll}
                     />
                   </li>
                 ))}
@@ -239,6 +251,34 @@ export function connectedOf(warehouses: readonly Warehouse[], locationId: string
   return own;
 }
 
+/**
+ * Makes `choice` ("main" or a warehouse id) the supplier of the branch at `locationId` (ADR 0067). "main" takes the
+ * branch off the warehouse that ticks it; a warehouse takes it (the server moves it from its previous supplier).
+ * Null when nothing changes.
+ */
+export async function saveSupplier(
+  store: Api,
+  action: ActionKey,
+  locationId: string,
+  warehouses: readonly Warehouse[],
+  choice: string,
+): Promise<Result<unknown> | null> {
+  const live = warehouses.filter((w) => w.archivedAt === null && !w.isTransit);
+  if (choice === 'main') {
+    const ticker = live.find((w) => !w.isMain && w.suppliesLocationIds.includes(locationId));
+    if (!ticker) return null;
+    return updateWarehouse(store, action, ticker.id, {
+      suppliesLocationIds: ticker.suppliesLocationIds.filter((l) => l !== locationId),
+    });
+  }
+  // A warehouse never supplies its own location.
+  const target = live.find((w) => w.id === choice && !w.isMain && w.locationId !== locationId);
+  if (!target || target.suppliesLocationIds.includes(locationId)) return null;
+  return updateWarehouse(store, action, target.id, {
+    suppliesLocationIds: [...target.suppliesLocationIds, locationId],
+  });
+}
+
 function BranchCard({
   location,
   supplier,
@@ -282,23 +322,9 @@ function BranchCard({
    */
   async function chooseSupplier(choice: string) {
     if (!warehouses) return;
-    const ticker = live.find((w) => !w.isMain && w.suppliesLocationIds.includes(location.id));
     setFailure(null);
     setSaving(true);
-    const result =
-      choice === 'main'
-        ? ticker
-          ? await updateWarehouse(store, action, ticker.id, {
-              suppliesLocationIds: ticker.suppliesLocationIds.filter((l) => l !== location.id),
-            })
-          : null
-        : await (async () => {
-            const target = candidates.find((w) => w.id === choice);
-            if (!target) return null;
-            return updateWarehouse(store, action, target.id, {
-              suppliesLocationIds: [...target.suppliesLocationIds, location.id],
-            });
-          })();
+    const result = await saveSupplier(store, action, location.id, warehouses, choice);
     setSaving(false);
     if (result === null) return;
     if (result.ok) onWarehousesChanged();
@@ -324,7 +350,15 @@ function BranchCard({
         </div>
         {canManage && (
           <div className="flex shrink-0 gap-2">
-            {!archived && <BranchDialog location={location} onDone={onChanged} />}
+            {!archived && (
+              <BranchDialog
+                location={location}
+                onDone={onChanged}
+                warehouses={warehouses}
+                canSetSupplier={canSetSupplier}
+                supplier={supplier}
+              />
+            )}
             <ArchiveBranch location={location} onDone={onChanged} />
           </div>
         )}
@@ -491,15 +525,38 @@ function ApprovalCard({
 }
 
 /** Add a branch (no `location`), or change its name and address. */
-function BranchDialog({ location, onDone }: { location?: LocationSummary; onDone: () => void }) {
+function BranchDialog({
+  location,
+  onDone,
+  warehouses,
+  canSetSupplier = false,
+  supplier,
+}: {
+  location?: LocationSummary;
+  onDone: () => void;
+  /** Every warehouse, for the supplier choice; undefined while not loaded (the section is then not shown). */
+  warehouses?: Warehouse[];
+  canSetSupplier?: boolean;
+  /** The branch's current supplier (edit only). */
+  supplier?: { warehouse: Warehouse; main: boolean } | null;
+}) {
   const t = useT();
   const { store } = useAuth();
   const action = useActionKey();
+  const supplierAction = useActionKey();
   const id = useId();
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [choice, setChoice] = useState('');
+  const [initial, setInitial] = useState('');
   const [checked, setChecked] = useState(false);
   const problem = checked && name.trim() === '' ? t('platform.locationsPage.nameRequired') : null;
+  const live = (warehouses ?? []).filter((w) => w.archivedAt === null && !w.isTransit);
+  const mainWarehouse = live.find((w) => w.isMain) ?? null;
+  // A branch's own location is never offered as its supplier (ADR 0067); a new branch has none yet.
+  const options = live.filter((w) => !w.isMain && w.locationId !== location?.id);
+  const showSupplier =
+    canSetSupplier && warehouses !== undefined && (mainWarehouse !== null || options.length > 0);
   return (
     <FormDialog
       trigger={
@@ -520,18 +577,42 @@ function BranchDialog({ location, onDone }: { location?: LocationSummary; onDone
         setName(location?.name ?? '');
         setAddress(location?.address ?? '');
         setChecked(false);
+        // A new branch is supplied by the main warehouse unless another is chosen (ADR 0067).
+        const start = location
+          ? supplier
+            ? supplier.main
+              ? 'main'
+              : supplier.warehouse.id
+            : ''
+          : mainWarehouse
+            ? 'main'
+            : '';
+        setChoice(start);
+        setInitial(start);
       }}
       submit={() => {
         setChecked(true);
         const trimmed = name.trim();
         if (trimmed === '') return null;
         const where = address.trim();
-        return location
-          ? updateLocation(store, action, location.id, {
-              ...(trimmed !== location.name ? { name: trimmed } : {}),
-              address: where === '' ? null : where,
-            })
-          : createLocation(store, action, trimmed, where || undefined);
+        const supplierChanged = showSupplier && choice !== '' && choice !== initial;
+        return (async () => {
+          const branch = location
+            ? await updateLocation(store, action, location.id, {
+                ...(trimmed !== location.name ? { name: trimmed } : {}),
+                address: where === '' ? null : where,
+              })
+            : await createLocation(store, action, trimmed, where || undefined);
+          if (!branch.ok || !branch.data || !supplierChanged || !warehouses) return branch;
+          const saved = await saveSupplier(
+            store,
+            supplierAction,
+            branch.data.id,
+            warehouses,
+            choice,
+          );
+          return saved && !saved.ok ? saved : branch;
+        })();
       }}
       onDone={onDone}
     >
@@ -555,7 +636,63 @@ function BranchDialog({ location, onDone }: { location?: LocationSummary; onDone
           data-testid="branch-address-input"
         />
       </Field>
+      {showSupplier && (
+        <fieldset className="flex flex-col gap-2" data-testid="branch-supplier-choice">
+          <legend className="text-sm font-medium">
+            {t('platform.branchesPage.defaultSupplier')}
+          </legend>
+          <p className="text-sm text-muted-foreground">{t('platform.branchesPage.supplierHint')}</p>
+          {mainWarehouse && (
+            <SupplierOption
+              name={`${id}-supplier`}
+              value="main"
+              label={t('platform.branchesPage.mainWarehouseOption', { name: mainWarehouse.name })}
+              checked={choice === 'main'}
+              onPick={() => setChoice('main')}
+            />
+          )}
+          {options.map((w) => (
+            <SupplierOption
+              key={w.id}
+              name={`${id}-supplier`}
+              value={w.id}
+              label={w.name}
+              checked={choice === w.id}
+              onPick={() => setChoice(w.id)}
+            />
+          ))}
+        </fieldset>
+      )}
     </FormDialog>
+  );
+}
+
+/** One warehouse as the radio choice of a branch's supplier. */
+function SupplierOption({
+  name,
+  value,
+  label,
+  checked,
+  onPick,
+}: {
+  name: string;
+  value: string;
+  label: string;
+  checked: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border bg-card px-3">
+      <input
+        type="radio"
+        name={name}
+        value={value}
+        checked={checked}
+        onChange={onPick}
+        className="size-4 accent-primary"
+      />
+      <span>{label}</span>
+    </label>
   );
 }
 
