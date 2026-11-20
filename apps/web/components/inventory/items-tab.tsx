@@ -8,6 +8,7 @@ import {
   type StockUnit,
   type Warehouse,
 } from '@durby/shared';
+import { useSearchParams } from 'next/navigation';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -30,6 +31,9 @@ export function ItemsTab({ data }: { data: InventoryData }) {
   const t = useT();
   const { store } = useAuth();
   const [showArchived, setShowArchived] = useState(false);
+  // The search: starts with ?q= from the top bar, then what is typed here.
+  const [query, setQuery] = useState(useSearchParams().get('q') ?? '');
+  const needle = query.trim().toLowerCase();
   // A warehouse filter shows only the items it holds, with its own quantity (stock is kept per warehouse).
   // The filter: "w:<warehouse>" for one warehouse, "l:<branch>" for a branch's warehouse, "" for all locations.
   const [filter, setFilter] = useState('');
@@ -49,11 +53,25 @@ export function ItemsTab({ data }: { data: InventoryData }) {
       : [];
   const canManage = data.can('inventory.items.edit');
   const shown = data.items.filter(
-    (i) => (showArchived || i.archivedAt === null) && (here === null || here.has(i.id)),
+    (i) =>
+      (showArchived || i.archivedAt === null) &&
+      (here === null || here.has(i.id)) &&
+      (needle === '' ||
+        i.name.toLowerCase().includes(needle) ||
+        (i.sku ?? '').toLowerCase().includes(needle)),
   );
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('inventory.page.searchItems')}
+          aria-label={t('inventory.page.searchItems')}
+          className="min-w-60 flex-1"
+          data-testid="items-search"
+        />
         <label className="flex min-h-11 items-center gap-2 text-sm">
           <Checkbox
             checked={showArchived}

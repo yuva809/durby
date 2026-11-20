@@ -93,6 +93,7 @@
   "inventory.page.totalValue": "Bestandswert: {value}",
   "inventory.page.emptyStock": "Noch kein Bestand. Buchen Sie eine Lieferung, um zu beginnen.",
   "inventory.page.noWarehouses": "Noch keine Lager. Legen Sie eins unter Lager an.",
+  "inventory.page.searchItems": "Artikel suchen",
   "inventory.page.notInStock": "Nicht auf Lager",
   "inventory.page.filterLocation": "Nach Standort filtern",
   "inventory.page.groupWarehouses": "Lager (Hauptbestand)",
