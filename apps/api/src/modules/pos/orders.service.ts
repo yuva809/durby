@@ -38,6 +38,7 @@ import { activeDiscounts } from './discounts.service';
 import { lineTotal, orderTotals } from './order-totals';
 import { isUniqueViolation, posErrors } from './pos-errors';
 import { PrintJobsService } from './print-jobs.service';
+import { currentOrderByTicket, ticketIdsOf } from './ticket-placements';
 import { LATEST_STATUS, statusOf } from './ticket-status';
 
 type Db = TenantDb;
@@ -307,7 +308,11 @@ export class OrdersService {
     await this.access.assert('pos.orders.void', { locationId: order.locationId });
     return this.db.$transaction(async (tx) => {
       if ((await this.lockOrder(tx, orderId)) !== 'open') throw posErrors.orderClosed();
-      const lines = await tx.posOrderLine.findMany({ where: { orderId }, select: LINE_SELECT });
+      const placedTicketIds = ticketIdsOf(await currentOrderByTicket(tx, [orderId]), orderId);
+      const lines = await tx.posOrderLine.findMany({
+        where: { ticketId: { in: placedTicketIds } },
+        select: LINE_SELECT,
+      });
       const left = remainingOf(lines);
       const sentLines = new Map(lines.filter((l) => l.quantity > 0).map((l) => [l.id, l]));
       const requested = new Map<string, number>();
@@ -334,7 +339,7 @@ export class OrdersService {
       const sentTickets = new Map(
         (
           await tx.posKitchenTicket.findMany({
-            where: { orderId },
+            where: { id: { in: placedTicketIds } },
             select: { id: true, station: true, direct: true },
           })
         ).map((t) => [t.id, t]),
@@ -627,9 +632,10 @@ export class OrdersService {
       where: { id: orderId },
       select: { ...ORDER_SELECT, openedByUserId: true },
     });
+    const ticketIds = ticketIdsOf(await currentOrderByTicket(db, [orderId]), orderId);
     const [tickets, lines, names, billed, bills] = await Promise.all([
       db.posKitchenTicket.findMany({
-        where: { orderId },
+        where: { id: { in: ticketIds } },
         select: {
           id: true,
           sequence: true,
@@ -641,7 +647,11 @@ export class OrdersService {
         },
         orderBy: { sequence: 'asc' },
       }),
-      db.posOrderLine.findMany({ where: { orderId }, select: LINE_SELECT, orderBy: { id: 'asc' } }),
+      db.posOrderLine.findMany({
+        where: { ticketId: { in: ticketIds } },
+        select: LINE_SELECT,
+        orderBy: { id: 'asc' },
+      }),
       this.memberNames.forUsers(db, [openedByUserId]),
       this.billed(db, orderId),
       db.posBillOrder.findMany({
@@ -754,12 +764,14 @@ export class OrdersService {
     });
     if (orders.length === 0) return [];
     const ids = orders.map((o) => o.id);
+    const byTicket = await currentOrderByTicket(db, ids);
+    const ticketIds = [...byTicket.keys()];
     const [lines, tickets, billedItems] = await Promise.all([
       db.posOrderLine.findMany({
-        where: { orderId: { in: ids } },
+        where: { ticketId: { in: ticketIds } },
         select: {
           id: true,
-          orderId: true,
+          ticketId: true,
           unitPrice: true,
           taxRate: true,
           quantity: true,
@@ -767,8 +779,8 @@ export class OrdersService {
         },
       }),
       db.posKitchenTicket.findMany({
-        where: { orderId: { in: ids } },
-        select: { orderId: true, statusChanges: LATEST_STATUS },
+        where: { id: { in: ticketIds } },
+        select: { id: true, statusChanges: LATEST_STATUS },
       }),
       db.posBillItem.findMany({
         where: { orderId: { in: ids }, bill: { cancellation: null } },
@@ -783,12 +795,14 @@ export class OrdersService {
     );
     const ready = new Map<string, number>();
     for (const t of tickets) {
-      if (statusOf(t.statusChanges) === 'ready')
-        ready.set(t.orderId, (ready.get(t.orderId) ?? 0) + 1);
+      const order = byTicket.get(t.id);
+      if (order && statusOf(t.statusChanges) === 'ready')
+        ready.set(order, (ready.get(order) ?? 0) + 1);
     }
     const byOrder = new Map<string, (typeof lines)[number][]>();
     for (const line of lines) {
-      byOrder.set(line.orderId, [...(byOrder.get(line.orderId) ?? []), line]);
+      const order = byTicket.get(line.ticketId);
+      if (order) byOrder.set(order, [...(byOrder.get(order) ?? []), line]);
     }
     return orders.map((order) => {
       const own = byOrder.get(order.id) ?? [];

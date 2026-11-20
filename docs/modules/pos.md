@@ -409,6 +409,11 @@ Reasons are free text and stay out of snapshots.
 Moves and merges of open orders, and transfers of items, run on placement rows: an append-only record of which
 order a ticket belongs to now. Tickets and lines are never rewritten (ADR 0069).
 
+**Status:** step 2 (placements) is built. `pos_ticket_placements` gets its first row from a trigger on every
+ticket insert, and the backfill gives every existing ticket one. Every read of an order's tickets and lines
+(order load, summaries, voids, billing, discounts) resolves the current order through the latest placement
+(`ticket-placements.ts`). No move, merge or transfer exists yet, so nothing changes for users in this step.
+
 - **Placements**: `pos_ticket_placements (ticket_id, order_id, created_by_user_id, created_at)`, append-only, RLS.
   Every ticket has one row from the moment it is written. An order's tickets and lines are the ones whose latest
   placement points at it.

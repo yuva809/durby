@@ -126,6 +126,7 @@ model Organization {
   posGuestCheckShares          PosGuestCheckShare[]
   posBillCancellations         PosBillCancellation[]
   posOrderDiscounts            PosOrderDiscount[]
+  posTicketPlacements          PosTicketPlacement[]
   productImages                ProductImage[]
   posOrderDiscountLines        PosOrderDiscountLine[]
   diningAreas                  DiningArea[]
@@ -1010,9 +1011,10 @@ model PosOrder {
   tickets         PosKitchenTicket[]
   lines           PosOrderLine[]
 
-  printJobs  PosPrintJob[]
-  billOrders PosBillOrder[]
-  discounts  PosOrderDiscount[]
+  printJobs        PosPrintJob[]
+  billOrders       PosBillOrder[]
+  discounts        PosOrderDiscount[]
+  ticketPlacements PosTicketPlacement[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, number])
@@ -1041,6 +1043,8 @@ model PosKitchenTicket {
   lines           PosOrderLine[]
   linesOfOrder    PosOrderLine[]          @relation("PosOrderLineTicketOfOrder")
   statusChanges   PosTicketStatusChange[]
+  /// Which order the ticket belongs to, over time (ADR 0069); the latest row is the current one.
+  placements      PosTicketPlacement[]
 
   printJobs PosPrintJob[]
 
@@ -1049,6 +1053,28 @@ model PosKitchenTicket {
   @@unique([tenantId, orderId, id], map: "pos_kitchen_tickets_tenant_id_order_id_id_key")
   @@unique([tenantId, orderId, sequence])
   @@map("pos_kitchen_tickets")
+}
+
+/// Which order a kitchen ticket belongs to (ADR 0069). Append-only: a move or merge adds a row, and a line follows
+/// its ticket's latest row. Every ticket gets its first row from a trigger, so the latest row always exists.
+model PosTicketPlacement {
+  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  /// Insertion order: the latest row of a ticket is the one with the highest seq (ids are not strictly ordered
+  /// within one millisecond).
+  seq             BigInt           @unique @default(autoincrement())
+  tenantId        String           @map("tenant_id") @db.Uuid
+  ticketId        String           @map("ticket_id") @db.Uuid
+  orderId         String           @map("order_id") @db.Uuid
+  createdByUserId String           @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  ticket          PosKitchenTicket @relation(fields: [tenantId, ticketId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  order           PosOrder         @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, ticketId, seq])
+  @@index([tenantId, orderId])
+  @@map("pos_ticket_placements")
 }
 
 /// A ticket's progress on the kitchen or bar screen (ADR 0026); `new` is the absence of a change.

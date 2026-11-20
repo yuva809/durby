@@ -14,6 +14,7 @@ import {
 import { billedByLine, remainingOf, unbilledOf } from './billing';
 import { allocateDiscount, type DiscountTarget } from './discounts';
 import { posErrors } from './pos-errors';
+import { currentOrderByTicket, ticketIdsOf } from './ticket-placements';
 
 /**
  * Discounts and comps (docs/modules/pos.md → Step 4b, ADR 0036 §5). A discount is fixed when given, from the items
@@ -36,8 +37,9 @@ export class DiscountsService {
     await this.access.assert('pos.orders.discount', { locationId });
     return this.db.$transaction(async (tx) => {
       if ((await lockOrder(tx, orderId)) !== 'open') throw posErrors.orderClosed();
+      const ticketIds = ticketIdsOf(await currentOrderByTicket(tx, [orderId]), orderId);
       const lines = await tx.posOrderLine.findMany({
-        where: { orderId },
+        where: { ticketId: { in: ticketIds } },
         select: { id: true, quantity: true, voidsLineId: true, unitPrice: true, taxRate: true },
       });
       const sent = new Map(lines.filter((l) => l.quantity > 0).map((l) => [l.id, l]));
