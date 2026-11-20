@@ -397,7 +397,7 @@ export function ItemDialog({
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t('inventory.page.pricingStock')}
           </p>
-          <Field id={`${id}-branch`} label={t('inventory.fields.location')} problem={null}>
+          <Field id={`${id}-branch`} label={t('inventory.fields.branch')} problem={null}>
             <Select
               id={`${id}-branch`}
               value={branchId}
