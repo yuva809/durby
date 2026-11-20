@@ -102,7 +102,7 @@ export class InventorySetupService {
     if (locations !== 'all' && locations.length === 0) return [];
     const rows = await this.db.warehouse.findMany({
       where: {
-        // At their locations, and the warehouses that supply those branches: the main one, and any ticked for them
+        // At their branches, and the warehouses that supply those branches: the main one, and any ticked for them
         // (ADR 0067). A branch manager sees where their requests come from (read only, as the stock is checked).
         ...(locations === 'all'
           ? {}
