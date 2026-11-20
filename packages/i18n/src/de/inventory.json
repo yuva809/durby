@@ -93,7 +93,7 @@
   "inventory.page.totalValue": "Bestandswert: {value}",
   "inventory.page.emptyStock": "Noch kein Bestand. Buchen Sie eine Lieferung, um zu beginnen.",
   "inventory.page.noWarehouses": "Noch keine Lager. Legen Sie eins unter Lager an.",
-  "inventory.page.suppliedBy": "Beliefert von {name}",
+  "inventory.page.locatedAt": "In {name}",
   "inventory.page.noItems": "Noch keine Lagerartikel. Legen Sie sie unter Artikel an.",
   "inventory.page.noLocations": "Es gibt noch keine Standorte.",
   "inventory.page.addLine": "Artikel hinzufügen",
