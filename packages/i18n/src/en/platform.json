@@ -918,6 +918,7 @@
   "platform.search.groups.stockItem": "Stock items",
   "platform.search.groups.warehouse": "Warehouses",
   "platform.search.groups.branch": "Branches",
+  "platform.search.groups.stockDocument": "Stock documents",
   "platform.search.groups.product": "Products",
   "platform.search.groups.customer": "Customers",
   "platform.search.groups.salesOrder": "Sales orders",

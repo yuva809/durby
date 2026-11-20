@@ -40,6 +40,7 @@ export class WorkspaceService {
     const parts = await Promise.all([
       inventory ? this.inventory.searchItems(q) : [],
       inventory ? this.inventory.searchWarehouses(q) : [],
+      inventory ? this.inventory.searchDocuments(q) : [],
       branches,
       catalog ? this.catalog.searchProducts(q) : [],
       orders ? this.orders.search(q) : [],
