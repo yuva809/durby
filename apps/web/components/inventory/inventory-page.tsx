@@ -200,6 +200,7 @@ function Inventory({
               {can('inventory.items.edit') && (
                 <ItemDialog
                   categories={data.categories}
+                  warehouses={data.warehouses}
                   onDone={data.reload}
                   trigger={t('inventory.overview.addItem')}
                 />
