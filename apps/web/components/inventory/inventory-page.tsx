@@ -201,6 +201,7 @@ function Inventory({
                 <ItemDialog
                   categories={data.categories}
                   warehouses={data.warehouses}
+                  locations={data.locations}
                   onDone={data.reload}
                   trigger={t('inventory.overview.addItem')}
                 />

@@ -22,6 +22,7 @@ import { Card } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Select } from '../ui/select';
+import { LocationFilter, stockQueryOf } from './location-filter';
 import type { InventoryData } from './inventory-page';
 
 /** Stock items: name, article number, unit and reorder level; managed with inventory.items.edit. */
@@ -33,10 +34,7 @@ export function ItemsTab({ data }: { data: InventoryData }) {
   // The filter: "w:<warehouse>" for one warehouse, "l:<branch>" for a branch's warehouse, "" for all locations.
   const [filter, setFilter] = useState('');
   const [levels] = useResource(filter ? `items-stock:${filter}` : null, () =>
-    loadStock(
-      store,
-      filter.startsWith('w:') ? { warehouseId: filter.slice(2) } : { locationId: filter.slice(2) },
-    ),
+    loadStock(store, stockQueryOf(filter)),
   );
   const here =
     filter && levels.status === 'ready'
@@ -56,35 +54,18 @@ export function ItemsTab({ data }: { data: InventoryData }) {
           />
           {t('inventory.page.showArchived')}
         </label>
-        <Select
+        <LocationFilter
+          id="items-location"
           value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="w-auto"
-          aria-label={t('inventory.page.filterLocation')}
-          data-testid="items-warehouse"
-        >
-          <optgroup label={t('inventory.page.groupWarehouses')}>
-            {data.warehouses
-              .filter((w) => w.archivedAt === null)
-              .map((w) => (
-                <option key={w.id} value={`w:${w.id}`}>
-                  {w.isMain ? `${w.name} (${t('inventory.page.mainWarehouse')})` : w.name}
-                </option>
-              ))}
-          </optgroup>
-          <optgroup label={t('inventory.page.groupBranches')}>
-            {data.locations.map((l) => (
-              <option key={l.id} value={`l:${l.id}`}>
-                {l.name}
-              </option>
-            ))}
-          </optgroup>
-          <option value="">{t('inventory.page.allLocations')}</option>
-        </Select>
+          data={data}
+          onChange={setFilter}
+          testId="items-warehouse"
+        />
         {canManage && (
           <ItemDialog
             categories={data.categories}
             warehouses={data.warehouses}
+            locations={data.locations}
             onDone={data.reload}
           />
         )}
@@ -170,6 +151,7 @@ export function ItemDialog({
   trigger,
   defaultCategoryId,
   warehouses,
+  locations,
 }: {
   item?: StockItem;
   categories: readonly ProductCategory[] | null;
@@ -179,6 +161,8 @@ export function ItemDialog({
   defaultCategoryId?: string | null;
   /** New items only: the warehouse that gets the opening stock (stock is kept per warehouse). */
   warehouses?: readonly Warehouse[];
+  /** New items only: the branches to choose the opening stock's warehouse from. */
+  locations?: InventoryData['locations'];
 }) {
   const t = useT();
   const id = useId();
@@ -190,12 +174,18 @@ export function ItemDialog({
   const [min, setMin] = useState('');
   const [salePrice, setSalePrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [branchId, setBranchId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
   const [opening, setOpening] = useState('');
   const [unitCost, setUnitCost] = useState('');
   const [checked, setChecked] = useState(false);
   const receiptAction = useActionKey();
   const activeWarehouses = (warehouses ?? []).filter((w) => w.archivedAt === null);
+  // The warehouses that serve a branch: the main one, its own store, and any that supplies it (ADR 0067).
+  const warehousesFor = (branch: string) =>
+    activeWarehouses.filter(
+      (w) => w.isMain || w.locationId === branch || w.suppliesLocationIds.includes(branch),
+    );
   const openingInvalid = checked && opening.trim() !== '' && !isQuantity(opening.trim());
   // Active categories to choose from, plus the item's own even if archived meanwhile (it stays until changed).
   const choices = (categories ?? []).filter(
@@ -228,7 +218,10 @@ export function ItemDialog({
         setSalePrice(item?.salePrice ?? '');
         setCategoryId(item ? (item.categoryId ?? '') : (defaultCategoryId ?? ''));
         // The main warehouse by default, else the first active one.
-        setWarehouseId((activeWarehouses.find((w) => w.isMain) ?? activeWarehouses[0])?.id ?? '');
+        const startBranch =
+          activeWarehouses.find((w) => w.isMain)?.locationId ?? locations?.[0]?.id ?? '';
+        setBranchId(startBranch);
+        setWarehouseId(warehousesFor(startBranch)[0]?.id ?? '');
         setOpening('');
         setUnitCost('');
         setChecked(false);
@@ -361,6 +354,23 @@ export function ItemDialog({
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t('inventory.page.pricingStock')}
           </p>
+          <Field id={`${id}-branch`} label={t('inventory.fields.location')} problem={null}>
+            <Select
+              id={`${id}-branch`}
+              value={branchId}
+              onChange={(e) => {
+                setBranchId(e.target.value);
+                setWarehouseId(warehousesFor(e.target.value)[0]?.id ?? '');
+              }}
+              data-testid="item-branch"
+            >
+              {(locations ?? []).map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <Field id={`${id}-warehouse`} label={t('inventory.fields.warehouse')} problem={null}>
             <Select
               id={`${id}-warehouse`}
@@ -368,7 +378,7 @@ export function ItemDialog({
               onChange={(e) => setWarehouseId(e.target.value)}
               data-testid="item-warehouse"
             >
-              {activeWarehouses.map((w) => (
+              {warehousesFor(branchId).map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.isMain ? `${w.name} (${t('inventory.page.mainWarehouse')})` : w.name}
                 </option>
