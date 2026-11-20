@@ -105,6 +105,31 @@ describe('warehouse access (ADR 0057)', () => {
     await receipt(s.cold).expect(201);
   });
 
+  it('shows a branch manager the warehouse that supplies their branch, read only', async () => {
+    const s = await setup();
+    const [main, other] = s.org.locations;
+    // A depot at the other location that supplies the manager's branch (ADR 0067).
+    const depot = warehouseSchema.parse(
+      (
+        await send('post', s.owner.token, '/inventory/warehouses', {
+          locationId: other,
+          name: 'Depot',
+        }).expect(201)
+      ).body,
+    );
+    await send('patch', s.owner.token, `/inventory/warehouses/${depot.id}`, {
+      suppliesLocationIds: [main],
+    }).expect(200);
+
+    const names = warehouseListResponseSchema
+      .parse((await get(s.manager.token, '/inventory/warehouses').expect(200)).body)
+      .data.filter((w) => !w.isTransit)
+      .map((w) => w.name)
+      .sort();
+    // Their own warehouses and the depot that supplies them; not the store at the other branch.
+    expect(names).toEqual(['Cold room', 'Depot', 'Dry store']);
+  });
+
   it('only allows warehouses at the member’s locations, and only what the actor may give', async () => {
     const s = await setup();
     const elsewhere = await send('patch', s.owner.token, `/staff/${s.managerMembership}`, {

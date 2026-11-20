@@ -102,8 +102,18 @@ export class InventorySetupService {
     if (locations !== 'all' && locations.length === 0) return [];
     const rows = await this.db.warehouse.findMany({
       where: {
-        ...(locations === 'all' ? {} : { locationId: { in: locations } }),
-        ...(own ? { OR: [{ id: { in: [...own] } }, { isTransit: true }] } : {}),
+        // At their branches, and the warehouses that supply those branches: the main one, and any ticked for them
+        // (ADR 0067). A branch manager sees where their requests come from (read only, as the stock is checked).
+        ...(locations === 'all'
+          ? {}
+          : {
+              OR: [
+                { locationId: { in: locations } },
+                { isMain: true },
+                { suppliesLocationIds: { hasSome: locations } },
+              ],
+            }),
+        ...(own ? { AND: [{ OR: [{ id: { in: [...own] } }, { isTransit: true }] }] } : {}),
         ...(query.includeArchived ? {} : { archivedAt: null }),
       },
       select: WAREHOUSE_SELECT,
@@ -246,7 +256,14 @@ export class InventorySetupService {
         // Its own place (ADR 0068) is named like it.
         if (data.name !== current.name) {
           const { tenantId } = this.tenantContext.require();
-          await renameWarehouseSite(tx, this.audit, tenantId, userId, current.locationId, data.name);
+          await renameWarehouseSite(
+            tx,
+            this.audit,
+            tenantId,
+            userId,
+            current.locationId,
+            data.name,
+          );
         }
         await this.audit.record(tx, {
           action: 'inventory.warehouse.updated',
