@@ -34,6 +34,9 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       settings.status === 'ready'
         ? settings.data.filter((s) => s.value === false).map((s) => s.key)
         : [],
+    hideHome:
+      settings.status === 'ready' &&
+      settings.data.some((s) => s.key === 'startPage' && s.value === 'inventory'),
   };
   const layout = navLayout(useNavLayout(), access);
   const items = visibleNav(layout.items, access);

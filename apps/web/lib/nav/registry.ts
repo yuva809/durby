@@ -214,6 +214,8 @@ export interface NavAccess {
   activePermissions: readonly string[];
   /** The boolean settings that are off for the active organization (their keys). */
   offSettings?: readonly string[];
+  /** The start page is Inventory: the Overview item is not shown (ADR 0075). */
+  hideHome?: boolean;
 }
 
 /**
@@ -227,6 +229,7 @@ export function visibleNav(items: readonly NavItem[], access: NavAccess): NavIte
       (item.feature === undefined || access.activeFeatures.includes(item.feature)) &&
       (item.permission === undefined || access.activePermissions.includes(item.permission)) &&
       (item.menuSetting === undefined || !(access.offSettings ?? []).includes(item.menuSetting)) &&
+      !(item.id === 'home' && access.hideHome === true) &&
       (item.children === undefined || visibleNav(item.children, access).length > 0),
   );
 }

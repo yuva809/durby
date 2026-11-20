@@ -353,6 +353,15 @@ export const SETTINGS = {
     scopes: ['partner', 'organization'],
     dataBound: false,
   }),
+  // Where a person starts: the Overview page (no Overview menu item when Inventory is chosen).
+  startPage: define({
+    label: 'platform.settings.startPage.name',
+    description: 'platform.settings.startPage.description',
+    schema: z.enum(['overview', 'inventory']),
+    default: 'overview',
+    scopes: ['partner', 'organization'],
+    dataBound: false,
+  }),
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;

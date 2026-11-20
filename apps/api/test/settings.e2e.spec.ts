@@ -170,6 +170,7 @@ describe('/api/v1/settings', () => {
         { key: 'team.adminsManageSignIn', value: false, source: 'default', dataBound: false },
         { key: 'orders.requestsNeedApproval', value: true, source: 'default', dataBound: false },
         { key: 'orders.showSalesOrders', value: true, source: 'default', dataBound: false },
+        { key: 'startPage', value: 'overview', source: 'default', dataBound: false },
       ]);
     });
 
