@@ -95,7 +95,6 @@ export function ItemsTab({ data }: { data: InventoryData }) {
           <ItemDialog
             categories={data.categories}
             warehouses={data.warehouses}
-            locations={data.locations}
             onDone={data.reload}
           />
         )}
@@ -194,7 +193,6 @@ export function ItemDialog({
   trigger,
   defaultCategoryId,
   warehouses,
-  locations,
 }: {
   item?: StockItem;
   categories: readonly ProductCategory[] | null;
@@ -204,8 +202,6 @@ export function ItemDialog({
   defaultCategoryId?: string | null;
   /** New items only: the warehouse that gets the opening stock (stock is kept per warehouse). */
   warehouses?: readonly Warehouse[];
-  /** New items only: the branches to choose the opening stock's warehouse from. */
-  locations?: InventoryData['locations'];
 }) {
   const t = useT();
   const id = useId();
@@ -217,18 +213,12 @@ export function ItemDialog({
   const [min, setMin] = useState('');
   const [salePrice, setSalePrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [branchId, setBranchId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
   const [opening, setOpening] = useState('');
   const [unitCost, setUnitCost] = useState('');
   const [checked, setChecked] = useState(false);
   const receiptAction = useActionKey();
   const activeWarehouses = (warehouses ?? []).filter((w) => w.archivedAt === null);
-  // The warehouses that serve a branch: the main one, its own store, and any that supplies it (ADR 0067).
-  const warehousesFor = (branch: string) =>
-    activeWarehouses.filter(
-      (w) => w.isMain || w.locationId === branch || w.suppliesLocationIds.includes(branch),
-    );
   const openingInvalid = checked && opening.trim() !== '' && !isQuantity(opening.trim());
   // Active categories to choose from, plus the item's own even if archived meanwhile (it stays until changed).
   const choices = (categories ?? []).filter(
@@ -261,10 +251,7 @@ export function ItemDialog({
         setSalePrice(item?.salePrice ?? '');
         setCategoryId(item ? (item.categoryId ?? '') : (defaultCategoryId ?? ''));
         // The main warehouse by default, else the first active one.
-        const startBranch =
-          activeWarehouses.find((w) => w.isMain)?.locationId ?? locations?.[0]?.id ?? '';
-        setBranchId(startBranch);
-        setWarehouseId(warehousesFor(startBranch)[0]?.id ?? '');
+        setWarehouseId((activeWarehouses.find((w) => w.isMain) ?? activeWarehouses[0])?.id ?? '');
         setOpening('');
         setUnitCost('');
         setChecked(false);
@@ -397,23 +384,6 @@ export function ItemDialog({
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t('inventory.page.pricingStock')}
           </p>
-          <Field id={`${id}-branch`} label={t('inventory.fields.branch')} problem={null}>
-            <Select
-              id={`${id}-branch`}
-              value={branchId}
-              onChange={(e) => {
-                setBranchId(e.target.value);
-                setWarehouseId(warehousesFor(e.target.value)[0]?.id ?? '');
-              }}
-              data-testid="item-branch"
-            >
-              {(locations ?? []).map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
           <Field id={`${id}-warehouse`} label={t('inventory.fields.warehouse')} problem={null}>
             <Select
               id={`${id}-warehouse`}
@@ -421,7 +391,7 @@ export function ItemDialog({
               onChange={(e) => setWarehouseId(e.target.value)}
               data-testid="item-warehouse"
             >
-              {warehousesFor(branchId).map((w) => (
+              {activeWarehouses.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.isMain ? `${w.name} (${t('inventory.page.mainWarehouse')})` : w.name}
                 </option>
