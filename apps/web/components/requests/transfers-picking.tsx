@@ -3,26 +3,20 @@
 import {
   STOCK_REQUEST_ON_THE_WAY,
   STOCK_REQUEST_TO_PICK,
-  type StockLevel,
   type StockRequestStatus,
   type StockRequestSummary,
-  type StockUnit,
-  stockQuantitySchema,
 } from '@durby/shared';
-import { ChevronRight, Package, Plus, Search, X } from 'lucide-react';
+import { ChevronRight, Package, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useId, useMemo, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
-import { loadStock } from '../../lib/inventory/api';
 import {
   assignDriver,
   loadDrivers,
-  loadRequest,
   loadRequests,
-  packRequest,
   startPickingRequest,
 } from '../../lib/orders/requests-api';
-import { pickPlan, shownStock } from '../../lib/orders/shortage';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
@@ -32,7 +26,7 @@ import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { ConfirmAction, Loaded } from '../users/common';
-import { QuantitiesDialog, RequestStatusBadge } from './common';
+import { RequestStatusBadge } from './common';
 
 const TABS = {
   toPick: STOCK_REQUEST_TO_PICK,
@@ -162,6 +156,7 @@ function TransferRow({
   const t = useT();
   const { store } = useAuth();
   const startAction = useActionKey();
+  const router = useRouter();
   const title = r.transferNumber ?? r.number;
   return (
     <li className="flex flex-wrap items-center gap-3 px-4 py-3" data-testid="transfer-row">
@@ -201,7 +196,14 @@ function TransferRow({
           />
         )}
         {(r.status === 'approved' || r.status === 'picking') && (
-          <PackDialog request={r} canAssign={canAssign} onDone={onDone} />
+          <Button
+            type="button"
+            variant={r.status === 'picking' ? 'default' : 'outline'}
+            onClick={() => router.push(`/picking/${r.id}`)}
+            data-testid="transfer-pack"
+          >
+            {t('orders.transfers.pick')}
+          </Button>
         )}
         {canAssign && (r.status === 'packed' || r.status === 'in_transit') && (
           <AssignDialog request={r} onDone={onDone} />
@@ -212,7 +214,7 @@ function TransferRow({
   );
 }
 
-function DriverSelect({
+export function DriverSelect({
   warehouseId,
   value,
   onChange,
@@ -247,100 +249,6 @@ function DriverSelect({
   );
 }
 
-/**
- * Pick: the request's approved lines with what came off the shelves; then packed, optionally with a driver. What the
- * source warehouse has is read each time the dialog opens: a line short of stock starts at what is there and says how
- * much is missing, and asking for more than is there is named before packing.
- */
-function PackDialog({
-  request: r,
-  canAssign,
-  onDone,
-}: {
-  request: StockRequestSummary;
-  canAssign: boolean;
-  onDone: () => void;
-}) {
-  const t = useT();
-  const { store } = useAuth();
-  const action = useActionKey();
-  const [driver, setDriver] = useState('');
-  const [opened, setOpened] = useState(0);
-  // Products the branch didn't ask for, added at packing (item 9).
-  const [extra, setExtra] = useState<ExtraLine[]>([]);
-  const [detail] = useResource(r.id, () => loadRequest(store, r.id));
-  // Read when opened, and again on every opening: stock moves between picks. Without stock access, none is shown.
-  const [stock] = useResource(opened > 0 ? `${r.fromWarehouseId}:${opened}` : null, () =>
-    loadStock(store, { warehouseId: r.fromWarehouseId }),
-  );
-  if (detail.status !== 'ready') return null;
-  const inStock =
-    stock.status === 'ready' ? new Map(stock.data.map((l) => [l.itemId, l.quantity])) : null;
-  const lines = detail.data.lines.filter(
-    (l) => l.approvedQuantity !== null && !/^0(\.0+)?$/.test(l.approvedQuantity),
-  );
-  return (
-    <QuantitiesDialog
-      trigger={t('orders.transfers.pick')}
-      triggerVariant={r.status === 'picking' ? 'default' : 'outline'}
-      testId="transfer-pack"
-      title={t('orders.transfers.packTitle', { number: r.transferNumber ?? r.number })}
-      hint={`${t('orders.transfers.stockNote', { warehouse: r.fromWarehouseName })} ${t('orders.transfers.extraAllowed')}`}
-      submitLabel={t('orders.transfers.submit')}
-      referenceLabel={t('orders.requestsPage.approved')}
-      availableLabel={t('orders.transfers.inStock')}
-      quantityLabel={t('orders.transfers.pickedColumn')}
-      inputLabel={(name) => t('orders.transfers.pickedOf', { name })}
-      onOpen={() => {
-        setOpened((n) => n + 1);
-        setExtra([]);
-      }}
-      lines={lines.map((l) => {
-        // An item with no stock row has none.
-        const available = inStock ? (inStock.get(l.itemId) ?? '0') : null;
-        const plan = pickPlan(l.approvedQuantity!, available);
-        return {
-          id: l.id,
-          name: l.itemName,
-          unit: l.unit,
-          reference: l.approvedQuantity!,
-          // More than approved is allowed: the warehouse may send extra (item 9).
-          max: null,
-          initial: plan.initial,
-          ...(available === null ? {} : { available, short: plan.short }),
-        };
-      })}
-      run={(quantities) =>
-        packRequest(store, action, r.id, {
-          lines: quantities,
-          ...(extra.length > 0
-            ? { extra: extra.map((e) => ({ itemId: e.itemId, quantity: e.quantity })) }
-            : {}),
-          ...(driver ? { driverUserId: driver } : {}),
-        })
-      }
-      onDone={onDone}
-    >
-      {stock.status === 'ready' && (
-        <ExtraProducts
-          // Not on a line still to send: raise that line instead.
-          choices={stock.data.filter((s) => !lines.some((l) => l.itemId === s.itemId))}
-          value={extra}
-          onChange={setExtra}
-        />
-      )}
-      {canAssign && (
-        <DriverSelect
-          warehouseId={r.fromWarehouseId}
-          value={driver}
-          onChange={setDriver}
-          allowNone
-        />
-      )}
-    </QuantitiesDialog>
-  );
-}
-
 function AssignDialog({
   request: r,
   onDone,
@@ -365,113 +273,5 @@ function AssignDialog({
     >
       <DriverSelect warehouseId={r.fromWarehouseId} value={driver} onChange={setDriver} allowNone />
     </FormDialog>
-  );
-}
-
-interface ExtraLine {
-  itemId: string;
-  name: string;
-  unit: StockUnit;
-  quantity: string;
-}
-
-/**
- * Products the branch didn't ask for, sent along (item 9): pick one of what the warehouse has, a quantity, Add.
- * Each joins the request as a line marked "Extra" and shows on the delivery challan.
- */
-function ExtraProducts({
-  choices,
-  value,
-  onChange,
-}: {
-  choices: readonly StockLevel[];
-  value: readonly ExtraLine[];
-  onChange: (next: ExtraLine[]) => void;
-}) {
-  const t = useT();
-  const id = useId();
-  const [itemId, setItemId] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [invalid, setInvalid] = useState(false);
-  const open = choices.filter((c) => !value.some((v) => v.itemId === c.itemId));
-  const add = () => {
-    const item = open.find((c) => c.itemId === itemId);
-    const q = quantity.trim();
-    if (!item || !stockQuantitySchema.safeParse(q).success) {
-      setInvalid(true);
-      return;
-    }
-    onChange([
-      ...value,
-      { itemId: item.itemId, name: item.itemName, unit: item.unit, quantity: q },
-    ]);
-    setItemId('');
-    setQuantity('');
-    setInvalid(false);
-  };
-  return (
-    <section className="flex flex-col gap-2 rounded-lg border p-3" data-testid="pack-extra">
-      <h3 className="text-sm font-semibold">{t('orders.transfers.extraTitle')}</h3>
-      <p className="text-xs text-muted-foreground">{t('orders.transfers.extraHint')}</p>
-      {value.length > 0 && (
-        <ul className="divide-y text-sm" data-testid="pack-extra-lines">
-          {value.map((line) => (
-            <li key={line.itemId} className="flex items-center justify-between gap-2 py-1.5">
-              <span>{line.name}</span>
-              <span className="flex items-center gap-2 tabular-nums">
-                {`${line.quantity} ${t(`inventory.units.${line.unit}`)}`}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  aria-label={t('orders.transfers.extraRemove', { name: line.name })}
-                  onClick={() => onChange(value.filter((v) => v.itemId !== line.itemId))}
-                  data-testid="pack-extra-remove"
-                >
-                  <X aria-hidden className="size-4" />
-                </Button>
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="grid min-w-48 flex-1 gap-1 text-xs font-medium" htmlFor={`${id}-item`}>
-          {t('orders.transfers.extraItem')}
-          <Select
-            id={`${id}-item`}
-            value={itemId}
-            onChange={(e) => setItemId(e.target.value)}
-            data-testid="pack-extra-item"
-          >
-            <option value="">{t('orders.transfers.extraChoose')}</option>
-            {open.map((c) => (
-              <option key={c.itemId} value={c.itemId}>
-                {`${c.itemName} (${shownStock(c.quantity)} ${t(`inventory.units.${c.unit}`)})`}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="grid w-28 gap-1 text-xs font-medium" htmlFor={`${id}-quantity`}>
-          {t('orders.transfers.extraQuantity')}
-          <Input
-            id={`${id}-quantity`}
-            inputMode="decimal"
-            className="text-right"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value.replace(',', '.'))}
-            data-testid="pack-extra-quantity"
-          />
-        </label>
-        <Button type="button" variant="outline" onClick={add} data-testid="pack-extra-add">
-          <Plus aria-hidden className="size-4" />
-          {t('orders.transfers.extraAdd')}
-        </Button>
-      </div>
-      {invalid && (
-        <p role="alert" className="text-xs text-destructive">
-          {t('orders.transfers.extraInvalid')}
-        </p>
-      )}
-    </section>
   );
 }
