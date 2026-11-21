@@ -19,3 +19,6 @@ playwright-report/
 
 # The in-app updater served by the local dev web for emulator runs (ADR 0033 §14); never committed.
 apps/web/public/downloads/
+
+# Onboarding config with real temporary passwords: never commit it.
+scripts/onboard/people.json
