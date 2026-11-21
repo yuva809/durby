@@ -71,6 +71,7 @@ model PartnerDomain {
 
 /// The tenant. No RLS: holds non-sensitive platform fields only (ADR 0005).
 model Organization {
+  vendorInvoiceLineCorrections VendorInvoiceLineCorrection[]
   id                           String                        @id @default(dbgenerated("uuidv7()")) @db.Uuid
   partnerId                    String                        @map("partner_id") @db.Uuid
   name                         String
@@ -1707,6 +1708,7 @@ enum StockAdjustmentReason {
   breakage
   count
   other
+  correction
 
   @@map("stock_adjustment_reason")
 }
@@ -2431,6 +2433,7 @@ model PushSubscription {
 
 /// A vendor invoice read from its PDF or photo, waiting for approval (ADR 0054). Approval books one receipt.
 model VendorInvoice {
+  lineCorrections VendorInvoiceLineCorrection[]
   id            String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId      String              @map("tenant_id") @db.Uuid
   number        String
@@ -2463,6 +2466,7 @@ model VendorInvoice {
 
 /// One line: an existing item, or a new one (name, SKU, unit, category) created on approval.
 model VendorInvoiceLine {
+  corrections VendorInvoiceLineCorrection[]
   id                String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId          String           @map("tenant_id") @db.Uuid
   invoiceId         String           @map("invoice_id") @db.Uuid
@@ -2492,6 +2496,30 @@ model VendorInvoiceLine {
   unit              UnitOfMeasure?   @relation(fields: [tenantId, unitId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([tenantId, invoiceId, position])
+  @@unique([tenantId, id])
   @@index([tenantId, unitId])
   @@map("vendor_invoice_lines")
 }
+
+/// A correction to an approved vendor invoice line (ADR 0078): the corrected values and the two stock documents booked.
+model VendorInvoiceLineCorrection {
+  id                 String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String            @map("tenant_id") @db.Uuid
+  invoiceId          String            @map("invoice_id") @db.Uuid
+  lineId             String            @map("line_id") @db.Uuid
+  quantity           Decimal           @db.Decimal(14, 3)
+  unitCost           Decimal           @map("unit_cost") @db.Decimal(14, 4)
+  reason             String
+  reversalDocumentId String            @map("reversal_document_id") @db.Uuid
+  receiptDocumentId  String            @map("receipt_document_id") @db.Uuid
+  createdByUserId    String            @map("created_by_user_id") @db.Uuid
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization       Organization      @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoice            VendorInvoice     @relation(fields: [tenantId, invoiceId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  line               VendorInvoiceLine @relation(fields: [tenantId, lineId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, lineId, createdAt])
+  @@map("vendor_invoice_line_corrections")
+}
+

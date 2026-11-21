@@ -1,6 +1,7 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 import {
+  type CorrectVendorInvoiceLineRequest,
   type ImportReceiptRequest,
   type ListVendorInvoicesQuery,
   type NotificationKind,
@@ -43,6 +44,32 @@ export const vendorInvoiceErrors = {
       HttpStatus.CONFLICT,
       'inventory.vendor_invoice_decided',
       'This invoice was approved, rejected or changed meanwhile.',
+    ),
+  /** Only an approved invoice's lines are corrected (ADR 0078). */
+  notApproved: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'inventory.invoice_not_approved',
+      'Only an approved invoice can be corrected.',
+    ),
+  lineNotFound: () =>
+    new ApiError(
+      HttpStatus.NOT_FOUND,
+      'inventory.invoice_line_not_found',
+      'The invoice line was not found.',
+    ),
+  /** A line of a new item: approval doesn't record which item it created, so it can't be found again. */
+  lineWithoutItem: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'inventory.invoice_line_without_item',
+      'A line of a new item can’t be corrected yet; only lines with an existing item can.',
+    ),
+  lineInUnit: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'inventory.invoice_line_in_unit',
+      'A line invoiced in another unit of measure can’t be corrected yet.',
     ),
 };
 
@@ -163,7 +190,7 @@ export class VendorInvoicesService {
     const locations = await this.visibleLocations();
     if (locations !== 'all' && locations.length === 0) return [];
     const own = await this.access.warehouseIds();
-    const rows: Row[] = await this.db.vendorInvoice.findMany({
+    const found: Row[] = await this.db.vendorInvoice.findMany({
       where: {
         ...(query.status ? { status: query.status } : {}),
         ...(locations === 'all' ? {} : { warehouse: { locationId: { in: locations } } }),
@@ -174,6 +201,7 @@ export class VendorInvoicesService {
       orderBy: { id: 'desc' },
       take: VENDOR_INVOICE_LIST_LIMIT,
     });
+    const rows = await this.withCorrections(this.db, found);
     const names = await this.members.forUsers(
       asTenantDb(this.db),
       rows.map((r) => r.submittedBy),
@@ -326,6 +354,81 @@ export class VendorInvoicesService {
     });
   }
 
+  /**
+   * Corrects an approved line (ADR 0078): what it currently holds leaves the warehouse as a "correction" adjustment at
+   * the average cost, and the corrected quantity comes in as a goods receipt at the corrected cost. The stock service
+   * books each document in its own transaction, so they are posted one after the other, then the correction is
+   * recorded and audited in one transaction. Refused when the stock it would take out is no longer there.
+   */
+  async correctLine(
+    invoiceId: string,
+    lineId: string,
+    body: CorrectVendorInvoiceLineRequest,
+  ): Promise<VendorInvoice> {
+    const { tenantId, userId } = this.tenantContext.require();
+    const row = await this.visible(invoiceId);
+    await this.access.assertAtWarehouse('inventory.invoices.approve', {
+      id: row.warehouseId,
+      locationId: row.warehouse.locationId,
+    });
+    if (row.status !== 'approved') throw vendorInvoiceErrors.notApproved();
+    // Both documents are checked before the first is posted: a refusal after the reversal would leave stock out.
+    const warehouse = { id: row.warehouseId, locationId: row.warehouse.locationId };
+    await this.access.assertAtWarehouse('inventory.stock.adjust', warehouse);
+    await this.access.assertAtWarehouse('inventory.stock.receive', warehouse);
+    const [current] = await this.withCorrections(this.db, [row]);
+    const line = current!.lines.find((l) => l.id === lineId);
+    if (!line) throw vendorInvoiceErrors.lineNotFound();
+    if (!line.itemId) throw vendorInvoiceErrors.lineWithoutItem();
+    if (line.unitId) throw vendorInvoiceErrors.lineInUnit();
+
+    const note = `Correction of ${row.number}, line ${line.position + 1}`;
+    const quantity = new Decimal(body.quantity).toFixed(3);
+    const unitCost = new Decimal(body.unitCost).toFixed(4);
+    const reversal = await this.stock.adjust({
+      warehouseId: row.warehouseId,
+      reason: 'correction',
+      note,
+      lines: [
+        {
+          itemId: line.itemId,
+          quantity: new Decimal(line.quantity.toFixed(3)).negated().toFixed(3),
+        },
+      ],
+    });
+    const receipt = await this.stock.receive({
+      warehouseId: row.warehouseId,
+      note,
+      lines: [{ itemId: line.itemId, quantity, unitCost }],
+    });
+
+    return this.db.$transaction(async (tx) => {
+      const before = await this.read(tx, invoiceId);
+      await tx.vendorInvoiceLineCorrection.create({
+        data: {
+          tenantId,
+          invoiceId,
+          lineId,
+          quantity,
+          unitCost,
+          reason: body.reason,
+          reversalDocumentId: reversal.id,
+          receiptDocumentId: receipt.id,
+          createdByUserId: userId,
+        },
+      });
+      const after = await this.read(tx, invoiceId);
+      await this.audit.record(tx, {
+        action: 'inventory.vendor_invoice.line_corrected',
+        actor: auditActor.user(userId),
+        entityId: invoiceId,
+        before: snapshot('vendor_invoice', before),
+        after: snapshot('vendor_invoice', after),
+      });
+      return after;
+    });
+  }
+
   // -------------------------------------------------------------------------------------------------------------
 
   /** Locations whose invoices the caller sees: where they receive goods or approve invoices. */
@@ -444,18 +547,44 @@ export class VendorInvoicesService {
   }
 
   private async read(db: TenantPrismaClient | TenantTransactionClient, idOrRow: string | Row) {
-    const row: Row =
+    const stored: Row =
       typeof idOrRow === 'string'
         ? await (db as TenantTransactionClient).vendorInvoice.findUniqueOrThrow({
             where: { id: idOrRow },
             select: SELECT,
           })
         : idOrRow;
+    const [row] = await this.withCorrections(db, [stored]);
     const names = await this.members.forUsers(asTenantDb(db), [
-      row.submittedBy,
-      ...(row.decidedBy ? [row.decidedBy] : []),
+      row!.submittedBy,
+      ...(row!.decidedBy ? [row!.decidedBy] : []),
     ]);
-    return invoiceOf(row, names);
+    return invoiceOf(row!, names);
+  }
+
+  /**
+   * The lines with their latest correction's quantity and cost (ADR 0078); a line never corrected keeps what was
+   * invoiced. Corrections are append-only, so the newest one per line is the current one.
+   */
+  private async withCorrections(
+    db: TenantPrismaClient | TenantTransactionClient,
+    rows: Row[],
+  ): Promise<Row[]> {
+    if (rows.length === 0) return rows;
+    const corrections = await (db as TenantTransactionClient).vendorInvoiceLineCorrection.findMany({
+      where: { invoiceId: { in: rows.map((r) => r.id) } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { lineId: true, quantity: true, unitCost: true },
+    });
+    const latest = new Map<string, { quantity: Dec; unitCost: Dec }>();
+    for (const c of corrections) if (!latest.has(c.lineId)) latest.set(c.lineId, c);
+    return rows.map((row) => ({
+      ...row,
+      lines: row.lines.map((l) => {
+        const c = latest.get(l.id);
+        return c ? { ...l, quantity: c.quantity, unitCost: c.unitCost } : l;
+      }),
+    }));
   }
 
   private notify(

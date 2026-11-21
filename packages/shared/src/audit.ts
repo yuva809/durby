@@ -349,6 +349,10 @@ export const AUDIT_ACTIONS = {
     entityType: 'vendor_invoice',
     label: 'inventory.audit.actions.vendorInvoiceUpdated',
   },
+  'inventory.vendor_invoice.line_corrected': {
+    entityType: 'vendor_invoice',
+    label: 'inventory.audit.actions.vendorInvoiceLineCorrected',
+  },
   'inventory.vendor_invoice.approved': {
     entityType: 'vendor_invoice',
     label: 'inventory.audit.actions.vendorInvoiceApproved',

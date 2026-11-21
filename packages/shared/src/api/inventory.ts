@@ -26,7 +26,7 @@ export const STOCK_DOCUMENT_KINDS = [
 export type StockDocumentKind = (typeof STOCK_DOCUMENT_KINDS)[number];
 
 /** Why stock was adjusted. */
-export const ADJUSTMENT_REASONS = ['waste', 'breakage', 'count', 'other'] as const;
+export const ADJUSTMENT_REASONS = ['waste', 'breakage', 'count', 'other', 'correction'] as const;
 export type AdjustmentReason = (typeof ADJUSTMENT_REASONS)[number];
 
 const name = z.string().trim().min(1).max(INVENTORY_NAME_MAX_LENGTH);
@@ -620,6 +620,10 @@ export const INVENTORY_ERROR_CODES = [
   'inventory.item_name_taken',
   'inventory.insufficient_stock',
   'inventory.unit_locked',
+  'inventory.invoice_not_approved',
+  'inventory.invoice_line_not_found',
+  'inventory.invoice_line_in_unit',
+  'inventory.invoice_line_without_item',
   'inventory.item_in_use',
   'inventory.valuation_unsupported',
   'inventory.same_warehouse',
@@ -643,3 +647,11 @@ export type InventoryErrorCode = (typeof INVENTORY_ERROR_CODES)[number];
 export function inventoryErrorLabel(code: InventoryErrorCode): string {
   return `inventory.errors.${code.slice('inventory.'.length).replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`;
 }
+
+/** A correction to an approved invoice's line (ADR 0078): the corrected quantity and unit cost, and why. */
+export const correctVendorInvoiceLineRequestSchema = z.strictObject({
+  quantity: stockQuantitySchema,
+  unitCost: unitCostSchema,
+  reason: z.string().trim().min(1).max(200),
+});
+export type CorrectVendorInvoiceLineRequest = z.infer<typeof correctVendorInvoiceLineRequestSchema>;
