@@ -273,7 +273,8 @@ describe('category dialog (ADR 0048)', () => {
     api();
     render(<InventoryPage />, { wrapper: operations });
     const request = await screen.findByTestId('inventory-request-stock');
-    expect(request.getAttribute('href')).toBe('/requests/new?cart=1');
+    // The cart opens here, in a sheet, not on another page.
+    expect(request.tagName).toBe('BUTTON');
     expect(request.textContent).toBe('Request cart');
     cleanup();
 
