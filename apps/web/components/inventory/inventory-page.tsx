@@ -9,7 +9,7 @@ import type {
   UnitOfMeasure,
   Warehouse,
 } from '@durby/shared';
-import { ArrowLeft, FileText, MoreHorizontal, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, FileText, MoreHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
@@ -43,6 +43,7 @@ import { DocumentForm } from './document-form';
 import { DocumentsTab } from './documents-tab';
 import { ItemDialog, ItemsTab } from './items-tab';
 import { StockTab } from './stock-tab';
+import { RequestCartSheet } from '../requests/request-cart-sheet';
 import { WarehousesTab } from './warehouses-tab';
 
 export type Tab =
@@ -180,14 +181,7 @@ function Inventory({
           branchShop={requests}
           actions={
             <>
-              {requests && (
-                <Button asChild>
-                  <Link href="/requests/new?cart=1" data-testid="inventory-request-stock">
-                    <ShoppingCart aria-hidden />
-                    {t('inventory.overview.requestStock')}
-                  </Link>
-                </Button>
-              )}
+              {requests && <RequestCartSheet />}
               <MoreMenu tabs={tabs.filter((x) => x.id !== 'stock')} onTab={setTab} />
               {can('inventory.stock.receive') && (
                 <Button variant="outline" asChild>
@@ -201,7 +195,6 @@ function Inventory({
                 <ItemDialog
                   categories={data.categories}
                   warehouses={data.warehouses}
-                  locations={data.locations}
                   onDone={data.reload}
                   trigger={t('inventory.overview.addItem')}
                 />

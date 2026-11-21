@@ -12,11 +12,18 @@ import { useSearchParams } from 'next/navigation';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
-import { createStockItem, loadStock, postReceipt, updateStockItem } from '../../lib/inventory/api';
+import {
+  createStockItem,
+  deleteStockItem,
+  loadStock,
+  postReceipt,
+  updateStockItem,
+} from '../../lib/inventory/api';
 import { isQuantity, shortQuantity } from '../../lib/inventory/format';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { Field, FormDialog } from '../form-dialog';
+import { ConfirmAction } from '../users/common';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -57,6 +64,7 @@ export function ItemsTab({ data }: { data: InventoryData }) {
       ? allLevels.data.filter((l) => l.itemId === itemId && l.quantity !== '0')
       : [];
   const canManage = data.can('inventory.items.edit');
+  const canDelete = data.can('inventory.items.delete');
   const shown = data.items.filter(
     (i) =>
       (showArchived || i.archivedAt === null) &&
@@ -95,7 +103,6 @@ export function ItemsTab({ data }: { data: InventoryData }) {
           <ItemDialog
             categories={data.categories}
             warehouses={data.warehouses}
-            locations={data.locations}
             onDone={data.reload}
           />
         )}
@@ -149,6 +156,7 @@ export function ItemsTab({ data }: { data: InventoryData }) {
                 <span className="flex gap-2">
                   <ItemDialog item={item} categories={data.categories} onDone={data.reload} />
                   <ArchiveButton item={item} onDone={data.reload} />
+                  {canDelete && <DeleteItemButton item={item} onDone={data.reload} />}
                 </span>
               )}
             </Card>
@@ -156,6 +164,24 @@ export function ItemsTab({ data }: { data: InventoryData }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Deletes an item with no stock history; asks first. An item with history is archived instead (ADR 0027). */
+function DeleteItemButton({ item, onDone }: { item: StockItem; onDone: () => void }) {
+  const t = useT();
+  const { store } = useAuth();
+  const action = useActionKey();
+  return (
+    <ConfirmAction
+      testId="item-delete"
+      trigger={t('inventory.page.deleteItem')}
+      title={t('inventory.page.deleteItemTitle', { name: item.name })}
+      description={t('inventory.page.deleteItemDescription')}
+      confirm={t('inventory.page.deleteItem')}
+      run={() => deleteStockItem(store, action, item.id)}
+      onDone={onDone}
+    />
   );
 }
 
@@ -194,7 +220,6 @@ export function ItemDialog({
   trigger,
   defaultCategoryId,
   warehouses,
-  locations,
 }: {
   item?: StockItem;
   categories: readonly ProductCategory[] | null;
@@ -204,8 +229,6 @@ export function ItemDialog({
   defaultCategoryId?: string | null;
   /** New items only: the warehouse that gets the opening stock (stock is kept per warehouse). */
   warehouses?: readonly Warehouse[];
-  /** New items only: the branches to choose the opening stock's warehouse from. */
-  locations?: InventoryData['locations'];
 }) {
   const t = useT();
   const id = useId();
@@ -217,18 +240,12 @@ export function ItemDialog({
   const [min, setMin] = useState('');
   const [salePrice, setSalePrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [branchId, setBranchId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
   const [opening, setOpening] = useState('');
   const [unitCost, setUnitCost] = useState('');
   const [checked, setChecked] = useState(false);
   const receiptAction = useActionKey();
   const activeWarehouses = (warehouses ?? []).filter((w) => w.archivedAt === null);
-  // The warehouses that serve a branch: the main one, its own store, and any that supplies it (ADR 0067).
-  const warehousesFor = (branch: string) =>
-    activeWarehouses.filter(
-      (w) => w.isMain || w.locationId === branch || w.suppliesLocationIds.includes(branch),
-    );
   const openingInvalid = checked && opening.trim() !== '' && !isQuantity(opening.trim());
   // Active categories to choose from, plus the item's own even if archived meanwhile (it stays until changed).
   const choices = (categories ?? []).filter(
@@ -261,10 +278,7 @@ export function ItemDialog({
         setSalePrice(item?.salePrice ?? '');
         setCategoryId(item ? (item.categoryId ?? '') : (defaultCategoryId ?? ''));
         // The main warehouse by default, else the first active one.
-        const startBranch =
-          activeWarehouses.find((w) => w.isMain)?.locationId ?? locations?.[0]?.id ?? '';
-        setBranchId(startBranch);
-        setWarehouseId(warehousesFor(startBranch)[0]?.id ?? '');
+        setWarehouseId((activeWarehouses.find((w) => w.isMain) ?? activeWarehouses[0])?.id ?? '');
         setOpening('');
         setUnitCost('');
         setChecked(false);
@@ -397,23 +411,6 @@ export function ItemDialog({
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t('inventory.page.pricingStock')}
           </p>
-          <Field id={`${id}-branch`} label={t('inventory.fields.branch')} problem={null}>
-            <Select
-              id={`${id}-branch`}
-              value={branchId}
-              onChange={(e) => {
-                setBranchId(e.target.value);
-                setWarehouseId(warehousesFor(e.target.value)[0]?.id ?? '');
-              }}
-              data-testid="item-branch"
-            >
-              {(locations ?? []).map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
           <Field id={`${id}-warehouse`} label={t('inventory.fields.warehouse')} problem={null}>
             <Select
               id={`${id}-warehouse`}
@@ -421,7 +418,7 @@ export function ItemDialog({
               onChange={(e) => setWarehouseId(e.target.value)}
               data-testid="item-warehouse"
             >
-              {warehousesFor(branchId).map((w) => (
+              {activeWarehouses.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.isMain ? `${w.name} (${t('inventory.page.mainWarehouse')})` : w.name}
                 </option>

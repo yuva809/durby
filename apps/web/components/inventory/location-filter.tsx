@@ -42,14 +42,7 @@ export function LocationFilter({
             </option>
           ))}
       </optgroup>
-      <optgroup label={t('inventory.page.groupBranches')}>
-        {data.locations.map((l) => (
-          <option key={l.id} value={`l:${l.id}`}>
-            {l.name}
-          </option>
-        ))}
-      </optgroup>
-      <option value="">{t('inventory.page.allLocations')}</option>
+      <option value="">{t('inventory.page.allWarehouses')}</option>
     </Select>
   );
 }

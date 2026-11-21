@@ -270,3 +270,8 @@ the components and their stock); receipts offer each line's matching units.
 `stock_items.sale_price` (2 decimals, optional): the default unit price when the item is added to a sales order
 (docs/modules/orders.md). Set in the item dialog while the organization has the `orders` feature; in the item's audit
 snapshot.
+
+
+## Vendor invoice corrections (ADR 0078)
+
+An approved invoice's line can be corrected: `POST /inventory/invoices/:id/lines/:lineId/corrections` (approvers, `inventory.invoices.approve`). It books an adjustment (reason `correction`) for the line's current quantity and a receipt for the corrected quantity at the corrected unit cost, then records the correction. Pending invoices are changed as before.

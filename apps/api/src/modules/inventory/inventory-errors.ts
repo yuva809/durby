@@ -36,6 +36,12 @@ export const inventoryErrors = {
       'Not enough stock for some items.',
       { itemIds },
     ),
+  itemInUse: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'inventory.item_in_use',
+      'This item has stock history, so it can only be archived.',
+    ),
   unitLocked: () =>
     new ApiError(
       HttpStatus.CONFLICT,
@@ -153,6 +159,13 @@ export const inventoryErrors = {
 };
 
 /** Prisma's unique violation (here: the partial name indexes of the migration). */
+/** Prisma's foreign-key violation: the item is still used by stock history (ADR 0027), so it can't be deleted. */
+export function isForeignKeyViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2003'
+  );
+}
+
 export function isUniqueViolation(error: unknown): boolean {
   return (
     typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002'

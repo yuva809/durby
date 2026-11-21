@@ -279,6 +279,10 @@ export const AUDIT_ACTIONS = {
     entityType: 'stock_item',
     label: 'inventory.audit.actions.stockItemUpdated',
   },
+  'inventory.stock_item.deleted': {
+    entityType: 'stock_item',
+    label: 'inventory.audit.actions.stockItemDeleted',
+  },
   /** A product's recipe was replaced (docs/modules/inventory.md → Recipes). */
   'inventory.recipe.updated': {
     entityType: 'recipe',
