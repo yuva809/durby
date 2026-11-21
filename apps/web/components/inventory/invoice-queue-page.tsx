@@ -21,6 +21,7 @@ import { loadCategories } from '../../lib/catalog/api';
 import { loadStockItems, loadUnits, loadWarehouses } from '../../lib/inventory/api';
 import {
   approveInvoice,
+  correctInvoiceLine,
   loadInvoice,
   loadInvoices,
   rejectInvoice,
@@ -37,6 +38,7 @@ import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
 import { Field, FormDialog } from '../form-dialog';
+import { Input } from '../ui/input';
 import { MoneyProvider, useMoney } from '../pos/money';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -292,7 +294,7 @@ function Detail({
               <Loaded resource={items} reload={() => undefined}>
                 {(itemList) => (
                   <InvoiceDetail
-                    key={`${loaded.id}:${loaded.status}`}
+                    key={`${loaded.id}:${loaded.status}:${loaded.lines.map((l) => `${l.quantity}@${l.unitCost}`).join(',')}`}
                     invoice={loaded}
                     warehouses={warehouseList.filter(
                       (w) => (w.archivedAt === null && !w.isTransit) || w.id === loaded.warehouseId,
@@ -317,6 +319,111 @@ function Detail({
         )}
       </Loaded>
     </div>
+  );
+}
+
+/**
+ * An approved invoice's lines can be corrected by an approver (ADR 0078): what they hold is taken out at the average
+ * cost and the corrected quantity comes in. Lines of new items can't be corrected yet, so they have no dialog.
+ */
+function CorrectionsPanel({
+  invoice,
+  onChanged,
+}: {
+  invoice: VendorInvoice;
+  onChanged: () => void;
+}) {
+  const t = useT();
+  return (
+    <section className="flex flex-col gap-3 rounded-md border p-4" data-testid="queue-corrections">
+      <h2 className="text-sm font-semibold">{t('inventory.invoices.correctionsHeading')}</h2>
+      <p className="text-sm text-muted-foreground">{t('inventory.invoices.correctHint')}</p>
+      <ul className="flex flex-col gap-2">
+        {invoice.lines.map((line) => (
+          <li key={line.id} className="flex flex-wrap items-center justify-between gap-3 text-sm">
+            <span>
+              {line.itemName ?? line.description} · {line.quantity} × {line.unitCost}
+            </span>
+            {line.itemId && <CorrectLine invoice={invoice} line={line} onChanged={onChanged} />}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function CorrectLine({
+  invoice,
+  line,
+  onChanged,
+}: {
+  invoice: VendorInvoice;
+  line: VendorInvoice['lines'][number];
+  onChanged: () => void;
+}) {
+  const t = useT();
+  const id = useId();
+  const { store } = useAuth();
+  const action = useActionKey();
+  const [quantity, setQuantity] = useState('');
+  const [unitCost, setUnitCost] = useState('');
+  const [reason, setReason] = useState('');
+  const valid =
+    /^\d{1,10}(\.\d{1,3})?$/.test(quantity.trim()) &&
+    /[1-9]/.test(quantity) &&
+    /^\d{1,10}(\.\d{1,4})?$/.test(unitCost.trim()) &&
+    reason.trim() !== '';
+  return (
+    <FormDialog
+      trigger={t('inventory.invoices.correctLine')}
+      triggerVariant="outline"
+      testId={`queue-correct-${line.position}`}
+      title={t('inventory.invoices.correctTitle', { line: String(line.position + 1) })}
+      submitLabel={t('inventory.invoices.correctSubmit')}
+      onOpen={() => {
+        setQuantity(line.quantity);
+        setUnitCost(line.unitCost);
+        setReason('');
+      }}
+      submit={() =>
+        valid
+          ? correctInvoiceLine(store, action, invoice.id, line.id, {
+              quantity: quantity.trim(),
+              unitCost: unitCost.trim(),
+              reason: reason.trim(),
+            })
+          : null
+      }
+      onDone={onChanged}
+    >
+      <Field id={`${id}-quantity`} label={t('inventory.invoices.correctedQuantity')} problem={null}>
+        <Input
+          id={`${id}-quantity`}
+          inputMode="decimal"
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+          data-testid="queue-correct-quantity"
+        />
+      </Field>
+      <Field id={`${id}-cost`} label={t('inventory.invoices.correctedUnitCost')} problem={null}>
+        <Input
+          id={`${id}-cost`}
+          inputMode="decimal"
+          value={unitCost}
+          onChange={(e) => setUnitCost(e.target.value)}
+          data-testid="queue-correct-cost"
+        />
+      </Field>
+      <Field id={`${id}-reason`} label={t('inventory.invoices.correctReason')} problem={null}>
+        <Input
+          id={`${id}-reason`}
+          maxLength={200}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          data-testid="queue-correct-reason"
+        />
+      </Field>
+    </FormDialog>
   );
 }
 
@@ -535,6 +642,9 @@ function InvoiceDetail({
           ) : null
         }
       />
+      {invoice.status === 'approved' && canApprove && (
+        <CorrectionsPanel invoice={invoice} onChanged={onChanged} />
+      )}
       {pending && rows.some((r) => r.include && r.target === NEW_ITEM) && (
         <p className="text-sm text-muted-foreground">{t('inventory.invoices.newItemsHint')}</p>
       )}

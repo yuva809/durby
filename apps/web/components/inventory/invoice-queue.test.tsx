@@ -119,6 +119,17 @@ function api(start: VendorInvoice = invoice()) {
       writes.push({ method, path: path!, body });
       if (path!.endsWith('/approve')) current = invoice('approved');
       if (path!.endsWith('/reject')) current = invoice('rejected');
+      if (path!.includes('/corrections')) {
+        current = {
+          ...current,
+          total: '1725.00',
+          lines: current.lines.map((l) =>
+            l.id === id(11)
+              ? { ...l, quantity: '40.000', unitCost: '12.0000', value: '480.00' }
+              : l,
+          ),
+        };
+      }
       return Promise.resolve(Response.json(current));
     }
     if (path === '/api/v1/inventory/invoices') {
@@ -248,5 +259,52 @@ describe('/inventory/invoices (ADR 0054)', () => {
     expect(await screen.findByText('Nothing waits for approval.')).toBeTruthy();
     await userEvent.click(screen.getByTestId('queue-tab-approved'));
     expect((await screen.findByTestId('queue-status')).textContent).toBe('Approved');
+  });
+
+  it('corrects an approved line from the queue and shows the corrected quantity (ADR 0078)', async () => {
+    signedIn();
+    mockState.search = `open=${id(9)}`;
+    const writes = api(invoice('approved'));
+    render(<InvoiceQueuePage />);
+    expect(await screen.findByTestId('queue-corrections')).toBeTruthy();
+
+    await userEvent.click(screen.getByTestId('queue-correct-1'));
+    const quantity = await screen.findByTestId<HTMLInputElement>('queue-correct-quantity');
+    expect(quantity.value).toBe('50.000');
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '40');
+    await userEvent.clear(screen.getByTestId('queue-correct-cost'));
+    await userEvent.type(screen.getByTestId('queue-correct-cost'), '12.00');
+    await userEvent.type(screen.getByTestId('queue-correct-reason'), 'Typed 50, delivered 40');
+    await userEvent.click(screen.getByTestId('form-save'));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]).toEqual({
+      method: 'POST',
+      path: `/api/v1/inventory/invoices/${id(9)}/lines/${id(11)}/corrections`,
+      body: { quantity: '40', unitCost: '12.00', reason: 'Typed 50, delivered 40' },
+    });
+    await waitFor(async () => {
+      const lines = await screen.findAllByTestId('invoice-line');
+      expect(within(lines[0]!).getByTestId<HTMLInputElement>('invoice-line-quantity').value).toBe(
+        '40',
+      );
+    });
+  });
+
+  it('gives no correction dialog to a line of a new item, or to a pending invoice', async () => {
+    signedIn();
+    mockState.search = `open=${id(9)}`;
+    api(invoice('approved'));
+    const { unmount } = render(<InvoiceQueuePage />);
+    expect(await screen.findByTestId('queue-corrections')).toBeTruthy();
+    expect(screen.queryByTestId('queue-correct-2')).toBeNull();
+    unmount();
+    cleanup();
+
+    api(invoice('pending'));
+    render(<InvoiceQueuePage />);
+    await screen.findAllByTestId('invoice-line');
+    expect(screen.queryByTestId('queue-corrections')).toBeNull();
   });
 });

@@ -271,7 +271,6 @@ the components and their stock); receipts offer each line's matching units.
 (docs/modules/orders.md). Set in the item dialog while the organization has the `orders` feature; in the item's audit
 snapshot.
 
-
 ## Vendor invoice corrections (ADR 0078)
 
-An approved invoice's line can be corrected: `POST /inventory/invoices/:id/lines/:lineId/corrections` (approvers, `inventory.invoices.approve`). It books an adjustment (reason `correction`) for the line's current quantity and a receipt for the corrected quantity at the corrected unit cost, then records the correction. Pending invoices are changed as before.
+An approved invoice's line can be corrected: `POST /inventory/invoices/:id/lines/:lineId/corrections` (approvers, `inventory.invoices.approve`). It books an adjustment (reason `correction`) for the line's current quantity and a receipt for the corrected quantity at the corrected unit cost, then records the correction. Pending invoices are changed as before. Lines of new items can't be corrected yet (approval doesn't record the item it created), and a correction is refused when the stock to take out has been used since.

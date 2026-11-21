@@ -30,5 +30,13 @@ can't be edited (ADR 0027).
 - The correction is one new append-only table, with a reason of 1–200 characters and a positive quantity.
 - The removed quantity leaves at the warehouse's current average cost, and the receipt enters at the corrected cost.
   The stock value therefore moves by the difference the correction makes.
-- The two documents are posted one after the other. If the correction record fails after the second document,
-  the record is written with the documents' ids; this is the one place a failure needs a manual check.
+- The two documents are posted one after the other, each in its own transaction (the stock service books one
+  document per transaction). Both permissions and the item are checked before the first is posted, so the usual
+  refusals happen before anything is booked. If the second post fails after the first, the first stays booked: this
+  is the one place a failure needs a manual check. The correction record and its audit entry are written in one
+  transaction after both documents.
+- The route's idempotency key completes by response, not in the transaction: each document completes the key itself.
+  A retry after a crash between the two posts can therefore repeat the correction; check for it before retrying.
+- A line of a new item can't be corrected: approval doesn't record which item it created. Recording it is a follow-up.
+- A correction takes out what the line holds now. If that stock has been sold or wasted since, the reversal is
+  refused (insufficient stock) unless negative stock is allowed, and nothing is booked.
