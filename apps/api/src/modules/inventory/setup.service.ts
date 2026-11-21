@@ -22,7 +22,7 @@ import {
   type TenantPrismaClient,
   type TenantTransactionClient,
 } from '../../platform/tenancy';
-import { inventoryErrors, isUniqueViolation } from './inventory-errors';
+import { inventoryErrors, isForeignKeyViolation, isUniqueViolation } from './inventory-errors';
 
 const WAREHOUSE_SELECT = {
   id: true,
@@ -402,6 +402,30 @@ export class InventorySetupService {
         return response;
       }),
     );
+  }
+
+  /**
+   * Deletes an item that has never been stocked, sold or used in a recipe. Stock history is append-only (ADR 0027),
+   * so an item with any history is refused: it can be archived instead.
+   */
+  async deleteItem(id: string): Promise<void> {
+    const { userId } = this.tenantContext.require();
+    await this.db.$transaction(async (tx) => {
+      const current = await tx.stockItem.findUnique({ where: { id }, select: ITEM_SELECT });
+      if (!current) throw inventoryErrors.itemNotFound([id]);
+      try {
+        await tx.stockItem.delete({ where: { id } });
+      } catch (error) {
+        if (isForeignKeyViolation(error)) throw inventoryErrors.itemInUse();
+        throw error;
+      }
+      await this.audit.record(tx, {
+        action: 'inventory.stock_item.deleted',
+        actor: auditActor.user(userId),
+        entityId: id,
+        before: snapshot('stock_item', itemResponse(current)),
+      });
+    });
   }
 
   async updateItem(id: string, body: UpdateStockItemRequest): Promise<StockItem> {

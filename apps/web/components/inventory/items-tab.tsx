@@ -12,11 +12,18 @@ import { useSearchParams } from 'next/navigation';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
-import { createStockItem, loadStock, postReceipt, updateStockItem } from '../../lib/inventory/api';
+import {
+  createStockItem,
+  deleteStockItem,
+  loadStock,
+  postReceipt,
+  updateStockItem,
+} from '../../lib/inventory/api';
 import { isQuantity, shortQuantity } from '../../lib/inventory/format';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { Field, FormDialog } from '../form-dialog';
+import { ConfirmAction } from '../users/common';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -57,6 +64,7 @@ export function ItemsTab({ data }: { data: InventoryData }) {
       ? allLevels.data.filter((l) => l.itemId === itemId && l.quantity !== '0')
       : [];
   const canManage = data.can('inventory.items.edit');
+  const canDelete = data.can('inventory.items.delete');
   const shown = data.items.filter(
     (i) =>
       (showArchived || i.archivedAt === null) &&
@@ -148,6 +156,7 @@ export function ItemsTab({ data }: { data: InventoryData }) {
                 <span className="flex gap-2">
                   <ItemDialog item={item} categories={data.categories} onDone={data.reload} />
                   <ArchiveButton item={item} onDone={data.reload} />
+                  {canDelete && <DeleteItemButton item={item} onDone={data.reload} />}
                 </span>
               )}
             </Card>
@@ -155,6 +164,24 @@ export function ItemsTab({ data }: { data: InventoryData }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Deletes an item with no stock history; asks first. An item with history is archived instead (ADR 0027). */
+function DeleteItemButton({ item, onDone }: { item: StockItem; onDone: () => void }) {
+  const t = useT();
+  const { store } = useAuth();
+  const action = useActionKey();
+  return (
+    <ConfirmAction
+      testId="item-delete"
+      trigger={t('inventory.page.deleteItem')}
+      title={t('inventory.page.deleteItemTitle', { name: item.name })}
+      description={t('inventory.page.deleteItemDescription')}
+      confirm={t('inventory.page.deleteItem')}
+      run={() => deleteStockItem(store, action, item.id)}
+      onDone={onDone}
+    />
   );
 }
 

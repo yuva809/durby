@@ -119,6 +119,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'inventory.item_name_taken': 'inventory.errors.itemNameTaken',
   'inventory.insufficient_stock': 'inventory.errors.insufficientStock',
   'inventory.unit_locked': 'inventory.errors.unitLocked',
+  'inventory.item_in_use': 'inventory.errors.itemInUse',
   'inventory.valuation_unsupported': 'inventory.errors.valuationUnsupported',
   'inventory.same_warehouse': 'inventory.errors.sameWarehouse',
   'inventory.product_not_found': 'inventory.errors.productNotFound',

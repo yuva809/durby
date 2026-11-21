@@ -620,6 +620,7 @@ export const INVENTORY_ERROR_CODES = [
   'inventory.item_name_taken',
   'inventory.insufficient_stock',
   'inventory.unit_locked',
+  'inventory.item_in_use',
   'inventory.valuation_unsupported',
   'inventory.same_warehouse',
   'inventory.product_not_found',

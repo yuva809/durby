@@ -83,6 +83,10 @@ export const updateStockItem = (
   body: UpdateStockItemRequest,
 ) => write(store, action, `${BASE}/items/${id}`, 'PATCH', body, stockItemSchema);
 
+/** Deletes an item that has never been stocked; one with stock history answers inventory.item_in_use. */
+export const deleteStockItem = (store: Api, action: ActionKey, id: string) =>
+  write(store, action, `${BASE}/items/${id}`, 'DELETE');
+
 export const loadStock = (
   store: Api,
   filter: { locationId?: string; warehouseId?: string },

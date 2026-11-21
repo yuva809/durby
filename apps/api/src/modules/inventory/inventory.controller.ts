@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -154,6 +155,14 @@ export class InventoryController {
     @Body(new ZodBody(createStockItemRequestSchema)) body: CreateStockItemRequest,
   ): Promise<StockItem> {
     return this.setup.createItem(body);
+  }
+
+  @RequirePermission('inventory.items.delete')
+  @Idempotent()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete('items/:id')
+  deleteItem(@Param('id', id(() => inventoryErrors.itemNotFound())) itemId: string): Promise<void> {
+    return this.setup.deleteItem(itemId);
   }
 
   @RequirePermission('inventory.items.edit')
