@@ -58,7 +58,7 @@ export default function StaffAcceptPage() {
               required
             />
             <span className="text-xs font-normal text-muted-foreground">
-              {t('staff.accept.passwordHint')}
+              {t('staff.accept.passwordHint', { min: String(PASSWORD_MIN_LENGTH) })}
             </span>
           </div>
           <Notice text={error} tone="error" />
