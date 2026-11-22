@@ -27,7 +27,7 @@ export function RequestCartSheet() {
           className="w-full overflow-y-auto sm:max-w-4xl"
         >
           <SheetTitle className="sr-only">{t('platform.nav.requestStock')}</SheetTitle>
-          {open && <RequestStockPage />}
+          {open && <RequestStockPage inSheet />}
         </SheetContent>
       </Sheet>
     </>

@@ -55,7 +55,8 @@ import { AvailableText, CartControl, useCartUnits } from './cart-controls';
  * a shopping basket (categories, search, + and −) from the main warehouse's items with what it has, then sends it as
  * one request. Quantities only, never prices. Needs `orders.requests.create` at the branch.
  */
-export function RequestStockPage() {
+/** `inSheet`: opened from Inventory's cart (ADR 0065): the person stays there, so no link leads to Order History. */
+export function RequestStockPage({ inSheet = false }: { inSheet?: boolean } = {}) {
   const { session } = useAuth();
   if (!session) return null;
   if (!session.activePermissions.includes('orders.requests.create'))
@@ -64,7 +65,7 @@ export function RequestStockPage() {
   if (session.activePermissions.includes('orders.requests.approve')) {
     return <BranchOnly />;
   }
-  return <RequestStock organizationId={session.activeOrganizationId} />;
+  return <RequestStock organizationId={session.activeOrganizationId} inSheet={inSheet} />;
 }
 
 /** For those who approve requests: branches send them; approving happens in Order History. */
@@ -81,7 +82,13 @@ function BranchOnly() {
   );
 }
 
-function RequestStock({ organizationId }: { organizationId: string | null }) {
+function RequestStock({
+  organizationId,
+  inSheet,
+}: {
+  organizationId: string | null;
+  inSheet: boolean;
+}) {
   const t = useT();
   const { store, session } = useAuth();
   // A branch calls its requests Order History (ADR 0059).
@@ -97,11 +104,13 @@ function RequestStock({ organizationId }: { organizationId: string | null }) {
           <h1 className="text-2xl font-semibold">{t('platform.nav.requestStock')}</h1>
           <p className="text-muted-foreground">{t('orders.requestForm.intro')}</p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/requests">
-            {t(operations ? 'platform.nav.orderHistory' : 'platform.nav.stockRequests')}
-          </Link>
-        </Button>
+        {!inSheet && (
+          <Button variant="outline" asChild>
+            <Link href="/requests">
+              {t(operations ? 'platform.nav.orderHistory' : 'platform.nav.stockRequests')}
+            </Link>
+          </Button>
+        )}
       </div>
       <Loaded resource={warehouses} reload={() => undefined}>
         {(sources) => (
@@ -114,7 +123,12 @@ function RequestStock({ organizationId }: { organizationId: string | null }) {
                   <Notice text={t('orders.requestForm.noWarehouse')} tone="info" />
                 )
               ) : (
-                <Shop organizationId={organizationId} sources={sources} branches={branches} />
+                <Shop
+                  organizationId={organizationId}
+                  sources={sources}
+                  branches={branches}
+                  inSheet={inSheet}
+                />
               )
             }
           </Loaded>
@@ -149,10 +163,12 @@ function Shop({
   organizationId,
   sources,
   branches,
+  inSheet,
 }: {
   organizationId: string;
   sources: RequestWarehouse[];
   branches: RequestDestination[];
+  inSheet: boolean;
 }) {
   const t = useT();
   const id = useId();
@@ -325,9 +341,11 @@ function Shop({
                 {t('orders.documents.oc')}
               </Link>
             </Button>
-            <Button variant="outline" asChild>
-              <Link href={`/requests?open=${sent.id}`}>{t('orders.requestCart.follow')}</Link>
-            </Button>
+            {!inSheet && (
+              <Button variant="outline" asChild>
+                <Link href={`/requests?open=${sent.id}`}>{t('orders.requestCart.follow')}</Link>
+              </Button>
+            )}
           </div>
         </Card>
       )}
