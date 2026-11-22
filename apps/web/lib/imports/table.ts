@@ -46,6 +46,10 @@ const ALIASES: Readonly<Record<ImportKind, Record<string, string>>> = {
     product: 'name',
     articleno: 'sku',
     marke: 'brand',
+    category: 'category',
+    kategorie: 'category',
+    categoryname: 'category',
+    productcategory: 'category',
     pack: 'packSize',
     packung: 'packSize',
     gebinde: 'packSize',
@@ -124,10 +128,10 @@ export function readTableRows(kind: ImportKind, table: readonly string[][]): Rea
     const n = normalize(h);
     return FIELD[n] ?? ALIASES[kind][n] ?? null;
   });
-  const wanted = IMPORT_TEMPLATES[kind].map((c) => FIELD[normalize(c)]!);
-  const missing = IMPORT_REQUIRED_COLUMNS[kind].filter(
-    (c) => !columns.includes(FIELD[normalize(c)]!),
-  );
+  // A template column is a field of its own, or (like "category", also the categories import's name) an alias.
+  const fieldOf = (c: string) => FIELD[normalize(c)] ?? ALIASES[kind][normalize(c)]!;
+  const wanted = IMPORT_TEMPLATES[kind].map(fieldOf);
+  const missing = IMPORT_REQUIRED_COLUMNS[kind].filter((c) => !columns.includes(fieldOf(c)));
   if (missing.length > 0)
     return { ok: false, problem: { kind: 'missingColumns', columns: missing } };
   const data = records.filter((r) => r.some((cell) => cell.trim() !== ''));

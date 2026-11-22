@@ -4,6 +4,7 @@ import { LOCALES } from '@durby/i18n';
 import {
   checkItemRows,
   itemRowPack,
+  resolveCategory,
   STOCK_UNITS,
   type UnitLabels,
   type DataImportResult,
@@ -11,6 +12,7 @@ import {
   type StockItem,
   type StockUnit,
 } from '@durby/shared';
+import { CatalogService } from '../catalog';
 import { auditActor, AuditService } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
 import { LabelService } from '../../platform/labels';
@@ -33,6 +35,7 @@ export class ItemImportService {
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
     private readonly labels: LabelService,
+    private readonly catalog: CatalogService,
   ) {}
 
   /**
@@ -58,6 +61,15 @@ export class ItemImportService {
     const canEdit = await this.access.can('inventory.items.edit');
     try {
       return await this.db.$transaction(async (tx) => {
+        // Category names are matched here, in the import's own transaction (never created, never another tenant's).
+        const categories = await this.catalog.activeCategories(tx);
+        const categoryProblems = checkItemRows(body.rows, labelOf, { categories });
+        if (categoryProblems.length > 0) throw inventoryErrors.importInvalid(categoryProblems);
+        const categoryOf = (cell: string | undefined): string | null => {
+          const text = (cell ?? '').trim();
+          const found = text ? resolveCategory(text, categories) : null;
+          return typeof found === 'object' && found ? found.id : null;
+        };
         const items = await tx.stockItem.findMany({
           where: { archivedAt: null },
           select: { ...ITEM_SELECT, _count: { select: { movements: true } } },
@@ -81,6 +93,7 @@ export class ItemImportService {
             : null;
           const brand = row.brand?.trim() || null;
           const pack = itemRowPack(row.packSize, labelOf);
+          const categoryId = categoryOf(row.category);
           if (!current) {
             const created = await tx.stockItem.create({
               data: {
@@ -91,6 +104,7 @@ export class ItemImportService {
                 minQuantity,
                 salePrice,
                 brand,
+                categoryId,
                 packCount: pack?.packCount ?? null,
                 packSize: pack?.packSize ? new Decimal(pack.packSize).toFixed(3) : null,
                 packUnit: pack?.packUnit ?? null,
@@ -116,6 +130,8 @@ export class ItemImportService {
             minQuantity: minQuantity ?? before.minQuantity,
             salePrice: salePrice ?? before.salePrice,
             brand: brand ?? before.brand,
+            // An empty category cell keeps the item's category; a filled one replaces it.
+            categoryId: categoryId ?? before.categoryId,
             // A pack size cell replaces the whole pack size; an empty one keeps it.
             ...(pack
               ? {
@@ -143,6 +159,7 @@ export class ItemImportService {
               minQuantity: next.minQuantity,
               salePrice: next.salePrice,
               brand: next.brand,
+              categoryId: next.categoryId,
               packCount: next.packCount,
               packSize: next.packSize,
               packUnit: next.packUnit,

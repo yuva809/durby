@@ -862,6 +862,7 @@
   "platform.importPage.problem.invalid": "kein gültiger Wert",
   "platform.importPage.problem.duplicate": "kommt doppelt vor",
   "platform.importPage.problem.unknown": "nicht gefunden (Name oder Nummer prüfen)",
+  "platform.importPage.problem.ambiguous": "passt zu mehreren Kategorien (Oberkategorie / Unterkategorie angeben)",
   "platform.importPage.ready": "Keine Probleme gefunden. Der Import schreibt alle Zeilen auf einmal oder keine, wenn etwas fehlschlägt.",
   "platform.importPage.run": "{count} Zeilen importieren",
   "platform.importPage.done": "Import abgeschlossen.",

@@ -32,6 +32,9 @@ const UNITS: Readonly<Record<string, StockUnit>> = {
   liter: 'l',
   ml: 'ml',
   mls: 'ml',
+  pcs: 'pc',
+  piece: 'pc',
+  pieces: 'pc',
 };
 
 const AMOUNT = String.raw`(\d{1,6}(?:[.,]\d{1,3})?)\s*(kgs?|grams?|grs?|g|ltr|lt|l|ml)\b`;
@@ -131,7 +134,7 @@ const CELL = /^(?:(\d{1,6})\s*[x×*]\s*)?(\d{1,10}(?:[.,]\d+)?)\s*([^\d\s.,*×][
 
 /**
  * The pack size of one spreadsheet cell: the whole cell must be a pack size (unlike `parsePackSize`, which finds one
- * inside an invoice description). A bare whole number or "Pack of 6" is the count alone. Null when it is neither;
+ * inside an invoice description). A bare whole number, "Pack of 6" or a whole number of pieces ("50 pcs") is the count alone. Null when it is neither;
  * the result still goes through `packProblems`.
  */
 export function parsePackCell(text: string, unitOf: UnitLookup): PackSize | null {
@@ -142,5 +145,10 @@ export function parsePackCell(text: string, unitOf: UnitLookup): PackSize | null
   if (!match) return null;
   const unit = unitOf(match[3]!);
   if (!unit) return null;
-  return { count: match[1] ?? '', size: decimal(match[2]!), unit };
+  const size = decimal(match[2]!);
+  // "50 pcs": a whole number of pieces and no "x" is how many are in the pack, not a size.
+  if (unit === 'pc' && match[1] === undefined && /^\d{1,6}$/.test(size)) {
+    return { count: size, size: '', unit: '' };
+  }
+  return { count: match[1] ?? '', size, unit };
 }

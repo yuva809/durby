@@ -17,6 +17,7 @@ describe('readRows (Import Data)', () => {
           unit: 'pc',
           brand: '',
           packSize: '',
+          category: '',
           minQuantity: '2',
           salePrice: '12.90',
         },
@@ -26,6 +27,7 @@ describe('readRows (Import Data)', () => {
           unit: 'kg',
           brand: '',
           packSize: '',
+          category: '',
           minQuantity: '',
           salePrice: '',
         },
@@ -150,14 +152,35 @@ describe('brand and pack size columns', () => {
         unit: 'pc',
         brand: 'Chaokoh',
         packSize: '12 x 500 ml',
+        category: '',
         minQuantity: '',
         salePrice: '',
       },
-      { name: 'Tea', sku: '', unit: 'pc', brand: '', packSize: '', minQuantity: '', salePrice: '' },
+      {
+        name: 'Tea',
+        sku: '',
+        unit: 'pc',
+        brand: '',
+        packSize: '',
+        category: '',
+        minQuantity: '',
+        salePrice: '',
+      },
     ]);
     const alt = readRows('items', 'name,unit,Brand,Pack Size\r\nA,pc,B,5kg\r\n');
     expect(alt.ok && alt.rows[0]).toMatchObject({ brand: 'B', packSize: '5kg' });
     const pack = readRows('items', 'name,unit,pack\r\nA,pc,10\r\n');
     expect(pack.ok && pack.rows[0]).toMatchObject({ packSize: '10' });
+  });
+});
+
+describe('category column', () => {
+  it('reads it by its names and keeps "Category" as the name of the categories import', () => {
+    for (const header of ['category', 'Kategorie', 'CategoryName', 'Product Category']) {
+      const read = readRows('items', `name,unit,${header}\r\nA,pc,Rice\r\n`);
+      expect(read.ok && read.rows[0]).toMatchObject({ category: 'Rice' });
+    }
+    const categories = readRows('categories', 'Category\r\nRice\r\n');
+    expect(categories.ok && categories.rows).toEqual([{ name: 'Rice' }]);
   });
 });

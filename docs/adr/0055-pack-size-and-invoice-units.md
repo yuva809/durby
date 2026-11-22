@@ -47,3 +47,7 @@ Excel get the real fields instead of a name like "Coconut milk 12 x 500 ml".
   (`unitLookup`, label-based, no second alias list). The api takes the names from `LabelService` in every locale (it
   does not know the person's language), so anything the browser accepted the api accepts too.
 - On an existing item, empty cells keep its values; a filled `pack_size` replaces count, size and unit together.
+
+Addendum (2026-11-22, import categories): in an import cell only, a whole number of pieces with a piece word and no "x"
+(`50 pcs`, `1 pc`, `50 Stück`) is the pack count, not a size of pieces (`parsePackCell`). The loose invoice parser
+`parsePackSize` is unchanged. A `6 x 1 pcs` keeps its size of 1 piece.
