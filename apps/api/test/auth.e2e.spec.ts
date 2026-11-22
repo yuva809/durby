@@ -702,7 +702,7 @@ describe('auth', () => {
       const res = await kit
         .client()
         .post('/password/reset')
-        .send({ token: 'A'.repeat(43), password: 'too short' })
+        .send({ token: 'A'.repeat(43), password: 'short' })
         .expect(400);
       expect(res.body).toMatchObject({ code: 'validation.failed' });
     });
