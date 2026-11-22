@@ -16,15 +16,22 @@ export const EMPTY_PACK: PackSize = { count: '', size: '', unit: '' };
 const UNITS: Readonly<Record<string, StockUnit>> = {
   kg: 'kg',
   kgs: 'kg',
+  kilo: 'kg',
   g: 'g',
   gr: 'g',
   grs: 'g',
+  grm: 'g',
+  gm: 'g',
+  gms: 'g',
   gram: 'g',
   grams: 'g',
   l: 'l',
   ltr: 'l',
   lt: 'l',
+  litre: 'l',
+  liter: 'l',
   ml: 'ml',
+  mls: 'ml',
 };
 
 const AMOUNT = String.raw`(\d{1,6}(?:[.,]\d{1,3})?)\s*(kgs?|grams?|grs?|g|ltr|lt|l|ml)\b`;

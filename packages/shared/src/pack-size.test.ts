@@ -65,6 +65,15 @@ describe('pack size cell of an import (strict, shown unit names)', () => {
     expect(parsePackCell('12x200ml', lookup)).toEqual({ count: '12', size: '200', unit: 'ml' });
     expect(parsePackCell('5kg', lookup)).toEqual({ count: '', size: '5', unit: 'kg' });
     expect(parsePackCell('1,5 ltr', lookup)).toEqual({ count: '', size: '1.5', unit: 'l' });
+    // Spellings found in real spreadsheets.
+    expect(parsePackCell('12*700gm', lookup)).toEqual({ count: '12', size: '700', unit: 'g' });
+    expect(parsePackCell('100gm', lookup)).toEqual({ count: '', size: '100', unit: 'g' });
+    expect(parsePackCell('100 gms', lookup)).toEqual({ count: '', size: '100', unit: 'g' });
+    expect(parsePackCell('12*1lt', lookup)).toEqual({ count: '12', size: '1', unit: 'l' });
+    expect(parsePackCell('2 Litre', lookup)).toEqual({ count: '', size: '2', unit: 'l' });
+    expect(parsePackCell('3 kilo', lookup)).toEqual({ count: '', size: '3', unit: 'kg' });
+    expect(parsePackCell('6 x 250 mls', lookup)).toEqual({ count: '6', size: '250', unit: 'ml' });
+    expect(parsePackCell('50 grm', lookup)).toEqual({ count: '', size: '50', unit: 'g' });
   });
 
   it('reads a bare count and "Pack of N" as the count only', () => {
