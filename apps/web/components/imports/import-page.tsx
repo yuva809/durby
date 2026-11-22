@@ -53,6 +53,7 @@ import {
   templateCsv,
   withUnitCodes,
 } from '../../lib/imports/table';
+import { loadCategories } from '../../lib/catalog/api';
 import { loadStockItems, loadWarehouses } from '../../lib/inventory/api';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
@@ -142,6 +143,10 @@ function Importer({
   const needsRefs = kind === 'opening_stock' && organizationId !== null;
   const [warehouses] = useResource(needsRefs ? organizationId : null, () => loadWarehouses(store));
   const [items] = useResource(needsRefs ? organizationId : null, () => loadStockItems(store));
+  // Item rows name categories: checked here once they have loaded; the api checks again either way.
+  const [categories] = useResource(kind === 'items' ? organizationId : null, () =>
+    loadCategories(store),
+  );
 
   const pick = (next: ImportKind) => {
     setKind(next);
@@ -157,7 +162,11 @@ function Importer({
       case 'categories':
         return checkCategoryRows(rows as unknown as CategoryImportRow[]);
       case 'items':
-        return checkItemRows(rows as unknown as ItemImportRow[], (u) => t(`inventory.units.${u}`));
+        return checkItemRows(
+          rows as unknown as ItemImportRow[],
+          (u) => t(`inventory.units.${u}`),
+          categories.status === 'ready' ? { categories: categories.data } : undefined,
+        );
       case 'customers':
         return checkCustomerRows(rows as unknown as CustomerImportRow[]);
       case 'opening_stock': {

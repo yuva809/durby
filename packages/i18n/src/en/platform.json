@@ -862,6 +862,7 @@
   "platform.importPage.problem.invalid": "not a valid value",
   "platform.importPage.problem.duplicate": "appears twice in the file",
   "platform.importPage.problem.unknown": "not found (check the name or SKU)",
+  "platform.importPage.problem.ambiguous": "matches several categories (use Parent / Child)",
   "platform.importPage.ready": "No problems found. Importing writes all rows at once, or none if something fails.",
   "platform.importPage.run": "Import {count} rows",
   "platform.importPage.done": "Import finished.",

@@ -54,6 +54,35 @@ describe('pack size (ADR 0055)', () => {
   });
 });
 
+describe('pack size cell: a count and a piece word', () => {
+  const lookup = unitLookup((u) => (u === 'pc' ? ['Stück', 'Stk.'] : u));
+
+  it('reads "50 pcs" and "1 pcs" as the count only, like "50" and "Pack of 50"', () => {
+    for (const text of ['50 pcs', '50pcs', '50 pc', '50 Pieces', '50 Stück', '50 stk.', '50']) {
+      expect(parsePackCell(text, lookup)).toEqual({ count: '50', size: '', unit: '' });
+    }
+    expect(parsePackCell('1 pcs', lookup)).toEqual({ count: '1', size: '', unit: '' });
+    expect(parsePackCell('Pack of 50', lookup)).toEqual({ count: '50', size: '', unit: '' });
+  });
+
+  it('leaves other units, a counted piece size and a fractional piece amount alone', () => {
+    expect(parsePackCell('4 box', lookup)).toEqual({ count: '', size: '4', unit: 'box' });
+    expect(parsePackCell('6 x 1 pcs', lookup)).toEqual({ count: '6', size: '1', unit: 'pc' });
+    expect(parsePackCell('1,5 pcs', lookup)).toEqual({ count: '', size: '1.5', unit: 'pc' });
+  });
+
+  it('does not change how invoice descriptions are read', () => {
+    expect(parsePackSize('Paper cups 2 Stück')).toBeNull();
+    expect(parsePackSize('Paper cups 50 pcs')).toBeNull();
+    expect(parsePackSize('Paper cups 12 x 2 Stück')).toBeNull();
+    expect(parsePackSize('Coconut milk 12×400 ML')).toEqual({
+      count: '12',
+      size: '400',
+      unit: 'ml',
+    });
+  });
+});
+
 describe('pack size cell of an import (strict, shown unit names)', () => {
   // As an organization that calls pieces "Stück" would see them.
   const labels: Record<string, string> = { pc: 'Stück', box: 'Karton' };
@@ -83,7 +112,7 @@ describe('pack size cell of an import (strict, shown unit names)', () => {
 
   it('takes the unit by code or by the name the organization sees', () => {
     expect(parsePackCell('6 x 1 Stück', lookup)).toEqual({ count: '6', size: '1', unit: 'pc' });
-    expect(parsePackCell('2 stück.', lookup)).toEqual({ count: '', size: '2', unit: 'pc' });
+    expect(parsePackCell('6 x 1 pcs', lookup)).toEqual({ count: '6', size: '1', unit: 'pc' });
     expect(parsePackCell('4 KARTON', lookup)).toEqual({ count: '', size: '4', unit: 'box' });
     expect(parsePackCell('3 bag', lookup)).toEqual({ count: '', size: '3', unit: 'bag' });
   });

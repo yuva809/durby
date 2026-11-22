@@ -53,6 +53,27 @@ function api() {
         }),
       );
     }
+    if (input.startsWith('/api/v1/catalog/categories')) {
+      const category = (n: number, name: string, parentId: string | null) => ({
+        id: id(n),
+        name,
+        sortOrder: n,
+        station: 'kitchen',
+        description: null,
+        parentId,
+        imageVersion: null,
+        archivedAt: null,
+      });
+      return Promise.resolve(
+        Response.json({
+          data: [
+            category(10, 'Food', null),
+            category(11, 'Oil', id(10)),
+            category(12, 'Rice', null),
+          ],
+        }),
+      );
+    }
     if (input.startsWith('/api/v1/inventory/items')) {
       return Promise.resolve(
         Response.json({
@@ -108,6 +129,25 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
     );
   });
 
+  it('checks the category column against the existing categories', async () => {
+    signedInAs('owner');
+    api();
+    render(<ImportPage />);
+    await userEvent.click(screen.getByTestId('import-kind-items'));
+    await userEvent.upload(
+      screen.getByTestId('import-file'),
+      csv('name,unit,Kategorie\nA,pc,rice\nB,pc,Food / Oil\nC,pc,Dairy\n'),
+    );
+    const preview = await screen.findByTestId('import-preview');
+    await waitFor(() =>
+      expect(within(preview).getByTestId('import-problems').textContent).toContain(
+        'Row 3 · category: not found',
+      ),
+    );
+    expect(within(preview).getByTestId('import-problems').textContent).not.toContain('Row 1');
+    expect(within(preview).getByTestId('import-problems').textContent).not.toContain('Row 2');
+  });
+
   it('previews items, shows their problems and imports nothing until they are fixed', async () => {
     signedInAs('owner');
     const calls = api();
@@ -119,6 +159,7 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
       'unit',
       'brand',
       'pack_size',
+      'category',
       'min_quantity',
       'sale_price',
     ]);
@@ -150,6 +191,7 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
               unit: 'pc',
               brand: '',
               packSize: '',
+              category: '',
               minQuantity: '',
               salePrice: '12.90',
             },
@@ -159,6 +201,7 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
               unit: 'l',
               brand: '',
               packSize: '',
+              category: '',
               minQuantity: '',
               salePrice: '',
             },

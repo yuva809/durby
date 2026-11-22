@@ -143,11 +143,8 @@ describe('data import (ADR 0044 step 4)', () => {
       packUnit: 'ml',
     });
     expect(pick(items, 'Eggs')).toMatchObject({ packCount: 6, packSize: null, packUnit: null });
-    expect(pick(items, 'Cups')).toMatchObject({
-      packCount: null,
-      packSize: '10.000',
-      packUnit: 'pc',
-    });
+    // A whole number of pieces is a count, not a size.
+    expect(pick(items, 'Cups')).toMatchObject({ packCount: 10, packSize: null, packUnit: null });
     // Empty cells keep what the item has; a filled one replaces it.
     const again = dataImportResultSchema.parse(
       (
@@ -179,6 +176,89 @@ describe('data import (ADR 0044 step 4)', () => {
         ],
       },
     });
+  });
+
+  it('files imported items under existing categories by name or path, and refuses unknown ones', async () => {
+    const s = await setup();
+    const category = async (token: string, name: string, parentId?: string) =>
+      (
+        (
+          await post(token, '/catalog/categories', {
+            name,
+            ...(parentId ? { parentId } : {}),
+          }).expect(201)
+        ).body as { id: string }
+      ).id;
+    const food = await category(s.owner, 'Food');
+    const oil = await category(s.owner, 'Oil', food);
+    const drinks = await category(s.owner, 'Drinks');
+    const tea = await category(s.owner, 'Tea', drinks);
+    // Names are unique per organization, but only exactly: "oil" and "Oil" read the same to the import.
+    await category(s.owner, 'oil');
+    const rice = await category(s.owner, 'Rice');
+    const ghee = await category(s.owner, 'Oil / Ghee');
+    const list = async () =>
+      stockItemListResponseSchema.parse((await get(s.owner, '/inventory/items').expect(200)).body)
+        .data;
+    const categoryOf = async (name: string) =>
+      (await list()).find((i) => i.name === name)?.categoryId;
+
+    // Create: by name (any case), by path, and a name that contains a slash.
+    await post(s.owner, '/inventory/items/import', {
+      rows: [
+        { name: 'Basmati', unit: 'kg', category: 'rice' },
+        { name: 'Sunflower oil', unit: 'l', category: 'Food / Oil' },
+        { name: 'Clarified butter', unit: 'kg', category: 'Oil / Ghee' },
+        { name: 'Salt', unit: 'kg' },
+      ],
+    }).expect(200);
+    expect(await categoryOf('Basmati')).toBe(rice);
+    expect(await categoryOf('Sunflower oil')).toBe(oil);
+    expect(await categoryOf('Clarified butter')).toBe(ghee);
+    expect(await categoryOf('Salt')).toBeNull();
+
+    // Update: an empty cell keeps the category, a filled one replaces it.
+    await post(s.owner, '/inventory/items/import', {
+      rows: [
+        { name: 'Basmati', unit: 'kg', category: '', salePrice: '3.00' },
+        { name: 'Sunflower oil', unit: 'l', category: 'Drinks / Tea' },
+      ],
+    }).expect(200);
+    expect(await categoryOf('Basmati')).toBe(rice);
+    expect(await categoryOf('Sunflower oil')).toBe(tea);
+
+    // Unknown and ambiguous names refuse the whole file; nothing is created.
+    const res = await post(s.owner, '/inventory/items/import', {
+      rows: [
+        { name: 'Fresh', unit: 'kg', category: 'Rice' },
+        { name: 'Olive oil', unit: 'l', category: 'Dairy' },
+        { name: 'Peanut oil', unit: 'l', category: 'OIL' },
+      ],
+    }).expect(400);
+    expect(res.body).toMatchObject({
+      code: 'inventory.import_invalid',
+      details: {
+        rows: [
+          { row: 2, field: 'category', problem: 'unknown' },
+          { row: 3, field: 'category', problem: 'ambiguous' },
+        ],
+      },
+    });
+    expect((await list()).map((i) => i.name)).not.toContain('Fresh');
+
+    // Another tenant's category is unknown here, and nothing is created from the import.
+    const other = await setup();
+    await category(other.owner, 'Spices');
+    const foreign = await post(s.owner, '/inventory/items/import', {
+      rows: [{ name: 'Pepper', unit: 'kg', category: 'Spices' }],
+    }).expect(400);
+    expect(foreign.body).toMatchObject({
+      details: { rows: [{ row: 1, field: 'category', problem: 'unknown' }] },
+    });
+    const mine = productCategoryListResponseSchema.parse(
+      (await get(s.owner, '/catalog/categories').expect(200)).body,
+    );
+    expect(mine.data.map((c) => c.name)).not.toContain('Spices');
   });
 
   it('books opening stock as one receipt per warehouse, refusing unknown names', async () => {
