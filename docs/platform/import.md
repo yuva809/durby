@@ -31,14 +31,24 @@ dropped, ADR 0044). The page and its menu item show the kinds the user may run.
 
 ## Templates (CSV header row)
 
-| Kind          | Columns                                     | Required                        |
-| ------------- | ------------------------------------------- | ------------------------------- |
-| Categories    | `name`                                      | `name`                          |
-| Stock items   | `name, sku, unit, min_quantity, sale_price` | `name, unit` (kg, g, l, ml, pc) |
-| Opening stock | `warehouse, item, quantity, unit_cost`      | all                             |
-| Customers     | `name, code, phone, email, address, note`   | `name`                          |
+| Kind          | Columns                                                       | Required     |
+| ------------- | ------------------------------------------------------------- | ------------ |
+| Categories    | `name`                                                        | `name`       |
+| Stock items   | `name, sku, unit, brand, pack_size, min_quantity, sale_price` | `name, unit` |
+| Opening stock | `warehouse, item, quantity, unit_cost`                        | all          |
+| Customers     | `name, code, phone, email, address, note`                     | `name`       |
 
-Headers match loosely (case, spaces and `_` ignored) with a few aliases (`price` → sale price, `qty` → quantity,
+`unit` takes a code or the name the organization shows for it (`Stück`, `Stk.`); the browser turns names into codes
+(`withUnitCodes`). `brand` is free text (max 100). `pack_size` is the item's pack size (ADR 0055), read as the whole cell
+(`parsePackCell`, shared with the api): `12 x 500 ml`, `12×400 ML`, `12x200ml`, `5kg`, `1,5 ltr`, `6 x 1 Stück`, a bare
+count (`10`) or `Pack of 6` is the count only. The unit word is a code, a short form (`ltr`, `gr`) or a shown name, in
+the browser the person's language, in the api the organization's labels in every locale. Anything else, a count outside
+1..100000, a size of 0 or with more than 3 decimals is a problem on `packSize` (`invalid`); a brand over 100 characters
+is `too_long`. Empty `brand` / `pack_size` = not set: a new item has none, an existing item keeps its own. A filled
+`pack_size` replaces the item's whole pack size. The preview shows it as `12 × 500 ml`. Created and changed items go
+into the audit snapshot with these fields as usual.
+
+Headers match loosely (case, spaces and `_` ignored) with a few aliases (`price` → sale price, `Marke` → brand, `pack` / `Packung` / `Gebinde` → pack size, `qty` → quantity,
 `mobile` → phone, …). Stock item units may be the code (`pc`) or the name the organization sees for it
 (a partner's `Stück`, German `Stk.`; case and trailing dots ignored): the browser turns names into codes before the
 check, and the preview shows the name. Comma or semicolon separated, UTF-8 with or without BOM, decimal commas (`8,50`) accepted.

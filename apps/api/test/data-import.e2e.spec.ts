@@ -107,7 +107,7 @@ describe('data import (ADR 0044 step 4)', () => {
     const res = await post(s.owner, '/inventory/items/import', {
       rows: [
         { name: 'Sugar', unit: 'kg' },
-        { name: 'Salt', unit: 'box' },
+        { name: 'Salt', unit: 'crate' },
       ],
     }).expect(400);
     expect(res.body).toMatchObject({
@@ -118,6 +118,67 @@ describe('data import (ADR 0044 step 4)', () => {
       (await get(s.owner, '/inventory/items').expect(200)).body,
     );
     expect(after.data.map((i) => i.name)).not.toContain('Sugar');
+  });
+
+  it('saves brand and pack size from item rows, by shown unit names, and keeps them on empty cells', async () => {
+    const s = await setup();
+    await post(s.owner, '/inventory/items/import', {
+      rows: [
+        { name: 'Coconut milk', unit: 'pc', brand: 'Chaokoh', packSize: '12 x 500 ml' },
+        { name: 'Eggs', unit: 'pc', packSize: 'Pack of 6' },
+        // The default German name of pieces.
+        { name: 'Cups', unit: 'pc', packSize: '10 Stk.' },
+      ],
+    }).expect(200);
+    const list = async () =>
+      stockItemListResponseSchema.parse((await get(s.owner, '/inventory/items').expect(200)).body)
+        .data;
+    const pick = (data: Awaited<ReturnType<typeof list>>, name: string) =>
+      data.find((i) => i.name === name)!;
+    let items = await list();
+    expect(pick(items, 'Coconut milk')).toMatchObject({
+      brand: 'Chaokoh',
+      packCount: 12,
+      packSize: '500.000',
+      packUnit: 'ml',
+    });
+    expect(pick(items, 'Eggs')).toMatchObject({ packCount: 6, packSize: null, packUnit: null });
+    expect(pick(items, 'Cups')).toMatchObject({
+      packCount: null,
+      packSize: '10.000',
+      packUnit: 'pc',
+    });
+    // Empty cells keep what the item has; a filled one replaces it.
+    const again = dataImportResultSchema.parse(
+      (
+        await post(s.owner, '/inventory/items/import', {
+          rows: [
+            { name: 'Coconut milk', unit: 'pc', brand: '', packSize: '' },
+            { name: 'Eggs', unit: 'pc', packSize: '12' },
+          ],
+        }).expect(200)
+      ).body,
+    );
+    expect(again).toMatchObject({ created: 0, updated: 1, unchanged: 1 });
+    items = await list();
+    expect(pick(items, 'Coconut milk')).toMatchObject({ brand: 'Chaokoh', packCount: 12 });
+    expect(pick(items, 'Eggs').packCount).toBe(12);
+    // A bad pack size refuses the whole file.
+    const res = await post(s.owner, '/inventory/items/import', {
+      rows: [
+        { name: 'Sugar', unit: 'kg', packSize: '1 x' },
+        { name: 'Salt', unit: 'kg', packSize: '5 crate' },
+      ],
+    }).expect(400);
+    expect(res.body).toMatchObject({
+      code: 'inventory.import_invalid',
+      details: {
+        rows: [
+          { row: 1, field: 'packSize', problem: 'invalid' },
+          { row: 2, field: 'packSize', problem: 'invalid' },
+        ],
+      },
+    });
   });
 
   it('books opening stock as one receipt per warehouse, refusing unknown names', async () => {
