@@ -281,7 +281,10 @@ function Importer({
               {t(`platform.importPage.kinds.${labelKey(kind)}.name`)}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {t(`platform.importPage.kinds.${labelKey(kind)}.rules`)}
+              {t(`platform.importPage.kinds.${labelKey(kind)}.rules`, {
+                // Units by the names this organization sees ("Stück" where pieces are called that).
+                units: STOCK_UNITS.map((u) => t(`inventory.units.${u}`)).join(', '),
+              })}
             </p>
           </div>
 
