@@ -39,7 +39,9 @@ dropped, ADR 0044). The page and its menu item show the kinds the user may run.
 | Customers     | `name, code, phone, email, address, note`   | `name`                          |
 
 Headers match loosely (case, spaces and `_` ignored) with a few aliases (`price` → sale price, `qty` → quantity,
-`mobile` → phone, …). Comma or semicolon separated, UTF-8 with or without BOM, decimal commas (`8,50`) accepted.
+`mobile` → phone, …). Stock item units may be the code (`pc`) or the name the organization sees for it
+(a partner's `Stück`, German `Stk.`; case and trailing dots ignored): the browser turns names into codes before the
+check, and the preview shows the name. Comma or semicolon separated, UTF-8 with or without BOM, decimal commas (`8,50`) accepted.
 
 Excel: `.xlsx` workbooks are read on the device (`readXlsxRows`, `read-excel-file`), from the sheet named like the kind
 ("Items", "Opening stock") or else the first; numbers as the text Excel stored (no float noise). CSV and Excel both go
