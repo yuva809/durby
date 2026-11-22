@@ -513,7 +513,7 @@ describe('TeamPage', () => {
     expect(dialog.textContent).toContain('They sign in with this password from now on.');
     await userEvent.type(within(dialog).getByTestId('team-new-password'), 'short');
     await userEvent.click(within(dialog).getByTestId('team-new-password-save'));
-    expect(await within(dialog).findByText(/at least 12 characters/)).toBeDefined();
+    expect(await within(dialog).findByText(/at least 8 characters/)).toBeDefined();
     await userEvent.clear(within(dialog).getByTestId('team-new-password'));
     await userEvent.type(within(dialog).getByTestId('team-new-password'), 'a new password 42');
     await userEvent.click(within(dialog).getByTestId('team-new-password-save'));

@@ -39,7 +39,7 @@
   "platform.invite.email": "E-Mail",
   "platform.invite.password": "Passwort",
   "platform.invite.confirm": "Passwort wiederholen",
-  "platform.invite.hint": "Mindestens 12 Zeichen.",
+  "platform.invite.hint": "Mindestens {min} Zeichen.",
   "platform.invite.mismatch": "Die Passwörter stimmen nicht überein.",
   "platform.invite.create": "Konto anlegen und beitreten",
   "platform.invite.signIn": "Sie haben bereits ein Konto. Melden Sie sich an, um die Einladung anzunehmen.",

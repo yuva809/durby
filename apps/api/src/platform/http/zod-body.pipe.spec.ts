@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ApiError } from './api-error';
 import { ZodBody, ZodQuery } from './zod-body.pipe';
 
-const schema = z.object({ email: z.email(), password: z.string().min(12) });
+const schema = z.object({ email: z.email(), password: z.string().min(8) });
 
 describe('ZodBody', () => {
   const pipe = new ZodBody(schema);
@@ -16,7 +16,7 @@ describe('ZodBody', () => {
   });
 
   it('throws 400 validation.failed with issues but never the input values', () => {
-    const secret = 'short-pw';
+    const secret = 'short';
     let error: unknown;
     try {
       pipe.transform({ email: 'not-an-email', password: secret });

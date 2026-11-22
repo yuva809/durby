@@ -83,7 +83,7 @@ export async function accept(browser: Browser, link: URL): Promise<Page> {
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(link.toString());
-  // Its name includes the hint ("Password At least 12 characters.").
+  // Its name includes the hint ("Password At least 8 characters.").
   await page.getByLabel(/^Password/).fill(NEW_PASSWORD);
   await page.getByLabel('Repeat password').fill(NEW_PASSWORD);
   await page.getByRole('button', { name: 'Create account and join' }).click();

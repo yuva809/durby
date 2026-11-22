@@ -38,7 +38,7 @@ Spec: [docs/platform/admin-portal.md](../platform/admin-portal.md).
 5. **No second factor (amended 2026-10-29).** The first version required TOTP 2FA for every staff member, as the
    business rules ask. By the product owner's decision it was removed before release: staff sign in with email and
    password, and sensitive actions re-confirm the password. Mitigations that remain: invitations only, company
-   domains only, argon2id passwords of at least 12 characters, rate limits and lockout, 8-hour sessions, a 15-minute
+   domains only, argon2id passwords of at least 8 characters (lowered from 12 on 2026-11-22), rate limits and lockout, 8-hour sessions, a 15-minute
    re-confirmation for staff changes, and the platform audit log. _Consequence:_ a leaked staff password gives
    access to every customer the portal can reach; revisit (TOTP or passkeys) before the portal manages customer
    data (step 1b on).
