@@ -1,13 +1,17 @@
 'use client';
 
-import type { StockRequest, StockRequestLine, StockRequestStatus } from '@durby/shared';
+import {
+  formatPackSize,
+  type StockRequest,
+  type StockRequestLine,
+  type StockRequestStatus,
+} from '@durby/shared';
 import { Printer } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { sumDecimals } from '../../lib/inventory/overview';
-import { formatPackSize } from '../../lib/inventory/pack-size';
 import { boxesOf, piecesOf, piecesPerBox } from '../../lib/orders/request-cart';
 import { loadRequest } from '../../lib/orders/requests-api';
 import { useResource } from '../../lib/use-resource';

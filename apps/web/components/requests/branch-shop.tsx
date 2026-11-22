@@ -1,13 +1,12 @@
 'use client';
 
-import type { RequestAvailability } from '@durby/shared';
+import { formatPackSize, type RequestAvailability } from '@durby/shared';
 import { ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
-import { formatPackSize } from '../../lib/inventory/pack-size';
 import {
   availableText,
   type Cart,

@@ -92,6 +92,22 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
     expect(screen.queryByTestId('import-kind-items')).toBeNull();
   });
 
+  it('previews a pack size as the item shows it and flags one that is no pack size', async () => {
+    signedInAs('owner');
+    api();
+    render(<ImportPage />);
+    await userEvent.click(screen.getByTestId('import-kind-items'));
+    await userEvent.upload(
+      screen.getByTestId('import-file'),
+      csv('name,unit,brand,pack_size\nCoconut milk,pc,Chaokoh,12x500ml\nTea,pc,,big pack\n'),
+    );
+    const preview = await screen.findByTestId('import-preview');
+    expect(within(preview).getByText('12 × 500 ml')).toBeTruthy();
+    expect(within(preview).getByTestId('import-problems').textContent).toContain(
+      'Row 2 · packSize: not a valid value',
+    );
+  });
+
   it('previews items, shows their problems and imports nothing until they are fixed', async () => {
     signedInAs('owner');
     const calls = api();
@@ -101,6 +117,8 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
       'name',
       'sku',
       'unit',
+      'brand',
+      'pack_size',
       'min_quantity',
       'sale_price',
     ]);
@@ -126,8 +144,24 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
         path: '/api/v1/inventory/items/import',
         body: {
           rows: [
-            { name: 'Rice', sku: '', unit: 'pc', minQuantity: '', salePrice: '12.90' },
-            { name: 'Oil', sku: '', unit: 'l', minQuantity: '', salePrice: '' },
+            {
+              name: 'Rice',
+              sku: '',
+              unit: 'pc',
+              brand: '',
+              packSize: '',
+              minQuantity: '',
+              salePrice: '12.90',
+            },
+            {
+              name: 'Oil',
+              sku: '',
+              unit: 'l',
+              brand: '',
+              packSize: '',
+              minQuantity: '',
+              salePrice: '',
+            },
           ],
         },
       }),

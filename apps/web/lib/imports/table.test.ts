@@ -11,8 +11,24 @@ describe('readRows (Import Data)', () => {
     expect(result).toEqual({
       ok: true,
       rows: [
-        { name: 'Rice 5 kg', sku: '', unit: 'pc', minQuantity: '2', salePrice: '12.90' },
-        { name: 'Sugar', sku: '', unit: 'kg', minQuantity: '', salePrice: '' },
+        {
+          name: 'Rice 5 kg',
+          sku: '',
+          unit: 'pc',
+          brand: '',
+          packSize: '',
+          minQuantity: '2',
+          salePrice: '12.90',
+        },
+        {
+          name: 'Sugar',
+          sku: '',
+          unit: 'kg',
+          brand: '',
+          packSize: '',
+          minQuantity: '',
+          salePrice: '',
+        },
       ],
     });
   });
@@ -118,5 +134,30 @@ describe('withUnitCodes', () => {
       labelOf,
     );
     expect(rows.map((r) => r.unit)).toEqual(['pc', 'box', 'crate']);
+  });
+});
+
+describe('brand and pack size columns', () => {
+  it('reads them by their names and aliases', () => {
+    const read = readRows(
+      'items',
+      'Name,Marke,Gebinde,unit\r\nCoconut milk,Chaokoh,12 x 500 ml,pc\r\nTea,,,pc\r\n',
+    );
+    expect(read.ok && read.rows).toEqual([
+      {
+        name: 'Coconut milk',
+        sku: '',
+        unit: 'pc',
+        brand: 'Chaokoh',
+        packSize: '12 x 500 ml',
+        minQuantity: '',
+        salePrice: '',
+      },
+      { name: 'Tea', sku: '', unit: 'pc', brand: '', packSize: '', minQuantity: '', salePrice: '' },
+    ]);
+    const alt = readRows('items', 'name,unit,Brand,Pack Size\r\nA,pc,B,5kg\r\n');
+    expect(alt.ok && alt.rows[0]).toMatchObject({ brand: 'B', packSize: '5kg' });
+    const pack = readRows('items', 'name,unit,pack\r\nA,pc,10\r\n');
+    expect(pack.ok && pack.rows[0]).toMatchObject({ packSize: '10' });
   });
 });

@@ -3,8 +3,8 @@ import {
   IMPORT_REQUIRED_COLUMNS,
   IMPORT_TEMPLATES,
   type ImportKind,
-  STOCK_UNITS,
   type StockUnit,
+  unitLookup,
 } from '@durby/shared';
 import { cellText, splitCsv } from '../catalog/import-file';
 
@@ -23,6 +23,8 @@ const FIELD: Record<string, string> = {
   name: 'name',
   sku: 'sku',
   unit: 'unit',
+  brand: 'brand',
+  packsize: 'packSize',
   minquantity: 'minQuantity',
   saleprice: 'salePrice',
   warehouse: 'warehouse',
@@ -43,6 +45,10 @@ const ALIASES: Readonly<Record<ImportKind, Record<string, string>>> = {
     itemname: 'name',
     product: 'name',
     articleno: 'sku',
+    marke: 'brand',
+    pack: 'packSize',
+    packung: 'packSize',
+    gebinde: 'packSize',
     price: 'salePrice',
     minqty: 'minQuantity',
   },
@@ -145,9 +151,6 @@ export function readTableRows(kind: ImportKind, table: readonly string[][]): Rea
 /** The template file: the header row only. */
 export const templateCsv = (kind: ImportKind): string => `${IMPORT_TEMPLATES[kind].join(',')}\r\n`;
 
-/** "Stk." → "stk": case, spaces and trailing dots ignored. */
-const unitKey = (value: string) => value.trim().toLowerCase().replace(/\.+$/, '');
-
 /**
  * Stock item rows may name a unit by its code (`pc`) or by the name the organization sees for it (`Stück`, `Stk.`):
  * names are turned into codes before the rows are checked and sent. `labelOf` gives the shown name of each code;
@@ -157,15 +160,9 @@ export function withUnitCodes(
   rows: readonly Record<string, string>[],
   labelOf: (unit: StockUnit) => string,
 ): Record<string, string>[] {
-  const codes = new Map<string, StockUnit>();
-  for (const unit of STOCK_UNITS) {
-    const label = unitKey(labelOf(unit));
-    if (label && !codes.has(label)) codes.set(label, unit);
-  }
-  // A code always means itself, even if another unit's name happens to read the same.
-  for (const unit of STOCK_UNITS) codes.set(unit, unit);
+  const unitOf = unitLookup(labelOf);
   return rows.map((row) => {
-    const unit = row.unit === undefined ? undefined : codes.get(unitKey(row.unit));
+    const unit = row.unit === undefined ? undefined : unitOf(row.unit);
     return unit ? { ...row, unit } : { ...row };
   });
 }

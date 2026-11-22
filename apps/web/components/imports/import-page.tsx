@@ -5,6 +5,7 @@ import {
   checkCustomerRows,
   checkItemRows,
   checkOpeningStockRows,
+  formatPackSize,
   type CategoryImportRow,
   type CustomerImportRow,
   type DataImportProblemRow,
@@ -15,6 +16,7 @@ import {
   IMPORT_TEMPLATES,
   type ImportKind,
   type ItemImportRow,
+  itemRowPack,
   type OpeningStockImportRow,
   type PermissionKey,
   STOCK_UNITS,
@@ -155,7 +157,7 @@ function Importer({
       case 'categories':
         return checkCategoryRows(rows as unknown as CategoryImportRow[]);
       case 'items':
-        return checkItemRows(rows as unknown as ItemImportRow[]);
+        return checkItemRows(rows as unknown as ItemImportRow[], (u) => t(`inventory.units.${u}`));
       case 'customers':
         return checkCustomerRows(rows as unknown as CustomerImportRow[]);
       case 'opening_stock': {
@@ -521,6 +523,22 @@ function InvoiceTile({ queue }: { queue: boolean }) {
   );
 }
 
+/** A preview cell: units by their shown name, a pack size as "12 × 500 ml" (what the item will show). */
+function shownCell(field: string, value: string, unitName: (unit: StockUnit) => string): string {
+  if (field === 'unit' && isStockUnit(value)) return unitName(value);
+  if (field === 'packSize') {
+    const pack = itemRowPack(value, unitName);
+    if (pack) {
+      return formatPackSize({
+        count: pack.packCount ?? null,
+        size: pack.packSize ?? null,
+        unit: pack.packUnit ?? null,
+      });
+    }
+  }
+  return value;
+}
+
 function Preview({
   columns,
   fileName,
@@ -568,7 +586,7 @@ function Preview({
                 <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                 {Object.entries(row).map(([field, value]) => (
                   <td key={field} className="px-3 py-2">
-                    {field === 'unit' && isStockUnit(value) ? t(`inventory.units.${value}`) : value}
+                    {shownCell(field, value, (u) => t(`inventory.units.${u}`))}
                   </td>
                 ))}
               </tr>

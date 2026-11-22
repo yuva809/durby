@@ -14,6 +14,7 @@ export * from './api/labels';
 export * from './api/locations';
 export * from './api/numbering';
 export * from './api/orders';
+export * from './pack-size';
 export * from './api/organization';
 export * from './api/pos-areas';
 export * from './api/pos-bill';
