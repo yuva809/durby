@@ -17,6 +17,8 @@ import {
   type ItemImportRow,
   type OpeningStockImportRow,
   type PermissionKey,
+  STOCK_UNITS,
+  type StockUnit,
 } from '@durby/shared';
 import {
   ArrowRight,
@@ -47,6 +49,7 @@ import {
   type ReadRows,
   type TableProblem,
   templateCsv,
+  withUnitCodes,
 } from '../../lib/imports/table';
 import { loadStockItems, loadWarehouses } from '../../lib/inventory/api';
 import { useActionKey } from '../../lib/use-action-key';
@@ -76,6 +79,9 @@ const labelKey = <T extends string>(value: T) =>
   value.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()) as T extends `${infer A}_${infer B}`
     ? `${A}${Capitalize<B>}`
     : T;
+
+const isStockUnit = (value: string): value is StockUnit =>
+  (STOCK_UNITS as readonly string[]).includes(value);
 
 const PREVIEW_ROWS = 10;
 const PROBLEM_ROWS = 50;
@@ -203,7 +209,14 @@ function Importer({
     }
     setState(
       read.ok
-        ? { step: 'preview', fileName: file.name, rows: read.rows }
+        ? {
+            step: 'preview',
+            fileName: file.name,
+            rows:
+              current === 'items'
+                ? withUnitCodes(read.rows, (u) => t(`inventory.units.${u}`))
+                : read.rows,
+          }
         : { step: 'choose', problem: read.problem, reading: false },
     );
   }
@@ -553,9 +566,9 @@ function Preview({
             {rows.slice(0, PREVIEW_ROWS).map((row, i) => (
               <tr key={i}>
                 <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
-                {Object.values(row).map((value, j) => (
-                  <td key={j} className="px-3 py-2">
-                    {value}
+                {Object.entries(row).map(([field, value]) => (
+                  <td key={field} className="px-3 py-2">
+                    {field === 'unit' && isStockUnit(value) ? t(`inventory.units.${value}`) : value}
                   </td>
                 ))}
               </tr>

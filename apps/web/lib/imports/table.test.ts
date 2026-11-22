@@ -1,6 +1,6 @@
 import { checkItemRows, checkOpeningStockRows, type ItemImportRow } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
-import { isExcel, readRows, readTableRows, templateCsv } from './table';
+import { isExcel, readRows, readTableRows, templateCsv, withUnitCodes } from './table';
 
 describe('readRows (Import Data)', () => {
   it('reads the template columns in any order, with loose headers and semicolons', () => {
@@ -88,5 +88,35 @@ describe('readTableRows (Excel and CSV alike)', () => {
     expect(isExcel('Stock.XLSX')).toBe(true);
     expect(isExcel('stock.xls')).toBe(false);
     expect(isExcel('stock.csv')).toBe(false);
+  });
+});
+
+describe('withUnitCodes', () => {
+  // As a partner that calls pieces "Stück" (and German defaults "Stk.") would show them.
+  const labels: Record<string, string> = { pc: 'Stück', box: 'Karton', kg: 'kg' };
+  const labelOf = (u: string) => labels[u] ?? u;
+
+  it('turns shown unit names into codes, ignoring case, spaces and trailing dots', () => {
+    const rows = withUnitCodes(
+      [
+        { name: 'A', unit: 'Stück' },
+        { name: 'B', unit: ' stück. ' },
+        { name: 'C', unit: 'KARTON' },
+      ],
+      labelOf,
+    );
+    expect(rows.map((r) => r.unit)).toEqual(['pc', 'pc', 'box']);
+  });
+
+  it('keeps codes, and leaves unknown units for the check to report', () => {
+    const rows = withUnitCodes(
+      [
+        { name: 'A', unit: 'PC' },
+        { name: 'B', unit: 'Box' },
+        { name: 'C', unit: 'crate' },
+      ],
+      labelOf,
+    );
+    expect(rows.map((r) => r.unit)).toEqual(['pc', 'box', 'crate']);
   });
 });
