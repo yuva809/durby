@@ -20,6 +20,7 @@ import { differsByRounding, lineValue, sumValues } from '../../lib/inventory/for
 import {
   type InvoiceRow,
   missingCategory,
+  nameTakenBy,
   NEW_ITEM,
   retarget,
   type RowProblem,
@@ -405,7 +406,9 @@ export function InvoiceEditor({
                           aria-label={t('inventory.invoice.newNameFor', {
                             name: row.line.description,
                           })}
-                          aria-invalid={own.includes('name') || undefined}
+                          aria-invalid={
+                            own.includes('name') || own.includes('nameTaken') || undefined
+                          }
                           onChange={(e) => update(index, { newName: e.target.value })}
                           data-testid="invoice-line-new-name"
                         />
@@ -418,6 +421,19 @@ export function InvoiceEditor({
                           </span>
                         )}
                       </div>
+                    )}
+                    {own.includes('nameTaken') && (
+                      <NameTaken
+                        item={nameTakenBy(row, items)}
+                        // A product with variants holds no stock itself: only the name can change.
+                        disabled={
+                          readOnly ||
+                          items.some((i) => i.parentItemId === nameTakenBy(row, items)?.id)
+                        }
+                        onUse={(target) =>
+                          onRows(rows.map((r, i) => (i === index ? retarget(r, target, items) : r)))
+                        }
+                      />
                     )}
                     {own
                       .filter((p) => p === 'duplicate' || p === 'newNotAllowed' || p === 'name')
@@ -708,6 +724,40 @@ const PICKER_LIMIT = 50;
  * SKU (every word must match, in any order). The list is pinned under the button, so the table's scroll area can't
  * clip it; it closes on a pick, a click outside, Escape or scrolling. Enter picks the first match.
  */
+/**
+ * A new line whose name an active item already has (the api refuses a second item of that name): book it to that item,
+ * or change the name.
+ */
+function NameTaken({
+  item,
+  disabled,
+  onUse,
+}: {
+  item: StockItem | undefined;
+  disabled: boolean;
+  onUse: (itemId: string) => void;
+}) {
+  const t = useT();
+  if (!item) return null;
+  return (
+    <div className="mt-1 flex flex-col items-start gap-1" data-testid="invoice-line-name-taken">
+      <p className="text-xs text-destructive" data-testid="invoice-line-problem">
+        {t('inventory.invoice.rowProblems.nameTaken', { name: item.name })}
+      </p>
+      {!disabled && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onUse(item.id)}
+          data-testid="invoice-line-use-existing"
+        >
+          {t('inventory.invoice.useExisting')}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function ItemPicker({
   value,
   items,

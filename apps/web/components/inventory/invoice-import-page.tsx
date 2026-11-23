@@ -301,7 +301,7 @@ function Flow({
   }
 
   // Anyone who receives goods may propose new items: the approver creates them (ADR 0054).
-  const problems = rowProblems(rows, true);
+  const problems = rowProblems(rows, true, items);
   const included = rows.filter((r) => r.include);
   const blocked =
     problems.some((p) => p.length > 0) || included.length === 0 || !header.warehouseId;

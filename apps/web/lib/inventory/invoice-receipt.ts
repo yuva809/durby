@@ -62,7 +62,8 @@ export interface InvoiceRow {
   pack: PackSize;
 }
 
-export type RowProblem = 'quantity' | 'unitCost' | 'duplicate' | 'newNotAllowed' | 'pack' | 'name';
+export type RowProblem =
+  'quantity' | 'unitCost' | 'duplicate' | 'newNotAllowed' | 'pack' | 'name' | 'nameTaken';
 
 const normal = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -176,8 +177,22 @@ export function setMissingCategory(rows: readonly InvoiceRow[], categoryId: stri
 export const missingCategory = (rows: readonly InvoiceRow[]) =>
   rows.filter((r) => r.include && r.categoryId === '').length;
 
+/**
+ * The active item that already has a new row's name (the api refuses a second one): made after the invoice was read,
+ * or a parent with variants, so the line was not matched to it.
+ */
+export function nameTakenBy(row: InvoiceRow, items: readonly StockItem[]): StockItem | undefined {
+  if (row.target !== NEW_ITEM) return undefined;
+  const name = row.newName.trim().slice(0, INVENTORY_NAME_MAX_LENGTH);
+  return items.find((i) => i.archivedAt === null && i.name === name);
+}
+
 /** What keeps each included row from importing (empty: it can go). */
-export function rowProblems(rows: readonly InvoiceRow[], canCreate: boolean): RowProblem[][] {
+export function rowProblems(
+  rows: readonly InvoiceRow[],
+  canCreate: boolean,
+  items: readonly StockItem[] = [],
+): RowProblem[][] {
   // An item twice, or two new items of the same name: the api takes each once.
   const keyOf = (row: InvoiceRow) =>
     row.target === NEW_ITEM ? `new:${normal(row.newName)}` : row.target;
@@ -196,6 +211,7 @@ export function rowProblems(rows: readonly InvoiceRow[], canCreate: boolean): Ro
     if ((counts.get(keyOf(row)) ?? 0) > 1) problems.push('duplicate');
     if (row.target === NEW_ITEM && !canCreate) problems.push('newNotAllowed');
     if (row.target === NEW_ITEM && row.newName.trim() === '') problems.push('name');
+    else if (nameTakenBy(row, items)) problems.push('nameTaken');
     if (packProblems(row.pack).length > 0) problems.push('pack');
     return problems;
   });
