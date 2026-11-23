@@ -24,7 +24,8 @@ export function RequestCartSheet() {
         <SheetContent
           side="right"
           closeLabel={t('platform.common.close')}
-          className="w-full overflow-y-auto sm:max-w-4xl"
+          // Padded like a page (the category chips bleed into it), with room for the close button; no sideways scroll.
+          className="w-full overflow-x-hidden overflow-y-auto p-4 pt-14 sm:max-w-4xl sm:p-6 sm:pt-14"
         >
           <SheetTitle className="sr-only">{t('platform.nav.requestStock')}</SheetTitle>
           {open && <RequestStockPage inSheet />}
