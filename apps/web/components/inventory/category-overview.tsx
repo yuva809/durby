@@ -33,6 +33,7 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Loaded } from '../users/common';
 import { type InventoryData } from './inventory-page';
+import { ItemDialog } from './items-tab';
 import { useSeesPrices } from './use-sees-prices';
 import { LocationFilter, stockQueryOf } from './location-filter';
 import { ExpiryDate } from './expiry-date';
@@ -73,6 +74,14 @@ export function CategoryOverview({
   const [stock, reload] = useResource(`overview:${filter}`, () =>
     loadStock(store, stockQueryOf(filter)),
   );
+  // After Adjust stock or Edit in a row: the items and the quantities shown.
+  const rowData: InventoryData = {
+    ...data,
+    reload: () => {
+      data.reload();
+      reload();
+    },
+  };
 
   // What is listed, for the page and for Export: the open category's items, else what the search finds, else all.
   const needle = query.trim().toLowerCase();
@@ -190,6 +199,7 @@ export function CategoryOverview({
               if (open) {
                 return (
                   <CategoryItems
+                    data={rowData}
                     shop={branchShop}
                     selection={open}
                     categories={categories}
@@ -250,6 +260,7 @@ export function CategoryOverview({
                         categories={categories}
                         money={money}
                         prices={prices}
+                        data={rowData}
                       />
                     </section>
                   )}
@@ -361,6 +372,7 @@ function Tile({ tile, onOpen }: { tile: CategoryTile; onOpen: () => void }) {
 
 /** A category opened: its secondary categories as chips, then its items with their stock. */
 function CategoryItems({
+  data,
   shop,
   selection,
   categories,
@@ -372,6 +384,7 @@ function CategoryItems({
   money,
   searchId,
 }: {
+  data: InventoryData;
   shop: boolean;
   selection: CategorySelection;
   categories: readonly ProductCategory[];
@@ -450,7 +463,13 @@ function CategoryItems({
               {t('inventory.page.totalValue', { value: money(total) })}
             </p>
           )}
-          <ItemTable rows={rows} categories={categories} money={money} prices={total !== null} />
+          <ItemTable
+            rows={rows}
+            categories={categories}
+            money={money}
+            prices={total !== null}
+            data={data}
+          />
         </>
       )}
     </div>
@@ -462,14 +481,21 @@ function ItemTable({
   categories,
   money,
   prices,
+  data,
 }: {
   rows: readonly ItemRow[];
   categories: readonly ProductCategory[];
   money: (amount: string) => string;
   /** With the value column (ADR 0060). */
   prices: boolean;
+  /** For the row actions: who may do what, the warehouses, and reloading after a change. */
+  data: InventoryData;
 }) {
   const t = useT();
+  // Adjust stock for who books stock; Edit (the item, with its stock quantity) for who edits items.
+  const adjusts = data.can('inventory.stock.adjust') || data.can('inventory.stock.receive');
+  const edits = data.can('inventory.items.edit');
+  const actions = adjusts || edits;
   return (
     <Card className="overflow-x-auto p-0">
       <table className="w-full text-sm">
@@ -481,6 +507,11 @@ function ItemTable({
             <th className="px-4 py-2 font-medium">{t('inventory.fields.expiresOn')}</th>
             {prices && (
               <th className="px-4 py-2 text-right font-medium">{t('inventory.fields.value')}</th>
+            )}
+            {actions && (
+              <th className="px-4 py-2 text-right font-medium">
+                {t('inventory.overview.actions')}
+              </th>
             )}
           </tr>
         </thead>
@@ -532,6 +563,32 @@ function ItemTable({
               {prices && row.value !== null && (
                 <td className="ml-auto font-medium tabular-nums md:px-4 md:py-2 md:text-right">
                   {money(row.value)}
+                </td>
+              )}
+              {actions && (
+                <td
+                  className="w-full md:w-auto md:px-4 md:py-2"
+                  data-testid="overview-actions-cell"
+                >
+                  <span className="flex flex-wrap justify-end gap-2">
+                    {adjusts && (
+                      <ItemDialog
+                        mode="stock"
+                        item={row.item}
+                        categories={null}
+                        warehouses={data.warehouses}
+                        onDone={data.reload}
+                      />
+                    )}
+                    {edits && (
+                      <ItemDialog
+                        item={row.item}
+                        categories={data.categories}
+                        warehouses={data.warehouses}
+                        onDone={data.reload}
+                      />
+                    )}
+                  </span>
                 </td>
               )}
             </tr>

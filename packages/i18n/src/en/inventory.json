@@ -501,5 +501,9 @@
   "inventory.activity.truncated": "Showing the {count} most recent movements; the opening is the quantity before them.",
   "inventory.activity.print": "Print",
   "inventory.activity.notFound": "This item doesn't exist or you can't see it.",
-  "inventory.addStock.unitRelabel": "The stock keeps its number: {quantity} {from} become {quantity} {to}. Set the stock quantity below to the right count; the difference is booked."
+  "inventory.addStock.unitRelabel": "The stock keeps its number: {quantity} {from} become {quantity} {to}. Set the stock quantity below to the right count; the difference is booked.",
+  "inventory.adjust.open": "Adjust stock",
+  "inventory.adjust.title": "Adjust stock · {name}",
+  "inventory.adjust.unchanged": "Type the counted quantity; it is the same as on hand now.",
+  "inventory.overview.actions": "Actions"
 }

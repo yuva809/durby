@@ -256,6 +256,7 @@ export function ItemDialog({
   defaultCategoryId,
   warehouses,
   held,
+  mode = 'edit',
 }: {
   item?: StockItem;
   categories: readonly ProductCategory[] | null;
@@ -270,6 +271,11 @@ export function ItemDialog({
   warehouses?: readonly Warehouse[];
   /** An edited item's stock per warehouse, to show what is there before adding. */
   held?: readonly { warehouseId: string; quantity: string }[];
+  /**
+   * `stock`: only the stock quantity of `item` (Adjust stock in the inventory list): no item fields, nothing but the
+   * difference is booked, for anyone who may receive or adjust stock.
+   */
+  mode?: 'edit' | 'stock';
 }) {
   const t = useT();
   const id = useId();
@@ -286,6 +292,10 @@ export function ItemDialog({
   const [unitCost, setUnitCost] = useState('');
   const [checked, setChecked] = useState(false);
   const receiptAction = useActionKey();
+  const stockOnly = mode === 'stock' && item !== undefined;
+  // Without `held` the item's stock is read when the dialog opens.
+  const [fetched, setFetched] = useState<{ warehouseId: string; quantity: string }[] | null>(null);
+  const levels = held ?? fetched ?? undefined;
   // Editing: the stock quantity in a warehouse, set to what is counted. The difference is booked: more as received
   // goods at a cost (a receipt) or found stock (an adjustment at the average cost); less as an adjustment. Each
   // reason only for who may book it.
@@ -293,9 +303,9 @@ export function ItemDialog({
   const receives = permissions.includes('inventory.stock.receive');
   const adjusts = permissions.includes('inventory.stock.adjust');
   // Stock somewhere: the item has moved, so its unit only relabels between counted units.
-  const stocked = (held ?? []).length > 0;
+  const stocked = (levels ?? []).length > 0;
   const onHand = (warehouse: string) =>
-    shortQuantity(held?.find((l) => l.warehouseId === warehouse)?.quantity ?? '0');
+    shortQuantity(levels?.find((l) => l.warehouseId === warehouse)?.quantity ?? '0');
   const target = opening.trim().replace(',', '.');
   const change =
     item && target !== '' && isQuantity(target) ? difference(target, onHand(warehouseId)) : '0';
@@ -319,6 +329,8 @@ export function ItemDialog({
     !unitCostSchema.safeParse(unitCost.trim().replace(',', '.')).success;
   const activeWarehouses = (warehouses ?? []).filter((w) => w.archivedAt === null);
   const openingInvalid = checked && opening.trim() !== '' && !isQuantity(opening.trim());
+  // Adjust stock with nothing changed: say so rather than closing.
+  const unchanged = stockOnly && checked && !changing && !openingInvalid;
   // Active categories to choose from, plus the item's own even if archived meanwhile (it stays until changed).
   const choices = (categories ?? []).filter(
     (c) => c.archivedAt === null || c.id === item?.categoryId,
@@ -338,10 +350,23 @@ export function ItemDialog({
 
   return (
     <FormDialog
-      trigger={trigger ?? t(item ? 'inventory.page.edit' : 'inventory.page.addItem')}
+      trigger={
+        trigger ??
+        t(
+          stockOnly
+            ? 'inventory.adjust.open'
+            : item
+              ? 'inventory.page.edit'
+              : 'inventory.page.addItem',
+        )
+      }
       triggerVariant={item ? 'outline' : 'default'}
-      testId={item ? 'item-edit' : 'item-create'}
-      title={t(item ? 'inventory.page.editItem' : 'inventory.page.addItem')}
+      testId={stockOnly ? 'item-adjust' : item ? 'item-edit' : 'item-create'}
+      title={
+        stockOnly
+          ? t('inventory.adjust.title', { name: item.name })
+          : t(item ? 'inventory.page.editItem' : 'inventory.page.addItem')
+      }
       onOpen={() => {
         setName(item?.name ?? '');
         setSku(item?.sku ?? '');
@@ -354,6 +379,17 @@ export function ItemDialog({
         setWarehouseId(first);
         // Editing: the quantity there now, to change; a new item: its opening stock, empty.
         setOpening(item && first ? onHand(first) : '');
+        if (item && !held) {
+          setFetched(null);
+          void loadStock(store, {}).then((result) => {
+            if (!result.ok) return;
+            const mine = result.data
+              .filter((l) => l.itemId === item.id)
+              .map((l) => ({ warehouseId: l.warehouseId, quantity: l.quantity }));
+            setFetched(mine);
+            setOpening(shortQuantity(mine.find((l) => l.warehouseId === first)?.quantity ?? '0'));
+          });
+        }
         setUnitCost('');
         setReason('purchase');
         setRemarks('');
@@ -361,6 +397,7 @@ export function ItemDialog({
       }}
       submit={() => {
         setChecked(true);
+        if (stockOnly && (!changing || reasons.length === 0 || warehouseId === '')) return null;
         if (name.trim() === '' || (min.trim() !== '' && !isQuantity(min))) return null;
         if (salePrice.trim() !== '' && !priceSchema.safeParse(salePrice.trim()).success)
           return null;
@@ -377,14 +414,17 @@ export function ItemDialog({
             return null;
           }
           return (async () => {
-            const updated = await updateStockItem(store, action, item.id, {
-              name: name.trim(),
-              sku: sku.trim() || null,
-              unit,
-              minQuantity: min.trim() || null,
-              ...(sells ? { salePrice: salePrice.trim() || null } : {}),
-              ...(categories ? { categoryId: categoryId || null } : {}),
-            });
+            // Adjust stock: the item stays as it is.
+            const updated = stockOnly
+              ? ({ ok: true, data: item } as const)
+              : await updateStockItem(store, action, item.id, {
+                  name: name.trim(),
+                  sku: sku.trim() || null,
+                  unit,
+                  minQuantity: min.trim() || null,
+                  ...(sells ? { salePrice: salePrice.trim() || null } : {}),
+                  ...(categories ? { categoryId: categoryId || null } : {}),
+                });
             if (!updated.ok || !adding) return updated;
             const note = remarks.trim() ? { note: remarks.trim().slice(0, 500) } : {};
             // Received goods carry their cost; found stock comes in at the item's average cost.
@@ -436,100 +476,104 @@ export function ItemDialog({
       }}
       onDone={onDone}
     >
-      <Field
-        id={`${id}-name`}
-        label={t('inventory.fields.name')}
-        problem={nameMissing ? t('inventory.page.nameRequired') : null}
-      >
-        <Input
-          id={`${id}-name`}
-          value={name}
-          maxLength={100}
-          aria-invalid={nameMissing || undefined}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </Field>
-      {categories && (
-        <Field id={`${id}-category`} label={t('inventory.fields.category')} problem={null}>
-          <Select
-            id={`${id}-category`}
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            data-testid="item-category"
+      {!stockOnly && (
+        <>
+          <Field
+            id={`${id}-name`}
+            label={t('inventory.fields.name')}
+            problem={nameMissing ? t('inventory.page.nameRequired') : null}
           >
-            <option value="">{t('inventory.page.uncategorized')}</option>
-            {choices.map((c) => (
-              <option key={c.id} value={c.id}>
-                {choiceLabel(c)}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      )}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field id={`${id}-unit`} label={t('inventory.fields.unit')} problem={null}>
-          <Select
-            id={`${id}-unit`}
-            value={unit}
-            onChange={(e) => setUnit(e.target.value as StockUnit)}
-            data-testid="item-unit"
-          >
-            {/* With stock, only the units it may change to (counted ones relabel; weight stays). */}
-            {STOCK_UNITS.filter((u) => !item || unitChangeAllowed(item.unit, u, stocked)).map(
-              (u) => (
-                <option key={u} value={u}>
-                  {t(`inventory.units.${u}`)}
-                </option>
-              ),
-            )}
-          </Select>
-          {item && stocked && unit !== item.unit && (
-            <span className="text-xs text-muted-foreground" data-testid="item-unit-relabel">
-              {t('inventory.addStock.unitRelabel', {
-                quantity: onHand(warehouseId),
-                from: t(`inventory.units.${item.unit}`),
-                to: t(`inventory.units.${unit}`),
-              })}
-            </span>
+            <Input
+              id={`${id}-name`}
+              value={name}
+              maxLength={100}
+              aria-invalid={nameMissing || undefined}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </Field>
+          {categories && (
+            <Field id={`${id}-category`} label={t('inventory.fields.category')} problem={null}>
+              <Select
+                id={`${id}-category`}
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                data-testid="item-category"
+              >
+                <option value="">{t('inventory.page.uncategorized')}</option>
+                {choices.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {choiceLabel(c)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
           )}
-        </Field>
-        <Field
-          id={`${id}-min`}
-          label={t('inventory.fields.minQuantity')}
-          problem={minInvalid ? t('inventory.page.quantityInvalid') : null}
-        >
-          <Input
-            id={`${id}-min`}
-            inputMode="decimal"
-            value={min}
-            aria-invalid={minInvalid || undefined}
-            onChange={(e) => setMin(e.target.value.replace(',', '.'))}
-          />
-        </Field>
-      </div>
-      <Field id={`${id}-sku`} label={t('inventory.fields.sku')} problem={null}>
-        <Input
-          id={`${id}-sku`}
-          value={sku}
-          maxLength={50}
-          onChange={(e) => setSku(e.target.value)}
-        />
-      </Field>
-      {sells && (
-        <Field
-          id={`${id}-sale-price`}
-          label={t('inventory.fields.salePrice')}
-          problem={priceInvalid ? t('inventory.page.salePriceInvalid') : null}
-        >
-          <Input
-            id={`${id}-sale-price`}
-            inputMode="decimal"
-            value={salePrice}
-            aria-invalid={priceInvalid || undefined}
-            onChange={(e) => setSalePrice(e.target.value.replace(',', '.'))}
-            data-testid="item-sale-price"
-          />
-        </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id={`${id}-unit`} label={t('inventory.fields.unit')} problem={null}>
+              <Select
+                id={`${id}-unit`}
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as StockUnit)}
+                data-testid="item-unit"
+              >
+                {/* With stock, only the units it may change to (counted ones relabel; weight stays). */}
+                {STOCK_UNITS.filter((u) => !item || unitChangeAllowed(item.unit, u, stocked)).map(
+                  (u) => (
+                    <option key={u} value={u}>
+                      {t(`inventory.units.${u}`)}
+                    </option>
+                  ),
+                )}
+              </Select>
+              {item && stocked && unit !== item.unit && (
+                <span className="text-xs text-muted-foreground" data-testid="item-unit-relabel">
+                  {t('inventory.addStock.unitRelabel', {
+                    quantity: onHand(warehouseId),
+                    from: t(`inventory.units.${item.unit}`),
+                    to: t(`inventory.units.${unit}`),
+                  })}
+                </span>
+              )}
+            </Field>
+            <Field
+              id={`${id}-min`}
+              label={t('inventory.fields.minQuantity')}
+              problem={minInvalid ? t('inventory.page.quantityInvalid') : null}
+            >
+              <Input
+                id={`${id}-min`}
+                inputMode="decimal"
+                value={min}
+                aria-invalid={minInvalid || undefined}
+                onChange={(e) => setMin(e.target.value.replace(',', '.'))}
+              />
+            </Field>
+          </div>
+          <Field id={`${id}-sku`} label={t('inventory.fields.sku')} problem={null}>
+            <Input
+              id={`${id}-sku`}
+              value={sku}
+              maxLength={50}
+              onChange={(e) => setSku(e.target.value)}
+            />
+          </Field>
+          {sells && (
+            <Field
+              id={`${id}-sale-price`}
+              label={t('inventory.fields.salePrice')}
+              problem={priceInvalid ? t('inventory.page.salePriceInvalid') : null}
+            >
+              <Input
+                id={`${id}-sale-price`}
+                inputMode="decimal"
+                value={salePrice}
+                aria-invalid={priceInvalid || undefined}
+                onChange={(e) => setSalePrice(e.target.value.replace(',', '.'))}
+                data-testid="item-sale-price"
+              />
+            </Field>
+          )}
+        </>
       )}
       {!item && activeWarehouses.length > 0 && (
         <>
@@ -584,7 +628,13 @@ export function ItemDialog({
             <Field
               id={`${id}-add`}
               label={t('inventory.addStock.quantity', { unit: t(`inventory.units.${unit}`) })}
-              problem={openingInvalid ? t('inventory.page.quantityInvalid') : null}
+              problem={
+                openingInvalid
+                  ? t('inventory.page.quantityInvalid')
+                  : unchanged
+                    ? t('inventory.adjust.unchanged')
+                    : null
+              }
             >
               <Input
                 id={`${id}-add`}
