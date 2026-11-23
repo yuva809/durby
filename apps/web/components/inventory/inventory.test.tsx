@@ -406,6 +406,39 @@ describe('InventoryPage', () => {
     });
   });
 
+  it('sets the stock quantity to 0: everything there is booked out, no decimals error', async () => {
+    signedInAs('admin');
+    const writes = api({
+      [`PATCH /api/v1/inventory/items/${COLA.id}`]: () => Response.json(COLA),
+      'POST /api/v1/inventory/adjustments': () =>
+        Response.json(document('ADJ-2026-000004', 'adjustment', '-10.80'), { status: 201 }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    const cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await waitFor(() => expect(within(cola).getAllByTestId('item-warehouse-row')).toHaveLength(1));
+    await userEvent.click(within(cola).getByTestId('item-edit'));
+    const dialog = await screen.findByRole('dialog');
+    const quantity = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '0');
+    expect(within(dialog).getByTestId('item-add-on-hand').textContent).toBe(
+      'Takes 24 pc out of the 24 on hand.',
+    );
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    expect(within(dialog).queryByText('Enter a quantity with up to 3 decimals.')).toBeNull();
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[1]).toEqual({
+      method: 'POST',
+      path: '/api/v1/inventory/adjustments',
+      body: {
+        warehouseId: STORE.id,
+        reason: 'correction',
+        lines: [{ itemId: COLA.id, quantity: '-24' }],
+      },
+    });
+  });
+
   it('lets managers add warehouses but not items', async () => {
     signedInAs('manager');
     api();

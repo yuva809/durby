@@ -40,6 +40,10 @@ import type { InventoryData } from './inventory-page';
 /** Why stock changes while editing an item: received (a receipt at a cost), or an adjustment's reason. */
 type StockReason = 'purchase' | 'correction' | 'count' | 'waste' | 'breakage' | 'other';
 
+/** A counted stock quantity: 0 (nothing left) or a quantity with up to 3 decimals. */
+const isCount = (value: string) =>
+  /^0+(?:[.,]0{0,3})?$/.test(value.trim()) || isQuantity(value.replace(',', '.'));
+
 /** a − b, exact to thousandths ("122" − "120" → "2", "4.5" − "5" → "-0.5"). */
 function difference(a: string, b: string): string {
   const milli = (v: string) => {
@@ -308,7 +312,7 @@ export function ItemDialog({
     shortQuantity(levels?.find((l) => l.warehouseId === warehouse)?.quantity ?? '0');
   const target = opening.trim().replace(',', '.');
   const change =
-    item && target !== '' && isQuantity(target) ? difference(target, onHand(warehouseId)) : '0';
+    item && target !== '' && isCount(target) ? difference(target, onHand(warehouseId)) : '0';
   const up = Number(change) > 0;
   const reasons: StockReason[] = up
     ? [
@@ -328,7 +332,7 @@ export function ItemDialog({
     reason === 'purchase' &&
     !unitCostSchema.safeParse(unitCost.trim().replace(',', '.')).success;
   const activeWarehouses = (warehouses ?? []).filter((w) => w.archivedAt === null);
-  const openingInvalid = checked && opening.trim() !== '' && !isQuantity(opening.trim());
+  const openingInvalid = checked && opening.trim() !== '' && !isCount(opening.trim());
   // Adjust stock with nothing changed: say so rather than closing.
   const unchanged = stockOnly && checked && !changing && !openingInvalid;
   // Active categories to choose from, plus the item's own even if archived meanwhile (it stays until changed).
@@ -402,7 +406,7 @@ export function ItemDialog({
         if (salePrice.trim() !== '' && !priceSchema.safeParse(salePrice.trim()).success)
           return null;
         if (item) {
-          if (target !== '' && !isQuantity(target)) return null;
+          if (target !== '' && !isCount(target)) return null;
           // A changed quantity nobody here may book is not dropped silently.
           if (changing && reasons.length === 0) return null;
           const adding = changing && reasons.length > 0 && warehouseId !== '';
@@ -451,7 +455,7 @@ export function ItemDialog({
           })();
         }
         const openingQty = opening.trim();
-        if (openingQty !== '' && (!isQuantity(openingQty) || warehouseId === '')) return null;
+        if (openingQty !== '' && (!isCount(openingQty) || warehouseId === '')) return null;
         return (async () => {
           const created = await createStockItem(store, action, {
             name: name.trim(),
