@@ -49,6 +49,8 @@ export interface InvoiceRow {
   unitId: string;
   /** Best before as printed, "2027-03-31", or '' (ADR 0062). */
   expiresOn: string;
+  /** For a new item: its name, the invoice's description until the person edits it. */
+  newName: string;
   /** For a new item (ADR 0055): its unit, category ('' none), brand and pack size. */
   newUnit: StockUnit;
   categoryId: string;
@@ -56,7 +58,7 @@ export interface InvoiceRow {
   pack: PackSize;
 }
 
-export type RowProblem = 'quantity' | 'unitCost' | 'duplicate' | 'newNotAllowed' | 'pack';
+export type RowProblem = 'quantity' | 'unitCost' | 'duplicate' | 'newNotAllowed' | 'pack' | 'name';
 
 const normal = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -92,6 +94,7 @@ export function matchInvoice(
       ...amountsOf(line, countAs),
       unitId: '',
       expiresOn: '',
+      newName: newItemName(line),
       newUnit,
       ...detailsFor(line, byId.get(target)),
     };
@@ -173,7 +176,7 @@ export const missingCategory = (rows: readonly InvoiceRow[]) =>
 export function rowProblems(rows: readonly InvoiceRow[], canCreate: boolean): RowProblem[][] {
   // An item twice, or two new items of the same name: the api takes each once.
   const keyOf = (row: InvoiceRow) =>
-    row.target === NEW_ITEM ? `new:${normal(newItemName(row.line))}` : row.target;
+    row.target === NEW_ITEM ? `new:${normal(row.newName)}` : row.target;
   const counts = new Map<string, number>();
   for (const row of rows) {
     if (row.include) counts.set(keyOf(row), (counts.get(keyOf(row)) ?? 0) + 1);
@@ -188,12 +191,13 @@ export function rowProblems(rows: readonly InvoiceRow[], canCreate: boolean): Ro
     if (!unitCostSchema.safeParse(clean(row.unitCost)).success) problems.push('unitCost');
     if ((counts.get(keyOf(row)) ?? 0) > 1) problems.push('duplicate');
     if (row.target === NEW_ITEM && !canCreate) problems.push('newNotAllowed');
+    if (row.target === NEW_ITEM && row.newName.trim() === '') problems.push('name');
     if (packProblems(row.pack).length > 0) problems.push('pack');
     return problems;
   });
 }
 
-/** The new item a row creates: the invoice's description as its name, the supplier's product id as its SKU. */
+/** A new item's name as first proposed: the invoice's description (the person may edit it, `newName`). */
 export function newItemName(line: InvoiceLine): string {
   return line.description.trim().slice(0, INVENTORY_NAME_MAX_LENGTH);
 }
@@ -244,7 +248,7 @@ export function submitRequest(input: {
         return {
           ...base,
           newItem: {
-            name: newItemName(r.line),
+            name: r.newName.trim().slice(0, INVENTORY_NAME_MAX_LENGTH),
             ...(r.line.code ? { sku: r.line.code.slice(0, 50) } : {}),
             unit: r.newUnit,
             ...(r.categoryId ? { categoryId: r.categoryId } : {}),
@@ -281,6 +285,7 @@ export function rowsFromInvoice(
       target: l.itemId ?? NEW_ITEM,
       unitId: l.unitId ?? '',
       expiresOn: l.expiresOn ?? '',
+      newName: newItemName(line),
       newUnit: l.newItem?.unit ?? 'pc',
       categoryId: given?.categoryId ?? (l.newItem ? '' : base.categoryId),
       brand: given?.brand ?? (l.newItem ? '' : base.brand),

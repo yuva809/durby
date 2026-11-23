@@ -193,6 +193,14 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
       '5',
     );
     await userEvent.type(within(lines[1]!).getByTestId('invoice-line-brand'), 'OD');
+    // The new item's name is the description until edited; an empty name stops the import.
+    const name = within(lines[1]!).getByTestId<HTMLInputElement>('invoice-line-new-name');
+    expect(name.value).toBe('OD Yellow Croakers WG 500-1000g IPB 5 x 2kg -SR');
+    await userEvent.clear(name);
+    expect(within(lines[1]!).getByTestId('invoice-line-problem').textContent).toBe(
+      'Give the new item a name.',
+    );
+    await userEvent.type(name, 'Yellow Croaker 2kg');
     await userEvent.selectOptions(
       within(lines[0]!).getByTestId('invoice-line-invoiced-in'),
       CARTON.id,
@@ -230,7 +238,7 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
             code: '1971-002',
             description: 'OD Yellow Croakers WG 500-1000g IPB 5 x 2kg -SR',
             newItem: {
-              name: 'OD Yellow Croakers WG 500-1000g IPB 5 x 2kg -SR',
+              name: 'Yellow Croaker 2kg',
               sku: '1971-002',
               unit: 'pc',
               categoryId: FISH.id,

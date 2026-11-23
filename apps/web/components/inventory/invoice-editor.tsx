@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  INVENTORY_NAME_MAX_LENGTH,
   type ProductCategory,
   STOCK_UNITS,
   type StockItem,
@@ -394,13 +395,32 @@ export function InvoiceEditor({
                         onRows(rows.map((r, i) => (i === index ? retarget(r, target, items) : r)))
                       }
                     />
-                    {row.include && fresh && canCreate && (
-                      <Badge className="mt-1" data-testid="invoice-line-new">
-                        {t('inventory.invoice.newBadge')}
-                      </Badge>
+                    {fresh && canCreate && (
+                      <div className="mt-1 flex flex-col gap-1">
+                        <Input
+                          value={row.newName}
+                          disabled={readOnly || !row.include}
+                          maxLength={INVENTORY_NAME_MAX_LENGTH}
+                          placeholder={t('inventory.invoice.newName')}
+                          aria-label={t('inventory.invoice.newNameFor', {
+                            name: row.line.description,
+                          })}
+                          aria-invalid={own.includes('name') || undefined}
+                          onChange={(e) => update(index, { newName: e.target.value })}
+                          data-testid="invoice-line-new-name"
+                        />
+                        {row.include && (
+                          <span
+                            className="text-xs text-muted-foreground"
+                            data-testid="invoice-line-new"
+                          >
+                            {t('inventory.invoice.newBadge')}
+                          </span>
+                        )}
+                      </div>
                     )}
                     {own
-                      .filter((p) => p === 'duplicate' || p === 'newNotAllowed')
+                      .filter((p) => p === 'duplicate' || p === 'newNotAllowed' || p === 'name')
                       .map((p) => (
                         <p
                           key={p}
