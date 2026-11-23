@@ -588,65 +588,64 @@ export function ItemDialog({
               onChange={(e) => setSku(e.target.value)}
             />
           </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id={`${id}-brand`} label={t('inventory.invoice.brand')} problem={null}>
+          {/* One field per row: the pack size needs the dialog's whole width. */}
+          <Field id={`${id}-brand`} label={t('inventory.invoice.brand')} problem={null}>
+            <Input
+              id={`${id}-brand`}
+              value={brand}
+              maxLength={100}
+              onChange={(e) => setBrand(e.target.value)}
+              data-testid="item-brand"
+            />
+          </Field>
+          <Field
+            id={`${id}-pack-count`}
+            label={t('inventory.invoice.packSize')}
+            problem={packBad.length > 0 ? t('inventory.page.packInvalid') : null}
+          >
+            <div className="flex w-full min-w-0 items-center gap-2" data-testid="item-pack">
               <Input
-                id={`${id}-brand`}
-                value={brand}
-                maxLength={100}
-                onChange={(e) => setBrand(e.target.value)}
-                data-testid="item-brand"
+                id={`${id}-pack-count`}
+                inputMode="numeric"
+                value={pack.count}
+                placeholder={t('inventory.page.packPieces')}
+                aria-label={t('inventory.page.packPieces')}
+                aria-invalid={packBad.includes('count') || undefined}
+                onChange={(e) => setPack({ ...pack, count: e.target.value })}
+                className="min-w-0 flex-1 text-right"
+                data-testid="item-pack-count"
               />
-            </Field>
-            <Field
-              id={`${id}-pack-count`}
-              label={t('inventory.invoice.packSize')}
-              problem={packBad.length > 0 ? t('inventory.page.packInvalid') : null}
-            >
-              <div className="flex items-center gap-1" data-testid="item-pack">
-                <Input
-                  id={`${id}-pack-count`}
-                  inputMode="numeric"
-                  value={pack.count}
-                  placeholder={t('inventory.page.packPieces')}
-                  aria-label={t('inventory.page.packPieces')}
-                  aria-invalid={packBad.includes('count') || undefined}
-                  onChange={(e) => setPack({ ...pack, count: e.target.value })}
-                  className="w-20 text-right"
-                  data-testid="item-pack-count"
-                />
-                <span aria-hidden className="text-muted-foreground">
-                  ×
-                </span>
-                <Input
-                  inputMode="decimal"
-                  value={pack.size}
-                  placeholder={t('inventory.invoice.packWeight')}
-                  aria-label={t('inventory.invoice.packWeight')}
-                  aria-invalid={packBad.includes('size') || undefined}
-                  onChange={(e) => setPack({ ...pack, size: e.target.value })}
-                  className="w-20 text-right"
-                  data-testid="item-pack-size"
-                />
-                <Select
-                  value={pack.unit}
-                  aria-label={t('inventory.invoice.packUnit')}
-                  aria-invalid={packBad.includes('unit') || undefined}
-                  onChange={(e) => setPack({ ...pack, unit: e.target.value as StockUnit | '' })}
-                  className="w-20"
-                  data-testid="item-pack-unit"
-                >
-                  <option value="">–</option>
-                  {STOCK_UNITS.filter((u) => u !== 'pc').map((u) => (
-                    <option key={u} value={u}>
-                      {t(`inventory.units.${u}`)}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <span className="text-xs text-muted-foreground">{t('inventory.page.packHint')}</span>
-            </Field>
-          </div>
+              <span aria-hidden className="shrink-0 text-muted-foreground">
+                ×
+              </span>
+              <Input
+                inputMode="decimal"
+                value={pack.size}
+                placeholder={t('inventory.invoice.packWeight')}
+                aria-label={t('inventory.invoice.packWeight')}
+                aria-invalid={packBad.includes('size') || undefined}
+                onChange={(e) => setPack({ ...pack, size: e.target.value })}
+                className="min-w-0 flex-1 text-right"
+                data-testid="item-pack-size"
+              />
+              <Select
+                value={pack.unit}
+                aria-label={t('inventory.invoice.packUnit')}
+                aria-invalid={packBad.includes('unit') || undefined}
+                onChange={(e) => setPack({ ...pack, unit: e.target.value as StockUnit | '' })}
+                className="w-24 shrink-0"
+                data-testid="item-pack-unit"
+              >
+                <option value="">–</option>
+                {STOCK_UNITS.filter((u) => u !== 'pc').map((u) => (
+                  <option key={u} value={u}>
+                    {t(`inventory.units.${u}`)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <span className="text-xs text-muted-foreground">{t('inventory.page.packHint')}</span>
+          </Field>
           {sells && (
             <Field
               id={`${id}-sale-price`}
