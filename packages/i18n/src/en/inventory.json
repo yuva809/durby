@@ -339,6 +339,8 @@
   "inventory.invoice.itemFor": "Item for {name}",
   "inventory.invoice.unitCost": "Unit cost",
   "inventory.invoice.newItem": "New item",
+  "inventory.invoice.itemSearch": "Search by name or SKU",
+  "inventory.invoice.itemNoMatch": "No product matches. Choose New item to create it.",
   "inventory.invoice.newBadge": "New: created on import",
   "inventory.invoice.checkLine": "Quantity × price ≠ total: check",
   "inventory.invoice.rowProblems.duplicate": "This item is on another line too. Combine them or pick another item.",
