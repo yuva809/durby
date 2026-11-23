@@ -16,7 +16,6 @@ import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { categoryColor } from '../../lib/catalog/category-image';
 import {
-  availableText,
   beyondStock,
   type Cart,
   cartLines,
@@ -222,23 +221,9 @@ function Shop({
 
   async function send() {
     if (!from) return;
+    // More than the warehouse has may be asked for (it follows once it is in); only a bad quantity stops it.
     if (!cartReady(lines)) {
-      const beyond = beyondStock(lines);
-      setError(
-        beyond.length > 0
-          ? t('orders.requestCart.beyondStock', {
-              items: beyond
-                .map((l) =>
-                  t('orders.requestCart.itemAvailable', {
-                    name: l.item.itemName,
-                    quantity: availableText(l.item.available),
-                    unit: t(`inventory.units.${l.item.unit}`),
-                  }),
-                )
-                .join(', '),
-            })
-          : t('orders.requestForm.quantityInvalid'),
-      );
+      setError(t('orders.requestForm.quantityInvalid'));
       return;
     }
     setBusy(true);
@@ -436,6 +421,11 @@ function Shop({
                 </li>
               ))}
             </ul>
+          )}
+          {beyondStock(lines).length > 0 && (
+            <p className="text-sm text-muted-foreground" data-testid="request-cart-beyond">
+              {t('orders.requestCart.beyondHint')}
+            </p>
           )}
           {!branch.warehouseId && lines.length > 0 && (
             <p className="text-sm text-muted-foreground">

@@ -204,8 +204,9 @@ describe('Request stock cart (branch, ADR 0053)', () => {
     const cards = await screen.findAllByTestId('request-item');
     // In stock first; quantities only, never prices.
     expect(cards.map((c) => c.textContent)).toEqual([
-      'RRiceR-110 pc availableAdd',
-      'OOilOut of stockAdd',
+      'RRiceR-110 pc available at the warehouseRequest',
+      // Out of stock may still be asked for: it is sent once it is in.
+      'OOilOut of stockRequest',
     ]);
     expect(screen.getByTestId('request-from-main').textContent).toContain('Main Warehouse');
     expect(screen.queryByTestId('request-from')).toBeNull();
@@ -271,34 +272,37 @@ describe('Request stock cart (branch, ADR 0053)', () => {
     );
   });
 
-  it('asks for no more than the main warehouse has, and lays out the cart', async () => {
+  it('asks for more than the main warehouse has, saying the rest follows, and lays out the cart', async () => {
     signedInAs('branch');
     const calls = api(request('submitted'));
     render(<RequestStockPage />);
     const [rice, oil] = await screen.findAllByTestId('request-item');
-    // Nothing there, nothing to add.
-    expect(within(oil!).getByTestId('request-add')).toHaveProperty('disabled', true);
-    // 10 there: "+" stops at 10.
+    // Nothing there: it may still be asked for.
+    await userEvent.click(within(oil!).getByTestId('request-add'));
+    // 10 there: typed beyond it, named, and still sent.
     await userEvent.click(within(rice!).getByTestId('request-add'));
     const quantity = within(rice!).getByTestId<HTMLInputElement>('request-quantity');
     await userEvent.clear(quantity);
-    await userEvent.type(quantity, '10');
-    expect(within(rice!).getByTestId('request-more')).toHaveProperty('disabled', true);
-    // Typed beyond it: named, and not sent.
-    await userEvent.clear(quantity);
     await userEvent.type(quantity, '12');
+    expect(within(rice!).getByTestId('request-more')).toHaveProperty('disabled', false);
     expect(within(rice!).getByTestId('request-item-available').textContent).toBe(
-      'Only 10 pc available',
+      'Only 10 pc at the warehouse: the rest follows once it is in',
     );
     await userEvent.click(screen.getByTestId('request-cart-open'));
     const cart = await screen.findByTestId('request-cart');
     // The cart's title and route show (not only for screen readers).
     expect(within(cart).getByText('Your request')).toBeTruthy();
+    expect(within(cart).getByTestId('request-cart-beyond')).toBeTruthy();
+    expect(within(cart).getByText('None at the warehouse right now')).toBeTruthy();
     await userEvent.click(within(cart).getByTestId('request-submit'));
-    expect(
-      within(cart).getByText(/More than the main warehouse has: Rice \(10 pc available\)/),
-    ).toBeTruthy();
-    expect(posts(calls)).toEqual([]);
+    await waitFor(() =>
+      expect(posts(calls)[0]?.body).toMatchObject({
+        lines: [
+          { itemId: id(52), quantity: '1' },
+          { itemId: id(51), quantity: '12' },
+        ],
+      }),
+    );
   });
 
   it('filters by category and search, and keeps the cart for the next visit', async () => {

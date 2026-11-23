@@ -118,7 +118,10 @@ export function increment(cart: Cart, itemId: string, available?: string, step =
   return { ...cart, [itemId]: plain(next) };
 }
 
-/** Lines asking for more than the warehouse has (they block sending). */
+/**
+ * Lines asking for more than the warehouse has: they may still be sent, and the warehouse sends the rest once it is
+ * in; the cart says so.
+ */
 export const beyondStock = (lines: ReturnType<typeof cartLines>) =>
   lines.filter((l) => validQuantity(l.quantity) && !withinStock(l.quantity, l.item.available));
 
@@ -150,10 +153,28 @@ export function cartLines(cart: Cart, items: readonly RequestAvailability[]) {
   });
 }
 
-/** Every line has a quantity the api takes, within what the warehouse has. */
+/** Every line has a quantity the api takes; more than the warehouse has is allowed (it follows once it is in). */
 export const cartReady = (lines: ReturnType<typeof cartLines>) =>
-  lines.length > 0 &&
-  lines.every((l) => validQuantity(l.quantity) && withinStock(l.quantity, l.item.available));
+  lines.length > 0 && lines.every((l) => validQuantity(l.quantity));
+
+/** A line's quantity as the person orders it: boxes when by the box, else as kept ("24" pieces, 12 a box → "2"). */
+export function shownQuantity(
+  quantity: string,
+  item: { unit: string; packCount: number | null },
+  unit: 'box' | 'piece' | undefined,
+): string {
+  const perBox = piecesPerBox(item);
+  return perBox !== null && unit !== 'piece' ? boxesOf(quantity, perBox) : clean(quantity);
+}
+
+/** The cart's total in what is ordered (boxes and pieces as shown), for "3 items · 5 units". */
+export function cartUnits(lines: ReturnType<typeof cartLines>, units: CartUnits): string {
+  const total = lines.reduce(
+    (sum, l) => sum + (thousandths(shownQuantity(l.quantity, l.item, units[l.item.itemId])) ?? 0n),
+    0n,
+  );
+  return plain(total < 0n ? 0n : total);
+}
 
 /** The request's lines, in cart order. */
 export const requestLines = (lines: ReturnType<typeof cartLines>) =>
