@@ -505,5 +505,8 @@
   "inventory.adjust.open": "Bestand anpassen",
   "inventory.adjust.title": "Bestand anpassen · {name}",
   "inventory.adjust.unchanged": "Geben Sie die gezählte Menge ein; sie entspricht dem aktuellen Bestand.",
-  "inventory.overview.actions": "Aktionen"
+  "inventory.overview.actions": "Aktionen",
+  "inventory.page.packPieces": "Stück",
+  "inventory.page.packHint": "Stück pro Karton und Gewicht je Stück, z. B. 8 × 1 kg. Mit Stückzahl können Filialen kartonweise bestellen.",
+  "inventory.page.packInvalid": "Stück: eine ganze Zahl; Gewicht: eine Zahl mit Einheit."
 }

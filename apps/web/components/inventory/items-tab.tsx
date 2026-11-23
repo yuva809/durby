@@ -1,6 +1,10 @@
 'use client';
 
 import {
+  EMPTY_PACK,
+  type PackSize,
+  packFields,
+  packProblems,
   priceSchema,
   type ProductCategory,
   STOCK_UNITS,
@@ -291,6 +295,9 @@ export function ItemDialog({
   const [min, setMin] = useState('');
   const [salePrice, setSalePrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  // Brand and pack size (ADR 0055): "8 × 1 kg" is 8 pieces of 1 kg in a box.
+  const [brand, setBrand] = useState('');
+  const [pack, setPack] = useState<PackSize>(EMPTY_PACK);
   const [warehouseId, setWarehouseId] = useState('');
   const [opening, setOpening] = useState('');
   const [unitCost, setUnitCost] = useState('');
@@ -351,6 +358,7 @@ export function ItemDialog({
     checked && salePrice.trim() !== '' && !priceSchema.safeParse(salePrice.trim()).success;
   const nameMissing = checked && name.trim() === '';
   const minInvalid = checked && min.trim() !== '' && !isQuantity(min);
+  const packBad = checked ? packProblems(pack) : [];
 
   return (
     <FormDialog
@@ -378,6 +386,16 @@ export function ItemDialog({
         setMin(item?.minQuantity ? shortQuantity(item.minQuantity) : '');
         setSalePrice(item?.salePrice ?? '');
         setCategoryId(item ? (item.categoryId ?? '') : (defaultCategoryId ?? ''));
+        setBrand(item?.brand ?? '');
+        setPack(
+          item
+            ? {
+                count: item.packCount === null ? '' : String(item.packCount),
+                size: item.packSize?.replace(/\.?0+$/, '') ?? '',
+                unit: item.packUnit ?? '',
+              }
+            : EMPTY_PACK,
+        );
         // The main warehouse by default, else the first active one.
         const first = (activeWarehouses.find((w) => w.isMain) ?? activeWarehouses[0])?.id ?? '';
         setWarehouseId(first);
@@ -403,6 +421,8 @@ export function ItemDialog({
         setChecked(true);
         if (stockOnly && (!changing || reasons.length === 0 || warehouseId === '')) return null;
         if (name.trim() === '' || (min.trim() !== '' && !isQuantity(min))) return null;
+        if (!stockOnly && packProblems(pack).length > 0) return null;
+        const packed = packFields(pack);
         if (salePrice.trim() !== '' && !priceSchema.safeParse(salePrice.trim()).success)
           return null;
         if (item) {
@@ -428,6 +448,11 @@ export function ItemDialog({
                   minQuantity: min.trim() || null,
                   ...(sells ? { salePrice: salePrice.trim() || null } : {}),
                   ...(categories ? { categoryId: categoryId || null } : {}),
+                  // Cleared fields are sent as null; a size goes with its unit.
+                  brand: brand.trim().slice(0, 100) || null,
+                  packCount: packed.packCount ?? null,
+                  packSize: packed.packSize ?? null,
+                  packUnit: packed.packUnit ?? null,
                 });
             if (!updated.ok || !adding) return updated;
             const note = remarks.trim() ? { note: remarks.trim().slice(0, 500) } : {};
@@ -464,6 +489,8 @@ export function ItemDialog({
             ...(min.trim() ? { minQuantity: min.trim() } : {}),
             ...(sells && salePrice.trim() ? { salePrice: salePrice.trim() } : {}),
             ...(categories && categoryId ? { categoryId } : {}),
+            ...(brand.trim() ? { brand: brand.trim().slice(0, 100) } : {}),
+            ...packed,
           });
           // Opening stock goes into the chosen warehouse only, as a receipt.
           if (!created.ok || !created.data || openingQty === '' || Number(openingQty) <= 0) {
@@ -561,6 +588,65 @@ export function ItemDialog({
               onChange={(e) => setSku(e.target.value)}
             />
           </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id={`${id}-brand`} label={t('inventory.invoice.brand')} problem={null}>
+              <Input
+                id={`${id}-brand`}
+                value={brand}
+                maxLength={100}
+                onChange={(e) => setBrand(e.target.value)}
+                data-testid="item-brand"
+              />
+            </Field>
+            <Field
+              id={`${id}-pack-count`}
+              label={t('inventory.invoice.packSize')}
+              problem={packBad.length > 0 ? t('inventory.page.packInvalid') : null}
+            >
+              <div className="flex items-center gap-1" data-testid="item-pack">
+                <Input
+                  id={`${id}-pack-count`}
+                  inputMode="numeric"
+                  value={pack.count}
+                  placeholder={t('inventory.page.packPieces')}
+                  aria-label={t('inventory.page.packPieces')}
+                  aria-invalid={packBad.includes('count') || undefined}
+                  onChange={(e) => setPack({ ...pack, count: e.target.value })}
+                  className="w-20 text-right"
+                  data-testid="item-pack-count"
+                />
+                <span aria-hidden className="text-muted-foreground">
+                  ×
+                </span>
+                <Input
+                  inputMode="decimal"
+                  value={pack.size}
+                  placeholder={t('inventory.invoice.packWeight')}
+                  aria-label={t('inventory.invoice.packWeight')}
+                  aria-invalid={packBad.includes('size') || undefined}
+                  onChange={(e) => setPack({ ...pack, size: e.target.value })}
+                  className="w-20 text-right"
+                  data-testid="item-pack-size"
+                />
+                <Select
+                  value={pack.unit}
+                  aria-label={t('inventory.invoice.packUnit')}
+                  aria-invalid={packBad.includes('unit') || undefined}
+                  onChange={(e) => setPack({ ...pack, unit: e.target.value as StockUnit | '' })}
+                  className="w-20"
+                  data-testid="item-pack-unit"
+                >
+                  <option value="">–</option>
+                  {STOCK_UNITS.filter((u) => u !== 'pc').map((u) => (
+                    <option key={u} value={u}>
+                      {t(`inventory.units.${u}`)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <span className="text-xs text-muted-foreground">{t('inventory.page.packHint')}</span>
+            </Field>
+          </div>
           {sells && (
             <Field
               id={`${id}-sale-price`}

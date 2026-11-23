@@ -505,5 +505,8 @@
   "inventory.adjust.open": "Adjust stock",
   "inventory.adjust.title": "Adjust stock · {name}",
   "inventory.adjust.unchanged": "Type the counted quantity; it is the same as on hand now.",
-  "inventory.overview.actions": "Actions"
+  "inventory.overview.actions": "Actions",
+  "inventory.page.packPieces": "Pieces",
+  "inventory.page.packHint": "Pieces in one box and the weight of each, e.g. 8 × 1 kg. With pieces set, branches can order by the box.",
+  "inventory.page.packInvalid": "Pieces: a whole number; weight: a number with its unit."
 }

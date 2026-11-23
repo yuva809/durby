@@ -439,6 +439,55 @@ describe('InventoryPage', () => {
     });
   });
 
+  it('sets the brand and pack size (pieces × weight) when adding and editing an item', async () => {
+    signedInAs('admin');
+    const writes = api({
+      'POST /api/v1/inventory/items': () =>
+        Response.json({ ...item(3, 'Kingmackerel', 'box'), brand: 'Perfit' }, { status: 201 }),
+      [`PATCH /api/v1/inventory/items/${COLA.id}`]: () => Response.json(COLA),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    await userEvent.click(screen.getByTestId('item-create'));
+    let dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'Kingmackerel');
+    await userEvent.type(within(dialog).getByTestId('item-brand'), 'Perfit');
+    await userEvent.type(within(dialog).getByTestId('item-pack-count'), '8');
+    await userEvent.type(within(dialog).getByTestId('item-pack-size'), '1');
+    // A weight without its unit: said, nothing sent.
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    expect(
+      within(dialog).getByText('Pieces: a whole number; weight: a number with its unit.'),
+    ).toBeTruthy();
+    expect(writes).toEqual([]);
+    await userEvent.selectOptions(within(dialog).getByTestId('item-pack-unit'), 'kg');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]!.body).toEqual({
+      name: 'Kingmackerel',
+      unit: 'kg',
+      brand: 'Perfit',
+      packCount: 8,
+      packSize: '1',
+      packUnit: 'kg',
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // Editing: pieces only; brand and weight cleared are sent as null.
+    const cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await userEvent.click(within(cola).getByTestId('item-edit'));
+    dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByTestId('item-pack-count'), '24');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[1]!.body).toMatchObject({
+      brand: null,
+      packCount: 24,
+      packSize: null,
+      packUnit: null,
+    });
+  });
+
   it('lets managers add warehouses but not items', async () => {
     signedInAs('manager');
     api();
