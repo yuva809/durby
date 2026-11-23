@@ -66,21 +66,22 @@ ignored. The pages leave out those columns, totals and export columns. Audit row
 
 ## API (`/api/v1/inventory`, `@RequireFeature('inventory')`)
 
-| Method + path           | Permission                    | Idempotency                 | Body / query                                                                 |
-| ----------------------- | ----------------------------- | --------------------------- | ---------------------------------------------------------------------------- |
-| `GET /warehouses`       | `inventory.stock.read`        |                             | `?locationId=&includeArchived=true`                                          |
-| `POST /warehouses`      | `inventory.warehouses.manage` | `completion: 'transaction'` | `{ locationId, name, sortOrder? }`                                           |
-| `PATCH /warehouses/:id` | `inventory.warehouses.manage` | response                    | `{ name?, sortOrder?, archived? }`                                           |
-| `GET /categories`       | `inventory.stock.read`        |                             | `?includeArchived=true`: the catalog's categories, for stock readers (0059)  |
-| `GET /items`            | `inventory.stock.read`        |                             | `?includeArchived=true`                                                      |
-| `POST /items`           | `inventory.items.manage`      | `completion: 'transaction'` | `{ name, sku?, unit, minQuantity? }`                                         |
-| `PATCH /items/:id`      | `inventory.items.manage`      | response                    | `{ name?, sku?, unit?, minQuantity?, archived? }`                            |
-| `POST /receipts`        | `inventory.stock.receive`     | `completion: 'transaction'` | `{ warehouseId, supplier?, note?, lines: [{ itemId, quantity, unitCost }] }` |
-| `POST /adjustments`     | `inventory.stock.adjust`      | `completion: 'transaction'` | `{ warehouseId, reason, note?, lines: [{ itemId, quantity }] }` (signed)     |
-| `POST /transfers`       | `inventory.stock.transfer`    | `completion: 'transaction'` | `{ fromWarehouseId, toWarehouseId, note?, lines: [{ itemId, quantity }] }`   |
-| `GET /stock`            | `inventory.stock.read`        |                             | `?locationId=&warehouseId=` → levels with value and `low`                    |
-| `GET /documents`        | `inventory.stock.read`        |                             | `?locationId=&warehouseId=&kind=` → newest 200                               |
-| `GET /documents/:id`    | `inventory.stock.read`        |                             | the document with its lines                                                  |
+| Method + path              | Permission                    | Idempotency                 | Body / query                                                                                                                                                   |
+| -------------------------- | ----------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /warehouses`          | `inventory.stock.read`        |                             | `?locationId=&includeArchived=true`                                                                                                                            |
+| `POST /warehouses`         | `inventory.warehouses.manage` | `completion: 'transaction'` | `{ locationId, name, sortOrder? }`                                                                                                                             |
+| `PATCH /warehouses/:id`    | `inventory.warehouses.manage` | response                    | `{ name?, sortOrder?, archived? }`                                                                                                                             |
+| `GET /categories`          | `inventory.stock.read`        |                             | `?includeArchived=true`: the catalog's categories, for stock readers (0059)                                                                                    |
+| `GET /items`               | `inventory.stock.read`        |                             | `?includeArchived=true`                                                                                                                                        |
+| `POST /items`              | `inventory.items.manage`      | `completion: 'transaction'` | `{ name, sku?, unit, minQuantity? }`                                                                                                                           |
+| `PATCH /items/:id`         | `inventory.items.manage`      | response                    | `{ name?, sku?, unit?, minQuantity?, archived? }`                                                                                                              |
+| `POST /receipts`           | `inventory.stock.receive`     | `completion: 'transaction'` | `{ warehouseId, supplier?, note?, lines: [{ itemId, quantity, unitCost }] }`                                                                                   |
+| `POST /adjustments`        | `inventory.stock.adjust`      | `completion: 'transaction'` | `{ warehouseId, reason, note?, lines: [{ itemId, quantity }] }` (signed)                                                                                       |
+| `POST /transfers`          | `inventory.stock.transfer`    | `completion: 'transaction'` | `{ fromWarehouseId, toWarehouseId, note?, lines: [{ itemId, quantity }] }`                                                                                     |
+| `GET /stock`               | `inventory.stock.read`        |                             | `?locationId=&warehouseId=` → levels with value and `low`                                                                                                      |
+| `GET /documents`           | `inventory.stock.read`        |                             | `?locationId=&warehouseId=&kind=` → newest 200                                                                                                                 |
+| `GET /documents/:id`       | `inventory.stock.read`        |                             | the document with its lines                                                                                                                                    |
+| `GET /items/:id/movements` | `inventory.stock.read`        |                             | `?locationId=&warehouseId=` → the item's activity: newest 500 movements with the balance after each, opening, closing; costs only with `inventory.prices.read` |
 
 Quantities are decimal strings with up to 3 decimals, unit costs up to 4, values 2 (rule 6). Lines: 1–200, an item
 at most once per document, items not archived, warehouses not archived; a transfer needs two different warehouses.

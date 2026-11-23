@@ -1,6 +1,7 @@
 'use client';
 
 import type { ProductCategory } from '@durby/shared';
+import Link from 'next/link';
 import { ArrowLeft, Boxes, Download, LayoutGrid, Package, Search } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
@@ -493,7 +494,14 @@ function ItemTable({
             >
               <td className="w-full font-medium md:w-auto md:px-4 md:py-2">
                 <span className="flex flex-wrap items-center gap-2">
-                  {row.item.name}
+                  {/* The item's page: its activity and Edit. */}
+                  <Link
+                    href={`/inventory/items/${row.item.id}`}
+                    className="underline-offset-4 hover:underline"
+                    data-testid="overview-item-link"
+                  >
+                    {row.item.name}
+                  </Link>
                   {row.item.sku && (
                     <span className="text-xs font-normal text-muted-foreground">
                       {row.item.sku}

@@ -7,6 +7,7 @@ import type {
   ImportOpeningStockRequest,
   EventPayload,
   ImportReceiptRequest,
+  ItemMovements,
   AdjustmentRequest,
   ListStockDocumentsQuery,
   NumberSeriesKey,
@@ -21,7 +22,7 @@ import type {
   StockUnit,
   TransferRequest,
 } from '@durby/shared';
-import { checkOpeningStockRows } from '@durby/shared';
+import { checkOpeningStockRows, ITEM_MOVEMENTS_LIMIT } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { SettingsService } from '../../platform/config/settings';
 import { IdempotencyService } from '../../platform/idempotency';
@@ -638,6 +639,82 @@ export class StockService {
     );
     if (!readable.some(Boolean)) throw inventoryErrors.documentNotFound();
     return this.forViewer(documentResponse(row));
+  }
+
+  /**
+   * An item's activity (its ledger): its movements in the warehouses the caller may read (or the one asked for),
+   * newest first, each with the quantity there after it. The balances count back from what is there now; the opening
+   * is what was there before the oldest movement shown. Costs only for who sees prices (ADR 0060).
+   */
+  async itemMovements(itemId: string, query: StockQuery): Promise<ItemMovements> {
+    const item = await this.db.stockItem.findUnique({
+      where: { id: itemId },
+      select: { id: true },
+    });
+    if (!item) throw inventoryErrors.itemNotFound([itemId]);
+    const warehouses = await this.readableWarehouses(query);
+    if (warehouses.length === 0) {
+      return { opening: '0.000', closing: '0.000', truncated: false, movements: [] };
+    }
+    const [levels, rows] = await Promise.all([
+      this.db.stockLevel.findMany({
+        where: { itemId, warehouseId: { in: warehouses } },
+        select: { quantity: true },
+      }),
+      this.db.stockMovement.findMany({
+        where: { itemId, warehouseId: { in: warehouses } },
+        select: {
+          id: true,
+          createdAt: true,
+          warehouseId: true,
+          quantity: true,
+          unitCost: true,
+          warehouse: { select: { name: true } },
+          document: {
+            select: {
+              id: true,
+              number: true,
+              kind: true,
+              reason: true,
+              supplier: true,
+              note: true,
+            },
+          },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: ITEM_MOVEMENTS_LIMIT + 1,
+      }),
+    ]);
+    const truncated = rows.length > ITEM_MOVEMENTS_LIMIT;
+    const shown = rows.slice(0, ITEM_MOVEMENTS_LIMIT);
+    const prices = await this.seesPrices();
+    const closing = levels.reduce((sum, l) => sum.plus(l.quantity.toString()), new Decimal(0));
+    let balance = closing;
+    const movements = shown.map((row) => {
+      const quantity = new Decimal(row.quantity.toString());
+      const after = balance;
+      balance = balance.minus(quantity);
+      return {
+        id: row.id,
+        createdAt: row.createdAt.toISOString(),
+        documentId: row.document.id,
+        documentNumber: row.document.number,
+        kind: row.document.kind,
+        reason: row.document.reason,
+        warehouseId: row.warehouseId,
+        warehouseName: row.warehouse.name,
+        quantity: quantityText(quantity),
+        unitCost: prices ? costText(new Decimal(row.unitCost.toString())) : null,
+        remarks: row.document.note ?? row.document.supplier ?? null,
+        balance: quantityText(after),
+      };
+    });
+    return {
+      opening: quantityText(balance),
+      closing: quantityText(closing),
+      truncated,
+      movements,
+    };
   }
 
   /** Warehouse ids the caller may read, narrowed by the query. */

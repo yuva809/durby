@@ -297,14 +297,14 @@ describe('InventoryPage', () => {
     });
   });
 
-  it('adds stock while editing an item: received at a cost, or found at the average cost', async () => {
+  it('sets the stock quantity while editing an item: more received at a cost, less adjusted out', async () => {
     signedInAs('admin');
     const writes = api({
       [`PATCH /api/v1/inventory/items/${COLA.id}`]: () => Response.json(COLA),
       'POST /api/v1/inventory/receipts': () =>
         Response.json(document('GR-2026-000002', 'receipt', '6.00'), { status: 201 }),
       'POST /api/v1/inventory/adjustments': () =>
-        Response.json(document('ADJ-2026-000002', 'adjustment', '0.90'), { status: 201 }),
+        Response.json(document('ADJ-2026-000002', 'adjustment', '-0.90'), { status: 201 }),
     });
     render(<InventoryPage />);
     await userEvent.click(await tab('items'));
@@ -312,11 +312,19 @@ describe('InventoryPage', () => {
     await waitFor(() => expect(within(cola).getAllByTestId('item-warehouse-row')).toHaveLength(1));
     await userEvent.click(within(cola).getByTestId('item-edit'));
     let dialog = await screen.findByRole('dialog');
-    // What each warehouse has now, beside it.
-    const where = within(dialog).getByTestId<HTMLSelectElement>('item-add-warehouse');
-    expect(where.selectedOptions[0]!.textContent).toBe('Main store · currently 24 pc on hand');
-    await userEvent.type(within(dialog).getByTestId('item-add-quantity'), '12');
-    // A purchase needs the cost of one unit.
+    // What is there now, to change; nothing is booked while it stays.
+    const quantity = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    expect(quantity.value).toBe('24');
+    expect(within(dialog).getByTestId('item-add-on-hand').textContent).toBe(
+      'Currently 24 pc on hand in Main store. Changing it books the difference there.',
+    );
+    expect(within(dialog).queryByTestId('item-add-reason')).toBeNull();
+    // 36: 12 more, received at a cost (the cost of one unit is needed).
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '36');
+    expect(within(dialog).getByTestId('item-add-on-hand').textContent).toBe(
+      'Adds 12 pc to the 24 on hand.',
+    );
     await userEvent.click(within(dialog).getByTestId('form-save'));
     expect(within(dialog).getByText('Enter the cost of one unit, e.g. 2.50.')).toBeTruthy();
     expect(writes).toEqual([]);
@@ -336,13 +344,19 @@ describe('InventoryPage', () => {
     });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
-    // A correction: an adjustment, no cost asked.
+    // 22: 2 out, as an adjustment with its reason, no cost asked.
     await userEvent.click(within(cola).getByTestId('item-edit'));
     dialog = await screen.findByRole('dialog');
-    await userEvent.type(within(dialog).getByTestId('item-add-quantity'), '2');
-    await userEvent.selectOptions(within(dialog).getByTestId('item-add-reason'), 'correction');
+    const again = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    await userEvent.clear(again);
+    await userEvent.type(again, '22');
+    expect(
+      [...within(dialog).getByTestId<HTMLSelectElement>('item-add-reason').options].map(
+        (o) => o.value,
+      ),
+    ).toEqual(['correction', 'count', 'waste', 'breakage', 'other']);
+    await userEvent.selectOptions(within(dialog).getByTestId('item-add-reason'), 'breakage');
     expect(within(dialog).queryByTestId('item-add-cost')).toBeNull();
-    expect(within(dialog).getByTestId('item-add-average')).toBeTruthy();
     await userEvent.click(within(dialog).getByTestId('form-save'));
     await waitFor(() => expect(writes).toHaveLength(4));
     expect(writes[3]).toEqual({
@@ -350,8 +364,8 @@ describe('InventoryPage', () => {
       path: '/api/v1/inventory/adjustments',
       body: {
         warehouseId: STORE.id,
-        reason: 'correction',
-        lines: [{ itemId: COLA.id, quantity: '2' }],
+        reason: 'breakage',
+        lines: [{ itemId: COLA.id, quantity: '-2' }],
       },
     });
   });
