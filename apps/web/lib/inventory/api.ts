@@ -18,6 +18,8 @@ import {
   variantAttributeListResponseSchema,
   variantAttributeSchema,
   type CreateStockItemRequest,
+  type ItemMovements,
+  itemMovementsSchema,
   type CreateWarehouseRequest,
   type DishCost,
   dishCostListResponseSchema,
@@ -92,6 +94,14 @@ export const loadStock = (
   filter: { locationId?: string; warehouseId?: string },
 ): Promise<Result<StockLevel[]>> =>
   read(store, `${BASE}/stock${query(filter)}`, list(stockLevelListResponseSchema));
+
+/** An item's activity (its ledger), newest first, in one warehouse or all the caller reads. */
+export const loadItemMovements = (
+  store: Api,
+  itemId: string,
+  filter: { warehouseId?: string },
+): Promise<Result<ItemMovements>> =>
+  read(store, `${BASE}/items/${itemId}/movements${query(filter)}`, itemMovementsSchema);
 
 export const loadDocuments = (
   store: Api,

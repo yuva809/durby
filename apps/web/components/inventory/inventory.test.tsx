@@ -297,6 +297,79 @@ describe('InventoryPage', () => {
     });
   });
 
+  it('sets the stock quantity while editing an item: more received at a cost, less adjusted out', async () => {
+    signedInAs('admin');
+    const writes = api({
+      [`PATCH /api/v1/inventory/items/${COLA.id}`]: () => Response.json(COLA),
+      'POST /api/v1/inventory/receipts': () =>
+        Response.json(document('GR-2026-000002', 'receipt', '6.00'), { status: 201 }),
+      'POST /api/v1/inventory/adjustments': () =>
+        Response.json(document('ADJ-2026-000002', 'adjustment', '-0.90'), { status: 201 }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    const cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await waitFor(() => expect(within(cola).getAllByTestId('item-warehouse-row')).toHaveLength(1));
+    await userEvent.click(within(cola).getByTestId('item-edit'));
+    let dialog = await screen.findByRole('dialog');
+    // What is there now, to change; nothing is booked while it stays.
+    const quantity = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    expect(quantity.value).toBe('24');
+    expect(within(dialog).getByTestId('item-add-on-hand').textContent).toBe(
+      'Currently 24 pc on hand in Main store. Changing it books the difference there.',
+    );
+    expect(within(dialog).queryByTestId('item-add-reason')).toBeNull();
+    // 36: 12 more, received at a cost (the cost of one unit is needed).
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '36');
+    expect(within(dialog).getByTestId('item-add-on-hand').textContent).toBe(
+      'Adds 12 pc to the 24 on hand.',
+    );
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    expect(within(dialog).getByText('Enter the cost of one unit, e.g. 2.50.')).toBeTruthy();
+    expect(writes).toEqual([]);
+    await userEvent.type(within(dialog).getByTestId('item-add-cost'), '0,50');
+    await userEvent.type(within(dialog).getByTestId('item-add-remarks'), 'Cash and carry');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[0]!.method).toBe('PATCH');
+    expect(writes[1]).toEqual({
+      method: 'POST',
+      path: '/api/v1/inventory/receipts',
+      body: {
+        warehouseId: STORE.id,
+        note: 'Cash and carry',
+        lines: [{ itemId: COLA.id, quantity: '12', unitCost: '0.50' }],
+      },
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // 22: 2 out, as an adjustment with its reason, no cost asked.
+    await userEvent.click(within(cola).getByTestId('item-edit'));
+    dialog = await screen.findByRole('dialog');
+    const again = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    await userEvent.clear(again);
+    await userEvent.type(again, '22');
+    expect(
+      [...within(dialog).getByTestId<HTMLSelectElement>('item-add-reason').options].map(
+        (o) => o.value,
+      ),
+    ).toEqual(['correction', 'count', 'waste', 'breakage', 'other']);
+    await userEvent.selectOptions(within(dialog).getByTestId('item-add-reason'), 'breakage');
+    expect(within(dialog).queryByTestId('item-add-cost')).toBeNull();
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(4));
+    expect(writes[3]).toEqual({
+      method: 'POST',
+      path: '/api/v1/inventory/adjustments',
+      body: {
+        warehouseId: STORE.id,
+        reason: 'breakage',
+        lines: [{ itemId: COLA.id, quantity: '-2' }],
+      },
+    });
+  });
+
   it('lets managers add warehouses but not items', async () => {
     signedInAs('manager');
     api();
@@ -320,15 +393,29 @@ describe('InventoryPage', () => {
       'GET /api/v1/inventory/warehouses': () =>
         Response.json({
           data: [
-            { ...STORE, id: id(31), name: 'North store', locationId: NORTH.id, suppliesStation: null },
-            { ...STORE, id: id(32), name: 'South store', locationId: SOUTH.id, suppliesStation: null },
+            {
+              ...STORE,
+              id: id(31),
+              name: 'North store',
+              locationId: NORTH.id,
+              suppliesStation: null,
+            },
+            {
+              ...STORE,
+              id: id(32),
+              name: 'South store',
+              locationId: SOUTH.id,
+              suppliesStation: null,
+            },
           ],
         }),
     });
     mockState.search = `branch=${NORTH.id}`;
     render(<InventoryPage />);
     await userEvent.click(await tab('warehouses'));
-    expect(screen.getAllByTestId('warehouse-row').map((r) => r.dataset.name)).toEqual(['North store']);
+    expect(screen.getAllByTestId('warehouse-row').map((r) => r.dataset.name)).toEqual([
+      'North store',
+    ]);
   });
 
   it('adds a warehouse that supplies only the branches ticked, moving one from another (ADR 0067)', async () => {
@@ -344,7 +431,9 @@ describe('InventoryPage', () => {
     render(<InventoryPage />);
     await userEvent.click(await tab('warehouses'));
     // The list says whom a warehouse supplies.
-    expect(screen.getAllByTestId('warehouse-supplies').map((c) => c.textContent)).toContain('South branch');
+    expect(screen.getAllByTestId('warehouse-supplies').map((c) => c.textContent)).toContain(
+      'South branch',
+    );
     await userEvent.click(screen.getByTestId('warehouse-create'));
     const dialog = await screen.findByRole('dialog');
     await userEvent.type(within(dialog).getByLabelText('Name'), 'Second warehouse');

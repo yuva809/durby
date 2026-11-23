@@ -43,6 +43,7 @@ import { DocumentForm } from './document-form';
 import { DocumentsTab } from './documents-tab';
 import { ItemDialog, ItemsTab } from './items-tab';
 import { StockTab } from './stock-tab';
+import { RequestCartProvider } from '../requests/request-cart-context';
 import { RequestCartSheet } from '../requests/request-cart-sheet';
 import { WarehousesTab } from './warehouses-tab';
 
@@ -173,7 +174,7 @@ function Inventory({
   );
 
   if (overview) {
-    return withData((data) =>
+    const page = withData((data) =>
       tab === 'stock' ? (
         <CategoryOverview
           data={data}
@@ -216,6 +217,12 @@ function Inventory({
           {tabContent(tab, data)}
         </div>
       ),
+    );
+    // One request cart for the rows and the header's Request Cart, so its count follows every click (ADR 0065).
+    return requests && organizationId ? (
+      <RequestCartProvider organizationId={organizationId}>{page}</RequestCartProvider>
+    ) : (
+      page
     );
   }
 

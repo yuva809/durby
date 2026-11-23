@@ -365,6 +365,38 @@ export const stockQuerySchema = z.object({
   warehouseId: z.uuid().optional(),
 });
 
+/**
+ * One movement of an item (its activity ledger): when, which document, where, how much in (+) or out (−), at what
+ * cost (null without inventory.prices.read), remarks, and the item's quantity in the warehouses shown after it.
+ */
+export const itemMovementSchema = z.object({
+  id: z.uuid(),
+  createdAt: z.iso.datetime(),
+  documentId: z.uuid(),
+  documentNumber: z.string(),
+  kind: z.enum(STOCK_DOCUMENT_KINDS),
+  reason: z.enum(ADJUSTMENT_REASONS).nullable(),
+  warehouseId: z.uuid(),
+  warehouseName: z.string(),
+  quantity: z.string(),
+  unitCost: z.string().nullable(),
+  remarks: z.string().nullable(),
+  balance: z.string(),
+});
+export type ItemMovement = z.infer<typeof itemMovementSchema>;
+
+/** The most recent movements first, at most this many; the opening is the quantity before the oldest shown. */
+export const ITEM_MOVEMENTS_LIMIT = 500;
+
+export const itemMovementsSchema = z.object({
+  opening: z.string(),
+  closing: z.string(),
+  /** More movements than shown (older ones left out). */
+  truncated: z.boolean(),
+  movements: z.array(itemMovementSchema),
+});
+export type ItemMovements = z.infer<typeof itemMovementsSchema>;
+
 export const warehouseListResponseSchema = z.object({ data: z.array(warehouseSchema) });
 export const stockItemListResponseSchema = z.object({ data: z.array(stockItemSchema) });
 export const stockLevelListResponseSchema = z.object({ data: z.array(stockLevelSchema) });

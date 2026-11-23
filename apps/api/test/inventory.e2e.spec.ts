@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
+  itemMovementsSchema,
   stockDocumentListResponseSchema,
   stockDocumentSchema,
   stockItemSchema,
@@ -322,6 +323,56 @@ describe('inventory', () => {
     const locked = await patch(s.owner, `/items/${s.tomatoes}`, { unit: 'g' }).expect(409);
     expect(locked.body).toMatchObject({ code: 'inventory.unit_locked' });
     await patch(s.owner, `/items/${s.tomatoes}`, { minQuantity: '2.5', sku: 'TOM-1' }).expect(200);
+  });
+
+  it("lists an item's activity per warehouse with running balances, opening and closing", async () => {
+    const s = await setup();
+    await post(s.owner, '/receipts', {
+      warehouseId: s.main,
+      supplier: 'Metro',
+      lines: [{ itemId: s.tomatoes, quantity: '10', unitCost: '2.5' }],
+    }).expect(201);
+    await post(s.owner, '/adjustments', {
+      warehouseId: s.main,
+      reason: 'waste',
+      note: 'Dropped a crate',
+      lines: [{ itemId: s.tomatoes, quantity: '-1.5' }],
+    }).expect(201);
+    await post(s.owner, '/transfers', {
+      fromWarehouseId: s.main,
+      toWarehouseId: s.bar,
+      lines: [{ itemId: s.tomatoes, quantity: '3' }],
+    }).expect(201);
+    // Cola's movements are not Tomatoes'.
+    await post(s.owner, '/receipts', {
+      warehouseId: s.main,
+      lines: [{ itemId: s.cola, quantity: '24', unitCost: '0.45' }],
+    }).expect(201);
+
+    const main = itemMovementsSchema.parse(
+      (await get(s.owner, `/items/${s.tomatoes}/movements?warehouseId=${s.main}`).expect(200)).body,
+    );
+    expect(main).toMatchObject({ opening: '0.000', closing: '5.500', truncated: false });
+    expect(
+      main.movements.map((m) => [m.kind, m.reason, m.quantity, m.balance, m.unitCost, m.remarks]),
+    ).toEqual([
+      ['transfer', null, '-3.000', '5.500', '2.5000', null],
+      ['adjustment', 'waste', '-1.500', '8.500', '2.5000', 'Dropped a crate'],
+      ['receipt', null, '10.000', '10.000', '2.5000', 'Metro'],
+    ]);
+    expect(main.movements[2]!.documentNumber).toMatch(/^GR-/);
+
+    // Every warehouse: the transfer's two sides net out.
+    const all = itemMovementsSchema.parse(
+      (await get(s.owner, `/items/${s.tomatoes}/movements`).expect(200)).body,
+    );
+    expect(all).toMatchObject({ opening: '0.000', closing: '8.500' });
+    expect(all.movements).toHaveLength(4);
+    expect(all.movements.at(-1)!.balance).toBe('10.000');
+
+    await get(s.owner, `/items/${uuidv7()}/movements`).expect(404);
+    const other = await setup();
+    await get(other.owner, `/items/${s.tomatoes}/movements`).expect(404);
   });
 
   it('lists documents newest first and shows one with its lines', async () => {

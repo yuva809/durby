@@ -49,6 +49,7 @@ import {
   importItemsRequestSchema,
   type ImportOpeningStockRequest,
   importOpeningStockRequestSchema,
+  type ItemMovements,
 } from '@durby/shared';
 import { CatalogService } from '../catalog';
 import { RequireFeature } from '../../platform/config/entitlements';
@@ -200,6 +201,15 @@ export class InventoryController {
     @Body(new ZodBody(transferRequestSchema)) body: TransferRequest,
   ): Promise<StockDocument> {
     return this.stockService.forViewer(await this.stockService.transfer(body));
+  }
+
+  @RequirePermission('inventory.stock.read')
+  @Get('items/:id/movements')
+  itemMovements(
+    @Param('id', id(() => inventoryErrors.itemNotFound())) itemId: string,
+    @Query(new ZodQuery(stockQuerySchema)) query: StockQuery,
+  ): Promise<ItemMovements> {
+    return this.stockService.itemMovements(itemId, query);
   }
 
   @RequirePermission('inventory.stock.read')

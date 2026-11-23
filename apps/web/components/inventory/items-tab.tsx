@@ -6,8 +6,10 @@ import {
   STOCK_UNITS,
   type StockItem,
   type StockUnit,
+  unitCostSchema,
   type Warehouse,
 } from '@durby/shared';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
@@ -16,6 +18,7 @@ import {
   createStockItem,
   deleteStockItem,
   loadStock,
+  postAdjustment,
   postReceipt,
   updateStockItem,
 } from '../../lib/inventory/api';
@@ -32,6 +35,25 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { LocationFilter, stockQueryOf } from './location-filter';
 import type { InventoryData } from './inventory-page';
+
+/** Why stock changes while editing an item: received (a receipt at a cost), or an adjustment's reason. */
+type StockReason = 'purchase' | 'correction' | 'count' | 'waste' | 'breakage' | 'other';
+
+/** a − b, exact to thousandths ("122" − "120" → "2", "4.5" − "5" → "-0.5"). */
+function difference(a: string, b: string): string {
+  const milli = (v: string) => {
+    const [whole = '0', fraction = ''] = v.replace(',', '.').replace('-', '').split('.');
+    const value = BigInt(whole || '0') * 1000n + BigInt((fraction + '000').slice(0, 3));
+    return v.trim().startsWith('-') ? -value : value;
+  };
+  const d = milli(a) - milli(b);
+  const sign = d < 0n ? '-' : '';
+  const abs = d < 0n ? -d : d;
+  const fraction = String(abs % 1000n)
+    .padStart(3, '0')
+    .replace(/0+$/, '');
+  return `${sign}${abs / 1000n}${fraction ? `.${fraction}` : ''}`;
+}
 
 /** Stock items: name, article number, unit and reorder level; managed with inventory.items.edit. */
 export function ItemsTab({ data }: { data: InventoryData }) {
@@ -120,7 +142,13 @@ export function ItemsTab({ data }: { data: InventoryData }) {
             >
               <div className="flex flex-col gap-2">
                 <span className="flex flex-wrap items-center gap-2 font-medium">
-                  {item.name}
+                  <Link
+                    href={`/inventory/items/${item.id}`}
+                    className="underline-offset-4 hover:underline"
+                    data-testid="item-link"
+                  >
+                    {item.name}
+                  </Link>
                   {item.archivedAt && <Badge>{t('inventory.page.archived')}</Badge>}
                 </span>
                 <span className="text-sm text-muted-foreground">
@@ -154,7 +182,13 @@ export function ItemsTab({ data }: { data: InventoryData }) {
               </div>
               {canManage && (
                 <span className="flex gap-2">
-                  <ItemDialog item={item} categories={data.categories} onDone={data.reload} />
+                  <ItemDialog
+                    item={item}
+                    categories={data.categories}
+                    warehouses={data.warehouses}
+                    held={allLevels.status === 'ready' ? heldIn(item.id) : undefined}
+                    onDone={data.reload}
+                  />
                   <ArchiveButton item={item} onDone={data.reload} />
                   {canDelete && <DeleteItemButton item={item} onDone={data.reload} />}
                 </span>
@@ -220,6 +254,7 @@ export function ItemDialog({
   trigger,
   defaultCategoryId,
   warehouses,
+  held,
 }: {
   item?: StockItem;
   categories: readonly ProductCategory[] | null;
@@ -227,8 +262,13 @@ export function ItemDialog({
   trigger?: string;
   /** Pre-filled for a new item, e.g. the category open on the inventory page. */
   defaultCategoryId?: string | null;
-  /** New items only: the warehouse that gets the opening stock (stock is kept per warehouse). */
+  /**
+   * The warehouse that gets a new item's opening stock, or an edited item's added stock (stock is kept per
+   * warehouse).
+   */
   warehouses?: readonly Warehouse[];
+  /** An edited item's stock per warehouse, to show what is there before adding. */
+  held?: readonly { warehouseId: string; quantity: string }[];
 }) {
   const t = useT();
   const id = useId();
@@ -245,6 +285,35 @@ export function ItemDialog({
   const [unitCost, setUnitCost] = useState('');
   const [checked, setChecked] = useState(false);
   const receiptAction = useActionKey();
+  // Editing: the stock quantity in a warehouse, set to what is counted. The difference is booked: more as received
+  // goods at a cost (a receipt) or found stock (an adjustment at the average cost); less as an adjustment. Each
+  // reason only for who may book it.
+  const permissions = session?.activePermissions ?? [];
+  const receives = permissions.includes('inventory.stock.receive');
+  const adjusts = permissions.includes('inventory.stock.adjust');
+  const onHand = (warehouse: string) =>
+    shortQuantity(held?.find((l) => l.warehouseId === warehouse)?.quantity ?? '0');
+  const target = opening.trim().replace(',', '.');
+  const change =
+    item && target !== '' && isQuantity(target) ? difference(target, onHand(warehouseId)) : '0';
+  const up = Number(change) > 0;
+  const reasons: StockReason[] = up
+    ? [
+        ...(receives ? (['purchase'] as const) : []),
+        ...(adjusts ? (['correction', 'count', 'other'] as const) : []),
+      ]
+    : adjusts
+      ? ['correction', 'count', 'waste', 'breakage', 'other']
+      : [];
+  const [chosenReason, setReason] = useState<StockReason>('purchase');
+  const reason = reasons.includes(chosenReason) ? chosenReason : (reasons[0] ?? 'correction');
+  const [remarks, setRemarks] = useState('');
+  const changing = item !== undefined && Number(change) !== 0;
+  const costInvalid =
+    checked &&
+    changing &&
+    reason === 'purchase' &&
+    !unitCostSchema.safeParse(unitCost.trim().replace(',', '.')).success;
   const activeWarehouses = (warehouses ?? []).filter((w) => w.archivedAt === null);
   const openingInvalid = checked && opening.trim() !== '' && !isQuantity(opening.trim());
   // Active categories to choose from, plus the item's own even if archived meanwhile (it stays until changed).
@@ -278,9 +347,13 @@ export function ItemDialog({
         setSalePrice(item?.salePrice ?? '');
         setCategoryId(item ? (item.categoryId ?? '') : (defaultCategoryId ?? ''));
         // The main warehouse by default, else the first active one.
-        setWarehouseId((activeWarehouses.find((w) => w.isMain) ?? activeWarehouses[0])?.id ?? '');
-        setOpening('');
+        const first = (activeWarehouses.find((w) => w.isMain) ?? activeWarehouses[0])?.id ?? '';
+        setWarehouseId(first);
+        // Editing: the quantity there now, to change; a new item: its opening stock, empty.
+        setOpening(item && first ? onHand(first) : '');
         setUnitCost('');
+        setReason('purchase');
+        setRemarks('');
         setChecked(false);
       }}
       submit={() => {
@@ -289,14 +362,50 @@ export function ItemDialog({
         if (salePrice.trim() !== '' && !priceSchema.safeParse(salePrice.trim()).success)
           return null;
         if (item) {
-          return updateStockItem(store, action, item.id, {
-            name: name.trim(),
-            sku: sku.trim() || null,
-            unit,
-            minQuantity: min.trim() || null,
-            ...(sells ? { salePrice: salePrice.trim() || null } : {}),
-            ...(categories ? { categoryId: categoryId || null } : {}),
-          });
+          if (target !== '' && !isQuantity(target)) return null;
+          // A changed quantity nobody here may book is not dropped silently.
+          if (changing && reasons.length === 0) return null;
+          const adding = changing && reasons.length > 0 && warehouseId !== '';
+          if (
+            adding &&
+            reason === 'purchase' &&
+            !unitCostSchema.safeParse(unitCost.trim().replace(',', '.')).success
+          ) {
+            return null;
+          }
+          return (async () => {
+            const updated = await updateStockItem(store, action, item.id, {
+              name: name.trim(),
+              sku: sku.trim() || null,
+              unit,
+              minQuantity: min.trim() || null,
+              ...(sells ? { salePrice: salePrice.trim() || null } : {}),
+              ...(categories ? { categoryId: categoryId || null } : {}),
+            });
+            if (!updated.ok || !adding) return updated;
+            const note = remarks.trim() ? { note: remarks.trim().slice(0, 500) } : {};
+            // Received goods carry their cost; found stock comes in at the item's average cost.
+            const stock =
+              reason === 'purchase'
+                ? await postReceipt(store, receiptAction, {
+                    warehouseId,
+                    ...note,
+                    lines: [
+                      {
+                        itemId: item.id,
+                        quantity: change,
+                        unitCost: unitCost.trim().replace(',', '.'),
+                      },
+                    ],
+                  })
+                : await postAdjustment(store, receiptAction, {
+                    warehouseId,
+                    reason,
+                    ...note,
+                    lines: [{ itemId: item.id, quantity: change }],
+                  });
+            return stock.ok ? updated : stock;
+          })();
         }
         const openingQty = opening.trim();
         if (openingQty !== '' && (!isQuantity(openingQty) || warehouseId === '')) return null;
@@ -449,6 +558,117 @@ export function ItemDialog({
             />
           </Field>
         </>
+      )}
+      {item && activeWarehouses.length > 0 && (receives || adjusts) && (
+        <section className="flex flex-col gap-4 border-t pt-4" data-testid="item-add-stock">
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t('inventory.page.pricingStock')}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              id={`${id}-add`}
+              label={t('inventory.addStock.quantity', { unit: t(`inventory.units.${item.unit}`) })}
+              problem={openingInvalid ? t('inventory.page.quantityInvalid') : null}
+            >
+              <Input
+                id={`${id}-add`}
+                inputMode="decimal"
+                value={opening}
+                aria-invalid={openingInvalid || undefined}
+                onChange={(e) => setOpening(e.target.value.replace(',', '.'))}
+                data-testid="item-add-quantity"
+              />
+            </Field>
+            <Field id={`${id}-warehouse`} label={t('inventory.fields.warehouse')} problem={null}>
+              <Select
+                id={`${id}-warehouse`}
+                value={warehouseId}
+                onChange={(e) => {
+                  // Another warehouse: what it has, to change.
+                  setWarehouseId(e.target.value);
+                  setOpening(onHand(e.target.value));
+                }}
+                data-testid="item-add-warehouse"
+              >
+                {activeWarehouses.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <p className="-mt-2 text-xs text-muted-foreground" data-testid="item-add-on-hand">
+            {changing
+              ? t(up ? 'inventory.addStock.changeUp' : 'inventory.addStock.changeDown', {
+                  quantity: change.replace('-', ''),
+                  unit: t(`inventory.units.${item.unit}`),
+                  onHand: onHand(warehouseId),
+                })
+              : t('inventory.addStock.onHand', {
+                  quantity: onHand(warehouseId),
+                  unit: t(`inventory.units.${item.unit}`),
+                  name: activeWarehouses.find((w) => w.id === warehouseId)?.name ?? '',
+                })}
+          </p>
+          {changing && reasons.length === 0 && (
+            <p className="text-sm text-destructive" data-testid="item-add-not-allowed">
+              {t('inventory.addStock.notAllowed')}
+            </p>
+          )}
+          {changing && reasons.length > 0 && (
+            <>
+              <Field id={`${id}-reason`} label={t('inventory.addStock.reason')} problem={null}>
+                <Select
+                  id={`${id}-reason`}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value as StockReason)}
+                  data-testid="item-add-reason"
+                >
+                  {reasons.map((r) => (
+                    <option key={r} value={r}>
+                      {t(`inventory.addStock.reasons.${r}`)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              {reason === 'purchase' ? (
+                <Field
+                  id={`${id}-add-cost`}
+                  label={t('inventory.fields.unitCost')}
+                  problem={costInvalid ? t('inventory.addStock.costInvalid') : null}
+                >
+                  <Input
+                    id={`${id}-add-cost`}
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={unitCost}
+                    aria-invalid={costInvalid || undefined}
+                    onChange={(e) => setUnitCost(e.target.value)}
+                    data-testid="item-add-cost"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {t('inventory.addStock.costHint')}
+                  </span>
+                </Field>
+              ) : (
+                <p className="text-xs text-muted-foreground" data-testid="item-add-average">
+                  {t(up ? 'inventory.addStock.averageHint' : 'inventory.addStock.outHint')}
+                </p>
+              )}
+              <Field id={`${id}-remarks`} label={t('inventory.addStock.remarks')} problem={null}>
+                <Input
+                  id={`${id}-remarks`}
+                  value={remarks}
+                  maxLength={500}
+                  placeholder={t('inventory.addStock.remarksPlaceholder')}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  data-testid="item-add-remarks"
+                />
+              </Field>
+            </>
+          )}
+        </section>
       )}
     </FormDialog>
   );
