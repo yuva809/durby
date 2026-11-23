@@ -54,7 +54,7 @@ export default function ResetPasswordPage() {
             maxLength={PASSWORD_MAX_LENGTH}
             required
           />
-          <small>{t('auth.reset.hint')}</small>
+          <small>{t('auth.reset.hint', { min: String(PASSWORD_MIN_LENGTH) })}</small>
         </div>
         <div className={fieldClass}>
           <label htmlFor="reset-confirm">{t('auth.reset.confirm')}</label>

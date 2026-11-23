@@ -31,15 +31,38 @@ dropped, ADR 0044). The page and its menu item show the kinds the user may run.
 
 ## Templates (CSV header row)
 
-| Kind          | Columns                                     | Required                        |
-| ------------- | ------------------------------------------- | ------------------------------- |
-| Categories    | `name`                                      | `name`                          |
-| Stock items   | `name, sku, unit, min_quantity, sale_price` | `name, unit` (kg, g, l, ml, pc) |
-| Opening stock | `warehouse, item, quantity, unit_cost`      | all                             |
-| Customers     | `name, code, phone, email, address, note`   | `name`                          |
+| Kind          | Columns                                                                 | Required     |
+| ------------- | ----------------------------------------------------------------------- | ------------ |
+| Categories    | `name`                                                                  | `name`       |
+| Stock items   | `name, sku, unit, brand, pack_size, category, min_quantity, sale_price` | `name, unit` |
+| Opening stock | `warehouse, item, quantity, unit_cost`                                  | all          |
+| Customers     | `name, code, phone, email, address, note`                               | `name`       |
 
-Headers match loosely (case, spaces and `_` ignored) with a few aliases (`price` → sale price, `qty` → quantity,
-`mobile` → phone, …). Comma or semicolon separated, UTF-8 with or without BOM, decimal commas (`8,50`) accepted.
+`unit` takes a code or the name the organization shows for it (`Stück`, `Stk.`); the browser turns names into codes
+(`withUnitCodes`). `brand` is free text (max 100). `pack_size` is the item's pack size (ADR 0055), read as the whole cell
+(`parsePackCell`, shared with the api): `12 x 500 ml`, `12×400 ML`, `12x200ml`, `5kg`, `1,5 ltr`, `6 x 1 Stück`, a bare
+count (`10`) or `Pack of 6` is the count only. The unit word is a code, a short form (`ltr`, `gr`) or a shown name, in
+the browser the person's language, in the api the organization's labels in every locale. Anything else, a count outside
+1..100000, a size of 0 or with more than 3 decimals is a problem on `packSize` (`invalid`); a brand over 100 characters
+is `too_long`. Empty `brand` / `pack_size` = not set: a new item has none, an existing item keeps its own. A filled
+`pack_size` replaces the item's whole pack size. The preview shows it as `12 × 500 ml`. Created and changed items go
+into the audit snapshot with these fields as usual.
+
+`category` files the item under an **existing** product category (ADR 0048), by its name (case and spaces ignored) among
+the organization's non-archived categories (`resolveCategory`, shared). The whole text is tried as a name first, so a
+category called `Oil / Ghee` works; otherwise `Parent / Child` names a secondary category under its parent. A name that
+matches nothing is `unknown`; a bare name that several categories share (the same name under different parents) is
+`ambiguous`: write `Parent / Child`. The import never creates categories. The browser checks against the categories it
+loads; the api matches again inside the import's own transaction (tenant client, through
+`CatalogService.activeCategories`) and refuses the whole file on any problem. On a new item the category is set; on an
+existing one an empty cell keeps its category and a filled cell replaces it. Categories are in the audit snapshot
+(`categoryId`). A whole number of pieces in `pack_size` (`50 pcs`, `1 pc`, `50 Stück`) is the count only, like `50` and
+`Pack of 50`; invoice descriptions are read as before.
+
+Headers match loosely (case, spaces and `_` ignored) with a few aliases (`price` → sale price, `Marke` → brand, `Kategorie` / `product category` → category, `pack` / `Packung` / `Gebinde` → pack size, `qty` → quantity,
+`mobile` → phone, …). Stock item units may be the code (`pc`) or the name the organization sees for it
+(a partner's `Stück`, German `Stk.`; case and trailing dots ignored): the browser turns names into codes before the
+check, and the preview shows the name. Comma or semicolon separated, UTF-8 with or without BOM, decimal commas (`8,50`) accepted.
 
 Excel: `.xlsx` workbooks are read on the device (`readXlsxRows`, `read-excel-file`), from the sheet named like the kind
 ("Items", "Opening stock") or else the first; numbers as the text Excel stored (no float noise). CSV and Excel both go

@@ -40,7 +40,7 @@
   "staff.login.password": "Passwort",
   "staff.login.submit": "Weiter",
   "staff.accept.title": "Mitarbeiterkonto einrichten",
-  "staff.accept.passwordHint": "Mindestens 12 Zeichen.",
+  "staff.accept.passwordHint": "Mindestens {min} Zeichen.",
   "staff.accept.missingToken": "Dieser Einladungslink ist unvollständig. Öffnen Sie den Link aus der E-Mail erneut.",
   "staff.accept.submit": "Passwort festlegen",
   "staff.home.title": "Willkommen",

@@ -1,6 +1,6 @@
 import { checkItemRows, checkOpeningStockRows, type ItemImportRow } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
-import { isExcel, readRows, readTableRows, templateCsv } from './table';
+import { isExcel, readRows, readTableRows, templateCsv, withUnitCodes } from './table';
 
 describe('readRows (Import Data)', () => {
   it('reads the template columns in any order, with loose headers and semicolons', () => {
@@ -11,8 +11,26 @@ describe('readRows (Import Data)', () => {
     expect(result).toEqual({
       ok: true,
       rows: [
-        { name: 'Rice 5 kg', sku: '', unit: 'pc', minQuantity: '2', salePrice: '12.90' },
-        { name: 'Sugar', sku: '', unit: 'kg', minQuantity: '', salePrice: '' },
+        {
+          name: 'Rice 5 kg',
+          sku: '',
+          unit: 'pc',
+          brand: '',
+          packSize: '',
+          category: '',
+          minQuantity: '2',
+          salePrice: '12.90',
+        },
+        {
+          name: 'Sugar',
+          sku: '',
+          unit: 'kg',
+          brand: '',
+          packSize: '',
+          category: '',
+          minQuantity: '',
+          salePrice: '',
+        },
       ],
     });
   });
@@ -88,5 +106,81 @@ describe('readTableRows (Excel and CSV alike)', () => {
     expect(isExcel('Stock.XLSX')).toBe(true);
     expect(isExcel('stock.xls')).toBe(false);
     expect(isExcel('stock.csv')).toBe(false);
+  });
+});
+
+describe('withUnitCodes', () => {
+  // As a partner that calls pieces "Stück" (and German defaults "Stk.") would show them.
+  const labels: Record<string, string> = { pc: 'Stück', box: 'Karton', kg: 'kg' };
+  const labelOf = (u: string) => labels[u] ?? u;
+
+  it('turns shown unit names into codes, ignoring case, spaces and trailing dots', () => {
+    const rows = withUnitCodes(
+      [
+        { name: 'A', unit: 'Stück' },
+        { name: 'B', unit: ' stück. ' },
+        { name: 'C', unit: 'KARTON' },
+      ],
+      labelOf,
+    );
+    expect(rows.map((r) => r.unit)).toEqual(['pc', 'pc', 'box']);
+  });
+
+  it('keeps codes, and leaves unknown units for the check to report', () => {
+    const rows = withUnitCodes(
+      [
+        { name: 'A', unit: 'PC' },
+        { name: 'B', unit: 'Box' },
+        { name: 'C', unit: 'crate' },
+      ],
+      labelOf,
+    );
+    expect(rows.map((r) => r.unit)).toEqual(['pc', 'box', 'crate']);
+  });
+});
+
+describe('brand and pack size columns', () => {
+  it('reads them by their names and aliases', () => {
+    const read = readRows(
+      'items',
+      'Name,Marke,Gebinde,unit\r\nCoconut milk,Chaokoh,12 x 500 ml,pc\r\nTea,,,pc\r\n',
+    );
+    expect(read.ok && read.rows).toEqual([
+      {
+        name: 'Coconut milk',
+        sku: '',
+        unit: 'pc',
+        brand: 'Chaokoh',
+        packSize: '12 x 500 ml',
+        category: '',
+        minQuantity: '',
+        salePrice: '',
+      },
+      {
+        name: 'Tea',
+        sku: '',
+        unit: 'pc',
+        brand: '',
+        packSize: '',
+        category: '',
+        minQuantity: '',
+        salePrice: '',
+      },
+    ]);
+    const alt = readRows('items', 'name,unit,Brand,Pack Size\r\nA,pc,B,5kg\r\n');
+    expect(alt.ok && alt.rows[0]).toMatchObject({ brand: 'B', packSize: '5kg' });
+    const pack = readRows('items', 'name,unit,pack\r\nA,pc,10\r\n');
+    expect(pack.ok && pack.rows[0]).toMatchObject({ packSize: '10' });
+  });
+});
+
+describe('category column', () => {
+  it('reads it by its names and keeps "Category" as the name of the categories import', () => {
+    for (const header of ['category', 'Kategorie', 'CategoryName', 'Product Category']) {
+      const read = readRows('items', `name,unit,${header}\r\nA,pc,Rice\r\n`);
+      expect(read.ok && read.rows[0]).toMatchObject({ category: 'Rice' });
+    }
+    const categories = readRows('categories', 'Category\r\nRice\r\n');
+    expect(categories.ok && categories.rows).toEqual([{ name: 'Rice' }]);
   });
 });

@@ -3,6 +3,8 @@ import {
   IMPORT_REQUIRED_COLUMNS,
   IMPORT_TEMPLATES,
   type ImportKind,
+  type StockUnit,
+  unitLookup,
 } from '@durby/shared';
 import { cellText, splitCsv } from '../catalog/import-file';
 
@@ -21,6 +23,8 @@ const FIELD: Record<string, string> = {
   name: 'name',
   sku: 'sku',
   unit: 'unit',
+  brand: 'brand',
+  packsize: 'packSize',
   minquantity: 'minQuantity',
   saleprice: 'salePrice',
   warehouse: 'warehouse',
@@ -41,6 +45,14 @@ const ALIASES: Readonly<Record<ImportKind, Record<string, string>>> = {
     itemname: 'name',
     product: 'name',
     articleno: 'sku',
+    marke: 'brand',
+    category: 'category',
+    kategorie: 'category',
+    categoryname: 'category',
+    productcategory: 'category',
+    pack: 'packSize',
+    packung: 'packSize',
+    gebinde: 'packSize',
     price: 'salePrice',
     minqty: 'minQuantity',
   },
@@ -116,10 +128,10 @@ export function readTableRows(kind: ImportKind, table: readonly string[][]): Rea
     const n = normalize(h);
     return FIELD[n] ?? ALIASES[kind][n] ?? null;
   });
-  const wanted = IMPORT_TEMPLATES[kind].map((c) => FIELD[normalize(c)]!);
-  const missing = IMPORT_REQUIRED_COLUMNS[kind].filter(
-    (c) => !columns.includes(FIELD[normalize(c)]!),
-  );
+  // A template column is a field of its own, or (like "category", also the categories import's name) an alias.
+  const fieldOf = (c: string) => FIELD[normalize(c)] ?? ALIASES[kind][normalize(c)]!;
+  const wanted = IMPORT_TEMPLATES[kind].map(fieldOf);
+  const missing = IMPORT_REQUIRED_COLUMNS[kind].filter((c) => !columns.includes(fieldOf(c)));
   if (missing.length > 0)
     return { ok: false, problem: { kind: 'missingColumns', columns: missing } };
   const data = records.filter((r) => r.some((cell) => cell.trim() !== ''));
@@ -142,3 +154,19 @@ export function readTableRows(kind: ImportKind, table: readonly string[][]): Rea
 
 /** The template file: the header row only. */
 export const templateCsv = (kind: ImportKind): string => `${IMPORT_TEMPLATES[kind].join(',')}\r\n`;
+
+/**
+ * Stock item rows may name a unit by its code (`pc`) or by the name the organization sees for it (`Stück`, `Stk.`):
+ * names are turned into codes before the rows are checked and sent. `labelOf` gives the shown name of each code;
+ * a cell matching neither is left as it is, so the check reports it.
+ */
+export function withUnitCodes(
+  rows: readonly Record<string, string>[],
+  labelOf: (unit: StockUnit) => string,
+): Record<string, string>[] {
+  const unitOf = unitLookup(labelOf);
+  return rows.map((row) => {
+    const unit = row.unit === undefined ? undefined : unitOf(row.unit);
+    return unit ? { ...row, unit } : { ...row };
+  });
+}

@@ -2,6 +2,7 @@
 
 import {
   INVENTORY_NAME_MAX_LENGTH,
+  packProblems,
   type ProductCategory,
   STOCK_UNITS,
   type StockItem,
@@ -25,7 +26,6 @@ import {
   setMissingCategory,
 } from '../../lib/inventory/invoice-receipt';
 import { categoryPath } from '../../lib/inventory/overview';
-import { packProblems } from '../../lib/inventory/pack-size';
 import { useActionKey } from '../../lib/use-action-key';
 import { cn } from '../../lib/utils';
 import { Field, FormDialog } from '../form-dialog';

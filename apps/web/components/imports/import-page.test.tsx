@@ -53,6 +53,27 @@ function api() {
         }),
       );
     }
+    if (input.startsWith('/api/v1/catalog/categories')) {
+      const category = (n: number, name: string, parentId: string | null) => ({
+        id: id(n),
+        name,
+        sortOrder: n,
+        station: 'kitchen',
+        description: null,
+        parentId,
+        imageVersion: null,
+        archivedAt: null,
+      });
+      return Promise.resolve(
+        Response.json({
+          data: [
+            category(10, 'Food', null),
+            category(11, 'Oil', id(10)),
+            category(12, 'Rice', null),
+          ],
+        }),
+      );
+    }
     if (input.startsWith('/api/v1/inventory/items')) {
       return Promise.resolve(
         Response.json({
@@ -92,6 +113,41 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
     expect(screen.queryByTestId('import-kind-items')).toBeNull();
   });
 
+  it('previews a pack size as the item shows it and flags one that is no pack size', async () => {
+    signedInAs('owner');
+    api();
+    render(<ImportPage />);
+    await userEvent.click(screen.getByTestId('import-kind-items'));
+    await userEvent.upload(
+      screen.getByTestId('import-file'),
+      csv('name,unit,brand,pack_size\nCoconut milk,pc,Chaokoh,12x500ml\nTea,pc,,big pack\n'),
+    );
+    const preview = await screen.findByTestId('import-preview');
+    expect(within(preview).getByText('12 × 500 ml')).toBeTruthy();
+    expect(within(preview).getByTestId('import-problems').textContent).toContain(
+      'Row 2 · packSize: not a valid value',
+    );
+  });
+
+  it('checks the category column against the existing categories', async () => {
+    signedInAs('owner');
+    api();
+    render(<ImportPage />);
+    await userEvent.click(screen.getByTestId('import-kind-items'));
+    await userEvent.upload(
+      screen.getByTestId('import-file'),
+      csv('name,unit,Kategorie\nA,pc,rice\nB,pc,Food / Oil\nC,pc,Dairy\n'),
+    );
+    const preview = await screen.findByTestId('import-preview');
+    await waitFor(() =>
+      expect(within(preview).getByTestId('import-problems').textContent).toContain(
+        'Row 3 · category: not found',
+      ),
+    );
+    expect(within(preview).getByTestId('import-problems').textContent).not.toContain('Row 1');
+    expect(within(preview).getByTestId('import-problems').textContent).not.toContain('Row 2');
+  });
+
   it('previews items, shows their problems and imports nothing until they are fixed', async () => {
     signedInAs('owner');
     const calls = api();
@@ -101,6 +157,9 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
       'name',
       'sku',
       'unit',
+      'brand',
+      'pack_size',
+      'category',
       'min_quantity',
       'sale_price',
     ]);
@@ -126,8 +185,26 @@ describe('Import Data (/import, ADR 0044 step 4)', () => {
         path: '/api/v1/inventory/items/import',
         body: {
           rows: [
-            { name: 'Rice', sku: '', unit: 'pc', minQuantity: '', salePrice: '12.90' },
-            { name: 'Oil', sku: '', unit: 'l', minQuantity: '', salePrice: '' },
+            {
+              name: 'Rice',
+              sku: '',
+              unit: 'pc',
+              brand: '',
+              packSize: '',
+              category: '',
+              minQuantity: '',
+              salePrice: '12.90',
+            },
+            {
+              name: 'Oil',
+              sku: '',
+              unit: 'l',
+              brand: '',
+              packSize: '',
+              category: '',
+              minQuantity: '',
+              salePrice: '',
+            },
           ],
         },
       }),

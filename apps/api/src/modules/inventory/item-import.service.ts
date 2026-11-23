@@ -1,14 +1,21 @@
 import { Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
+import { LOCALES } from '@durby/i18n';
 import {
   checkItemRows,
+  itemRowPack,
+  resolveCategory,
+  STOCK_UNITS,
+  type UnitLabels,
   type DataImportResult,
   type ImportItemsRequest,
   type StockItem,
   type StockUnit,
 } from '@durby/shared';
+import { CatalogService } from '../catalog';
 import { auditActor, AuditService } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
+import { LabelService } from '../../platform/labels';
 import { AccessService } from '../../platform/rbac';
 import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../../platform/tenancy';
 import { inventoryErrors, isUniqueViolation } from './inventory-errors';
@@ -27,15 +34,42 @@ export class ItemImportService {
     private readonly access: AccessService,
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
+    private readonly labels: LabelService,
+    private readonly catalog: CatalogService,
   ) {}
 
+  /**
+   * The names the organization shows for each unit, as the browser checks them (its labels, in every locale: the api
+   * does not know the person's language, so a name valid in any of them is accepted; a unit's code always is).
+   */
+  private async unitNames(): Promise<UnitLabels> {
+    const names = new Map<StockUnit, string[]>();
+    for (const locale of LOCALES) {
+      const t = await this.labels.translator(locale);
+      for (const unit of STOCK_UNITS) {
+        names.set(unit, [...(names.get(unit) ?? []), t(`inventory.units.${unit}`)]);
+      }
+    }
+    return (unit) => names.get(unit) ?? unit;
+  }
+
   async importItems(body: ImportItemsRequest): Promise<DataImportResult> {
-    const problems = checkItemRows(body.rows);
+    const labelOf = await this.unitNames();
+    const problems = checkItemRows(body.rows, labelOf);
     if (problems.length > 0) throw inventoryErrors.importInvalid(problems);
     const { tenantId, userId } = this.tenantContext.require();
     const canEdit = await this.access.can('inventory.items.edit');
     try {
       return await this.db.$transaction(async (tx) => {
+        // Category names are matched here, in the import's own transaction (never created, never another tenant's).
+        const categories = await this.catalog.activeCategories(tx);
+        const categoryProblems = checkItemRows(body.rows, labelOf, { categories });
+        if (categoryProblems.length > 0) throw inventoryErrors.importInvalid(categoryProblems);
+        const categoryOf = (cell: string | undefined): string | null => {
+          const text = (cell ?? '').trim();
+          const found = text ? resolveCategory(text, categories) : null;
+          return typeof found === 'object' && found ? found.id : null;
+        };
         const items = await tx.stockItem.findMany({
           where: { archivedAt: null },
           select: { ...ITEM_SELECT, _count: { select: { movements: true } } },
@@ -57,9 +91,24 @@ export class ItemImportService {
           const salePrice = row.salePrice?.trim()
             ? new Decimal(row.salePrice.trim()).toFixed(2)
             : null;
+          const brand = row.brand?.trim() || null;
+          const pack = itemRowPack(row.packSize, labelOf);
+          const categoryId = categoryOf(row.category);
           if (!current) {
             const created = await tx.stockItem.create({
-              data: { tenantId, name: row.name.trim(), sku, unit, minQuantity, salePrice },
+              data: {
+                tenantId,
+                name: row.name.trim(),
+                sku,
+                unit,
+                minQuantity,
+                salePrice,
+                brand,
+                categoryId,
+                packCount: pack?.packCount ?? null,
+                packSize: pack?.packSize ? new Decimal(pack.packSize).toFixed(3) : null,
+                packUnit: pack?.packUnit ?? null,
+              },
               select: ITEM_SELECT,
             });
             await this.audit.record(tx, {
@@ -80,6 +129,17 @@ export class ItemImportService {
             // Empty cells keep what the item has.
             minQuantity: minQuantity ?? before.minQuantity,
             salePrice: salePrice ?? before.salePrice,
+            brand: brand ?? before.brand,
+            // An empty category cell keeps the item's category; a filled one replaces it.
+            categoryId: categoryId ?? before.categoryId,
+            // A pack size cell replaces the whole pack size; an empty one keeps it.
+            ...(pack
+              ? {
+                  packCount: pack.packCount ?? null,
+                  packSize: pack.packSize ? new Decimal(pack.packSize).toFixed(3) : null,
+                  packUnit: pack.packUnit ?? null,
+                }
+              : {}),
           };
           if (JSON.stringify(before) === JSON.stringify(next)) {
             result.unchanged += 1;
@@ -98,6 +158,11 @@ export class ItemImportService {
               unit: next.unit,
               minQuantity: next.minQuantity,
               salePrice: next.salePrice,
+              brand: next.brand,
+              categoryId: next.categoryId,
+              packCount: next.packCount,
+              packSize: next.packSize,
+              packUnit: next.packUnit,
             },
             select: ITEM_SELECT,
           });

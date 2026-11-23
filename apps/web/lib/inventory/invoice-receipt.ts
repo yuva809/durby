@@ -1,5 +1,10 @@
 import {
+  EMPTY_PACK,
   INVENTORY_NAME_MAX_LENGTH,
+  type PackSize,
+  packFields,
+  packProblems,
+  parsePackSize,
   type StockItem,
   stockQuantitySchema,
   type StockUnit,
@@ -9,7 +14,6 @@ import {
   type VendorInvoiceSource,
 } from '@durby/shared';
 import type { InvoiceLine, ParsedInvoice } from './invoice-pdf';
-import { EMPTY_PACK, type PackSize, packFields, packProblems, parsePackSize } from './pack-size';
 
 /**
  * The review of a vendor invoice before it becomes a goods receipt (ADR 0049): each line matched to a stock item or
