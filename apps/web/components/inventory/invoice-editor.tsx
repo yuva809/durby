@@ -9,6 +9,7 @@ import {
   type StockUnit,
   type UnitOfMeasure,
   type Warehouse,
+  withoutPackSize,
 } from '@durby/shared';
 import { ChevronDown, Plus, TriangleAlert } from 'lucide-react';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
@@ -355,7 +356,14 @@ export function InvoiceEditor({
                   </td>
                   <td className="px-3 py-2">
                     <span className="flex flex-col gap-0.5">
-                      <span className="font-medium">{row.line.description}</span>
+                      {/* The name only: the pack size it names is in the pack size column. */}
+                      <span
+                        className="font-medium"
+                        title={row.line.description}
+                        data-testid="invoice-line-name"
+                      >
+                        {withoutPackSize(row.line.description)}
+                      </span>
                       <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         {row.line.code}
                         {row.line.pack && (

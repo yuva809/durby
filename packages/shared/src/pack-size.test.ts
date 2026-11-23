@@ -6,9 +6,28 @@ import {
   parsePackCell,
   parsePackSize,
   unitLookup,
+  withoutPackSize,
 } from './pack-size';
 
 describe('pack size (ADR 0055)', () => {
+  it('takes the pack size out of a description, leaving the name', () => {
+    expect(withoutPackSize('Perfit Kingmackerel Steaks IQF (Surinam) 8 × 1 kg')).toBe(
+      'Perfit Kingmackerel Steaks IQF (Surinam)',
+    );
+    expect(withoutPackSize('Perfit Pondu Cassava Leaves Minced (Cameroon) 20 x 500 gr')).toBe(
+      'Perfit Pondu Cassava Leaves Minced (Cameroon)',
+    );
+    expect(withoutPackSize('Perfit Grouper Chunks (Indonesia) 10 kg')).toBe(
+      'Perfit Grouper Chunks (Indonesia)',
+    );
+    // A range is not a pack size; a description that is only a pack size stays.
+    expect(withoutPackSize('Catfish WG 800-1000gr IQF 1 x 4kg -VN')).toBe(
+      'Catfish WG 800-1000gr IQF -VN',
+    );
+    expect(withoutPackSize('Brand new thing')).toBe('Brand new thing');
+    expect(withoutPackSize('5 x 2kg')).toBe('5 x 2kg');
+  });
+
   it('reads "count x size unit" from an invoice description, ranges aside', () => {
     expect(parsePackSize('Bigi Mama African Catfish WG 800-1000gr IQF 1 x 4kg 20% -VN')).toEqual({
       count: '1',

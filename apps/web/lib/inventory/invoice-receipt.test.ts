@@ -83,7 +83,9 @@ describe('vendor invoice review (ADR 0049)', () => {
 
   it('creates a new item under the name the person typed; an empty name is a problem', () => {
     const rows = matchInvoice([line(null, 'PERFIT SHARK CUBES 12 x 800 gr')], []);
-    expect(rows[0]!.newName).toBe('PERFIT SHARK CUBES 12 x 800 gr');
+    // Named without the pack size, which goes in the pack size fields.
+    expect(rows[0]!.newName).toBe('PERFIT SHARK CUBES');
+    expect(rows[0]!.pack).toEqual({ count: '12', size: '800', unit: 'g' });
     expect(rowProblems([{ ...rows[0]!, newName: '  ' }], true)).toEqual([['name']]);
     const renamed = [{ ...rows[0]!, newName: ' Perfit Shark Cubes Curry Cut ' }];
     expect(rowProblems(renamed, true)).toEqual([[]]);
@@ -104,14 +106,20 @@ describe('vendor invoice review (ADR 0049)', () => {
   });
 
   it('flags a new line whose name an active item already has (made after the invoice was read)', () => {
-    const rows = matchInvoice([line(null, 'Catfish 4kg')], []);
+    const rows = matchInvoice([line(null, 'Ultimate Taste Red Tilapia Steaks 10 x 1kg')], []);
     expect(rows[0]!.target).toBe(NEW_ITEM);
-    expect(rowProblems(rows, true, [CATFISH])).toEqual([['nameTaken']]);
+    expect(rowProblems(rows, true, [TILAPIA])).toEqual([['nameTaken']]);
     // An archived item of that name doesn't count; another name is fine.
-    expect(rowProblems(rows, true, [{ ...CATFISH, archivedAt: OLD.archivedAt }])).toEqual([[]]);
-    expect(rowProblems([{ ...rows[0]!, newName: 'Catfish 4kg box' }], true, [CATFISH])).toEqual([
-      [],
-    ]);
+    expect(rowProblems(rows, true, [{ ...TILAPIA, archivedAt: OLD.archivedAt }])).toEqual([[]]);
+    expect(rowProblems([{ ...rows[0]!, newName: 'Tilapia box' }], true, [TILAPIA])).toEqual([[]]);
+  });
+
+  it('matches an item made from an earlier invoice, named without the pack size', () => {
+    const rows = matchInvoice(
+      [line(null, 'Ultimate Taste Red Tilapia Steaks 10 x 1kg')],
+      [TILAPIA],
+    );
+    expect(rows[0]!.target).toBe(TILAPIA.id);
   });
 
   it('builds one invoice to submit: existing items by id, new ones with the supplier code as SKU', () => {

@@ -58,6 +58,23 @@ export function parsePackSize(text: string): PackSize | null {
   return { count: '', size: decimal(last[1]!), unit: UNITS[last[2]!.toLowerCase()] ?? '' };
 }
 
+/**
+ * A description without the pack size `parsePackSize` reads from it: "Perfit Kingmackerel Steaks IQF (Surinam) 8 × 1 kg"
+ * → "Perfit Kingmackerel Steaks IQF (Surinam)". The text as it was when nothing is left or no pack size is named.
+ */
+export function withoutPackSize(text: string): string {
+  const counted = COUNTED.exec(text);
+  const match = counted ?? [...text.matchAll(SINGLE)].at(-1);
+  if (!match || match.index === undefined) return text.trim();
+  const rest = (text.slice(0, match.index) + ' ' + text.slice(match.index + match[0].length))
+    .replace(/\(\s*\)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/[\s,;:/\-–]+$/, '')
+    .replace(/^[\s,;:/\-–]+/, '')
+    .trim();
+  return rest === '' ? text.trim() : rest;
+}
+
 /** "5 × 2 kg", "4 kg", "12 ×", or '' when nothing is set. */
 export function formatPackSize(pack: {
   count: string | number | null;

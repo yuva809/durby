@@ -12,6 +12,7 @@ import {
   unitCostSchema,
   type VendorInvoice,
   type VendorInvoiceSource,
+  withoutPackSize,
 } from '@durby/shared';
 import type { InvoiceLine, ParsedInvoice } from './invoice-pdf';
 
@@ -91,6 +92,8 @@ export function matchInvoice(
     const target =
       (line.code ? bySku.get(normal(line.code)) : undefined) ??
       byName.get(normal(line.description)) ??
+      // An item made from an earlier invoice is named without the pack size.
+      byName.get(normal(withoutPackSize(line.description))) ??
       NEW_ITEM;
     return {
       line,
@@ -217,9 +220,12 @@ export function rowProblems(
   });
 }
 
-/** A new item's name as first proposed: the invoice's description (the person may edit it, `newName`). */
+/**
+ * A new item's name as first proposed: the invoice's description without its pack size, which goes in the pack size
+ * fields (the person may edit it, `newName`).
+ */
 export function newItemName(line: InvoiceLine): string {
-  return line.description.trim().slice(0, INVENTORY_NAME_MAX_LENGTH);
+  return withoutPackSize(line.description).slice(0, INVENTORY_NAME_MAX_LENGTH);
 }
 
 /** The invoice to submit for approval (ADR 0054): the included rows; call only when rowProblems finds none. */
@@ -305,7 +311,8 @@ export function rowsFromInvoice(
       target: l.itemId ?? NEW_ITEM,
       unitId: l.unitId ?? '',
       expiresOn: l.expiresOn ?? '',
-      newName: newItemName(line),
+      // The name as submitted, even one that names a pack size on purpose.
+      newName: l.newItem?.name ?? newItemName(line),
       newUnit: l.newItem?.unit ?? 'pc',
       categoryId: given?.categoryId ?? (l.newItem ? '' : base.categoryId),
       brand: given?.brand ?? (l.newItem ? '' : base.brand),
