@@ -195,7 +195,11 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
     await userEvent.type(within(lines[1]!).getByTestId('invoice-line-brand'), 'OD');
     // The new item's name is the description until edited; an empty name stops the import.
     const name = within(lines[1]!).getByTestId<HTMLInputElement>('invoice-line-new-name');
-    expect(name.value).toBe('OD Yellow Croakers WG 500-1000g IPB 5 x 2kg -SR');
+    // Without the pack size, which is in its own fields; the line shows the name the same way.
+    expect(name.value).toBe('OD Yellow Croakers WG 500-1000g IPB -SR');
+    expect(within(lines[1]!).getByTestId('invoice-line-name').textContent).toBe(
+      'OD Yellow Croakers WG 500-1000g IPB -SR',
+    );
     await userEvent.clear(name);
     expect(within(lines[1]!).getByTestId('invoice-line-problem').textContent).toBe(
       'Give the new item a name.',
