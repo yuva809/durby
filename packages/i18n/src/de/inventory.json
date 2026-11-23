@@ -115,7 +115,6 @@
   "inventory.page.showingBranch": "Lager von {name}",
   "inventory.page.showAllWarehouses": "Alle Lager anzeigen",
   "inventory.fields.openingStock": "Anfangsbestand",
-  "inventory.page.allWarehouses": "Alle Lager",
   "inventory.page.warehouseColumn": "Lager",
   "inventory.page.branchesColumn": "Filialen",
   "inventory.page.statusColumn": "Status",
@@ -467,5 +466,19 @@
   "inventory.page.supplyNow": "jetzt aus {name}",
   "inventory.page.supplyPick": "Haken Sie mindestens eine Filiale an.",
   "inventory.page.suppliesBranches": "Beliefert: {names}",
-  "inventory.errors.suppliesInvalid": "Ein Lager beliefert andere Filialen, nicht seinen eigenen Standort."
+  "inventory.errors.suppliesInvalid": "Ein Lager beliefert andere Filialen, nicht seinen eigenen Standort.",
+  "inventory.addStock.title": "Bestand hinzufügen",
+  "inventory.addStock.hint": "Optional. Beim Speichern wird diese Menge mit den Änderungen am Artikel ins Lager gebucht.",
+  "inventory.addStock.warehouseOnHand": "{name} · derzeit {quantity} {unit} vorrätig",
+  "inventory.addStock.quantityPlaceholder": "z. B. 10",
+  "inventory.addStock.reason": "Grund",
+  "inventory.addStock.reasons.purchase": "Einkauf: Ware erhalten",
+  "inventory.addStock.reasons.correction": "Korrektur: falsche Zählung berichtigen",
+  "inventory.addStock.reasons.count": "Inventur: bei einer Zählung gefunden",
+  "inventory.addStock.reasons.other": "Sonstiges",
+  "inventory.addStock.costHint": "Preis einer Einheit, nicht der Gesamtbetrag. Er folgt dem Bestand und wird beim Verkauf zum Wareneinsatz.",
+  "inventory.addStock.costInvalid": "Geben Sie den Preis einer Einheit ein, z. B. 2.50.",
+  "inventory.addStock.averageHint": "Wird zum aktuellen Durchschnittspreis des Artikels gebucht; kein Einkauf.",
+  "inventory.addStock.remarks": "Bemerkung",
+  "inventory.addStock.remarksPlaceholder": "Optionale Notiz für den Bestandsverlauf"
 }

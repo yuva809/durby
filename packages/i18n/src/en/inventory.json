@@ -115,7 +115,6 @@
   "inventory.page.showingBranch": "Showing the warehouses of {name}",
   "inventory.page.showAllWarehouses": "Show all warehouses",
   "inventory.fields.openingStock": "Opening stock",
-  "inventory.page.allWarehouses": "All warehouses",
   "inventory.page.warehouseColumn": "Warehouse",
   "inventory.page.branchesColumn": "Branches",
   "inventory.page.statusColumn": "Status",
@@ -467,5 +466,19 @@
   "inventory.page.supplyNow": "now from {name}",
   "inventory.page.supplyPick": "Tick at least one branch.",
   "inventory.page.suppliesBranches": "Supplies: {names}",
-  "inventory.errors.suppliesInvalid": "A warehouse supplies other branches, not its own location."
+  "inventory.errors.suppliesInvalid": "A warehouse supplies other branches, not its own location.",
+  "inventory.addStock.title": "Add stock",
+  "inventory.addStock.hint": "Optional. Saving books this quantity into the warehouse with the item's changes.",
+  "inventory.addStock.warehouseOnHand": "{name} · currently {quantity} {unit} on hand",
+  "inventory.addStock.quantityPlaceholder": "e.g. 10",
+  "inventory.addStock.reason": "Reason",
+  "inventory.addStock.reasons.purchase": "Purchase: goods received",
+  "inventory.addStock.reasons.correction": "Correction: fixing a wrong count",
+  "inventory.addStock.reasons.count": "Stock count: found in a count",
+  "inventory.addStock.reasons.other": "Other",
+  "inventory.addStock.costHint": "Cost of one unit, not the total. It follows the stock and becomes the cost of sale when it sells.",
+  "inventory.addStock.costInvalid": "Enter the cost of one unit, e.g. 2.50.",
+  "inventory.addStock.averageHint": "Comes in at the item's current average cost; no purchase is booked.",
+  "inventory.addStock.remarks": "Remarks",
+  "inventory.addStock.remarksPlaceholder": "Optional note for the stock history"
 }
