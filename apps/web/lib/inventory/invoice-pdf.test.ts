@@ -179,4 +179,54 @@ describe('more invoice layouts (ADR 0058)', () => {
     expect(invoice.lines[3]!.pack).toBeUndefined();
     expect(invoice.lines.every((l) => l.checks)).toBe(true);
   });
+
+  /** Rows as the browser reads Unidex invoice VFG26-58060 (article number first, the quantity in cartons). */
+  it('reads article-first lines, joins a wrapped pack size and finds the Gesamtbetrag (Unidex)', () => {
+    const invoice = parseInvoice([
+      'Verkaufsrechnung',
+      'Rechnungsnummer VFG26-58060 Lieferungsbedingung DAP - BERLIN',
+      'Rechnungsdatum 19.11.2026 MwSt. DE243297484',
+      'Fälligkeitsdatum 10.12.2026 EORI',
+      'Artikelnr. Menge HE-Verpackung Beschreibung Preis Betrag',
+      'FF00076 5 Karton Perfit Kingmackerel Steaks IQF (Surinam) 8 x 1 kg 44,05 220,25',
+      'FF00096 1 Karton Perfit Smoked Mackerel WG MAP 320/480 (Scotland) 6,5 kg 70,55 70,55',
+      'FF00154 6 Karton Perfit Kandratikie Steaks African Style with Head (Guyana) 8 x 48,05 288,30',
+      '1 kg',
+      'FF00805 3 Karton Perfit Crab Blue Swimming WR 250+ (China) 4 x 2 kg 36,45 109,35',
+      'Kampagne: November Discount 2026',
+      'FV00822 3 Karton Perfit Matembele Sweet Potato Leaves (Cameroon) 20 x 500 23,15 69,45',
+      'gr',
+      'XLABEL0 1 Pieces Label for Missing Language PCS',
+      '1 Karton Transport cost (EU) 125,00 125,00',
+      'Gesamtbetrag EUR ohne MwS 5.977,30',
+      '0% MwSt. an 5.977,30 0,00',
+      'Gesamtbetrag EUR inkl. MwSt. 5.977,30',
+      'www.unidexholland.com',
+    ]);
+    expect(invoice).toMatchObject({
+      number: 'VFG26-58060',
+      date: '19.11.2026',
+      supplier: 'Unidexholland',
+      total: '5977.30',
+      skipped: ['Transport cost (EU)'],
+    });
+    expect(invoice.lines.map((l) => [l.code, l.quantity, l.unitPrice, l.total])).toEqual([
+      ['FF00076', '5', '44.05', '220.25'],
+      ['FF00096', '1', '70.55', '70.55'],
+      ['FF00154', '6', '48.05', '288.30'],
+      ['FF00805', '3', '36.45', '109.35'],
+      ['FV00822', '3', '23.15', '69.45'],
+    ]);
+    expect(invoice.lines.every((l) => l.checks)).toBe(true);
+    // A description wrapped onto the next row is joined back; a campaign note is not.
+    expect(invoice.lines[2]!.description).toBe(
+      'Perfit Kandratikie Steaks African Style with Head (Guyana) 8 x 1 kg',
+    );
+    expect(invoice.lines[3]!.description).toBe(
+      'Perfit Crab Blue Swimming WR 250+ (China) 4 x 2 kg',
+    );
+    expect(invoice.lines[4]!.description).toBe(
+      'Perfit Matembele Sweet Potato Leaves (Cameroon) 20 x 500 gr',
+    );
+  });
 });
