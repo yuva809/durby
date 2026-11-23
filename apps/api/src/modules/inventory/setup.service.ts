@@ -11,6 +11,7 @@ import type {
   UpdateWarehouseRequest,
   Warehouse,
 } from '@durby/shared';
+import { unitChangeAllowed } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
 import { createWarehouseSite, renameWarehouseSite } from '../../platform/organization';
@@ -442,7 +443,10 @@ export class InventorySetupService {
             where: { itemId: id },
             select: { id: true },
           });
-          if (moved) throw inventoryErrors.unitLocked();
+          // Counted units relabel freely (Stück → box keeps the number); weight and volume stay once moved.
+          if (!unitChangeAllowed(current.unit, body.unit, moved !== null)) {
+            throw inventoryErrors.unitLocked();
+          }
         }
         const before = itemResponse(current);
         const next: StockItem = {

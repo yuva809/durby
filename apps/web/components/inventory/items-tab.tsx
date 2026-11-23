@@ -6,6 +6,7 @@ import {
   STOCK_UNITS,
   type StockItem,
   type StockUnit,
+  unitChangeAllowed,
   unitCostSchema,
   type Warehouse,
 } from '@durby/shared';
@@ -291,6 +292,8 @@ export function ItemDialog({
   const permissions = session?.activePermissions ?? [];
   const receives = permissions.includes('inventory.stock.receive');
   const adjusts = permissions.includes('inventory.stock.adjust');
+  // Stock somewhere: the item has moved, so its unit only relabels between counted units.
+  const stocked = (held ?? []).length > 0;
   const onHand = (warehouse: string) =>
     shortQuantity(held?.find((l) => l.warehouseId === warehouse)?.quantity ?? '0');
   const target = opening.trim().replace(',', '.');
@@ -469,13 +472,26 @@ export function ItemDialog({
             id={`${id}-unit`}
             value={unit}
             onChange={(e) => setUnit(e.target.value as StockUnit)}
+            data-testid="item-unit"
           >
-            {STOCK_UNITS.map((u) => (
-              <option key={u} value={u}>
-                {t(`inventory.units.${u}`)}
-              </option>
-            ))}
+            {/* With stock, only the units it may change to (counted ones relabel; weight stays). */}
+            {STOCK_UNITS.filter((u) => !item || unitChangeAllowed(item.unit, u, stocked)).map(
+              (u) => (
+                <option key={u} value={u}>
+                  {t(`inventory.units.${u}`)}
+                </option>
+              ),
+            )}
           </Select>
+          {item && stocked && unit !== item.unit && (
+            <span className="text-xs text-muted-foreground" data-testid="item-unit-relabel">
+              {t('inventory.addStock.unitRelabel', {
+                quantity: onHand(warehouseId),
+                from: t(`inventory.units.${item.unit}`),
+                to: t(`inventory.units.${unit}`),
+              })}
+            </span>
+          )}
         </Field>
         <Field
           id={`${id}-min`}
@@ -567,7 +583,7 @@ export function ItemDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               id={`${id}-add`}
-              label={t('inventory.addStock.quantity', { unit: t(`inventory.units.${item.unit}`) })}
+              label={t('inventory.addStock.quantity', { unit: t(`inventory.units.${unit}`) })}
               problem={openingInvalid ? t('inventory.page.quantityInvalid') : null}
             >
               <Input
@@ -602,12 +618,12 @@ export function ItemDialog({
             {changing
               ? t(up ? 'inventory.addStock.changeUp' : 'inventory.addStock.changeDown', {
                   quantity: change.replace('-', ''),
-                  unit: t(`inventory.units.${item.unit}`),
+                  unit: t(`inventory.units.${unit}`),
                   onHand: onHand(warehouseId),
                 })
               : t('inventory.addStock.onHand', {
                   quantity: onHand(warehouseId),
-                  unit: t(`inventory.units.${item.unit}`),
+                  unit: t(`inventory.units.${unit}`),
                   name: activeWarehouses.find((w) => w.id === warehouseId)?.name ?? '',
                 })}
           </p>

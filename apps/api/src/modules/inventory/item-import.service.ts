@@ -11,6 +11,7 @@ import {
   type ImportItemsRequest,
   type StockItem,
   type StockUnit,
+  unitChangeAllowed,
 } from '@durby/shared';
 import { CatalogService } from '../catalog';
 import { auditActor, AuditService } from '../../platform/audit';
@@ -145,7 +146,7 @@ export class ItemImportService {
             result.unchanged += 1;
             continue;
           }
-          if (next.unit !== before.unit && current._count.movements > 0) {
+          if (!unitChangeAllowed(before.unit, next.unit, current._count.movements > 0)) {
             unitLocked.push(index + 1);
             continue;
           }

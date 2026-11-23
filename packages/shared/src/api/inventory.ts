@@ -12,6 +12,17 @@ export const STOCK_DOCUMENT_MAX_LINES = 200;
 export const STOCK_UNITS = ['kg', 'g', 'l', 'ml', 'pc', 'box', 'bucket', 'bag', 'packet'] as const;
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
+/** Units that count things rather than weigh or measure them: one may become another as a relabel. */
+export const COUNTED_UNITS: readonly StockUnit[] = ['pc', 'box', 'bucket', 'bag', 'packet'];
+
+/**
+ * Whether an item's unit may change from `from` to `to`: always before it has movements; after, only between counted
+ * units (Stück → box keeps the number, nothing is converted). Weight and volume stay fixed, because recipes, bills of
+ * materials and purchase units are in them.
+ */
+export const unitChangeAllowed = (from: StockUnit, to: StockUnit, moved: boolean) =>
+  from === to || !moved || (COUNTED_UNITS.includes(from) && COUNTED_UNITS.includes(to));
+
 export const STOCK_DOCUMENT_KINDS = [
   'receipt',
   'adjustment',

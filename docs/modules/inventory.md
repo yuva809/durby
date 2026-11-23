@@ -17,13 +17,13 @@ StockDocument          stock_documents     append-only; receipt | adjustment | t
 StockLevel             stock_levels        projection per warehouse and item: quantity, average cost
 ```
 
-| Table             | Columns                                                                                                                                               | Notes                                                                                |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `warehouses`      | `id`, `tenant_id`, `location_id`, `name`, `sort_order`, `archived_at`, timestamps                                                                     | name unique per location among non-archived; archived, never deleted                 |
-| `stock_items`     | `id`, `tenant_id`, `name`, `sku?`, `unit` (`kg` `g` `l` `ml` `pc`), `min_quantity numeric(14,3)?`, `archived_at`, timestamps                          | organization-wide; name unique among non-archived; the unit never changes once moved |
-| `stock_documents` | `id`, `tenant_id`, `number`, `kind`, `warehouse_id`, `to_warehouse_id?`, `reason?`, `supplier?`, `note?`, `created_by_user_id`, `created_at`          | append-only; `UNIQUE (tenant_id, number)`; `to_warehouse_id` exactly for transfers   |
-| `stock_movements` | `id`, `tenant_id`, `document_id`, `warehouse_id`, `item_id`, `quantity numeric(14,3)`, `unit_cost numeric(14,4)`, `value numeric(14,2)`, `created_at` | append-only; quantity ≠ 0; value = quantity × unit cost, rounded to cents            |
-| `stock_levels`    | `tenant_id`, `warehouse_id`, `item_id` (key), `quantity numeric(14,3)`, `average_cost numeric(14,4)`, `updated_at`                                    | the ledger's current state, updated in the document's transaction under a row lock   |
+| Table             | Columns                                                                                                                                               | Notes                                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `warehouses`      | `id`, `tenant_id`, `location_id`, `name`, `sort_order`, `archived_at`, timestamps                                                                     | name unique per location among non-archived; archived, never deleted                                      |
+| `stock_items`     | `id`, `tenant_id`, `name`, `sku?`, `unit` (`kg` `g` `l` `ml` `pc`), `min_quantity numeric(14,3)?`, `archived_at`, timestamps                          | organization-wide; name unique among non-archived; the unit changes once moved only between counted units |
+| `stock_documents` | `id`, `tenant_id`, `number`, `kind`, `warehouse_id`, `to_warehouse_id?`, `reason?`, `supplier?`, `note?`, `created_by_user_id`, `created_at`          | append-only; `UNIQUE (tenant_id, number)`; `to_warehouse_id` exactly for transfers                        |
+| `stock_movements` | `id`, `tenant_id`, `document_id`, `warehouse_id`, `item_id`, `quantity numeric(14,3)`, `unit_cost numeric(14,4)`, `value numeric(14,2)`, `created_at` | append-only; quantity ≠ 0; value = quantity × unit cost, rounded to cents                                 |
+| `stock_levels`    | `tenant_id`, `warehouse_id`, `item_id` (key), `quantity numeric(14,3)`, `average_cost numeric(14,4)`, `updated_at`                                    | the ledger's current state, updated in the document's transaction under a row lock                        |
 
 - **Documents** are numbered by series: receipts `inventory.goodsReceipt` (`GR-…`), adjustments
   `inventory.stockAdjustment` (`ADJ-…`), transfers `inventory.stockTransfer` (`TRF-…`), allocated last in the
@@ -36,7 +36,10 @@ StockLevel             stock_levels        projection per warehouse and item: qu
 - **Negative stock** only with `inventory.allowNegativeStock` at the warehouse's location; otherwise a document
   that would take a level below zero answers 409 `inventory.insufficient_stock` (`details.itemIds`).
 - **Corrections** are new documents; nothing is edited or deleted (CLAUDE.md rule 7).
-- An item's **unit** can't change once it has movements (409 `inventory.unit_locked`).
+- An item's **unit** can't change once it has movements (409 `inventory.unit_locked`), except between counted
+  units (`pc`, `box`, `bucket`, `bag`, `packet`): that relabels the stock without converting it (10 Stück become
+  10 box), and Edit item then books the right count as a correction. Weight and volume stay fixed, because recipes,
+  bills of materials and purchase units are in them.
 - **Units** (ADR 0062): `kg` `g` `l` `ml` `pc` (the piece, Stück) and `box` `bucket` `bag` `packet` for goods bought
   and counted that way.
 - **Best before** (ADR 0062): receipt, import receipt and vendor invoice lines may carry `expiresOn` ("2027-03-31").
