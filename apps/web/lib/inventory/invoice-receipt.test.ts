@@ -103,6 +103,17 @@ describe('vendor invoice review (ADR 0049)', () => {
     });
   });
 
+  it('flags a new line whose name an active item already has (made after the invoice was read)', () => {
+    const rows = matchInvoice([line(null, 'Catfish 4kg')], []);
+    expect(rows[0]!.target).toBe(NEW_ITEM);
+    expect(rowProblems(rows, true, [CATFISH])).toEqual([['nameTaken']]);
+    // An archived item of that name doesn't count; another name is fine.
+    expect(rowProblems(rows, true, [{ ...CATFISH, archivedAt: OLD.archivedAt }])).toEqual([[]]);
+    expect(rowProblems([{ ...rows[0]!, newName: 'Catfish 4kg box' }], true, [CATFISH])).toEqual([
+      [],
+    ]);
+  });
+
   it('builds one invoice to submit: existing items by id, new ones with the supplier code as SKU', () => {
     // Every new line without a category gets one at once; per line a unit, a brand and a pack size (ADR 0055).
     const rows = setMissingCategory(matchInvoice(lines, [CATFISH, TILAPIA]), id(80));

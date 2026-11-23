@@ -473,7 +473,7 @@ function InvoiceDetail({
   const [error, setError] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const pending = invoice.status === 'pending';
-  const problems = rowProblems(rows, true);
+  const problems = rowProblems(rows, true, items);
   const blocked = problems.some((p) => p.length > 0) || !rows.some((r) => r.include);
 
   const save = () =>

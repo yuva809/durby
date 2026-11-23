@@ -345,6 +345,8 @@
   "inventory.invoice.newName": "Name of the new item",
   "inventory.invoice.newNameFor": "Name of the new item for {name}",
   "inventory.invoice.rowProblems.name": "Give the new item a name.",
+  "inventory.invoice.rowProblems.nameTaken": "A product named \"{name}\" already exists. Book this line to it, or change the name.",
+  "inventory.invoice.useExisting": "Use the existing product",
   "inventory.invoice.checkLine": "Quantity × price ≠ total: check",
   "inventory.invoice.rowProblems.duplicate": "This item is on another line too. Combine them or pick another item.",
   "inventory.invoice.rowProblems.newNotAllowed": "You can't create items: pick an existing one or leave the line out.",
