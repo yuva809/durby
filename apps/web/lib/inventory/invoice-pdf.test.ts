@@ -240,6 +240,7 @@ describe('more invoice layouts (ADR 0058)', () => {
       'Kampagne: November Discount 2026',
       'D004435 8 Tray Maaza Lychee Drink (TETRA) 6 x 1 ltr 7,65 10 % 6,89 55,08',
       'XDDEPFAN 1.200 Pieces Pfand DE General 0,25 300,00',
+      'XDDEPFAN 12 Pieces Pfand DE General 0,25 3,00',
       'M009515 100 Bag Soubry Semolina 5 kg 4,20 420,00',
       'M002810 6 Bucket A.F.P. Fufu Cocoyam 4 kg 14,30 85,80',
       'M006010 2 Shrink Valle del Sole Bramata Yellow Maize Gritz 10 x 1 kg 12,90 25,80',
@@ -250,8 +251,8 @@ describe('more invoice layouts (ADR 0058)', () => {
       'wobbler & display',
       '10 Tray Temporary Fuel Surcharge 13,72 137,20',
       '1 Karton Transport cost (EU) 500,00 500,00',
-      'Gesamtbetrag EUR ohne MwS 2.347,53',
-      'Gesamtbetrag EUR inkl. MwSt. 2.347,53',
+      'Gesamtbetrag EUR ohne MwS 2.350,53',
+      'Gesamtbetrag EUR inkl. MwSt. 2.350,53',
     ]);
     expect(invoice.lines.map((l) => [l.code, l.quantity, l.unitPrice, l.total])).toEqual([
       ['B000600', '30', '24.95', '748.50'],

@@ -356,7 +356,8 @@ export function parseInvoice(rows: readonly string[]): ParsedInvoice {
     lastLine = index;
     previous = line;
     if (NON_GOODS.test(line.description)) {
-      skipped.push(line.description);
+      // Each name once: a deposit is often printed on several rows.
+      if (!skipped.includes(line.description)) skipped.push(line.description);
       charges.push(line);
     } else lines.push(line);
   });
