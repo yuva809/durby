@@ -1,6 +1,10 @@
 'use client';
 
 import {
+  EMPTY_PACK,
+  type PackSize,
+  packFields,
+  packProblems,
   priceSchema,
   type ProductCategory,
   STOCK_UNITS,
@@ -39,6 +43,10 @@ import type { InventoryData } from './inventory-page';
 
 /** Why stock changes while editing an item: received (a receipt at a cost), or an adjustment's reason. */
 type StockReason = 'purchase' | 'correction' | 'count' | 'waste' | 'breakage' | 'other';
+
+/** A counted stock quantity: 0 (nothing left) or a quantity with up to 3 decimals. */
+const isCount = (value: string) =>
+  /^0+(?:[.,]0{0,3})?$/.test(value.trim()) || isQuantity(value.replace(',', '.'));
 
 /** a − b, exact to thousandths ("122" − "120" → "2", "4.5" − "5" → "-0.5"). */
 function difference(a: string, b: string): string {
@@ -287,6 +295,9 @@ export function ItemDialog({
   const [min, setMin] = useState('');
   const [salePrice, setSalePrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  // Brand and pack size (ADR 0055): "8 × 1 kg" is 8 pieces of 1 kg in a box.
+  const [brand, setBrand] = useState('');
+  const [pack, setPack] = useState<PackSize>(EMPTY_PACK);
   const [warehouseId, setWarehouseId] = useState('');
   const [opening, setOpening] = useState('');
   const [unitCost, setUnitCost] = useState('');
@@ -308,7 +319,7 @@ export function ItemDialog({
     shortQuantity(levels?.find((l) => l.warehouseId === warehouse)?.quantity ?? '0');
   const target = opening.trim().replace(',', '.');
   const change =
-    item && target !== '' && isQuantity(target) ? difference(target, onHand(warehouseId)) : '0';
+    item && target !== '' && isCount(target) ? difference(target, onHand(warehouseId)) : '0';
   const up = Number(change) > 0;
   const reasons: StockReason[] = up
     ? [
@@ -328,7 +339,7 @@ export function ItemDialog({
     reason === 'purchase' &&
     !unitCostSchema.safeParse(unitCost.trim().replace(',', '.')).success;
   const activeWarehouses = (warehouses ?? []).filter((w) => w.archivedAt === null);
-  const openingInvalid = checked && opening.trim() !== '' && !isQuantity(opening.trim());
+  const openingInvalid = checked && opening.trim() !== '' && !isCount(opening.trim());
   // Adjust stock with nothing changed: say so rather than closing.
   const unchanged = stockOnly && checked && !changing && !openingInvalid;
   // Active categories to choose from, plus the item's own even if archived meanwhile (it stays until changed).
@@ -347,6 +358,7 @@ export function ItemDialog({
     checked && salePrice.trim() !== '' && !priceSchema.safeParse(salePrice.trim()).success;
   const nameMissing = checked && name.trim() === '';
   const minInvalid = checked && min.trim() !== '' && !isQuantity(min);
+  const packBad = checked ? packProblems(pack) : [];
 
   return (
     <FormDialog
@@ -374,6 +386,16 @@ export function ItemDialog({
         setMin(item?.minQuantity ? shortQuantity(item.minQuantity) : '');
         setSalePrice(item?.salePrice ?? '');
         setCategoryId(item ? (item.categoryId ?? '') : (defaultCategoryId ?? ''));
+        setBrand(item?.brand ?? '');
+        setPack(
+          item
+            ? {
+                count: item.packCount === null ? '' : String(item.packCount),
+                size: item.packSize?.replace(/\.?0+$/, '') ?? '',
+                unit: item.packUnit ?? '',
+              }
+            : EMPTY_PACK,
+        );
         // The main warehouse by default, else the first active one.
         const first = (activeWarehouses.find((w) => w.isMain) ?? activeWarehouses[0])?.id ?? '';
         setWarehouseId(first);
@@ -399,10 +421,12 @@ export function ItemDialog({
         setChecked(true);
         if (stockOnly && (!changing || reasons.length === 0 || warehouseId === '')) return null;
         if (name.trim() === '' || (min.trim() !== '' && !isQuantity(min))) return null;
+        if (!stockOnly && packProblems(pack).length > 0) return null;
+        const packed = packFields(pack);
         if (salePrice.trim() !== '' && !priceSchema.safeParse(salePrice.trim()).success)
           return null;
         if (item) {
-          if (target !== '' && !isQuantity(target)) return null;
+          if (target !== '' && !isCount(target)) return null;
           // A changed quantity nobody here may book is not dropped silently.
           if (changing && reasons.length === 0) return null;
           const adding = changing && reasons.length > 0 && warehouseId !== '';
@@ -424,6 +448,11 @@ export function ItemDialog({
                   minQuantity: min.trim() || null,
                   ...(sells ? { salePrice: salePrice.trim() || null } : {}),
                   ...(categories ? { categoryId: categoryId || null } : {}),
+                  // Cleared fields are sent as null; a size goes with its unit.
+                  brand: brand.trim().slice(0, 100) || null,
+                  packCount: packed.packCount ?? null,
+                  packSize: packed.packSize ?? null,
+                  packUnit: packed.packUnit ?? null,
                 });
             if (!updated.ok || !adding) return updated;
             const note = remarks.trim() ? { note: remarks.trim().slice(0, 500) } : {};
@@ -451,7 +480,7 @@ export function ItemDialog({
           })();
         }
         const openingQty = opening.trim();
-        if (openingQty !== '' && (!isQuantity(openingQty) || warehouseId === '')) return null;
+        if (openingQty !== '' && (!isCount(openingQty) || warehouseId === '')) return null;
         return (async () => {
           const created = await createStockItem(store, action, {
             name: name.trim(),
@@ -460,6 +489,8 @@ export function ItemDialog({
             ...(min.trim() ? { minQuantity: min.trim() } : {}),
             ...(sells && salePrice.trim() ? { salePrice: salePrice.trim() } : {}),
             ...(categories && categoryId ? { categoryId } : {}),
+            ...(brand.trim() ? { brand: brand.trim().slice(0, 100) } : {}),
+            ...packed,
           });
           // Opening stock goes into the chosen warehouse only, as a receipt.
           if (!created.ok || !created.data || openingQty === '' || Number(openingQty) <= 0) {
@@ -557,6 +588,65 @@ export function ItemDialog({
               onChange={(e) => setSku(e.target.value)}
             />
           </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id={`${id}-brand`} label={t('inventory.invoice.brand')} problem={null}>
+              <Input
+                id={`${id}-brand`}
+                value={brand}
+                maxLength={100}
+                onChange={(e) => setBrand(e.target.value)}
+                data-testid="item-brand"
+              />
+            </Field>
+            <Field
+              id={`${id}-pack-count`}
+              label={t('inventory.invoice.packSize')}
+              problem={packBad.length > 0 ? t('inventory.page.packInvalid') : null}
+            >
+              <div className="flex items-center gap-1" data-testid="item-pack">
+                <Input
+                  id={`${id}-pack-count`}
+                  inputMode="numeric"
+                  value={pack.count}
+                  placeholder={t('inventory.page.packPieces')}
+                  aria-label={t('inventory.page.packPieces')}
+                  aria-invalid={packBad.includes('count') || undefined}
+                  onChange={(e) => setPack({ ...pack, count: e.target.value })}
+                  className="w-20 text-right"
+                  data-testid="item-pack-count"
+                />
+                <span aria-hidden className="text-muted-foreground">
+                  ×
+                </span>
+                <Input
+                  inputMode="decimal"
+                  value={pack.size}
+                  placeholder={t('inventory.invoice.packWeight')}
+                  aria-label={t('inventory.invoice.packWeight')}
+                  aria-invalid={packBad.includes('size') || undefined}
+                  onChange={(e) => setPack({ ...pack, size: e.target.value })}
+                  className="w-20 text-right"
+                  data-testid="item-pack-size"
+                />
+                <Select
+                  value={pack.unit}
+                  aria-label={t('inventory.invoice.packUnit')}
+                  aria-invalid={packBad.includes('unit') || undefined}
+                  onChange={(e) => setPack({ ...pack, unit: e.target.value as StockUnit | '' })}
+                  className="w-20"
+                  data-testid="item-pack-unit"
+                >
+                  <option value="">–</option>
+                  {STOCK_UNITS.filter((u) => u !== 'pc').map((u) => (
+                    <option key={u} value={u}>
+                      {t(`inventory.units.${u}`)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <span className="text-xs text-muted-foreground">{t('inventory.page.packHint')}</span>
+            </Field>
+          </div>
           {sells && (
             <Field
               id={`${id}-sale-price`}
