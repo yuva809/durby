@@ -323,6 +323,23 @@ describe('inventory', () => {
     const locked = await patch(s.owner, `/items/${s.tomatoes}`, { unit: 'g' }).expect(409);
     expect(locked.body).toMatchObject({ code: 'inventory.unit_locked' });
     await patch(s.owner, `/items/${s.tomatoes}`, { minQuantity: '2.5', sku: 'TOM-1' }).expect(200);
+    // A counted unit relabels even once moved (Stück → box keeps the number); to weight it stays locked.
+    const nuts = stockItemSchema.parse(
+      (await post(s.owner, '/items', { name: 'Nuts', unit: 'pc' }).expect(201)).body,
+    ).id;
+    await post(s.owner, '/receipts', {
+      warehouseId: s.main,
+      lines: [{ itemId: nuts, quantity: '10', unitCost: '2' }],
+    }).expect(201);
+    expect(
+      (await patch(s.owner, `/items/${nuts}`, { unit: 'box' }).expect(200)).body,
+    ).toMatchObject({
+      unit: 'box',
+    });
+    expect(await stockOf(s.owner, s.main)).toMatchObject({
+      Nuts: ['10.000', '2.0000', '20.00', false],
+    });
+    await patch(s.owner, `/items/${nuts}`, { unit: 'kg' }).expect(409);
   });
 
   it("lists an item's activity per warehouse with running balances, opening and closing", async () => {

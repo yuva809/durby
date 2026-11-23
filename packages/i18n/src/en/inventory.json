@@ -37,7 +37,7 @@
   "inventory.errors.warehouseNameTaken": "This location already has a warehouse with this name.",
   "inventory.errors.itemNameTaken": "A stock item with this name already exists.",
   "inventory.errors.insufficientStock": "Not enough stock for some items.",
-  "inventory.errors.unitLocked": "The unit can't change once the item has stock movements.",
+  "inventory.errors.unitLocked": "This item has stock, so its unit can only change between counted units (Stück, box, bucket, bag, packet), not to or from a weight or volume.",
   "inventory.reasons.correction": "Correction",
   "inventory.errors.invoiceNotApproved": "Only an approved invoice can be corrected.",
   "inventory.errors.invoiceLineNotFound": "The invoice line was not found.",
@@ -500,5 +500,6 @@
   "inventory.activity.transferOut": "Transfer out",
   "inventory.activity.truncated": "Showing the {count} most recent movements; the opening is the quantity before them.",
   "inventory.activity.print": "Print",
-  "inventory.activity.notFound": "This item doesn't exist or you can't see it."
+  "inventory.activity.notFound": "This item doesn't exist or you can't see it.",
+  "inventory.addStock.unitRelabel": "The stock keeps its number: {quantity} {from} become {quantity} {to}. Set the stock quantity below to the right count; the difference is booked."
 }

@@ -370,6 +370,42 @@ describe('InventoryPage', () => {
     });
   });
 
+  it('relabels a stocked item from Stück to box and sets the count in one save; weight is not offered', async () => {
+    signedInAs('admin');
+    const writes = api({
+      [`PATCH /api/v1/inventory/items/${COLA.id}`]: () => Response.json({ ...COLA, unit: 'box' }),
+      'POST /api/v1/inventory/adjustments': () =>
+        Response.json(document('ADJ-2026-000003', 'adjustment', '-5.40'), { status: 201 }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    const cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await waitFor(() => expect(within(cola).getAllByTestId('item-warehouse-row')).toHaveLength(1));
+    await userEvent.click(within(cola).getByTestId('item-edit'));
+    const dialog = await screen.findByRole('dialog');
+    const unit = within(dialog).getByTestId<HTMLSelectElement>('item-unit');
+    expect([...unit.options].map((o) => o.value)).toEqual(['pc', 'box', 'bucket', 'bag', 'packet']);
+    await userEvent.selectOptions(unit, 'box');
+    expect(within(dialog).getByTestId('item-unit-relabel').textContent).toContain(
+      '24 pc become 24 box',
+    );
+    const quantity = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '12');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[0]).toMatchObject({ method: 'PATCH', body: { unit: 'box' } });
+    expect(writes[1]).toEqual({
+      method: 'POST',
+      path: '/api/v1/inventory/adjustments',
+      body: {
+        warehouseId: STORE.id,
+        reason: 'correction',
+        lines: [{ itemId: COLA.id, quantity: '-12' }],
+      },
+    });
+  });
+
   it('lets managers add warehouses but not items', async () => {
     signedInAs('manager');
     api();
