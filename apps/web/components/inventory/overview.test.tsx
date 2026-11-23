@@ -268,6 +268,43 @@ describe('category dialog (ADR 0048)', () => {
     expect(screen.getByTestId('category-parent')).toHaveProperty('disabled', true);
   });
 
+  it("adjusts a product's stock from its row: the count there now, the difference booked", async () => {
+    signedIn();
+    const writes = api();
+    render(<InventoryPage />, { wrapper: operations });
+    const tiles = await screen.findAllByTestId('category-tile');
+    await userEvent.click(tiles[1]!);
+    const rows = await screen.findAllByTestId('overview-row');
+    const yam = rows.find((r) => r.dataset.name === 'Yam flour')!;
+    // Owners may adjust and edit.
+    expect(within(yam).getByTestId('item-edit')).toBeTruthy();
+    await userEvent.click(within(yam).getByTestId('item-adjust'));
+    const dialog = await screen.findByRole('dialog');
+    // Only the stock: no item fields.
+    expect(within(dialog).queryByLabelText('Name')).toBeNull();
+    const quantity = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    await waitFor(() => expect(quantity.value).toBe('4'));
+    // Nothing changed: said, nothing sent.
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    expect(
+      within(dialog).getByText('Type the counted quantity; it is the same as on hand now.'),
+    ).toBeTruthy();
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '6');
+    await userEvent.selectOptions(within(dialog).getByTestId('item-add-reason'), 'count');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]).toEqual({
+      method: 'POST',
+      path: '/api/v1/inventory/adjustments',
+      body: {
+        warehouseId: WAREHOUSE.id,
+        reason: 'count',
+        lines: [{ itemId: YAM.id, quantity: '2' }],
+      },
+    });
+  });
+
   it('offers the request cart to branches, not to who approves requests', async () => {
     signedIn(['inventory', 'catalog', 'orders'], 'branch');
     api();

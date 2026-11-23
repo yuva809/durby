@@ -501,5 +501,9 @@
   "inventory.activity.truncated": "Die {count} neuesten Bewegungen; der Anfangsbestand ist die Menge davor.",
   "inventory.activity.print": "Drucken",
   "inventory.activity.notFound": "Diesen Artikel gibt es nicht oder Sie können ihn nicht sehen.",
-  "inventory.addStock.unitRelabel": "Der Bestand behält seine Zahl: {quantity} {from} werden {quantity} {to}. Setzen Sie den Bestand unten auf die richtige Menge; die Differenz wird gebucht."
+  "inventory.addStock.unitRelabel": "Der Bestand behält seine Zahl: {quantity} {from} werden {quantity} {to}. Setzen Sie den Bestand unten auf die richtige Menge; die Differenz wird gebucht.",
+  "inventory.adjust.open": "Bestand anpassen",
+  "inventory.adjust.title": "Bestand anpassen · {name}",
+  "inventory.adjust.unchanged": "Geben Sie die gezählte Menge ein; sie entspricht dem aktuellen Bestand.",
+  "inventory.overview.actions": "Aktionen"
 }
