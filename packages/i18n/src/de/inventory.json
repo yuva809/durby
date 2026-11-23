@@ -339,6 +339,8 @@
   "inventory.invoice.itemFor": "Artikel für {name}",
   "inventory.invoice.unitCost": "Stückpreis",
   "inventory.invoice.newItem": "Neuer Artikel",
+  "inventory.invoice.itemSearch": "Nach Name oder Artikelnummer suchen",
+  "inventory.invoice.itemNoMatch": "Kein Artikel passt. Wählen Sie Neuer Artikel, um ihn anzulegen.",
   "inventory.invoice.newBadge": "Neu: wird beim Import angelegt",
   "inventory.invoice.checkLine": "Menge × Preis ≠ Summe: prüfen",
   "inventory.invoice.rowProblems.duplicate": "Dieser Artikel steht auch in einer anderen Zeile. Fassen Sie sie zusammen oder wählen Sie einen anderen Artikel.",
