@@ -272,7 +272,7 @@ describe('Request stock cart (branch, ADR 0053)', () => {
     );
   });
 
-  it('asks for more than the main warehouse has, saying the rest follows, and lays out the cart', async () => {
+  it('asks for more than the main warehouse has, saying what is there, and lays out the cart', async () => {
     signedInAs('branch');
     const calls = api(request('submitted'));
     render(<RequestStockPage />);
@@ -286,7 +286,7 @@ describe('Request stock cart (branch, ADR 0053)', () => {
     await userEvent.type(quantity, '12');
     expect(within(rice!).getByTestId('request-more')).toHaveProperty('disabled', false);
     expect(within(rice!).getByTestId('request-item-available').textContent).toBe(
-      'Only 10 pc at the warehouse: the rest follows once it is in',
+      'Only 10 pc at the warehouse right now',
     );
     await userEvent.click(screen.getByTestId('request-cart-open'));
     const cart = await screen.findByTestId('request-cart');

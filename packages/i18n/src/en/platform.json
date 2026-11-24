@@ -1093,5 +1093,8 @@
   "platform.errors.warehouseInvalid": "A chosen warehouse is unknown, archived, or not at one of the person's branches.",
   "platform.audit.fields.warehouseIds": "Warehouses",
   "platform.settings.ordersBranchStores.name": "Branches keep their own stock",
-  "platform.settings.ordersBranchStores.description": "On: goods a branch requests are booked into its own store when it confirms receipt, and a branch without a store gets one with its first request. Off: the goods leave the main warehouse when packed and are delivered; branches have no stock of their own."
+  "platform.settings.ordersBranchStores.description": "On: goods a branch requests are booked into its own store when it confirms receipt, and a branch without a store gets one with its first request. Off: the goods leave the main warehouse when packed and are delivered; branches have no stock of their own.",
+  "platform.settings.reportsDayStartsAt.name": "Business day starts at",
+  "platform.settings.reportsDayStartsAt.description": "For reports: orders before this time count to the day before.",
+  "platform.audit.actors.cliReports": "Reports command"
 }

@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { SETTINGS } from '@durby/shared';
+import { Overview, overviewVisible } from '../../components/reports/overview';
 import { useNavLayout } from '../../components/theme-provider';
 import { isBranchView, isDriverView } from '../../lib/nav/layouts';
 import { loadSettings } from '../../lib/settings/api';
@@ -10,8 +12,8 @@ import { useT } from '../labels-provider';
 import { useAuth } from '../providers';
 
 /**
- * Signed-in home: a placeholder overview until the module dashboards exist. A branch's menu has no Overview (ADR
- * 0059): it starts on Inventory.
+ * Signed-in home: the owner overview (ADR 0082) for those who may read sales reports, a greeting for everyone else. A
+ * branch's menu has no Overview (ADR 0059): it starts on Inventory.
  */
 export default function HomePage() {
   const { session, store } = useAuth();
@@ -32,6 +34,16 @@ export default function HomePage() {
   }, [branch, driver, inventoryStart, router]);
   const organization = session?.organizations.find((o) => o.id === session.activeOrganizationId);
   if (branch || driver || inventoryStart) return null;
+  if (session?.activeOrganizationId && overviewVisible(session)) {
+    // Until the settings are here, the start page may still lead elsewhere.
+    if (settings.status === 'loading') return null;
+    const setting = (key: 'locale' | 'timezone'): string => {
+      const value =
+        settings.status === 'ready' ? settings.data.find((s) => s.key === key)?.value : undefined;
+      return typeof value === 'string' ? value : SETTINGS[key].default;
+    };
+    return <Overview session={session} locale={setting('locale')} timeZone={setting('timezone')} />;
+  }
 
   return (
     <div className="flex flex-col gap-2">

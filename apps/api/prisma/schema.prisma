@@ -155,8 +155,11 @@ model Organization {
   notificationPreferences      NotificationPreference[]
   pushSubscriptions            PushSubscription[]
 
-  vendorInvoices     VendorInvoice[]
-  vendorInvoiceLines VendorInvoiceLine[]
+  vendorInvoices         VendorInvoice[]
+  vendorInvoiceLines     VendorInvoiceLine[]
+  reportOrderFacts       ReportOrderFact[]
+  reportLineFacts        ReportLineFact[]
+  reportReservationFacts ReportReservationFact[]
 
   @@index([partnerId])
   @@index([planId])
@@ -208,6 +211,9 @@ model Location {
   posPrintJobs            PosPrintJob[]
   salesOrders             SalesOrder[]
   stockRequests           StockRequest[]
+  reportOrderFacts        ReportOrderFact[]
+  reportLineFacts         ReportLineFact[]
+  reportReservationFacts  ReportReservationFact[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -1037,6 +1043,10 @@ model PosKitchenTicket {
   station         PrepStation             @default(kitchen)
   /// Went straight to the bill: the station's processing was off at send time (ADR 0031).
   direct          Boolean                 @default(false)
+  /// The send that wrote it: one send writes up to two tickets (ADR 0081). Null on voids, transfers and older tickets.
+  sendId          String?                 @map("send_id") @db.Uuid
+  /// Written by a transfer, so it is not a round (ADR 0081).
+  transferred     Boolean                 @default(false)
   createdByUserId String                  @map("created_by_user_id") @db.Uuid
   createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   organization    Organization            @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -2522,4 +2532,74 @@ model VendorInvoiceLineCorrection {
   @@unique([tenantId, id])
   @@index([tenantId, lineId, createdAt])
   @@map("vendor_invoice_line_corrections")
+}
+
+/// Reports read model (docs/modules/reports.md, ADR 0081): derived from the till and the bookings and rebuildable, so
+/// rows are replaced. Ids of other modules' rows carry no foreign key. One row per order.
+model ReportOrderFact {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  locationId   String       @map("location_id") @db.Uuid
+  orderId      String       @map("order_id") @db.Uuid
+  tableId      String       @map("table_id") @db.Uuid
+  openedAt     DateTime     @map("opened_at") @db.Timestamptz(6)
+  closedAt     DateTime?    @map("closed_at") @db.Timestamptz(6)
+  covers       Int?
+  /// Closed by a merge: all its tickets belong to another order now.
+  mergedAway   Boolean      @default(false) @map("merged_away")
+  /// Sends of the order with a line left after voids; transfers are not rounds.
+  rounds       Int          @default(0)
+  /// When its first line that is left was sent; null when nothing is left.
+  firstSentAt  DateTime?    @map("first_sent_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location     Location     @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, orderId])
+  @@index([tenantId, locationId, firstSentAt])
+  @@index([tenantId, locationId, closedAt])
+  @@map("report_order_facts")
+}
+
+/// One sent line of an order, net of its voids and discounts (ADR 0081).
+model ReportLineFact {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  locationId   String       @map("location_id") @db.Uuid
+  orderId      String       @map("order_id") @db.Uuid
+  lineId       String       @map("line_id") @db.Uuid
+  productId    String       @map("product_id") @db.Uuid
+  quantity     Int
+  /// Quantity × unit price − discounts, gross.
+  gross        Decimal      @db.Decimal(12, 2)
+  sentAt       DateTime     @map("sent_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location     Location     @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, lineId])
+  @@index([tenantId, orderId])
+  @@index([tenantId, locationId, sentAt])
+  @@map("report_line_facts")
+}
+
+/// One booking (ADR 0081): never guest data or notes.
+model ReportReservationFact {
+  id            String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String            @map("tenant_id") @db.Uuid
+  locationId    String            @map("location_id") @db.Uuid
+  reservationId String            @map("reservation_id") @db.Uuid
+  startsAt      DateTime          @map("starts_at") @db.Timestamptz(6)
+  status        ReservationStatus
+  source        ReservationSource
+  partySize     Int               @map("party_size")
+  seatedAt      DateTime?         @map("seated_at") @db.Timestamptz(6)
+  finishedAt    DateTime?         @map("finished_at") @db.Timestamptz(6)
+  organization  Organization      @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location      Location          @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, reservationId])
+  @@index([tenantId, locationId, startsAt])
+  @@map("report_reservation_facts")
 }

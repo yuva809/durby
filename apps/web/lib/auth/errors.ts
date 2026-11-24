@@ -16,6 +16,7 @@ import type {
   PlatformErrorCode,
   PosErrorCode,
   RbacErrorCode,
+  ReportsErrorCode,
   ReservationErrorCode,
   SettingErrorCode,
   StaffErrorCode,
@@ -42,6 +43,7 @@ export type ApiErrorCode =
   | OrdersErrorCode
   | LocationErrorCode
   | PosErrorCode
+  | ReportsErrorCode
   | ReservationErrorCode
   | StaffErrorCode
   | VendorInvoiceErrorCode
@@ -52,6 +54,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'platform.busy': 'platform.errors.busy',
   'platform.payload_too_large': 'platform.errors.payloadTooLarge',
   'platform.notification_not_found': 'platform.errors.notificationNotFound',
+  'reports.location_not_found': 'reports.errors.locationNotFound',
   'auth.unauthenticated': 'auth.errors.unauthenticated',
   'auth.invalid_credentials': 'auth.errors.invalidCredentials',
   'auth.email_not_verified': 'auth.errors.emailNotVerified',
@@ -152,7 +155,6 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'orders.request_not_found': 'orders.errors.requestNotFound',
   'orders.request_invalid': 'orders.errors.requestInvalid',
   'orders.request_main_only': 'orders.errors.requestMainOnly',
-  'orders.request_above_stock': 'orders.errors.requestAboveStock',
   'orders.request_branch_only': 'orders.errors.requestBranchOnly',
   'orders.request_transition': 'orders.errors.requestTransition',
   'orders.request_not_yours': 'orders.errors.requestNotYours',

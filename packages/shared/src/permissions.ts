@@ -30,6 +30,8 @@ export interface PermissionDefinition {
   /** Label key of the permission's display name. */
   label: string;
   matrix: MatrixPlacement;
+  /** A feature of another module the key is useless without: hidden in Manage Staff while it is off. */
+  needs?: FeatureKey;
 }
 
 export const PERMISSIONS = {
@@ -431,6 +433,19 @@ export const PERMISSIONS = {
     label: 'orders.permissions.requestsReceive',
     matrix: { row: 'orders.receiveRequests', column: 'edit' },
   },
+  // Reports (ADR 0081), read at the caller's locations.
+  'reports.sales.read': {
+    scope: 'location',
+    label: 'reports.permissions.salesRead',
+    matrix: { row: 'reports.sales', column: 'read' },
+    needs: 'pos',
+  },
+  'reports.reservations.read': {
+    scope: 'location',
+    label: 'reports.permissions.reservationsRead',
+    matrix: { row: 'reports.reservations', column: 'read' },
+    needs: 'reservations',
+  },
 } as const satisfies Record<string, PermissionDefinition>;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -560,6 +575,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'orders.requests.approve': 'grant',
     'orders.requests.receive': 'grant',
     'orders.delivery.assign': 'grant',
+    'reports.sales.read': 'grant',
+    'reports.reservations.read': 'grant',
   },
   manager: {
     'platform.org.read': 'grant',
@@ -637,6 +654,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'orders.requests.approve': 'deny',
     'orders.requests.receive': 'grant',
     'orders.delivery.assign': 'grant',
+    'reports.sales.read': 'grant',
+    'reports.reservations.read': 'grant',
   },
   staff: {
     'platform.org.read': 'grant',
@@ -714,6 +733,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'orders.requests.approve': 'deny',
     'orders.requests.receive': 'deny',
     'orders.delivery.assign': 'deny',
+    'reports.sales.read': 'deny',
+    'reports.reservations.read': 'deny',
   },
   // Table service (ADR 0016): takes orders at the tables of their locations, and, like the cashier,
   // prints the bill and checks out. Reservations: books and seats guests and runs the waitlist too
@@ -794,6 +815,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'orders.requests.approve': 'deny',
     'orders.requests.receive': 'deny',
     'orders.delivery.assign': 'deny',
+    'reports.sales.read': 'deny',
+    'reports.reservations.read': 'deny',
   },
   // Table service (ADR 0016): the billing counter.
   cashier: {
@@ -872,6 +895,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'orders.requests.approve': 'deny',
     'orders.requests.receive': 'deny',
     'orders.delivery.assign': 'deny',
+    'reports.sales.read': 'deny',
+    'reports.reservations.read': 'deny',
   },
   // Reservations (docs/modules/reservations.md → Permissions): the door. Bookings, walk-ins and the
   // waitlist, and which tables exist; no orders, menu, setup or people.
@@ -951,6 +976,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'orders.requests.approve': 'deny',
     'orders.requests.receive': 'deny',
     'orders.delivery.assign': 'deny',
+    'reports.sales.read': 'deny',
+    'reports.reservations.read': 'deny',
   },
   // The kitchen screen: tickets without prices (ADR 0026).
   kitchen: {
@@ -1029,6 +1056,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'orders.requests.approve': 'deny',
     'orders.requests.receive': 'deny',
     'orders.delivery.assign': 'deny',
+    'reports.sales.read': 'deny',
+    'reports.reservations.read': 'deny',
   },
   // The bar screen (ADR 0026).
   bar: {
@@ -1107,6 +1136,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'orders.requests.approve': 'deny',
     'orders.requests.receive': 'deny',
     'orders.delivery.assign': 'deny',
+    'reports.sales.read': 'deny',
+    'reports.reservations.read': 'deny',
   },
   branch: {
     'platform.org.read': 'grant',
@@ -1184,6 +1215,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'orders.requests.approve': 'deny',
     'orders.requests.receive': 'grant',
     'orders.delivery.assign': 'deny',
+    'reports.sales.read': 'deny',
+    'reports.reservations.read': 'deny',
   },
   warehouse: {
     'platform.org.read': 'grant',
@@ -1261,6 +1294,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'orders.requests.approve': 'deny',
     'orders.requests.receive': 'deny',
     'orders.delivery.assign': 'grant',
+    'reports.sales.read': 'deny',
+    'reports.reservations.read': 'deny',
   },
   driver: {
     'platform.org.read': 'grant',
@@ -1338,6 +1373,8 @@ export const SYSTEM_ROLE_GRANTS: Readonly<Record<Exclude<SystemRole, 'owner'>, G
     'orders.requests.approve': 'deny',
     'orders.requests.receive': 'deny',
     'orders.delivery.assign': 'deny',
+    'reports.sales.read': 'deny',
+    'reports.reservations.read': 'deny',
   },
 };
 

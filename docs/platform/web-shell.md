@@ -154,8 +154,8 @@ value. Moving emails to the theme is later.
 - `app/(app)/`: the signed-in shell. **Client guard:** the access token lives in memory only (auth.md → Web), so the
   guard runs in the browser: while the session restores it shows a skeleton; anonymous → `/login?next=<path>` (only
   same-origin relative paths are accepted for `next`).
-- `/` is the signed-in home (a placeholder overview). Module pages (`/inventory`, `/billing`, `/pos`, `/reports`)
-  are empty states until their phases; visiting one whose feature is disabled shows a "not available" state (the api
+- `/` is the signed-in home: the owner overview for holders of `reports.sales.read` (reports.md → Overview, ADR 0082),
+  a greeting for everyone else. Module pages (`/inventory`, `/billing`, `/pos`) are empty states until their phases; visiting one whose feature is disabled shows a "not available" state (the api
   enforces anyway).
 - `GET /healthz` stays as is (container healthcheck). The api health line is gone from the home page
   (`/api/v1/health` stays for deploy checks and monitoring).

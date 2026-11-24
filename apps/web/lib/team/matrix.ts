@@ -3,7 +3,7 @@ import {
   FEATURES,
   isFeatureKey,
   type MatrixColumn,
-  type MatrixPlacement,
+  type PermissionDefinition,
   PERMISSION_KEYS,
   PERMISSIONS,
   type PermissionKey,
@@ -73,7 +73,8 @@ export function permissionMatrix(activeFeatures: readonly string[]): {
   for (const key of PERMISSION_KEYS) {
     const owner = moduleOf(key);
     if (!shown(owner)) continue;
-    const placement: MatrixPlacement = PERMISSIONS[key].matrix;
+    const { matrix: placement, needs }: PermissionDefinition = PERMISSIONS[key];
+    if (needs && !enabled.has(needs)) continue;
     const { row, column, note } = placement;
     let section = sections.find((s) => s.module === owner);
     if (!section) {

@@ -497,6 +497,13 @@ bin/dc run --rm worker node dist/cli/outbox.js handler-failures
 bin/dc run --rm worker node dist/cli/outbox.js retry-handler --job '<event-id>@<handler>'
 ```
 
+**Report data (ADR 0081):** once per organization after the first release with reports, and after switching its
+`reports` feature on (safe while the till is in use):
+
+```bash
+bin/dc run --rm worker node dist/cli/reports.js rebuild --org <organization id>
+```
+
 Lag is a log line, not part of `/api/v1/health` (ADR 0013 §10): a slow worker never fails a deploy's health check.
 
 ## Backups

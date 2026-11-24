@@ -90,7 +90,7 @@ describe('request cart (ADR 0053)', () => {
     expect(increment({ [id(4)]: '2.5' }, id(4), '3.000')).toEqual({ [id(4)]: '3' });
     expect(increment({}, id(1), '0.000')).toEqual({});
     expect(increment({}, id(1), '-2.000')).toEqual({});
-    // Typed beyond it: still sent (the rest follows once it is in), and named.
+    // Typed beyond it: still sent, and named.
     const typed = setQuantity({}, id(4), '4');
     expect(withinStock('4', '3.000')).toBe(false);
     expect(withinStock('3', '3.000')).toBe(true);

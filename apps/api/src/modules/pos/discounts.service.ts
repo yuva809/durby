@@ -3,6 +3,7 @@ import Decimal from 'decimal.js';
 import { type AddDiscountRequest, type Discount } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
+import { OutboxService } from '../../platform/outbox';
 import { AccessService } from '../../platform/rbac';
 import {
   asTenantDb,
@@ -29,6 +30,7 @@ export class DiscountsService {
     private readonly access: AccessService,
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
+    private readonly outbox: OutboxService,
   ) {}
 
   async add(orderId: string, body: AddDiscountRequest): Promise<Discount> {
@@ -108,6 +110,7 @@ export class DiscountsService {
         entityId: discount.id,
         after: discountSnapshot(response, orderId),
       });
+      await this.changed(tx, orderId, locationId);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
@@ -157,9 +160,19 @@ export class DiscountsService {
         before: discountSnapshot({ ...response, voided: false, amount: target.amount }, orderId),
         after: discountSnapshot(response, orderId),
       });
+      await this.changed(tx, orderId, locationId);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
+  }
+
+  /** What is sold on the order changed (reports, ADR 0081). */
+  private async changed(
+    tx: TenantTransactionClient,
+    orderId: string,
+    locationId: string,
+  ): Promise<void> {
+    await this.outbox.add(tx, { type: 'pos.order.updated', payload: { orderId, locationId } });
   }
 
   private async locationOf(orderId: string): Promise<string> {
