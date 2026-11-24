@@ -21,8 +21,8 @@ import {
   secondaryCategories,
   type StockState,
   sumDecimals,
-  toCsv,
 } from '../../lib/inventory/overview';
+import { downloadCsv } from '../../lib/csv';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
 import { useMoney } from '../pos/money';
@@ -98,7 +98,8 @@ export function CategoryOverview({
     : rows.filter(matching);
 
   function exportCsv() {
-    const csv = toCsv(
+    downloadCsv(
+      `${t('inventory.overview.exportFile')}-${new Date().toISOString().slice(0, 10)}`,
       [
         t('inventory.fields.item'),
         t('inventory.fields.sku'),
@@ -118,12 +119,6 @@ export function CategoryOverview({
         r.low ? t('inventory.overview.yes') : '',
       ]),
     );
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${t('inventory.overview.exportFile')}-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
   }
 
   return (

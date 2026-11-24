@@ -1,6 +1,7 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 import {
+  type DayClock,
   type PermissionKey,
   type ReportQuery,
   type ReservationsReportResponse,
@@ -26,7 +27,7 @@ import { CatalogLookup } from '../catalog';
 import { PosFloorReader } from '../pos';
 import { FactsReader, type LocationSpan } from './facts-reader';
 import { addSales, changePercent, METRIC, percent, salesFigures } from './metrics';
-import { type CardSpans, cardSpans, type DayClock, daysSpan, type Span } from './periods';
+import { type CardSpans, cardSpans, daysSpan, type Span } from './periods';
 
 const locationNotFound = () =>
   new ApiError(HttpStatus.NOT_FOUND, 'reports.location_not_found', 'Location not found.');

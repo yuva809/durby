@@ -1,3 +1,4 @@
+import { toCsv } from '../csv';
 import type { ProductCategory, StockItem, StockLevel } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import {
@@ -8,7 +9,6 @@ import {
   itemRows,
   secondaryCategories,
   sumDecimals,
-  toCsv,
 } from './overview';
 
 const id = (n: number) => `0190a000-0000-7000-8000-0000000048${String(n).padStart(2, '0')}`;

@@ -1,5 +1,7 @@
 import {
   addDays,
+  businessDay,
+  type DayClock,
   type LocalDate,
   WEEKDAYS,
   weekdayOf,
@@ -12,23 +14,10 @@ import {
  * location's `reports.dayStartsAt` in its time zone; on switch days it is 23 or 25 hours long. Pure.
  */
 
-/** Where a location's days start. */
-export interface DayClock {
-  timeZone: string;
-  /** `HH:mm`. */
-  dayStartsAt: string;
-}
-
 /** `[start, end)`. */
 export interface Span {
   start: Date;
   end: Date;
-}
-
-/** The business day `at` belongs to: before the day's start it is still the day before. */
-export function businessDay(at: Date, clock: DayClock): LocalDate {
-  const local = zonedParts(at, clock.timeZone);
-  return local.time < clock.dayStartsAt ? addDays(local.date, -1) : local.date;
 }
 
 const startOf = (day: LocalDate, clock: DayClock): Date =>

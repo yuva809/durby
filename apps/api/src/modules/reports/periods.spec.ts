@@ -1,5 +1,6 @@
+import { businessDay } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
-import { businessDay, cardSpans, daysSpan, weekStart } from './periods';
+import { cardSpans, daysSpan, weekStart } from './periods';
 
 const berlin = { timeZone: 'Europe/Berlin', dayStartsAt: '04:00' };
 const iso = (span: { start: Date; end: Date }) => [
