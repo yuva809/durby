@@ -11,13 +11,16 @@ import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
 import { AccessService } from '../../platform/rbac';
 import {
+  asTenantDb,
   TENANT_PRISMA,
   TenantContext,
+  type TenantDb,
   type TenantPrismaClient,
   type TenantTransactionClient,
 } from '../../platform/tenancy';
 import { OrdersService } from './orders.service';
 import { posErrors } from './pos-errors';
+import { currentOrdersOf } from './ticket-placements';
 import { canMove, LATEST_STATUS, statusOf } from './ticket-status';
 
 /** Served tickets stay on the board this long, so a wrong tap can be undone. */
@@ -37,7 +40,7 @@ const TICKET_SELECT = {
   kind: true,
   station: true,
   createdAt: true,
-  order: { select: { number: true, locationId: true, table: { select: { name: true } } } },
+  order: { select: { locationId: true } },
   lines: {
     select: { id: true, productName: true, quantity: true, note: true },
     orderBy: { id: 'asc' },
@@ -52,10 +55,18 @@ type TicketRow = {
   kind: 'order' | 'void';
   station: PrepStation;
   createdAt: Date;
-  order: { number: string; locationId: string; table: { name: string } };
+  order: { locationId: string };
   lines: { id: string; productName: string; quantity: number; note: string | null }[];
   statusChanges: { status: Exclude<TicketStatus, 'new'>; createdAt: Date }[];
 };
+
+/** The order a ticket is on now (ADR 0069): after a merge, not the one it was sent on. */
+interface PlacedOrder {
+  id: string;
+  number: string;
+  status: 'open' | 'closed';
+  table: { name: string };
+}
 
 /**
  * The kitchen and bar screens (docs/modules/pos.md → Kitchen and bar screens, ADR 0026): a
@@ -91,15 +102,25 @@ export class KitchenService {
         direct: false,
         order: { locationId },
         OR: [
-          { order: { status: 'open' } },
+          { placements: { some: { order: { status: 'open' } } } },
           { createdAt: { gte: new Date(now - BOARD_HORIZON_MS) } },
         ],
       },
       select: TICKET_SELECT,
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
+    const placed = await this.placedOrders(
+      asTenantDb(this.db),
+      rows.map((r) => r.id),
+    );
     return rows
-      .map(ticketResponse)
+      .flatMap((row) => {
+        const order = placed.get(row.id);
+        // Placed on an open order once, but not now: history like any other closed order's ticket.
+        const current =
+          order && (order.status === 'open' || now - row.createdAt.getTime() <= BOARD_HORIZON_MS);
+        return current ? [ticketResponse(row, order)] : [];
+      })
       .filter((t) => t.status !== 'served' || now - Date.parse(t.statusAt) < SERVED_VISIBLE_MS);
   }
 
@@ -115,7 +136,9 @@ export class KitchenService {
     if (ticket.direct) throw posErrors.ticketStatusInvalid(body.status);
     return this.db.$transaction(async (tx) => {
       const row = await this.change(tx, ticketId, body.status);
-      const response = ticketResponse(row);
+      const order = (await this.placedOrders(asTenantDb(tx), [ticketId])).get(ticketId);
+      if (!order) throw posErrors.ticketNotFound();
+      const response = ticketResponse(row, order);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
@@ -127,7 +150,8 @@ export class KitchenService {
    */
   async serve(orderId: string, ticketId: string): Promise<Order> {
     const ticket = await this.visibleTicket(ticketId, 'pos.orders.read');
-    if (ticket.orderId !== orderId) throw posErrors.ticketNotFound();
+    const placed = await currentOrdersOf(this.db, [ticketId]);
+    if (placed.get(ticketId) !== orderId) throw posErrors.ticketNotFound();
     await this.access.assert('pos.orders.take', { locationId: ticket.order.locationId });
     if (ticket.direct) throw posErrors.ticketStatusInvalid('served');
     return this.db.$transaction(async (tx) => {
@@ -139,6 +163,22 @@ export class KitchenService {
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
+  }
+
+  /** The order each ticket is on now (ADR 0069). */
+  private async placedOrders(db: TenantDb, ticketIds: string[]): Promise<Map<string, PlacedOrder>> {
+    const byTicket = await currentOrdersOf(db, ticketIds);
+    const orders = await db.posOrder.findMany({
+      where: { id: { in: [...new Set(byTicket.values())] } },
+      select: { id: true, number: true, status: true, table: { select: { name: true } } },
+    });
+    const byId = new Map<string, PlacedOrder>(orders.map((o) => [o.id, o]));
+    return new Map(
+      [...byTicket].flatMap(([ticket, order]) => {
+        const row = byId.get(order);
+        return row ? [[ticket, row] as const] : [];
+      }),
+    );
   }
 
   /** The ticket, if it exists here and the caller holds `key` at its order's location. */
@@ -207,13 +247,13 @@ export class KitchenService {
   }
 }
 
-function ticketResponse(row: TicketRow): StationTicket {
+function ticketResponse(row: TicketRow, order: PlacedOrder): StationTicket {
   const latest = row.statusChanges[0];
   return {
     id: row.id,
-    orderId: row.orderId,
-    orderNumber: row.order.number,
-    tableName: row.order.table.name,
+    orderId: order.id,
+    orderNumber: order.number,
+    tableName: order.table.name,
     sequence: row.sequence,
     kind: row.kind,
     status: statusOf(row.statusChanges),

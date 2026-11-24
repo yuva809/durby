@@ -37,6 +37,11 @@ reference the same links (ADR 0036). So an item cannot change order by rewriting
    placement row per ticket), then closes the source with `pos.order.merged`. Its table is released through the existing
    `pos.order.closed` event. Both orders must be open and at the same location. Billed lines block the merge.
    The target keeps its number.
+   **Amended 2026-11-24:** three foreign keys still tied a line to the order it was sent on, so a merged order could not be
+   billed, and its moved items could not be voided, discounted or transferred (500). A void, bill item or discount names
+   the order the line is on **now**; the keys reference the line alone (migration `20261124120000`), and the services check
+   the placement under the order's lock. The station screens, serving from the till and waiting print jobs also use the
+   ticket's current order. Bills and discounts still keep the order they were made on.
 
 4. **Split and transfer.** `POST /pos/orders/:id/transfer` moves chosen portions to another table or a new order. The
    source gets a void ticket for the portions (negative lines, as a void does), and the destination gets a sale ticket
