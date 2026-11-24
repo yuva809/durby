@@ -147,7 +147,7 @@ describe('partner_themes and partner_domains at the database', () => {
       {
         name: 'AsiaMight',
         product_name: 'AsiaMight',
-        logo_path: null,
+        logo_path: '/brand/asiamight/logo.webp',
         color_primary: '#1f7a3d',
         color_ink: null,
         color_paper: null,
@@ -167,6 +167,11 @@ describe('partner_themes and partner_domains at the database', () => {
        JOIN partners p ON p.id = o.partner_id WHERE p.slug = 'asiamight' ORDER BY o.key, o.locale`,
     );
     expect(labels.rows).toEqual([
+      // Pieces are "Stück" in both languages (migration 20261119250000).
+      { locale: 'de', key: 'inventory.units.pc', value: 'Stück' },
+      { locale: 'en', key: 'inventory.units.pc', value: 'Stück' },
+      { locale: 'de', key: 'orders.requestCart.pieces', value: '= {count} Stück' },
+      { locale: 'en', key: 'orders.requestCart.pieces', value: '= {count} Stück' },
       { locale: 'de', key: 'platform.app.name', value: 'AsiaMight' },
       { locale: 'en', key: 'platform.app.name', value: 'AsiaMight' },
     ]);
