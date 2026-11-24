@@ -146,3 +146,6 @@ export type SalesItemsResponse = z.infer<typeof salesItemsResponseSchema>;
 export type SalesCategoriesResponse = z.infer<typeof salesCategoriesResponseSchema>;
 export type TablesReportResponse = z.infer<typeof tablesReportResponseSchema>;
 export type ReservationsReportResponse = z.infer<typeof reservationsReportResponseSchema>;
+
+export const REPORTS_ERROR_CODES = ['reports.location_not_found'] as const;
+export type ReportsErrorCode = (typeof REPORTS_ERROR_CODES)[number];

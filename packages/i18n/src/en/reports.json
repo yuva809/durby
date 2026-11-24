@@ -26,5 +26,6 @@
   "reports.metrics.reservationsNoShowRate.name": "No-show rate",
   "reports.metrics.reservationsNoShowRate.description": "No-shows as a share of bookings that came or did not show up. Without walk-ins, cancelled and declined.",
   "reports.metrics.reservationsTurnMinutes.name": "Turn time",
-  "reports.metrics.reservationsTurnMinutes.description": "From seating to finishing."
+  "reports.metrics.reservationsTurnMinutes.description": "From seating to finishing.",
+  "reports.errors.locationNotFound": "Location not found."
 }

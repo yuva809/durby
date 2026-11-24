@@ -26,5 +26,6 @@
   "reports.metrics.reservationsNoShowRate.name": "No-Show-Quote",
   "reports.metrics.reservationsNoShowRate.description": "Anteil der No-Shows an Reservierungen, die kamen oder nicht erschienen. Ohne Walk-ins, stornierte und abgelehnte.",
   "reports.metrics.reservationsTurnMinutes.name": "Verweildauer",
-  "reports.metrics.reservationsTurnMinutes.description": "Vom Platzieren bis zum Beenden."
+  "reports.metrics.reservationsTurnMinutes.description": "Vom Platzieren bis zum Beenden.",
+  "reports.errors.locationNotFound": "Standort nicht gefunden."
 }
