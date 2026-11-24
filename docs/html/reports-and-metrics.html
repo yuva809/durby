@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reports and metrics: technical and test notes</title>
+    <style>
+      :root { --fg: #1b1f24; --muted: #5b6670; --line: #d9dee3; --bg: #ffffff; --panel: #f5f7f9; --accent: #b4451a; --ok: #1f7a3d; --warn: #8a5a00; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      }
+      :root[data-theme='dark'] { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, 'Segoe UI', Roboto, sans-serif; }
+      main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+      h1 { font-size: 26px; margin: 12px 0 4px; }
+      h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+      h3 { font-size: 16px; margin: 20px 0 6px; }
+      p.lead { color: var(--muted); margin-top: 0; }
+      code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+      code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+      pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+      .scroll { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+      th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; }
+      .done { color: var(--ok); }
+      .open { color: var(--warn); }
+      a { color: var(--accent); }
+      nav { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+      .flow { list-style: none; margin: 12px 0 16px; padding: 0; counter-reset: step; }
+      .flow li { counter-increment: step; position: relative; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 9px 12px 9px 44px; margin-bottom: 18px; }
+      .flow li::before { content: counter(step); position: absolute; left: 12px; top: 9px; font-weight: 700; color: var(--accent); }
+      .flow li:not(:last-child)::after { content: '\2193'; position: absolute; left: 16px; bottom: -20px; color: var(--muted); }
+      .flow .who { display: block; font-size: 13px; color: var(--muted); }
+      .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+      .callout ul { margin: 0; padding-left: 18px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="index.html">All pages</a><a href="#status">What it shows</a><a href="#flow">Technical flow</a><a href="#metrics">Metrics</a><a href="#tests">Automated tests</a><a href="#manual">Manual tests</a><a href="#gaps">Known gaps</a></nav>
+      <h1>Reports and metrics</h1>
+      <p class="lead">Sales, tables and reservation reports with CSV export (ADR 0081). Code: <code>apps/api/src/modules/reports/</code>, <code>apps/web/components/reports/</code>, <code>packages/shared/src/metrics.ts</code>. Spec: <code>docs/modules/reports.md</code>.</p>
+
+      <h2 id="status">What it shows</h2>
+      <div class="scroll"><table>
+        <tr><th>Tab</th><th>Figures</th><th>State</th></tr>
+        <tr><td>Sales <code>/reports</code></td><td>today, yesterday and this week against last week; sales, orders, items, average order, second-round rate; busy hours; top and least sold items; categories</td><td class="done">Built</td></tr>
+        <tr><td>Tables <code>/reports/tables</code></td><td>average time, time by table, tables open now</td><td class="done">Built</td></tr>
+        <tr><td>Reservations <code>/reports/reservations</code></td><td>covers, no-show rate, turn time by party size</td><td class="done">Built</td></tr>
+        <tr><td>CSV export</td><td>every table; names that a spreadsheet would run as a formula are made harmless</td><td class="done">Built</td></tr>
+      </table></div>
+      <div class="callout">
+      <ul>
+        <li>A sale is what was <strong>sent</strong> from the till minus voids and discounts, counted when ordered. It is not accounting revenue; Durby records no payments yet.</li>
+        <li>A business day starts at 04:00 (Settings → Business day starts at), in each location's own time zone.</li>
+      </ul>
+      </div>
+
+      <h2 id="flow">Technical flow</h2>
+      <h3>From the till to a figure</h3>
+      <ol class="flow">
+        <li><span class="who">pos, reservations</span>A send, void, move, merge, discount, close or booking change writes an outbox event in its own transaction.</li>
+        <li><span class="who">Worker</span><code>ReportsProjectionHandler</code> locks the order (advisory lock) and asks pos for the <strong>whole</strong> order through <code>PosSalesReader</code>.</li>
+        <li><span class="who">Worker</span>Replaces that order's rows in <code>report_order_facts</code> and <code>report_line_facts</code>. It never adds up, so late, repeated or reordered events end the same.</li>
+        <li><span class="who">API</span>A report is one read-only snapshot over the fact tables, narrowed to the caller's locations. Every figure comes from one function per metric (<code>metrics.ts</code>).</li>
+        <li><span class="who">Browser</span>Period and location are in the address; CSV is built from what is on the page.</li>
+      </ol>
+      <h3>Past orders: rebuild</h3>
+      <p>Needed once per organization after the first release, and after switching <code>reports</code> on. Safe while the till is in use; batches of 100, the same code as the handlers.</p>
+      <pre>cd /opt/durby
+bin/dc run --rm worker node dist/cli/reports.js rebuild --org &lt;organization id&gt;</pre>
+      <div class="scroll"><table>
+        <tr><th>Route</th><th>Permission</th><th>Features</th></tr>
+        <tr><td><code>GET /reports/sales/summary</code>, <code>/hours</code>, <code>/items</code>, <code>/categories</code></td><td><code>reports.sales.read</code></td><td><code>reports</code>, <code>pos</code></td></tr>
+        <tr><td><code>GET /reports/tables</code></td><td><code>reports.sales.read</code></td><td><code>reports</code>, <code>pos</code></td></tr>
+        <tr><td><code>GET /reports/reservations</code></td><td><code>reports.reservations.read</code></td><td><code>reports</code>, <code>reservations</code></td></tr>
+      </table></div>
+      <p>Owner, admin and manager. A manager limited to some locations sees only those; any other location answers 404. Periods of at most 366 days.</p>
+
+      <h2 id="metrics">Metrics</h2>
+      <div class="scroll"><table>
+        <tr><th>Key</th><th>Meaning</th></tr>
+        <tr><td><code>sales.gross</code></td><td>net quantity × price − discounts of lines sent in the period</td></tr>
+        <tr><td><code>sales.items</code></td><td>portions sent minus voids</td></tr>
+        <tr><td><code>sales.orders</code></td><td>orders with a line left, by their first such line</td></tr>
+        <tr><td><code>sales.averageOrder</code></td><td>sales ÷ orders</td></tr>
+        <tr><td><code>sales.secondRoundRate</code></td><td>orders with two or more sends; kitchen and bar of one send are one round, a transfer is none</td></tr>
+        <tr><td><code>tables.averageMinutes</code></td><td>closed − opened, without orders merged away</td></tr>
+        <tr><td><code>tables.open</code></td><td>open orders now</td></tr>
+        <tr><td><code>reservations.covers</code></td><td>guests of seated and finished bookings, walk-ins included</td></tr>
+        <tr><td><code>reservations.noShowRate</code></td><td>no-shows ÷ (no-shows + seated + finished), without walk-ins</td></tr>
+        <tr><td><code>reservations.turnMinutes</code></td><td>finished − seated</td></tr>
+      </table></div>
+
+      <h2 id="tests">Automated tests</h2>
+      <p>Results are from the full run on 24 Nov 2026 on the code that is now <code>main</code> (API 1689, web 1095, shared 398, i18n 49 tests, all passing).</p>
+      <div class="scroll"><table>
+        <tr><th>Layer</th><th>File</th><th>Covers</th><th>Result</th></tr>
+        <tr><td>API</td><td><code>test/reports-projection.int.spec.ts</code> (12)</td><td>voids, discounts, transfer, merge chains; events repeated, reversed and at once; rebuild equals projection; isolation</td><td class="done">Pass</td></tr>
+        <tr><td>API e2e</td><td><code>test/reports.e2e.spec.ts</code> (11)</td><td>each figure by hand, day start and zones, roles, locations, features, bad periods</td><td class="done">Pass</td></tr>
+        <tr><td>API unit</td><td><code>periods.spec.ts</code>, <code>metrics.spec.ts</code></td><td>business days over both clock changes; each metric</td><td class="done">Pass</td></tr>
+        <tr><td>Web</td><td><code>components/reports/reports.test.tsx</code> (11)</td><td>cards, hours, lists, CSV, filters, access</td><td class="done">Pass</td></tr>
+      </table></div>
+      <pre>cd apps/api &amp;&amp; npx vitest run src/modules/reports test/reports
+cd apps/web &amp;&amp; npx vitest run components/reports</pre>
+
+      <h2 id="manual">Manual tests</h2>
+      <p>Browser: Chromium on a scratch database with the real worker, 24 Nov 2026.</p>
+      <div class="scroll"><table>
+        <tr><th>Step</th><th>Expected</th><th>Browser</th></tr>
+        <tr><td>Send 2 soups and 2 colas, void one item, merge two tables, 10 % discount, bill, close</td><td>The report total equals your own sum (47.57 in the check)</td><td class="done">Checked</td></tr>
+        <tr><td>Sales tab, period Today</td><td>Cards, busy hours and lists match the orders</td><td class="done">Checked</td></tr>
+        <tr><td>Export CSV of Top items</td><td>Opens in Excel; plain numbers</td><td class="done">Checked</td></tr>
+        <tr><td>A product named <code>=1+1</code>, export</td><td>Shown as text, not calculated</td><td class="open">Automated only</td></tr>
+        <tr><td>Order at 01:30</td><td>Counts to the evening before</td><td class="open">Automated only</td></tr>
+        <tr><td>Run <code>rebuild</code>, compare</td><td>Same figures as before</td><td class="done">Checked</td></tr>
+        <tr><td>Phone width</td><td>No sideways scrolling</td><td class="done">Checked</td></tr>
+        <tr><td>Two locations: choose one</td><td>Only that location's figures</td><td class="open">Automated only</td></tr>
+        <tr><td>Reservations with no-shows</td><td>Rate as calculated by hand</td><td class="open">Automated only</td></tr>
+        <tr><td>Manager of one location</td><td>Only that location, also in the totals</td><td class="open">Automated only</td></tr>
+        <tr><td>Waiter</td><td>No Reports item; the page says no access</td><td class="open">Automated only</td></tr>
+        <tr><td>German</td><td>Texts and numbers in German</td><td class="open">Not yet</td></tr>
+      </table></div>
+
+      <h2 id="gaps">Known gaps</h2>
+      <div class="callout">
+      <ul>
+        <li>Merged tables count as two orders, which lowers the average order and the second-round rate a little.</li>
+        <li>Items moved to another table count at the time of the move. Totals don't change.</li>
+        <li>Category shares use the product's category now.</li>
+        <li>"Least sold" lists products sold at least once.</li>
+        <li>The location filter lists all active locations; a limited manager who picks another one gets "Location not found".</li>
+        <li>The distributor menu has no Reports item (it has no till).</li>
+      </ul>
+      </div>
+    </main>
+  </body>
+</html>

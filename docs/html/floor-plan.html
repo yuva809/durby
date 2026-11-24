@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Floor plan generator and designer: technical and test notes</title>
+    <style>
+      :root { --fg: #1b1f24; --muted: #5b6670; --line: #d9dee3; --bg: #ffffff; --panel: #f5f7f9; --accent: #b4451a; --ok: #1f7a3d; --warn: #8a5a00; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      }
+      :root[data-theme='dark'] { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, 'Segoe UI', Roboto, sans-serif; }
+      main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+      h1 { font-size: 26px; margin: 12px 0 4px; }
+      h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+      h3 { font-size: 16px; margin: 20px 0 6px; }
+      p.lead { color: var(--muted); margin-top: 0; }
+      code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+      code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+      pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+      .scroll { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+      th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; }
+      .done { color: var(--ok); }
+      .open { color: var(--warn); }
+      a { color: var(--accent); }
+      nav { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+      .flow { list-style: none; margin: 12px 0 16px; padding: 0; counter-reset: step; }
+      .flow li { counter-increment: step; position: relative; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 9px 12px 9px 44px; margin-bottom: 18px; }
+      .flow li::before { content: counter(step); position: absolute; left: 12px; top: 9px; font-weight: 700; color: var(--accent); }
+      .flow li:not(:last-child)::after { content: '\2193'; position: absolute; left: 16px; bottom: -20px; color: var(--muted); }
+      .flow .who { display: block; font-size: 13px; color: var(--muted); }
+      .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+      .callout ul { margin: 0; padding-left: 18px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="index.html">All pages</a><a href="#status">What changed</a><a href="#model">Data model</a><a href="#flow">Technical flow</a><a href="#tests">Automated tests</a><a href="#manual">Manual tests</a><a href="#gaps">Known gaps</a></nav>
+      <h1>Floor plan generator and designer</h1>
+      <p class="lead">A drawn plan per dining area: generate a draft, change it, save versions, publish. Waiters see the published plan on Service (ADR 0073). Code: <code>packages/shared/src/floor-plan/</code>, <code>apps/api/src/modules/pos/floor-plans.*</code>, <code>apps/web/components/tables/plan/</code>, <code>apps/web/lib/pos/plan-editor.ts</code>. Spec: <code>docs/modules/pos.md</code> → Step 8.</p>
+
+      <h2 id="status">What changed</h2>
+      <div class="scroll"><table>
+        <tr><th>Screen</th><th>Before</th><th>Now</th></tr>
+        <tr><td>Tables → an area</td><td>Drag tiles on a dotted canvas</td><td>Create plan / Edit plan; a published plan is shown, all tables of the area are listed below it</td></tr>
+        <tr><td>Tables → All</td><td>One canvas for all areas</td><td>A plain grid once any area of the location has a published plan; unchanged before that</td></tr>
+        <tr><td>Tables → No area</td><td>Dragging</td><td>Unchanged</td></tr>
+        <tr><td>Service</td><td>A grid of tiles</td><td>Plan / List switch from 768 px (<code>?view=list</code>); phones keep the list</td></tr>
+        <tr><td>New: <code>/tables/plan/&lt;area&gt;</code></td><td></td><td>The designer, from 1024 px; smaller screens only show the plan</td></tr>
+      </table></div>
+
+      <h2 id="model">Data model</h2>
+      <pre>dining_areas
+ └─ pos_floor_plan_versions       append-only; version per area, layout (JSON, at most 100 kB), restored_from
+     └─ pos_floor_plan_publications   append-only; the newest one is live</pre>
+      <ul>
+        <li>A version outlives its area: an empty area can be deleted, its history stays (no foreign key on <code>area_id</code>).</li>
+        <li>The layout: a room (longer side 1000 units, the same unit both ways), up to 100 tables and 100 pieces (wall, door, bar, decor), whole numbers, everything inside the room.</li>
+        <li>A table in the layout is an existing one (<code>tableId</code>) or a new one (name, seats, shape) that is created on Publish.</li>
+        <li>Positions on <code>dining_tables</code> are not touched. A rollback shows the old positions.</li>
+      </ul>
+
+      <h2 id="flow">Technical flow</h2>
+      <h3>Generate</h3>
+      <ol class="flow">
+        <li><span class="who">Browser only</span>Room in metres, tables in all, seats and shape of new tables.</li>
+        <li><span class="who"><code>generateFloorPlan</code> (pure)</span>Even rows, at least 1.2 m between tables and 0.6 m to the walls. Existing tables first, in their order; new names go on with the area's numbering.</li>
+        <li><span class="who">Result</span>A draft in the designer (one undo step), or "Room for N tables of this kind". Nothing is saved.</li>
+      </ol>
+      <h3>Save</h3>
+      <ol class="flow">
+        <li><span class="who">Designer → API</span><code>POST /pos/areas/:id/floor-plan/versions { baseVersion, layout }</code></li>
+        <li><span class="who">API</span>Locks the area. A newer version exists → 409 <code>pos.floor_plan_changed</code>. A table that is not in the area or out of service → 409 <code>pos.floor_plan_table_invalid</code>.</li>
+        <li><span class="who">API</span>Writes the next version. Audit <code>pos.floor_plan.saved</code> (counts only).</li>
+      </ol>
+      <h3>Publish</h3>
+      <ol class="flow">
+        <li><span class="who">Designer → API</span><code>POST /pos/areas/:id/floor-plan/publish { version }</code></li>
+        <li><span class="who">API, one transaction</span>Creates the new tables (audited like any new table) and a version that names them. A taken name → 409 <code>pos.table_name_taken</code> and nothing happens.</li>
+        <li><span class="who">API</span>Writes the publication: this version is live. Publishing the live version again writes nothing.</li>
+        <li><span class="who">Service and Tables</span>Service asks for live plans every 5 minutes and on load. Tables that left the area or are out of service are not drawn.</li>
+      </ol>
+      <div class="scroll"><table>
+        <tr><th>Route</th><th>Permission at the area's location</th></tr>
+        <tr><td><code>GET /pos/areas/:areaId/floor-plan</code>, <code>/versions/:version</code></td><td><code>pos.tables.read</code></td></tr>
+        <tr><td><code>POST …/versions</code>, <code>…/versions/:version/restore</code></td><td><code>pos.tables.edit</code></td></tr>
+        <tr><td><code>POST …/publish</code></td><td><code>pos.tables.edit</code>; with new tables also <code>pos.tables.create</code></td></tr>
+        <tr><td><code>GET /pos/floor/plans?locationId=</code></td><td><code>pos.orders.read</code></td></tr>
+      </table></div>
+      <p>Owner, admin and manager can edit; waiter and cashier look. Feature <code>pos</code>. All writes are idempotent.</p>
+
+      <h2 id="tests">Automated tests</h2>
+      <p>Results are from the full run on 24 Nov 2026 on the code that is now <code>main</code> (API 1689, web 1095, shared 398, i18n 49 tests, all passing).</p>
+      <div class="scroll"><table>
+        <tr><th>Layer</th><th>File</th><th>Covers</th><th>Result</th></tr>
+        <tr><td>Shared</td><td><code>floor-plan/floor-plan.test.ts</code> (15)</td><td>layout limits; generator over many rooms, shapes and counts: valid, no overlaps, same result each time, what it says fits does fit</td><td class="done">Pass</td></tr>
+        <tr><td>API e2e</td><td><code>test/pos-floor-plans.e2e.spec.ts</code> (15)</td><td>save, conflict, replay, restore, publish with and without new tables, all or nothing, roles, isolation, append-only, audit</td><td class="done">Pass</td></tr>
+        <tr><td>Web</td><td><code>lib/pos/plan-editor.test.ts</code> (13)</td><td>drag as one step, undo and redo, snapping, free places, restored drafts</td><td class="done">Pass</td></tr>
+        <tr><td>Web</td><td><code>components/tables/plan/designer.test.tsx</code> (16)</td><td>the designer from drag to publish, conflict, leave warning, view only</td><td class="done">Pass</td></tr>
+        <tr><td>Web</td><td><code>components/pos/floor-plan.test.tsx</code> (7)</td><td>plan on Service and Tables, filter, switch, phones</td><td class="done">Pass</td></tr>
+      </table></div>
+      <pre>cd packages/shared &amp;&amp; npx vitest run src/floor-plan
+cd apps/api &amp;&amp; npx vitest run test/pos-floor-plans
+cd apps/web &amp;&amp; npx vitest run lib/pos/plan-editor components/tables components/pos/floor-plan</pre>
+
+      <h2 id="manual">Manual tests</h2>
+      <p>Browser: Chromium on a scratch database, 24 Nov 2026, before the branch was merged with the reports work.</p>
+      <div class="scroll"><table>
+        <tr><th>Step</th><th>Expected</th><th>Browser</th></tr>
+        <tr><td>Tables → area → Create plan → Generate 60 tables in 12 × 8 m</td><td>"They don't fit. Room for … tables of this kind."</td><td class="done">Checked</td></tr>
+        <tr><td>Generate 12 tables in an area that has 3</td><td>3 existing and 9 new (dashed), in even rows</td><td class="done">Checked</td></tr>
+        <tr><td>Drag, resize at the corner, Ctrl+Z</td><td>Snaps to the grid; each drag is one undo step</td><td class="done">Checked</td></tr>
+        <tr><td>Add wall, door, bar, decor</td><td>Each appears in a free place</td><td class="done">Checked</td></tr>
+        <tr><td>Put a table on another table or the bar</td><td>It is marked; a line names the tables</td><td class="done">Checked (with the bar)</td></tr>
+        <tr><td>Save → Publish → confirm</td><td>The dialog names the new tables; they exist afterwards</td><td class="done">Checked</td></tr>
+        <tr><td>Service: send an order to a planned table</td><td>The table turns open with its time; tap opens it</td><td class="done">Checked</td></tr>
+        <tr><td>Service → List, then back</td><td>The address changes to <code>?view=list</code> and back</td><td class="done">Checked</td></tr>
+        <tr><td>Two people: both edit, the second saves</td><td>"Someone else saved this plan"; Load the newest version</td><td class="done">Checked</td></tr>
+        <tr><td>Versions → View, Restore an old draft, Save, Publish</td><td>No table is created twice</td><td class="done">Checked</td></tr>
+        <tr><td>Leave with unsaved changes</td><td>The page asks first</td><td class="done">Checked</td></tr>
+        <tr><td>Tablet 820 px, phone 390 px</td><td>Tablet: plan. Phone: list, designer says to use a larger screen</td><td class="done">Checked</td></tr>
+        <tr><td>German</td><td>All texts in German</td><td class="done">Checked</td></tr>
+        <tr><td>Drag with a finger on a real tablet</td><td>As with the mouse</td><td class="open">Not yet</td></tr>
+        <tr><td>Dark mode</td><td>Readable</td><td class="open">Not yet</td></tr>
+      </table></div>
+
+      <h2 id="gaps">Known gaps</h2>
+      <div class="callout">
+      <ul>
+        <li>No rotation, several floors, live editing by two people, background image or host screen.</li>
+        <li>On phones Service can scroll 10 px sideways when a table has a long name (list tile, older than this feature).</li>
+        <li>A change to a published plan reaches an open Service screen within 5 minutes.</li>
+      </ul>
+      </div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Durby: technical and test notes</title>
+    <style>
+      :root { --fg: #1b1f24; --muted: #5b6670; --line: #d9dee3; --bg: #ffffff; --panel: #f5f7f9; --accent: #b4451a; --ok: #1f7a3d; --warn: #8a5a00; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      }
+      :root[data-theme='dark'] { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, 'Segoe UI', Roboto, sans-serif; }
+      main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+      h1 { font-size: 26px; margin: 12px 0 4px; }
+      h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+      h3 { font-size: 16px; margin: 20px 0 6px; }
+      p.lead { color: var(--muted); margin-top: 0; }
+      code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+      code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+      pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+      .scroll { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+      th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; }
+      .done { color: var(--ok); }
+      .open { color: var(--warn); }
+      a { color: var(--accent); }
+      nav { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+      .flow { list-style: none; margin: 12px 0 16px; padding: 0; counter-reset: step; }
+      .flow li { counter-increment: step; position: relative; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 9px 12px 9px 44px; margin-bottom: 18px; }
+      .flow li::before { content: counter(step); position: absolute; left: 12px; top: 9px; font-weight: 700; color: var(--accent); }
+      .flow li:not(:last-child)::after { content: '\2193'; position: absolute; left: 16px; bottom: -20px; color: var(--muted); }
+      .flow .who { display: block; font-size: 13px; color: var(--muted); }
+      .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+      .callout ul { margin: 0; padding-left: 18px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Technical and test notes</h1>
+      <p class="lead">One page per feature: how it works, what is tested automatically, and what to test by hand.</p>
+      <h2 id="new">New in November 2026</h2>
+      <div class="scroll"><table>
+        <tr><td><a href="menu-and-products.html">Menu and products</a></td><td>Product pictures</td></tr>
+        <tr><td><a href="table-management.html">Table management</a></td><td>Timer, move, merge, transfer, merged orders</td></tr>
+        <tr><td><a href="floor-plan.html">Floor plan</a></td><td>Generator, designer, plan on Service</td></tr>
+        <tr><td><a href="order-taking.html">Order taking</a></td><td>Seat numbers, waiter app</td></tr>
+        <tr><td><a href="reports-and-metrics.html">Reports and metrics</a></td><td>Sales, tables, reservations, CSV</td></tr>
+        <tr><td><a href="push-notifications.html">Push notifications</a></td><td>Daily sales report for owners</td></tr>
+        <tr><td><a href="owner-overview.html">Owner overview</a></td><td>All locations today, yesterday against a normal day</td></tr>
+      </table></div>
+      <h2 id="older">Earlier pages</h2>
+      <div class="scroll"><table>
+        <tr><td><a href="floor-and-tables.html">Floor and tables</a></td><td>Areas, tables, orders, kitchen screens, QR menu (before the floor plan)</td></tr>
+        <tr><td><a href="billing-and-checkout.html">Billing and checkout</a></td><td></td></tr>
+        <tr><td><a href="split-bill.html">Split bill</a></td><td></td></tr>
+        <tr><td><a href="notifications.html">Notifications and accounts</a></td><td>Bell, email, push, several accounts</td></tr>
+        <tr><td><a href="top-bar.html">Top bar</a></td><td></td></tr>
+        <tr><td><a href="audit-log.html">Audit log</a></td><td></td></tr>
+        <tr><td><a href="crud-permission-keys.html">Permission keys</a></td><td></td></tr>
+        <tr><td><a href="inventory.html">Inventory</a></td><td></td></tr>
+        <tr><td><a href="inventory-categories.html">Inventory categories</a></td><td></td></tr>
+        <tr><td><a href="vendor-invoice.html">Vendor invoice: reading</a></td><td></td></tr>
+        <tr><td><a href="vendor-invoice-approval.html">Vendor invoice: approval</a></td><td></td></tr>
+        <tr><td><a href="branch-requests.html">Branch requests</a></td><td></td></tr>
+        <tr><td><a href="asiamight-operations.html">Operations menu</a></td><td></td></tr>
+      </table></div>
+    </main>
+  </body>
+</html>

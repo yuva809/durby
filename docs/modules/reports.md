@@ -99,7 +99,7 @@ location are in the address. Every table exports CSV, built in the browser. `/` 
 
 ## Rebuild
 
-`node dist/cli/reports.js rebuild --org <id> [--from YYYY-MM-DD]`: batches of 200, each in its own transaction. Safe
+`node dist/cli/reports.js rebuild --org <id> [--from YYYY-MM-DD]`: batches of 100, each in its own transaction. Safe
 while the till is in use.
 
 ## Tests

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Order taking: technical and test notes</title>
+    <style>
+      :root { --fg: #1b1f24; --muted: #5b6670; --line: #d9dee3; --bg: #ffffff; --panel: #f5f7f9; --accent: #b4451a; --ok: #1f7a3d; --warn: #8a5a00; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      }
+      :root[data-theme='dark'] { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, 'Segoe UI', Roboto, sans-serif; }
+      main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+      h1 { font-size: 26px; margin: 12px 0 4px; }
+      h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+      h3 { font-size: 16px; margin: 20px 0 6px; }
+      p.lead { color: var(--muted); margin-top: 0; }
+      code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+      code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+      pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+      .scroll { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+      th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; }
+      .done { color: var(--ok); }
+      .open { color: var(--warn); }
+      a { color: var(--accent); }
+      nav { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+      .flow { list-style: none; margin: 12px 0 16px; padding: 0; counter-reset: step; }
+      .flow li { counter-increment: step; position: relative; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 9px 12px 9px 44px; margin-bottom: 18px; }
+      .flow li::before { content: counter(step); position: absolute; left: 12px; top: 9px; font-weight: 700; color: var(--accent); }
+      .flow li:not(:last-child)::after { content: '\2193'; position: absolute; left: 16px; bottom: -20px; color: var(--muted); }
+      .flow .who { display: block; font-size: 13px; color: var(--muted); }
+      .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+      .callout ul { margin: 0; padding-left: 18px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="index.html">All pages</a><a href="#status">Status</a><a href="#flow">Technical flow</a><a href="#tests">Automated tests</a><a href="#manual">Manual tests</a><a href="#gaps">Known gaps</a></nav>
+      <h1>Order taking</h1>
+      <p class="lead">Seat numbers on items (ADR 0070) and the installable waiter app (ADR 0072). Code: <code>apps/api/src/modules/pos/orders.service.ts</code>, <code>apps/web/components/pos/order-page.tsx</code>, <code>split-dialog.tsx</code>, <code>apps/web/app/manifest.ts</code>, <code>apps/web/public/sw.js</code>. Spec: <code>docs/modules/pos.md</code> → Steps 6 and 7.</p>
+
+      <h2 id="status">Status</h2>
+      <div class="scroll"><table>
+        <tr><th>Part</th><th>State</th></tr>
+        <tr><td>Seat 1–20 on each item, set when it is sent</td><td class="done">Built</td></tr>
+        <tr><td>Bill by seat in the split dialog</td><td class="done">Built</td></tr>
+        <tr><td>Seat kept by voids, transfers and merges</td><td class="done">Built</td></tr>
+        <tr><td>Installable app (manifest, icons, static-file cache)</td><td class="done">Built</td></tr>
+        <tr><td>Seat on kitchen tickets and the kitchen screen</td><td class="open">Not built</td></tr>
+        <tr><td>Offline ordering</td><td class="open">Not built</td></tr>
+      </table></div>
+
+      <h2 id="flow">Technical flow</h2>
+      <h3>An item with a seat</h3>
+      <ol class="flow">
+        <li><span class="who">Till</span>Seat field on each cart line (optional, 1–20; anything else is not sent).</li>
+        <li><span class="who">Till → API</span><code>POST /pos/tables/:tableId/tickets { lines: [{ productId, quantity, note?, seat? }] }</code>, permission <code>pos.orders.take</code>.</li>
+        <li><span class="who">API</span>Stores <code>pos_order_lines.seat</code>. It never changes; a correction is void and send again.</li>
+        <li><span class="who">Later</span>A void and both lines of a transfer copy the seat; a merge leaves lines as they are.</li>
+      </ol>
+      <h3>Bill by seat</h3>
+      <ol class="flow">
+        <li><span class="who">Till</span>Split bill → By item → Choose a seat.</li>
+        <li><span class="who">Browser</span>Fills the quantities of the unbilled items of that seat.</li>
+        <li><span class="who">Till → API</span>The normal <code>POST /pos/bills</code> with those line ids. Bills know nothing about seats.</li>
+      </ol>
+      <h3>The app on a phone</h3>
+      <ol class="flow">
+        <li><span class="who">Phone</span>Add to home screen. One manifest for everyone, in the partner's name and colors.</li>
+        <li><span class="who">Start</span>The home page. People with the Overview stay there; others who may read orders go on to <code>/service</code>, only when opened from the home screen.</li>
+        <li><span class="who">Service worker</span>Keeps <code>/_next/static/</code> files on the device and shows push messages. Never pages, api answers or sign-in state.</li>
+      </ol>
+      <div class="scroll"><table>
+        <tr><th>Migration</th><th>Change</th></tr>
+        <tr><td><code>20261120130000_pos_order_line_seats</code></td><td>nullable <code>seat</code> with a check 1–20 on <code>pos_order_lines</code></td></tr>
+      </table></div>
+
+      <h2 id="tests">Automated tests</h2>
+      <p>Results are from the full run on 24 Nov 2026 on the code that is now <code>main</code> (API 1689, web 1095, shared 398, i18n 49 tests, all passing).</p>
+      <div class="scroll"><table>
+        <tr><th>Layer</th><th>File</th><th>Covers</th><th>Result</th></tr>
+        <tr><td>API e2e</td><td><code>test/pos-seats.e2e.spec.ts</code> (5)</td><td>stored per line, 1–20 only, void, bill one seat, transfer and merge</td><td class="done">Pass</td></tr>
+        <tr><td>Web</td><td><code>components/reports/daily-report.test.tsx</code></td><td>manifest with name, colors, icons and the Service shortcut; service worker shows a push</td><td class="done">Pass</td></tr>
+        <tr><td>Web</td><td><code>components/reports/overview.test.tsx</code></td><td>the installed app leads waiters to Service; owners, staff and browsers stay</td><td class="done">Pass</td></tr>
+        <tr><td>Web</td><td>seat field and seat picker in the till</td><td></td><td class="open">No test yet</td></tr>
+      </table></div>
+      <pre>cd apps/api &amp;&amp; npx vitest run test/pos-seats
+cd apps/web &amp;&amp; npx vitest run components/reports components/pos</pre>
+
+      <h2 id="manual">Manual tests</h2>
+      <p>None of these has been done in a browser since the branch was merged.</p>
+      <div class="scroll"><table>
+        <tr><th>Step</th><th>Expected</th></tr>
+        <tr><td>Send soup seat 1, cola seat 2, bread without a seat</td><td>Sent; the order has the seats</td></tr>
+        <tr><td>Seat 0, 21 or text</td><td>The item is sent without a seat</td></tr>
+        <tr><td>Split bill → By item → seat 1</td><td>Only the soup is selected; its bill has only the soup</td></tr>
+        <tr><td>Transfer the cola to another table, then bill seat 2 there</td><td>The seat came along</td></tr>
+        <tr><td>Merge it back, bill seat 2</td><td>Works</td></tr>
+        <tr><td>Android: add to home screen, sign in as waiter, open</td><td>Own window without address bar, starts on Service</td></tr>
+        <tr><td>Same phone as owner</td><td>Starts on the Overview</td></tr>
+        <tr><td>Long press on the icon</td><td>Shortcut "Service" (where the phone supports it)</td></tr>
+        <tr><td>Flight mode, send an order</td><td>The usual connection error; nothing is sent later by itself</td></tr>
+        <tr><td>Sign out, sign in as someone else</td><td>No page or order of the first person is left</td></tr>
+      </table></div>
+
+      <h2 id="gaps">Known gaps</h2>
+      <div class="callout">
+      <ul>
+        <li>The cart has one line per product: two soups for two seats need two sends.</li>
+        <li>The seat is not on kitchen tickets or the kitchen screen.</li>
+        <li>The seat field and the seat picker have no web test.</li>
+        <li>The static-file cache keeps its name across releases, so old files stay on the device until the browser clears them.</li>
+      </ul>
+      </div>
+    </main>
+  </body>
+</html>

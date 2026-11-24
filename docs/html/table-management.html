@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Table management: technical and test notes</title>
+    <style>
+      :root { --fg: #1b1f24; --muted: #5b6670; --line: #d9dee3; --bg: #ffffff; --panel: #f5f7f9; --accent: #b4451a; --ok: #1f7a3d; --warn: #8a5a00; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      }
+      :root[data-theme='dark'] { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, 'Segoe UI', Roboto, sans-serif; }
+      main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+      h1 { font-size: 26px; margin: 12px 0 4px; }
+      h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+      h3 { font-size: 16px; margin: 20px 0 6px; }
+      p.lead { color: var(--muted); margin-top: 0; }
+      code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+      code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+      pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+      .scroll { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+      th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; }
+      .done { color: var(--ok); }
+      .open { color: var(--warn); }
+      a { color: var(--accent); }
+      nav { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+      .flow { list-style: none; margin: 12px 0 16px; padding: 0; counter-reset: step; }
+      .flow li { counter-increment: step; position: relative; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 9px 12px 9px 44px; margin-bottom: 18px; }
+      .flow li::before { content: counter(step); position: absolute; left: 12px; top: 9px; font-weight: 700; color: var(--accent); }
+      .flow li:not(:last-child)::after { content: '\2193'; position: absolute; left: 16px; bottom: -20px; color: var(--muted); }
+      .flow .who { display: block; font-size: 13px; color: var(--muted); }
+      .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+      .callout ul { margin: 0; padding-left: 18px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="index.html">All pages</a><a href="#status">Status</a><a href="#model">How it works</a><a href="#flow">Technical flow</a><a href="#tests">Automated tests</a><a href="#manual">Manual tests</a><a href="#gaps">Known gaps</a></nav>
+      <h1>Table management</h1>
+      <p class="lead">Floor timer, move, merge and transfer of open orders (ADR 0069), and the fix that makes merged orders billable. The drawn plan has its own page: floor-plan.html. Code: <code>apps/api/src/modules/pos/</code> (<code>orders.service.ts</code>, <code>ticket-placements.ts</code>), <code>apps/web/components/pos/</code>. Spec: <code>docs/modules/pos.md</code> → Step 5.</p>
+
+      <h2 id="status">Status</h2>
+      <div class="scroll"><table>
+        <tr><th>Part</th><th>Where</th><th>State</th></tr>
+        <tr><td>Floor timer: seated since, last order</td><td>Service tiles</td><td class="done">Built</td></tr>
+        <tr><td>Move an order to a free table</td><td>Till → Move to table</td><td class="done">Built</td></tr>
+        <tr><td>Merge two open orders</td><td>Till → Merge into another order</td><td class="done">Built</td></tr>
+        <tr><td>Transfer items to a new order at a free table</td><td>Till → Transfer items</td><td class="done">Built</td></tr>
+        <tr><td>Merged orders can be billed, voided, discounted, transferred, served and printed</td><td>migration <code>20261124120000</code></td><td class="done">Built</td></tr>
+        <tr><td>Floor plan generator and designer</td><td>floor-plan.html</td><td class="done">Built</td></tr>
+      </table></div>
+
+      <h2 id="model">How it works</h2>
+      <p>Tickets and lines are append-only, so an item can never be rewritten to another order. Instead each ticket has <strong>placement</strong> rows that say which order it is on; the latest one counts.</p>
+      <pre>pos_orders            the order, its table and number
+ └─ pos_kitchen_tickets       written once, keep the order they were sent on
+     ├─ pos_order_lines       written once (a void is a negative line)
+     └─ pos_ticket_placements which order the ticket is on NOW (latest row wins)</pre>
+      <ul>
+        <li>A first placement is written by a database trigger with every ticket.</li>
+        <li>Every read of an order goes through the latest placement (<code>ticket-placements.ts</code>).</li>
+        <li>Bills, voids and discounts name the order the line is on now. The check is in the services, under the order's lock.</li>
+      </ul>
+
+      <h2 id="flow">Technical flow</h2>
+      <h3>Move</h3>
+      <ol class="flow">
+        <li><span class="who">Till → API</span><code>POST /pos/orders/:id/move { tableId }</code></li>
+        <li><span class="who">API</span>Locks the order. The table must be free, in service and at the same location.</li>
+        <li><span class="who">API</span>Changes only the order's table. No ticket, no kitchen print. Audit <code>pos.order.moved</code>.</li>
+      </ol>
+      <h3>Merge</h3>
+      <ol class="flow">
+        <li><span class="who">Till → API</span><code>POST /pos/orders/:id/merge { orderId }</code>: the path is the source, the body the target.</li>
+        <li><span class="who">API</span>Both open, same location; the source has no billed items and no discount.</li>
+        <li><span class="who">API, one transaction</span>One placement per source ticket into the target; the source closes and its table is free. Audit <code>pos.order.merged</code>.</li>
+        <li><span class="who">After it</span>The target keeps its number and can be billed, voided, discounted and transferred as a whole.</li>
+      </ol>
+      <h3>Transfer</h3>
+      <ol class="flow">
+        <li><span class="who">Till → API</span><code>POST /pos/orders/:id/transfer { tableId, lines }</code></li>
+        <li><span class="who">API</span>Only unbilled, undiscounted portions; the table must be free.</li>
+        <li><span class="who">API, one transaction</span>A void ticket on the source and a sale ticket on a <strong>new</strong> order at the table, at the price they were sold at, with the same seat.</li>
+        <li><span class="who">Kitchen</span>Both print: the items are made for the new table.</li>
+      </ol>
+      <div class="scroll"><table>
+        <tr><th>Route</th><th>Permission</th><th>Refused with</th></tr>
+        <tr><td><code>POST /pos/orders/:id/move</code></td><td><code>pos.orders.take</code></td><td><code>pos.table_occupied</code>, <code>pos.table_archived</code>, <code>pos.order_not_same_location</code>, <code>pos.order_closed</code></td></tr>
+        <tr><td><code>POST /pos/orders/:id/merge</code></td><td><code>pos.orders.take</code></td><td><code>pos.merge_same_order</code>, <code>pos.line_billed</code>, <code>pos.discount_active</code>, <code>pos.order_not_same_location</code>, <code>pos.order_closed</code></td></tr>
+        <tr><td><code>POST /pos/orders/:id/transfer</code></td><td><code>pos.orders.take</code></td><td><code>pos.void_exceeds</code>, <code>pos.line_billed</code>, <code>pos.discount_active</code>, <code>pos.table_occupied</code>, <code>pos.table_archived</code>, <code>pos.line_not_found</code>, <code>pos.order_closed</code></td></tr>
+      </table></div>
+
+      <h2 id="tests">Automated tests</h2>
+      <p>Results are from the full run on 24 Nov 2026 on the code that is now <code>main</code> (API 1689, web 1095, shared 398, i18n 49 tests, all passing).</p>
+      <div class="scroll"><table>
+        <tr><th>Layer</th><th>File</th><th>Covers</th><th>Result</th></tr>
+        <tr><td>API e2e</td><td><code>test/pos-move.e2e.spec.ts</code></td><td>move, audit, refusals, permission, isolation</td><td class="done">Pass</td></tr>
+        <tr><td>API e2e</td><td><code>test/pos-merge.e2e.spec.ts</code></td><td>merge, refusals, permission, isolation</td><td class="done">Pass</td></tr>
+        <tr><td>API e2e</td><td><code>test/pos-merged-orders.e2e.spec.ts</code></td><td>bill, void, discount, transfer, serve and print after a merge and after a chain of merges</td><td class="done">Pass</td></tr>
+        <tr><td>API e2e</td><td><code>test/pos-transfer.e2e.spec.ts</code></td><td>both sides, price kept, refusals</td><td class="done">Pass</td></tr>
+        <tr><td>Web</td><td><code>components/pos/orders.test.tsx</code></td><td>timer, and the move, merge and transfer dialogs</td><td class="done">Pass</td></tr>
+      </table></div>
+      <pre>cd apps/api &amp;&amp; npx vitest run test/pos-move test/pos-merge test/pos-merged-orders test/pos-transfer
+cd apps/web &amp;&amp; npx vitest run components/pos</pre>
+
+      <h2 id="manual">Manual tests</h2>
+      <div class="scroll"><table>
+        <tr><th>Step</th><th>Expected</th><th>Browser</th></tr>
+        <tr><td>Send items to T1, open Service</td><td>T1 shows "Seated" and "Last order" times that grow</td><td class="open">Not yet</td></tr>
+        <tr><td>T1 → Move to table → T2</td><td>Same order number on T2, T1 free, nothing printed</td><td class="open">Not yet</td></tr>
+        <tr><td>T1 and T2 open → T1 → Merge into another order → T2</td><td>T2 shows all items, T1 is free</td><td class="open">Not yet</td></tr>
+        <tr><td>Print the bill of the merged order</td><td>Both tables' items on one bill; on 24 Nov the api check gave 25.47 as calculated by hand</td><td class="done">Checked (api only)</td></tr>
+        <tr><td>After a merge: void one moved item, give 10 %, bill</td><td>All three work</td><td class="done">Checked (api only)</td></tr>
+        <tr><td>T1 → Transfer items → one soup to T3</td><td>New order number at T3; T1 is one soup shorter; both tickets print</td><td class="open">Not yet</td></tr>
+        <tr><td>Bill an item, then transfer it</td><td>Refused until the bill is cancelled</td><td class="open">Not yet</td></tr>
+        <tr><td>Kitchen screen after a merge</td><td>The moved ticket shows the new table and order</td><td class="open">Not yet</td></tr>
+      </table></div>
+
+      <h2 id="gaps">Known gaps</h2>
+      <div class="callout">
+      <ul>
+        <li>Ticket numbers are per order, so a merged ticket keeps its old number in the target.</li>
+        <li>A transfer to an open order is not offered; that is a merge.</li>
+        <li>In reports, two merged tables still count as two orders.</li>
+        <li>Other devices see a move at their next refresh; there is no live hint for it yet.</li>
+      </ul>
+      </div>
+    </main>
+  </body>
+</html>

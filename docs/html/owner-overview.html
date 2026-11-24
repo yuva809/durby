@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Owner overview: technical and test notes</title>
+    <style>
+      :root { --fg: #1b1f24; --muted: #5b6670; --line: #d9dee3; --bg: #ffffff; --panel: #f5f7f9; --accent: #b4451a; --ok: #1f7a3d; --warn: #8a5a00; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      }
+      :root[data-theme='dark'] { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, 'Segoe UI', Roboto, sans-serif; }
+      main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+      h1 { font-size: 26px; margin: 12px 0 4px; }
+      h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+      h3 { font-size: 16px; margin: 20px 0 6px; }
+      p.lead { color: var(--muted); margin-top: 0; }
+      code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+      code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+      pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+      .scroll { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+      th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; }
+      .done { color: var(--ok); }
+      .open { color: var(--warn); }
+      a { color: var(--accent); }
+      nav { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+      .flow { list-style: none; margin: 12px 0 16px; padding: 0; counter-reset: step; }
+      .flow li { counter-increment: step; position: relative; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 9px 12px 9px 44px; margin-bottom: 18px; }
+      .flow li::before { content: counter(step); position: absolute; left: 12px; top: 9px; font-weight: 700; color: var(--accent); }
+      .flow li:not(:last-child)::after { content: '\2193'; position: absolute; left: 16px; bottom: -20px; color: var(--muted); }
+      .flow .who { display: block; font-size: 13px; color: var(--muted); }
+      .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+      .callout ul { margin: 0; padding-left: 18px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="index.html">All pages</a><a href="#status">What it shows</a><a href="#flow">Technical flow</a><a href="#tests">Automated tests</a><a href="#manual">Manual tests</a><a href="#gaps">Known gaps</a></nav>
+      <h1>Owner overview</h1>
+      <p class="lead">The home page for owners, admins and managers: all locations today, and yesterday against a normal day (ADR 0082). Code: <code>apps/api/src/modules/reports/reports.service.ts</code>, <code>day-figures.ts</code>, <code>apps/web/components/reports/overview.tsx</code>. Spec: <code>docs/modules/reports.md</code> → Overview.</p>
+
+      <h2 id="status">What it shows</h2>
+      <div class="scroll"><table>
+        <tr><th>Part</th><th>Content</th></tr>
+        <tr><td>Today</td><td>sales, orders, average order, open tables, change against the same weekday last week up to the same time</td></tr>
+        <tr><td>Yesterday</td><td>sales against a <strong>normal day</strong>: the average of the 4 same weekdays before, without days that had no orders</td></tr>
+        <tr><td>Locations</td><td>the same per location, with "From 3 of 4 days"; one location shows it in the card</td></tr>
+        <tr><td>No comparison</td><td>"No comparison yet", never 0 %</td></tr>
+        <tr><td>No data</td><td>"No sales yet. Earlier orders appear once the report data has been built."</td></tr>
+      </table></div>
+      <p>For people with <code>reports.sales.read</code> in organizations with <code>reports</code> and <code>pos</code>. Everyone else keeps the greeting. The start page setting, branch and driver redirects come first; in the installed app waiters go on to Service.</p>
+
+      <h2 id="flow">Technical flow</h2>
+      <ol class="flow">
+        <li><span class="who">Browser</span>The home page waits for the settings (start page), then calls <code>GET /reports/overview</code>.</li>
+        <li><span class="who">API</span>Locations the caller may read: active, no warehouse sites, by name. One read-only snapshot.</li>
+        <li><span class="who">API</span>Today and last week from the fact tables; open tables live from <code>PosFloorReader</code>.</li>
+        <li><span class="who"><code>DayFigures</code></span>Yesterday and the four same weekdays, each a whole business day of that location. Shared with the daily push.</li>
+        <li><span class="who">API</span>Rounded per location first; the total is the sum of what is listed and compares only locations that have a normal day (<code>leftOut</code> says how many don't).</li>
+        <li><span class="who">Browser</span>Again every 60 s while visible. If that fails for a moment, the last figures stay with their time and a notice.</li>
+      </ol>
+      <h3>Example</h3>
+      <pre>Mondays before yesterday:  60   40   50.01   0 (all discounted: counts)     normal day = 150.01 / 4 = 37.50
+Yesterday 57.00                                                            +19.50 (+52.0 %)
+A second place with orders on 2 of 4 Mondays: 20, 40                        normal day = 30.00, "From 2 of 4 days"
+A third place with none                                                     "No comparison yet", left out of the total</pre>
+
+      <h2 id="tests">Automated tests</h2>
+      <p>Results are from the full run on 24 Nov 2026 on the code that is now <code>main</code> (API 1689, web 1095, shared 398, i18n 49 tests, all passing).</p>
+      <div class="scroll"><table>
+        <tr><th>Layer</th><th>File</th><th>Covers</th><th>Result</th></tr>
+        <tr><td>API e2e</td><td><code>test/reports-overview.e2e.spec.ts</code> (10)</td><td>the example above by hand, 4/3/2/0 days, zones and day start, clock change, open tables, archived places, limits, roles, isolation</td><td class="done">Pass</td></tr>
+        <tr><td>API unit</td><td><code>periods.spec.ts</code>, <code>metrics.spec.ts</code></td><td>the four weekdays, rounding, no negative zero</td><td class="done">Pass</td></tr>
+        <tr><td>Web</td><td><code>components/reports/overview.test.tsx</code> (10)</td><td>figures, rows and cards, one location, empty, refresh, failure, German numbers, redirects</td><td class="done">Pass</td></tr>
+      </table></div>
+      <pre>cd apps/api &amp;&amp; npx vitest run test/reports-overview src/modules/reports
+cd apps/web &amp;&amp; npx vitest run components/reports/overview</pre>
+
+      <h2 id="manual">Manual tests</h2>
+      <p>Browser: Chromium on a scratch database with two locations, 24 Nov 2026.</p>
+      <div class="scroll"><table>
+        <tr><th>Step</th><th>Expected</th><th>Browser</th></tr>
+        <tr><td>Owner without any orders</td><td>The "No sales yet" text</td><td class="done">Checked</td></tr>
+        <tr><td>Orders at two locations</td><td>Totals and rows equal your own sum</td><td class="done">Checked</td></tr>
+        <tr><td>Send a new order, wait a minute</td><td>The figures change by themselves</td><td class="done">Checked</td></tr>
+        <tr><td>Yesterday against four weekdays</td><td>80 against 100 shows −20.0 %</td><td class="done">Checked</td></tr>
+        <tr><td>One location with one comparison day</td><td>"From 1 of 4 days"</td><td class="done">Checked</td></tr>
+        <tr><td>Tablet and phone</td><td>Phone: one card per location, no sideways scrolling</td><td class="done">Checked</td></tr>
+        <tr><td>German</td><td>Texts and numbers in German</td><td class="done">Checked</td></tr>
+        <tr><td>Host signs in</td><td>Greeting, no figures, no report call</td><td class="done">Checked</td></tr>
+        <tr><td>"Against last week" with real orders</td><td>As calculated by hand</td><td class="open">Automated only</td></tr>
+        <tr><td>Start page Inventory</td><td>Goes to Inventory</td><td class="open">Automated only</td></tr>
+        <tr><td>Dark mode</td><td>Readable</td><td class="open">Not yet</td></tr>
+      </table></div>
+
+      <h2 id="gaps">Known gaps</h2>
+      <div class="callout">
+      <ul>
+        <li>Holidays are not known: a closed day yesterday shows as −100 %.</li>
+        <li>Archived locations are left out here but not in Reports, so a period there can be higher.</li>
+        <li>Until <code>rebuild</code> has run, normal days come from fewer days or don't exist.</li>
+      </ul>
+      </div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Menu and products: technical and test notes</title>
+    <style>
+      :root { --fg: #1b1f24; --muted: #5b6670; --line: #d9dee3; --bg: #ffffff; --panel: #f5f7f9; --accent: #b4451a; --ok: #1f7a3d; --warn: #8a5a00; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      }
+      :root[data-theme='dark'] { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, 'Segoe UI', Roboto, sans-serif; }
+      main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+      h1 { font-size: 26px; margin: 12px 0 4px; }
+      h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+      h3 { font-size: 16px; margin: 20px 0 6px; }
+      p.lead { color: var(--muted); margin-top: 0; }
+      code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+      code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+      pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+      .scroll { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+      th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; }
+      .done { color: var(--ok); }
+      .open { color: var(--warn); }
+      a { color: var(--accent); }
+      nav { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+      .flow { list-style: none; margin: 12px 0 16px; padding: 0; counter-reset: step; }
+      .flow li { counter-increment: step; position: relative; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 9px 12px 9px 44px; margin-bottom: 18px; }
+      .flow li::before { content: counter(step); position: absolute; left: 12px; top: 9px; font-weight: 700; color: var(--accent); }
+      .flow li:not(:last-child)::after { content: '\2193'; position: absolute; left: 16px; bottom: -20px; color: var(--muted); }
+      .flow .who { display: block; font-size: 13px; color: var(--muted); }
+      .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+      .callout ul { margin: 0; padding-left: 18px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="index.html">All pages</a><a href="#status">Status</a><a href="#flow">Technical flow</a><a href="#tests">Automated tests</a><a href="#manual">Manual tests</a><a href="#gaps">Known gaps</a></nav>
+      <h1>Menu and products</h1>
+      <p class="lead">Product pictures, the part of ADR 0049 that is built. Variants, modifiers and sold-out are decided in the same ADR but not built. Code: <code>apps/api/src/modules/catalog/</code>, <code>apps/web/components/catalog/catalog-page.tsx</code>, <code>apps/web/lib/catalog/product-image.ts</code>. Spec: <code>docs/modules/catalog.md</code>.</p>
+
+      <h2 id="status">Status</h2>
+      <div class="scroll"><table>
+        <tr><th>Part</th><th>State</th></tr>
+        <tr><td>One picture per product: upload, replace, remove (ADR 0049 step 1)</td><td class="done">Built</td></tr>
+        <tr><td>Showing the picture on the QR menu or a kiosk</td><td class="open">Not built</td></tr>
+        <tr><td>Variants (sizes with their own price)</td><td class="open">Not built</td></tr>
+        <tr><td>Modifiers (extras, choices)</td><td class="open">Not built</td></tr>
+        <tr><td>Sold out / 86 per location and day</td><td class="open">Not built</td></tr>
+      </table></div>
+      <p>Menu numbers, price rules, bulk actions, import and the menu scan are older; see <code>docs/modules/catalog.md</code>.</p>
+
+      <h2 id="flow">Technical flow</h2>
+      <h3>Saving a picture</h3>
+      <ol class="flow">
+        <li><span class="who">Browser</span>Pick a file in the product dialog. It is resized to at most 800 px and 300 KB; transparent areas turn white.</li>
+        <li><span class="who">Browser → API</span>The product is saved first (<code>POST</code> or <code>PATCH /catalog/products</code>), then the picture with <code>PUT /catalog/products/:id/image</code> (the raw file as the body).</li>
+        <li><span class="who">API</span>Checks <code>catalog.products.edit</code>, the size and the first bytes of the file (WebP, PNG or JPEG), not only the content type.</li>
+        <li><span class="who">API, one transaction</span>Writes the bytes to <code>product_images</code> and an audit row <code>catalog.product.updated</code> without the bytes. <code>imageVersion</code> changes.</li>
+        <li><span class="who">Browser</span>Reads <code>GET /catalog/products/:id/image</code> with the signed-in token. <code>imageVersion</code> in the address is the cache key.</li>
+      </ol>
+      <div class="scroll"><table>
+        <tr><th>Route</th><th>Permission</th><th>Answers</th></tr>
+        <tr><td><code>PUT /catalog/products/:id/image</code></td><td><code>catalog.products.edit</code></td><td>The product; 400 <code>catalog.product_image_invalid</code>; 413 <code>platform.payload_too_large</code></td></tr>
+        <tr><td><code>GET /catalog/products/:id/image</code></td><td><code>catalog.products.read</code></td><td>The file; 404 without one</td></tr>
+        <tr><td><code>DELETE /catalog/products/:id/image</code></td><td><code>catalog.products.edit</code></td><td>The product without picture</td></tr>
+      </table></div>
+      <ul>
+        <li>Product lists carry <code>imageVersion</code> only, never the file.</li>
+        <li>Feature <code>catalog</code>. The table has row-level security like every tenant table.</li>
+      </ul>
+
+      <h2 id="tests">Automated tests</h2>
+      <p>Results are from the full run on 24 Nov 2026 on the code that is now <code>main</code> (API 1689, web 1095, shared 398, i18n 49 tests, all passing).</p>
+      <div class="scroll"><table>
+        <tr><th>Layer</th><th>File</th><th>Covers</th><th>Result</th></tr>
+        <tr><td>API e2e</td><td><code>test/product-images.e2e.spec.ts</code></td><td>store, serve, replace by type and size rules, remove, not in lists, audit, another organization</td><td class="done">Pass</td></tr>
+        <tr><td>API e2e</td><td><code>test/catalog*.e2e.spec.ts</code></td><td>products, categories, numbers, price rules, bulk, import</td><td class="done">Pass</td></tr>
+        <tr><td>Web</td><td>product picture in the dialog</td><td></td><td class="open">No test yet</td></tr>
+      </table></div>
+      <pre>cd apps/api &amp;&amp; npx vitest run test/product-images.e2e.spec.ts test/catalog</pre>
+
+      <h2 id="manual">Manual tests</h2>
+      <p>Not recorded as done in a browser yet.</p>
+      <div class="scroll"><table>
+        <tr><th>Step</th><th>Expected</th></tr>
+        <tr><td>Products → edit a product → Picture → choose a large photo → Save</td><td>Saved; opening the dialog again shows it</td></tr>
+        <tr><td>Choose a PDF or a renamed text file</td><td>"The picture must be a WebP, PNG or JPEG file of at most 300 KB."</td></tr>
+        <tr><td>Replace the picture</td><td>The new one shows at once, also after a reload</td></tr>
+        <tr><td>Remove picture → Save</td><td>Gone</td></tr>
+        <tr><td>Sign in as waiter</td><td>No way to change it</td></tr>
+        <tr><td>Audit log</td><td>One "Product changed" entry per change</td></tr>
+      </table></div>
+
+      <h2 id="gaps">Known gaps</h2>
+      <div class="callout">
+      <ul>
+        <li>The dialog says "Shown on the QR menu and the kiosk." That is not true yet: no guest-facing page reads the picture.</li>
+        <li>The till does not show pictures.</li>
+        <li>The web side of pictures has no automated test.</li>
+      </ul>
+      </div>
+    </main>
+  </body>
+</html>

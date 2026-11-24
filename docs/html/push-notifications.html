@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Push notifications: technical and test notes</title>
+    <style>
+      :root { --fg: #1b1f24; --muted: #5b6670; --line: #d9dee3; --bg: #ffffff; --panel: #f5f7f9; --accent: #b4451a; --ok: #1f7a3d; --warn: #8a5a00; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      }
+      :root[data-theme='dark'] { --fg: #e8ecef; --muted: #9aa5ae; --line: #2e363e; --bg: #14181c; --panel: #1c2228; --accent: #f08a5d; --ok: #5fcf85; --warn: #f0c060; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, 'Segoe UI', Roboto, sans-serif; }
+      main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+      h1 { font-size: 26px; margin: 12px 0 4px; }
+      h2 { font-size: 19px; margin: 36px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+      h3 { font-size: 16px; margin: 20px 0 6px; }
+      p.lead { color: var(--muted); margin-top: 0; }
+      code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+      code { background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+      pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 6px; overflow-x: auto; }
+      .scroll { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+      th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; }
+      .done { color: var(--ok); }
+      .open { color: var(--warn); }
+      a { color: var(--accent); }
+      nav { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+      .flow { list-style: none; margin: 12px 0 16px; padding: 0; counter-reset: step; }
+      .flow li { counter-increment: step; position: relative; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 9px 12px 9px 44px; margin-bottom: 18px; }
+      .flow li::before { content: counter(step); position: absolute; left: 12px; top: 9px; font-weight: 700; color: var(--accent); }
+      .flow li:not(:last-child)::after { content: '\2193'; position: absolute; left: 16px; bottom: -20px; color: var(--muted); }
+      .flow .who { display: block; font-size: 13px; color: var(--muted); }
+      .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; margin: 14px 0; }
+      .callout ul { margin: 0; padding-left: 18px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="index.html">All pages</a><a href="#status">What owners get</a><a href="#flow">Technical flow</a><a href="#setup">Server setup</a><a href="#tests">Automated tests</a><a href="#manual">Manual tests</a><a href="#gaps">Known gaps</a></nav>
+      <h1>Push notifications</h1>
+      <p class="lead">One push message every morning for owners: how the restaurant did yesterday (ADR 0083), on top of the stored notifications of ADR 0047 (notifications.html). Code: <code>apps/api/src/modules/reports/daily-report.*</code>, <code>apps/api/src/platform/notifications/</code>, <code>apps/web/lib/account/</code>, <code>apps/web/public/sw.js</code>.</p>
+
+      <h2 id="status">What owners get</h2>
+      <pre>Mon, Nov 23: €125.00 sales
+Orders: 2, average €62.50. -20.0 % against a normal day. Best: Main street, €80.00.</pre>
+      <div class="scroll"><table>
+        <tr><th>Rule</th><th>Value</th></tr>
+        <tr><td>Who</td><td>active members with the Owner role, in organizations with <code>reports</code> and <code>pos</code></td></tr>
+        <tr><td>When</td><td>08:00 the next morning (Settings → Daily sales report at, 06:00–12:00), or later if the day has not ended at every location</td></tr>
+        <tr><td>How often</td><td>once per organization and day; late start: within 12 hours, then skipped</td></tr>
+        <tr><td>No orders that day</td><td>no message</td></tr>
+        <tr><td>Other updates</td><td>push only for people who chose it; notification emails are off on the server</td></tr>
+        <tr><td>Opt-out</td><td>Account → Notifications → Daily sales report</td></tr>
+      </table></div>
+
+      <h2 id="flow">Technical flow</h2>
+      <h3>Turning it on</h3>
+      <ol class="flow">
+        <li><span class="who">Owner's device</span>Overview → Turn on (iPhone: first Add to Home Screen). The browser asks for permission.</li>
+        <li><span class="who">Browser</span>Registers <code>/sw.js</code> and subscribes at its maker's push service with the server's public key (at most 20 s).</li>
+        <li><span class="who">Browser → API</span><code>POST /notifications/push/subscribe</code> keeps the address for this person in this organization.</li>
+      </ol>
+      <h3>Every morning</h3>
+      <ol class="flow">
+        <li><span class="who">Worker, every 5 minutes</span><code>DailyReportScheduler</code> goes through the organizations, each in its own tenant context. One that fails is logged; the others go on.</li>
+        <li><span class="who">Worker</span>Is the report due? (time set, and the day has ended at every active location)</li>
+        <li><span class="who">Worker</span>Figures from the Overview's own code, so message and screen can't differ.</li>
+        <li><span class="who">Worker, one transaction</span>One row in <code>report_daily_messages</code> (unique per day) and one <code>daily_sales</code> notification per owner. A second worker finds the row taken.</li>
+        <li><span class="who">Worker, delivery</span>Signs the message with the private key and sends it to each device, all at once, at most 3 s each. A device that is gone is removed.</li>
+        <li><span class="who">Device</span>The service worker shows it; a tap opens the Overview.</li>
+      </ol>
+
+      <h2 id="setup">Server setup</h2>
+      <ol class="flow">
+        <li><span class="who">Your PC, once</span><code>npx web-push generate-vapid-keys</code>. The private key is a secret: not in chat, not in git.</li>
+        <li><span class="who">Server</span>Put <code>WEB_PUSH_PUBLIC_KEY</code>, <code>WEB_PUSH_PRIVATE_KEY</code> and <code>WEB_PUSH_SUBJECT</code> (<code>mailto:…</code>) into <code>/opt/durby/.env</code>, then <code>bin/dc up -d api worker</code>.</li>
+        <li><span class="who">Server, once per restaurant</span><code>bin/dc run --rm worker node dist/cli/reports.js rebuild --org &lt;id&gt;</code></li>
+        <li><span class="who">To try it</span><code>bin/dc run --rm worker node dist/cli/reports.js daily --org &lt;id&gt;</code>. It answers <code>sent</code>, <code>done</code> (already sent), <code>early</code>, <code>no_orders</code> or <code>off</code>.</li>
+      </ol>
+      <ul>
+        <li>The worker reaches the internet through the <code>egress</code> network (outgoing only).</li>
+        <li>Changing the keys later drops every device.</li>
+        <li><code>NOTIFICATION_EMAILS=on</code> in <code>.env</code> would switch notification emails on. Account emails always go.</li>
+      </ul>
+
+      <h2 id="tests">Automated tests</h2>
+      <p>Results are from the full run on 24 Nov 2026 on the code that is now <code>main</code> (API 1689, web 1095, shared 398, i18n 49 tests, all passing).</p>
+      <div class="scroll"><table>
+        <tr><th>Layer</th><th>File</th><th>Covers</th><th>Result</th></tr>
+        <tr><td>API e2e</td><td><code>test/reports-daily.e2e.spec.ts</code> (12)</td><td>same figures as the Overview, owners only, once, time, no orders, isolation, one failing organization</td><td class="done">Pass</td></tr>
+        <tr><td>API unit</td><td><code>periods.spec.ts</code></td><td>due time over both clock changes and several zones</td><td class="done">Pass</td></tr>
+        <tr><td>API unit</td><td><code>notification-delivery.handler.spec.ts</code></td><td>text in English and German, emails off, all devices at once, gone devices</td><td class="done">Pass</td></tr>
+        <tr><td>Shared</td><td><code>notification-text.test.ts</code> (6)</td><td>wording, formats, defaults</td><td class="done">Pass</td></tr>
+        <tr><td>Web</td><td><code>components/reports/daily-report.test.tsx</code> (12), <code>lib/account/push.test.ts</code> (2)</td><td>the Turn on card, choice for owners only, bell, manifest, service worker, a browser that never answers</td><td class="done">Pass</td></tr>
+      </table></div>
+      <pre>cd apps/api &amp;&amp; npx vitest run test/reports-daily src/platform/notifications
+cd apps/web &amp;&amp; npx vitest run components/reports/daily-report lib/account components/account</pre>
+
+      <h2 id="manual">Manual tests</h2>
+      <p>Browser: scratch database with throwaway keys and the real worker, 24 Nov 2026.</p>
+      <div class="scroll"><table>
+        <tr><th>Step</th><th>Expected</th><th>Result</th></tr>
+        <tr><td>Owner, Edge: Overview → Turn on</td><td>"On: …"; the card is gone after a reload</td><td class="done">Checked</td></tr>
+        <tr><td>Run <code>daily</code></td><td><code>sent</code>; the message appears with the Overview's figures</td><td class="done">Checked</td></tr>
+        <tr><td>Run it again</td><td><code>done</code>, no second message</td><td class="done">Checked</td></tr>
+        <tr><td>Bell → Updates</td><td>Both lines; a tap opens the Overview</td><td class="done">Checked</td></tr>
+        <tr><td>Account → Notifications as owner</td><td>Row "Daily sales report" and the lock-screen note</td><td class="done">Checked</td></tr>
+        <tr><td>Same page as manager</td><td>No such row</td><td class="open">Automated only</td></tr>
+        <tr><td>Chrome on a computer</td><td>As in Edge (under automation Chrome never answered)</td><td class="open">Not yet</td></tr>
+        <tr><td>Android phone</td><td>Message at 08:00 with the app closed</td><td class="open">Not yet</td></tr>
+        <tr><td>iPhone: Add to Home Screen, then Turn on</td><td>As above; before that the card says to add it first</td><td class="open">Not yet</td></tr>
+        <tr><td>Turn the kind off</td><td>No push next morning, still under the bell</td><td class="open">Automated only</td></tr>
+        <tr><td>A branch sends a stock request</td><td>No email from the server</td><td class="open">Automated only</td></tr>
+      </table></div>
+
+      <h2 id="gaps">Known gaps</h2>
+      <div class="callout">
+      <ul>
+        <li>Amounts can show on the lock screen; the settings page says so.</li>
+        <li>The Android till app cannot receive push (it is a WebView). Owners use the browser.</li>
+        <li>After a rollback to a release before this one, an owner's bell shows an error until the newer release is back.</li>
+        <li>With <code>NOTIFICATION_EMAILS=off</code> the Email column in the settings has no effect.</li>
+      </ul>
+      </div>
+    </main>
+  </body>
+</html>
