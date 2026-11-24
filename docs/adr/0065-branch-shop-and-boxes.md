@@ -33,5 +33,7 @@ branch orders some by the box and some by the piece.
   person stays on Inventory; "View my stock requests" leads to Order History. The "Open cart" bar is gone.
 - A line's button reads **Request**; at one (box or piece) the − becomes a bin.
 - A branch may ask for more than the warehouse has, also for items it has none of: the line says "None at the
-  warehouse right now" or "Only 8 pc at the warehouse: the rest follows once it is in", and the request is still
-  sent. The api never limited this; approval and packing still work against what is on hand.
+  warehouse right now" or "Only 8 pc at the warehouse right now", and the request is still sent. Until 2026-11-24
+  the api refused such a request (`orders.request_above_stock`, removed since). Approving does not check stock;
+  packing does (no more than is there, unless the location allows negative stock). What is not packed is not sent
+  later by itself: the branch asks again.

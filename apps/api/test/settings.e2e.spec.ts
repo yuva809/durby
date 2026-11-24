@@ -169,6 +169,7 @@ describe('/api/v1/settings', () => {
         // Passwords set by owners and admins are final (ADR 0052); off by default.
         { key: 'team.adminsManageSignIn', value: false, source: 'default', dataBound: false },
         { key: 'orders.requestsNeedApproval', value: true, source: 'default', dataBound: false },
+        { key: 'orders.branchStores', value: true, source: 'default', dataBound: false },
         { key: 'orders.showSalesOrders', value: true, source: 'default', dataBound: false },
         { key: 'startPage', value: 'overview', source: 'default', dataBound: false },
       ]);

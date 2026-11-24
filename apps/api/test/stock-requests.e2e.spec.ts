@@ -242,23 +242,32 @@ describe('branch stock requests (ADR 0045)', () => {
     }).expect(409);
   });
 
-  it('refuses a request for more than the warehouse has', async () => {
+  it('takes a request for more than the warehouse has; packing is limited to what is there (ADR 0065)', async () => {
     const s = await setup();
-    // 4 oil there: 9 is refused, naming the item; 4 goes through.
-    const res = await post(s.branchUser.token, '/stock-requests', {
-      fromWarehouseId: s.main,
-      toWarehouseId: s.branch,
-      lines: [{ itemId: s.oil, quantity: '9' }],
-    }).expect(409);
-    expect(res.body as { code: string; details: unknown }).toMatchObject({
-      code: 'orders.request_above_stock',
-      details: { itemIds: [s.oil] },
-    });
-    await post(s.branchUser.token, '/stock-requests', {
-      fromWarehouseId: s.main,
-      toWarehouseId: s.branch,
-      lines: [{ itemId: s.oil, quantity: '4' }],
+    // 4 oil there: 9 is asked for and approved as asked...
+    const created = stockRequestSchema.parse(
+      (
+        await post(s.branchUser.token, '/stock-requests', {
+          fromWarehouseId: s.main,
+          toWarehouseId: s.branch,
+          lines: [{ itemId: s.oil, quantity: '9' }],
+        }).expect(201)
+      ).body,
+    );
+    const line = created.lines[0]!.id;
+    await post(s.owner.token, `/stock-requests/${created.id}/approve`, {
+      lines: [{ lineId: line, quantity: '9' }],
     }).expect(201);
+    // ...but only the 4 can be packed.
+    const res = await post(s.lager.token, `/stock-requests/${created.id}/pack`, {
+      lines: [{ lineId: line, quantity: '9' }],
+    }).expect(409);
+    expect((res.body as { code: string }).code).toBe('inventory.insufficient_stock');
+    expect(await levels(s.owner.token, s.main)).toEqual({ Oil: '4.000', Rice: '10.000' });
+    await post(s.lager.token, `/stock-requests/${created.id}/pack`, {
+      lines: [{ lineId: line, quantity: '4' }],
+    }).expect(201);
+    expect(await levels(s.owner.token, s.main)).toEqual({ Oil: '0.000', Rice: '10.000' });
   });
 
   it('refuses to pack more than is on the shelf', async () => {
@@ -436,6 +445,42 @@ describe('branch stock requests (ADR 0045)', () => {
     expect(docs.data.map((d) => d.kind)).toContain('delivery');
     expect(docs.data.find((d) => d.kind === 'delivery')!.number).toMatch(/^TRF-/);
     expect(await levels(s.owner.token, s.main)).toEqual({ Oil: '4.000', Rice: '7.000' });
+  });
+
+  /** ADR 0080 §3: the store a request names was archived before its receipt; short receipts are booked as before. */
+  it('delivers a request whose store was archived since, booking what did not arrive short', async () => {
+    const s = await setup();
+    const created = stockRequestSchema.parse(
+      (
+        await post(s.branchUser.token, '/stock-requests', {
+          fromWarehouseId: s.main,
+          toWarehouseId: s.branch,
+          lines: [{ itemId: s.rice, quantity: '3' }],
+        }).expect(201)
+      ).body,
+    );
+    const line = created.lines[0]!.id;
+    await post(s.owner.token, `/stock-requests/${created.id}/approve`, {
+      lines: [{ lineId: line, quantity: '3' }],
+    }).expect(201);
+    await post(s.lager.token, `/stock-requests/${created.id}/pack`, {
+      lines: [{ lineId: line, quantity: '3' }],
+    }).expect(201);
+    await patch(s.owner.token, `/inventory/warehouses/${s.branch}`, { archived: true }).expect(200);
+    await post(s.branchUser.token, `/stock-requests/${created.id}/receive`, {
+      lines: [{ lineId: line, quantity: '2' }],
+    }).expect(201);
+    const transit = warehouseListResponseSchema
+      .parse((await get(s.owner.token, '/inventory/warehouses').expect(200)).body)
+      .data.find((w) => w.isTransit)!;
+    expect(await levels(s.owner.token, transit.id)).toEqual({ Rice: '0.000' });
+    const docs = (await get(s.owner.token, '/inventory/documents').expect(200)).body as {
+      data: { kind: string; reason: string | null }[];
+    };
+    // 2 delivered, 1 short; nothing booked into the archived store.
+    expect(docs.data.map((d) => d.kind)).toContain('delivery');
+    expect(docs.data.find((d) => d.kind === 'adjustment')?.reason).toBe('other');
+    expect(await levels(s.owner.token, s.branch)).toEqual({});
   });
 
   it('names who asked, and shows a branch the categories without the catalog (ADR 0059)', async () => {
@@ -625,7 +670,7 @@ describe('branch stock requests (ADR 0045)', () => {
     expect(packed.lineCount).toBe(2);
     expect(await levels(s.owner.token, s.main)).toEqual({ Oil: '2.000', Rice: '4.000' });
 
-    // The branch confirms both; the extra arrives like any line. (Picked up by who assigns deliveries.)
+    // The branch confirms both; the extra arrives like any line. (The owner picks up: the Warehouse role has no orders.delivery.use.)
     await post(s.owner.token, `/stock-requests/${created.id}/pick-up`).expect(201);
     const oilLine = packed.lines[1]!.id;
     await post(s.branchUser.token, `/stock-requests/${created.id}/receive`, {
