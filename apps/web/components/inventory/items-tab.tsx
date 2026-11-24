@@ -215,6 +215,7 @@ function DeleteItemButton({ item, onDone }: { item: StockItem; onDone: () => voi
   const t = useT();
   const { store } = useAuth();
   const action = useActionKey();
+  const archiveAction = useActionKey();
   return (
     <ConfirmAction
       testId="item-delete"
@@ -223,6 +224,12 @@ function DeleteItemButton({ item, onDone }: { item: StockItem; onDone: () => voi
       description={t('inventory.page.deleteItemDescription')}
       confirm={t('inventory.page.deleteItem')}
       run={() => deleteStockItem(store, action, item.id)}
+      // With stock history it can only be archived: offered right here.
+      fallback={{
+        code: 'inventory.item_in_use',
+        label: t('inventory.page.archiveInstead'),
+        run: () => updateStockItem(store, archiveAction, item.id, { archived: true }),
+      }}
       onDone={onDone}
     />
   );

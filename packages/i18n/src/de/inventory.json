@@ -508,5 +508,6 @@
   "inventory.overview.actions": "Aktionen",
   "inventory.page.packPieces": "Stück",
   "inventory.page.packHint": "Stück pro Karton und Gewicht je Stück, z. B. 8 × 1 kg. Mit Stückzahl können Filialen kartonweise bestellen.",
-  "inventory.page.packInvalid": "Stück: eine ganze Zahl; Gewicht: eine Zahl mit Einheit."
+  "inventory.page.packInvalid": "Stück: eine ganze Zahl; Gewicht: eine Zahl mit Einheit.",
+  "inventory.page.archiveInstead": "Stattdessen archivieren"
 }

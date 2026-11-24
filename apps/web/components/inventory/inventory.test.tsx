@@ -488,6 +488,30 @@ describe('InventoryPage', () => {
     });
   });
 
+  it('offers Archive instead when an item with stock history cannot be deleted', async () => {
+    signedInAs('owner');
+    const writes = api({
+      [`DELETE /api/v1/inventory/items/${COLA.id}`]: () =>
+        Response.json({ code: 'inventory.item_in_use', message: 'in use' }, { status: 409 }),
+      [`PATCH /api/v1/inventory/items/${COLA.id}`]: () =>
+        Response.json({ ...COLA, archivedAt: '2026-11-24T10:00:00.000Z' }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    const cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await userEvent.click(within(cola).getByTestId('item-delete'));
+    const dialog = await screen.findByRole('alertdialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    await userEvent.click(await within(dialog).findByTestId('item-delete-fallback'));
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[1]).toMatchObject({
+      method: 'PATCH',
+      path: `/api/v1/inventory/items/${COLA.id}`,
+      body: { archived: true },
+    });
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+  });
+
   it('lets managers add warehouses but not items', async () => {
     signedInAs('manager');
     api();

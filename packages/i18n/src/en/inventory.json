@@ -508,5 +508,6 @@
   "inventory.overview.actions": "Actions",
   "inventory.page.packPieces": "Pieces",
   "inventory.page.packHint": "Pieces in one box and the weight of each, e.g. 8 × 1 kg. With pieces set, branches can order by the box.",
-  "inventory.page.packInvalid": "Pieces: a whole number; weight: a number with its unit."
+  "inventory.page.packInvalid": "Pieces: a whole number; weight: a number with its unit.",
+  "inventory.page.archiveInstead": "Archive instead"
 }
