@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { CATALOG_NAME_MAX_LENGTH, priceSchema } from './catalog';
 import {
+  BRAND_MAX_LENGTH,
   INVENTORY_NAME_MAX_LENGTH,
   STOCK_UNITS,
   stockQuantitySchema,
@@ -11,6 +12,7 @@ import {
   ORDER_CUSTOMER_NAME_MAX_LENGTH,
   ORDER_TEXT_MAX_LENGTH,
 } from './orders';
+import { packFields, packProblems, parsePackCell, type UnitLabels, unitLookup } from '../pack-size';
 
 /**
  * Import Data (docs/platform/import.md, ADR 0044 step 4): CSV files read in the browser, rows sent as JSON to the
@@ -29,6 +31,8 @@ export const DATA_IMPORT_PROBLEMS = [
   'invalid',
   'duplicate',
   'unknown',
+  /** A bare category name used by several categories: say "Parent / Child". */
+  'ambiguous',
 ] as const;
 export type DataImportProblem = (typeof DATA_IMPORT_PROBLEMS)[number];
 
@@ -40,6 +44,11 @@ export const itemImportRowSchema = z.strictObject({
   name: cell,
   sku: cell.optional(),
   unit: cell,
+  brand: cell.optional(),
+  /** "12 x 500 ml", "5kg", "10", "Pack of 6" (ADR 0055). */
+  packSize: cell.optional(),
+  /** An existing category by name, or "Parent / Child" (ADR 0048). Never created by the import. */
+  category: cell.optional(),
   minQuantity: cell.optional(),
   salePrice: cell.optional(),
 });
@@ -96,7 +105,7 @@ export type DataImportProblemRow = z.infer<typeof dataImportProblemSchema>;
 /** The CSV header of each kind's template: also the canonical column names. */
 export const IMPORT_TEMPLATES: Readonly<Record<ImportKind, readonly string[]>> = {
   categories: ['name'],
-  items: ['name', 'sku', 'unit', 'min_quantity', 'sale_price'],
+  items: ['name', 'sku', 'unit', 'brand', 'pack_size', 'category', 'min_quantity', 'sale_price'],
   opening_stock: ['warehouse', 'item', 'quantity', 'unit_cost'],
   customers: ['name', 'code', 'phone', 'email', 'address', 'note'],
 };
@@ -141,7 +150,61 @@ export function checkCategoryRows(input: readonly CategoryImportRow[]): DataImpo
   return p.list;
 }
 
-export function checkItemRows(input: readonly ItemImportRow[]): DataImportProblemRow[] {
+/**
+ * The pack size an item row's cell gives (ADR 0055), or null when the cell is empty or no valid pack size.
+ * `labelOf` is the shown name of each unit (the organization's labels); without it only codes are known.
+ */
+export function itemRowPack(
+  cell: string | undefined,
+  labelOf: UnitLabels = (unit) => unit,
+): ReturnType<typeof packFields> | null {
+  const text = (cell ?? '').trim();
+  if (!text) return null;
+  const pack = parsePackCell(text, unitLookup(labelOf));
+  return pack && packProblems(pack).length === 0 ? packFields(pack) : null;
+}
+
+/** A category as the import sees it: the organization's non-archived ones, children pointing at their parent. */
+export interface ImportCategory {
+  id: string;
+  name: string;
+  parentId: string | null;
+}
+
+/**
+ * The category a cell names (ADR 0048): the whole text as a name first (so "Oil / Ghee" may be a name), else a path
+ * "Parent / Child". Case and spaces around names are ignored. `ambiguous`: a bare name several categories have.
+ */
+export function resolveCategory(
+  text: string,
+  categories: readonly ImportCategory[],
+): { id: string } | 'unknown' | 'ambiguous' {
+  const cell = text.trim();
+  const byName = (name: string) => categories.filter((c) => key(c.name) === key(name));
+  const answer = (ids: readonly string[]) =>
+    ids.length === 1
+      ? { id: ids[0]! }
+      : ids.length === 0
+        ? ('unknown' as const)
+        : ('ambiguous' as const);
+  const named = byName(cell);
+  if (named.length > 0) return answer(named.map((c) => c.id));
+  const ids = new Set<string>();
+  for (let i = cell.indexOf('/'); i !== -1; i = cell.indexOf('/', i + 1)) {
+    const parents = byName(cell.slice(0, i)).filter((c) => c.parentId === null);
+    for (const child of byName(cell.slice(i + 1))) {
+      if (child.parentId && parents.some((p) => p.id === child.parentId)) ids.add(child.id);
+    }
+  }
+  return answer([...ids]);
+}
+
+export function checkItemRows(
+  input: readonly ItemImportRow[],
+  labelOf?: UnitLabels,
+  /** The categories to check the `category` cells against; without them the cells are not judged. */
+  known?: { categories: readonly ImportCategory[] },
+): DataImportProblemRow[] {
   const p = new Problems();
   const names = new Set<string>();
   const skus = new Set<string>();
@@ -152,6 +215,15 @@ export function checkItemRows(input: readonly ItemImportRow[]): DataImportProble
     // Rows meet existing items by SKU when they have one, else by name.
     if (sku) p.unique(skus, row, 'sku', sku);
     else p.unique(names, row, 'name', name);
+    p.text(row, 'brand', r.brand, BRAND_MAX_LENGTH, false);
+    if ((r.packSize ?? '').trim() && !itemRowPack(r.packSize, labelOf)) {
+      p.add(row, 'packSize', 'invalid');
+    }
+    const category = (r.category ?? '').trim();
+    if (category && known) {
+      const found = resolveCategory(category, known.categories);
+      if (found === 'unknown' || found === 'ambiguous') p.add(row, 'category', found);
+    }
     const unit = key(r.unit);
     if (!unit) p.add(row, 'unit', 'required');
     else if (!(STOCK_UNITS as readonly string[]).includes(unit)) p.add(row, 'unit', 'invalid');

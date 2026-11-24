@@ -1,15 +1,18 @@
 'use client';
 
 import {
+  INVENTORY_NAME_MAX_LENGTH,
+  packProblems,
   type ProductCategory,
   STOCK_UNITS,
   type StockItem,
   type StockUnit,
   type UnitOfMeasure,
   type Warehouse,
+  withoutPackSize,
 } from '@durby/shared';
-import { Plus, TriangleAlert } from 'lucide-react';
-import { type ReactNode, useId, useRef, useState } from 'react';
+import { ChevronDown, Plus, TriangleAlert } from 'lucide-react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { createCategory } from '../../lib/catalog/api';
@@ -18,13 +21,13 @@ import { differsByRounding, lineValue, sumValues } from '../../lib/inventory/for
 import {
   type InvoiceRow,
   missingCategory,
+  nameTakenBy,
   NEW_ITEM,
   retarget,
   type RowProblem,
   setMissingCategory,
 } from '../../lib/inventory/invoice-receipt';
 import { categoryPath } from '../../lib/inventory/overview';
-import { packProblems } from '../../lib/inventory/pack-size';
 import { useActionKey } from '../../lib/use-action-key';
 import { cn } from '../../lib/utils';
 import { Field, FormDialog } from '../form-dialog';
@@ -353,7 +356,14 @@ export function InvoiceEditor({
                   </td>
                   <td className="px-3 py-2">
                     <span className="flex flex-col gap-0.5">
-                      <span className="font-medium">{row.line.description}</span>
+                      {/* The name only: the pack size it names is in the pack size column. */}
+                      <span
+                        className="font-medium"
+                        title={row.line.description}
+                        data-testid="invoice-line-name"
+                      >
+                        {withoutPackSize(row.line.description)}
+                      </span>
                       <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         {row.line.code}
                         {row.line.pack && (
@@ -384,35 +394,57 @@ export function InvoiceEditor({
                     </span>
                   </td>
                   <td className="px-3 py-2">
-                    <Select
+                    <ItemPicker
                       value={row.target}
+                      items={sortedItems}
+                      canCreate={canCreate}
                       disabled={readOnly}
-                      onChange={(e) =>
-                        onRows(
-                          rows.map((r, i) =>
-                            i === index ? retarget(r, e.target.value, items) : r,
-                          ),
-                        )
+                      label={t('inventory.invoice.itemFor', { name: row.line.description })}
+                      onChange={(target) =>
+                        onRows(rows.map((r, i) => (i === index ? retarget(r, target, items) : r)))
                       }
-                      aria-label={t('inventory.invoice.itemFor', { name: row.line.description })}
-                      data-testid="invoice-line-item"
-                    >
-                      <option value={NEW_ITEM} disabled={!canCreate && row.target !== NEW_ITEM}>
-                        {t('inventory.invoice.newItem')}
-                      </option>
-                      {sortedItems.map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {i.sku ? `${i.name} · ${i.sku}` : i.name}
-                        </option>
-                      ))}
-                    </Select>
-                    {row.include && fresh && canCreate && (
-                      <Badge className="mt-1" data-testid="invoice-line-new">
-                        {t('inventory.invoice.newBadge')}
-                      </Badge>
+                    />
+                    {fresh && canCreate && (
+                      <div className="mt-1 flex flex-col gap-1">
+                        <Input
+                          value={row.newName}
+                          disabled={readOnly || !row.include}
+                          maxLength={INVENTORY_NAME_MAX_LENGTH}
+                          placeholder={t('inventory.invoice.newName')}
+                          aria-label={t('inventory.invoice.newNameFor', {
+                            name: row.line.description,
+                          })}
+                          aria-invalid={
+                            own.includes('name') || own.includes('nameTaken') || undefined
+                          }
+                          onChange={(e) => update(index, { newName: e.target.value })}
+                          data-testid="invoice-line-new-name"
+                        />
+                        {row.include && (
+                          <span
+                            className="text-xs text-muted-foreground"
+                            data-testid="invoice-line-new"
+                          >
+                            {t('inventory.invoice.newBadge')}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {own.includes('nameTaken') && (
+                      <NameTaken
+                        item={nameTakenBy(row, items)}
+                        // A product with variants holds no stock itself: only the name can change.
+                        disabled={
+                          readOnly ||
+                          items.some((i) => i.parentItemId === nameTakenBy(row, items)?.id)
+                        }
+                        onUse={(target) =>
+                          onRows(rows.map((r, i) => (i === index ? retarget(r, target, items) : r)))
+                        }
+                      />
                     )}
                     {own
-                      .filter((p) => p === 'duplicate' || p === 'newNotAllowed')
+                      .filter((p) => p === 'duplicate' || p === 'newNotAllowed' || p === 'name')
                       .map((p) => (
                         <p
                           key={p}
@@ -692,6 +724,206 @@ function Chip({
 }
 
 /** "+" next to a line's category: a category by name, chosen for the line at once. */
+/** How many matches the item picker lists at once: typing narrows it down. */
+const PICKER_LIMIT = 50;
+
+/**
+ * The product an invoice line is booked to: "New item" or one of the catalogue, found by typing part of its name or
+ * SKU (every word must match, in any order). The list is pinned under the button, so the table's scroll area can't
+ * clip it; it closes on a pick, a click outside, Escape or scrolling. Enter picks the first match.
+ */
+/**
+ * A new line whose name an active item already has (the api refuses a second item of that name): book it to that item,
+ * or change the name.
+ */
+function NameTaken({
+  item,
+  disabled,
+  onUse,
+}: {
+  item: StockItem | undefined;
+  disabled: boolean;
+  onUse: (itemId: string) => void;
+}) {
+  const t = useT();
+  if (!item) return null;
+  return (
+    <div className="mt-1 flex flex-col items-start gap-1" data-testid="invoice-line-name-taken">
+      <p className="text-xs text-destructive" data-testid="invoice-line-problem">
+        {t('inventory.invoice.rowProblems.nameTaken', { name: item.name })}
+      </p>
+      {!disabled && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onUse(item.id)}
+          data-testid="invoice-line-use-existing"
+        >
+          {t('inventory.invoice.useExisting')}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function ItemPicker({
+  value,
+  items,
+  canCreate,
+  disabled,
+  label,
+  onChange,
+}: {
+  value: string;
+  items: readonly StockItem[];
+  canCreate: boolean;
+  disabled: boolean;
+  label: string;
+  onChange: (target: string) => void;
+}) {
+  const t = useT();
+  const button = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [query, setQuery] = useState('');
+  const open = place !== null;
+  const current = value === NEW_ITEM ? null : items.find((i) => i.id === value);
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matches = items
+    .filter((i) =>
+      words.every(
+        (w) => i.name.toLowerCase().includes(w) || (i.sku ?? '').toLowerCase().includes(w),
+      ),
+    )
+    .slice(0, PICKER_LIMIT);
+  const showNew = canCreate || value === NEW_ITEM;
+
+  const close = () => {
+    setPlace(null);
+    setQuery('');
+  };
+  const pick = (target: string) => {
+    onChange(target);
+    close();
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (!panel.current?.contains(target) && !button.current?.contains(target)) close();
+    };
+    // Scrolling the page or the table moves the button away from the pinned list.
+    const scrolled = (e: Event) => {
+      if (!panel.current?.contains(e.target as Node)) close();
+    };
+    document.addEventListener('mousedown', outside);
+    window.addEventListener('scroll', scrolled, true);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('mousedown', outside);
+      window.removeEventListener('scroll', scrolled, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        disabled={disabled}
+        aria-label={label}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => {
+          if (open) return close();
+          const rect = button.current!.getBoundingClientRect();
+          setPlace({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 320) });
+        }}
+        data-testid="invoice-line-item"
+        data-value={value}
+        className="flex h-10 w-full min-w-48 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <span className="truncate">
+          {current
+            ? current.sku
+              ? `${current.name} · ${current.sku}`
+              : current.name
+            : t('inventory.invoice.newItem')}
+        </span>
+        <ChevronDown aria-hidden className="size-4 shrink-0 opacity-60" />
+      </button>
+      {place && (
+        <div
+          ref={panel}
+          style={{ top: place.top, left: place.left, width: place.width }}
+          className="fixed z-50 flex max-w-[90vw] flex-col gap-2 rounded-md border bg-card p-2 shadow-lg"
+          data-testid="invoice-line-item-panel"
+        >
+          <Input
+            autoFocus
+            type="search"
+            placeholder={t('inventory.invoice.itemSearch')}
+            aria-label={t('inventory.invoice.itemSearch')}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') close();
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                const first = matches[0];
+                if (first) pick(first.id);
+              }
+            }}
+            data-testid="invoice-line-item-search"
+          />
+          <ul role="listbox" aria-label={label} className="max-h-72 overflow-y-auto">
+            {showNew && (
+              <li>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={value === NEW_ITEM}
+                  disabled={!canCreate}
+                  onClick={() => pick(NEW_ITEM)}
+                  className="w-full rounded px-2 py-1.5 text-left text-sm font-medium hover:bg-muted disabled:opacity-50"
+                  data-testid="invoice-line-item-new"
+                >
+                  + {t('inventory.invoice.newItem')}
+                </button>
+              </li>
+            )}
+            {matches.map((i) => (
+              <li key={i.id}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={i.id === value}
+                  onClick={() => pick(i.id)}
+                  className={cn(
+                    'w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted',
+                    i.id === value && 'bg-muted font-medium',
+                  )}
+                  data-testid="invoice-line-item-option"
+                >
+                  {i.name}
+                  {i.sku && <span className="text-xs text-muted-foreground"> · {i.sku}</span>}
+                </button>
+              </li>
+            ))}
+            {matches.length === 0 && (
+              <li className="px-2 py-1.5 text-sm text-muted-foreground">
+                {t('inventory.invoice.itemNoMatch')}
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+
 function NewCategory({ onCreated }: { onCreated: (category: ProductCategory) => void }) {
   const t = useT();
   const id = useId();

@@ -16,7 +16,6 @@ import { useAuth } from '../../app/providers';
 import { errorLabel } from '../../lib/auth/errors';
 import { categoryColor } from '../../lib/catalog/category-image';
 import {
-  availableText,
   beyondStock,
   type Cart,
   cartLines,
@@ -55,7 +54,8 @@ import { AvailableText, CartControl, useCartUnits } from './cart-controls';
  * a shopping basket (categories, search, + and −) from the main warehouse's items with what it has, then sends it as
  * one request. Quantities only, never prices. Needs `orders.requests.create` at the branch.
  */
-export function RequestStockPage() {
+/** `inSheet`: opened from Inventory's cart (ADR 0065): the person stays there, so no link leads to Order History. */
+export function RequestStockPage({ inSheet = false }: { inSheet?: boolean } = {}) {
   const { session } = useAuth();
   if (!session) return null;
   if (!session.activePermissions.includes('orders.requests.create'))
@@ -64,7 +64,7 @@ export function RequestStockPage() {
   if (session.activePermissions.includes('orders.requests.approve')) {
     return <BranchOnly />;
   }
-  return <RequestStock organizationId={session.activeOrganizationId} />;
+  return <RequestStock organizationId={session.activeOrganizationId} inSheet={inSheet} />;
 }
 
 /** For those who approve requests: branches send them; approving happens in Order History. */
@@ -81,7 +81,13 @@ function BranchOnly() {
   );
 }
 
-function RequestStock({ organizationId }: { organizationId: string | null }) {
+function RequestStock({
+  organizationId,
+  inSheet,
+}: {
+  organizationId: string | null;
+  inSheet: boolean;
+}) {
   const t = useT();
   const { store, session } = useAuth();
   // A branch calls its requests Order History (ADR 0059).
@@ -97,11 +103,13 @@ function RequestStock({ organizationId }: { organizationId: string | null }) {
           <h1 className="text-2xl font-semibold">{t('platform.nav.requestStock')}</h1>
           <p className="text-muted-foreground">{t('orders.requestForm.intro')}</p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/requests">
-            {t(operations ? 'platform.nav.orderHistory' : 'platform.nav.stockRequests')}
-          </Link>
-        </Button>
+        {!inSheet && (
+          <Button variant="outline" asChild>
+            <Link href="/requests">
+              {t(operations ? 'platform.nav.orderHistory' : 'platform.nav.stockRequests')}
+            </Link>
+          </Button>
+        )}
       </div>
       <Loaded resource={warehouses} reload={() => undefined}>
         {(sources) => (
@@ -114,7 +122,12 @@ function RequestStock({ organizationId }: { organizationId: string | null }) {
                   <Notice text={t('orders.requestForm.noWarehouse')} tone="info" />
                 )
               ) : (
-                <Shop organizationId={organizationId} sources={sources} branches={branches} />
+                <Shop
+                  organizationId={organizationId}
+                  sources={sources}
+                  branches={branches}
+                  inSheet={inSheet}
+                />
               )
             }
           </Loaded>
@@ -149,10 +162,12 @@ function Shop({
   organizationId,
   sources,
   branches,
+  inSheet,
 }: {
   organizationId: string;
   sources: RequestWarehouse[];
   branches: RequestDestination[];
+  inSheet: boolean;
 }) {
   const t = useT();
   const id = useId();
@@ -206,23 +221,9 @@ function Shop({
 
   async function send() {
     if (!from) return;
+    // More than the warehouse has may be asked for (it follows once it is in); only a bad quantity stops it.
     if (!cartReady(lines)) {
-      const beyond = beyondStock(lines);
-      setError(
-        beyond.length > 0
-          ? t('orders.requestCart.beyondStock', {
-              items: beyond
-                .map((l) =>
-                  t('orders.requestCart.itemAvailable', {
-                    name: l.item.itemName,
-                    quantity: availableText(l.item.available),
-                    unit: t(`inventory.units.${l.item.unit}`),
-                  }),
-                )
-                .join(', '),
-            })
-          : t('orders.requestForm.quantityInvalid'),
-      );
+      setError(t('orders.requestForm.quantityInvalid'));
       return;
     }
     setBusy(true);
@@ -325,9 +326,11 @@ function Shop({
                 {t('orders.documents.oc')}
               </Link>
             </Button>
-            <Button variant="outline" asChild>
-              <Link href={`/requests?open=${sent.id}`}>{t('orders.requestCart.follow')}</Link>
-            </Button>
+            {!inSheet && (
+              <Button variant="outline" asChild>
+                <Link href={`/requests?open=${sent.id}`}>{t('orders.requestCart.follow')}</Link>
+              </Button>
+            )}
           </div>
         </Card>
       )}
@@ -419,7 +422,12 @@ function Shop({
               ))}
             </ul>
           )}
-          {!branch.warehouseId && lines.length > 0 && (
+          {beyondStock(lines).length > 0 && (
+            <p className="text-sm text-muted-foreground" data-testid="request-cart-beyond">
+              {t('orders.requestCart.beyondHint')}
+            </p>
+          )}
+          {branch.keepsStock && !branch.warehouseId && lines.length > 0 && (
             <p className="text-sm text-muted-foreground">
               {t('orders.requestCart.newStore', { branch: branch.locationName })}
             </p>

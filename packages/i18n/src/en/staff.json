@@ -40,7 +40,7 @@
   "staff.login.password": "Password",
   "staff.login.submit": "Continue",
   "staff.accept.title": "Set up your staff account",
-  "staff.accept.passwordHint": "At least 12 characters.",
+  "staff.accept.passwordHint": "At least {min} characters.",
   "staff.accept.missingToken": "This invitation link is incomplete. Open the link from the email again.",
   "staff.accept.submit": "Set password",
   "staff.home.title": "Welcome",

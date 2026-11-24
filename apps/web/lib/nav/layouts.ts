@@ -79,6 +79,7 @@ const OPERATIONS: NavLayoutDefinition = {
       group: 'operations',
       feature: 'orders',
       permission: 'orders.orders.read',
+      menuSetting: 'orders.showSalesOrders',
     },
     {
       id: 'picking',

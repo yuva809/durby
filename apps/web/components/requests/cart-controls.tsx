@@ -1,13 +1,12 @@
 'use client';
 
 import type { RequestAvailability } from '@durby/shared';
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import {
   availableText,
   boxesOf,
-  canAddMore,
   type Cart,
   type CartUnits,
   decrement,
@@ -54,9 +53,10 @@ function readUnits(key: string): CartUnits {
 }
 
 /**
- * Adding an item to the request cart (ADR 0053, 0065): "Add", then − / quantity / +, never beyond what the warehouse
- * has. An item that comes in boxes (pieces with a pack count) is ordered by the box or by the piece: by the box the
- * quantity is boxes and "= 24 pc" says what that is; the cart keeps pieces either way.
+ * Adding an item to the request cart (ADR 0053, 0065): "Request", then remove (at one) or − / quantity / + and the unit
+ * it is ordered in. More than the warehouse has may be asked for: it is sent once it is in (the cart says so). An item
+ * that comes in boxes (pieces with a pack count) is ordered by the box or by the piece: by the box the quantity is
+ * boxes and "= 24 pc" says what that is; the cart keeps pieces either way.
  */
 export function CartControl({
   item,
@@ -75,57 +75,50 @@ export function CartControl({
   const perBox = piecesPerBox(item);
   const byBox = perBox !== null && unit !== 'piece';
   const step = byBox ? perBox : 1;
+  if (quantity === undefined) {
+    return (
+      <Button
+        className="h-9"
+        variant="outline"
+        onClick={() => onChange((cart) => increment(cart, item.itemId, undefined, step))}
+        aria-label={t('orders.requestCart.addName', { name: item.itemName })}
+        data-testid="request-add"
+      >
+        <ShoppingCart aria-hidden />
+        {t('orders.requestCart.add')}
+      </Button>
+    );
+  }
   return (
     <div className="flex flex-col items-end gap-1">
-      {perBox !== null && (
-        <div
-          className="flex rounded-md border p-0.5 text-xs"
-          role="group"
-          aria-label={t('orders.requestCart.orderBy', { name: item.itemName })}
-        >
-          {(['box', 'piece'] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={(value === 'box') === byBox}
-              onClick={() => onUnit(value)}
-              className={cn(
-                'min-h-8 rounded px-2 font-medium',
-                (value === 'box') === byBox
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-muted',
-              )}
-              data-testid={`request-unit-${value}`}
-            >
-              {value === 'box'
-                ? t('orders.requestCart.box', { count: String(perBox) })
-                : t('inventory.units.pc')}
-            </button>
-          ))}
-        </div>
-      )}
-      {quantity === undefined ? (
-        <Button
-          className="h-9"
-          variant="outline"
-          // Nothing (or not a whole box) there, nothing to ask for.
-          disabled={!canAddMore(undefined, item.available, step)}
-          onClick={() => onChange((cart) => increment(cart, item.itemId, item.available, step))}
-          aria-label={t('orders.requestCart.addName', { name: item.itemName })}
-          data-testid="request-add"
-        >
-          <Plus aria-hidden />
-          {t('orders.requestCart.add')}
-        </Button>
-      ) : (
+      <div className="flex items-center gap-1.5" data-testid="request-stepper">
         <Stepper
           item={item}
           quantity={quantity}
           onChange={onChange}
           perBox={byBox ? perBox : null}
         />
-      )}
-      {byBox && quantity !== undefined && validQuantity(quantity) && (
+        {perBox !== null ? (
+          <select
+            value={byBox ? 'box' : 'piece'}
+            onChange={(e) => onUnit(e.target.value as 'box' | 'piece')}
+            aria-label={t('orders.requestCart.orderBy', { name: item.itemName })}
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            data-testid="request-unit"
+          >
+            <option value="box">{t('orders.requestCart.box', { count: String(perBox) })}</option>
+            <option value="piece">{t('inventory.units.pc')}</option>
+          </select>
+        ) : (
+          <span
+            className="flex h-9 min-w-14 items-center rounded-md border px-2 text-sm text-muted-foreground"
+            data-testid="request-unit-fixed"
+          >
+            {t(`inventory.units.${item.unit}`)}
+          </span>
+        )}
+      </div>
+      {byBox && validQuantity(quantity) && (
         <span className="text-xs text-muted-foreground" data-testid="request-pieces">
           {t('orders.requestCart.pieces', { count: quantity.trim().replace(',', '.') })}
         </span>
@@ -151,20 +144,24 @@ function Stepper({
   const [draft, setDraft] = useState<string | null>(null);
   const step = perBox ?? 1;
   const shown = draft ?? (perBox ? boxesOf(quantity, perBox) : quantity);
+  // At one (box or piece) the next step down takes the item out: a bin, not a minus.
+  const last = Number(quantity.trim().replace(',', '.')) <= step;
   return (
-    <div className="flex items-center gap-1" data-testid="request-stepper">
+    <>
       <Button
         size="icon"
         variant="outline"
-        className="size-9"
+        className="size-9 rounded-full"
         onClick={() => {
           setDraft(null);
           onChange((cart) => decrement(cart, item.itemId, step));
         }}
-        aria-label={t('orders.requestCart.less', { name: item.itemName })}
+        aria-label={t(last ? 'orders.requestCart.remove' : 'orders.requestCart.less', {
+          name: item.itemName,
+        })}
         data-testid="request-less"
       >
-        <Minus aria-hidden />
+        {last ? <Trash2 aria-hidden /> : <Minus aria-hidden />}
       </Button>
       <Input
         inputMode="decimal"
@@ -181,33 +178,30 @@ function Stepper({
         }}
         onBlur={() => setDraft(null)}
         aria-label={t('orders.requestForm.quantity', { name: item.itemName })}
-        aria-invalid={
-          !validQuantity(quantity) || !withinStock(quantity, item.available) || undefined
-        }
+        aria-invalid={!validQuantity(quantity) || undefined}
         className="h-9 w-16 text-center"
         data-testid="request-quantity"
       />
       <Button
         size="icon"
         variant="outline"
-        className="size-9"
-        // Not beyond what the warehouse has.
-        disabled={!canAddMore(quantity, item.available, step)}
+        className="size-9 rounded-full"
         onClick={() => {
           setDraft(null);
-          onChange((cart) => increment(cart, item.itemId, item.available, step));
+          onChange((cart) => increment(cart, item.itemId, undefined, step));
         }}
         aria-label={t('orders.requestCart.more', { name: item.itemName })}
         data-testid="request-more"
       >
         <Plus aria-hidden />
       </Button>
-    </div>
+    </>
   );
 }
 
 /**
- * What the warehouse has for a line; red with "Only 2 pc available" when more is asked for, which blocks sending.
+ * What the warehouse has for a line: "120 Box available at the warehouse"; red when it has none or less than asked
+ * (still sent: the rest follows once it is in).
  */
 export function AvailableText({
   item,
@@ -223,16 +217,22 @@ export function AvailableText({
     quantity: availableText(item.available),
     unit: t(`inventory.units.${item.unit}`),
   };
+  const none = Number(item.available) <= 0;
   const beyond =
     quantity !== undefined && quantity.trim() !== '' && !withinStock(quantity, item.available);
   return (
     <span
-      className={cn('text-sm', beyond ? 'font-medium text-destructive' : 'text-muted-foreground')}
+      className={cn(
+        'text-sm',
+        none || beyond ? 'font-medium text-destructive' : 'text-muted-foreground',
+      )}
       data-testid={testId}
     >
-      {beyond
-        ? t('orders.requestCart.onlyAvailable', values)
-        : t('orders.requestCart.available', values)}
+      {none
+        ? t('orders.requestCart.noneAvailable')
+        : beyond
+          ? t('orders.requestCart.onlyAvailable', values)
+          : t('orders.requestCart.available', values)}
     </span>
   );
 }

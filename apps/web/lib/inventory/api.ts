@@ -18,6 +18,8 @@ import {
   variantAttributeListResponseSchema,
   variantAttributeSchema,
   type CreateStockItemRequest,
+  type ItemMovements,
+  itemMovementsSchema,
   type CreateWarehouseRequest,
   type DishCost,
   dishCostListResponseSchema,
@@ -83,11 +85,27 @@ export const updateStockItem = (
   body: UpdateStockItemRequest,
 ) => write(store, action, `${BASE}/items/${id}`, 'PATCH', body, stockItemSchema);
 
+/** Deletes an item with its whole stock history (ADR 0079, owners); refused when a recipe or order uses it. */
+export const purgeStockItem = (store: Api, action: ActionKey, id: string) =>
+  write(store, action, `${BASE}/items/${id}/purge`, 'POST');
+
+/** Deletes an item that has never been stocked; one with stock history answers inventory.item_in_use. */
+export const deleteStockItem = (store: Api, action: ActionKey, id: string) =>
+  write(store, action, `${BASE}/items/${id}`, 'DELETE');
+
 export const loadStock = (
   store: Api,
   filter: { locationId?: string; warehouseId?: string },
 ): Promise<Result<StockLevel[]>> =>
   read(store, `${BASE}/stock${query(filter)}`, list(stockLevelListResponseSchema));
+
+/** An item's activity (its ledger), newest first, in one warehouse or all the caller reads. */
+export const loadItemMovements = (
+  store: Api,
+  itemId: string,
+  filter: { warehouseId?: string },
+): Promise<Result<ItemMovements>> =>
+  read(store, `${BASE}/items/${itemId}/movements${query(filter)}`, itemMovementsSchema);
 
 export const loadDocuments = (
   store: Api,

@@ -11,6 +11,7 @@ import type {
   UpdateWarehouseRequest,
   Warehouse,
 } from '@durby/shared';
+import { unitChangeAllowed } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
 import { createWarehouseSite, renameWarehouseSite } from '../../platform/organization';
@@ -22,7 +23,7 @@ import {
   type TenantPrismaClient,
   type TenantTransactionClient,
 } from '../../platform/tenancy';
-import { inventoryErrors, isUniqueViolation } from './inventory-errors';
+import { inventoryErrors, isForeignKeyViolation, isUniqueViolation } from './inventory-errors';
 
 const WAREHOUSE_SELECT = {
   id: true,
@@ -404,6 +405,57 @@ export class InventorySetupService {
     );
   }
 
+  /**
+   * Deletes an item that has never been stocked, sold or used in a recipe. Stock history is append-only (ADR 0027),
+   * so an item with any history is refused: it can be archived instead.
+   */
+  async deleteItem(id: string): Promise<void> {
+    const { userId } = this.tenantContext.require();
+    await this.db.$transaction(async (tx) => {
+      const current = await tx.stockItem.findUnique({ where: { id }, select: ITEM_SELECT });
+      if (!current) throw inventoryErrors.itemNotFound([id]);
+      try {
+        await tx.stockItem.delete({ where: { id } });
+      } catch (error) {
+        if (isForeignKeyViolation(error)) throw inventoryErrors.itemInUse();
+        throw error;
+      }
+      await this.audit.record(tx, {
+        action: 'inventory.stock_item.deleted',
+        actor: auditActor.user(userId),
+        entityId: id,
+        before: snapshot('stock_item', itemResponse(current)),
+      });
+    });
+  }
+
+  /**
+   * Deletes an item with its whole stock history (ADR 0079, owners): its movements, its lines on stock requests and
+   * vendor invoices, documents left empty and its levels, through purge_stock_item (the one exception to the
+   * append-only ledger). Refused for items in a recipe, bill of materials or sales order, or with variants.
+   */
+  async purgeItem(id: string): Promise<void> {
+    const { userId } = this.tenantContext.require();
+    await this.db.$transaction(async (tx) => {
+      const current = await tx.stockItem.findUnique({ where: { id }, select: ITEM_SELECT });
+      if (!current) throw inventoryErrors.itemNotFound([id]);
+      try {
+        await tx.$queryRaw`SELECT purge_stock_item(${id}::uuid) AS result`;
+      } catch (error) {
+        const reason = /item_purge:([a-z_]+)/.exec(String((error as Error)?.message))?.[1];
+        if (reason === 'not_found') throw inventoryErrors.itemNotFound([id]);
+        if (reason) throw inventoryErrors.itemPurgeRefused(reason);
+        throw error;
+      }
+      await this.audit.record(tx, {
+        action: 'inventory.stock_item.purged',
+        actor: auditActor.user(userId),
+        entityId: id,
+        before: snapshot('stock_item', itemResponse(current)),
+      });
+    });
+  }
+
   async updateItem(id: string, body: UpdateStockItemRequest): Promise<StockItem> {
     const { userId } = this.tenantContext.require();
     if (body.categoryId) await this.catalog.assertActiveCategory(body.categoryId);
@@ -418,7 +470,10 @@ export class InventorySetupService {
             where: { itemId: id },
             select: { id: true },
           });
-          if (moved) throw inventoryErrors.unitLocked();
+          // Counted units relabel freely (Stück → box keeps the number); weight and volume stay once moved.
+          if (!unitChangeAllowed(current.unit, body.unit, moved !== null)) {
+            throw inventoryErrors.unitLocked();
+          }
         }
         const before = itemResponse(current);
         const next: StockItem = {

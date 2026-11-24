@@ -1,7 +1,10 @@
 'use client';
 
 import type { Warehouse } from '@durby/shared';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useId, useState } from 'react';
+import { connectedOf } from '../branches/branches-page';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { createWarehouse, updateWarehouse } from '../../lib/inventory/api';
@@ -28,6 +31,7 @@ export function WarehousesTab({ data }: { data: InventoryData }) {
   const t = useT();
   const [showArchived, setShowArchived] = useState(false);
   const [query, setQuery] = useState('');
+  const branchId = useSearchParams().get('branch');
   const canManage = data.can('inventory.warehouses.edit');
   const locations =
     data.locations.length > 0
@@ -41,8 +45,10 @@ export function WarehousesTab({ data }: { data: InventoryData }) {
     return <p className="text-muted-foreground">{t('inventory.page.noLocations')}</p>;
   }
   // Every warehouse in one list, the main one first; each shows its own location.
+  // From a branch card (?branch=…): only the warehouses that branch uses, its own and its supplier (ADR 0067).
+  const scope = branchId ? new Set(connectedOf(data.warehouses, branchId).map((w) => w.id)) : null;
   const visible = data.warehouses
-    .filter((w) => showArchived || w.archivedAt === null)
+    .filter((w) => (showArchived || w.archivedAt === null) && (scope === null || scope.has(w.id)))
     .sort((a, b) => Number(b.isMain) - Number(a.isMain));
   const locationName = (id: string) => data.locations.find((l) => l.id === id)?.name ?? '';
   // Search by warehouse name or by the branches it supplies.
@@ -55,6 +61,19 @@ export function WarehousesTab({ data }: { data: InventoryData }) {
   );
   return (
     <div className="flex flex-col gap-4">
+      {branchId && (
+        <p
+          className="flex flex-wrap items-center gap-2 text-sm"
+          data-testid="warehouse-branch-filter"
+        >
+          {t('inventory.page.showingBranch', {
+            name: data.locations.find((l) => l.id === branchId)?.name ?? '',
+          })}
+          <Link href="/inventory/warehouses" className="font-medium text-primary hover:underline">
+            {t('inventory.page.showAllWarehouses')}
+          </Link>
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <Input
           type="search"

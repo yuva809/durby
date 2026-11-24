@@ -20,10 +20,16 @@ export const loadAttention = (store: Api): Promise<Result<AttentionResponse>> =>
   read(store, '/api/v1/attention', attentionResponseSchema);
 
 /** The page a search result opens; orders and requests open in their side panel (`?open=`). */
-export function resultHref(result: Pick<SearchResult, 'type' | 'id'>): string {
+export function resultHref(result: Pick<SearchResult, 'type' | 'id' | 'title'>): string {
   switch (result.type) {
     case 'stock_item':
-      return '/inventory';
+      return `/inventory/items?q=${encodeURIComponent(result.title)}`;
+    case 'warehouse':
+      return '/inventory/warehouses';
+    case 'stock_document':
+      return '/inventory/documents';
+    case 'branch':
+      return '/branches';
     case 'product':
       return '/catalog';
     case 'customer':

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -48,6 +49,7 @@ import {
   importItemsRequestSchema,
   type ImportOpeningStockRequest,
   importOpeningStockRequestSchema,
+  type ItemMovements,
 } from '@durby/shared';
 import { CatalogService } from '../catalog';
 import { RequireFeature } from '../../platform/config/entitlements';
@@ -156,6 +158,22 @@ export class InventoryController {
     return this.setup.createItem(body);
   }
 
+  @RequirePermission('inventory.items.delete')
+  @Idempotent()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete('items/:id')
+  deleteItem(@Param('id', id(() => inventoryErrors.itemNotFound())) itemId: string): Promise<void> {
+    return this.setup.deleteItem(itemId);
+  }
+
+  @RequirePermission('inventory.items.purge')
+  @Idempotent()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('items/:id/purge')
+  purgeItem(@Param('id', id(() => inventoryErrors.itemNotFound())) itemId: string): Promise<void> {
+    return this.setup.purgeItem(itemId);
+  }
+
   @RequirePermission('inventory.items.edit')
   @Idempotent()
   @Patch('items/:id')
@@ -191,6 +209,15 @@ export class InventoryController {
     @Body(new ZodBody(transferRequestSchema)) body: TransferRequest,
   ): Promise<StockDocument> {
     return this.stockService.forViewer(await this.stockService.transfer(body));
+  }
+
+  @RequirePermission('inventory.stock.read')
+  @Get('items/:id/movements')
+  itemMovements(
+    @Param('id', id(() => inventoryErrors.itemNotFound())) itemId: string,
+    @Query(new ZodQuery(stockQuerySchema)) query: StockQuery,
+  ): Promise<ItemMovements> {
+    return this.stockService.itemMovements(itemId, query);
   }
 
   @RequirePermission('inventory.stock.read')

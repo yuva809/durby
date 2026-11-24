@@ -179,4 +179,104 @@ describe('more invoice layouts (ADR 0058)', () => {
     expect(invoice.lines[3]!.pack).toBeUndefined();
     expect(invoice.lines.every((l) => l.checks)).toBe(true);
   });
+
+  /** Rows as the browser reads Unidex invoice VFG26-58060 (article number first, the quantity in cartons). */
+  it('reads article-first lines, joins a wrapped pack size and finds the Gesamtbetrag (Unidex)', () => {
+    const invoice = parseInvoice([
+      'Verkaufsrechnung',
+      'Rechnungsnummer VFG26-58060 Lieferungsbedingung DAP - BERLIN',
+      'Rechnungsdatum 19.11.2026 MwSt. DE243297484',
+      'Fälligkeitsdatum 10.12.2026 EORI',
+      'Artikelnr. Menge HE-Verpackung Beschreibung Preis Betrag',
+      'FF00076 5 Karton Perfit Kingmackerel Steaks IQF (Surinam) 8 x 1 kg 44,05 220,25',
+      'FF00096 1 Karton Perfit Smoked Mackerel WG MAP 320/480 (Scotland) 6,5 kg 70,55 70,55',
+      'FF00154 6 Karton Perfit Kandratikie Steaks African Style with Head (Guyana) 8 x 48,05 288,30',
+      '1 kg',
+      'FF00805 3 Karton Perfit Crab Blue Swimming WR 250+ (China) 4 x 2 kg 36,45 109,35',
+      'Kampagne: November Discount 2026',
+      'FV00822 3 Karton Perfit Matembele Sweet Potato Leaves (Cameroon) 20 x 500 23,15 69,45',
+      'gr',
+      'XLABEL0 1 Pieces Label for Missing Language PCS',
+      '1 Karton Transport cost (EU) 125,00 125,00',
+      'Gesamtbetrag EUR ohne MwS 5.977,30',
+      '0% MwSt. an 5.977,30 0,00',
+      'Gesamtbetrag EUR inkl. MwSt. 5.977,30',
+      'www.unidexholland.com',
+    ]);
+    expect(invoice).toMatchObject({
+      number: 'VFG26-58060',
+      date: '19.11.2026',
+      supplier: 'Unidexholland',
+      total: '5977.30',
+      skipped: ['Transport cost (EU)'],
+    });
+    expect(invoice.lines.map((l) => [l.code, l.quantity, l.unitPrice, l.total])).toEqual([
+      ['FF00076', '5', '44.05', '220.25'],
+      ['FF00096', '1', '70.55', '70.55'],
+      ['FF00154', '6', '48.05', '288.30'],
+      ['FF00805', '3', '36.45', '109.35'],
+      ['FV00822', '3', '23.15', '69.45'],
+    ]);
+    expect(invoice.lines.every((l) => l.checks)).toBe(true);
+    // A description wrapped onto the next row is joined back; a campaign note is not.
+    expect(invoice.lines[2]!.description).toBe(
+      'Perfit Kandratikie Steaks African Style with Head (Guyana) 8 x 1 kg',
+    );
+    expect(invoice.lines[3]!.description).toBe(
+      'Perfit Crab Blue Swimming WR 250+ (China) 4 x 2 kg',
+    );
+    expect(invoice.lines[4]!.description).toBe(
+      'Perfit Matembele Sweet Potato Leaves (Cameroon) 20 x 500 gr',
+    );
+  });
+
+  /** Rows as the browser reads Unidex invoice VFG26-58059: other packaging, discounts, free goods, deposit, charges. */
+  it('reads every Unidex line: Bag, Bucket and Shrink, discounts, free goods; deposit and charges left out', () => {
+    const invoice = parseInvoice([
+      'Rechnungsnummer VFG26-58059 Lieferungsbedingung DAP - BERLIN',
+      'Artikelnr. Menge HE-Verpackung Beschreibung Preis Rabatt s Betrag',
+      'B000600 30 Tray A.F.P. Fine Peanut Paste 12 x 500 gr 24,95 748,50',
+      'D003725 2 Karton Happi Life Ginger Drink (Bottle) 12 x 1 ltr 41,75 10 % 37,58 75,15',
+      'Kampagne: November Discount 2026',
+      'D004435 8 Tray Maaza Lychee Drink (TETRA) 6 x 1 ltr 7,65 10 % 6,89 55,08',
+      'XDDEPFAN 1.200 Pieces Pfand DE General 0,25 300,00',
+      'XDDEPFAN 12 Pieces Pfand DE General 0,25 3,00',
+      'M009515 100 Bag Soubry Semolina 5 kg 4,20 420,00',
+      'M002810 6 Bucket A.F.P. Fufu Cocoyam 4 kg 14,30 85,80',
+      'M006010 2 Shrink Valle del Sole Bramata Yellow Maize Gritz 10 x 1 kg 12,90 25,80',
+      'E020095P 1 Karton FESTIVAL Cookies Mixed Box 6 Flavors x 2 packs 4750 gr + 20,50 100 %',
+      'wobbler & display',
+      'Kampagne: Free Sample for Introduction',
+      'E020095P 3 Karton FESTIVAL Cookies Mixed Box 6 Flavors x 2 packs 4750 gr + 20,50 100 %',
+      'wobbler & display',
+      '10 Tray Temporary Fuel Surcharge 13,72 137,20',
+      '1 Karton Transport cost (EU) 500,00 500,00',
+      'Gesamtbetrag EUR ohne MwS 2.350,53',
+      'Gesamtbetrag EUR inkl. MwSt. 2.350,53',
+    ]);
+    expect(invoice.lines.map((l) => [l.code, l.quantity, l.unitPrice, l.total])).toEqual([
+      ['B000600', '30', '24.95', '748.50'],
+      // Discounted: the net price over the total, not the rounded 37,58 and 6,89; the list price stays out of the name.
+      ['D003725', '2', '37.575', '75.15'],
+      ['D004435', '8', '6.885', '55.08'],
+      ['M009515', '100', '4.20', '420.00'],
+      ['M002810', '6', '14.30', '85.80'],
+      ['M006010', '2', '12.90', '25.80'],
+      // Free goods at no cost, both lines as one, the wrapped name joined.
+      ['E020095P', '4', '0.00', '0.00'],
+    ]);
+    expect(invoice.lines.every((l) => l.checks)).toBe(true);
+    expect(invoice.lines[1]!.description).toBe('Happi Life Ginger Drink (Bottle) 12 x 1 ltr');
+    expect(invoice.lines[6]!.description).toBe(
+      'FESTIVAL Cookies Mixed Box 6 Flavors x 2 packs 4750 gr + wobbler & display',
+    );
+    // The deposit and the charges are named as left out; the printed total is the goods plus them, so the goods'
+    // total is what the lines are checked against.
+    expect(invoice.skipped).toEqual([
+      'Pfand DE General',
+      'Temporary Fuel Surcharge',
+      'Transport cost (EU)',
+    ]);
+    expect(invoice.total).toBe('1410.33');
+  });
 });

@@ -1,5 +1,10 @@
 import {
+  EMPTY_PACK,
   INVENTORY_NAME_MAX_LENGTH,
+  type PackSize,
+  packFields,
+  packProblems,
+  parsePackSize,
   type StockItem,
   stockQuantitySchema,
   type StockUnit,
@@ -7,9 +12,9 @@ import {
   unitCostSchema,
   type VendorInvoice,
   type VendorInvoiceSource,
+  withoutPackSize,
 } from '@durby/shared';
 import type { InvoiceLine, ParsedInvoice } from './invoice-pdf';
-import { EMPTY_PACK, type PackSize, packFields, packProblems, parsePackSize } from './pack-size';
 
 /**
  * The review of a vendor invoice before it becomes a goods receipt (ADR 0049): each line matched to a stock item or
@@ -49,6 +54,8 @@ export interface InvoiceRow {
   unitId: string;
   /** Best before as printed, "2027-03-31", or '' (ADR 0062). */
   expiresOn: string;
+  /** For a new item: its name, the invoice's description until the person edits it. */
+  newName: string;
   /** For a new item (ADR 0055): its unit, category ('' none), brand and pack size. */
   newUnit: StockUnit;
   categoryId: string;
@@ -56,7 +63,8 @@ export interface InvoiceRow {
   pack: PackSize;
 }
 
-export type RowProblem = 'quantity' | 'unitCost' | 'duplicate' | 'newNotAllowed' | 'pack';
+export type RowProblem =
+  'quantity' | 'unitCost' | 'duplicate' | 'newNotAllowed' | 'pack' | 'name' | 'nameTaken';
 
 const normal = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -84,6 +92,8 @@ export function matchInvoice(
     const target =
       (line.code ? bySku.get(normal(line.code)) : undefined) ??
       byName.get(normal(line.description)) ??
+      // An item made from an earlier invoice is named without the pack size.
+      byName.get(normal(withoutPackSize(line.description))) ??
       NEW_ITEM;
     return {
       line,
@@ -92,6 +102,7 @@ export function matchInvoice(
       ...amountsOf(line, countAs),
       unitId: '',
       expiresOn: '',
+      newName: newItemName(line),
       newUnit,
       ...detailsFor(line, byId.get(target)),
     };
@@ -169,11 +180,25 @@ export function setMissingCategory(rows: readonly InvoiceRow[], categoryId: stri
 export const missingCategory = (rows: readonly InvoiceRow[]) =>
   rows.filter((r) => r.include && r.categoryId === '').length;
 
+/**
+ * The active item that already has a new row's name (the api refuses a second one): made after the invoice was read,
+ * or a parent with variants, so the line was not matched to it.
+ */
+export function nameTakenBy(row: InvoiceRow, items: readonly StockItem[]): StockItem | undefined {
+  if (row.target !== NEW_ITEM) return undefined;
+  const name = row.newName.trim().slice(0, INVENTORY_NAME_MAX_LENGTH);
+  return items.find((i) => i.archivedAt === null && i.name === name);
+}
+
 /** What keeps each included row from importing (empty: it can go). */
-export function rowProblems(rows: readonly InvoiceRow[], canCreate: boolean): RowProblem[][] {
+export function rowProblems(
+  rows: readonly InvoiceRow[],
+  canCreate: boolean,
+  items: readonly StockItem[] = [],
+): RowProblem[][] {
   // An item twice, or two new items of the same name: the api takes each once.
   const keyOf = (row: InvoiceRow) =>
-    row.target === NEW_ITEM ? `new:${normal(newItemName(row.line))}` : row.target;
+    row.target === NEW_ITEM ? `new:${normal(row.newName)}` : row.target;
   const counts = new Map<string, number>();
   for (const row of rows) {
     if (row.include) counts.set(keyOf(row), (counts.get(keyOf(row)) ?? 0) + 1);
@@ -188,14 +213,19 @@ export function rowProblems(rows: readonly InvoiceRow[], canCreate: boolean): Ro
     if (!unitCostSchema.safeParse(clean(row.unitCost)).success) problems.push('unitCost');
     if ((counts.get(keyOf(row)) ?? 0) > 1) problems.push('duplicate');
     if (row.target === NEW_ITEM && !canCreate) problems.push('newNotAllowed');
+    if (row.target === NEW_ITEM && row.newName.trim() === '') problems.push('name');
+    else if (nameTakenBy(row, items)) problems.push('nameTaken');
     if (packProblems(row.pack).length > 0) problems.push('pack');
     return problems;
   });
 }
 
-/** The new item a row creates: the invoice's description as its name, the supplier's product id as its SKU. */
+/**
+ * A new item's name as first proposed: the invoice's description without its pack size, which goes in the pack size
+ * fields (the person may edit it, `newName`).
+ */
 export function newItemName(line: InvoiceLine): string {
-  return line.description.trim().slice(0, INVENTORY_NAME_MAX_LENGTH);
+  return withoutPackSize(line.description).slice(0, INVENTORY_NAME_MAX_LENGTH);
 }
 
 /** The invoice to submit for approval (ADR 0054): the included rows; call only when rowProblems finds none. */
@@ -244,7 +274,7 @@ export function submitRequest(input: {
         return {
           ...base,
           newItem: {
-            name: newItemName(r.line),
+            name: r.newName.trim().slice(0, INVENTORY_NAME_MAX_LENGTH),
             ...(r.line.code ? { sku: r.line.code.slice(0, 50) } : {}),
             unit: r.newUnit,
             ...(r.categoryId ? { categoryId: r.categoryId } : {}),
@@ -281,6 +311,8 @@ export function rowsFromInvoice(
       target: l.itemId ?? NEW_ITEM,
       unitId: l.unitId ?? '',
       expiresOn: l.expiresOn ?? '',
+      // The name as submitted, even one that names a pack size on purpose.
+      newName: l.newItem?.name ?? newItemName(line),
       newUnit: l.newItem?.unit ?? 'pc',
       categoryId: given?.categoryId ?? (l.newItem ? '' : base.categoryId),
       brand: given?.brand ?? (l.newItem ? '' : base.brand),

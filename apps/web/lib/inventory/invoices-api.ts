@@ -1,4 +1,5 @@
 import {
+  type CorrectVendorInvoiceLineRequest,
   type RejectVendorInvoiceRequest,
   type SubmitVendorInvoiceRequest,
   type VendorInvoice,
@@ -42,3 +43,20 @@ export const rejectInvoice = (
   id: string,
   body: RejectVendorInvoiceRequest,
 ) => write(store, action, `${BASE}/${id}/reject`, 'POST', body, vendorInvoiceSchema);
+
+/** An approved invoice's line, corrected (ADR 0078). */
+export const correctInvoiceLine = (
+  store: Api,
+  action: ActionKey,
+  id: string,
+  lineId: string,
+  body: CorrectVendorInvoiceLineRequest,
+) =>
+  write(
+    store,
+    action,
+    `${BASE}/${id}/lines/${lineId}/corrections`,
+    'POST',
+    body,
+    vendorInvoiceSchema,
+  );

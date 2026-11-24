@@ -5,6 +5,8 @@ export const SECURITY_DEFINER_ALLOW_LIST: readonly string[] = [
   'auth_user_organization_ids',
   'outbox_backlog',
   'outbox_due_tenants',
+  // ADR 0079: deletes one stock item of the caller's organization with its history (owner-only route).
+  'purge_stock_item',
 ];
 
 export const DEFINER_ROLE = 'durby_rls_definer';
@@ -79,7 +81,12 @@ export async function findDefinerRoleProblems(client: ClientBase): Promise<strin
  * its functions need. A wider grant would let every allow-listed function, or a future one, read
  * more across tenants than reviewed.
  */
+// purge_stock_item (ADR 0079): DELETE on the item's history tables, SELECT on the columns it filters by.
 export const DEFINER_PRIVILEGES: readonly string[] = [
+  'column bom_lines.item_id SELECT',
+  'column bom_lines.tenant_id SELECT',
+  'column boms.item_id SELECT',
+  'column boms.tenant_id SELECT',
   'column memberships.tenant_id SELECT',
   'column memberships.user_id SELECT',
   'column outbox_events.available_at SELECT',
@@ -88,7 +95,37 @@ export const DEFINER_PRIVILEGES: readonly string[] = [
   'column outbox_events.published_at SELECT',
   'column outbox_events.tenant_id SELECT',
   'column outbox_events.type SELECT',
+  'column recipe_lines.item_id SELECT',
+  'column recipe_lines.tenant_id SELECT',
+  'column sales_order_lines.item_id SELECT',
+  'column sales_order_lines.tenant_id SELECT',
+  'column stock_documents.id SELECT',
+  'column stock_documents.tenant_id SELECT',
+  'column stock_items.id SELECT',
+  'column stock_items.parent_item_id SELECT',
+  'column stock_items.tenant_id SELECT',
+  'column stock_levels.item_id SELECT',
+  'column stock_levels.tenant_id SELECT',
+  'column stock_movements.document_id SELECT',
+  'column stock_movements.item_id SELECT',
+  'column stock_movements.tenant_id SELECT',
+  'column stock_request_lines.item_id SELECT',
+  'column stock_request_lines.tenant_id SELECT',
+  'column vendor_invoice_line_corrections.line_id SELECT',
+  'column vendor_invoice_line_corrections.tenant_id SELECT',
+  'column vendor_invoice_lines.id SELECT',
+  'column vendor_invoice_lines.item_id SELECT',
+  'column vendor_invoice_lines.tenant_id SELECT',
+  'column vendor_invoices.document_id SELECT',
+  'column vendor_invoices.tenant_id SELECT',
   'schema public USAGE',
+  'table stock_documents DELETE',
+  'table stock_items DELETE',
+  'table stock_levels DELETE',
+  'table stock_movements DELETE',
+  'table stock_request_lines DELETE',
+  'table vendor_invoice_line_corrections DELETE',
+  'table vendor_invoice_lines DELETE',
 ];
 
 /**

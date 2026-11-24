@@ -4,7 +4,7 @@ import { roleRefSchema } from './rbac';
 
 /** Request and response bodies of /api/v1/auth (docs/platform/auth.md → Endpoints). */
 
-export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
 
 /** Trimmed and lower-cased before validation, matching how the api stores emails. */

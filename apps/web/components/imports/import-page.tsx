@@ -5,6 +5,7 @@ import {
   checkCustomerRows,
   checkItemRows,
   checkOpeningStockRows,
+  formatPackSize,
   type CategoryImportRow,
   type CustomerImportRow,
   type DataImportProblemRow,
@@ -15,8 +16,11 @@ import {
   IMPORT_TEMPLATES,
   type ImportKind,
   type ItemImportRow,
+  itemRowPack,
   type OpeningStockImportRow,
   type PermissionKey,
+  STOCK_UNITS,
+  type StockUnit,
 } from '@durby/shared';
 import {
   ArrowRight,
@@ -47,7 +51,9 @@ import {
   type ReadRows,
   type TableProblem,
   templateCsv,
+  withUnitCodes,
 } from '../../lib/imports/table';
+import { loadCategories } from '../../lib/catalog/api';
 import { loadStockItems, loadWarehouses } from '../../lib/inventory/api';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
@@ -76,6 +82,9 @@ const labelKey = <T extends string>(value: T) =>
   value.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()) as T extends `${infer A}_${infer B}`
     ? `${A}${Capitalize<B>}`
     : T;
+
+const isStockUnit = (value: string): value is StockUnit =>
+  (STOCK_UNITS as readonly string[]).includes(value);
 
 const PREVIEW_ROWS = 10;
 const PROBLEM_ROWS = 50;
@@ -134,6 +143,10 @@ function Importer({
   const needsRefs = kind === 'opening_stock' && organizationId !== null;
   const [warehouses] = useResource(needsRefs ? organizationId : null, () => loadWarehouses(store));
   const [items] = useResource(needsRefs ? organizationId : null, () => loadStockItems(store));
+  // Item rows name categories: checked here once they have loaded; the api checks again either way.
+  const [categories] = useResource(kind === 'items' ? organizationId : null, () =>
+    loadCategories(store),
+  );
 
   const pick = (next: ImportKind) => {
     setKind(next);
@@ -149,7 +162,11 @@ function Importer({
       case 'categories':
         return checkCategoryRows(rows as unknown as CategoryImportRow[]);
       case 'items':
-        return checkItemRows(rows as unknown as ItemImportRow[]);
+        return checkItemRows(
+          rows as unknown as ItemImportRow[],
+          (u) => t(`inventory.units.${u}`),
+          categories.status === 'ready' ? { categories: categories.data } : undefined,
+        );
       case 'customers':
         return checkCustomerRows(rows as unknown as CustomerImportRow[]);
       case 'opening_stock': {
@@ -203,7 +220,14 @@ function Importer({
     }
     setState(
       read.ok
-        ? { step: 'preview', fileName: file.name, rows: read.rows }
+        ? {
+            step: 'preview',
+            fileName: file.name,
+            rows:
+              current === 'items'
+                ? withUnitCodes(read.rows, (u) => t(`inventory.units.${u}`))
+                : read.rows,
+          }
         : { step: 'choose', problem: read.problem, reading: false },
     );
   }
@@ -266,7 +290,10 @@ function Importer({
               {t(`platform.importPage.kinds.${labelKey(kind)}.name`)}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {t(`platform.importPage.kinds.${labelKey(kind)}.rules`)}
+              {t(`platform.importPage.kinds.${labelKey(kind)}.rules`, {
+                // Units by the names this organization sees ("Stück" where pieces are called that).
+                units: STOCK_UNITS.map((u) => t(`inventory.units.${u}`)).join(', '),
+              })}
             </p>
           </div>
 
@@ -508,6 +535,22 @@ function InvoiceTile({ queue }: { queue: boolean }) {
   );
 }
 
+/** A preview cell: units by their shown name, a pack size as "12 × 500 ml" (what the item will show). */
+function shownCell(field: string, value: string, unitName: (unit: StockUnit) => string): string {
+  if (field === 'unit' && isStockUnit(value)) return unitName(value);
+  if (field === 'packSize') {
+    const pack = itemRowPack(value, unitName);
+    if (pack) {
+      return formatPackSize({
+        count: pack.packCount ?? null,
+        size: pack.packSize ?? null,
+        unit: pack.packUnit ?? null,
+      });
+    }
+  }
+  return value;
+}
+
 function Preview({
   columns,
   fileName,
@@ -553,9 +596,9 @@ function Preview({
             {rows.slice(0, PREVIEW_ROWS).map((row, i) => (
               <tr key={i}>
                 <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
-                {Object.values(row).map((value, j) => (
-                  <td key={j} className="px-3 py-2">
-                    {value}
+                {Object.entries(row).map(([field, value]) => (
+                  <td key={field} className="px-3 py-2">
+                    {shownCell(field, value, (u) => t(`inventory.units.${u}`))}
                   </td>
                 ))}
               </tr>

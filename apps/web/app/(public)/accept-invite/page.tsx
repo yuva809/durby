@@ -148,7 +148,7 @@ export default function AcceptInvitePage() {
                 maxLength={PASSWORD_MAX_LENGTH}
                 required
               />
-              <small>{t('platform.invite.hint')}</small>
+              <small>{t('platform.invite.hint', { min: String(PASSWORD_MIN_LENGTH) })}</small>
             </div>
             <div className={fieldClass}>
               <label htmlFor="invite-confirm">{t('platform.invite.confirm')}</label>

@@ -1,6 +1,7 @@
 'use client';
 
 import type { ProductCategory } from '@durby/shared';
+import Link from 'next/link';
 import { ArrowLeft, Boxes, Download, LayoutGrid, Package, Search } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
@@ -31,8 +32,10 @@ import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Loaded } from '../users/common';
-import { type InventoryData, warehouseLabel } from './inventory-page';
+import { type InventoryData } from './inventory-page';
+import { ItemDialog } from './items-tab';
 import { useSeesPrices } from './use-sees-prices';
+import { LocationFilter, stockQueryOf } from './location-filter';
 import { ExpiryDate } from './expiry-date';
 import { BranchShop } from '../requests/branch-shop';
 
@@ -64,13 +67,21 @@ export function CategoryOverview({
   const { store } = useAuth();
   const categories = data.categories ?? [];
   const active = data.warehouses.filter((w) => w.archivedAt === null && !w.isTransit);
-  const [warehouseId, setWarehouseId] = useState('');
+  const [filter, setFilter] = useState('');
   const [stockState, setStockState] = useState<StockState>('all');
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<CategorySelection | null>(null);
-  const [stock, reload] = useResource(`overview:${warehouseId}`, () =>
-    loadStock(store, warehouseId ? { warehouseId } : {}),
+  const [stock, reload] = useResource(`overview:${filter}`, () =>
+    loadStock(store, stockQueryOf(filter)),
   );
+  // After Adjust stock or Edit in a row: the items and the quantities shown.
+  const rowData: InventoryData = {
+    ...data,
+    reload: () => {
+      data.reload();
+      reload();
+    },
+  };
 
   // What is listed, for the page and for Export: the open category's items, else what the search finds, else all.
   const needle = query.trim().toLowerCase();
@@ -174,19 +185,13 @@ export function CategoryOverview({
               <option value="low">{t('inventory.overview.lowStock')}</option>
               <option value="out">{t('inventory.overview.outOfStock')}</option>
             </Select>
-            <Select
-              aria-label={t('inventory.fields.warehouse')}
-              value={warehouseId}
-              onChange={(e) => setWarehouseId(e.target.value)}
-              data-testid="overview-warehouse"
-            >
-              <option value="">{t('inventory.page.allWarehouses')}</option>
-              {active.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {warehouseLabel(data, w)}
-                </option>
-              ))}
-            </Select>
+            <LocationFilter
+              id="overview-location"
+              value={filter}
+              data={data}
+              onChange={setFilter}
+              testId="overview-warehouse"
+            />
           </Card>
 
           <Loaded resource={stock} reload={reload}>
@@ -194,6 +199,7 @@ export function CategoryOverview({
               if (open) {
                 return (
                   <CategoryItems
+                    data={rowData}
                     shop={branchShop}
                     selection={open}
                     categories={categories}
@@ -254,6 +260,7 @@ export function CategoryOverview({
                         categories={categories}
                         money={money}
                         prices={prices}
+                        data={rowData}
                       />
                     </section>
                   )}
@@ -365,6 +372,7 @@ function Tile({ tile, onOpen }: { tile: CategoryTile; onOpen: () => void }) {
 
 /** A category opened: its secondary categories as chips, then its items with their stock. */
 function CategoryItems({
+  data,
   shop,
   selection,
   categories,
@@ -376,6 +384,7 @@ function CategoryItems({
   money,
   searchId,
 }: {
+  data: InventoryData;
   shop: boolean;
   selection: CategorySelection;
   categories: readonly ProductCategory[];
@@ -454,7 +463,13 @@ function CategoryItems({
               {t('inventory.page.totalValue', { value: money(total) })}
             </p>
           )}
-          <ItemTable rows={rows} categories={categories} money={money} prices={total !== null} />
+          <ItemTable
+            rows={rows}
+            categories={categories}
+            money={money}
+            prices={total !== null}
+            data={data}
+          />
         </>
       )}
     </div>
@@ -466,14 +481,21 @@ function ItemTable({
   categories,
   money,
   prices,
+  data,
 }: {
   rows: readonly ItemRow[];
   categories: readonly ProductCategory[];
   money: (amount: string) => string;
   /** With the value column (ADR 0060). */
   prices: boolean;
+  /** For the row actions: who may do what, the warehouses, and reloading after a change. */
+  data: InventoryData;
 }) {
   const t = useT();
+  // Adjust stock for who books stock; Edit (the item, with its stock quantity) for who edits items.
+  const adjusts = data.can('inventory.stock.adjust') || data.can('inventory.stock.receive');
+  const edits = data.can('inventory.items.edit');
+  const actions = adjusts || edits;
   return (
     <Card className="overflow-x-auto p-0">
       <table className="w-full text-sm">
@@ -485,6 +507,11 @@ function ItemTable({
             <th className="px-4 py-2 font-medium">{t('inventory.fields.expiresOn')}</th>
             {prices && (
               <th className="px-4 py-2 text-right font-medium">{t('inventory.fields.value')}</th>
+            )}
+            {actions && (
+              <th className="px-4 py-2 text-right font-medium">
+                {t('inventory.overview.actions')}
+              </th>
             )}
           </tr>
         </thead>
@@ -498,7 +525,14 @@ function ItemTable({
             >
               <td className="w-full font-medium md:w-auto md:px-4 md:py-2">
                 <span className="flex flex-wrap items-center gap-2">
-                  {row.item.name}
+                  {/* The item's page: its activity and Edit. */}
+                  <Link
+                    href={`/inventory/items/${row.item.id}`}
+                    className="underline-offset-4 hover:underline"
+                    data-testid="overview-item-link"
+                  >
+                    {row.item.name}
+                  </Link>
                   {row.item.sku && (
                     <span className="text-xs font-normal text-muted-foreground">
                       {row.item.sku}
@@ -529,6 +563,32 @@ function ItemTable({
               {prices && row.value !== null && (
                 <td className="ml-auto font-medium tabular-nums md:px-4 md:py-2 md:text-right">
                   {money(row.value)}
+                </td>
+              )}
+              {actions && (
+                <td
+                  className="w-full md:w-auto md:px-4 md:py-2"
+                  data-testid="overview-actions-cell"
+                >
+                  <span className="flex flex-wrap justify-end gap-2">
+                    {adjusts && (
+                      <ItemDialog
+                        mode="stock"
+                        item={row.item}
+                        categories={null}
+                        warehouses={data.warehouses}
+                        onDone={data.reload}
+                      />
+                    )}
+                    {edits && (
+                      <ItemDialog
+                        item={row.item}
+                        categories={data.categories}
+                        warehouses={data.warehouses}
+                        onDone={data.reload}
+                      />
+                    )}
+                  </span>
                 </td>
               )}
             </tr>

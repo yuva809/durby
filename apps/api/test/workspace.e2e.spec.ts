@@ -111,6 +111,14 @@ describe('top bar search and waiting for me (ADR 0046)', () => {
     const ownerHits = await search(s.owner.token, 'rice');
     expect(ownerHits.map((h) => [h.type, h.title])).toContainEqual(['stock_item', 'Basmati rice']);
     expect((await search(s.owner.token, 'RICE-5')).map((h) => h.type)).toContain('stock_item');
+    // Partial words, in any order: every word must match.
+    expect((await search(s.owner.token, 'rice bas')).map((h) => h.title)).toContain('Basmati rice');
+    expect((await search(s.owner.token, 'bas ric')).map((h) => h.title)).toContain('Basmati rice');
+    // A warehouse is found by its name, for whoever may read stock at its branch.
+    expect((await search(s.owner.token, 'Store')).map((h) => [h.type, h.title])).toContainEqual([
+      'warehouse',
+      'Store',
+    ]);
     expect((await search(s.owner.token, created.number)).map((h) => h.id)).toContain(created.id);
     expect((await search(s.owner.token, 'branch person')).map((h) => h.type)).toContain('member');
 

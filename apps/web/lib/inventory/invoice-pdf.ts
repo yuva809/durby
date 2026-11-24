@@ -3,7 +3,8 @@
  * PDF's text, groups it into rows and picks out the item table. Three layouts: "Product ID · Description · Qty · Unit
  * price · VAT · Total" (Bonesca and most wholesalers), packed lines "Code · Description · Origin · Unit · Packs · Per
  * pack · Free · Pieces · Price · Total · VAT code" (Italian wholesalers), and "Pos · Art-Nr · Description · Qty · Per
- * pack · VAT % · Price · Total" (German wholesalers). No upload: only the receipt built from it goes to the api.
+ * pack · VAT % · Price · Total" (German wholesalers), and article first "Art-Nr · Qty · Unit (Karton) · Description · Price ·
+ * Total" (Unidex and other Dutch wholesalers). No upload: only the receipt built from it goes to the api.
  */
 
 export interface InvoiceLine {
@@ -69,7 +70,7 @@ const HEADER_WORDS = /\b(description|beschreibung|omschrijving|qty|quantity|meng
 
 /** A charge, not goods: transport, freight, an "order confirmed" line (ADR 0058). */
 const NON_GOODS =
-  /\b(trasporto|transport|transporte|freight|fracht|versand|versandkosten|shipping|spedizione|porto|order confirmed)\b/i;
+  /\b(trasporto|transport|transporte|freight|fracht|versand|versandkosten|shipping|spedizione|porto|order confirmed|surcharge|zuschlag|toeslag|label for missing language|pfand|deposit|statiegeld|leergut)\b/i;
 
 /** European decimals as printed: "12,000", "1.245,00". */
 const EU = String.raw`\d[\d.]*,\d+`;
@@ -91,6 +92,31 @@ const PER_POSITION = new RegExp(
   String.raw`^(?:\d{1,3}\.?\s+)?(?<code>\d{2,8})\s+(?<description>.+?)\s+(?<quantity>\d{1,6}(?:,\d{1,3})?)\s+(?<per>\d{1,4}|stk\.?|st\.?|stück|stck)\s+(?<vat>\d{1,2}(?:[.,]\d+)?)\s*%\s+(?<price>${EU})\s+(?<total>${EU})$`,
   'i',
 );
+
+/** Packaging units printed after the quantity ("5 Karton", "100 Bag", "6 Bucket", "2 Shrink"). */
+const PACKAGING = String.raw`(?:kartons?|cartons?|pieces?|pcs|stück|stk\.?|sack|säcke|kiste|beutel|dosen?|flaschen?|box(?:es)?|trays?|packs?|colli|bags?|buckets?|shrink|bundles?|bottles?|jars?|cans?|tins?|cases?|crates?|sachets?|rolls?|pails?|eimer|tüten?|zak(?:ken)?|doos|dozen|emmer)`;
+
+/**
+ * Article first (Unidex and other Dutch wholesalers): "FF00076 5 Karton Perfit Kingmackerel Steaks IQF (Surinam) 8 x 1 kg
+ * 44,05 220,25": article number, quantity, packaging unit, description, then price and total. With a discount the
+ * list price and discount come first: "… 12 x 1 ltr 41,75 10 % 37,58 75,15" (list price, %, net price, total); free
+ * goods end at their list price and "100 %". With an article number any one-word packaging unit is taken; a row
+ * without one is a charge such as "1 Karton Transport cost (EU) 125,00 125,00" and needs a known unit.
+ */
+const ARTICLE_HEAD = String.raw`^(?:(?<code>[A-Z]{1,6}\d{2,10}[A-Z]{0,3}|X[A-Z]{3,12})\s+(?<quantity>\d{1,3}(?:\.\d{3})*(?:,\d{1,3})?)\s+(?:${PACKAGING}|[A-Za-zÄÖÜäöüß]{2,12}\.?)|(?<chargeQuantity>\d{1,6}(?:,\d{1,3})?)\s+${PACKAGING})\s+(?<description>.+?)\s+`;
+const ARTICLE_FIRST = new RegExp(
+  ARTICLE_HEAD +
+    String.raw`(?:(?<list>${EU})\s+(?<discount>\d{1,2}(?:[.,]\d+)?)\s*%\s+)?(?<price>${EU})\s+(?<total>${EU})$`,
+  'i',
+);
+const ARTICLE_FREE = new RegExp(ARTICLE_HEAD + String.raw`(?<list>${EU})\s+100\s*%$`, 'i');
+
+/** A description that goes on to the next row: it ends in "+", "&", "," or "/". */
+const CONTINUED = /[+&,/]$/;
+
+/** What a wrapped description leaves on the next row: the end of its pack size, "1 kg" or "gr". */
+const WRAPPED_REST =
+  /^(?:\d+(?:[.,]\d+)?\s*)?(?:x\s*\d+(?:[.,]\d+)?\s*)?(?:kg|g|gr|ml|cl|l|ltr|pcs|stk|st)\.?$/i;
 
 /** quantity × price is total within a cent. */
 const checks = (quantity: string, price: string, total: string) => {
@@ -211,6 +237,41 @@ function parseLayoutRow(row: string): InvoiceLine | null {
       checks: checks(quantity, price, total),
     };
   }
+  const article = ARTICLE_FIRST.exec(row);
+  if (article?.groups) {
+    const g = article.groups;
+    const quantity = eu(g.quantity ?? g.chargeQuantity ?? '');
+    const price = eu(g.price ?? '');
+    const total = eu(g.total ?? '');
+    if (!quantity || !price || !total || milli(quantity) === 0n) return null;
+    // Discounted: the printed net price is rounded (8 × 6,89 ≠ 55,08), so the price is the total over the quantity.
+    const unitPrice = g.discount ? trimPrice(per(total, quantity)) : price;
+    return {
+      code: g.code ?? null,
+      description: (g.description ?? '').trim(),
+      quantity,
+      unitPrice,
+      vatRate: null,
+      total,
+      checks: checks(quantity, unitPrice, total),
+    };
+  }
+  // Free goods (100 % discount): booked in at no cost.
+  const free = ARTICLE_FREE.exec(row);
+  if (free?.groups) {
+    const g = free.groups;
+    const quantity = eu(g.quantity ?? g.chargeQuantity ?? '');
+    if (!quantity || milli(quantity) === 0n) return null;
+    return {
+      code: g.code ?? null,
+      description: (g.description ?? '').trim(),
+      quantity,
+      unitPrice: '0',
+      vatRate: null,
+      total: '0.00',
+      checks: true,
+    };
+  }
   return null;
 }
 
@@ -258,7 +319,11 @@ export function parseInvoice(rows: readonly string[]): ParsedInvoice {
       text,
     )?.[1] ?? headedNumber(rows);
   const date = /\b(\d{1,2}[-./]\d{1,2}[-./]\d{4})\b/.exec(text)?.[1] ?? null;
-  const domain = /[\w.+-]+@([a-z0-9-]+)\.[a-z.]{2,}/i.exec(text)?.[1] ?? null;
+  // The e-mail domain, else the website's (Unidex prints only www.unidexholland.com).
+  const domain =
+    /[\w.+-]+@([a-z0-9-]+)\.[a-z.]{2,}/i.exec(text)?.[1] ??
+    /\bwww\.([a-z0-9-]+)\.[a-z.]{2,}/i.exec(text)?.[1] ??
+    null;
   const supplier =
     domain && !/^(gmail|outlook|hotmail|yahoo|gmx|web|icloud|t-online)$/i.test(domain)
       ? domain.charAt(0).toUpperCase() + domain.slice(1)
@@ -266,20 +331,42 @@ export function parseInvoice(rows: readonly string[]): ParsedInvoice {
   // Lines, and where the last one was: the totals are below it.
   const lines: InvoiceLine[] = [];
   const skipped: string[] = [];
+  // Transport, surcharges: left out of the goods, but part of the printed total.
+  const charges: InvoiceLine[] = [];
   let lastLine = -1;
+  let previous: InvoiceLine | null = null;
   rows.forEach((row, index) => {
     const line = parseInvoiceRow(row);
-    if (!line) return;
+    if (!line) {
+      // A description wrapped onto the next row ("… 8 x" then "1 kg"): joined back.
+      const rest = row.replace(/\s+/g, ' ').trim();
+      const wrapped =
+        WRAPPED_REST.test(rest) ||
+        // "… 4750 gr +" then "wobbler & display"; never a campaign note or a page's footer.
+        (previous !== null &&
+          CONTINUED.test(previous.description) &&
+          rest.length <= 60 &&
+          !/:/.test(rest));
+      if (previous && index === lastLine + 1 && wrapped) {
+        previous.description = `${previous.description} ${rest}`;
+        lastLine = index;
+      }
+      return;
+    }
     lastLine = index;
-    if (NON_GOODS.test(line.description)) skipped.push(line.description);
-    else lines.push(line);
+    previous = line;
+    if (NON_GOODS.test(line.description)) {
+      // Each name once: a deposit is often printed on several rows.
+      if (!skipped.includes(line.description)) skipped.push(line.description);
+      charges.push(line);
+    } else lines.push(line);
   });
   // The grand total: the last "Total …" row that isn't "excluding VAT" / net.
   let total: string | null = null;
   for (const row of rows) {
     if (
-      !/\btotal\b|\bsumme\b|\btotaal\b/i.test(row) ||
-      /excl|netto|net\b|weight|weigt/i.test(row)
+      !/\btotal\b|\bsumme\b|\btotaal\b|\bgesamtbetrag\b/i.test(row) ||
+      /excl|netto|net\b|ohne|weight|weigt/i.test(row)
     ) {
       continue;
     }
@@ -292,6 +379,11 @@ export function parseInvoice(rows: readonly string[]): ParsedInvoice {
   // No labelled total that is the lines' sum (a gross total, or none at all): an amount below the lines that is the
   // net sum, as wholesalers print it without a label (ADR 0058).
   const sum = lines.length > 0 ? linesTotal(lines) : null;
+  // A printed total that is the goods plus the charges left out: the goods' total is what the lines are checked
+  // against (the charges are named as left out).
+  if (sum && total && charges.length > 0 && total === linesTotal([...lines, ...charges])) {
+    total = sum;
+  }
   if (sum && total !== sum && lastLine >= 0) {
     const below = rows.slice(lastLine + 1).join(' ');
     const amounts = [...below.matchAll(/\d[\d.,]*\d/g)].map((m) => parseAmount(m[0]));
