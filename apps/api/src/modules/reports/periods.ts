@@ -3,6 +3,7 @@ import {
   businessDay,
   type DayClock,
   type LocalDate,
+  type LocalTime,
   NORMAL_DAY_WEEKS,
   WEEKDAYS,
   weekdayOf,
@@ -73,12 +74,15 @@ export function cardSpans(
   };
 }
 
-/** The last whole business day, and the same weekdays its normal day is averaged from (ADR 0082), latest first. */
-export function normalDay(
-  now: Date,
-  clock: DayClock,
-): { day: LocalDate; yesterday: Span; before: Span[] } {
-  const day = addDays(businessDay(now, clock), -1);
+export interface NormalDaySpans {
+  day: LocalDate;
+  yesterday: Span;
+  /** The four same weekdays before, latest first. */
+  before: Span[];
+}
+
+/** A business day, and the same weekdays its normal day is averaged from (ADR 0082). */
+export function normalDayOf(day: LocalDate, clock: DayClock): NormalDaySpans {
   return {
     day,
     yesterday: daysSpan(day, day, clock),
@@ -87,4 +91,34 @@ export function normalDay(
       return daysSpan(same, same, clock);
     }),
   };
+}
+
+/** The last whole business day. */
+export function lastDay(now: Date, clock: DayClock): LocalDate {
+  return addDays(businessDay(now, clock), -1);
+}
+
+export const normalDay = (now: Date, clock: DayClock): NormalDaySpans =>
+  normalDayOf(lastDay(now, clock), clock);
+
+/** How long after its time a daily report is still sent (the worker was down). */
+const DAILY_REPORT_HOURS = 12;
+
+/**
+ * The day a daily report at `now` is about (ADR 0083): yesterday in the organization's zone, due at `sendAt` or once it
+ * has ended at every location, whichever is later.
+ */
+export function dailyReportDue(
+  now: Date,
+  org: { timeZone: string; sendAt: LocalTime; clocks: readonly DayClock[] },
+): { day: LocalDate; state: 'early' | 'due' | 'late' } {
+  const today = zonedParts(now, org.timeZone).date;
+  const day = addDays(today, -1);
+  const dueAt = Math.max(
+    zonedBound(today, org.sendAt, org.timeZone).getTime(),
+    ...org.clocks.map((clock) => daysSpan(day, day, clock).end.getTime()),
+  );
+  if (now.getTime() < dueAt) return { day, state: 'early' };
+  const late = now.getTime() >= dueAt + DAILY_REPORT_HOURS * 3_600_000;
+  return { day, state: late ? 'late' : 'due' };
 }

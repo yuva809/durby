@@ -4,12 +4,20 @@ import { TURN_TIME_BANDS } from '@durby/shared';
 import type { TenantTransactionClient } from '../../platform/tenancy';
 import { NO_SALES, type ReservationSums, type SalesSums } from './metrics';
 import type { Span } from './periods';
+import type { Place } from './places';
 
 /** One location's part of a question: its span, and its zone where hours matter. */
 export interface LocationSpan extends Span {
   locationId: string;
   timeZone: string;
 }
+
+export const spansOf = (places: readonly Place[], span: (place: Place) => Span): LocationSpan[] =>
+  places.map((place) => ({
+    locationId: place.locationId,
+    timeZone: place.clock.timeZone,
+    ...span(place),
+  }));
 
 /** The spans as one parameter: `jsonb_to_recordset` gives them back as rows. */
 const spanRows = (spans: readonly LocationSpan[]): string =>

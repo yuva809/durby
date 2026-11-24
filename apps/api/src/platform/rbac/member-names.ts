@@ -68,6 +68,15 @@ export class MemberNames {
       .map((row) => ({ userId: row.userId, name: row.displayName }));
   }
 
+  /** The active members with the Owner role (the daily report, ADR 0083). */
+  async owners(db: TenantDb): Promise<string[]> {
+    const rows = await db.membership.findMany({
+      where: { deactivatedAt: null, role: { systemKey: 'owner' } },
+      select: { userId: true },
+    });
+    return rows.map((row) => row.userId);
+  }
+
   /** Active members whose display name contains the query (the top bar search, ADR 0046); callers check platform.users.read. */
   async search(db: TenantDb, q: string, take: number): Promise<{ userId: string; name: string }[]> {
     const rows = await db.membership.findMany({

@@ -1,7 +1,12 @@
 'use client';
 
 import type { LabelKey } from '@durby/i18n';
-import type { AttentionResponse, Notification, NotificationListResponse } from '@durby/shared';
+import {
+  type AttentionResponse,
+  type Notification,
+  type NotificationListResponse,
+  notificationText,
+} from '@durby/shared';
 import { Bell } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -186,43 +191,38 @@ export function NotificationsBell() {
             ) : (
               <>
                 <div className="max-h-96 overflow-y-auto">
-                  {updates!.data.map((n) => (
-                    <DropdownMenuItem
-                      key={n.id}
-                      onSelect={() => openUpdate(n)}
-                      className="flex items-start gap-2"
-                      data-testid="update-item"
-                      data-unread={n.readAt === null ? 'true' : undefined}
-                    >
-                      <span
-                        aria-hidden
-                        className={cn(
-                          'mt-1.5 size-2 shrink-0 rounded-full',
-                          n.readAt === null ? 'bg-primary' : 'bg-transparent',
-                        )}
-                      />
-                      <span className="flex min-w-0 flex-col">
-                        <span className={cn(n.readAt === null && 'font-medium')}>
-                          {t(`platform.notifications.kinds.${camel(n.kind)}` as LabelKey, {
-                            ...n.params,
-                            ...(n.params.status
-                              ? {
-                                  status: t(
-                                    `platform.notifications.feedbackStatus.${n.params.status}` as LabelKey,
-                                  ),
-                                }
-                              : {}),
-                          })}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {n.readAt === null && (
-                            <span className="sr-only">{t('platform.notifications.unread')} </span>
+                  {updates!.data.map((n) => {
+                    const text = notificationText(t, n, session.user.locale);
+                    return (
+                      <DropdownMenuItem
+                        key={n.id}
+                        onSelect={() => openUpdate(n)}
+                        className="flex items-start gap-2"
+                        data-testid="update-item"
+                        data-unread={n.readAt === null ? 'true' : undefined}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'mt-1.5 size-2 shrink-0 rounded-full',
+                            n.readAt === null ? 'bg-primary' : 'bg-transparent',
                           )}
-                          {time.format(new Date(n.createdAt))}
+                        />
+                        <span className="flex min-w-0 flex-col">
+                          <span className={cn(n.readAt === null && 'font-medium')}>
+                            {text.title}
+                          </span>
+                          {text.body ? <span className="text-sm">{text.body}</span> : null}
+                          <span className="text-xs text-muted-foreground">
+                            {n.readAt === null && (
+                              <span className="sr-only">{t('platform.notifications.unread')} </span>
+                            )}
+                            {time.format(new Date(n.createdAt))}
+                          </span>
                         </span>
-                      </span>
-                    </DropdownMenuItem>
-                  ))}
+                      </DropdownMenuItem>
+                    );
+                  })}
                 </div>
                 {unread > 0 && (
                   <DropdownMenuItem

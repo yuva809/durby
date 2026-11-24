@@ -3,7 +3,13 @@
 import Link from 'next/link';
 import { useRef } from 'react';
 import type { LabelKey } from '@durby/i18n';
-import { METRICS, NORMAL_DAY_WEEKS, type OverviewResponse } from '@durby/shared';
+import {
+  dayText,
+  METRICS,
+  NORMAL_DAY_WEEKS,
+  type OverviewResponse,
+  percentText,
+} from '@durby/shared';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -11,11 +17,11 @@ import type { Session } from '../../lib/auth/session';
 import { type MoneyFormat, moneyFormat, toCents } from '../../lib/pos/format';
 import { useLiveRefresh } from '../../lib/realtime/use-live-refresh';
 import { loadOverview } from '../../lib/reports/api';
-import { percentText } from '../../lib/reports/format';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
 import { Card } from '../ui/card';
 import { Loaded } from '../users/common';
+import { DailyReportOffer } from './daily-report-offer';
 
 const REFRESH_MS = 60_000;
 
@@ -85,6 +91,7 @@ export function Overview({
           {t('reports.overview.reports')}
         </Link>
       </div>
+      <DailyReportOffer session={session} />
       <Loaded resource={overview} reload={reload}>
         {({ figures, stale }) => {
           const time = new Intl.DateTimeFormat(locale, {
@@ -118,13 +125,7 @@ function Figures({ figures, locale }: { figures: OverviewResponse; locale: strin
     money,
     difference: (amount) => (toCents(amount) > 0n ? `+${money(amount)}` : money(amount)),
     change: (percent) => percentText(locale, percent, true),
-    day: (day) =>
-      new Intl.DateTimeFormat(locale, {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        timeZone: 'UTC',
-      }).format(new Date(`${day}T00:00:00Z`)),
+    day: (day) => dayText(locale, day),
   };
   if (locations.length === 0) {
     return <p className="text-muted-foreground">{t('reports.overview.noLocations')}</p>;

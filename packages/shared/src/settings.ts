@@ -101,6 +101,17 @@ export const REPORT_DAY_STARTS = [
   '08:00',
 ] as const;
 
+/** When the daily report goes out (`reports.dailyReportAt`): the morning after, when the day has ended. */
+export const REPORT_SEND_TIMES = [
+  '06:00',
+  '07:00',
+  '08:00',
+  '09:00',
+  '10:00',
+  '11:00',
+  '12:00',
+] as const;
+
 export const SETTINGS = {
   locale: define({
     label: 'platform.settings.locale.name',
@@ -383,6 +394,15 @@ export const SETTINGS = {
     schema: z.enum(REPORT_DAY_STARTS),
     default: '04:00',
     scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  // When the owners get yesterday's sales (ADR 0083).
+  'reports.dailyReportAt': define({
+    label: 'platform.settings.reportsDailyReportAt.name',
+    description: 'platform.settings.reportsDailyReportAt.description',
+    schema: z.enum(REPORT_SEND_TIMES),
+    default: '08:00',
+    scopes: ['partner', 'organization'],
     dataBound: false,
   }),
   // Where a person starts: the Overview page (no Overview menu item when Inventory is chosen).

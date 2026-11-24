@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
-import { businessDay, METRICS, type MetricKey, SETTINGS } from '@durby/shared';
+import { businessDay, METRICS, type MetricKey, percentText, SETTINGS } from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
 import { Download } from 'lucide-react';
 import { useT } from '../../app/labels-provider';
@@ -15,7 +15,6 @@ import { REPORT_TABS } from '../../lib/nav/report-tabs';
 import { type MoneyFormat, moneyFormat } from '../../lib/pos/format';
 import type { ReportFilter } from '../../lib/reports/api';
 import { filterFromParams, PERIODS, periodOf } from '../../lib/reports/filters';
-import { percentText } from '../../lib/reports/format';
 import { loadSettings } from '../../lib/settings/api';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';

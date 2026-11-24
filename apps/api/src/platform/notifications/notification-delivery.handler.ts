@@ -5,34 +5,28 @@ import {
   NOTIFICATION_SETTINGS_PATH,
   type NotificationKind,
   notificationPath,
+  notificationText,
 } from '@durby/shared';
-import { DEFAULT_LOCALE, isLocale, type LabelKey, type Translator } from '@durby/i18n';
+import { DEFAULT_LOCALE, isLocale, type Translator } from '@durby/i18n';
 import { mailLinkBase, UserDirectory } from '../auth';
 import { APP_CONFIG, type AppConfig } from '../config';
 import { LabelService } from '../labels';
 import { MAILER, type Mailer, mailErrorFields } from '../mail';
 import { OnEvent, type OutboxEvent } from '../outbox';
-import { PUSH_SENDER, type PushSender } from './push-sender';
+import {
+  PUSH_SENDER,
+  type PushMessage,
+  type PushOutcome,
+  type PushSender,
+  type PushTarget,
+} from './push-sender';
 import {
   PLATFORM_PRISMA,
   type PlatformPrismaClient,
   type TenantTransactionClient,
 } from '../tenancy';
 
-/** `request_submitted` → `requestSubmitted`: label keys are camelCase. */
-const camel = (value: string) => value.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
-
-/** The one-line text of a notification, as the bell shows it. */
-export function notificationText(
-  t: Translator,
-  n: { kind: string; params: Record<string, string> },
-): string {
-  const params = { ...n.params };
-  if (params.status) {
-    params.status = t(`platform.notifications.feedbackStatus.${params.status}` as LabelKey);
-  }
-  return t(`platform.notifications.kinds.${camel(n.kind)}` as LabelKey, params);
-}
+type Target = PushTarget & { id: string };
 
 /**
  * Sends stored notifications by email and browser push to the people who chose that for the kind (docs/platform/
@@ -103,23 +97,25 @@ export class NotificationDeliveryHandler {
       return translators.get(key)!;
     };
 
+    const pushes: { target: Target; message: PushMessage }[] = [];
     for (const row of rows) {
       const kind = row.kind as NotificationKind;
       const choice = choiceOf(row.userId, kind);
       const profile = profiles.get(row.userId);
       if (!profile) continue;
       const t = await translator(profile.locale);
-      const text = notificationText(t, {
-        kind,
-        params: (row.params ?? {}) as Record<string, string>,
-      });
+      const { title, body } = notificationText(
+        t,
+        { kind, params: (row.params ?? {}) as Record<string, string> },
+        isLocale(profile.locale) ? profile.locale : DEFAULT_LOCALE,
+      );
       const path = notificationPath({
         kind,
         entityType: row.entityType as never,
         entityId: row.entityId,
       });
       const params = {
-        text,
+        text: body === null ? title : `${title}. ${body}`,
         organization: org.name,
         link: path ? new URL(path, base).toString() : '',
         settingsLink: new URL(NOTIFICATION_SETTINGS_PATH, base).toString(),
@@ -127,9 +123,12 @@ export class NotificationDeliveryHandler {
       for (const target of choice.push
         ? subscriptions.filter((x) => x.userId === row.userId)
         : []) {
-        await this.sendPush(tx, target, { title: text, url: path ?? '/' });
+        pushes.push({
+          target,
+          message: { title, ...(body === null ? {} : { body }), url: path ?? '/' },
+        });
       }
-      if (!choice.email) continue;
+      if (!choice.email || this.config.NOTIFICATION_EMAILS === 'off') continue;
       try {
         const { messageId } = await this.mailer.send({
           to: profile.email,
@@ -150,19 +149,28 @@ export class NotificationDeliveryHandler {
         );
       }
     }
+    await this.sendPushes(tx, pushes);
   }
 
-  /** One device; a subscription the push service no longer knows is deleted. Failures are logged without details. */
-  private async sendPush(
+  /** All at once, so one slow device doesn't hold up the others; gone subscriptions are deleted afterwards. */
+  private async sendPushes(
     tx: TenantTransactionClient,
-    target: { id: string; endpoint: string; p256dh: string; auth: string },
-    message: { title: string; url: string },
+    pushes: readonly { target: Target; message: PushMessage }[],
   ): Promise<void> {
+    const outcomes = await Promise.all(
+      pushes.map(({ target, message }) => this.sendPush(target, message)),
+    );
+    for (const [i, outcome] of outcomes.entries()) {
+      if (outcome !== 'gone') continue;
+      await tx.pushSubscription.deleteMany({ where: { id: pushes[i]!.target.id } });
+      this.logger.log({ template: 'platform.notification' }, 'push subscription gone, removed');
+    }
+  }
+
+  /** One device. Failures are logged without details. */
+  private async sendPush(target: Target, message: PushMessage): Promise<PushOutcome | 'failed'> {
     try {
-      if ((await this.push.send(target, message)) === 'gone') {
-        await tx.pushSubscription.deleteMany({ where: { id: target.id } });
-        this.logger.log({ template: 'platform.notification' }, 'push subscription gone, removed');
-      }
+      return await this.push.send(target, message);
     } catch (error) {
       this.logger.error(
         {
@@ -171,6 +179,7 @@ export class NotificationDeliveryHandler {
         },
         'notification push failed',
       );
+      return 'failed';
     }
   }
 }

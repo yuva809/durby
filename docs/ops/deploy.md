@@ -497,6 +497,23 @@ bin/dc run --rm worker node dist/cli/outbox.js handler-failures
 bin/dc run --rm worker node dist/cli/outbox.js retry-handler --job '<event-id>@<handler>'
 ```
 
+**Daily sales report (ADR 0083):** owners get yesterday's sales by browser push. Push needs keys, once per stack:
+
+```bash
+npx web-push generate-vapid-keys   # on your own computer; the private key is a secret
+```
+
+Add `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY` and `WEB_PUSH_SUBJECT` (`mailto:…`) to `/opt/durby/.env`, then
+`bin/dc up -d api worker`. A new pair later drops every device. The worker reaches the internet through the `egress`
+network. Emails about updates stay off until `.env` says `NOTIFICATION_EMAILS=on` (they also need `SMTP_URL` at a real
+relay, because the worker does not reach Mailpit).
+
+To send a report without waiting for its time (once per day, after the day has ended):
+
+```bash
+bin/dc run --rm worker node dist/cli/reports.js daily --org <organization id>
+```
+
 **Report data (ADR 0081):** once per organization after the first release with reports, and after switching its
 `reports` feature on (safe while the till is in use):
 

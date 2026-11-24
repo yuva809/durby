@@ -1,9 +1,7 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 import {
-  type DayClock,
   type OverviewResponse,
-  NORMAL_DAY_WEEKS,
   type PermissionKey,
   type ReportQuery,
   type ReservationsReportResponse,
@@ -27,28 +25,22 @@ import {
 } from '../../platform/tenancy';
 import { CatalogLookup } from '../catalog';
 import { PosFloorReader } from '../pos';
-import { FactsReader, type LocationSpan } from './facts-reader';
+import { DayFigures } from './day-figures';
+import { FactsReader, spansOf } from './facts-reader';
 import {
   addSales,
   changePercent,
   METRIC,
   NO_SALES,
-  type NormalDaySums,
   percent,
   salesFigures,
   type SalesSums,
 } from './metrics';
-import { type CardSpans, cardSpans, daysSpan, normalDay, type Span } from './periods';
+import { type CardSpans, cardSpans, daysSpan, lastDay, type Span } from './periods';
+import { ACTIVE_BRANCHES, type Place, ReportPlaces } from './places';
 
 const locationNotFound = () =>
   new ApiError(HttpStatus.NOT_FOUND, 'reports.location_not_found', 'Location not found.');
-
-/** A location the caller may read, and where its business days start. */
-interface Place {
-  locationId: string;
-  name: string;
-  clock: DayClock;
-}
 
 /**
  * The reports (docs/modules/reports.md, ADR 0081). Each is read in one read-only snapshot. The guard checks the key for
@@ -64,6 +56,8 @@ export class ReportsService {
     private readonly facts: FactsReader,
     private readonly catalog: CatalogLookup,
     private readonly floor: PosFloorReader,
+    private readonly places: ReportPlaces,
+    private readonly days: DayFigures,
   ) {}
 
   /** The home page (ADR 0082): active locations now, and yesterday against their normal day. */
@@ -73,50 +67,22 @@ export class ReportsService {
       'reports.sales.read',
       {},
       async (places, tx) => {
-        const at = (span: (place: Place) => Span) => this.facts.sales(spans(places, span), tx);
+        const at = (span: (place: Place) => Span) => this.facts.sales(spansOf(places, span), tx);
         const today = await at(({ clock }) => cardSpans(now, clock).today.figures);
         const lastWeek = await at(({ clock }) => cardSpans(now, clock).today.compare);
-        const yesterday = await at(({ clock }) => normalDay(now, clock).yesterday);
-        const before: Map<string, SalesSums>[] = [];
-        for (let week = 0; week < NORMAL_DAY_WEEKS; week += 1) {
-          before.push(await at(({ clock }) => normalDay(now, clock).before[week]!));
+        const past = await this.days.of(places, ({ clock }) => lastDay(now, clock), tx);
+        const openTables = new Map<string, number>();
+        for (const { locationId } of places) {
+          openTables.set(locationId, (await this.floor.openOrders(locationId, tx)).length);
         }
-        const rows = [];
-        for (const { locationId, name, clock } of places) {
-          const of = (sums: Map<string, SalesSums>) => sums.get(locationId) ?? NO_SALES;
-          // A day without orders says nothing about a normal one: closed, or not open yet.
-          const days = before.map(of).filter((day) => day.orders > 0);
-          rows.push({
-            locationId,
-            name,
-            day: normalDay(now, clock).day,
-            today: of(today),
-            lastWeek: of(lastWeek),
-            openTables: (await this.floor.openOrders(locationId, tx)).length,
-            yesterday: of(yesterday),
-            days: days.length,
-            normal: normalOf({
-              gross: addSales(days).gross,
-              days: days.length,
-              yesterday: of(yesterday).gross,
-            }),
-          });
-        }
-        const compared = rows.flatMap(({ normal, yesterday: { gross } }) =>
-          normal ? [{ normal, gross }] : [],
-        );
-        const comparedGross = compared.reduce((sum, r) => sum.plus(r.gross), new Decimal(0));
-        const all = addSales(rows.map((r) => r.yesterday));
-        // The total is the sum of the normal days as listed, like one day of these locations together.
-        const total = normalOf({
-          gross: compared.reduce((sum, r) => sum.plus(r.normal.gross), new Decimal(0)),
-          days: compared.length > 0 ? 1 : 0,
-          yesterday: comparedGross,
-        });
-        const part = (sales: SalesSums, lastWeekSales: SalesSums, openTables: number) => ({
+        const part = (sales: SalesSums, lastWeekSales: SalesSums, open: number) => ({
           ...salesFigures(sales),
-          openTables,
+          openTables: open,
           changePercent: changePercent(sales.gross, lastWeekSales.gross),
+        });
+        const pastSales = (sales: SalesSums) => ({
+          gross: METRIC['sales.gross']({ sales }),
+          orders: METRIC['sales.orders']({ sales }),
         });
         return {
           currency: await this.settings.get('currency', {}, tx),
@@ -127,31 +93,31 @@ export class ReportsService {
           ),
           total: {
             today: part(
-              addSales(rows.map((r) => r.today)),
-              addSales(rows.map((r) => r.lastWeek)),
-              rows.reduce((sum, r) => sum + r.openTables, 0),
+              addSales(today.values()),
+              addSales(lastWeek.values()),
+              [...openTables.values()].reduce((sum, n) => sum + n, 0),
             ),
             yesterday: {
-              gross: METRIC['sales.gross']({ sales: all }),
-              orders: METRIC['sales.orders']({ sales: all }),
-              normal: total && { ...total, compared: comparedGross.toFixed(2) },
-              leftOut: rows.length - compared.length,
+              ...pastSales(past.total.sales),
+              normal: past.total.normal,
+              leftOut: past.total.leftOut,
             },
           },
-          locations: rows.map((r) => ({
-            locationId: r.locationId,
-            name: r.name,
-            today: part(r.today, r.lastWeek, r.openTables),
-            yesterday: {
-              day: r.day,
-              gross: METRIC['sales.gross']({ sales: r.yesterday }),
-              orders: METRIC['sales.orders']({ sales: r.yesterday }),
-              normal: r.normal && { ...r.normal, days: r.days },
-            },
-          })),
+          locations: past.places.map(
+            ({ place: { locationId, name }, day, sales, days, normal }) => ({
+              locationId,
+              name,
+              today: part(
+                today.get(locationId) ?? NO_SALES,
+                lastWeek.get(locationId) ?? NO_SALES,
+                openTables.get(locationId) ?? 0,
+              ),
+              yesterday: { day, ...pastSales(sales), normal: normal && { ...normal, days } },
+            }),
+          ),
         };
       },
-      { archivedAt: null, isWarehouseSite: false },
+      ACTIVE_BRANCHES,
     );
   }
 
@@ -186,7 +152,7 @@ export class ReportsService {
 
   hours(query: ReportQuery): Promise<SalesHoursResponse> {
     return this.read('reports.sales.read', query, async (places, tx) => {
-      const rows = await this.facts.hours(spans(places, periodOf(query)), tx);
+      const rows = await this.facts.hours(spansOf(places, periodOf(query)), tx);
       const byHour = new Map(rows.map((r) => [r.hour, r]));
       return {
         currency: await this.settings.get('currency', {}, tx),
@@ -200,7 +166,7 @@ export class ReportsService {
 
   items(query: ReportQuery): Promise<SalesItemsResponse> {
     return this.read('reports.sales.read', query, async (places, tx) => {
-      const rows = await this.facts.products(spans(places, periodOf(query)), tx);
+      const rows = await this.facts.products(spansOf(places, periodOf(query)), tx);
       const products = await this.catalog.productsByIds(
         rows.map((r) => r.productId),
         asTenantDb(tx),
@@ -219,7 +185,7 @@ export class ReportsService {
 
   categories(query: ReportQuery): Promise<SalesCategoriesResponse> {
     return this.read('reports.sales.read', query, async (places, tx) => {
-      const rows = await this.facts.products(spans(places, periodOf(query)), tx);
+      const rows = await this.facts.products(spansOf(places, periodOf(query)), tx);
       const products = await this.catalog.productsByIds(
         rows.map((r) => r.productId),
         asTenantDb(tx),
@@ -254,7 +220,7 @@ export class ReportsService {
 
   tables(query: ReportQuery): Promise<TablesReportResponse> {
     return this.read('reports.sales.read', query, async (places, tx) => {
-      const rows = await this.facts.tables(spans(places, periodOf(query)), tx);
+      const rows = await this.facts.tables(spansOf(places, periodOf(query)), tx);
       const open = [];
       for (const { locationId } of places) {
         for (const order of await this.floor.openOrders(locationId, tx)) {
@@ -311,7 +277,7 @@ export class ReportsService {
 
   reservations(query: ReportQuery): Promise<ReservationsReportResponse> {
     return this.read('reports.reservations.read', query, async (places, tx) => {
-      const { total, bands } = await this.facts.reservations(spans(places, periodOf(query)), tx);
+      const { total, bands } = await this.facts.reservations(spansOf(places, periodOf(query)), tx);
       const sums = { reservations: total };
       return {
         covers: METRIC['reservations.covers'](sums),
@@ -337,7 +303,7 @@ export class ReportsService {
 
   /** Sums over all places, each over its own span. */
   private async total(places: Place[], span: (place: Place) => Span, tx: TenantTransactionClient) {
-    return addSales((await this.facts.sales(spans(places, span), tx)).values());
+    return addSales((await this.facts.sales(spansOf(places, span), tx)).values());
   }
 
   /** One read-only snapshot over the caller's locations, or the one asked for (404 when they can't read it). */
@@ -353,28 +319,15 @@ export class ReportsService {
     return this.db.$transaction(
       async (tx) => {
         await tx.$executeRaw`SET TRANSACTION READ ONLY`;
-        const locations = await tx.location.findMany({
-          where: {
+        const places = await this.places.load(
+          {
             ...only,
             ...(scope === 'all' ? {} : { id: { in: scope } }),
             ...(query.locationId ? { AND: { id: query.locationId } } : {}),
           },
-          select: { id: true, name: true },
-          orderBy: [{ name: 'asc' }, { id: 'asc' }],
-        });
-        if (query.locationId && locations.length === 0) throw locationNotFound();
-        const places: Place[] = [];
-        for (const { id, name } of locations) {
-          const at = { locationId: id };
-          places.push({
-            locationId: id,
-            name,
-            clock: {
-              timeZone: await this.settings.get('timezone', at, tx),
-              dayStartsAt: await this.settings.get('reports.dayStartsAt', at, tx),
-            },
-          });
-        }
+          tx,
+        );
+        if (query.locationId && places.length === 0) throw locationNotFound();
         return fn(places, tx);
       },
       { isolationLevel: 'RepeatableRead' },
@@ -382,25 +335,7 @@ export class ReportsService {
   }
 }
 
-/** A normal day and how yesterday differs from it; null when no day counts. */
-function normalOf(normal: NormalDaySums) {
-  const gross = METRIC['sales.normalDay']({ normal });
-  if (gross === null) return null;
-  return {
-    gross,
-    difference: normal.yesterday.minus(gross).toFixed(2),
-    changePercent: METRIC['sales.vsNormalDay']({ normal }),
-  };
-}
-
 const periodOf =
   (query: ReportQuery) =>
   ({ clock }: Place): Span =>
     daysSpan(query.from, query.to, clock);
-
-const spans = (places: readonly Place[], span: (place: Place) => Span): LocationSpan[] =>
-  places.map((place) => ({
-    locationId: place.locationId,
-    timeZone: place.clock.timeZone,
-    ...span(place),
-  }));

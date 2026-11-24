@@ -2,7 +2,11 @@ import { Module } from '@nestjs/common';
 import { CatalogModule } from '../catalog';
 import { PosModule } from '../pos';
 import { ReservationsModule } from '../reservations';
+import { DailyReportScheduler } from './daily-report.scheduler';
+import { DailyReport } from './daily-report.service';
+import { DayFigures } from './day-figures';
 import { FactsReader } from './facts-reader';
+import { ReportPlaces } from './places';
 import { ReportsProjectionHandler } from './projection.handler';
 import { ReportsProjection } from './projection.service';
 import { ReportsRebuild } from './rebuild.service';
@@ -14,12 +18,16 @@ import { ReportsService } from './reports.service';
   imports: [CatalogModule, PosModule, ReservationsModule],
   controllers: [ReportsController],
   providers: [
+    DailyReport,
+    DailyReportScheduler,
+    DayFigures,
     FactsReader,
+    ReportPlaces,
     ReportsProjection,
     ReportsProjectionHandler,
     ReportsRebuild,
     ReportsService,
   ],
-  exports: [ReportsRebuild],
+  exports: [DailyReport, DailyReportScheduler, ReportsRebuild],
 })
 export class ReportsModule {}
