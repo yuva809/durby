@@ -26,6 +26,7 @@ export const AUDIT_ENTITY_TYPES = [
   'pos_order',
   'kitchen_ticket',
   'dining_area',
+  'floor_plan',
   'location',
   'reservation_table_rule',
   'reservation_combination',
@@ -387,6 +388,16 @@ export const AUDIT_ACTIONS = {
     entityType: 'dining_area',
     label: 'pos.audit.actions.diningAreaDeleted',
   },
+  // Floor plans per area (ADR 0073).
+  'pos.floor_plan.saved': { entityType: 'floor_plan', label: 'pos.audit.actions.floorPlanSaved' },
+  'pos.floor_plan.restored': {
+    entityType: 'floor_plan',
+    label: 'pos.audit.actions.floorPlanRestored',
+  },
+  'pos.floor_plan.published': {
+    entityType: 'floor_plan',
+    label: 'pos.audit.actions.floorPlanPublished',
+  },
   // Printers per location (ADR 0033).
   'pos.printer.created': { entityType: 'printer', label: 'pos.audit.actions.printerCreated' },
   'pos.printer.updated': { entityType: 'printer', label: 'pos.audit.actions.printerUpdated' },
@@ -616,6 +627,8 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   /** Never line notes (free text). */
   kitchen_ticket: ['id', 'orderId', 'sequence', 'kind', 'station', 'direct', 'status', 'lineCount'],
   dining_area: ['id', 'locationId', 'name', 'sortOrder'],
+  /** Counts only: the layout itself is in its version row. */
+  floor_plan: ['id', 'locationId', 'areaId', 'version', 'restoredFrom', 'tableCount', 'pieceCount'],
   /** `gross`: decimal string; `orderIds`, `checkNumbers`: string arrays. Never the cancel reason (free text). */
   /** `value`, `amount`: decimal strings; `reason` (free text) never appears. */
   pos_discount: ['id', 'orderId', 'orderLineId', 'kind', 'value', 'amount', 'voidsDiscountId'],

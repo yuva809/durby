@@ -106,6 +106,8 @@ describe('TENANT_MODELS', () => {
       'PosBillCancellation',
       'PosBillItem',
       'PosBillOrder',
+      'PosFloorPlanPublication',
+      'PosFloorPlanVersion',
       'PosGuestCheck',
       'PosGuestCheckShare',
       'PosKitchenTicket',

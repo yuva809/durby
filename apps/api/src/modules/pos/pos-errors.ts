@@ -52,6 +52,24 @@ export const posErrors = {
       'pos.area_name_taken',
       'This location already has an area with this name.',
     ),
+  floorPlanNotFound: () =>
+    new ApiError(
+      HttpStatus.NOT_FOUND,
+      'pos.floor_plan_not_found',
+      'This floor plan version does not exist.',
+    ),
+  floorPlanChanged: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.floor_plan_changed',
+      'The floor plan was saved by someone else in the meantime.',
+    ),
+  floorPlanTableInvalid: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.floor_plan_table_invalid',
+      'A table on the plan is not in this area or out of service.',
+    ),
   areaNotEmpty: () =>
     new ApiError(HttpStatus.CONFLICT, 'pos.area_not_empty', 'The area still has tables.'),
   menuNotFound: () =>

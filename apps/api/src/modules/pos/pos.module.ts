@@ -11,6 +11,8 @@ import { BillsController } from './bills.controller';
 import { BillsService } from './bills.service';
 import { DiscountsController } from './discounts.controller';
 import { DiscountsService } from './discounts.service';
+import { FloorPlansController } from './floor-plans.controller';
+import { FloorPlansService } from './floor-plans.service';
 import { PosFloorReader } from './floor-reader';
 import { KitchenController } from './kitchen.controller';
 import { KitchenService } from './kitchen.service';
@@ -38,6 +40,7 @@ import { TablesService } from './tables.service';
     PosStreamController,
     TablesController,
     AreasController,
+    FloorPlansController,
     OrdersController,
     BillsController,
     DiscountsController,
@@ -52,6 +55,7 @@ import { TablesService } from './tables.service';
   providers: [
     TablesService,
     AreasService,
+    FloorPlansService,
     OrdersService,
     BillsService,
     DiscountsService,
