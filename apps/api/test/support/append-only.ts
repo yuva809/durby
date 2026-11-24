@@ -10,6 +10,8 @@ export const APPEND_ONLY_TABLES = [
   'pos_bills',
   'pos_order_discounts',
   'pos_order_discount_lines',
+  'pos_floor_plan_publications',
+  'pos_floor_plan_versions',
   'pos_guest_check_shares',
   'pos_guest_checks',
   'pos_kitchen_tickets',

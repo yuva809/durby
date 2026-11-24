@@ -1,12 +1,14 @@
 'use client';
 
-import type { FloorTable, LocationSummary } from '@durby/shared';
+import type { FloorTable, LivePlan, LocationSummary } from '@durby/shared';
 import { BellRing, CalendarClock, Clock, Users } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
 import { loadFloor } from '../../lib/pos/api';
+import { loadLivePlans } from '../../lib/pos/floor-plan-api';
 import { durationLabel, minutesSince } from '../../lib/pos/format';
 import { loadFloor as loadReservationsFloor } from '../../lib/reservations/host';
 import {
@@ -16,9 +18,11 @@ import {
 } from '../../lib/reservations/service';
 import { useNow } from '../../lib/pos/use-now';
 import { useLiveRefresh } from '../../lib/realtime/use-live-refresh';
+import { useMediaQuery } from '../../lib/use-media-query';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
 import { cn } from '../../lib/utils';
+import { PlanView, TableShapeBox } from '../tables/plan/plan-canvas';
 import { NoLocations } from '../settings/locations-page';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
@@ -65,6 +69,9 @@ function Floor({ organizationId }: { organizationId: string | null }) {
 
 type Filter = 'all' | 'open' | 'free';
 
+/** Plans change rarely: how often the page asks again. */
+const PLANS_REFRESH_MS = 5 * 60_000;
+
 function LocationFloor({ locations }: { locations: LocationSummary[] }) {
   const t = useT();
   const { store, session } = useAuth();
@@ -101,6 +108,22 @@ function LocationFloor({ locations }: { locations: LocationSummary[] }) {
     pollMs: 30_000,
   });
   const now = useNow(30_000);
+  // Published floor plans (ADR 0073): not on phones, and only until someone chooses the list (kept in the address).
+  const [plans, reloadPlans] = useResource(locationId, () => loadLivePlans(store, locationId));
+  useNow(PLANS_REFRESH_MS, reloadPlans);
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const roomy = useMediaQuery('(min-width: 768px)');
+  const livePlans = plans.status === 'ready' ? plans.data : [];
+  const asList = search.get('view') === 'list';
+  const setView = (view: 'plan' | 'list') => {
+    const next = new URLSearchParams(search.toString());
+    if (view === 'list') next.set('view', 'list');
+    else next.delete('view');
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  };
 
   const filters: { value: Filter; label: string }[] = [
     { value: 'all', label: t('pos.floor.filterAll') },
@@ -149,6 +172,29 @@ function LocationFloor({ locations }: { locations: LocationSummary[] }) {
               </Select>
             </div>
           )}
+          {roomy && livePlans.length > 0 && (
+            <div
+              role="group"
+              aria-label={t('pos.plan.view.label')}
+              className="flex rounded-md border border-border bg-card p-1"
+              data-testid="floor-view"
+            >
+              {(['plan', 'list'] as const).map((view) => {
+                const active = asList === (view === 'list');
+                return (
+                  <Button
+                    key={view}
+                    variant={active ? 'default' : 'ghost'}
+                    className="min-h-9 px-4"
+                    aria-pressed={active}
+                    onClick={() => setView(view)}
+                  >
+                    {t(`pos.plan.view.${view}`)}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
           <div
             role="group"
             aria-label={t('pos.floor.filter')}
@@ -169,7 +215,15 @@ function LocationFloor({ locations }: { locations: LocationSummary[] }) {
         </div>
       </div>
       <Loaded resource={tables} reload={reload}>
-        {(list) => <FloorGrid tables={list} filter={filter} now={now} badges={badges} />}
+        {(list) => (
+          <FloorGrid
+            tables={list}
+            filter={filter}
+            now={now}
+            badges={badges}
+            plans={roomy && !asList ? livePlans : []}
+          />
+        )}
       </Loaded>
     </div>
   );
@@ -180,43 +234,157 @@ function FloorGrid({
   filter,
   now,
   badges,
+  plans,
 }: {
   tables: FloorTable[];
   filter: Filter;
   now: number;
   badges: ReadonlyMap<string, ServiceBadge> | null;
+  /** The plans to draw; areas without one are lists. */
+  plans: LivePlan[];
 }) {
   const t = useT();
   if (tables.length === 0) return <p className="text-muted-foreground">{t('pos.floor.empty')}</p>;
-  const shown = tables.filter(
-    (x) => filter === 'all' || (filter === 'open' ? x.order !== null : x.order === null),
-  );
-  if (shown.length === 0)
+  const matches = (x: FloorTable) =>
+    filter === 'all' || (filter === 'open' ? x.order !== null : x.order === null);
+  if (!tables.some(matches))
     return <p className="text-muted-foreground">{t('pos.floor.noneMatch')}</p>;
 
   // Areas in the order their first table appears; tables without one form the main room.
   const areas = new Map<string, FloorTable[]>();
-  for (const table of shown) {
+  for (const table of tables) {
     const area = table.area ?? '';
     areas.set(area, [...(areas.get(area) ?? []), table]);
   }
+  const sections = [...areas].flatMap(([area, list]) => {
+    // Area names are unique at a location.
+    const plan = area === '' ? undefined : plans.find((p) => p.areaName === area);
+    const drawn = new Set(plan?.layout.tables.map((x) => x.tableId));
+    // The plan keeps its tables in place and dims what the filter leaves out; a list hides it.
+    const listed = list.filter((x) => !drawn.has(x.id) && matches(x));
+    return plan || listed.length > 0 ? [{ area, list, plan, listed }] : [];
+  });
   return (
     <div className="flex flex-col gap-6">
-      {[...areas].map(([area, list]) => (
+      {sections.map(({ area, list, plan, listed }) => (
         <section key={area} className="flex flex-col gap-3" data-testid="floor-area">
-          {areas.size > 1 && (
+          {sections.length > 1 && (
             <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
               {area || t('pos.floor.noArea')}
             </h2>
           )}
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {list.map((table) => (
-              <TableTile key={table.id} table={table} now={now} badge={badges?.get(table.id)} />
-            ))}
-          </ul>
+          {plan && (
+            <AreaPlan plan={plan} tables={list} matches={matches} now={now} badges={badges} />
+          )}
+          {plan && listed.length > 0 && (
+            <h3 className="text-sm text-muted-foreground">{t('pos.plan.others')}</h3>
+          )}
+          {listed.length > 0 && (
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {listed.map((table) => (
+                <TableTile key={table.id} table={table} now={now} badge={badges?.get(table.id)} />
+              ))}
+            </ul>
+          )}
         </section>
       ))}
     </div>
+  );
+}
+
+/** An area's published plan (ADR 0073): tables in place, with the state a waiter needs at a glance. */
+function AreaPlan({
+  plan,
+  tables,
+  matches,
+  now,
+  badges,
+}: {
+  plan: LivePlan;
+  tables: FloorTable[];
+  matches: (table: FloorTable) => boolean;
+  now: number;
+  badges: ReadonlyMap<string, ServiceBadge> | null;
+}) {
+  const t = useT();
+  const money = useMoney();
+  const byId = new Map(tables.map((x) => [x.id, x]));
+  return (
+    <PlanView
+      layout={plan.layout}
+      label={plan.areaName}
+      testId="floor-plan"
+      renderTable={(item) => {
+        // Not here any more, or out of service: not drawn.
+        const table = item.tableId ? byId.get(item.tableId) : undefined;
+        if (!table) return null;
+        const { order } = table;
+        const badge = badges?.get(table.id);
+        const open = order
+          ? durationLabel(minutesSince(table.seatedAt ?? order.openedAt, now))
+          : null;
+        const time = open ? t(open.key, open.values) : null;
+        const ready = order?.readyCount ?? 0;
+        const facts = [
+          t(order ? 'pos.floor.open' : 'pos.floor.free'),
+          ...(order && time ? [money(order.gross), t('pos.floor.seated', { time })] : []),
+          ...(order ? [] : [t('pos.floor.seats', { count: String(table.seats) })]),
+          ...(ready > 0 ? [t('pos.floor.ready', { count: String(ready) })] : []),
+          ...(badge?.seatedParty != null ? [t('reservations.service.fromBooking')] : []),
+          ...(badge?.next
+            ? [
+                t('reservations.service.next', {
+                  time: badge.next.time,
+                  party: t('reservations.host.partyOf', { count: String(badge.next.partySize) }),
+                }),
+              ]
+            : []),
+        ];
+        const name = `${table.name}: ${facts.join(', ')}`;
+        return (
+          <Link
+            href={`/service/${table.id}`}
+            aria-label={name}
+            title={name}
+            data-testid="floor-plan-table"
+            data-name={table.name}
+            data-state={order ? 'open' : 'free'}
+            className={cn(
+              'relative block size-full no-underline hover:no-underline focus-visible:outline-2',
+              !matches(table) && 'opacity-35',
+            )}
+          >
+            <TableShapeBox
+              shape={table.shape}
+              color={table.color}
+              className={order ? 'border-4 border-primary! bg-primary/15!' : undefined}
+            >
+              <span className="text-sm font-semibold">{table.name}</span>
+              <span className="inline-flex items-center gap-0.5 text-xs">
+                {time ?? (
+                  <>
+                    <Users aria-hidden className="size-3" />
+                    {table.seats}
+                  </>
+                )}
+              </span>
+            </TableShapeBox>
+            {ready > 0 && (
+              <span className="absolute -top-2 -right-2 inline-flex items-center gap-0.5 rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-accent-foreground shadow-sm">
+                <BellRing aria-hidden className="size-3.5" />
+                {ready}
+              </span>
+            )}
+            {badge?.next && (
+              <span className="absolute -bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border bg-card px-1.5 text-xs whitespace-nowrap">
+                <CalendarClock aria-hidden className="size-3" />
+                {badge.next.time}
+              </span>
+            )}
+          </Link>
+        );
+      }}
+    />
   );
 }
 
