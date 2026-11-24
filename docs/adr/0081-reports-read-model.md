@@ -62,6 +62,8 @@ on a card, in a table and in an export.
 ## Consequences
 
 - Figures follow the till by the outbox's delay, normally about a second.
+- An item moved to another table by a transfer is a void and a new line (ADR 0069), so it counts at the time of the
+  transfer, and the new order counts as an order. Totals don't change.
 - A category's share uses the product's category now, not at the time of sale.
 - "Least sold" lists products sold at least once in the period.
 - When payments exist, revenue is a new metric; `sales.*` keeps its meaning.
