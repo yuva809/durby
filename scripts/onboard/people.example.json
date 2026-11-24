@@ -1,0 +1,23 @@
+{
+  "organizationId": "00000000-0000-0000-0000-000000000000",
+  "branches": [
+    { "name": "Spandau", "address": "Wilhelmstraße 2, 13595 Berlin-Spandau" }
+  ],
+  "people": [
+    {
+      "name": "Example Branch Manager",
+      "email": "manager@example.com",
+      "role": "branch",
+      "locations": ["Spandau"],
+      "temporaryPassword": "REPLACE-with-12-or-more-characters"
+    },
+    {
+      "name": "Example Warehouse Worker",
+      "email": "warehouse@example.com",
+      "role": "warehouse",
+      "locations": ["Main"],
+      "warehouses": ["Main Warehouse"],
+      "temporaryPassword": "REPLACE-with-12-or-more-characters"
+    }
+  ]
+}

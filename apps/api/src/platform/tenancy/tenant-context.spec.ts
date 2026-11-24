@@ -117,6 +117,7 @@ describe('TENANT_MODELS', () => {
       'PosPrinter',
       'PosPrinterCommand',
       'PosPrinterStation',
+      'PosTicketPlacement',
       'PosTicketStatusChange',
       'PriceRule',
       'ProcessedEvent',
@@ -126,6 +127,10 @@ describe('TENANT_MODELS', () => {
       'ProductImage',
       'PushSubscription',
       'RecipeLine',
+      'ReportDailyMessage',
+      'ReportLineFact',
+      'ReportOrderFact',
+      'ReportReservationFact',
       'Reservation',
       'ReservationCombination',
       'ReservationCombinationTable',
@@ -151,6 +156,7 @@ describe('TENANT_MODELS', () => {
       'VariantAttribute',
       'VendorInvoice',
       'VendorInvoiceLine',
+      'VendorInvoiceLineCorrection',
       'Warehouse',
     ]);
   });

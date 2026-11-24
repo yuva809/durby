@@ -16,6 +16,7 @@ import type {
   PlatformErrorCode,
   PosErrorCode,
   RbacErrorCode,
+  ReportsErrorCode,
   ReservationErrorCode,
   SettingErrorCode,
   StaffErrorCode,
@@ -42,6 +43,7 @@ export type ApiErrorCode =
   | OrdersErrorCode
   | LocationErrorCode
   | PosErrorCode
+  | ReportsErrorCode
   | ReservationErrorCode
   | StaffErrorCode
   | VendorInvoiceErrorCode
@@ -52,6 +54,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'platform.busy': 'platform.errors.busy',
   'platform.payload_too_large': 'platform.errors.payloadTooLarge',
   'platform.notification_not_found': 'platform.errors.notificationNotFound',
+  'reports.location_not_found': 'reports.errors.locationNotFound',
   'auth.unauthenticated': 'auth.errors.unauthenticated',
   'auth.invalid_credentials': 'auth.errors.invalidCredentials',
   'auth.email_not_verified': 'auth.errors.emailNotVerified',
@@ -119,6 +122,12 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'inventory.item_name_taken': 'inventory.errors.itemNameTaken',
   'inventory.insufficient_stock': 'inventory.errors.insufficientStock',
   'inventory.unit_locked': 'inventory.errors.unitLocked',
+  'inventory.invoice_not_approved': 'inventory.errors.invoiceNotApproved',
+  'inventory.invoice_line_not_found': 'inventory.errors.invoiceLineNotFound',
+  'inventory.invoice_line_in_unit': 'inventory.errors.invoiceLineInUnit',
+  'inventory.invoice_line_without_item': 'inventory.errors.invoiceLineWithoutItem',
+  'inventory.item_in_use': 'inventory.errors.itemInUse',
+  'inventory.item_purge_refused': 'inventory.errors.itemPurgeRefused',
   'inventory.valuation_unsupported': 'inventory.errors.valuationUnsupported',
   'inventory.same_warehouse': 'inventory.errors.sameWarehouse',
   'inventory.product_not_found': 'inventory.errors.productNotFound',
@@ -146,7 +155,6 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'orders.request_not_found': 'orders.errors.requestNotFound',
   'orders.request_invalid': 'orders.errors.requestInvalid',
   'orders.request_main_only': 'orders.errors.requestMainOnly',
-  'orders.request_above_stock': 'orders.errors.requestAboveStock',
   'orders.request_branch_only': 'orders.errors.requestBranchOnly',
   'orders.request_transition': 'orders.errors.requestTransition',
   'orders.request_not_yours': 'orders.errors.requestNotYours',
@@ -174,6 +182,10 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'pos.table_name_taken': 'pos.errors.tableNameTaken',
   'pos.order_not_found': 'pos.errors.orderNotFound',
   'pos.order_closed': 'pos.errors.orderClosed',
+  'pos.table_occupied': 'pos.errors.tableOccupied',
+  'pos.table_archived': 'pos.errors.tableArchived',
+  'pos.order_not_same_location': 'pos.errors.orderNotSameLocation',
+  'pos.merge_same_order': 'pos.errors.mergeSameOrder',
   'pos.product_unavailable': 'pos.errors.productUnavailable',
   'pos.line_not_found': 'pos.errors.lineNotFound',
   'pos.void_exceeds': 'pos.errors.voidExceeds',

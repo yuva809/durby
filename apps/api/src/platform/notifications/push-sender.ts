@@ -14,6 +14,7 @@ export interface PushTarget {
 /** What the service worker shows: the text and where a tap leads. Nothing else leaves the server. */
 export interface PushMessage {
   title: string;
+  body?: string;
   url: string;
 }
 
@@ -28,6 +29,9 @@ export interface PushSender {
 
 /** How long a push message waits at the push service for an offline device. */
 const TTL_SECONDS = 24 * 60 * 60;
+
+/** Sends run inside the handler's transaction (5 s): a slow push service must not roll it back (ADR 0083). */
+const TIMEOUT_MS = 3_000;
 
 /**
  * Web Push with VAPID (RFC 8030 / 8292) through the `web-push` library: the payload is encrypted for the browser, so
@@ -57,7 +61,7 @@ export class WebPushSender implements PushSender {
       await sendNotification(
         { endpoint: target.endpoint, keys: { p256dh: target.p256dh, auth: target.auth } },
         JSON.stringify(message),
-        { vapidDetails: this.vapid, TTL: TTL_SECONDS, timeout: 10_000 },
+        { vapidDetails: this.vapid, TTL: TTL_SECONDS, timeout: TIMEOUT_MS },
       );
       return 'sent';
     } catch (error) {

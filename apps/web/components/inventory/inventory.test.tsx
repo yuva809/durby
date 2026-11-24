@@ -297,6 +297,266 @@ describe('InventoryPage', () => {
     });
   });
 
+  it('sets the stock quantity while editing an item: more received at a cost, less adjusted out', async () => {
+    signedInAs('admin');
+    const writes = api({
+      [`PATCH /api/v1/inventory/items/${COLA.id}`]: () => Response.json(COLA),
+      'POST /api/v1/inventory/receipts': () =>
+        Response.json(document('GR-2026-000002', 'receipt', '6.00'), { status: 201 }),
+      'POST /api/v1/inventory/adjustments': () =>
+        Response.json(document('ADJ-2026-000002', 'adjustment', '-0.90'), { status: 201 }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    const cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await waitFor(() => expect(within(cola).getAllByTestId('item-warehouse-row')).toHaveLength(1));
+    await userEvent.click(within(cola).getByTestId('item-edit'));
+    let dialog = await screen.findByRole('dialog');
+    // What is there now, to change; nothing is booked while it stays.
+    const quantity = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    expect(quantity.value).toBe('24');
+    expect(within(dialog).getByTestId('item-add-on-hand').textContent).toBe(
+      'Currently 24 pc on hand in Main store. Changing it books the difference there.',
+    );
+    expect(within(dialog).queryByTestId('item-add-reason')).toBeNull();
+    // 36: 12 more, received at a cost (the cost of one unit is needed).
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '36');
+    expect(within(dialog).getByTestId('item-add-on-hand').textContent).toBe(
+      'Adds 12 pc to the 24 on hand.',
+    );
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    expect(within(dialog).getByText('Enter the cost of one unit, e.g. 2.50.')).toBeTruthy();
+    expect(writes).toEqual([]);
+    await userEvent.type(within(dialog).getByTestId('item-add-cost'), '0,50');
+    await userEvent.type(within(dialog).getByTestId('item-add-remarks'), 'Cash and carry');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[0]!.method).toBe('PATCH');
+    expect(writes[1]).toEqual({
+      method: 'POST',
+      path: '/api/v1/inventory/receipts',
+      body: {
+        warehouseId: STORE.id,
+        note: 'Cash and carry',
+        lines: [{ itemId: COLA.id, quantity: '12', unitCost: '0.50' }],
+      },
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // 22: 2 out, as an adjustment with its reason, no cost asked.
+    await userEvent.click(within(cola).getByTestId('item-edit'));
+    dialog = await screen.findByRole('dialog');
+    const again = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    await userEvent.clear(again);
+    await userEvent.type(again, '22');
+    expect(
+      [...within(dialog).getByTestId<HTMLSelectElement>('item-add-reason').options].map(
+        (o) => o.value,
+      ),
+    ).toEqual(['correction', 'count', 'waste', 'breakage', 'other']);
+    await userEvent.selectOptions(within(dialog).getByTestId('item-add-reason'), 'breakage');
+    expect(within(dialog).queryByTestId('item-add-cost')).toBeNull();
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(4));
+    expect(writes[3]).toEqual({
+      method: 'POST',
+      path: '/api/v1/inventory/adjustments',
+      body: {
+        warehouseId: STORE.id,
+        reason: 'breakage',
+        lines: [{ itemId: COLA.id, quantity: '-2' }],
+      },
+    });
+  });
+
+  it('relabels a stocked item from Stück to box and sets the count in one save; weight is not offered', async () => {
+    signedInAs('admin');
+    const writes = api({
+      [`PATCH /api/v1/inventory/items/${COLA.id}`]: () => Response.json({ ...COLA, unit: 'box' }),
+      'POST /api/v1/inventory/adjustments': () =>
+        Response.json(document('ADJ-2026-000003', 'adjustment', '-5.40'), { status: 201 }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    const cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await waitFor(() => expect(within(cola).getAllByTestId('item-warehouse-row')).toHaveLength(1));
+    await userEvent.click(within(cola).getByTestId('item-edit'));
+    const dialog = await screen.findByRole('dialog');
+    const unit = within(dialog).getByTestId<HTMLSelectElement>('item-unit');
+    expect([...unit.options].map((o) => o.value)).toEqual(['pc', 'box', 'bucket', 'bag', 'packet']);
+    await userEvent.selectOptions(unit, 'box');
+    expect(within(dialog).getByTestId('item-unit-relabel').textContent).toContain(
+      '24 pc become 24 box',
+    );
+    const quantity = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '12');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[0]).toMatchObject({ method: 'PATCH', body: { unit: 'box' } });
+    expect(writes[1]).toEqual({
+      method: 'POST',
+      path: '/api/v1/inventory/adjustments',
+      body: {
+        warehouseId: STORE.id,
+        reason: 'correction',
+        lines: [{ itemId: COLA.id, quantity: '-12' }],
+      },
+    });
+  });
+
+  it('sets the stock quantity to 0: everything there is booked out, no decimals error', async () => {
+    signedInAs('admin');
+    const writes = api({
+      [`PATCH /api/v1/inventory/items/${COLA.id}`]: () => Response.json(COLA),
+      'POST /api/v1/inventory/adjustments': () =>
+        Response.json(document('ADJ-2026-000004', 'adjustment', '-10.80'), { status: 201 }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    const cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await waitFor(() => expect(within(cola).getAllByTestId('item-warehouse-row')).toHaveLength(1));
+    await userEvent.click(within(cola).getByTestId('item-edit'));
+    const dialog = await screen.findByRole('dialog');
+    const quantity = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '0');
+    expect(within(dialog).getByTestId('item-add-on-hand').textContent).toBe(
+      'Takes 24 pc out of the 24 on hand.',
+    );
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    expect(within(dialog).queryByText('Enter a quantity with up to 3 decimals.')).toBeNull();
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[1]).toEqual({
+      method: 'POST',
+      path: '/api/v1/inventory/adjustments',
+      body: {
+        warehouseId: STORE.id,
+        reason: 'correction',
+        lines: [{ itemId: COLA.id, quantity: '-24' }],
+      },
+    });
+  });
+
+  it('sets the brand and pack size (pieces × weight) when adding and editing an item', async () => {
+    signedInAs('admin');
+    const writes = api({
+      'POST /api/v1/inventory/items': () =>
+        Response.json({ ...item(3, 'Kingmackerel', 'box'), brand: 'Perfit' }, { status: 201 }),
+      [`PATCH /api/v1/inventory/items/${COLA.id}`]: () => Response.json(COLA),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    await userEvent.click(screen.getByTestId('item-create'));
+    let dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'Kingmackerel');
+    await userEvent.type(within(dialog).getByTestId('item-brand'), 'Perfit');
+    await userEvent.type(within(dialog).getByTestId('item-pack-count'), '8');
+    await userEvent.type(within(dialog).getByTestId('item-pack-size'), '1');
+    // A weight without its unit: said, nothing sent.
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    expect(
+      within(dialog).getByText('Pieces: a whole number; weight: a number with its unit.'),
+    ).toBeTruthy();
+    expect(writes).toEqual([]);
+    await userEvent.selectOptions(within(dialog).getByTestId('item-pack-unit'), 'kg');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]!.body).toEqual({
+      name: 'Kingmackerel',
+      unit: 'kg',
+      brand: 'Perfit',
+      packCount: 8,
+      packSize: '1',
+      packUnit: 'kg',
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // Editing: pieces only; brand and weight cleared are sent as null.
+    const cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await userEvent.click(within(cola).getByTestId('item-edit'));
+    dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByTestId('item-pack-count'), '24');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[1]!.body).toMatchObject({
+      brand: null,
+      packCount: 24,
+      packSize: null,
+      packUnit: null,
+    });
+  });
+
+  it('offers Archive instead when an item with stock history cannot be deleted', async () => {
+    signedInAs('owner');
+    const writes = api({
+      [`DELETE /api/v1/inventory/items/${COLA.id}`]: () =>
+        Response.json({ code: 'inventory.item_in_use', message: 'in use' }, { status: 409 }),
+      [`PATCH /api/v1/inventory/items/${COLA.id}`]: () =>
+        Response.json({ ...COLA, archivedAt: '2026-11-24T10:00:00.000Z' }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    const cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await userEvent.click(within(cola).getByTestId('item-delete'));
+    const dialog = await screen.findByRole('alertdialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    await userEvent.click(await within(dialog).findByTestId('item-delete-fallback'));
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[1]).toMatchObject({
+      method: 'PATCH',
+      path: `/api/v1/inventory/items/${COLA.id}`,
+      body: { archived: true },
+    });
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+  });
+
+  it('lets owners delete an item with all its history; others only archive it (ADR 0079)', async () => {
+    signedInAs('owner');
+    const writes = api({
+      [`DELETE /api/v1/inventory/items/${COLA.id}`]: () =>
+        Response.json({ code: 'inventory.item_in_use', message: 'in use' }, { status: 409 }),
+      [`POST /api/v1/inventory/items/${COLA.id}/purge`]: () => new Response(null, { status: 204 }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    let cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await userEvent.click(within(cola).getByTestId('item-delete'));
+    let dialog = await screen.findByRole('alertdialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    expect((await within(dialog).findByTestId('confirm-fallback-note')).textContent).toContain(
+      'cannot be undone',
+    );
+    expect(within(dialog).getByTestId('item-delete-fallback')).toBeTruthy();
+    await userEvent.click(within(dialog).getByTestId('item-purge'));
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[1]).toMatchObject({
+      method: 'POST',
+      path: `/api/v1/inventory/items/${COLA.id}/purge`,
+    });
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    cleanup();
+
+    // An admin: archive only.
+    signedInAs('admin');
+    api({
+      [`DELETE /api/v1/inventory/items/${COLA.id}`]: () =>
+        Response.json({ code: 'inventory.item_in_use', message: 'in use' }, { status: 409 }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    const del = within(cola).queryByTestId('item-delete');
+    if (del) {
+      await userEvent.click(del);
+      dialog = await screen.findByRole('alertdialog');
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+      expect(await within(dialog).findByTestId('item-delete-fallback')).toBeTruthy();
+      expect(within(dialog).queryByTestId('item-purge')).toBeNull();
+    }
+  });
+
   it('lets managers add warehouses but not items', async () => {
     signedInAs('manager');
     api();
@@ -309,6 +569,40 @@ describe('InventoryPage', () => {
       'Bar',
     ]);
     expect(screen.getByTestId('warehouse-create')).toBeTruthy();
+  });
+
+  it('opens the warehouses of the branch a branch card links to, not all of them', async () => {
+    signedInAs('owner');
+    const NORTH = { id: id(2), name: 'North branch', brandId: id(90) };
+    const SOUTH = { id: id(3), name: 'South branch', brandId: id(90) };
+    api({
+      'GET /api/v1/locations': () => Response.json({ data: [MAIN_LOCATION, NORTH, SOUTH] }),
+      'GET /api/v1/inventory/warehouses': () =>
+        Response.json({
+          data: [
+            {
+              ...STORE,
+              id: id(31),
+              name: 'North store',
+              locationId: NORTH.id,
+              suppliesStation: null,
+            },
+            {
+              ...STORE,
+              id: id(32),
+              name: 'South store',
+              locationId: SOUTH.id,
+              suppliesStation: null,
+            },
+          ],
+        }),
+    });
+    mockState.search = `branch=${NORTH.id}`;
+    render(<InventoryPage />);
+    await userEvent.click(await tab('warehouses'));
+    expect(screen.getAllByTestId('warehouse-row').map((r) => r.dataset.name)).toEqual([
+      'North store',
+    ]);
   });
 
   it('adds a warehouse that supplies only the branches ticked, moving one from another (ADR 0067)', async () => {
@@ -324,7 +618,9 @@ describe('InventoryPage', () => {
     render(<InventoryPage />);
     await userEvent.click(await tab('warehouses'));
     // The list says whom a warehouse supplies.
-    expect(screen.getByTestId('warehouse-supplies').textContent).toBe('Supplies: South branch');
+    expect(screen.getAllByTestId('warehouse-supplies').map((c) => c.textContent)).toContain(
+      'South branch',
+    );
     await userEvent.click(screen.getByTestId('warehouse-create'));
     const dialog = await screen.findByRole('dialog');
     await userEvent.type(within(dialog).getByLabelText('Name'), 'Second warehouse');

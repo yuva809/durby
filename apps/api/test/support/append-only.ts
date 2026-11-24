@@ -14,10 +14,12 @@ export const APPEND_ONLY_TABLES = [
   'pos_guest_checks',
   'pos_kitchen_tickets',
   'pos_order_lines',
+  'pos_ticket_placements',
   'pos_ticket_status_changes',
   'reservation_status_changes',
   'stock_documents',
   'stock_movements',
+  'vendor_invoice_line_corrections',
 ] as const;
 
 export interface AppendOnlyGap {

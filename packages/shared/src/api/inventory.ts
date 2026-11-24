@@ -12,6 +12,17 @@ export const STOCK_DOCUMENT_MAX_LINES = 200;
 export const STOCK_UNITS = ['kg', 'g', 'l', 'ml', 'pc', 'box', 'bucket', 'bag', 'packet'] as const;
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
+/** Units that count things rather than weigh or measure them: one may become another as a relabel. */
+export const COUNTED_UNITS: readonly StockUnit[] = ['pc', 'box', 'bucket', 'bag', 'packet'];
+
+/**
+ * Whether an item's unit may change from `from` to `to`: always before it has movements; after, only between counted
+ * units (Stück → box keeps the number, nothing is converted). Weight and volume stay fixed, because recipes, bills of
+ * materials and purchase units are in them.
+ */
+export const unitChangeAllowed = (from: StockUnit, to: StockUnit, moved: boolean) =>
+  from === to || !moved || (COUNTED_UNITS.includes(from) && COUNTED_UNITS.includes(to));
+
 export const STOCK_DOCUMENT_KINDS = [
   'receipt',
   'adjustment',
@@ -22,11 +33,13 @@ export const STOCK_DOCUMENT_KINDS = [
   'issue',
   /** Goods back in from a cancelled or returned sales order (ADR 0044). */
   'restock',
+  /** Goods a branch received when branches keep no stock: out of In transit, nowhere in (ADR 0080). */
+  'delivery',
 ] as const;
 export type StockDocumentKind = (typeof STOCK_DOCUMENT_KINDS)[number];
 
 /** Why stock was adjusted. */
-export const ADJUSTMENT_REASONS = ['waste', 'breakage', 'count', 'other'] as const;
+export const ADJUSTMENT_REASONS = ['waste', 'breakage', 'count', 'other', 'correction'] as const;
 export type AdjustmentReason = (typeof ADJUSTMENT_REASONS)[number];
 
 const name = z.string().trim().min(1).max(INVENTORY_NAME_MAX_LENGTH);
@@ -365,6 +378,38 @@ export const stockQuerySchema = z.object({
   warehouseId: z.uuid().optional(),
 });
 
+/**
+ * One movement of an item (its activity ledger): when, which document, where, how much in (+) or out (−), at what
+ * cost (null without inventory.prices.read), remarks, and the item's quantity in the warehouses shown after it.
+ */
+export const itemMovementSchema = z.object({
+  id: z.uuid(),
+  createdAt: z.iso.datetime(),
+  documentId: z.uuid(),
+  documentNumber: z.string(),
+  kind: z.enum(STOCK_DOCUMENT_KINDS),
+  reason: z.enum(ADJUSTMENT_REASONS).nullable(),
+  warehouseId: z.uuid(),
+  warehouseName: z.string(),
+  quantity: z.string(),
+  unitCost: z.string().nullable(),
+  remarks: z.string().nullable(),
+  balance: z.string(),
+});
+export type ItemMovement = z.infer<typeof itemMovementSchema>;
+
+/** The most recent movements first, at most this many; the opening is the quantity before the oldest shown. */
+export const ITEM_MOVEMENTS_LIMIT = 500;
+
+export const itemMovementsSchema = z.object({
+  opening: z.string(),
+  closing: z.string(),
+  /** More movements than shown (older ones left out). */
+  truncated: z.boolean(),
+  movements: z.array(itemMovementSchema),
+});
+export type ItemMovements = z.infer<typeof itemMovementsSchema>;
+
 export const warehouseListResponseSchema = z.object({ data: z.array(warehouseSchema) });
 export const stockItemListResponseSchema = z.object({ data: z.array(stockItemSchema) });
 export const stockLevelListResponseSchema = z.object({ data: z.array(stockLevelSchema) });
@@ -620,6 +665,12 @@ export const INVENTORY_ERROR_CODES = [
   'inventory.item_name_taken',
   'inventory.insufficient_stock',
   'inventory.unit_locked',
+  'inventory.invoice_not_approved',
+  'inventory.invoice_line_not_found',
+  'inventory.invoice_line_in_unit',
+  'inventory.invoice_line_without_item',
+  'inventory.item_in_use',
+  'inventory.item_purge_refused',
   'inventory.valuation_unsupported',
   'inventory.same_warehouse',
   'inventory.product_not_found',
@@ -642,3 +693,11 @@ export type InventoryErrorCode = (typeof INVENTORY_ERROR_CODES)[number];
 export function inventoryErrorLabel(code: InventoryErrorCode): string {
   return `inventory.errors.${code.slice('inventory.'.length).replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`;
 }
+
+/** A correction to an approved invoice's line (ADR 0078): the corrected quantity and unit cost, and why. */
+export const correctVendorInvoiceLineRequestSchema = z.strictObject({
+  quantity: stockQuantitySchema,
+  unitCost: unitCostSchema,
+  reason: z.string().trim().min(1).max(200),
+});
+export type CorrectVendorInvoiceLineRequest = z.infer<typeof correctVendorInvoiceLineRequestSchema>;

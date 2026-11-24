@@ -96,14 +96,14 @@ interface SummaryRow {
   locationId: string;
   fromLocationId: string;
   fromWarehouseId: string;
-  toWarehouseId: string;
+  toWarehouseId: string | null;
   driverUserId: string | null;
   requestedByUserId: string;
   createdAt: Date;
   updatedAt: Date;
   location: { name: string; address: string | null };
   fromWarehouse: { name: string; location: { name: string; address: string | null } };
-  toWarehouse: { name: string };
+  toWarehouse: { name: string } | null;
   _count: { lines: number };
 }
 
@@ -283,6 +283,8 @@ export class StockRequestsService {
   async destinations(): Promise<RequestDestination[]> {
     const scope = await this.access.locationIdsFor('orders.requests.create');
     if (scope !== 'all' && scope.length === 0) return [];
+    // Off: branches keep no stock (ADR 0080), so no request goes into a branch store.
+    const keepsStock = await this.settings.get('orders.branchStores', {});
     const [locations, warehouses] = await Promise.all([
       this.db.location.findMany({
         // A warehouse's own place (ADR 0068) is no branch.
@@ -314,10 +316,11 @@ export class StockRequestsService {
         return {
           locationId: l.id,
           locationName: l.name,
-          warehouseId: own?.id ?? null,
-          warehouseName: own?.name ?? null,
+          warehouseId: keepsStock ? (own?.id ?? null) : null,
+          warehouseName: keepsStock ? (own?.name ?? null) : null,
           supplierWarehouseId: supplier?.id ?? null,
           supplierWarehouseName: supplier?.name ?? null,
+          keepsStock,
         };
       });
   }
@@ -422,12 +425,16 @@ export class StockRequestsService {
     const target = await this.target(body);
     const from = await this.source(body.fromWarehouseId, target.locationId);
     await this.access.assert('orders.requests.create', { locationId: target.locationId });
+    const keepsStock = await this.settings.get('orders.branchStores', {});
     return this.db.$transaction(async (tx) => {
-      // A branch without a warehouse gets its store with its first request (ADR 0053).
-      const to = target.warehouseId
-        ? { id: target.warehouseId, locationId: target.locationId }
-        : await this.branchStore(tx, tenantId, userId, target.locationId);
-      if (from.id === to.id) throw ordersErrors.requestInvalid();
+      // A branch without a warehouse gets its store with its first request (ADR 0053), unless branches keep no stock
+      // (ADR 0080): then the request names no store, and its goods are delivered out of In transit.
+      const to = !keepsStock
+        ? null
+        : target.warehouseId
+          ? { id: target.warehouseId, locationId: target.locationId }
+          : await this.branchStore(tx, tenantId, userId, target.locationId);
+      if (from.id === to?.id) throw ordersErrors.requestInvalid();
       const ids = body.lines.map((l) => l.itemId);
       const items = await tx.stockItem.findMany({
         where: { id: { in: ids }, archivedAt: null },
@@ -436,19 +443,7 @@ export class StockRequestsService {
       const usable = new Set(items.filter((i) => i._count.variants === 0).map((i) => i.id));
       const missing = ids.filter((id) => !usable.has(id));
       if (missing.length > 0) throw ordersErrors.itemNotFound(missing);
-      // No more than the source has now: a branch can't ask for 4 when 2 are there (below zero counts as none).
-      const levels = await tx.stockLevel.findMany({
-        where: { warehouseId: from.id, itemId: { in: ids } },
-        select: { itemId: true, quantity: true },
-      });
-      const have = new Map(levels.map((l) => [l.itemId, new Decimal(l.quantity.toFixed(3))]));
-      const above = body.lines
-        .filter((l) => {
-          const there = have.get(l.itemId) ?? new Decimal(0);
-          return new Decimal(l.quantity).greaterThan(there.isNegative() ? new Decimal(0) : there);
-        })
-        .map((l) => l.itemId);
-      if (above.length > 0) throw ordersErrors.requestAboveStock(above);
+      // More than the source has is fine (ADR 0065): approval decides, and packing is limited to what is there.
       const { number } = await this.numbering.next('orders.stockRequest', tx);
       // Without approval (orders.requestsNeedApproval off, ADR 0056) a request is approved as it is sent: every line
       // as asked, with its transfer number now; the warehouse finds it on its Picking list.
@@ -461,10 +456,10 @@ export class StockRequestsService {
           tenantId,
           number,
           ...(transferNumber ? { status: 'approved' as const, transferNumber } : {}),
-          locationId: to.locationId,
+          locationId: target.locationId,
           fromLocationId: from.locationId,
           fromWarehouseId: from.id,
-          toWarehouseId: to.id,
+          toWarehouseId: to?.id ?? null,
           note: body.note ?? null,
           requestedByUserId: userId,
         },
@@ -636,10 +631,12 @@ export class StockRequestsService {
       'received',
       body.note ?? null,
       (row) =>
-        this.access.assertAtWarehouse('orders.requests.receive', {
-          id: row.toWarehouseId,
-          locationId: row.locationId,
-        }),
+        row.toWarehouseId
+          ? this.access.assertAtWarehouse('orders.requests.receive', {
+              id: row.toWarehouseId,
+              locationId: row.locationId,
+            })
+          : this.access.assert('orders.requests.receive', { locationId: row.locationId }),
       async (tx, row) => {
         const sent = row.lines.filter((l) => l.pickedQuantity && !isZero(l.pickedQuantity));
         const received = quantitiesFor(sent, body.lines, (l) => l.pickedQuantity!);
@@ -650,10 +647,18 @@ export class StockRequestsService {
           });
         }
         const transit = await this.stock.transitWarehouse(tx, row.fromLocationId);
+        // Into the branch's store; without one (branches keep no stock, ADR 0080, or it was archived since) the goods
+        // are delivered: they leave In transit for good.
+        const store = row.toWarehouseId
+          ? await tx.warehouse.findFirst({
+              where: { id: row.toWarehouseId, archivedAt: null },
+              select: { id: true },
+            })
+          : null;
         await this.stock.bookForRequest(tx, {
-          kind: 'transfer',
+          kind: store ? 'transfer' : 'delivery',
           fromWarehouseId: transit,
-          toWarehouseId: row.toWarehouseId,
+          ...(store ? { toWarehouseId: store.id } : {}),
           requestId: row.id,
           lines: sent.map((l) => ({ itemId: l.itemId, quantity: received.get(l.id)! })),
           userId,
@@ -1058,7 +1063,7 @@ function summaryResponse(row: SummaryRow, names: ReadonlyMap<string, string>): S
     fromWarehouseName: row.fromWarehouse.name,
     fromLocationName: row.fromWarehouse.location.name,
     toWarehouseId: row.toWarehouseId,
-    toWarehouseName: row.toWarehouse.name,
+    toWarehouseName: row.toWarehouse?.name ?? null,
     locationId: row.locationId,
     locationName: row.location.name,
     lineCount: row._count.lines,

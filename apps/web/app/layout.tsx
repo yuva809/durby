@@ -23,7 +23,6 @@ export async function generateMetadata(): Promise<Metadata> {
   const { productName } = await requestTheme();
   return {
     title: { default: productName, template: `%s · ${productName}` },
-    manifest: '/manifest.webmanifest',
     appleWebApp: { capable: true, title: productName, statusBarStyle: 'default' },
   };
 }

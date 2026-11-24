@@ -1,6 +1,6 @@
 # ADR 0072: Handheld waiter app (installable web app)
 
-- Status: accepted
+- Status: accepted (amended 2026-11-24 when merged with ADR 0083: decisions 1 and 2)
 - Date: 2026-11-20
 - Step: order taking, second row of the tracker group "L3 FOH Service & POS → Order taking" ("Handheld waiter app").
   Builds on [ADR 0015](0015-admin-web-shell.md) (themed per partner) and [ADR 0047](0047-notifications-and-accounts.md) (the push
@@ -14,10 +14,12 @@ order needs the connection, and an offline queue is a separate decision.
 
 ## Decisions
 
-1. **Installable.** The app serves a web manifest (`/manifest.webmanifest`) for the partner's name and logo, with
-   `standalone` display and `/service` as its start page. It works with the theme of the host it runs on (ADR 0015).
-2. **Icons come from the partner's logo** (theme), never a hardcoded image, so no product or partner name is in code
-   (CLAUDE rule 2).
+1. **Installable.** The app serves one web manifest (`app/manifest.ts`, shared with ADR 0083) with the partner's name and
+   colors and `standalone` display. It starts on the home page; opened from the home screen, people who may read orders
+   and have no Overview are taken on to `/service` (owners keep the Overview, where they turn on push). The icon's
+   shortcut opens Service directly.
+2. **Icons** are drawn from the partner's theme (ADR 0083), because iPhones don't take every logo file. No product or
+   partner name is in code (CLAUDE rule 2).
 3. **Only static assets are cached.** The service worker caches `/_next/static/` files and nothing else: no pages, no
    `/api/` responses, no sign-in state. A cached page could show another waiter's orders after sign-out, so pages are
    never stored.

@@ -9,6 +9,7 @@ import { sessionFixture } from '../../test/session-fixture';
 import { DeliveriesPage } from '../orders/deliveries-page';
 import { BrandProvider } from '../theme-provider';
 import { MyDeliveriesPage } from './my-deliveries-page';
+import { RequestPicking } from './request-picking';
 import { RequestStockPage } from './request-stock-page';
 import { RequestsPage } from './requests-page';
 import { TransfersPicking } from './transfers-picking';
@@ -104,11 +105,43 @@ const level = (itemId: string, quantity: string) => ({
 });
 /** Plenty of rice and oil unless a test says otherwise. */
 const PLENTY = [level(id(51), '10.000'), level(id(52), '10.000')];
+/** What the warehouse has, by category (the availability the picking page reads). */
+const AVAILABILITY = [
+  {
+    itemId: id(51),
+    itemName: 'Rice',
+    sku: 'R-1',
+    unit: 'pc',
+    available: '10.000',
+    categoryId: id(70),
+    categoryName: 'Dry goods',
+  },
+  {
+    itemId: id(52),
+    itemName: 'Oil',
+    sku: null,
+    unit: 'pc',
+    available: '0.000',
+    categoryId: null,
+    categoryName: null,
+  },
+];
+/** Not on the request: added at picking, from its category. */
+const SALT = {
+  itemId: id(53),
+  itemName: 'Salt',
+  sku: null,
+  unit: 'pc',
+  available: '7.000',
+  categoryId: id(70),
+  categoryName: 'Dry goods',
+};
 
 /** The request cart's setup (ADR 0053): source warehouses and the branches to request for. */
 const setup = {
   stock: PLENTY,
   warehouses: [MAIN, BRANCH] as Record<string, unknown>[],
+  availability: AVAILABILITY as Record<string, unknown>[],
   destinations: [
     {
       locationId: BRANCH.locationId,
@@ -133,32 +166,8 @@ function api(detail: ReturnType<typeof request>) {
       return Promise.resolve(Response.json({ data: setup.warehouses }));
     if (input === '/api/v1/stock-requests/destinations')
       return Promise.resolve(Response.json({ data: setup.destinations }));
-    if (input.startsWith('/api/v1/stock-requests/availability/')) {
-      return Promise.resolve(
-        Response.json({
-          data: [
-            {
-              itemId: id(51),
-              itemName: 'Rice',
-              sku: 'R-1',
-              unit: 'pc',
-              available: '10.000',
-              categoryId: id(70),
-              categoryName: 'Dry goods',
-            },
-            {
-              itemId: id(52),
-              itemName: 'Oil',
-              sku: null,
-              unit: 'pc',
-              available: '0.000',
-              categoryId: null,
-              categoryName: null,
-            },
-          ],
-        }),
-      );
-    }
+    if (input.startsWith('/api/v1/stock-requests/availability/'))
+      return Promise.resolve(Response.json({ data: setup.availability }));
     if (input.startsWith('/api/v1/stock-requests/drivers/'))
       return Promise.resolve(Response.json({ data: [{ userId: id(60), name: 'Ali' }] }));
     if (input === `/api/v1/stock-requests/${detail.id}`)
@@ -195,8 +204,9 @@ describe('Request stock cart (branch, ADR 0053)', () => {
     const cards = await screen.findAllByTestId('request-item');
     // In stock first; quantities only, never prices.
     expect(cards.map((c) => c.textContent)).toEqual([
-      'RRiceR-110 pc availableAdd',
-      'OOilOut of stockAdd',
+      'RRiceR-110 pc available at the warehouseRequest',
+      // Out of stock may still be asked for: it is sent once it is in.
+      'OOilOut of stockRequest',
     ]);
     expect(screen.getByTestId('request-from-main').textContent).toContain('Main Warehouse');
     expect(screen.queryByTestId('request-from')).toBeNull();
@@ -262,34 +272,37 @@ describe('Request stock cart (branch, ADR 0053)', () => {
     );
   });
 
-  it('asks for no more than the main warehouse has, and lays out the cart', async () => {
+  it('asks for more than the main warehouse has, saying what is there, and lays out the cart', async () => {
     signedInAs('branch');
     const calls = api(request('submitted'));
     render(<RequestStockPage />);
     const [rice, oil] = await screen.findAllByTestId('request-item');
-    // Nothing there, nothing to add.
-    expect(within(oil!).getByTestId('request-add')).toHaveProperty('disabled', true);
-    // 10 there: "+" stops at 10.
+    // Nothing there: it may still be asked for.
+    await userEvent.click(within(oil!).getByTestId('request-add'));
+    // 10 there: typed beyond it, named, and still sent.
     await userEvent.click(within(rice!).getByTestId('request-add'));
     const quantity = within(rice!).getByTestId<HTMLInputElement>('request-quantity');
     await userEvent.clear(quantity);
-    await userEvent.type(quantity, '10');
-    expect(within(rice!).getByTestId('request-more')).toHaveProperty('disabled', true);
-    // Typed beyond it: named, and not sent.
-    await userEvent.clear(quantity);
     await userEvent.type(quantity, '12');
+    expect(within(rice!).getByTestId('request-more')).toHaveProperty('disabled', false);
     expect(within(rice!).getByTestId('request-item-available').textContent).toBe(
-      'Only 10 pc available',
+      'Only 10 pc at the warehouse right now',
     );
     await userEvent.click(screen.getByTestId('request-cart-open'));
     const cart = await screen.findByTestId('request-cart');
     // The cart's title and route show (not only for screen readers).
     expect(within(cart).getByText('Your request')).toBeTruthy();
+    expect(within(cart).getByTestId('request-cart-beyond')).toBeTruthy();
+    expect(within(cart).getByText('None at the warehouse right now')).toBeTruthy();
     await userEvent.click(within(cart).getByTestId('request-submit'));
-    expect(
-      within(cart).getByText(/More than the main warehouse has: Rice \(10 pc available\)/),
-    ).toBeTruthy();
-    expect(posts(calls)).toEqual([]);
+    await waitFor(() =>
+      expect(posts(calls)[0]?.body).toMatchObject({
+        lines: [
+          { itemId: id(52), quantity: '1' },
+          { itemId: id(51), quantity: '12' },
+        ],
+      }),
+    );
   });
 
   it('filters by category and search, and keeps the cart for the next visit', async () => {
@@ -520,10 +533,24 @@ describe('Transfers on the Picking page (warehouse)', () => {
     setup.stock = PLENTY;
   });
 
-  it('shows what is in stock, starts a short line at what is there and names too much', async () => {
+  it('opens the picking page of a transfer', async () => {
     signedInAs('warehouse');
-    // Rice: 3 on the shelf of 5 approved; no oil at all.
-    setup.stock = [level(id(51), '3.000')];
+    api(request('approved', { lines: [line(1, 'Rice', { approvedQuantity: '5.000' })] }));
+    render(<TransfersPicking organizationId={mockState.session!.activeOrganizationId} />);
+    const row = await screen.findByTestId('transfer-row');
+    await userEvent.click(await within(row).findByTestId('transfer-pack'));
+    expect(mockState.router.push).toHaveBeenCalledWith(`/picking/${id(10)}`);
+  });
+});
+
+describe('Picking a transfer (/picking/:id, item 9)', () => {
+  afterEach(() => {
+    setup.stock = PLENTY;
+    setup.availability = AVAILABILITY;
+  });
+
+  it('shows requested, picked and packed per line; picked may go above what was asked', async () => {
+    signedInAs('warehouse');
     const calls = api(
       request('approved', {
         lines: [
@@ -532,110 +559,69 @@ describe('Transfers on the Picking page (warehouse)', () => {
         ],
       }),
     );
-    render(<TransfersPicking organizationId={mockState.session!.activeOrganizationId} />);
-    const row = await screen.findByTestId('transfer-row');
-    await userEvent.click(await within(row).findByTestId('transfer-pack'));
-    const dialog = (await screen.findAllByRole('dialog')).at(-1)!;
-    await waitFor(() =>
-      expect(
-        within(dialog)
-          .getAllByTestId('transfer-pack-available')
-          .map((cell) => cell.textContent),
-      ).toEqual(['3 pc', '0 pc']),
-    );
-    const inputs = within(dialog).getAllByTestId<HTMLInputElement>('transfer-pack-quantity');
-    expect(inputs.map((i) => i.value)).toEqual(['3', '0']);
-    expect(
-      within(dialog)
-        .getAllByTestId('transfer-pack-short')
-        .map((badge) => badge.textContent),
-    ).toEqual(['Short 2 pc', 'Short 2 pc']);
-    expect(within(dialog).getByTestId('transfer-pack-shortage').textContent).toContain(
-      'Rice (3 pc in stock), Oil (0 pc in stock)',
-    );
+    render(<RequestPicking requestId={id(10)} />);
+    const rows = await screen.findAllByTestId('pick-row');
+    expect(rows).toHaveLength(2);
+    const [rice, oil] = rows;
+    expect(within(rice!).getByTestId<HTMLInputElement>('pick-quantity').value).toBe('5');
+    // Nothing of the oil is on the shelf, so nothing is picked for it.
+    expect(within(oil!).getByTestId<HTMLInputElement>('pick-quantity').value).toBe('0');
+    expect(oil!.textContent).toContain('on shelf');
 
-    // More than the shelf has is named before packing.
-    await userEvent.clear(inputs[0]!);
-    await userEvent.type(inputs[0]!, '4');
-    expect(within(dialog).getByTestId('transfer-pack-beyond').textContent).toContain(
-      'Rice (3 pc in stock)',
-    );
-    await userEvent.clear(inputs[0]!);
-    await userEvent.type(inputs[0]!, '3');
-    expect(within(dialog).queryByTestId('transfer-pack-beyond')).toBeNull();
-    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await userEvent.clear(within(rice!).getByTestId('pick-quantity'));
+    await userEvent.type(within(rice!).getByTestId('pick-quantity'), '7');
+    await userEvent.click(within(rice!).getByTestId('pick-packed'));
+    expect(screen.getByTestId('pick-progress').textContent).toContain('1 of 2');
+    await userEvent.click(screen.getByTestId('pick-submit'));
     await waitFor(() =>
       expect(posts(calls)[0]?.body).toEqual({
         lines: [
-          { lineId: id(41), quantity: '3' },
+          { lineId: id(41), quantity: '7' },
           { lineId: id(42), quantity: '0' },
         ],
       }),
     );
   });
 
-  it('sends more than approved and adds a product nobody asked for (item 9)', async () => {
+  it('adds an item nobody asked for from its category, and sends it with the packing (item 9)', async () => {
     signedInAs('warehouse');
-    setup.stock = [level(id(51), '10.000'), { ...level(id(53), '7.000'), itemName: 'Salt' }];
+    setup.availability = [...AVAILABILITY, SALT] as Record<string, unknown>[];
     const calls = api(
       request('approved', { lines: [line(1, 'Rice', { approvedQuantity: '5.000' })] }),
     );
-    render(<TransfersPicking organizationId={mockState.session!.activeOrganizationId} />);
-    const row = await screen.findByTestId('transfer-row');
-    await userEvent.click(await within(row).findByTestId('transfer-pack'));
+    render(<RequestPicking requestId={id(10)} />);
+    await userEvent.click(await screen.findByTestId('pick-add-item'));
     const dialog = (await screen.findAllByRole('dialog')).at(-1)!;
-    const extra = await within(dialog).findByTestId('pack-extra');
-    // What the warehouse has, without the lines already being sent.
-    const options = within(extra)
-      .getAllByRole('option')
-      .map((o) => o.textContent);
-    expect(options).toEqual(['Choose a product', 'Salt (7 pc)']);
-    const [rice] = within(dialog).getAllByTestId<HTMLInputElement>('transfer-pack-quantity');
-    await userEvent.clear(rice!);
-    await userEvent.type(rice!, '6');
-    // Nothing chosen: named, not added.
-    await userEvent.click(within(extra).getByTestId('pack-extra-add'));
-    expect(within(extra).getByRole('alert').textContent).toContain('Choose a product');
-    await userEvent.selectOptions(within(extra).getByTestId('pack-extra-item'), id(53));
-    await userEvent.type(within(extra).getByTestId('pack-extra-quantity'), '2');
-    await userEvent.click(within(extra).getByTestId('pack-extra-add'));
-    expect(within(extra).getByTestId('pack-extra-lines').textContent).toContain('Salt2 pc');
-    await userEvent.click(within(dialog).getByTestId('form-save'));
+    const dry = within(dialog)
+      .getAllByTestId('pick-category')
+      .find((tile) => tile.textContent?.includes('Dry goods'));
+    await userEvent.click(dry!);
+    const saltRow = within(dialog)
+      .getAllByTestId('pick-add-row')
+      .find((r) => r.textContent?.includes('Salt'))!;
+    await userEvent.type(within(saltRow).getByTestId('pick-add-quantity'), '2');
+    await userEvent.click(within(saltRow).getByTestId('pick-add-line'));
+    expect(within(saltRow).getByTestId('pick-in-shipment').textContent).toContain('2');
+    expect(within(dialog).getByTestId('pick-cart-count').textContent).toContain('1');
+    await userEvent.click(within(dialog).getByTestId('pick-add-submit'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    const extra = (await screen.findAllByTestId('pick-row')).find(
+      (r) => r.getAttribute('data-extra') === 'true',
+    )!;
+    expect(extra.textContent).toContain('Salt');
+    expect(within(extra).getByTestId<HTMLInputElement>('pick-quantity').value).toBe('2');
+    // Rice may go above the 5 asked, up to what is on the shelf.
+    const rice = (await screen.findAllByTestId('pick-row')).find((r) =>
+      r.textContent?.includes('Rice'),
+    )!;
+    await userEvent.clear(within(rice).getByTestId('pick-quantity'));
+    await userEvent.type(within(rice).getByTestId('pick-quantity'), '6');
+    await userEvent.click(screen.getByTestId('pick-submit'));
     await waitFor(() =>
       expect(posts(calls)[0]?.body).toEqual({
         lines: [{ lineId: id(41), quantity: '6' }],
         extra: [{ itemId: id(53), quantity: '2' }],
-      }),
-    );
-  });
-
-  it('packs the approved lines with a driver', async () => {
-    signedInAs('warehouse');
-    const calls = api(
-      request('approved', {
-        lines: [
-          line(1, 'Rice', { approvedQuantity: '5.000' }),
-          line(2, 'Oil', { approvedQuantity: '0.000' }),
-        ],
-      }),
-    );
-    render(<TransfersPicking organizationId={mockState.session!.activeOrganizationId} />);
-    const row = await screen.findByTestId('transfer-row');
-    expect(row.textContent).toContain('TRF-2026-000047');
-    await userEvent.click(await within(row).findByTestId('transfer-pack'));
-    const dialog = (await screen.findAllByRole('dialog')).at(-1)!;
-    const inputs = within(dialog).getAllByTestId<HTMLInputElement>('transfer-pack-quantity');
-    expect(inputs.map((i) => i.value)).toEqual(['5']);
-    await userEvent.clear(inputs[0]!);
-    await userEvent.type(inputs[0]!, '4');
-    await waitFor(() => expect(within(dialog).getByText('Ali')).toBeTruthy());
-    await userEvent.selectOptions(within(dialog).getByTestId('transfer-driver'), id(60));
-    await userEvent.click(within(dialog).getByTestId('form-save'));
-    await waitFor(() =>
-      expect(posts(calls)[0]).toEqual({
-        method: 'POST',
-        path: `/api/v1/stock-requests/${id(10)}/pack`,
-        body: { lines: [{ lineId: id(41), quantity: '4' }], driverUserId: id(60) },
       }),
     );
   });

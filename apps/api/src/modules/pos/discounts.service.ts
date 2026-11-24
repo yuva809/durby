@@ -3,6 +3,7 @@ import Decimal from 'decimal.js';
 import { type AddDiscountRequest, type Discount } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
+import { OutboxService } from '../../platform/outbox';
 import { AccessService } from '../../platform/rbac';
 import {
   asTenantDb,
@@ -14,6 +15,7 @@ import {
 import { billedByLine, remainingOf, unbilledOf } from './billing';
 import { allocateDiscount, type DiscountTarget } from './discounts';
 import { posErrors } from './pos-errors';
+import { currentOrderByTicket, ticketIdsOf } from './ticket-placements';
 
 /**
  * Discounts and comps (docs/modules/pos.md → Step 4b, ADR 0036 §5). A discount is fixed when given, from the items
@@ -28,6 +30,7 @@ export class DiscountsService {
     private readonly access: AccessService,
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
+    private readonly outbox: OutboxService,
   ) {}
 
   async add(orderId: string, body: AddDiscountRequest): Promise<Discount> {
@@ -36,8 +39,9 @@ export class DiscountsService {
     await this.access.assert('pos.orders.discount', { locationId });
     return this.db.$transaction(async (tx) => {
       if ((await lockOrder(tx, orderId)) !== 'open') throw posErrors.orderClosed();
+      const ticketIds = ticketIdsOf(await currentOrderByTicket(tx, [orderId]), orderId);
       const lines = await tx.posOrderLine.findMany({
-        where: { orderId },
+        where: { ticketId: { in: ticketIds } },
         select: { id: true, quantity: true, voidsLineId: true, unitPrice: true, taxRate: true },
       });
       const sent = new Map(lines.filter((l) => l.quantity > 0).map((l) => [l.id, l]));
@@ -106,6 +110,7 @@ export class DiscountsService {
         entityId: discount.id,
         after: discountSnapshot(response, orderId),
       });
+      await this.changed(tx, orderId, locationId);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
@@ -155,9 +160,19 @@ export class DiscountsService {
         before: discountSnapshot({ ...response, voided: false, amount: target.amount }, orderId),
         after: discountSnapshot(response, orderId),
       });
+      await this.changed(tx, orderId, locationId);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
+  }
+
+  /** What is sold on the order changed (reports, ADR 0081). */
+  private async changed(
+    tx: TenantTransactionClient,
+    orderId: string,
+    locationId: string,
+  ): Promise<void> {
+    await this.outbox.add(tx, { type: 'pos.order.updated', payload: { orderId, locationId } });
   }
 
   private async locationOf(orderId: string): Promise<string> {

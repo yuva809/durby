@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import {
+  type CorrectVendorInvoiceLineRequest,
+  correctVendorInvoiceLineRequestSchema,
   type ListVendorInvoicesQuery,
   listVendorInvoicesQuerySchema,
   type RejectVendorInvoiceRequest,
@@ -78,5 +80,23 @@ export class VendorInvoicesController {
     @Body(new ZodBody(rejectVendorInvoiceRequestSchema)) body: RejectVendorInvoiceRequest,
   ): Promise<VendorInvoice> {
     return this.invoices.reject(id, body);
+  }
+
+  /** Corrects an approved invoice's line by reversing entries (ADR 0078); a new correction, never an edit. */
+  // Response completion, not transaction: the two stock documents complete the key themselves, one after the other.
+  @RequirePermission('inventory.invoices.approve')
+  @Idempotent()
+  @Post(':id/lines/:lineId/corrections')
+  correctLine(
+    @Param('id', invoiceId) id: string,
+    @Param(
+      'lineId',
+      new ParseUUIDPipe({ exceptionFactory: () => vendorInvoiceErrors.lineNotFound() }),
+    )
+    lineId: string,
+    @Body(new ZodBody(correctVendorInvoiceLineRequestSchema))
+    body: CorrectVendorInvoiceLineRequest,
+  ): Promise<VendorInvoice> {
+    return this.invoices.correctLine(id, lineId, body);
   }
 }

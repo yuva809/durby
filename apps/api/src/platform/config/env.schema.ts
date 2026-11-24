@@ -8,6 +8,10 @@ const redisUrl = z.url({ protocol: /^rediss?$/, error: urlError('redis') });
 const smtpUrl = z.url({ protocol: /^smtps?$/, error: urlError('smtp') });
 const httpUrl = z.url({ protocol: /^https?$/, error: urlError('http(s)') });
 
+/** Optional; empty is unset (compose files pass `${NAME:-}`). */
+const optionalText = <S extends z.ZodType<string>>(schema: S) =>
+  z.union([z.literal('').transform(() => undefined), schema]).optional();
+
 /** Comma-separated list of exact origins (scheme://host[:port], no path), compared as-is with `Origin`. */
 const originList = z
   .string({ error: 'is required' })
@@ -107,19 +111,19 @@ export const appEnvSchema = z
 
     // Browser push (docs/platform/notifications.md, ADR 0047): VAPID keys from `npx web-push generate-vapid-keys`.
     // All three or none; without them push is off and the bell and email still work.
-    WEB_PUSH_PUBLIC_KEY: z
-      .string()
-      .regex(/^[A-Za-z0-9_-]{80,100}$/, 'must be a base64url VAPID public key')
-      .optional(),
-    WEB_PUSH_PRIVATE_KEY: z
-      .string()
-      .regex(/^[A-Za-z0-9_-]{40,50}$/, 'must be a base64url VAPID private key')
-      .optional(),
+    WEB_PUSH_PUBLIC_KEY: optionalText(
+      z.string().regex(/^[A-Za-z0-9_-]{80,100}$/, 'must be a base64url VAPID public key'),
+    ),
+    WEB_PUSH_PRIVATE_KEY: optionalText(
+      z.string().regex(/^[A-Za-z0-9_-]{40,50}$/, 'must be a base64url VAPID private key'),
+    ),
     /** Who push services may contact about our messages: mailto:… or https://… */
-    WEB_PUSH_SUBJECT: z
-      .string()
-      .regex(/^(mailto:|https:\/\/)\S+$/, 'must start with mailto: or https://')
-      .optional(),
+    WEB_PUSH_SUBJECT: optionalText(
+      z.string().regex(/^(mailto:|https:\/\/)\S+$/, 'must start with mailto: or https://'),
+    ),
+
+    /** `off`: updates go to the bell and push only (ADR 0083). Account emails are not affected. */
+    NOTIFICATION_EMAILS: z.enum(['on', 'off']).default('on'),
 
     // Durby staff and the admin portal (docs/platform/admin-portal.md, ADR 0017).
     /** Only these domains can be invited as staff. */

@@ -7,6 +7,7 @@ import type {
   ImportOpeningStockRequest,
   EventPayload,
   ImportReceiptRequest,
+  ItemMovements,
   AdjustmentRequest,
   ListStockDocumentsQuery,
   NumberSeriesKey,
@@ -21,7 +22,7 @@ import type {
   StockUnit,
   TransferRequest,
 } from '@durby/shared';
-import { checkOpeningStockRows } from '@durby/shared';
+import { checkOpeningStockRows, ITEM_MOVEMENTS_LIMIT } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { SettingsService } from '../../platform/config/settings';
 import { IdempotencyService } from '../../platform/idempotency';
@@ -52,6 +53,8 @@ const SERIES: Record<StockDocumentKind, NumberSeriesKey> = {
   production: 'inventory.stockProduction',
   issue: 'inventory.goodsIssue',
   restock: 'inventory.goodsRestock',
+  // The second half of a branch transfer (ADR 0080): numbered with the transfers.
+  delivery: 'inventory.stockTransfer',
 };
 
 const DOCUMENT_LIST_LIMIT = 200;
@@ -640,6 +643,82 @@ export class StockService {
     return this.forViewer(documentResponse(row));
   }
 
+  /**
+   * An item's activity (its ledger): its movements in the warehouses the caller may read (or the one asked for),
+   * newest first, each with the quantity there after it. The balances count back from what is there now; the opening
+   * is what was there before the oldest movement shown. Costs only for who sees prices (ADR 0060).
+   */
+  async itemMovements(itemId: string, query: StockQuery): Promise<ItemMovements> {
+    const item = await this.db.stockItem.findUnique({
+      where: { id: itemId },
+      select: { id: true },
+    });
+    if (!item) throw inventoryErrors.itemNotFound([itemId]);
+    const warehouses = await this.readableWarehouses(query);
+    if (warehouses.length === 0) {
+      return { opening: '0.000', closing: '0.000', truncated: false, movements: [] };
+    }
+    const [levels, rows] = await Promise.all([
+      this.db.stockLevel.findMany({
+        where: { itemId, warehouseId: { in: warehouses } },
+        select: { quantity: true },
+      }),
+      this.db.stockMovement.findMany({
+        where: { itemId, warehouseId: { in: warehouses } },
+        select: {
+          id: true,
+          createdAt: true,
+          warehouseId: true,
+          quantity: true,
+          unitCost: true,
+          warehouse: { select: { name: true } },
+          document: {
+            select: {
+              id: true,
+              number: true,
+              kind: true,
+              reason: true,
+              supplier: true,
+              note: true,
+            },
+          },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: ITEM_MOVEMENTS_LIMIT + 1,
+      }),
+    ]);
+    const truncated = rows.length > ITEM_MOVEMENTS_LIMIT;
+    const shown = rows.slice(0, ITEM_MOVEMENTS_LIMIT);
+    const prices = await this.seesPrices();
+    const closing = levels.reduce((sum, l) => sum.plus(l.quantity.toString()), new Decimal(0));
+    let balance = closing;
+    const movements = shown.map((row) => {
+      const quantity = new Decimal(row.quantity.toString());
+      const after = balance;
+      balance = balance.minus(quantity);
+      return {
+        id: row.id,
+        createdAt: row.createdAt.toISOString(),
+        documentId: row.document.id,
+        documentNumber: row.document.number,
+        kind: row.document.kind,
+        reason: row.document.reason,
+        warehouseId: row.warehouseId,
+        warehouseName: row.warehouse.name,
+        quantity: quantityText(quantity),
+        unitCost: prices ? costText(new Decimal(row.unitCost.toString())) : null,
+        remarks: row.document.note ?? row.document.supplier ?? null,
+        balance: quantityText(after),
+      };
+    });
+    return {
+      opening: quantityText(balance),
+      closing: quantityText(closing),
+      truncated,
+      movements,
+    };
+  }
+
   /** Warehouse ids the caller may read, narrowed by the query. */
   private async readableWarehouses(query: { locationId?: string; warehouseId?: string }) {
     const scope = await this.access.locationIdsFor('inventory.stock.read');
@@ -647,7 +726,16 @@ export class StockService {
     const own = await this.access.warehouseIds();
     const rows = await this.db.warehouse.findMany({
       where: {
-        ...(scope === 'all' ? {} : { locationId: { in: scope } }),
+        // At their branches, and the warehouses that supply those branches (ADR 0071): read only.
+        ...(scope === 'all'
+          ? {}
+          : {
+              OR: [
+                { locationId: { in: scope } },
+                { isMain: true },
+                { suppliesLocationIds: { hasSome: scope } },
+              ],
+            }),
         // Limited to some warehouses (ADR 0057): those only.
         ...(own ? { id: { in: [...own] } } : {}),
         ...(query.locationId ? { locationId: query.locationId } : {}),
@@ -1060,13 +1148,14 @@ export class StockService {
    * Goods of a branch stock request (ADR 0045), in the orders module's transaction; the caller checks the request and
    * its keys. `transfer`: out of `fromWarehouseId` at the average cost and into `toWarehouseId` at that cost
    * (refused below zero unless the location allows negative stock, never for the transit warehouse). `shortage`:
-   * out of `fromWarehouseId` as an adjustment (goods that never arrived). Lines with nothing to move are skipped;
+   * out of `fromWarehouseId` as an adjustment (goods that never arrived). `delivery`: out of `fromWarehouseId` (In
+   * transit) to the branch, nowhere in, when branches keep no stock (ADR 0080). Lines with nothing to move are skipped;
    * null when none is left.
    */
   async bookForRequest(
     tx: TenantTransactionClient,
     input: {
-      kind: 'transfer' | 'shortage';
+      kind: 'transfer' | 'shortage' | 'delivery';
       fromWarehouseId: string;
       toWarehouseId?: string;
       requestId: string;
@@ -1122,7 +1211,12 @@ export class StockService {
       if (!allowed && short.length > 0) throw inventoryErrors.insufficientStock(short);
     }
     return this.book(tx, {
-      kind: input.kind === 'transfer' ? 'transfer' : 'adjustment',
+      kind:
+        input.kind === 'transfer'
+          ? 'transfer'
+          : input.kind === 'delivery'
+            ? 'delivery'
+            : 'adjustment',
       warehouseId: from.id,
       toWarehouseId: toId,
       reason: input.kind === 'shortage' ? 'other' : null,

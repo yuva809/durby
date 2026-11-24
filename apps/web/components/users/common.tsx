@@ -85,6 +85,7 @@ export function ConfirmAction({
   testId,
   triggerIcon,
   variant = 'destructive',
+  fallback,
 }: {
   trigger: string;
   /** An icon-only trigger; `trigger` becomes its accessible name. */
@@ -97,22 +98,40 @@ export function ConfirmAction({
   testId?: string;
   /** The trigger's and confirm button's look: destructive (the default), or plain for a positive step. */
   variant?: 'destructive' | 'default';
+  /**
+   * What to offer when `run` fails with `code` (e.g. Archive when an item with history can't be deleted): its button
+   * replaces the confirm button.
+   */
+  fallback?: {
+    code: string;
+    /** Shown above the buttons when they are offered (e.g. what deleting with history does). */
+    note?: string;
+    options: readonly {
+      label: string;
+      run: () => Promise<Result<unknown>>;
+      destructive?: boolean;
+      testId?: string;
+    }[];
+  };
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offer, setOffer] = useState(false);
 
-  async function onConfirm() {
+  async function onConfirm(step: () => Promise<Result<unknown>> = run) {
     setBusy(true);
     setError(null);
-    const result = await run();
+    const result = await step();
     setBusy(false);
     if (result.ok) {
       setOpen(false);
+      setOffer(false);
       onDone();
     } else {
       setError(t(errorLabel(result.code)));
+      if (fallback && result.code === fallback.code) setOffer(true);
     }
   }
 
@@ -121,7 +140,10 @@ export function ConfirmAction({
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setError(null);
+        if (!next) {
+          setError(null);
+          setOffer(false);
+        }
       }}
     >
       <AlertDialogTrigger asChild>
@@ -139,12 +161,31 @@ export function ConfirmAction({
         <AlertDialogTitle>{title}</AlertDialogTitle>
         <AlertDialogDescription>{description}</AlertDialogDescription>
         <Notice text={error} tone="error" />
+        {offer && fallback?.note && (
+          <p className="text-sm text-muted-foreground" data-testid="confirm-fallback-note">
+            {fallback.note}
+          </p>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel>{t('platform.common.cancel')}</AlertDialogCancel>
           {/* Not AlertDialogAction: that closes the dialog before the answer is known. */}
-          <Button variant={variant} disabled={busy} onClick={() => void onConfirm()}>
-            {confirm}
-          </Button>
+          {offer && fallback ? (
+            fallback.options.map((option) => (
+              <Button
+                key={option.label}
+                variant={option.destructive ? 'destructive' : 'default'}
+                disabled={busy}
+                onClick={() => void onConfirm(option.run)}
+                data-testid={option.testId}
+              >
+                {option.label}
+              </Button>
+            ))
+          ) : (
+            <Button variant={variant} disabled={busy} onClick={() => void onConfirm()}>
+              {confirm}
+            </Button>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

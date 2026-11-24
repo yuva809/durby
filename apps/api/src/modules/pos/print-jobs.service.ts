@@ -25,6 +25,7 @@ import {
   type TenantTransactionClient,
 } from '../../platform/tenancy';
 import { isUniqueViolation, posErrors } from './pos-errors';
+import { currentOrdersOf } from './ticket-placements';
 
 const SELECT = {
   id: true,
@@ -319,7 +320,10 @@ export class PrintJobsService {
           after: jobSnapshot(row),
         });
       }
-      const response = { job: row ? toJob(row, new Date()) : null };
+      // The till draws a ticket from its order's page: after a merge, the order the ticket is on now (ADR 0069).
+      const placed = row?.ticketId ? await currentOrdersOf(tx, [row.ticketId]) : null;
+      const orderId = row ? (placed?.get(row.ticketId ?? '') ?? row.orderId) : '';
+      const response = { job: row ? { ...toJob(row, new Date()), orderId } : null };
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });

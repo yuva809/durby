@@ -16,6 +16,26 @@ export const posErrors = {
   orderNotFound: () =>
     new ApiError(HttpStatus.NOT_FOUND, 'pos.order_not_found', 'Order not found.'),
   orderClosed: () => new ApiError(HttpStatus.CONFLICT, 'pos.order_closed', 'The order is closed.'),
+  tableOccupied: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.table_occupied',
+      'That table already has an open order.',
+    ),
+  tableArchived: () =>
+    new ApiError(HttpStatus.CONFLICT, 'pos.table_archived', 'That table is archived.'),
+  mergeSameOrder: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.merge_same_order',
+      'An order cannot be merged into itself.',
+    ),
+  orderNotSameLocation: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'pos.order_not_same_location',
+      'The order and the table are at different locations.',
+    ),
   productUnavailable: (productIds: string[]) =>
     new ApiError(
       HttpStatus.CONFLICT,

@@ -71,6 +71,7 @@ model PartnerDomain {
 
 /// The tenant. No RLS: holds non-sensitive platform fields only (ADR 0005).
 model Organization {
+  vendorInvoiceLineCorrections VendorInvoiceLineCorrection[]
   id                           String                        @id @default(dbgenerated("uuidv7()")) @db.Uuid
   partnerId                    String                        @map("partner_id") @db.Uuid
   name                         String
@@ -126,6 +127,7 @@ model Organization {
   posGuestCheckShares          PosGuestCheckShare[]
   posBillCancellations         PosBillCancellation[]
   posOrderDiscounts            PosOrderDiscount[]
+  posTicketPlacements          PosTicketPlacement[]
   productImages                ProductImage[]
   posOrderDiscountLines        PosOrderDiscountLine[]
   diningAreas                  DiningArea[]
@@ -153,8 +155,12 @@ model Organization {
   notificationPreferences      NotificationPreference[]
   pushSubscriptions            PushSubscription[]
 
-  vendorInvoices     VendorInvoice[]
-  vendorInvoiceLines VendorInvoiceLine[]
+  vendorInvoices         VendorInvoice[]
+  vendorInvoiceLines     VendorInvoiceLine[]
+  reportOrderFacts       ReportOrderFact[]
+  reportLineFacts        ReportLineFact[]
+  reportReservationFacts ReportReservationFact[]
+  reportDailyMessages    ReportDailyMessage[]
 
   @@index([partnerId])
   @@index([planId])
@@ -206,6 +212,9 @@ model Location {
   posPrintJobs            PosPrintJob[]
   salesOrders             SalesOrder[]
   stockRequests           StockRequest[]
+  reportOrderFacts        ReportOrderFact[]
+  reportLineFacts         ReportLineFact[]
+  reportReservationFacts  ReportReservationFact[]
 
   @@unique([tenantId, id])
   @@index([tenantId, brandId])
@@ -1010,9 +1019,10 @@ model PosOrder {
   tickets         PosKitchenTicket[]
   lines           PosOrderLine[]
 
-  printJobs  PosPrintJob[]
-  billOrders PosBillOrder[]
-  discounts  PosOrderDiscount[]
+  printJobs        PosPrintJob[]
+  billOrders       PosBillOrder[]
+  discounts        PosOrderDiscount[]
+  ticketPlacements PosTicketPlacement[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, number])
@@ -1034,6 +1044,10 @@ model PosKitchenTicket {
   station         PrepStation             @default(kitchen)
   /// Went straight to the bill: the station's processing was off at send time (ADR 0031).
   direct          Boolean                 @default(false)
+  /// The send that wrote it: one send writes up to two tickets (ADR 0081). Null on voids, transfers and older tickets.
+  sendId          String?                 @map("send_id") @db.Uuid
+  /// Written by a transfer, so it is not a round (ADR 0081).
+  transferred     Boolean                 @default(false)
   createdByUserId String                  @map("created_by_user_id") @db.Uuid
   createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   organization    Organization            @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -1041,6 +1055,8 @@ model PosKitchenTicket {
   lines           PosOrderLine[]
   linesOfOrder    PosOrderLine[]          @relation("PosOrderLineTicketOfOrder")
   statusChanges   PosTicketStatusChange[]
+  /// Which order the ticket belongs to, over time (ADR 0069); the latest row is the current one.
+  placements      PosTicketPlacement[]
 
   printJobs PosPrintJob[]
 
@@ -1049,6 +1065,28 @@ model PosKitchenTicket {
   @@unique([tenantId, orderId, id], map: "pos_kitchen_tickets_tenant_id_order_id_id_key")
   @@unique([tenantId, orderId, sequence])
   @@map("pos_kitchen_tickets")
+}
+
+/// Which order a kitchen ticket belongs to (ADR 0069). Append-only: a move or merge adds a row, and a line follows
+/// its ticket's latest row. Every ticket gets its first row from a trigger, so the latest row always exists.
+model PosTicketPlacement {
+  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  /// Insertion order: the latest row of a ticket is the one with the highest seq (ids are not strictly ordered
+  /// within one millisecond).
+  seq             BigInt           @unique @default(autoincrement())
+  tenantId        String           @map("tenant_id") @db.Uuid
+  ticketId        String           @map("ticket_id") @db.Uuid
+  orderId         String           @map("order_id") @db.Uuid
+  createdByUserId String           @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  ticket          PosKitchenTicket @relation(fields: [tenantId, ticketId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  order           PosOrder         @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, ticketId, seq])
+  @@index([tenantId, orderId])
+  @@map("pos_ticket_placements")
 }
 
 /// A ticket's progress on the kitchen or bar screen (ADR 0026); `new` is the absence of a change.
@@ -1079,37 +1117,35 @@ model PosTicketStatusChange {
 /// A sent item (quantity > 0) or a void of one (quantity < 0, voidsLineId set). Append-only; name, gross unit price
 /// and VAT rate are snapshots of the product at the time.
 model PosOrderLine {
-  id               String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId         String                 @map("tenant_id") @db.Uuid
-  orderId          String                 @map("order_id") @db.Uuid
-  ticketId         String                 @map("ticket_id") @db.Uuid
-  productId        String                 @map("product_id") @db.Uuid
-  productName      String                 @map("product_name")
-  unitPrice        Decimal                @map("unit_price") @db.Decimal(12, 2)
-  taxRate          Decimal                @map("tax_rate") @db.Decimal(5, 2)
-  quantity         Int
-  note             String?
+  id              String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String                 @map("tenant_id") @db.Uuid
+  orderId         String                 @map("order_id") @db.Uuid
+  ticketId        String                 @map("ticket_id") @db.Uuid
+  productId       String                 @map("product_id") @db.Uuid
+  productName     String                 @map("product_name")
+  unitPrice       Decimal                @map("unit_price") @db.Decimal(12, 2)
+  taxRate         Decimal                @map("tax_rate") @db.Decimal(5, 2)
+  quantity        Int
+  note            String?
   /// The guest's seat at the table, 1–20 (ADR 0070); null when not given. Fixed at send time.
-  seat             Int?                   @db.SmallInt
-  voidsLineId      String?                @map("voids_line_id") @db.Uuid
-  createdByUserId  String                 @map("created_by_user_id") @db.Uuid
-  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
-  organization     Organization           @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  order            PosOrder               @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  ticket           PosKitchenTicket       @relation(fields: [tenantId, ticketId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  product          Product                @relation(fields: [tenantId, productId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  voidsLine        PosOrderLine?          @relation("PosOrderLineVoids", fields: [tenantId, voidsLineId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  voidedBy         PosOrderLine[]         @relation("PosOrderLineVoids")
-  /// Hand-written FKs (pos_orders migration): the ticket and the voided line belong to the line's order.
-  /// Declared so migrate diff keeps them; read `ticket` and `voidsLine`.
-  ticketOfOrder    PosKitchenTicket       @relation("PosOrderLineTicketOfOrder", fields: [tenantId, orderId, ticketId], references: [tenantId, orderId, id], onDelete: Restrict, onUpdate: Restrict, map: "pos_order_lines_ticket_order_fkey")
-  voidsLineOfOrder PosOrderLine?          @relation("PosOrderLineVoidsSameOrder", fields: [tenantId, orderId, voidsLineId], references: [tenantId, orderId, id], onDelete: Restrict, onUpdate: Restrict, map: "pos_order_lines_voids_same_order_fkey")
-  voidedByOfOrder  PosOrderLine[]         @relation("PosOrderLineVoidsSameOrder")
-  billItems        PosBillItem[]
-  discountLines    PosOrderDiscountLine[]
+  seat            Int?                   @db.SmallInt
+  voidsLineId     String?                @map("voids_line_id") @db.Uuid
+  createdByUserId String                 @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization           @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  order           PosOrder               @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  ticket          PosKitchenTicket       @relation(fields: [tenantId, ticketId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  product         Product                @relation(fields: [tenantId, productId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  voidsLine       PosOrderLine?          @relation("PosOrderLineVoids", fields: [tenantId, voidsLineId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  voidedBy        PosOrderLine[]         @relation("PosOrderLineVoids")
+  /// Hand-written FK (pos_orders migration): the ticket belongs to the line's order. Declared so migrate diff keeps it;
+  /// read `ticket`. A void may be on another order than the line it voids: a merge moved the line (ADR 0069).
+  ticketOfOrder   PosKitchenTicket       @relation("PosOrderLineTicketOfOrder", fields: [tenantId, orderId, ticketId], references: [tenantId, orderId, id], onDelete: Restrict, onUpdate: Restrict, map: "pos_order_lines_ticket_order_fkey")
+  billItems       PosBillItem[]
+  discountLines   PosOrderDiscountLine[]
 
   @@unique([tenantId, id])
-  /// Hand-written in the pos_orders migration; target of pos_order_lines_voids_same_order_fkey.
+  /// Hand-written in the pos_orders migration; nothing references it since 20261124120000 (dropped later, ADR 0004).
   @@unique([tenantId, orderId, id], map: "pos_order_lines_tenant_id_order_id_id_key")
   @@index([tenantId, orderId])
   @@index([tenantId, ticketId])
@@ -1181,7 +1217,7 @@ model PosBillItem {
   organization   Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   bill           PosBill      @relation(fields: [tenantId, billId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   billOrder      PosBillOrder @relation(fields: [tenantId, billId, orderId], references: [tenantId, billId, orderId], onDelete: Restrict, onUpdate: Restrict, map: "pos_bill_items_bill_order_fkey")
-  orderLine      PosOrderLine @relation(fields: [tenantId, orderId, orderLineId], references: [tenantId, orderId, id], onDelete: Restrict, onUpdate: Restrict, map: "pos_bill_items_order_line_fkey")
+  orderLine      PosOrderLine @relation(fields: [tenantId, orderLineId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([tenantId, id])
   @@index([tenantId, billId])
@@ -1279,7 +1315,7 @@ model PosOrderDiscountLine {
   amount       Decimal          @db.Decimal(12, 2)
   organization Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   discount     PosOrderDiscount @relation(fields: [tenantId, discountId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  orderLine    PosOrderLine     @relation(fields: [tenantId, orderId, orderLineId], references: [tenantId, orderId, id], onDelete: Restrict, onUpdate: Restrict, map: "pos_order_discount_lines_order_line_fkey")
+  orderLine    PosOrderLine     @relation(fields: [tenantId, orderLineId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
 
   @@id([tenantId, discountId, orderLineId])
   @@map("pos_order_discount_lines")
@@ -1674,6 +1710,8 @@ enum StockDocumentKind {
   production
   issue
   restock
+  /// Goods a branch received out of In transit when branches keep no stock (ADR 0080): out only, no destination.
+  delivery
 
   @@map("stock_document_kind")
 }
@@ -1683,6 +1721,7 @@ enum StockAdjustmentReason {
   breakage
   count
   other
+  correction
 
   @@map("stock_adjustment_reason")
 }
@@ -2293,7 +2332,8 @@ model StockRequest {
   /// The source warehouse's location (the warehouse's keys are checked there).
   fromLocationId    String              @map("from_location_id") @db.Uuid
   fromWarehouseId   String              @map("from_warehouse_id") @db.Uuid
-  toWarehouseId     String              @map("to_warehouse_id") @db.Uuid
+  /// Null when branches keep no stock (orders.branchStores off, ADR 0080): the goods leave the source on delivery.
+  toWarehouseId     String?             @map("to_warehouse_id") @db.Uuid
   note              String?
   requestedByUserId String              @map("requested_by_user_id") @db.Uuid
   driverUserId      String?             @map("driver_user_id") @db.Uuid
@@ -2302,7 +2342,7 @@ model StockRequest {
   organization      Organization        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   location          Location            @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   fromWarehouse     Warehouse           @relation("StockRequestFrom", fields: [tenantId, fromWarehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  toWarehouse       Warehouse           @relation("StockRequestTo", fields: [tenantId, toWarehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  toWarehouse       Warehouse?          @relation("StockRequestTo", fields: [tenantId, toWarehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   lines             StockRequestLine[]
   events            StockRequestEvent[]
 
@@ -2407,29 +2447,30 @@ model PushSubscription {
 
 /// A vendor invoice read from its PDF or photo, waiting for approval (ADR 0054). Approval books one receipt.
 model VendorInvoice {
-  id            String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId      String              @map("tenant_id") @db.Uuid
-  number        String
-  status        String              @default("pending")
-  warehouseId   String              @map("warehouse_id") @db.Uuid
-  supplier      String?
-  invoiceNumber String?             @map("invoice_number")
-  invoiceDate   String?             @map("invoice_date")
-  note          String?
-  printedTotal  Decimal?            @map("printed_total") @db.Decimal(12, 2)
-  fileName      String?             @map("file_name")
-  source        String
-  submittedBy   String              @map("submitted_by") @db.Uuid
-  decidedBy     String?             @map("decided_by") @db.Uuid
-  decidedAt     DateTime?           @map("decided_at") @db.Timestamptz(6)
-  rejectReason  String?             @map("reject_reason")
-  documentId    String?             @unique @map("document_id") @db.Uuid
-  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization  Organization        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  warehouse     Warehouse           @relation(fields: [tenantId, warehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  document      StockDocument?      @relation(fields: [documentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  lines         VendorInvoiceLine[]
+  lineCorrections VendorInvoiceLineCorrection[]
+  id              String                        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String                        @map("tenant_id") @db.Uuid
+  number          String
+  status          String                        @default("pending")
+  warehouseId     String                        @map("warehouse_id") @db.Uuid
+  supplier        String?
+  invoiceNumber   String?                       @map("invoice_number")
+  invoiceDate     String?                       @map("invoice_date")
+  note            String?
+  printedTotal    Decimal?                      @map("printed_total") @db.Decimal(12, 2)
+  fileName        String?                       @map("file_name")
+  source          String
+  submittedBy     String                        @map("submitted_by") @db.Uuid
+  decidedBy       String?                       @map("decided_by") @db.Uuid
+  decidedAt       DateTime?                     @map("decided_at") @db.Timestamptz(6)
+  rejectReason    String?                       @map("reject_reason")
+  documentId      String?                       @unique @map("document_id") @db.Uuid
+  createdAt       DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization                  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  warehouse       Warehouse                     @relation(fields: [tenantId, warehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  document        StockDocument?                @relation(fields: [documentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lines           VendorInvoiceLine[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, number])
@@ -2439,35 +2480,142 @@ model VendorInvoice {
 
 /// One line: an existing item, or a new one (name, SKU, unit, category) created on approval.
 model VendorInvoiceLine {
-  id                String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId          String           @map("tenant_id") @db.Uuid
-  invoiceId         String           @map("invoice_id") @db.Uuid
+  corrections       VendorInvoiceLineCorrection[]
+  id                String                        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String                        @map("tenant_id") @db.Uuid
+  invoiceId         String                        @map("invoice_id") @db.Uuid
   position          Int
   code              String?
   description       String
-  itemId            String?          @map("item_id") @db.Uuid
-  newItemName       String?          @map("new_item_name")
-  newItemSku        String?          @map("new_item_sku")
-  newItemUnit       StockUnit?       @map("new_item_unit")
-  newItemCategoryId String?          @map("new_item_category_id") @db.Uuid
+  itemId            String?                       @map("item_id") @db.Uuid
+  newItemName       String?                       @map("new_item_name")
+  newItemSku        String?                       @map("new_item_sku")
+  newItemUnit       StockUnit?                    @map("new_item_unit")
+  newItemCategoryId String?                       @map("new_item_category_id") @db.Uuid
   /// Brand and pack size (ADR 0055): a new item's, or with new_item_category_id what approval sets on the line's item.
-  newItemBrand      String?          @map("new_item_brand")
-  newItemPackCount  Int?             @map("new_item_pack_count")
-  newItemPackSize   Decimal?         @map("new_item_pack_size") @db.Decimal(14, 3)
-  newItemPackUnit   StockUnit?       @map("new_item_pack_unit")
+  newItemBrand      String?                       @map("new_item_brand")
+  newItemPackCount  Int?                          @map("new_item_pack_count")
+  newItemPackSize   Decimal?                      @map("new_item_pack_size") @db.Decimal(14, 3)
+  newItemPackUnit   StockUnit?                    @map("new_item_pack_unit")
   /// The unit the supplier invoices in (ADR 0055); quantity and cost are in it, converted on approval.
-  unitId            String?          @map("unit_id") @db.Uuid
-  quantity          Decimal          @db.Decimal(14, 3)
-  unitCost          Decimal          @map("unit_cost") @db.Decimal(14, 4)
+  unitId            String?                       @map("unit_id") @db.Uuid
+  quantity          Decimal                       @db.Decimal(14, 3)
+  unitCost          Decimal                       @map("unit_cost") @db.Decimal(14, 4)
   /// Best before, as printed (ADR 0062).
-  expiresOn         DateTime?        @map("expires_on") @db.Date
-  organization      Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  invoice           VendorInvoice    @relation(fields: [tenantId, invoiceId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
-  item              StockItem?       @relation(fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  newItemCategory   ProductCategory? @relation(fields: [tenantId, newItemCategoryId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  unit              UnitOfMeasure?   @relation(fields: [tenantId, unitId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  expiresOn         DateTime?                     @map("expires_on") @db.Date
+  organization      Organization                  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoice           VendorInvoice                 @relation(fields: [tenantId, invoiceId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+  item              StockItem?                    @relation(fields: [tenantId, itemId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  newItemCategory   ProductCategory?              @relation(fields: [tenantId, newItemCategoryId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  unit              UnitOfMeasure?                @relation(fields: [tenantId, unitId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([tenantId, invoiceId, position])
+  @@unique([tenantId, id])
   @@index([tenantId, unitId])
   @@map("vendor_invoice_lines")
+}
+
+/// A correction to an approved vendor invoice line (ADR 0078): the corrected values and the two stock documents booked.
+model VendorInvoiceLineCorrection {
+  id                 String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String            @map("tenant_id") @db.Uuid
+  invoiceId          String            @map("invoice_id") @db.Uuid
+  lineId             String            @map("line_id") @db.Uuid
+  quantity           Decimal           @db.Decimal(14, 3)
+  unitCost           Decimal           @map("unit_cost") @db.Decimal(14, 4)
+  reason             String
+  reversalDocumentId String            @map("reversal_document_id") @db.Uuid
+  receiptDocumentId  String            @map("receipt_document_id") @db.Uuid
+  createdByUserId    String            @map("created_by_user_id") @db.Uuid
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization       Organization      @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoice            VendorInvoice     @relation(fields: [tenantId, invoiceId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  line               VendorInvoiceLine @relation(fields: [tenantId, lineId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, lineId, createdAt])
+  @@map("vendor_invoice_line_corrections")
+}
+
+/// Reports read model (docs/modules/reports.md, ADR 0081): derived from the till and the bookings and rebuildable, so
+/// rows are replaced. Ids of other modules' rows carry no foreign key. One row per order.
+model ReportOrderFact {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  locationId   String       @map("location_id") @db.Uuid
+  orderId      String       @map("order_id") @db.Uuid
+  tableId      String       @map("table_id") @db.Uuid
+  openedAt     DateTime     @map("opened_at") @db.Timestamptz(6)
+  closedAt     DateTime?    @map("closed_at") @db.Timestamptz(6)
+  covers       Int?
+  /// Closed by a merge: all its tickets belong to another order now.
+  mergedAway   Boolean      @default(false) @map("merged_away")
+  /// Sends of the order with a line left after voids; transfers are not rounds.
+  rounds       Int          @default(0)
+  /// When its first line that is left was sent; null when nothing is left.
+  firstSentAt  DateTime?    @map("first_sent_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location     Location     @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, orderId])
+  @@index([tenantId, locationId, firstSentAt])
+  @@index([tenantId, locationId, closedAt])
+  @@map("report_order_facts")
+}
+
+/// One sent line of an order, net of its voids and discounts (ADR 0081).
+model ReportLineFact {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  locationId   String       @map("location_id") @db.Uuid
+  orderId      String       @map("order_id") @db.Uuid
+  lineId       String       @map("line_id") @db.Uuid
+  productId    String       @map("product_id") @db.Uuid
+  quantity     Int
+  /// Quantity × unit price − discounts, gross.
+  gross        Decimal      @db.Decimal(12, 2)
+  sentAt       DateTime     @map("sent_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location     Location     @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, lineId])
+  @@index([tenantId, orderId])
+  @@index([tenantId, locationId, sentAt])
+  @@map("report_line_facts")
+}
+
+/// One booking (ADR 0081): never guest data or notes.
+model ReportReservationFact {
+  id            String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String            @map("tenant_id") @db.Uuid
+  locationId    String            @map("location_id") @db.Uuid
+  reservationId String            @map("reservation_id") @db.Uuid
+  startsAt      DateTime          @map("starts_at") @db.Timestamptz(6)
+  status        ReservationStatus
+  source        ReservationSource
+  partySize     Int               @map("party_size")
+  seatedAt      DateTime?         @map("seated_at") @db.Timestamptz(6)
+  finishedAt    DateTime?         @map("finished_at") @db.Timestamptz(6)
+  organization  Organization      @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location      Location          @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, reservationId])
+  @@index([tenantId, locationId, startsAt])
+  @@map("report_reservation_facts")
+}
+
+/// The daily report of one organization and business day (ADR 0083): the row says it was sent.
+model ReportDailyMessage {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  day          DateTime     @db.Date
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, day])
+  @@map("report_daily_messages")
 }

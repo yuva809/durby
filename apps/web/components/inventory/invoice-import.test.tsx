@@ -166,7 +166,7 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
     await userEvent.upload(await screen.findByTestId('invoice-file'), pdfFile());
     const lines = await screen.findAllByTestId('invoice-line');
     expect(lines).toHaveLength(2);
-    expect(within(lines[0]!).getByTestId<HTMLSelectElement>('invoice-line-item').value).toBe(
+    expect(within(lines[0]!).getByTestId('invoice-line-item').getAttribute('data-value')).toBe(
       CATFISH.id,
     );
     expect(within(lines[1]!).getByTestId('invoice-line-new')).toBeTruthy();
@@ -193,6 +193,18 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
       '5',
     );
     await userEvent.type(within(lines[1]!).getByTestId('invoice-line-brand'), 'OD');
+    // The new item's name is the description until edited; an empty name stops the import.
+    const name = within(lines[1]!).getByTestId<HTMLInputElement>('invoice-line-new-name');
+    // Without the pack size, which is in its own fields; the line shows the name the same way.
+    expect(name.value).toBe('OD Yellow Croakers WG 500-1000g IPB -SR');
+    expect(within(lines[1]!).getByTestId('invoice-line-name').textContent).toBe(
+      'OD Yellow Croakers WG 500-1000g IPB -SR',
+    );
+    await userEvent.clear(name);
+    expect(within(lines[1]!).getByTestId('invoice-line-problem').textContent).toBe(
+      'Give the new item a name.',
+    );
+    await userEvent.type(name, 'Yellow Croaker 2kg');
     await userEvent.selectOptions(
       within(lines[0]!).getByTestId('invoice-line-invoiced-in'),
       CARTON.id,
@@ -230,7 +242,7 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
             code: '1971-002',
             description: 'OD Yellow Croakers WG 500-1000g IPB 5 x 2kg -SR',
             newItem: {
-              name: 'OD Yellow Croakers WG 500-1000g IPB 5 x 2kg -SR',
+              name: 'Yellow Croaker 2kg',
               sku: '1971-002',
               unit: 'pc',
               categoryId: FISH.id,
@@ -286,6 +298,38 @@ describe('/inventory/invoice (ADR 0049, 0054)', () => {
     expect(await screen.findByTestId('invoice-line-new')).toBeTruthy();
     expect(screen.queryByTestId('invoice-line-problem')).toBeNull();
     expect(screen.getByTestId('invoice-submit')).toHaveProperty('disabled', false);
+  });
+
+  it('finds the product of a line by typing part of its name or SKU', async () => {
+    signedIn();
+    api();
+    render(<InvoiceImportPage />);
+    await userEvent.upload(await screen.findByTestId('invoice-file'), pdfFile());
+    const lines = await screen.findAllByTestId('invoice-line');
+    const picker = within(lines[1]!).getByTestId('invoice-line-item');
+    expect(picker.getAttribute('data-value')).not.toBe(CATFISH.id);
+
+    await userEvent.click(picker);
+    const panel = await screen.findByTestId('invoice-line-item-panel');
+    // "New item" first, then the catalogue.
+    expect(within(panel).getByTestId('invoice-line-item-new')).toBeTruthy();
+    const search = within(panel).getByTestId('invoice-line-item-search');
+    await userEvent.type(search, 'zzz');
+    expect(within(panel).queryAllByTestId('invoice-line-item-option')).toHaveLength(0);
+    expect(panel.textContent).toContain('No product matches');
+    // Part of the SKU finds it; Enter picks the first match.
+    await userEvent.clear(search);
+    await userEvent.type(search, '1103');
+    expect(
+      within(panel)
+        .getAllByTestId('invoice-line-item-option')
+        .map((o) => o.textContent),
+    ).toEqual(['Catfish 4kg · 1103-002']);
+    await userEvent.keyboard('{Enter}');
+    expect(screen.queryByTestId('invoice-line-item-panel')).toBeNull();
+    expect(within(lines[1]!).getByTestId('invoice-line-item').getAttribute('data-value')).toBe(
+      CATFISH.id,
+    );
   });
 
   it('counts packed lines as invoiced or by the piece, and skips transport (ADR 0058)', async () => {

@@ -27,6 +27,7 @@ import Decimal from 'decimal.js';
 import { billedByLine, remainingOf, unbilledOf } from './billing';
 import { activeDiscounts } from './discounts.service';
 import { orderTotals } from './order-totals';
+import { currentOrderByTicket } from './ticket-placements';
 import { posErrors } from './pos-errors';
 
 /** Prisma returns `numeric` columns as Decimal objects; only their exact text is used here. */
@@ -87,12 +88,13 @@ export class BillsService {
       for (const orderId of orderIds) {
         if ((await lockOrder(tx, orderId)) !== 'open') throw posErrors.orderClosed();
       }
-      const [lines, billedItems] = await Promise.all([
+      const byTicket = await currentOrderByTicket(tx, orderIds);
+      const [rawLines, billedItems] = await Promise.all([
         tx.posOrderLine.findMany({
-          where: { orderId: { in: orderIds } },
+          where: { ticketId: { in: [...byTicket.keys()] } },
           select: {
             id: true,
-            orderId: true,
+            ticketId: true,
             productName: true,
             unitPrice: true,
             taxRate: true,
@@ -106,6 +108,8 @@ export class BillsService {
           select: { orderLineId: true, quantity: true },
         }),
       ]);
+      // A line bills under the order its ticket is in now (ADR 0069).
+      const lines = rawLines.map((l) => ({ ...l, orderId: byTicket.get(l.ticketId) ?? '' }));
       const unbilled = unbilledOf(remainingOf(lines), billedByLine(billedItems));
       const sent = new Map(lines.filter((l) => l.quantity > 0).map((l) => [l.id, l]));
       const picks: { line: (typeof lines)[number]; quantity: number }[] = [];

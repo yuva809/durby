@@ -8,6 +8,7 @@ import type { Result } from '../lib/api-call';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Label } from './ui/label';
+import { cn } from '../lib/utils';
 import { ConfirmAction } from './users/common';
 
 /** A label, its control and the control's problem text (`role="alert"`). */
@@ -23,7 +24,8 @@ export function Field({
   children: ReactNode;
 }) {
   return (
-    <div className="grid gap-1.5">
+    // min-w-0: a field shrinks to its row instead of pushing the dialog wider.
+    <div className="grid min-w-0 gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children}
       {problem && (
@@ -126,7 +128,8 @@ export function FormDialog({
       <DialogContent
         closeLabel={t('platform.common.close')}
         aria-describedby={undefined}
-        className={wide ? 'sm:max-w-xl' : undefined}
+        // Never a sideways scrollbar: fields fit the dialog's width.
+        className={cn('overflow-x-hidden', wide && 'sm:max-w-xl')}
       >
         <DialogTitle>{title}</DialogTitle>
         <form className="flex flex-col gap-4" onSubmit={(e) => void onSubmit(e)} noValidate>

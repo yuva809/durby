@@ -58,6 +58,11 @@ describe('settings registry', () => {
       'inventory.allowNegativeStock',
       'team.adminsManageSignIn',
       'orders.requestsNeedApproval',
+      'orders.branchStores',
+      'orders.showSalesOrders',
+      'reports.dayStartsAt',
+      'reports.dailyReportAt',
+      'startPage',
     ]);
   });
 

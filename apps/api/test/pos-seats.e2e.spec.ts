@@ -6,6 +6,7 @@ import {
   productCategorySchema,
   productSchema,
   sendTicketResponseSchema,
+  transferOrderResponseSchema,
   type SystemRole,
 } from '@durby/shared';
 import request from 'supertest';
@@ -165,5 +166,76 @@ describe('pos seat numbers', () => {
     );
     expect(after.bills).toHaveLength(1);
     expect(after.bills[0]!.checks.map((c) => c.gross)).toEqual(['13.80']);
+  });
+
+  it('keeps the seat on both lines of a transfer, and on merged lines (ADR 0070)', async () => {
+    const r = await setup();
+    const table = async (name: string) =>
+      diningTableSchema.parse(
+        (
+          await post(r.owner, '/pos/tables', {
+            locationId: r.org.locations[0],
+            name,
+            seats: 4,
+          }).expect(201)
+        ).body,
+      ).id;
+    const t2 = await table('T2');
+    const sent = sendTicketResponseSchema.parse(
+      (
+        await post(r.owner, `/pos/tables/${r.table}/tickets`, {
+          lines: [
+            { productId: r.soup, quantity: 2, seat: 4 },
+            { productId: r.cola, quantity: 1 },
+          ],
+        }).expect(201)
+      ).body,
+    );
+    const lines = sent.order.tickets.flatMap((t) => t.lines);
+    const seated = lines.find((l) => l.seat === 4)!;
+    const unseated = lines.find((l) => l.seat === null)!;
+    const moved = transferOrderResponseSchema.parse(
+      (
+        await post(r.owner, `/pos/orders/${sent.order.id}/transfer`, {
+          tableId: t2,
+          lines: [
+            { lineId: seated.id, quantity: 1 },
+            { lineId: unseated.id, quantity: 1 },
+          ],
+        }).expect(201)
+      ).body,
+    );
+    const seatsOf = (order: {
+      tickets: { lines: { quantity: number; seat: number | null }[] }[];
+    }) =>
+      order.tickets
+        .flatMap((t) => t.lines)
+        .map((l) => [l.quantity, l.seat])
+        .sort((a, b) => Number(a[0]) - Number(b[0]) || Number(a[1]) - Number(b[1]));
+    expect(seatsOf(moved.target)).toEqual([
+      [1, null],
+      [1, 4],
+    ]);
+    expect(seatsOf(moved.source)).toEqual([
+      [-1, null],
+      [-1, 4],
+      [1, null],
+      [2, 4],
+    ]);
+    // Merged back: the lines keep their seats, and the seat can be billed.
+    await post(r.owner, `/pos/orders/${moved.target.id}/merge`, { orderId: sent.order.id }).expect(
+      201,
+    );
+    const merged = orderSchema.parse(
+      (await get(r.owner, `/pos/orders/${sent.order.id}`).expect(200)).body,
+    );
+    const open = merged.tickets
+      .flatMap((t) => t.lines)
+      .filter((l) => l.remaining > 0 && l.seat === 4);
+    expect(open.map((l) => l.remaining)).toEqual([1, 1]);
+    await post(r.owner, '/pos/bills', {
+      orderIds: [sent.order.id],
+      items: open.map((l) => ({ orderLineId: l.id, quantity: l.remaining })),
+    }).expect(201);
   });
 });

@@ -21,16 +21,16 @@ describe('auth schemas', () => {
     ).toBe(false);
   });
 
-  it('applies the password policy (12-128) on reset and requires a well-formed token', () => {
+  it('applies the password policy (8-128) on reset and requires a well-formed token', () => {
     const token = 'A'.repeat(43);
-    expect(resetPasswordRequestSchema.safeParse({ token, password: 'x'.repeat(11) }).success).toBe(
+    expect(resetPasswordRequestSchema.safeParse({ token, password: 'x'.repeat(7) }).success).toBe(
       false,
     );
-    expect(resetPasswordRequestSchema.safeParse({ token, password: 'x'.repeat(12) }).success).toBe(
+    expect(resetPasswordRequestSchema.safeParse({ token, password: 'x'.repeat(8) }).success).toBe(
       true,
     );
     expect(
-      resetPasswordRequestSchema.safeParse({ token: 'short', password: 'x'.repeat(12) }).success,
+      resetPasswordRequestSchema.safeParse({ token: 'short', password: 'x'.repeat(8) }).success,
     ).toBe(false);
   });
 });

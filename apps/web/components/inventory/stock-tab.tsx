@@ -14,10 +14,10 @@ import { Card } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Select } from '../ui/select';
 import { Loaded } from '../users/common';
 import { ExpiryDate } from './expiry-date';
 import { type InventoryData, warehouseLabel } from './inventory-page';
+import { LocationFilter, stockQueryOf } from './location-filter';
 import { useSeesPrices } from './use-sees-prices';
 
 /**
@@ -31,11 +31,11 @@ export function StockTab({ data }: { data: InventoryData }) {
   const money = useMoney();
   const { store } = useAuth();
   const active = data.warehouses.filter((w) => w.archivedAt === null);
-  const [warehouseId, setWarehouseId] = useState('');
+  const [filter, setFilter] = useState('');
   const [query, setQuery] = useState('');
   const [lowOnly, setLowOnly] = useState(false);
-  const [stock, reload] = useResource(`stock:${warehouseId}`, () =>
-    loadStock(store, warehouseId ? { warehouseId } : {}),
+  const [stock, reload] = useResource(`stock:${filter}`, () =>
+    loadStock(store, stockQueryOf(filter)),
   );
   const names = new Map(data.warehouses.map((w) => [w.id, warehouseLabel(data, w)]));
 
@@ -47,20 +47,15 @@ export function StockTab({ data }: { data: InventoryData }) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end gap-4">
         <div className="grid min-w-56 gap-1.5">
-          <Label htmlFor={`${id}-warehouse`}>{t('inventory.fields.warehouse')}</Label>
-          <Select
+          <Label htmlFor={`${id}-warehouse`}>{t('inventory.page.filterLocation')}</Label>
+          <LocationFilter
             id={`${id}-warehouse`}
-            value={warehouseId}
-            onChange={(e) => setWarehouseId(e.target.value)}
-            data-testid="stock-warehouse"
-          >
-            <option value="">{t('inventory.page.allWarehouses')}</option>
-            {active.map((w) => (
-              <option key={w.id} value={w.id}>
-                {names.get(w.id)}
-              </option>
-            ))}
-          </Select>
+            value={filter}
+            data={data}
+            onChange={setFilter}
+            testId="stock-warehouse"
+            className="min-w-56"
+          />
         </div>
         <div className="relative min-w-56 flex-1">
           <Search
@@ -105,7 +100,7 @@ export function StockTab({ data }: { data: InventoryData }) {
                   <thead className="hidden bg-muted text-left text-muted-foreground md:table-header-group">
                     <tr>
                       <th className="px-4 py-2 font-medium">{t('inventory.fields.item')}</th>
-                      {!warehouseId && (
+                      {!filter.startsWith('w:') && (
                         <th className="px-4 py-2 font-medium">{t('inventory.fields.warehouse')}</th>
                       )}
                       <th className="px-4 py-2 text-right font-medium">
@@ -145,7 +140,7 @@ export function StockTab({ data }: { data: InventoryData }) {
                             )}
                           </span>
                         </td>
-                        {!warehouseId && (
+                        {!filter.startsWith('w:') && (
                           <td className="w-full text-muted-foreground md:w-auto md:px-4 md:py-2">
                             {names.get(l.warehouseId)}
                           </td>

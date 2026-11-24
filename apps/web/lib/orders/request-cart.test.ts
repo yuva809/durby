@@ -9,6 +9,7 @@ import {
   canAddMore,
   cartLines,
   cartReady,
+  cartUnits,
   categoriesOf,
   decrement,
   increment,
@@ -89,14 +90,24 @@ describe('request cart (ADR 0053)', () => {
     expect(increment({ [id(4)]: '2.5' }, id(4), '3.000')).toEqual({ [id(4)]: '3' });
     expect(increment({}, id(1), '0.000')).toEqual({});
     expect(increment({}, id(1), '-2.000')).toEqual({});
-    // Typed beyond it: not sent, and named.
+    // Typed beyond it: still sent, and named.
     const typed = setQuantity({}, id(4), '4');
     expect(withinStock('4', '3.000')).toBe(false);
     expect(withinStock('3', '3.000')).toBe(true);
-    expect(cartReady(cartLines(typed, ITEMS))).toBe(false);
+    expect(cartReady(cartLines(typed, ITEMS))).toBe(true);
     expect(beyondStock(cartLines(typed, ITEMS)).map((l) => l.item.itemName)).toEqual(['Tape']);
     expect(availableText('-1.000')).toBe('0');
     expect(availableText('2.500')).toBe('2.5');
+  });
+
+  it('totals the cart in what is ordered: boxes by the box, else as kept', () => {
+    // Catfish 24 pieces by the box (12 a box) is 2; Tape 1.5 as kept.
+    const lines = cartLines({ [id(2)]: '24', [id(4)]: '1.5' }, [
+      { ...ITEMS[1]!, unit: 'pc', packCount: 12 },
+      ITEMS[3]!,
+    ]);
+    expect(cartUnits(lines, {})).toBe('3.5');
+    expect(cartUnits(lines, { [id(2)]: 'piece' })).toBe('25.5');
   });
 
   it('drops lines whose item is no longer offered', () => {

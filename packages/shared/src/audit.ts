@@ -195,6 +195,11 @@ export const AUDIT_ACTIONS = {
     entityType: 'outbox_event',
     label: 'platform.audit.actions.outboxEventRetried',
   },
+  /** The reports read model recomputed from the till and the bookings (ADR 0081, actor `cli.reports`). */
+  'reports.facts.rebuilt': {
+    entityType: 'organization',
+    label: 'reports.audit.actions.factsRebuilt',
+  },
   'catalog.product_category.created': {
     entityType: 'product_category',
     label: 'catalog.audit.actions.productCategoryCreated',
@@ -241,6 +246,9 @@ export const AUDIT_ACTIONS = {
   },
   'pos.order.opened': { entityType: 'pos_order', label: 'pos.audit.actions.orderOpened' },
   'pos.order.closed': { entityType: 'pos_order', label: 'pos.audit.actions.orderClosed' },
+  'pos.order.moved': { entityType: 'pos_order', label: 'pos.audit.actions.orderMoved' },
+  'pos.order.merged': { entityType: 'pos_order', label: 'pos.audit.actions.orderMerged' },
+  'pos.order.transferred': { entityType: 'pos_order', label: 'pos.audit.actions.orderTransferred' },
   'pos.order.updated': { entityType: 'pos_order', label: 'pos.audit.actions.orderUpdated' },
   'pos.bill.created': { entityType: 'pos_bill', label: 'pos.audit.actions.billCreated' },
   'pos.bill.cancelled': { entityType: 'pos_bill', label: 'pos.audit.actions.billCancelled' },
@@ -275,6 +283,15 @@ export const AUDIT_ACTIONS = {
   'inventory.stock_item.updated': {
     entityType: 'stock_item',
     label: 'inventory.audit.actions.stockItemUpdated',
+  },
+  'inventory.stock_item.deleted': {
+    entityType: 'stock_item',
+    label: 'inventory.audit.actions.stockItemDeleted',
+  },
+  /** An item deleted with its whole stock history (ADR 0079). */
+  'inventory.stock_item.purged': {
+    entityType: 'stock_item',
+    label: 'inventory.audit.actions.stockItemPurged',
   },
   /** A product's recipe was replaced (docs/modules/inventory.md → Recipes). */
   'inventory.recipe.updated': {
@@ -341,6 +358,10 @@ export const AUDIT_ACTIONS = {
   'inventory.vendor_invoice.updated': {
     entityType: 'vendor_invoice',
     label: 'inventory.audit.actions.vendorInvoiceUpdated',
+  },
+  'inventory.vendor_invoice.line_corrected': {
+    entityType: 'vendor_invoice',
+    label: 'inventory.audit.actions.vendorInvoiceLineCorrected',
   },
   'inventory.vendor_invoice.approved': {
     entityType: 'vendor_invoice',
@@ -460,6 +481,7 @@ export const AUDIT_SYSTEM_ACTORS = {
   'cli.create_admin': { label: 'platform.audit.actors.cliCreateAdmin' },
   'cli.seed_dev': { label: 'platform.audit.actors.cliSeedDev' },
   'cli.entitlements': { label: 'platform.audit.actors.cliEntitlements' },
+  'cli.reports': { label: 'platform.audit.actors.cliReports' },
   'cli.outbox': { label: 'platform.audit.actors.cliOutbox' },
   /** Durby staff in the admin portal (ADR 0017); the platform audit log names the person. */
   'staff.admin_portal': { label: 'platform.audit.actors.adminPortal' },

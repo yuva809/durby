@@ -268,12 +268,50 @@ describe('category dialog (ADR 0048)', () => {
     expect(screen.getByTestId('category-parent')).toHaveProperty('disabled', true);
   });
 
+  it("adjusts a product's stock from its row: the count there now, the difference booked", async () => {
+    signedIn();
+    const writes = api();
+    render(<InventoryPage />, { wrapper: operations });
+    const tiles = await screen.findAllByTestId('category-tile');
+    await userEvent.click(tiles[1]!);
+    const rows = await screen.findAllByTestId('overview-row');
+    const yam = rows.find((r) => r.dataset.name === 'Yam flour')!;
+    // Owners may adjust and edit.
+    expect(within(yam).getByTestId('item-edit')).toBeTruthy();
+    await userEvent.click(within(yam).getByTestId('item-adjust'));
+    const dialog = await screen.findByRole('dialog');
+    // Only the stock: no item fields.
+    expect(within(dialog).queryByLabelText('Name')).toBeNull();
+    const quantity = within(dialog).getByTestId<HTMLInputElement>('item-add-quantity');
+    await waitFor(() => expect(quantity.value).toBe('4'));
+    // Nothing changed: said, nothing sent.
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    expect(
+      within(dialog).getByText('Type the counted quantity; it is the same as on hand now.'),
+    ).toBeTruthy();
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, '6');
+    await userEvent.selectOptions(within(dialog).getByTestId('item-add-reason'), 'count');
+    await userEvent.click(within(dialog).getByTestId('form-save'));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]).toEqual({
+      method: 'POST',
+      path: '/api/v1/inventory/adjustments',
+      body: {
+        warehouseId: WAREHOUSE.id,
+        reason: 'count',
+        lines: [{ itemId: YAM.id, quantity: '2' }],
+      },
+    });
+  });
+
   it('offers the request cart to branches, not to who approves requests', async () => {
     signedIn(['inventory', 'catalog', 'orders'], 'branch');
     api();
     render(<InventoryPage />, { wrapper: operations });
     const request = await screen.findByTestId('inventory-request-stock');
-    expect(request.getAttribute('href')).toBe('/requests/new?cart=1');
+    // The cart opens here, in a sheet, not on another page.
+    expect(request.tagName).toBe('BUTTON');
     expect(request.textContent).toBe('Request cart');
     cleanup();
 
@@ -401,22 +439,42 @@ describe('category dialog (ADR 0048)', () => {
     expect(within(rows[0]!).getByTestId('branch-shop-pack').textContent).toBe('12 × 300 g');
     expect(within(rows[0]!).getByTestId('branch-shop-available').textContent).toBe('30');
 
-    // By the box (12 a box): two boxes are 24 pieces; a third would be more than the 30 there.
+    // "Request" puts one box (12 a box) in the cart; the header's Request Cart counts it at once.
+    expect(screen.queryByTestId('request-cart-badge')).toBeNull();
     await userEvent.click(within(rows[0]!).getByTestId('request-add'));
+    expect(screen.getByTestId('request-cart-badge').textContent).toBe('1');
+    // At one box the button takes it out (a bin); above it, one less.
+    expect(within(rows[0]!).getByTestId('request-less').getAttribute('aria-label')).toBe(
+      'Remove Yam flour',
+    );
     await userEvent.click(within(rows[0]!).getByTestId('request-more'));
     expect(within(rows[0]!).getByTestId<HTMLInputElement>('request-quantity').value).toBe('2');
     expect(within(rows[0]!).getByTestId('request-pieces').textContent).toBe('= 24 pc');
-    expect(within(rows[0]!).getByTestId('request-more')).toHaveProperty('disabled', true);
+    // More than the 30 there may still be asked for: it follows once it is in.
+    expect(within(rows[0]!).getByTestId('request-more')).toHaveProperty('disabled', false);
     // By the piece the same 24, one at a time.
-    await userEvent.click(within(rows[0]!).getByTestId('request-unit-piece'));
+    await userEvent.selectOptions(within(rows[0]!).getByTestId('request-unit'), 'piece');
     expect(within(rows[0]!).getByTestId<HTMLInputElement>('request-quantity').value).toBe('24');
     await userEvent.click(within(rows[0]!).getByTestId('request-more'));
-    // The request cart's own cart, ready to send.
-    expect(screen.getByTestId('branch-shop-count').textContent).toContain('1 items');
-    expect(screen.getByTestId('branch-shop-open').getAttribute('href')).toBe(
-      '/requests/new?cart=1',
-    );
+    await userEvent.click(within(rows[1]!).getByTestId('request-add'));
+    expect(screen.getByTestId('request-cart-badge').textContent).toBe('2');
     const stored = Object.entries(localStorage).find(([k]) => k.startsWith('request-cart:'));
-    expect(JSON.parse(stored![1] as string)).toEqual({ [YAM.id]: '25' });
+    expect(JSON.parse(stored![1] as string)).toEqual({ [YAM.id]: '25', [BASMATI.id]: '1' });
+
+    // The cart opens beside the page, not on another one.
+    await userEvent.click(screen.getByTestId('inventory-request-stock'));
+    const cart = await screen.findByTestId('request-cart');
+    expect(within(cart).getAllByTestId('request-cart-line')).toHaveLength(2);
+    expect(
+      within(cart)
+        .getAllByTestId('request-cart-available')
+        .map((a) => a.textContent),
+    ).toEqual(['30 pc available at the warehouse', '5 pc available at the warehouse']);
+    expect(within(cart).getByTestId('request-cart-count').textContent).toBe('2 items');
+    expect(within(cart).getByTestId('request-cart-units').textContent).toBe('26 units');
+    expect(within(cart).getByTestId('request-cart-history').getAttribute('href')).toBe('/requests');
+    await userEvent.click(within(cart).getByTestId('request-clear'));
+    expect(within(cart).getByTestId('request-cart-empty')).toBeTruthy();
+    expect(screen.queryByTestId('request-cart-badge')).toBeNull();
   });
 });

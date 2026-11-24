@@ -74,7 +74,7 @@ describe('visibleNav', () => {
     ).toEqual(['open', 'both']);
   });
 
-  // Inventory, Billing, POS and Reports aren't built yet: hidden whatever the plan.
+  // Billing and POS aren't built yet: hidden whatever the plan.
   it('never shows planned modules', () => {
     const everything = {
       activeFeatures: Object.keys(FEATURES),
@@ -91,15 +91,25 @@ describe('visibleNav', () => {
       'host',
       'reservations',
       'tables',
+      'reports',
       'staff',
       'settings',
       'audit',
     ]);
-    expect(NAV_ITEMS.filter((i) => i.planned).map((i) => i.id)).toEqual([
-      'billing',
-      'pos',
-      'reports',
-    ]);
+    expect(NAV_ITEMS.filter((i) => i.planned).map((i) => i.id)).toEqual(['billing', 'pos']);
+  });
+
+  it('shows Reports only with the till or reservations, and the key for it', () => {
+    const shown = (activeFeatures: string[], activePermissions: string[]) =>
+      ids(visibleNav(NAV_ITEMS, { activeFeatures, activePermissions })).includes('reports');
+    const keys = ['reports.sales.read', 'reports.reservations.read'];
+    // A distributor: reports in the plan, no till.
+    expect(shown(['reports', 'inventory', 'orders'], keys)).toBe(false);
+    expect(shown(['reports', 'pos'], keys)).toBe(true);
+    expect(shown(['reports', 'pos'], [])).toBe(false);
+    expect(shown(['reports', 'pos'], ['reports.reservations.read'])).toBe(false);
+    expect(shown(['reports', 'reservations'], ['reports.reservations.read'])).toBe(true);
+    expect(shown(['pos'], keys)).toBe(false);
   });
 
   it('shows Settings while any of its tabs is visible', () => {
@@ -187,5 +197,39 @@ describe('activeNavItem', () => {
     ['/unknown', undefined],
   ])('%s → %s', (path, id) => {
     expect(activeNavItem(NAV_ITEMS, path)?.id).toBe(id);
+  });
+});
+
+describe('menu switches (ADR 0073 settings)', () => {
+  it('hides a menu item while the setting it names is off for the organization', () => {
+    const item = {
+      id: 'orders',
+      href: '/orders',
+      label: 'platform.nav.salesOrders',
+      icon: () => null,
+      group: 'operations',
+      menuSetting: 'orders.showSalesOrders',
+    } as unknown as NavItem;
+    const base = { activeFeatures: [], activePermissions: [] };
+    expect(visibleNav([item], base)).toHaveLength(1);
+    expect(visibleNav([item], { ...base, offSettings: [] })).toHaveLength(1);
+    expect(visibleNav([item], { ...base, offSettings: ['orders.showSalesOrders'] })).toHaveLength(
+      0,
+    );
+  });
+});
+
+describe('start page (ADR 0075)', () => {
+  it('hides the Overview item when the start page is Inventory', () => {
+    const home = {
+      id: 'home',
+      href: '/',
+      label: 'platform.nav.home',
+      icon: () => null,
+      group: 'main',
+    } as unknown as NavItem;
+    const base = { activeFeatures: [], activePermissions: [] };
+    expect(visibleNav([home], base)).toHaveLength(1);
+    expect(visibleNav([home], { ...base, hideHome: true })).toHaveLength(0);
   });
 });

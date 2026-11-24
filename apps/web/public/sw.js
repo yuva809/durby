@@ -1,6 +1,6 @@
-// Push service worker (docs/platform/notifications.md, ADR 0047). Only shows push messages and opens their page; no
-// caching, no fetch handling. The message is { title, url } with url a path on this site.
-/* global self, URL */
+// Service worker: shows push messages and opens their page (docs/platform/notifications.md, ADR 0047, 0083), and keeps
+// the app's hashed static files on the device (ADR 0072). The message is { title, body?, url } with url a path on this site.
+/* global self, URL, caches, fetch */
 'use strict';
 
 // Static files only (ADR 0072): hashed Next.js assets. Pages, API answers and sign-in state are never stored.
@@ -25,6 +25,7 @@ self.addEventListener('push', (event) => {
   if (!message.title) return;
   event.waitUntil(
     self.registration.showNotification(message.title, {
+      ...(typeof message.body === 'string' ? { body: message.body } : {}),
       data: { url: message.url },
       // One per page: a newer update about the same thing replaces the older one.
       tag: message.url,
@@ -60,7 +61,9 @@ self.addEventListener('activate', (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((k) => k.startsWith('durby-static-') && k !== STATIC_CACHE).map((k) => caches.delete(k)),
+          keys
+            .filter((k) => k.startsWith('durby-static-') && k !== STATIC_CACHE)
+            .map((k) => caches.delete(k)),
         ),
       ),
   );

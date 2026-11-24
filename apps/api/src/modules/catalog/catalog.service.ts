@@ -191,6 +191,20 @@ export class CatalogService {
     });
   }
 
+  /**
+   * For other modules (the stock items import, ADR 0048): the active categories by id, name and parent, to match
+   * names against. Read with the caller's transaction when it has one.
+   */
+  async activeCategories(
+    tx?: TenantTransactionClient,
+  ): Promise<{ id: string; name: string; parentId: string | null }[]> {
+    const where = { archivedAt: null };
+    const select = { id: true, name: true, parentId: true };
+    const orderBy = [{ name: 'asc' as const }, { id: 'asc' as const }];
+    if (tx) return await tx.productCategory.findMany({ where, select, orderBy });
+    return await this.db.productCategory.findMany({ where, select, orderBy });
+  }
+
   /** For other modules (inventory items, ADR 0048): the category exists and is not archived. */
   async assertActiveCategory(id: string): Promise<void> {
     const row = await this.db.productCategory.findUnique({

@@ -35,3 +35,10 @@ traceable (CLAUDE.md rule 7). Recipes and sales consumption (Step 2) will write 
 
 - Stock value is exact to the ledger; reports (Step 4) read movement values, never recompute history.
 - Switching to FIFO later is data-bound (ADR 0010): only allowed before stock is recorded, as the setting says.
+
+## Update 2026-11-23: counted units relabel
+
+An item with movements may change its unit between counted units (`pc`, `box`, `bucket`, `bag`, `packet`). Nothing
+is converted: the quantities keep their numbers under the new unit (the ledger is not rewritten), and the person sets
+the real count in the same save, booked as a correction. Weight and volume units stay locked once moved, since
+recipes, bills of materials and purchase units are expressed in them.

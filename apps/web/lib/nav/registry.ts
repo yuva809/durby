@@ -20,6 +20,7 @@ import {
   Wine,
 } from 'lucide-react';
 import { INVENTORY_PAGES } from './inventory-pages';
+import { REPORT_TABS } from './report-tabs';
 import { SETTINGS_TABS } from './settings-tabs';
 
 /** `operations`, `administration` and `tools`: the groups of the operations layout (ADR 0044). */
@@ -35,6 +36,8 @@ export interface NavItem {
   feature?: FeatureKey;
   /** Shown only while the user holds this permission in the active organization. */
   permission?: PermissionKey;
+  /** Hidden while this organization setting is off (a boolean key, e.g. orders.showSalesOrders). */
+  menuSetting?: string;
   /**
    * A module that isn't built yet: its route shows a placeholder, the menu hides it. Remove the flag
    * when the module ships.
@@ -176,7 +179,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: ChartLine,
     group: 'modules',
     feature: 'reports',
-    planned: true,
+    // Shown while one of its tabs is: each needs its module and its key (docs/modules/reports.md).
+    children: REPORT_TABS,
   },
   {
     // Its own item, not a Settings tab (docs/platform/rbac.md → Manage Staff).
@@ -210,6 +214,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
 export interface NavAccess {
   activeFeatures: readonly string[];
   activePermissions: readonly string[];
+  /** The boolean settings that are off for the active organization (their keys). */
+  offSettings?: readonly string[];
+  /** The start page is Inventory: the Overview item is not shown (ADR 0075). */
+  hideHome?: boolean;
 }
 
 /**
@@ -222,6 +230,8 @@ export function visibleNav(items: readonly NavItem[], access: NavAccess): NavIte
       !item.planned &&
       (item.feature === undefined || access.activeFeatures.includes(item.feature)) &&
       (item.permission === undefined || access.activePermissions.includes(item.permission)) &&
+      (item.menuSetting === undefined || !(access.offSettings ?? []).includes(item.menuSetting)) &&
+      !(item.id === 'home' && access.hideHome === true) &&
       (item.children === undefined || visibleNav(item.children, access).length > 0),
   );
 }

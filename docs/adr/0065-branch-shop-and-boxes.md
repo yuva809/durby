@@ -24,3 +24,16 @@ branch orders some by the box and some by the piece.
 ## Consequences
 
 - Items counted in boxes (unit `box`) are ordered in boxes only; the choice is for items counted in pieces.
+
+## Update 2026-11-23: one cart on Inventory, and asking beyond stock
+
+- The category list and the header's **Request Cart** share one cart on the Inventory page, so the button's count
+  follows every click. The cart opens beside the page (a drawer), not on another page: each line with what the
+  warehouse has, remove / − / quantity / + and its unit, a note, the item and unit totals, Clear and Send Request. The
+  person stays on Inventory; "View my stock requests" leads to Order History. The "Open cart" bar is gone.
+- A line's button reads **Request**; at one (box or piece) the − becomes a bin.
+- A branch may ask for more than the warehouse has, also for items it has none of: the line says "None at the
+  warehouse right now" or "Only 8 pc at the warehouse right now", and the request is still sent. Until 2026-11-24
+  the api refused such a request (`orders.request_above_stock`, removed since). Approving does not check stock;
+  packing does (no more than is there, unless the location allows negative stock). What is not packed is not sent
+  later by itself: the branch asks again.

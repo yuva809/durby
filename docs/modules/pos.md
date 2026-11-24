@@ -404,6 +404,64 @@ Reasons are free text and stay out of snapshots.
   amount, reason); lines show how much is billed; the order's bills list their checks.
 - **Settings → Service:** the discount reasons.
 
+## Step 5: table management (ADR 0069)
+
+Moves and merges of open orders, and transfers of items, run on placement rows: an append-only record of which
+order a ticket belongs to now. Tickets and lines are never rewritten (ADR 0069).
+
+**Status:** step 2 (placements) is built. `pos_ticket_placements` gets its first row from a trigger on every
+ticket insert, and the backfill gives every existing ticket one. Every read of an order's tickets and lines
+(order load, summaries, voids, billing, discounts) resolves the current order through the latest placement
+(`ticket-placements.ts`). No move, merge or transfer exists yet, so nothing changes for users in this step.
+
+**Step 3 (floor timer) is built.** The floor response gives each table `seatedAt` (the open order's `openedAt`) and
+`lastOrderAt` (its newest ticket's time), both null for a free table. The tile shows "Seated {time}" and "Last order
+{time} ago", refreshed by the floor's existing 30 s clock. Display only.
+
+**Step 4 (move order) is built.** `POST /pos/orders/:id/move {tableId}` (`pos.orders.take`) moves an open order to a
+free, non-archived table at its location. Only the order's table changes: no ticket is written, so the kitchen is
+not reprinted. Refused with `pos.table_occupied`, `pos.table_archived`, `pos.order_not_same_location` and
+`pos.order_closed`. Moving to the table it is on changes nothing. Audited as `pos.order.moved` (before and after the
+table). The till's order page has a "Move to table" dialog. Other devices see the change at their next refresh;
+the live-update hint for it is not built yet.
+
+**Step 5 (merge) is built.** `POST /pos/orders/:id/merge {orderId}` (`pos.orders.take`, completion in the
+transaction) merges the open order `:id` (the source) into the open order `orderId` (the target) at the same
+location. Each of the source's tickets gets a placement in the target, so its lines follow it; no kitchen ticket is
+written. The source closes (`pos.order.merged`, and `pos.order.closed` through the outbox to free its table). The
+target keeps its number. Refused with `pos.merge_same_order`, `pos.order_not_same_location`, `pos.order_closed`,
+`pos.line_billed` (the source has billed items) and `pos.discount_active` (the source has a discount, which would stay
+on it). The till's order page has a "Merge into another order" dialog that opens the target table afterwards.
+A merged order then works like any other: a void, bill item or discount of a moved line names the order the line is on now
+(amended 2026-11-24; the keys that refused it were dropped), and the stations, serving from the till and waiting print
+jobs use the ticket's current order (`currentOrdersOf`).
+Open point: ticket numbers are per order, so a merged ticket keeps its old number in the target.
+
+**Step 6 (transfer) is built.** `POST /pos/orders/:id/transfer {tableId, lines: [{lineId, quantity}]}`
+(`pos.orders.take`, completion in the transaction) takes chosen sent items off the order into a new order at a free
+table at its location. The source gets a void ticket for them (negative lines, the same as a void); the new order gets
+a sale ticket of the same products at the price they were sold at, and its own number. Both are normal tickets, so
+the kitchen prints the sale at the new table (a transfer is not a move: the items are made again for the new table).
+Refused with `pos.void_exceeds`, `pos.line_billed`, `pos.discount_active`, `pos.table_occupied`,
+`pos.table_archived`, `pos.order_not_same_location`, `pos.order_closed` and `pos.line_not_found`. Audited as
+`pos.order.transferred` on the new order. The response carries both orders. The till's order page has an "Transfer
+items" dialog that opens the new table afterwards.
+
+- **Placements**: `pos_ticket_placements (ticket_id, order_id, created_by_user_id, created_at)`, append-only, RLS.
+  Every ticket has one row from the moment it is written. An order's tickets and lines are the ones whose latest
+  placement points at it.
+- **Floor timer**: each tile shows `seatedAt` (the order's opening time) and `lastOrderAt` (newest ticket). Display only.
+- **Move** `POST /pos/orders/:id/move {tableId}`: the target is a free, non-archived table at the same location. Only
+  the order's table changes; no ticket, no kitchen print. Audit `pos.order.moved`. Permission `pos.orders.take`.
+- **Merge** `POST /pos/orders/:id/merge {orderId}`: the source's tickets get placements to the target, the source closes
+  with `pos.order.merged`, its table is released through `pos.order.closed`. Both open, same location, no billed lines.
+- **Transfer** `POST /pos/orders/:id/transfer {lines:[{lineId, quantity}], to:{tableId}|{newOrder:true}}`: the
+  portions become a void ticket on the source and a sale ticket on the destination, both with price snapshots. Only
+  unbilled portions. Audit `pos.order.transferred`.
+
+Errors: `pos.table_occupied`, `pos.order_not_same_location` (existing), `pos.line_billed` (existing),
+`pos.transfer_exceeds` (quantity over what is left).
+
 ## Step 6: seat numbers (ADR 0070)
 
 An item sent to the kitchen may name a seat (1–20). The seat is stored on the line, copied to the void of that line
@@ -411,15 +469,16 @@ and to a transfer's sale line, and never changed (a correction is void and resen
 N" is a bill of the unbilled lines whose seat is N. Lines without a seat are billed as before. The order response
 carries `seat` on each line.
 
-Status: built on `feature/order-taking`: the column and check, send, voids, bill-by-seat in the till (cart seat field
-and the split dialog's seat picker). The transfer rule (ADR 0070 decision 4) applies once the table-management branch is
-merged, since transfer is not on this branch yet.
+A merge keeps lines as they are; a transfer copies the seat to both of its lines. In the till: the cart's seat field and
+the split dialog's seat picker.
 
 ## Step 7: handheld waiter app (ADR 0072)
 
-The till is installable on a phone: a web manifest (name and logo from the partner's theme, start at `/service`,
-standalone display) and a service worker that caches only the app's static files. Pages, API responses and sign-in
-state are never cached. Online only: sending an order needs the connection. The push handler (ADR 0047) is unchanged.
+The app is installable on a phone: a web manifest (the partner's name and colors, standalone display; one for everyone,
+ADR 0083) and a service worker that caches only the app's static files. Opened from the home screen, people who take
+orders and have no Overview start at `/service`; a long press on the icon offers Service too. Pages, API responses and
+sign-in state are never cached. Online only: sending an order needs the connection. The push handler (ADR 0047) is
+unchanged.
 
 ## QR menu (ADR 0026)
 

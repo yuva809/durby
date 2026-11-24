@@ -92,7 +92,8 @@ function DeliveryCard({
         <p className="text-sm text-muted-foreground">
           {t('orders.requestsPage.route', {
             from: `${r.fromLocationName} · ${r.fromWarehouseName}`,
-            to: `${r.locationName} · ${r.toWarehouseName}`,
+            // Without a branch store (ADR 0080) just the branch.
+            to: [r.locationName, r.toWarehouseName].filter(Boolean).join(' · '),
           })}
           <br />
           {t('orders.requestsPage.items', { count: String(r.lineCount) })} · {when}

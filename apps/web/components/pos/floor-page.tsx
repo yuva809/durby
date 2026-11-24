@@ -232,6 +232,11 @@ function TableTile({
   const t = useT();
   const money = useMoney();
   const order = table.order;
+  /** "42 min" style text for the time since an instant (ADR 0069 timer). */
+  const since = (iso: string) => {
+    const d = durationLabel(minutesSince(iso, now));
+    return t(d.key, d.values);
+  };
   const bookingLine = badge && (badge.seatedParty !== null || badge.next) && (
     <span className="flex flex-wrap gap-1.5" data-testid="floor-booking">
       {badge.seatedParty !== null && (
@@ -280,14 +285,16 @@ function TableTile({
             <span className="text-xl font-semibold tabular-nums">{money(order.gross)}</span>
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
               <span>{t('pos.floor.items', { count: String(order.itemCount) })}</span>
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1" data-testid="floor-seated">
                 <Clock aria-hidden className="size-3.5" />
-                {(() => {
-                  const d = durationLabel(minutesSince(order.openedAt, now));
-                  return t(d.key, d.values);
-                })()}
+                {t('pos.floor.seated', { time: since(table.seatedAt ?? order.openedAt) })}
               </span>
             </span>
+            {table.lastOrderAt && (
+              <span className="text-xs text-muted-foreground" data-testid="floor-last-order">
+                {t('pos.floor.lastOrder', { time: since(table.lastOrderAt) })}
+              </span>
+            )}
             <span className="text-xs text-muted-foreground">{order.number}</span>
             {order.readyCount > 0 && (
               <span
