@@ -33,3 +33,17 @@ export async function currentOrderByTicket(
 export function ticketIdsOf(byTicket: ReadonlyMap<string, string>, orderId: string): string[] {
   return [...byTicket].filter(([, order]) => order === orderId).map(([ticket]) => ticket);
 }
+
+/** The order each of these tickets belongs to now (ADR 0069); tickets that don't exist here are left out. */
+export async function currentOrdersOf(
+  db: Pick<TenantDb, '$queryRaw'>,
+  ticketIds: readonly string[],
+): Promise<Map<string, string>> {
+  if (ticketIds.length === 0) return new Map();
+  const rows = await db.$queryRaw<{ ticket_id: string; order_id: string }[]>`
+    SELECT DISTINCT ON (ticket_id) ticket_id, order_id
+    FROM pos_ticket_placements
+    WHERE ticket_id = ANY(${ticketIds}::uuid[])
+    ORDER BY ticket_id, seq DESC`;
+  return new Map(rows.map((row) => [row.ticket_id, row.order_id]));
+}

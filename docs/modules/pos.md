@@ -432,6 +432,9 @@ written. The source closes (`pos.order.merged`, and `pos.order.closed` through t
 target keeps its number. Refused with `pos.merge_same_order`, `pos.order_not_same_location`, `pos.order_closed`,
 `pos.line_billed` (the source has billed items) and `pos.discount_active` (the source has a discount, which would stay
 on it). The till's order page has a "Merge into another order" dialog that opens the target table afterwards.
+A merged order then works like any other: a void, bill item or discount of a moved line names the order the line is on now
+(amended 2026-11-24; the keys that refused it were dropped), and the stations, serving from the till and waiting print
+jobs use the ticket's current order (`currentOrdersOf`).
 Open point: ticket numbers are per order, so a merged ticket keeps its old number in the target.
 
 **Step 6 (transfer) is built.** `POST /pos/orders/:id/transfer {tableId, lines: [{lineId, quantity}]}`
