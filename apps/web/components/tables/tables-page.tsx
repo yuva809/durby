@@ -14,6 +14,7 @@ import {
   type TableShape,
 } from '@durby/shared';
 import { Eye, EyeOff, MoreHorizontal, Pencil, Search, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { useId, useRef, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
 import { useT } from '../../app/labels-provider';
@@ -29,6 +30,7 @@ import {
   updateArea,
   updateTable,
 } from '../../lib/pos/api';
+import { loadAreaPlan } from '../../lib/pos/floor-plan-api';
 import { durationLabel, minutesSince } from '../../lib/pos/format';
 import { useNow } from '../../lib/pos/use-now';
 import { useActionKey } from '../../lib/use-action-key';
@@ -37,6 +39,7 @@ import { loadLocations } from '../../lib/users/api';
 import { cn } from '../../lib/utils';
 import { Field, FormDialog } from '../form-dialog';
 import { TableIcon, tableColors } from '../pos/table-icon';
+import { PlanView, TableShapeBox } from './plan/plan-canvas';
 import { QrDialog } from './qr-dialog';
 import { NoLocations } from '../settings/locations-page';
 import { Button } from '../ui/button';
@@ -250,9 +253,23 @@ function LocationTables({ locations, access }: { locations: LocationSummary[]; a
       </div>
 
       <Notice text={moveProblem} tone="error" />
+      {selectedArea?.livePlan ? (
+        <AreaPlan
+          key={selectedArea.id}
+          areaId={selectedArea.id}
+          tables={inService}
+          orders={orders}
+        />
+      ) : null}
       <Loaded resource={tables} reload={reloadTables}>
         {(list) => (
           <FloorGrid
+            // Several rooms can't share one canvas: with published plans, "All" is a plain grid (ADR 0073).
+            arranged={
+              selectedArea
+                ? !selectedArea.livePlan
+                : !(filter.kind === 'all' && areaList.some((a) => a.livePlan))
+            }
             tables={list.filter((x) => {
               if (!showOut && x.archivedAt !== null) return false;
               if (filter.kind === 'none' && x.areaId !== null) return false;
@@ -371,6 +388,11 @@ function AreaTabs({
       {access.canManage && selected && (
         <div className="flex flex-wrap items-center gap-2" data-testid="area-actions">
           <span className="text-sm text-muted-foreground">{selected.name}</span>
+          <Button asChild variant="outline">
+            <Link href={`/tables/plan/${selected.id}`} data-testid="area-plan-link">
+              {t(selected.livePlan ? 'pos.plan.edit' : 'pos.plan.create')}
+            </Link>
+          </Button>
           <AreaDialog locationId={selected.locationId} area={selected} onDone={onDone} />
           <DeleteArea
             area={selected}
@@ -386,8 +408,58 @@ function AreaTabs({
   );
 }
 
+/** The area's published floor plan (ADR 0073) with each table's state; the tables to manage are below it. */
+function AreaPlan({
+  areaId,
+  tables,
+  orders,
+}: {
+  areaId: string;
+  tables: DiningTable[];
+  orders: ReadonlyMap<string, FloorTable['order'] | undefined>;
+}) {
+  const t = useT();
+  const { store } = useAuth();
+  const [plan, reload] = useResource(areaId, () => loadAreaPlan(store, areaId));
+  const here = new Map(tables.filter((x) => x.areaId === areaId).map((x) => [x.id, x]));
+  return (
+    <Loaded resource={plan} reload={reload}>
+      {({ live }) =>
+        live ? (
+          <PlanView
+            layout={live.layout}
+            label={t('pos.plan.canvas')}
+            testId="area-plan"
+            renderTable={(item) => {
+              const table = item.tableId ? here.get(item.tableId) : undefined;
+              if (!table) return null;
+              const open = Boolean(orders.get(table.id));
+              return (
+                <TableShapeBox
+                  shape={table.shape}
+                  color={table.color}
+                  className={open ? 'ring-2 ring-primary' : undefined}
+                >
+                  <span className="text-sm font-semibold">{table.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t('pos.floor.seats', { count: String(table.seats) })}
+                  </span>
+                  <span className="sr-only">
+                    {t(open ? 'pos.tablesPage.status.occupied' : 'pos.tablesPage.status.available')}
+                  </span>
+                </TableShapeBox>
+              );
+            }}
+          />
+        ) : null
+      }
+    </Loaded>
+  );
+}
+
 /** The tables as a floor plan: square tiles with the table drawn in its shape and colour. */
 function FloorGrid({
+  arranged,
   tables,
   emptyArea,
   orders,
@@ -398,6 +470,8 @@ function FloorGrid({
   canManage,
   onMove,
 }: {
+  /** Where each table was dragged to; false: a plain grid. */
+  arranged: boolean;
   tables: DiningTable[];
   emptyArea: boolean;
   orders: ReadonlyMap<string, FloorTable['order'] | undefined>;
@@ -422,7 +496,11 @@ function FloorGrid({
       ref={canvas}
       // Below 1024 px a plain grid in table order: phones and portrait tablets are too narrow for the floor plan (tiles
       // overlapped, fixed-size tiles at percentage positions) and to drag on. From 1024 px the plan, as placed.
-      className="relative grid grid-cols-2 gap-3 rounded-2xl border border-border bg-card/50 p-3 sm:grid-cols-3 md:grid-cols-4 lg:block lg:min-h-[620px] lg:overflow-hidden lg:p-0"
+      data-arranged={arranged}
+      className={cn(
+        'relative grid grid-cols-2 gap-3 rounded-2xl border border-border bg-card/50 p-3 sm:grid-cols-3 md:grid-cols-4',
+        arranged ? 'lg:block lg:min-h-[620px] lg:overflow-hidden lg:p-0' : 'lg:grid-cols-5',
+      )}
       style={{
         backgroundImage: 'radial-gradient(hsl(var(--border)) 1px, transparent 1px)',
         backgroundSize: '24px 24px',
@@ -440,6 +518,7 @@ function FloorGrid({
           canManage={canManage}
           onMove={onMove}
           canvas={canvas}
+          arranged={arranged}
         />
       ))}
     </ul>
@@ -456,6 +535,7 @@ function TableTile({
   canManage,
   onMove,
   canvas,
+  arranged,
 }: {
   table: DiningTable;
   order: FloorTable['order'];
@@ -466,6 +546,7 @@ function TableTile({
   canManage: boolean;
   onMove: (table: DiningTable, floorX: number, floorY: number) => Promise<void>;
   canvas: React.RefObject<HTMLUListElement | null>;
+  arranged: boolean;
 }) {
   const t = useT();
   const { store } = useAuth();
@@ -508,18 +589,26 @@ function TableTile({
       data-name={table.name}
       data-status={status}
       // In the phone grid the plan's inline position doesn't apply (see FloorGrid).
-      className="max-lg:!static max-lg:!w-auto max-lg:!transform-none max-lg:!cursor-auto"
-      style={{
-        position: 'absolute',
-        left: `${table.floorX / 10}%`,
-        top: `${table.floorY / 10}%`,
-        transform: 'translate(-50%, -50%)',
-        width: 148,
-        touchAction: 'none',
-        cursor: canManage ? 'grab' : undefined,
-      }}
+      className={
+        arranged
+          ? 'max-lg:!static max-lg:!w-auto max-lg:!transform-none max-lg:!cursor-auto'
+          : undefined
+      }
+      style={
+        arranged
+          ? {
+              position: 'absolute',
+              left: `${table.floorX / 10}%`,
+              top: `${table.floorY / 10}%`,
+              transform: 'translate(-50%, -50%)',
+              width: 148,
+              touchAction: 'none',
+              cursor: canManage ? 'grab' : undefined,
+            }
+          : undefined
+      }
       onPointerDown={(event) => {
-        if (!canManage || (event.target as HTMLElement).closest('button')) return;
+        if (!arranged || !canManage || (event.target as HTMLElement).closest('button')) return;
         // No dragging in the grid (below 1024 px): there is no plan to place the table on.
         if (window.matchMedia?.('(max-width: 1023px)').matches) return;
         drag.current = { pointer: event.pointerId, moved: false };

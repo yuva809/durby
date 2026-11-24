@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
   areaFloorPlanResponseSchema,
+  diningAreaListResponseSchema,
   diningAreaSchema,
   diningTableListResponseSchema,
   diningTableSchema,
@@ -266,6 +267,25 @@ describe('floor plans', () => {
     expect(before.map((t) => [t.name, t.floorX])).toEqual([
       ['T1', 100],
       ['T2', 260],
+    ]);
+  });
+
+  it('tells which areas have a live plan', async () => {
+    const s = await setup();
+    const terrace = await s.area(s.here, 'Terrace');
+    const livePlans = async () =>
+      diningAreaListResponseSchema
+        .parse((await get(s.owner, `/pos/areas?locationId=${s.here}`).expect(200)).body)
+        .data.map((x) => [x.id, x.livePlan]);
+    await saved(s.owner, s.room, 0, layout());
+    expect(await livePlans()).toEqual([
+      [s.room, false],
+      [terrace, false],
+    ]);
+    await publish(s.owner, s.room, 1).expect(201);
+    expect(await livePlans()).toEqual([
+      [s.room, true],
+      [terrace, false],
     ]);
   });
 
