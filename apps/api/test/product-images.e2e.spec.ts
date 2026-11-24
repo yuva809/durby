@@ -104,9 +104,9 @@ describe('product pictures (ADR 0049)', () => {
       .set('Content-Type', 'image/png')
       .send(PNG)
       .expect(200);
-    const list = (await get(token, '/catalog/products').expect(200)).body.data as {
-      imageVersion: string | null;
-    }[];
+    const { data: list } = (await get(token, '/catalog/products').expect(200)).body as {
+      data: { imageVersion: string | null }[];
+    };
     expect(list.some((p) => p.imageVersion !== null)).toBe(true);
     expect(JSON.stringify(list)).not.toContain(PNG.toString('base64'));
 
