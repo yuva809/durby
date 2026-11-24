@@ -166,6 +166,14 @@ export class InventoryController {
     return this.setup.deleteItem(itemId);
   }
 
+  @RequirePermission('inventory.items.purge')
+  @Idempotent()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('items/:id/purge')
+  purgeItem(@Param('id', id(() => inventoryErrors.itemNotFound())) itemId: string): Promise<void> {
+    return this.setup.purgeItem(itemId);
+  }
+
   @RequirePermission('inventory.items.edit')
   @Idempotent()
   @Patch('items/:id')

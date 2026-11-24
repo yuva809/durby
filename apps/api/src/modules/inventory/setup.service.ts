@@ -429,6 +429,33 @@ export class InventorySetupService {
     });
   }
 
+  /**
+   * Deletes an item with its whole stock history (ADR 0079, owners): its movements, its lines on stock requests and
+   * vendor invoices, documents left empty and its levels, through purge_stock_item (the one exception to the
+   * append-only ledger). Refused for items in a recipe, bill of materials or sales order, or with variants.
+   */
+  async purgeItem(id: string): Promise<void> {
+    const { userId } = this.tenantContext.require();
+    await this.db.$transaction(async (tx) => {
+      const current = await tx.stockItem.findUnique({ where: { id }, select: ITEM_SELECT });
+      if (!current) throw inventoryErrors.itemNotFound([id]);
+      try {
+        await tx.$queryRaw`SELECT purge_stock_item(${id}::uuid) AS result`;
+      } catch (error) {
+        const reason = /item_purge:([a-z_]+)/.exec(String((error as Error)?.message))?.[1];
+        if (reason === 'not_found') throw inventoryErrors.itemNotFound([id]);
+        if (reason) throw inventoryErrors.itemPurgeRefused(reason);
+        throw error;
+      }
+      await this.audit.record(tx, {
+        action: 'inventory.stock_item.purged',
+        actor: auditActor.user(userId),
+        entityId: id,
+        before: snapshot('stock_item', itemResponse(current)),
+      });
+    });
+  }
+
   async updateItem(id: string, body: UpdateStockItemRequest): Promise<StockItem> {
     const { userId } = this.tenantContext.require();
     if (body.categoryId) await this.catalog.assertActiveCategory(body.categoryId);

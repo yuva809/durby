@@ -1699,6 +1699,8 @@ enum StockDocumentKind {
   production
   issue
   restock
+  /// Goods a branch received out of In transit when branches keep no stock (ADR 0080): out only, no destination.
+  delivery
 
   @@map("stock_document_kind")
 }
@@ -2319,7 +2321,8 @@ model StockRequest {
   /// The source warehouse's location (the warehouse's keys are checked there).
   fromLocationId    String              @map("from_location_id") @db.Uuid
   fromWarehouseId   String              @map("from_warehouse_id") @db.Uuid
-  toWarehouseId     String              @map("to_warehouse_id") @db.Uuid
+  /// Null when branches keep no stock (orders.branchStores off, ADR 0080): the goods leave the source on delivery.
+  toWarehouseId     String?             @map("to_warehouse_id") @db.Uuid
   note              String?
   requestedByUserId String              @map("requested_by_user_id") @db.Uuid
   driverUserId      String?             @map("driver_user_id") @db.Uuid
@@ -2328,7 +2331,7 @@ model StockRequest {
   organization      Organization        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   location          Location            @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   fromWarehouse     Warehouse           @relation("StockRequestFrom", fields: [tenantId, fromWarehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  toWarehouse       Warehouse           @relation("StockRequestTo", fields: [tenantId, toWarehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  toWarehouse       Warehouse?          @relation("StockRequestTo", fields: [tenantId, toWarehouseId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   lines             StockRequestLine[]
   events            StockRequestEvent[]
 

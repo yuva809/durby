@@ -177,7 +177,8 @@ function TransferRow({
         <span className="text-sm text-muted-foreground">
           {t('orders.requestsPage.route', {
             from: r.fromWarehouseName,
-            to: `${r.locationName} · ${r.toWarehouseName}`,
+            // Without a branch store (ADR 0080) just the branch.
+            to: [r.locationName, r.toWarehouseName].filter(Boolean).join(' · '),
           })}{' '}
           · {t('orders.requestsPage.items', { count: String(r.lineCount) })} · {date}
           {r.driverName && ` · ${t('orders.requestsPage.driver', { name: r.driverName })}`}

@@ -53,6 +53,8 @@ const SERIES: Record<StockDocumentKind, NumberSeriesKey> = {
   production: 'inventory.stockProduction',
   issue: 'inventory.goodsIssue',
   restock: 'inventory.goodsRestock',
+  // The second half of a branch transfer (ADR 0080): numbered with the transfers.
+  delivery: 'inventory.stockTransfer',
 };
 
 const DOCUMENT_LIST_LIMIT = 200;
@@ -1146,13 +1148,14 @@ export class StockService {
    * Goods of a branch stock request (ADR 0045), in the orders module's transaction; the caller checks the request and
    * its keys. `transfer`: out of `fromWarehouseId` at the average cost and into `toWarehouseId` at that cost
    * (refused below zero unless the location allows negative stock, never for the transit warehouse). `shortage`:
-   * out of `fromWarehouseId` as an adjustment (goods that never arrived). Lines with nothing to move are skipped;
+   * out of `fromWarehouseId` as an adjustment (goods that never arrived). `delivery`: out of `fromWarehouseId` (In
+   * transit) to the branch, nowhere in, when branches keep no stock (ADR 0080). Lines with nothing to move are skipped;
    * null when none is left.
    */
   async bookForRequest(
     tx: TenantTransactionClient,
     input: {
-      kind: 'transfer' | 'shortage';
+      kind: 'transfer' | 'shortage' | 'delivery';
       fromWarehouseId: string;
       toWarehouseId?: string;
       requestId: string;
@@ -1208,7 +1211,12 @@ export class StockService {
       if (!allowed && short.length > 0) throw inventoryErrors.insufficientStock(short);
     }
     return this.book(tx, {
-      kind: input.kind === 'transfer' ? 'transfer' : 'adjustment',
+      kind:
+        input.kind === 'transfer'
+          ? 'transfer'
+          : input.kind === 'delivery'
+            ? 'delivery'
+            : 'adjustment',
       warehouseId: from.id,
       toWarehouseId: toId,
       reason: input.kind === 'shortage' ? 'other' : null,

@@ -124,6 +124,7 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'inventory.invoice_line_in_unit': 'inventory.errors.invoiceLineInUnit',
   'inventory.invoice_line_without_item': 'inventory.errors.invoiceLineWithoutItem',
   'inventory.item_in_use': 'inventory.errors.itemInUse',
+  'inventory.item_purge_refused': 'inventory.errors.itemPurgeRefused',
   'inventory.valuation_unsupported': 'inventory.errors.valuationUnsupported',
   'inventory.same_warehouse': 'inventory.errors.sameWarehouse',
   'inventory.product_not_found': 'inventory.errors.productNotFound',

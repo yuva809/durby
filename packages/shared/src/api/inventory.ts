@@ -33,6 +33,8 @@ export const STOCK_DOCUMENT_KINDS = [
   'issue',
   /** Goods back in from a cancelled or returned sales order (ADR 0044). */
   'restock',
+  /** Goods a branch received when branches keep no stock: out of In transit, nowhere in (ADR 0080). */
+  'delivery',
 ] as const;
 export type StockDocumentKind = (typeof STOCK_DOCUMENT_KINDS)[number];
 
@@ -668,6 +670,7 @@ export const INVENTORY_ERROR_CODES = [
   'inventory.invoice_line_in_unit',
   'inventory.invoice_line_without_item',
   'inventory.item_in_use',
+  'inventory.item_purge_refused',
   'inventory.valuation_unsupported',
   'inventory.same_warehouse',
   'inventory.product_not_found',

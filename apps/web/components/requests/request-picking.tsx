@@ -244,7 +244,8 @@ function Board({
         <p className="text-sm text-muted-foreground">
           {t('orders.requestsPage.route', {
             from: request.fromWarehouseName,
-            to: `${request.locationName} · ${request.toWarehouseName}`,
+            // Without a branch store (ADR 0080) just the branch.
+            to: [request.locationName, request.toWarehouseName].filter(Boolean).join(' · '),
           })}
         </p>
       </div>

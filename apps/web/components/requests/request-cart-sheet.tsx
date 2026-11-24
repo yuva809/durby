@@ -178,7 +178,7 @@ export function RequestCartSheet() {
                     );
                   })}
                 </ul>
-                {route && !route.branch.warehouseId && (
+                {route && route.branch.keepsStock && !route.branch.warehouseId && (
                   <p className="text-sm text-muted-foreground">
                     {t('orders.requestCart.newStore', { branch: route.branch.locationName })}
                   </p>

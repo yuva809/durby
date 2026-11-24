@@ -283,6 +283,11 @@ export const AUDIT_ACTIONS = {
     entityType: 'stock_item',
     label: 'inventory.audit.actions.stockItemDeleted',
   },
+  /** An item deleted with its whole stock history (ADR 0079). */
+  'inventory.stock_item.purged': {
+    entityType: 'stock_item',
+    label: 'inventory.audit.actions.stockItemPurged',
+  },
   /** A product's recipe was replaced (docs/modules/inventory.md → Recipes). */
   'inventory.recipe.updated': {
     entityType: 'recipe',

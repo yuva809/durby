@@ -508,5 +508,13 @@
   "inventory.overview.actions": "Aktionen",
   "inventory.page.packPieces": "Stück",
   "inventory.page.packHint": "Stück pro Karton und Gewicht je Stück, z. B. 8 × 1 kg. Mit Stückzahl können Filialen kartonweise bestellen.",
-  "inventory.page.packInvalid": "Stück: eine ganze Zahl; Gewicht: eine Zahl mit Einheit."
+  "inventory.page.packInvalid": "Stück: eine ganze Zahl; Gewicht: eine Zahl mit Einheit.",
+  "inventory.page.archiveInstead": "Stattdessen archivieren",
+  "inventory.page.purgeItem": "Mit gesamtem Verlauf löschen",
+  "inventory.page.purgeNote": "Löscht den Artikel, alle seine Lagerbewegungen und seine Zeilen in Anforderungen und Rechnungen. Frühere Eingänge und Umlagerungen verlieren diesen Artikel, ihre Summen ändern sich. Das kann nicht rückgängig gemacht werden.",
+  "inventory.permissions.itemsPurge": "Lagerartikel mit Verlauf löschen",
+  "inventory.permissionRows.itemHistory": "Verlauf der Lagerartikel",
+  "inventory.audit.actions.stockItemPurged": "Lagerartikel mit Verlauf gelöscht",
+  "inventory.errors.itemPurgeRefused": "Dieser Artikel wird in einem Rezept, einer Stückliste oder einem Kundenauftrag verwendet oder hat Varianten. Ändern Sie diese zuerst oder archivieren Sie ihn.",
+  "inventory.kinds.delivery": "An Filiale geliefert"
 }

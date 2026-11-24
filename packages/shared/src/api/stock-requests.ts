@@ -151,8 +151,9 @@ export const stockRequestSummarySchema = z.object({
   fromWarehouseId: z.uuid(),
   fromWarehouseName: z.string(),
   fromLocationName: z.string(),
-  toWarehouseId: z.uuid(),
-  toWarehouseName: z.string(),
+  /** Null when branches keep no stock (ADR 0080): the goods are delivered, not stored at the branch. */
+  toWarehouseId: z.uuid().nullable(),
+  toWarehouseName: z.string().nullable(),
   /** The branch. */
   locationId: z.uuid(),
   locationName: z.string(),
@@ -203,6 +204,8 @@ export const requestDestinationSchema = z.object({
   /** Where its goods come from (ADR 0067): the warehouse supplying it, else the main one; null: none set up. */
   supplierWarehouseId: z.uuid().nullable().default(null),
   supplierWarehouseName: z.string().nullable().default(null),
+  /** Whether a request stores the goods at the branch (orders.branchStores, ADR 0080); false: they are delivered. */
+  keepsStock: z.boolean().default(true),
 });
 export const requestDestinationListResponseSchema = z.object({
   data: z.array(requestDestinationSchema),
