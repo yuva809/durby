@@ -64,6 +64,15 @@ export class FactsReader {
     return result;
   }
 
+  /** Whether any of these locations has report data at all. */
+  async any(locationIds: readonly string[], tx: TenantTransactionClient): Promise<boolean> {
+    const row = await tx.reportOrderFact.findFirst({
+      where: { locationId: { in: [...locationIds] } },
+      select: { orderId: true },
+    });
+    return row !== null;
+  }
+
   /** By wall-clock hour of the location; hours without sales are left out. Orders by their first line. */
   async hours(
     spans: readonly LocationSpan[],

@@ -58,4 +58,22 @@ describe('metrics (ADR 0081)', () => {
     expect(changePercent(new Decimal(0), new Decimal(80))).toBe('-100.0');
     expect(changePercent(new Decimal(10), new Decimal(0))).toBeNull();
   });
+
+  it('a normal day is the average of the days with orders, compared with yesterday', () => {
+    const normal = (gross: string, days: number, yesterday: string) => ({
+      normal: { gross: new Decimal(gross), days, yesterday: new Decimal(yesterday) },
+    });
+    expect(METRIC['sales.normalDay'](normal('150.01', 4, '0'))).toBe('37.50');
+    expect(METRIC['sales.normalDay'](normal('100.00', 3, '0'))).toBe('33.33');
+    expect(METRIC['sales.normalDay'](normal('0', 0, '50'))).toBeNull();
+    expect(METRIC['sales.vsNormalDay'](normal('150.01', 4, '57'))).toBe('52.0');
+    expect(METRIC['sales.vsNormalDay'](normal('150.01', 4, '0'))).toBe('-100.0');
+    expect(METRIC['sales.vsNormalDay'](normal('0', 0, '50'))).toBeNull();
+    // Days with orders, but everything discounted: no percent of zero.
+    expect(METRIC['sales.vsNormalDay'](normal('0', 2, '50'))).toBeNull();
+  });
+
+  it('has no negative zero', () => {
+    expect(changePercent(new Decimal('999.99'), new Decimal(1000))).toBe('0.0');
+  });
 });

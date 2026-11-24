@@ -2,6 +2,8 @@ import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 import {
   type DayClock,
+  type OverviewResponse,
+  NORMAL_DAY_WEEKS,
   type PermissionKey,
   type ReportQuery,
   type ReservationsReportResponse,
@@ -26,8 +28,17 @@ import {
 import { CatalogLookup } from '../catalog';
 import { PosFloorReader } from '../pos';
 import { FactsReader, type LocationSpan } from './facts-reader';
-import { addSales, changePercent, METRIC, percent, salesFigures } from './metrics';
-import { type CardSpans, cardSpans, daysSpan, type Span } from './periods';
+import {
+  addSales,
+  changePercent,
+  METRIC,
+  NO_SALES,
+  type NormalDaySums,
+  percent,
+  salesFigures,
+  type SalesSums,
+} from './metrics';
+import { type CardSpans, cardSpans, daysSpan, normalDay, type Span } from './periods';
 
 const locationNotFound = () =>
   new ApiError(HttpStatus.NOT_FOUND, 'reports.location_not_found', 'Location not found.');
@@ -35,6 +46,7 @@ const locationNotFound = () =>
 /** A location the caller may read, and where its business days start. */
 interface Place {
   locationId: string;
+  name: string;
   clock: DayClock;
 }
 
@@ -53,6 +65,95 @@ export class ReportsService {
     private readonly catalog: CatalogLookup,
     private readonly floor: PosFloorReader,
   ) {}
+
+  /** The home page (ADR 0082): active locations now, and yesterday against their normal day. */
+  overview(): Promise<OverviewResponse> {
+    const now = this.clock.now();
+    return this.read(
+      'reports.sales.read',
+      {},
+      async (places, tx) => {
+        const at = (span: (place: Place) => Span) => this.facts.sales(spans(places, span), tx);
+        const today = await at(({ clock }) => cardSpans(now, clock).today.figures);
+        const lastWeek = await at(({ clock }) => cardSpans(now, clock).today.compare);
+        const yesterday = await at(({ clock }) => normalDay(now, clock).yesterday);
+        const before: Map<string, SalesSums>[] = [];
+        for (let week = 0; week < NORMAL_DAY_WEEKS; week += 1) {
+          before.push(await at(({ clock }) => normalDay(now, clock).before[week]!));
+        }
+        const rows = [];
+        for (const { locationId, name, clock } of places) {
+          const of = (sums: Map<string, SalesSums>) => sums.get(locationId) ?? NO_SALES;
+          // A day without orders says nothing about a normal one: closed, or not open yet.
+          const days = before.map(of).filter((day) => day.orders > 0);
+          rows.push({
+            locationId,
+            name,
+            day: normalDay(now, clock).day,
+            today: of(today),
+            lastWeek: of(lastWeek),
+            openTables: (await this.floor.openOrders(locationId, tx)).length,
+            yesterday: of(yesterday),
+            days: days.length,
+            normal: normalOf({
+              gross: addSales(days).gross,
+              days: days.length,
+              yesterday: of(yesterday).gross,
+            }),
+          });
+        }
+        const compared = rows.flatMap(({ normal, yesterday: { gross } }) =>
+          normal ? [{ normal, gross }] : [],
+        );
+        const comparedGross = compared.reduce((sum, r) => sum.plus(r.gross), new Decimal(0));
+        const all = addSales(rows.map((r) => r.yesterday));
+        // The total is the sum of the normal days as listed, like one day of these locations together.
+        const total = normalOf({
+          gross: compared.reduce((sum, r) => sum.plus(r.normal.gross), new Decimal(0)),
+          days: compared.length > 0 ? 1 : 0,
+          yesterday: comparedGross,
+        });
+        const part = (sales: SalesSums, lastWeekSales: SalesSums, openTables: number) => ({
+          ...salesFigures(sales),
+          openTables,
+          changePercent: changePercent(sales.gross, lastWeekSales.gross),
+        });
+        return {
+          currency: await this.settings.get('currency', {}, tx),
+          asOf: now.toISOString(),
+          hasData: await this.facts.any(
+            places.map((p) => p.locationId),
+            tx,
+          ),
+          total: {
+            today: part(
+              addSales(rows.map((r) => r.today)),
+              addSales(rows.map((r) => r.lastWeek)),
+              rows.reduce((sum, r) => sum + r.openTables, 0),
+            ),
+            yesterday: {
+              gross: METRIC['sales.gross']({ sales: all }),
+              orders: METRIC['sales.orders']({ sales: all }),
+              normal: total && { ...total, compared: comparedGross.toFixed(2) },
+              leftOut: rows.length - compared.length,
+            },
+          },
+          locations: rows.map((r) => ({
+            locationId: r.locationId,
+            name: r.name,
+            today: part(r.today, r.lastWeek, r.openTables),
+            yesterday: {
+              day: r.day,
+              gross: METRIC['sales.gross']({ sales: r.yesterday }),
+              orders: METRIC['sales.orders']({ sales: r.yesterday }),
+              normal: r.normal && { ...r.normal, days: r.days },
+            },
+          })),
+        };
+      },
+      { archivedAt: null, isWarehouseSite: false },
+    );
+  }
 
   summary(query: ReportQuery): Promise<SalesSummaryResponse> {
     const now = this.clock.now();
@@ -244,6 +345,7 @@ export class ReportsService {
     key: PermissionKey,
     query: { locationId?: string | undefined },
     fn: (places: Place[], tx: TenantTransactionClient) => Promise<T>,
+    only: { archivedAt?: null; isWarehouseSite?: false } = {},
   ): Promise<T> {
     const scope = await this.access.locationIdsFor(key);
     // Loaded once for the request, so each location's settings below cost no further read of the stored values.
@@ -253,18 +355,20 @@ export class ReportsService {
         await tx.$executeRaw`SET TRANSACTION READ ONLY`;
         const locations = await tx.location.findMany({
           where: {
+            ...only,
             ...(scope === 'all' ? {} : { id: { in: scope } }),
             ...(query.locationId ? { AND: { id: query.locationId } } : {}),
           },
-          select: { id: true },
-          orderBy: { id: 'asc' },
+          select: { id: true, name: true },
+          orderBy: [{ name: 'asc' }, { id: 'asc' }],
         });
         if (query.locationId && locations.length === 0) throw locationNotFound();
         const places: Place[] = [];
-        for (const { id } of locations) {
+        for (const { id, name } of locations) {
           const at = { locationId: id };
           places.push({
             locationId: id,
+            name,
             clock: {
               timeZone: await this.settings.get('timezone', at, tx),
               dayStartsAt: await this.settings.get('reports.dayStartsAt', at, tx),
@@ -276,6 +380,17 @@ export class ReportsService {
       { isolationLevel: 'RepeatableRead' },
     );
   }
+}
+
+/** A normal day and how yesterday differs from it; null when no day counts. */
+function normalOf(normal: NormalDaySums) {
+  const gross = METRIC['sales.normalDay']({ normal });
+  if (gross === null) return null;
+  return {
+    gross,
+    difference: normal.yesterday.minus(gross).toFixed(2),
+    changePercent: METRIC['sales.vsNormalDay']({ normal }),
+  };
 }
 
 const periodOf =

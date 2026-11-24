@@ -24,8 +24,16 @@ export interface ReservationSums {
   turnSeconds: number;
 }
 
+/** The same weekdays before yesterday that had orders (ADR 0082). */
+export interface NormalDaySums {
+  gross: Decimal;
+  days: number;
+  yesterday: Decimal;
+}
+
 export interface MetricSums {
   sales: SalesSums;
+  normal: NormalDaySums;
   tables: TableSums;
   reservations: ReservationSums;
 }
@@ -40,11 +48,18 @@ export const NO_SALES: SalesSums = {
 /** `part` of `whole` in percent, one decimal; null when there is no whole. */
 export function percent(part: Decimal.Value, whole: Decimal.Value): string | null {
   const total = new Decimal(whole);
-  return total.isZero() ? null : new Decimal(part).times(100).dividedBy(total).toFixed(1);
+  if (total.isZero()) return null;
+  const value = new Decimal(part).times(100).dividedBy(total).toDecimalPlaces(1);
+  // -0.04 % rounds to zero, not to "-0.0".
+  return value.abs().toFixed(1) === '0.0' ? '0.0' : value.toFixed(1);
 }
 
 const minutes = (seconds: number, count: number): number | null =>
   count === 0 ? null : Math.round(seconds / 60 / count);
+
+function normalGross({ gross, days }: NormalDaySums): Decimal | null {
+  return days === 0 ? null : gross.dividedBy(days).toDecimalPlaces(2);
+}
 
 /**
  * The one definition of each metric (docs/modules/reports.md → Metrics): every response takes its figures from here.
@@ -58,6 +73,12 @@ export const METRIC = {
     sales.orders === 0 ? null : sales.gross.dividedBy(sales.orders).toFixed(2),
   'sales.secondRoundRate': ({ sales }: Pick<MetricSums, 'sales'>) =>
     percent(sales.secondRoundOrders, sales.orders),
+  'sales.normalDay': ({ normal }: Pick<MetricSums, 'normal'>) =>
+    normalGross(normal)?.toFixed(2) ?? null,
+  'sales.vsNormalDay': ({ normal }: Pick<MetricSums, 'normal'>) => {
+    const gross = normalGross(normal);
+    return gross === null ? null : changePercent(normal.yesterday, gross);
+  },
   'tables.averageMinutes': ({ tables }: Pick<MetricSums, 'tables'>) =>
     minutes(tables.seconds, tables.orders),
   'tables.open': ({ tables }: Pick<MetricSums, 'tables'>) => tables.open,

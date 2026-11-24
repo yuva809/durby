@@ -38,6 +38,8 @@ export const METRICS = {
   'sales.orders': sales('salesOrders', 'count'),
   'sales.averageOrder': sales('salesAverageOrder', 'money'),
   'sales.secondRoundRate': sales('salesSecondRoundRate', 'percent'),
+  'sales.normalDay': sales('salesNormalDay', 'money'),
+  'sales.vsNormalDay': sales('salesVsNormalDay', 'percent'),
   'tables.averageMinutes': sales('tablesAverageMinutes', 'minutes'),
   'tables.open': sales('tablesOpen', 'count'),
   'reservations.covers': reservations('reservationsCovers', 'count'),

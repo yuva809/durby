@@ -3,6 +3,7 @@ import {
   businessDay,
   type DayClock,
   type LocalDate,
+  NORMAL_DAY_WEEKS,
   WEEKDAYS,
   weekdayOf,
   zonedBound,
@@ -69,5 +70,21 @@ export function cardSpans(
       figures: { start: startOf(monday, clock), end: now },
       compare: { start: startOf(addDays(monday, -7), clock), end: lastWeekNow },
     },
+  };
+}
+
+/** The last whole business day, and the same weekdays its normal day is averaged from (ADR 0082), latest first. */
+export function normalDay(
+  now: Date,
+  clock: DayClock,
+): { day: LocalDate; yesterday: Span; before: Span[] } {
+  const day = addDays(businessDay(now, clock), -1);
+  return {
+    day,
+    yesterday: daysSpan(day, day, clock),
+    before: Array.from({ length: NORMAL_DAY_WEEKS }, (_, week) => {
+      const same = addDays(day, -7 * (week + 1));
+      return daysSpan(same, same, clock);
+    }),
   };
 }

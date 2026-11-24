@@ -51,6 +51,58 @@ export const salesSummaryResponseSchema = z.object({
   }),
 });
 
+/** How many same weekdays a normal day looks at (ADR 0082). */
+export const NORMAL_DAY_WEEKS = 4;
+
+const overviewTodaySchema = salesFiguresSchema.extend({
+  /** Open orders now. */
+  openTables: z.int(),
+  /** Against the same weekday last week up to the same time; null when that has no sales. */
+  changePercent: z.string().nullable(),
+});
+
+const normalDaySchema = z.object({
+  gross: money,
+  /** Yesterday minus the normal day, in money. */
+  difference: money,
+  /** In percent, one decimal; null when the normal day is zero. */
+  changePercent: z.string().nullable(),
+});
+
+export const overviewResponseSchema = z.object({
+  currency: z.string(),
+  asOf: z.iso.datetime(),
+  /** False while these locations have no report data at all. */
+  hasData: z.boolean(),
+  total: z.object({
+    today: overviewTodaySchema,
+    yesterday: z.object({
+      gross: money,
+      orders: z.int(),
+      /** Over the locations that have a normal day; `compared` is their yesterday. */
+      normal: normalDaySchema.extend({ compared: money }).nullable(),
+      /** Locations without a normal day. */
+      leftOut: z.int(),
+    }),
+  }),
+  /** Active locations without warehouse sites, by name. */
+  locations: z.array(
+    z.object({
+      locationId: z.uuid(),
+      name: z.string(),
+      today: overviewTodaySchema,
+      yesterday: z.object({
+        /** The location's business day. */
+        day: localDate,
+        gross: money,
+        orders: z.int(),
+        /** `days`: how many of the four weekdays had orders; null when none did. */
+        normal: normalDaySchema.extend({ days: z.int() }).nullable(),
+      }),
+    }),
+  ),
+});
+
 export const salesHoursResponseSchema = z.object({
   currency: z.string(),
   /** All 24 wall-clock hours. */
@@ -141,6 +193,7 @@ export type ReportQuery = z.infer<typeof reportQuerySchema>;
 export type SalesFigures = z.infer<typeof salesFiguresSchema>;
 export type SalesCard = z.infer<typeof salesCardSchema>;
 export type SalesSummaryResponse = z.infer<typeof salesSummaryResponseSchema>;
+export type OverviewResponse = z.infer<typeof overviewResponseSchema>;
 export type SalesHoursResponse = z.infer<typeof salesHoursResponseSchema>;
 export type SalesItemsResponse = z.infer<typeof salesItemsResponseSchema>;
 export type SalesCategoriesResponse = z.infer<typeof salesCategoriesResponseSchema>;

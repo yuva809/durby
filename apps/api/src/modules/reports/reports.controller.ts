@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import {
+  type OverviewResponse,
   type ReportQuery,
   reportQuerySchema,
   type ReservationsReportResponse,
@@ -19,6 +20,13 @@ import { ReportsService } from './reports.service';
 @Controller('reports')
 export class ReportsController {
   constructor(private readonly reports: ReportsService) {}
+
+  @RequireFeature('pos')
+  @RequirePermission('reports.sales.read')
+  @Get('overview')
+  overview(): Promise<OverviewResponse> {
+    return this.reports.overview();
+  }
 
   @RequireFeature('pos')
   @RequirePermission('reports.sales.read')

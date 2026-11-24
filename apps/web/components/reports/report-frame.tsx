@@ -15,6 +15,7 @@ import { REPORT_TABS } from '../../lib/nav/report-tabs';
 import { type MoneyFormat, moneyFormat } from '../../lib/pos/format';
 import type { ReportFilter } from '../../lib/reports/api';
 import { filterFromParams, PERIODS, periodOf } from '../../lib/reports/filters';
+import { percentText } from '../../lib/reports/format';
 import { loadSettings } from '../../lib/settings/api';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
@@ -32,6 +33,9 @@ export interface ReportContext {
   key: string;
   locale: string;
   money: (currency: string) => MoneyFormat;
+  /** With its sign; `percent` in tables and figures without. */
+  change: (value: string) => string;
+  percent: (value: string) => string;
   /** A location's name, for tables listing several. */
   locationName: (id: string) => string | null;
   manyLocations: boolean;
@@ -197,6 +201,8 @@ function Frame({
           key: `${org}|${filter.from}|${filter.to}|${filter.locationId ?? ''}`,
           locale,
           money: (currency) => moneyFormat(locale, currency),
+          change: (value) => percentText(locale, value, true),
+          percent: (value) => percentText(locale, value),
           locationName: (id) => places.find((l) => l.id === id)?.name ?? null,
           manyLocations: places.length > 1,
         })

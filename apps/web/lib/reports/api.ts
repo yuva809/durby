@@ -1,4 +1,5 @@
 import {
+  overviewResponseSchema,
   reservationsReportResponseSchema,
   salesCategoriesResponseSchema,
   salesHoursResponseSchema,
@@ -23,6 +24,8 @@ export function reportQuery({ from, to, locationId }: ReportFilter): string {
   if (locationId) search.set('locationId', locationId);
   return `?${search.toString()}`;
 }
+
+export const loadOverview = (store: Api) => read(store, `${BASE}/overview`, overviewResponseSchema);
 
 export const loadSummary = (store: Api, filter: ReportFilter) =>
   read(store, `${BASE}/sales/summary${reportQuery(filter)}`, salesSummaryResponseSchema);

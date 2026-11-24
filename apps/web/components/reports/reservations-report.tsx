@@ -36,7 +36,7 @@ function Reservations({ context }: { context: ReportContext }) {
             />
             <Figure
               metric="reservations.noShowRate"
-              value={data.noShowRate === null ? null : `${data.noShowRate} %`}
+              value={data.noShowRate === null ? null : context.percent(data.noShowRate)}
               note={t('reports.reservations.noShows', {
                 count: String(data.noShows),
                 bookings: String(data.noShows + data.kept),

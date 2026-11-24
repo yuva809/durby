@@ -38,7 +38,7 @@ function Sales({ context }: { context: ReportContext }) {
             <>
               <div className="grid gap-3 sm:grid-cols-3" data-testid="sales-cards">
                 {data.cards.map((card) => (
-                  <SalesCardTile key={card.key} card={card} money={money} />
+                  <SalesCardTile key={card.key} card={card} money={money} change={context.change} />
                 ))}
               </div>
               <h2 className="text-lg font-medium">{t('reports.page.period')}</h2>
@@ -53,7 +53,9 @@ function Sales({ context }: { context: ReportContext }) {
                 <Figure
                   metric="sales.secondRoundRate"
                   value={
-                    data.period.secondRoundRate === null ? null : `${data.period.secondRoundRate} %`
+                    data.period.secondRoundRate === null
+                      ? null
+                      : context.percent(data.period.secondRoundRate)
                   }
                   note={t('reports.page.secondRounds', {
                     count: String(data.period.secondRoundOrders),
@@ -166,7 +168,8 @@ function Sales({ context }: { context: ReportContext }) {
                 },
                 {
                   label: 'reports.columns.share',
-                  cell: (c) => (c.share === null ? t('reports.page.none') : `${c.share} %`),
+                  cell: (c) =>
+                    c.share === null ? t('reports.page.none') : context.percent(c.share),
                   csv: (c) => c.share ?? '',
                   number: true,
                 },
@@ -188,15 +191,21 @@ interface Item {
 }
 
 /** A card: the day's sales, and how they compare with the same weekday a week before. */
-function SalesCardTile({ card, money }: { card: SalesCard; money: MoneyFormat }) {
+function SalesCardTile({
+  card,
+  money,
+  change,
+}: {
+  card: SalesCard;
+  money: MoneyFormat;
+  change: (value: string) => string;
+}) {
   const t = useT();
-  const change =
+  const compared =
     card.changePercent === null
       ? t('reports.cards.noComparison')
       : t('reports.cards.change', {
-          percent: card.changePercent.startsWith('-')
-            ? card.changePercent
-            : `+${card.changePercent}`,
+          percent: change(card.changePercent),
           amount: money(card.compare.gross),
         });
   return (
@@ -204,7 +213,7 @@ function SalesCardTile({ card, money }: { card: SalesCard; money: MoneyFormat })
       <p className="text-sm text-muted-foreground">{t(`reports.cards.${card.key}`)}</p>
       <p className="text-3xl font-semibold">{money(card.figures.gross)}</p>
       <p className="text-sm" data-testid={`card-${card.key}-change`}>
-        {change}
+        {compared}
       </p>
       <p className="text-xs text-muted-foreground">
         {t(`reports.cards.${card.key}Compare`)}

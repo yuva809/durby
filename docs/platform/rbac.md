@@ -37,6 +37,7 @@ location, even if the service had a bug.
 ## Permission keys
 
 Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a **scope** and a label key.
+A key that is useless without another module's feature names it (`needs`): Manage Staff hides it while that is off.
 
 | Key                            | Scope        | Grants                                                                               |
 | ------------------------------ | ------------ | ------------------------------------------------------------------------------------ |
@@ -67,6 +68,8 @@ Registry: `PERMISSIONS` in `packages/shared/src/permissions.ts`. Each key has a 
 | `reservations.bookings.manage` | location     | book, seat, cancel; walk-ins                                                         |
 | `reservations.waitlist.manage` | location     | the waitlist                                                                         |
 | `reservations.setup.manage`    | location     | reservable tables, combinations, booking page                                        |
+| `reports.sales.read`           | location     | overview, sales and table reports ([reports](../modules/reports.md)); needs `pos`    |
+| `reports.reservations.read`    | location     | reservation reports; needs `reservations`                                            |
 
 - **organization** scope: only memberships with `all_locations = true` can hold it.
 - **location** scope (later module keys, e.g. inventory): held per location. A location-limited membership holds only
