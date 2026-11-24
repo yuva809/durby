@@ -509,5 +509,11 @@
   "inventory.page.packPieces": "Pieces",
   "inventory.page.packHint": "Pieces in one box and the weight of each, e.g. 8 × 1 kg. With pieces set, branches can order by the box.",
   "inventory.page.packInvalid": "Pieces: a whole number; weight: a number with its unit.",
-  "inventory.page.archiveInstead": "Archive instead"
+  "inventory.page.archiveInstead": "Archive instead",
+  "inventory.page.purgeItem": "Delete with all history",
+  "inventory.page.purgeNote": "Delete with all history removes the item, all its stock movements and its lines on requests and invoices. Past receipts and transfers lose this item and their totals change. This cannot be undone.",
+  "inventory.permissions.itemsPurge": "Delete stock items with their history",
+  "inventory.permissionRows.itemHistory": "Stock item history",
+  "inventory.audit.actions.stockItemPurged": "Stock item deleted with its history",
+  "inventory.errors.itemPurgeRefused": "This item is used in a recipe, a bill of materials or a sales order, or has variants. Change those first, or archive it."
 }

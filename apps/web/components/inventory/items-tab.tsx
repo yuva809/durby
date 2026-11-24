@@ -24,6 +24,7 @@ import {
   deleteStockItem,
   loadStock,
   postAdjustment,
+  purgeStockItem,
   postReceipt,
   updateStockItem,
 } from '../../lib/inventory/api';
@@ -213,9 +214,11 @@ export function ItemsTab({ data }: { data: InventoryData }) {
 /** Deletes an item with no stock history; asks first. An item with history is archived instead (ADR 0027). */
 function DeleteItemButton({ item, onDone }: { item: StockItem; onDone: () => void }) {
   const t = useT();
-  const { store } = useAuth();
+  const { store, session } = useAuth();
   const action = useActionKey();
   const archiveAction = useActionKey();
+  const purgeAction = useActionKey();
+  const purges = session?.activePermissions.includes('inventory.items.purge') ?? false;
   return (
     <ConfirmAction
       testId="item-delete"
@@ -227,8 +230,25 @@ function DeleteItemButton({ item, onDone }: { item: StockItem; onDone: () => voi
       // With stock history it can only be archived: offered right here.
       fallback={{
         code: 'inventory.item_in_use',
-        label: t('inventory.page.archiveInstead'),
-        run: () => updateStockItem(store, archiveAction, item.id, { archived: true }),
+        ...(purges ? { note: t('inventory.page.purgeNote') } : {}),
+        options: [
+          {
+            label: t('inventory.page.archiveInstead'),
+            run: () => updateStockItem(store, archiveAction, item.id, { archived: true }),
+            testId: 'item-delete-fallback',
+          },
+          // Owners (ADR 0079): the item and its whole history.
+          ...(purges
+            ? [
+                {
+                  label: t('inventory.page.purgeItem'),
+                  run: () => purgeStockItem(store, purgeAction, item.id),
+                  destructive: true,
+                  testId: 'item-purge',
+                },
+              ]
+            : []),
+        ],
       }}
       onDone={onDone}
     />

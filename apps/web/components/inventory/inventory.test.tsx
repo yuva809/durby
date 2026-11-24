@@ -512,6 +512,51 @@ describe('InventoryPage', () => {
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
   });
 
+  it('lets owners delete an item with all its history; others only archive it (ADR 0079)', async () => {
+    signedInAs('owner');
+    const writes = api({
+      [`DELETE /api/v1/inventory/items/${COLA.id}`]: () =>
+        Response.json({ code: 'inventory.item_in_use', message: 'in use' }, { status: 409 }),
+      [`POST /api/v1/inventory/items/${COLA.id}/purge`]: () => new Response(null, { status: 204 }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    let cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    await userEvent.click(within(cola).getByTestId('item-delete'));
+    let dialog = await screen.findByRole('alertdialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    expect((await within(dialog).findByTestId('confirm-fallback-note')).textContent).toContain(
+      'cannot be undone',
+    );
+    expect(within(dialog).getByTestId('item-delete-fallback')).toBeTruthy();
+    await userEvent.click(within(dialog).getByTestId('item-purge'));
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[1]).toMatchObject({
+      method: 'POST',
+      path: `/api/v1/inventory/items/${COLA.id}/purge`,
+    });
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    cleanup();
+
+    // An admin: archive only.
+    signedInAs('admin');
+    api({
+      [`DELETE /api/v1/inventory/items/${COLA.id}`]: () =>
+        Response.json({ code: 'inventory.item_in_use', message: 'in use' }, { status: 409 }),
+    });
+    render(<InventoryPage />);
+    await userEvent.click(await tab('items'));
+    cola = screen.getAllByTestId('item-row').find((r) => r.dataset.name === 'Cola 0.33')!;
+    const del = within(cola).queryByTestId('item-delete');
+    if (del) {
+      await userEvent.click(del);
+      dialog = await screen.findByRole('alertdialog');
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+      expect(await within(dialog).findByTestId('item-delete-fallback')).toBeTruthy();
+      expect(within(dialog).queryByTestId('item-purge')).toBeNull();
+    }
+  });
+
   it('lets managers add warehouses but not items', async () => {
     signedInAs('manager');
     api();

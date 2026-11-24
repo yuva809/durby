@@ -85,6 +85,10 @@ export const updateStockItem = (
   body: UpdateStockItemRequest,
 ) => write(store, action, `${BASE}/items/${id}`, 'PATCH', body, stockItemSchema);
 
+/** Deletes an item with its whole stock history (ADR 0079, owners); refused when a recipe or order uses it. */
+export const purgeStockItem = (store: Api, action: ActionKey, id: string) =>
+  write(store, action, `${BASE}/items/${id}/purge`, 'POST');
+
 /** Deletes an item that has never been stocked; one with stock history answers inventory.item_in_use. */
 export const deleteStockItem = (store: Api, action: ActionKey, id: string) =>
   write(store, action, `${BASE}/items/${id}`, 'DELETE');

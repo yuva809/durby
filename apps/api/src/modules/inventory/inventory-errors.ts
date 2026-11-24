@@ -42,6 +42,14 @@ export const inventoryErrors = {
       'inventory.item_in_use',
       'This item has stock history, so it can only be archived.',
     ),
+  /** ADR 0079: the item is in a recipe, a bill of materials or a sales order, or has variants. */
+  itemPurgeRefused: (reason: string) =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'inventory.item_purge_refused',
+      'This item is used in a recipe, a bill of materials or a sales order, or has variants: change those first.',
+      { reason },
+    ),
   unitLocked: () =>
     new ApiError(
       HttpStatus.CONFLICT,

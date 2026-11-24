@@ -668,6 +668,7 @@ export const INVENTORY_ERROR_CODES = [
   'inventory.invoice_line_in_unit',
   'inventory.invoice_line_without_item',
   'inventory.item_in_use',
+  'inventory.item_purge_refused',
   'inventory.valuation_unsupported',
   'inventory.same_warehouse',
   'inventory.product_not_found',

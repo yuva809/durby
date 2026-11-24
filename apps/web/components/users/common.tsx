@@ -102,7 +102,17 @@ export function ConfirmAction({
    * What to offer when `run` fails with `code` (e.g. Archive when an item with history can't be deleted): its button
    * replaces the confirm button.
    */
-  fallback?: { code: string; label: string; run: () => Promise<Result<unknown>> };
+  fallback?: {
+    code: string;
+    /** Shown above the buttons when they are offered (e.g. what deleting with history does). */
+    note?: string;
+    options: readonly {
+      label: string;
+      run: () => Promise<Result<unknown>>;
+      destructive?: boolean;
+      testId?: string;
+    }[];
+  };
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -151,17 +161,26 @@ export function ConfirmAction({
         <AlertDialogTitle>{title}</AlertDialogTitle>
         <AlertDialogDescription>{description}</AlertDialogDescription>
         <Notice text={error} tone="error" />
+        {offer && fallback?.note && (
+          <p className="text-sm text-muted-foreground" data-testid="confirm-fallback-note">
+            {fallback.note}
+          </p>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel>{t('platform.common.cancel')}</AlertDialogCancel>
           {/* Not AlertDialogAction: that closes the dialog before the answer is known. */}
           {offer && fallback ? (
-            <Button
-              disabled={busy}
-              onClick={() => void onConfirm(fallback.run)}
-              data-testid={testId ? `${testId}-fallback` : undefined}
-            >
-              {fallback.label}
-            </Button>
+            fallback.options.map((option) => (
+              <Button
+                key={option.label}
+                variant={option.destructive ? 'destructive' : 'default'}
+                disabled={busy}
+                onClick={() => void onConfirm(option.run)}
+                data-testid={option.testId}
+              >
+                {option.label}
+              </Button>
+            ))
           ) : (
             <Button variant={variant} disabled={busy} onClick={() => void onConfirm()}>
               {confirm}
