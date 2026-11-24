@@ -371,6 +371,73 @@ describe('branch stock requests (ADR 0045)', () => {
     expect(again.data[0]?.warehouseId).toBe(created.toWarehouseId);
   });
 
+  /** ADR 0080: with orders.branchStores off, branches keep no stock: goods leave the main warehouse and are delivered. */
+  it('delivers to a branch without making or filling a branch store when branches keep no stock', async () => {
+    const s = await setup();
+    const [, branchLocation] = s.org.locations;
+    await withIdempotencyKey(
+      auth(request(server).put('/api/v1/settings/orders.branchStores'), s.owner.token),
+      uuidv7(),
+    )
+      .send({ value: false })
+      .expect(200);
+    await patch(s.owner.token, `/inventory/warehouses/${s.main}`, { isMain: true }).expect(200);
+    await patch(s.owner.token, `/inventory/warehouses/${s.branch}`, { archived: true }).expect(200);
+    const before = warehouseListResponseSchema
+      .parse((await get(s.owner.token, '/inventory/warehouses').expect(200)).body)
+      .data.map((w) => w.id);
+
+    const destinations = (await get(s.branchUser.token, '/stock-requests/destinations').expect(200))
+      .body as { data: { warehouseId: string | null; keepsStock: boolean }[] };
+    expect(destinations.data).toEqual([
+      expect.objectContaining({ warehouseId: null, keepsStock: false }),
+    ]);
+    const created = stockRequestSchema.parse(
+      (
+        await post(s.branchUser.token, '/stock-requests', {
+          toLocationId: branchLocation,
+          lines: [{ itemId: s.rice, quantity: '3' }],
+        }).expect(201)
+      ).body,
+    );
+    // No store: none was made for the branch.
+    expect(created).toMatchObject({ toWarehouseId: null, toWarehouseName: null });
+    const after = warehouseListResponseSchema
+      .parse((await get(s.owner.token, '/inventory/warehouses').expect(200)).body)
+      .data.filter((w) => !w.isTransit)
+      .map((w) => w.id);
+    expect(after.filter((id) => !before.includes(id))).toEqual([]);
+
+    const line = created.lines[0]!.id;
+    await post(s.owner.token, `/stock-requests/${created.id}/approve`, {
+      lines: [{ lineId: line, quantity: '3' }],
+    }).expect(201);
+    await post(s.lager.token, `/stock-requests/${created.id}/pack`, {
+      lines: [{ lineId: line, quantity: '3' }],
+    }).expect(201);
+    // The main warehouse goes down when packed.
+    expect(await levels(s.owner.token, s.main)).toEqual({ Oil: '4.000', Rice: '7.000' });
+    const received = stockRequestSchema.parse(
+      (
+        await post(s.branchUser.token, `/stock-requests/${created.id}/receive`, {
+          lines: [{ lineId: line, quantity: '3' }],
+        }).expect(201)
+      ).body,
+    );
+    expect(received.status).toBe('received');
+    const transit = warehouseListResponseSchema
+      .parse((await get(s.owner.token, '/inventory/warehouses').expect(200)).body)
+      .data.find((w) => w.isTransit)!;
+    // Delivered out of In transit; nothing in a branch store.
+    expect(await levels(s.owner.token, transit.id)).toEqual({ Rice: '0.000' });
+    const docs = (await get(s.owner.token, '/inventory/documents').expect(200)).body as {
+      data: { kind: string; number: string }[];
+    };
+    expect(docs.data.map((d) => d.kind)).toContain('delivery');
+    expect(docs.data.find((d) => d.kind === 'delivery')!.number).toMatch(/^TRF-/);
+    expect(await levels(s.owner.token, s.main)).toEqual({ Oil: '4.000', Rice: '7.000' });
+  });
+
   it('names who asked, and shows a branch the categories without the catalog (ADR 0059)', async () => {
     const s = await setup();
     const userId = await seed.user();
@@ -558,8 +625,8 @@ describe('branch stock requests (ADR 0045)', () => {
     expect(packed.lineCount).toBe(2);
     expect(await levels(s.owner.token, s.main)).toEqual({ Oil: '2.000', Rice: '4.000' });
 
-    // The branch confirms both; the extra arrives like any line.
-    await post(s.lager.token, `/stock-requests/${created.id}/pick-up`).expect(201);
+    // The branch confirms both; the extra arrives like any line. (Picked up by who assigns deliveries.)
+    await post(s.owner.token, `/stock-requests/${created.id}/pick-up`).expect(201);
     const oilLine = packed.lines[1]!.id;
     await post(s.branchUser.token, `/stock-requests/${created.id}/receive`, {
       lines: [

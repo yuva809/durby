@@ -344,6 +344,16 @@ export const SETTINGS = {
     scopes: ['partner', 'organization'],
     dataBound: false,
   }),
+  // Off: branches keep no stock of their own (ADR 0080): requested goods leave the main warehouse when packed and are
+  // delivered, never booked into a branch store, and no store is made for a branch with its first request.
+  'orders.branchStores': define({
+    label: 'platform.settings.ordersBranchStores.name',
+    description: 'platform.settings.ordersBranchStores.description',
+    schema: z.boolean(),
+    default: true,
+    scopes: ['partner', 'organization'],
+    dataBound: false,
+  }),
   // Off: the Sales Orders menu is hidden for the organization (the page stays reachable by its address).
   'orders.showSalesOrders': define({
     label: 'platform.settings.ordersShowSalesOrders.name',

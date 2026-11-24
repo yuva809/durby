@@ -515,5 +515,6 @@
   "inventory.permissions.itemsPurge": "Delete stock items with their history",
   "inventory.permissionRows.itemHistory": "Stock item history",
   "inventory.audit.actions.stockItemPurged": "Stock item deleted with its history",
-  "inventory.errors.itemPurgeRefused": "This item is used in a recipe, a bill of materials or a sales order, or has variants. Change those first, or archive it."
+  "inventory.errors.itemPurgeRefused": "This item is used in a recipe, a bill of materials or a sales order, or has variants. Change those first, or archive it.",
+  "inventory.kinds.delivery": "Delivered to branch"
 }

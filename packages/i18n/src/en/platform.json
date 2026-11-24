@@ -1091,5 +1091,7 @@
   "platform.team.dialog.warehouseAccessHint": "No tick: every warehouse at their branches. With ticks, stock, invoices, picking and receiving only there.",
   "platform.team.dialog.warehouseAccessLater": "Warehouse access can be set once they have joined.",
   "platform.errors.warehouseInvalid": "A chosen warehouse is unknown, archived, or not at one of the person's branches.",
-  "platform.audit.fields.warehouseIds": "Warehouses"
+  "platform.audit.fields.warehouseIds": "Warehouses",
+  "platform.settings.ordersBranchStores.name": "Branches keep their own stock",
+  "platform.settings.ordersBranchStores.description": "On: goods a branch requests are booked into its own store when it confirms receipt, and a branch without a store gets one with its first request. Off: the goods leave the main warehouse when packed and are delivered; branches have no stock of their own."
 }

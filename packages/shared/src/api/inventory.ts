@@ -33,6 +33,8 @@ export const STOCK_DOCUMENT_KINDS = [
   'issue',
   /** Goods back in from a cancelled or returned sales order (ADR 0044). */
   'restock',
+  /** Goods a branch received when branches keep no stock: out of In transit, nowhere in (ADR 0080). */
+  'delivery',
 ] as const;
 export type StockDocumentKind = (typeof STOCK_DOCUMENT_KINDS)[number];
 

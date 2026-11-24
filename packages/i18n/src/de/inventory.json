@@ -515,5 +515,6 @@
   "inventory.permissions.itemsPurge": "Lagerartikel mit Verlauf löschen",
   "inventory.permissionRows.itemHistory": "Verlauf der Lagerartikel",
   "inventory.audit.actions.stockItemPurged": "Lagerartikel mit Verlauf gelöscht",
-  "inventory.errors.itemPurgeRefused": "Dieser Artikel wird in einem Rezept, einer Stückliste oder einem Kundenauftrag verwendet oder hat Varianten. Ändern Sie diese zuerst oder archivieren Sie ihn."
+  "inventory.errors.itemPurgeRefused": "Dieser Artikel wird in einem Rezept, einer Stückliste oder einem Kundenauftrag verwendet oder hat Varianten. Ändern Sie diese zuerst oder archivieren Sie ihn.",
+  "inventory.kinds.delivery": "An Filiale geliefert"
 }

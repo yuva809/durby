@@ -1091,5 +1091,7 @@
   "platform.team.dialog.warehouseAccessHint": "Kein Haken: alle Lager ihrer Filialen. Mit Haken: Bestand, Rechnungen, Kommissionieren und Annehmen nur dort.",
   "platform.team.dialog.warehouseAccessLater": "Den Lagerzugriff können Sie festlegen, sobald die Person beigetreten ist.",
   "platform.errors.warehouseInvalid": "Ein gewähltes Lager ist unbekannt, archiviert oder nicht in einer Filiale der Person.",
-  "platform.audit.fields.warehouseIds": "Lager"
+  "platform.audit.fields.warehouseIds": "Lager",
+  "platform.settings.ordersBranchStores.name": "Filialen führen eigenen Bestand",
+  "platform.settings.ordersBranchStores.description": "An: angeforderte Ware wird beim Bestätigen des Empfangs in das Lager der Filiale gebucht; eine Filiale ohne Lager erhält eines mit ihrer ersten Anforderung. Aus: die Ware verlässt das Hauptlager beim Packen und wird geliefert; Filialen haben keinen eigenen Bestand."
 }

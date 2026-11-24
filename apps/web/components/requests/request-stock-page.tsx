@@ -427,7 +427,7 @@ function Shop({
               {t('orders.requestCart.beyondHint')}
             </p>
           )}
-          {!branch.warehouseId && lines.length > 0 && (
+          {branch.keepsStock && !branch.warehouseId && lines.length > 0 && (
             <p className="text-sm text-muted-foreground">
               {t('orders.requestCart.newStore', { branch: branch.locationName })}
             </p>
