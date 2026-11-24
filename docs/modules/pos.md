@@ -480,6 +480,45 @@ orders and have no Overview start at `/service`; a long press on the icon offers
 sign-in state are never cached. Online only: sending an order needs the connection. The push handler (ADR 0047) is
 unchanged.
 
+## Step 8: floor plan designer and generator (ADR 0073)
+
+A plan per dining area, saved as append-only versions; publishing makes one live, and every screen reads the live one.
+
+| Table                         | Columns                                                                              | Notes                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `pos_floor_plan_versions`     | `location_id`, `area_id` (no FK), `version`, `restored_from`, `layout`, who and when | `UNIQUE (tenant_id, area_id, version)`; layout ≤ 100 kB; append-only, RLS |
+| `pos_floor_plan_publications` | `seq`, `location_id`, `area_id`, `version_id`, who and when                          | FK to a version of the same area; newest `seq` is live; append-only, RLS  |
+
+**Layout** (`floorPlanLayoutSchema`, `packages/shared/src/floor-plan/`): a room (longer side 1000 units, the same unit both
+ways, at most 1 : 5), up to 100 tables and 100 pieces (`wall`, `door`, `bar`, `decor`), each inside the room. A table is an
+existing one (`tableId`) or a new one (`create`: name, seats, shape). Seats, shape and colour of an existing table are the
+table's own.
+
+**Generator** (`generateFloorPlan`): room in metres (2–60), tables in all, seats and shape of new tables. Even rows with at least 1.2 m
+between tables and 0.6 m to the walls; existing tables first, in their order; new names go on with the area's numbering.
+When they don't fit it answers how many do. Pure; it saves nothing.
+
+| Method + path                                         | Permission (at the area's location)                         | Body                      |
+| ----------------------------------------------------- | ----------------------------------------------------------- | ------------------------- |
+| `GET /pos/areas/:areaId/floor-plan`                   | `pos.tables.read`                                           | newest, live, last 50     |
+| `GET /pos/areas/:areaId/floor-plan/versions/:version` | `pos.tables.read`                                           |                           |
+| `POST /pos/areas/:areaId/floor-plan/versions`         | `pos.tables.edit`                                           | `{ baseVersion, layout }` |
+| `POST …/floor-plan/versions/:version/restore`         | `pos.tables.edit`                                           | `{ baseVersion }`         |
+| `POST /pos/areas/:areaId/floor-plan/publish`          | `pos.tables.edit`; with new tables also `pos.tables.create` | `{ version }`             |
+| `GET /pos/floor/plans?locationId=`                    | `pos.orders.read`                                           | live plans by area        |
+
+Writes lock the area's row and complete their idempotency key in the transaction. `baseVersion` is the newest version the
+caller has seen (0 = none). Publishing creates the plan's new tables, writes a version naming them and makes that one
+live, or does nothing at all; publishing the live version writes nothing.
+
+Errors: `pos.floor_plan_changed` (409, a newer version exists), `pos.floor_plan_table_invalid` (409, saving a table that is
+not in the area or out of service), `pos.floor_plan_not_found` (404), `pos.table_name_taken` (409, publishing). Audit:
+`pos.floor_plan.saved`, `.restored`, `.published` (entity `floor_plan`, counts only).
+
+**Web.** `/tables/plan/<areaId>`: the designer (from 1024 px, smaller screens look only). `/tables`: an area with a live plan
+shows it; "All" is a grid once its location has one. `/service`: Plan / List (`?view=list`) from 768 px. Tables of the area
+that are not on the plan are listed below it; tables that left the area or are out of service are not drawn.
+
 ## QR menu (ADR 0026)
 
 Every dining table has a `menu_token` (24 random URL-safe characters, unique per tenant). Its QR code links to

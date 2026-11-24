@@ -131,6 +131,8 @@ model Organization {
   productImages                ProductImage[]
   posOrderDiscountLines        PosOrderDiscountLine[]
   diningAreas                  DiningArea[]
+  posFloorPlanVersions         PosFloorPlanVersion[]
+  posFloorPlanPublications     PosFloorPlanPublication[]
   reservationTableRules        ReservationTableRule[]
   reservationCombinations      ReservationCombination[]
   reservationCombinationTables ReservationCombinationTable[]
@@ -203,6 +205,7 @@ model Location {
   posOrders               PosOrder[]
   posBills                PosBill[]
   diningAreas             DiningArea[]
+  posFloorPlanVersions    PosFloorPlanVersion[]
   reservationCombinations ReservationCombination[]
   reservations            Reservation[]
   warehouses              Warehouse[]
@@ -1361,6 +1364,48 @@ model DiningArea {
   @@unique([tenantId, locationId, id])
   @@unique([tenantId, locationId, name])
   @@map("dining_areas")
+}
+
+/// A saved floor plan of an area (ADR 0073). Append-only; the area has no FK because its history outlives it.
+model PosFloorPlanVersion {
+  id              String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String                    @map("tenant_id") @db.Uuid
+  locationId      String                    @map("location_id") @db.Uuid
+  areaId          String                    @map("area_id") @db.Uuid
+  version         Int
+  restoredFrom    Int?                      @map("restored_from")
+  /// floorPlanLayoutSchema (packages/shared).
+  layout          Json
+  createdByUserId String                    @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization              @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location        Location                  @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  publications    PosFloorPlanPublication[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, areaId, version])
+  /// Target of the publication's FK: a publication is of a version of its own area and location.
+  @@unique([tenantId, locationId, areaId, id])
+  @@map("pos_floor_plan_versions")
+}
+
+/// Which version of an area's plan is live (ADR 0073): the newest row. Append-only.
+model PosFloorPlanPublication {
+  id              String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  /// Insertion order.
+  seq             BigInt              @unique @default(autoincrement())
+  tenantId        String              @map("tenant_id") @db.Uuid
+  locationId      String              @map("location_id") @db.Uuid
+  areaId          String              @map("area_id") @db.Uuid
+  versionId       String              @map("version_id") @db.Uuid
+  createdByUserId String              @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  version         PosFloorPlanVersion @relation(fields: [tenantId, locationId, areaId, versionId], references: [tenantId, locationId, areaId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, areaId, seq])
+  @@map("pos_floor_plan_publications")
 }
 
 // ---------------------------------------------------------------------------

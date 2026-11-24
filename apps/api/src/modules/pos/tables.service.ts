@@ -74,7 +74,7 @@ export class TablesService {
 
   /** `actor`: the signed-in user, or a system actor for bootstrap commands (seed-dev). */
   async create(body: CreateDiningTableRequest, actor?: AuditActor): Promise<DiningTable> {
-    const { tenantId, userId } = this.tenantContext.require();
+    const { userId } = this.tenantContext.require();
     const location = await this.db.location.findUnique({
       where: { id: body.locationId },
       select: { id: true },
@@ -83,37 +83,47 @@ export class TablesService {
     await this.access.assert('pos.tables.create', { locationId: body.locationId });
     return this.unique(() =>
       this.db.$transaction(async (tx) => {
-        const area = body.areaId ? await areaAt(tx, body.areaId, body.locationId) : null;
-        const existing = await tx.diningTable.count({
-          where: { tenantId, locationId: body.locationId },
-        });
-        const row = await tx.diningTable.create({
-          data: {
-            tenantId,
-            locationId: body.locationId,
-            name: body.name,
-            seats: body.seats,
-            areaId: area?.id ?? null,
-            area: area?.name ?? null,
-            shape: body.shape ?? 'square',
-            color: body.color ?? 'neutral',
-            sortOrder: body.sortOrder ?? 0,
-            floorX: body.floorX ?? 100 + (existing % 6) * 160,
-            floorY: body.floorY ?? 120 + (Math.floor(existing / 6) % 5) * 170,
-          },
-          select: TABLE_SELECT,
-        });
-        await this.audit.record(tx, {
-          action: 'pos.dining_table.created',
-          actor: actor ?? auditActor.user(userId),
-          entityId: row.id,
-          after: tableSnapshot(row),
-        });
-        const response = tableResponse(row);
+        const response = await this.insert(tx, body, actor ?? auditActor.user(userId));
         await this.idempotency.completeInTransaction(tx, response);
         return response;
       }),
     );
+  }
+
+  /** In the caller's transaction, after its checks (also publishing a floor plan, ADR 0073). */
+  async insert(
+    tx: TenantTransactionClient,
+    body: CreateDiningTableRequest,
+    actor: AuditActor,
+  ): Promise<DiningTable> {
+    const { tenantId } = this.tenantContext.require();
+    const area = body.areaId ? await areaAt(tx, body.areaId, body.locationId) : null;
+    const existing = await tx.diningTable.count({
+      where: { tenantId, locationId: body.locationId },
+    });
+    const row = await tx.diningTable.create({
+      data: {
+        tenantId,
+        locationId: body.locationId,
+        name: body.name,
+        seats: body.seats,
+        areaId: area?.id ?? null,
+        area: area?.name ?? null,
+        shape: body.shape ?? 'square',
+        color: body.color ?? 'neutral',
+        sortOrder: body.sortOrder ?? 0,
+        floorX: body.floorX ?? 100 + (existing % 6) * 160,
+        floorY: body.floorY ?? 120 + (Math.floor(existing / 6) % 5) * 170,
+      },
+      select: TABLE_SELECT,
+    });
+    await this.audit.record(tx, {
+      action: 'pos.dining_table.created',
+      actor,
+      entityId: row.id,
+      after: tableSnapshot(row),
+    });
+    return tableResponse(row);
   }
 
   async update(id: string, body: UpdateDiningTableRequest): Promise<DiningTable> {

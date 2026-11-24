@@ -46,7 +46,12 @@ export class AreasService {
       },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
     });
-    return rows.map(({ _count, ...row }) => ({ ...row, tableCount: _count.tables }));
+    const live = await this.withLivePlan(rows.map((r) => r.id));
+    return rows.map(({ _count, ...row }) => ({
+      ...row,
+      tableCount: _count.tables,
+      livePlan: live.has(row.id),
+    }));
   }
 
   /** `actor`: the signed-in user, or a system actor for bootstrap commands (seed-dev). */
@@ -75,7 +80,7 @@ export class AreasService {
           entityId: row.id,
           after: areaSnapshot(row),
         });
-        const response = { ...row, tableCount: 0 };
+        const response = { ...row, tableCount: 0, livePlan: false };
         await this.idempotency.completeInTransaction(tx, response);
         return response;
       }),
@@ -114,7 +119,8 @@ export class AreasService {
         const tableCount = await tx.diningTable.count({
           where: { areaId: id, archivedAt: null },
         });
-        return { ...next, locationId: found.locationId, tableCount };
+        const livePlan = (await this.withLivePlan([id])).has(id);
+        return { ...next, locationId: found.locationId, tableCount, livePlan };
       }),
     );
   }
@@ -137,6 +143,16 @@ export class AreasService {
         before: areaSnapshot(current),
       });
     });
+  }
+
+  /** Those of the areas that have a published floor plan (ADR 0073). */
+  private async withLivePlan(areaIds: string[]): Promise<Set<string>> {
+    const rows = await this.db.posFloorPlanPublication.findMany({
+      where: { areaId: { in: areaIds } },
+      select: { areaId: true },
+      distinct: ['areaId'],
+    });
+    return new Set(rows.map((r) => r.areaId));
   }
 
   /** The area, if the caller may read tables at its location (else 404) and manage them (else 403). */

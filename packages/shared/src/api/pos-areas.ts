@@ -14,6 +14,8 @@ export const diningAreaSchema = z.object({
   sortOrder: z.int(),
   /** Tables in service in this area. */
   tableCount: z.int(),
+  /** The area has a published floor plan (ADR 0073). Default: an api from before it. */
+  livePlan: z.boolean().default(false),
 });
 
 export const createDiningAreaRequestSchema = z.strictObject({
