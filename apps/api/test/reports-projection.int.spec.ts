@@ -451,16 +451,20 @@ describe('reports projection', () => {
 
   it('reads its command line', () => {
     const org = uuidv7();
-    expect(parseReportsArgs(['rebuild', '--org', org])).toEqual({ org });
+    expect(parseReportsArgs(['rebuild', '--org', org])).toEqual({ name: 'rebuild', org });
     expect(parseReportsArgs(['rebuild', '--org', org, '--from', '2026-11-01'])).toEqual({
+      name: 'rebuild',
       org,
       from: new Date('2026-11-01T00:00:00.000Z'),
     });
+    expect(parseReportsArgs(['daily', '--org', org])).toEqual({ name: 'daily', org });
     for (const bad of [
       [],
       ['rebuild'],
       ['rebuild', '--org', 'x'],
       ['drop', '--org', org],
+      ['daily'],
+      ['daily', '--org', org, '--from', '2026-11-01'],
       ['rebuild', '--org', org, '--from', '2026-02-30'],
     ]) {
       expect(() => parseReportsArgs(bad)).toThrow('Usage');

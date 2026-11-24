@@ -61,6 +61,7 @@ describe('settings registry', () => {
       'orders.branchStores',
       'orders.showSalesOrders',
       'reports.dayStartsAt',
+      'reports.dailyReportAt',
       'startPage',
     ]);
   });

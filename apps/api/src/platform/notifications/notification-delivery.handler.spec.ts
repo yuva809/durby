@@ -1,4 +1,5 @@
 import { createTranslator, type Locale } from '@durby/i18n';
+import { notificationText } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import type { UserDirectory } from '../auth';
 import type { AppConfig } from '../config';
@@ -6,7 +7,7 @@ import type { LabelService } from '../labels';
 import { InMemoryMailer } from '../mail/in-memory-mailer';
 import type { OutboxEvent } from '../outbox';
 import type { PlatformPrismaClient, TenantTransactionClient } from '../tenancy';
-import { NotificationDeliveryHandler, notificationText } from './notification-delivery.handler';
+import { NotificationDeliveryHandler } from './notification-delivery.handler';
 import type { PushSender } from './push-sender';
 
 const TENANT = '0190a000-0000-7000-8000-0000000000a1';
@@ -28,6 +29,7 @@ function row(id: string, userId: string, kind: string, entityType = 'stock_reque
 function setup(
   rows: ReturnType<typeof row>[],
   prefs: { userId: string; kind: string; email: boolean; push?: boolean }[] = [],
+  options: { emails?: 'on' | 'off'; send?: PushSender['send'] } = {},
 ) {
   const mailer = new InMemoryMailer();
   const subscriptions = [
@@ -35,7 +37,7 @@ function setup(
     { id: 's2', userId: BEN, endpoint: 'https://push.example/gone', p256dh: 'k', auth: 'a' },
   ];
   const deleted: string[] = [];
-  const pushed: { endpoint: string; title: string; url: string }[] = [];
+  const pushed: { endpoint: string; title: string; body?: string; url: string }[] = [];
   const tx = {
     notification: { findMany: () => Promise.resolve(rows) },
     notificationPreference: {
@@ -52,6 +54,7 @@ function setup(
   const push: PushSender = {
     publicKey: 'public-key',
     send: (target, message) => {
+      if (options.send) return options.send(target, message);
       pushed.push({ endpoint: target.endpoint, ...message });
       return Promise.resolve(target.endpoint.endsWith('gone') ? 'gone' : 'sent');
     },
@@ -80,6 +83,7 @@ function setup(
   const config = {
     WEB_ORIGINS: ['https://app.durby.tech', 'https://app.asiamight.site'],
     WEB_BASE_URL: 'https://app.durby.tech',
+    NOTIFICATION_EMAILS: options.emails ?? 'on',
   } as unknown as AppConfig;
   const handler = new NotificationDeliveryHandler(mailer, config, platformDb, labels, users, push);
   const event = {
@@ -152,8 +156,96 @@ describe('notification emails (ADR 0047)', () => {
 
   it('writes the feedback status in words', () => {
     const t = createTranslator('en');
-    expect(notificationText(t, { kind: 'feedback_answered', params: { status: 'done' } })).toBe(
-      'Your feedback was dealt with by our team',
+    expect(
+      notificationText(t, { kind: 'feedback_answered', params: { status: 'done' } }, 'en'),
+    ).toEqual({ title: 'Your feedback was dealt with by our team', body: null });
+  });
+});
+
+describe('daily sales report (ADR 0083)', () => {
+  const daily = (userId: string, params: Record<string, string> = {}) => ({
+    ...row('0190a000-0000-7000-8000-000000000301', userId, 'daily_sales', 'daily_report'),
+    params: {
+      day: '2026-11-23',
+      currency: 'EUR',
+      gross: '1240.00',
+      orders: '52',
+      average: '23.85',
+      ...params,
+    } as never,
+  });
+
+  it('is pushed without being asked for, not emailed, with the amounts in the text', async () => {
+    const { mailer, pushed, run } = setup([
+      daily(BEN, { percent: '8.0', bestName: 'Mitte', bestGross: '800.00' }),
+    ]);
+    await run();
+    expect(mailer.sent).toEqual([]);
+    expect(pushed[0]).toEqual({
+      endpoint: 'https://push.example/ok',
+      title: 'Mon, Nov 23: €1,240.00 sales',
+      body: 'Orders: 52, average €23.85. +8.0 % against a normal day. Best: Mitte, €800.00.',
+      url: '/',
+    });
+  });
+
+  it('is in the person’s language', () => {
+    const { title, body } = notificationText(
+      createTranslator('de'),
+      daily(ANNA, { percent: '-8.0', leftOut: '1' }),
+      'de',
     );
+    expect(title.replace(/\s/g, ' ')).toBe('Mo., 23. Nov.: 1.240,00 € Umsatz');
+    expect(body!.replace(/\s/g, ' ')).toBe(
+      'Bestellungen: 52, im Schnitt 23,85 €. -8,0 % gegenüber einem normalen Tag (Standorte ohne Vergleich: 1).',
+    );
+  });
+
+  it('can be turned off per person', async () => {
+    const { pushed, run } = setup(
+      [daily(BEN)],
+      [{ userId: BEN, kind: 'daily_sales', email: false, push: false }],
+    );
+    await run();
+    expect(pushed).toEqual([]);
+  });
+});
+
+describe('delivery', () => {
+  it('sends no emails while they are off on this server, and still pushes', async () => {
+    const rows = [
+      row('0190a000-0000-7000-8000-000000000201', ANNA, 'request_submitted'),
+      row('0190a000-0000-7000-8000-000000000202', BEN, 'request_approved'),
+    ];
+    const { mailer, pushed, run } = setup(
+      rows,
+      [{ userId: BEN, kind: 'request_approved', email: true, push: true }],
+      { emails: 'off' },
+    );
+    await run();
+    expect(mailer.sent).toEqual([]);
+    expect(pushed).toHaveLength(2);
+  });
+
+  it('sends to every device at once; one that fails does not stop the others', async () => {
+    let waiting = 0;
+    let most = 0;
+    const { deleted, run } = setup(
+      [row('0190a000-0000-7000-8000-000000000202', BEN, 'request_approved')],
+      [{ userId: BEN, kind: 'request_approved', email: false, push: true }],
+      {
+        send: async (target) => {
+          waiting += 1;
+          most = Math.max(most, waiting);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          waiting -= 1;
+          if (target.endpoint.endsWith('ok')) throw new Error('push failed');
+          return 'gone';
+        },
+      },
+    );
+    await expect(run()).resolves.toBeUndefined();
+    expect(most).toBe(2);
+    expect(deleted).toEqual(['s2']);
   });
 });

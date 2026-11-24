@@ -160,6 +160,7 @@ model Organization {
   reportOrderFacts       ReportOrderFact[]
   reportLineFacts        ReportLineFact[]
   reportReservationFacts ReportReservationFact[]
+  reportDailyMessages    ReportDailyMessage[]
 
   @@index([partnerId])
   @@index([planId])
@@ -2602,4 +2603,17 @@ model ReportReservationFact {
   @@unique([tenantId, reservationId])
   @@index([tenantId, locationId, startsAt])
   @@map("report_reservation_facts")
+}
+
+/// The daily report of one organization and business day (ADR 0083): the row says it was sent.
+model ReportDailyMessage {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  day          DateTime     @db.Date
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, day])
+  @@map("report_daily_messages")
 }

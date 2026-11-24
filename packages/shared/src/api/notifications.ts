@@ -21,6 +21,7 @@ export const NOTIFICATION_KINDS = [
   'invoice_submitted',
   'invoice_approved',
   'invoice_rejected',
+  'daily_sales',
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -30,6 +31,7 @@ export const NOTIFICATION_ENTITY_TYPES = [
   'stock_item',
   'feedback',
   'vendor_invoice',
+  'daily_report',
 ] as const;
 export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number];
 
@@ -42,6 +44,9 @@ export const NOTIFICATION_EMAIL_BY_DEFAULT: readonly NotificationKind[] = [
   'request_driver_assigned',
   'invoice_submitted',
 ];
+
+/** Kinds pushed unless the person turns it off (ADR 0083); a device must be turned on all the same. */
+export const NOTIFICATION_PUSH_BY_DEFAULT: readonly NotificationKind[] = ['daily_sales'];
 
 export const NOTIFICATION_LIST_LIMIT = 30;
 
@@ -129,6 +134,8 @@ export function notificationPath(
       return '/inventory';
     case 'feedback':
       return null;
+    case 'daily_report':
+      return '/';
     case 'vendor_invoice':
       return `/inventory/invoices?open=${n.entityId}`;
   }
@@ -139,7 +146,11 @@ export const NOTIFICATION_SETTINGS_PATH = '/account/notifications';
 
 /** A person's choice for a kind, or the default. */
 export function defaultPreference(kind: NotificationKind): NotificationPreference {
-  return { kind, email: NOTIFICATION_EMAIL_BY_DEFAULT.includes(kind), push: false };
+  return {
+    kind,
+    email: NOTIFICATION_EMAIL_BY_DEFAULT.includes(kind),
+    push: NOTIFICATION_PUSH_BY_DEFAULT.includes(kind),
+  };
 }
 
 export const NOTIFICATION_ERROR_CODES = ['platform.notification_not_found'] as const;

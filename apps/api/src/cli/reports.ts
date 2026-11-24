@@ -1,17 +1,22 @@
 import { parseArgs } from 'node:util';
 import type { INestApplicationContext } from '@nestjs/common';
 import { isLocalDate } from '@durby/shared';
-import { ReportsRebuild } from '../modules/reports';
+import { DailyReport, ReportsRebuild } from '../modules/reports';
 import { runCommand } from './run-command';
 
 const USAGE = `Usage:
   reports rebuild --org <id> [--from YYYY-MM-DD]
+  reports daily --org <id>
 
 Recomputes an organization's report data from the till and the bookings (docs/modules/reports.md → Rebuild). Needed once
 per organization after the first release and after switching the reports feature on. Safe while the till is in use.
-Audited (actor cli.reports). Prints JSON.`;
+Audited (actor cli.reports). Prints JSON.
+
+daily: sends the owners yesterday's sales now (docs/modules/reports.md → Daily report) without waiting for the time set.
+Only once per day, and only after the day has ended. Prints the result: sent, done (already sent), early, no_orders, off.`;
 
 export interface ReportsCommand {
+  name: 'rebuild' | 'daily';
   org: string;
   from?: Date;
 }
@@ -32,13 +37,14 @@ export function parseReportsArgs(argv: string[]): ReportsCommand {
     strict: true,
   });
   const { org, from } = values;
-  if (values.help || positionals.length !== 1 || positionals[0] !== 'rebuild') {
+  const [name] = positionals;
+  if (values.help || positionals.length !== 1 || (name !== 'rebuild' && name !== 'daily')) {
     throw new UsageError(USAGE);
   }
   if (!org || !UUID.test(org)) throw new UsageError(USAGE);
-  if (from === undefined) return { org };
-  if (!isLocalDate(from)) throw new UsageError(USAGE);
-  return { org, from: new Date(`${from}T00:00:00.000Z`) };
+  if (from === undefined) return { name, org };
+  if (name === 'daily' || !isLocalDate(from)) throw new UsageError(USAGE);
+  return { name, org, from: new Date(`${from}T00:00:00.000Z`) };
 }
 
 export async function runReportsCommand(
@@ -46,6 +52,10 @@ export async function runReportsCommand(
   cmd: ReportsCommand,
   print: (line: string) => void = console.log,
 ): Promise<void> {
+  if (cmd.name === 'daily') {
+    print(JSON.stringify({ result: await app.get(DailyReport).send(cmd.org, { force: true }) }));
+    return;
+  }
   print(JSON.stringify(await app.get(ReportsRebuild).rebuild(cmd.org, cmd.from)));
 }
 

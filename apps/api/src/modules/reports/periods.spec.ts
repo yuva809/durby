@@ -1,6 +1,6 @@
 import { businessDay } from '@durby/shared';
 import { describe, expect, it } from 'vitest';
-import { cardSpans, daysSpan, normalDay, weekStart } from './periods';
+import { cardSpans, dailyReportDue, daysSpan, normalDay, normalDayOf, weekStart } from './periods';
 
 const berlin = { timeZone: 'Europe/Berlin', dayStartsAt: '04:00' };
 const iso = (span: { start: Date; end: Date }) => [
@@ -140,5 +140,43 @@ describe('normal day (ADR 0082)', () => {
     const spring = normalDay(new Date('2026-04-05T12:00:00Z'), berlin);
     expect(spring.before.map(hours)).toEqual([23, 24, 24, 24]);
     expect(spring.before[1]!.start.toISOString()).toBe('2026-03-21T03:00:00.000Z');
+  });
+});
+
+describe('daily report (ADR 0083)', () => {
+  const due = (now: string, clocks = [berlin], sendAt = '08:00') =>
+    dailyReportDue(new Date(now), { timeZone: 'Europe/Berlin', sendAt, clocks });
+
+  it('is about yesterday, at the set time, for twelve hours', () => {
+    // 08:00 in Berlin is 07:00 UTC in winter.
+    expect(due('2026-11-24T06:59:59Z')).toEqual({ day: '2026-11-23', state: 'early' });
+    expect(due('2026-11-24T07:00:00Z')).toEqual({ day: '2026-11-23', state: 'due' });
+    expect(due('2026-11-24T18:59:59Z')).toEqual({ day: '2026-11-23', state: 'due' });
+    expect(due('2026-11-24T19:00:00Z')).toEqual({ day: '2026-11-23', state: 'late' });
+    expect(due('2026-11-24T05:30:00Z', [berlin], '06:00').state).toBe('due');
+    // After midnight the next day's report is still far away.
+    expect(due('2026-11-24T23:30:00Z')).toEqual({ day: '2026-11-24', state: 'early' });
+  });
+
+  it('keeps the wall-clock time across both switches', () => {
+    expect(due('2026-03-29T05:59:59Z').state).toBe('early');
+    expect(due('2026-03-29T06:00:00Z')).toEqual({ day: '2026-03-28', state: 'due' });
+    expect(due('2026-10-25T06:59:59Z').state).toBe('early');
+    expect(due('2026-10-25T07:00:00Z')).toEqual({ day: '2026-10-24', state: 'due' });
+  });
+
+  it('waits until the day has ended everywhere', () => {
+    const newYork = { timeZone: 'America/New_York', dayStartsAt: '04:00' };
+    // 04:00 in New York is 09:00 UTC.
+    expect(due('2026-11-24T08:59:59Z', [berlin, newYork]).state).toBe('early');
+    expect(due('2026-11-24T09:00:00Z', [berlin, newYork]).state).toBe('due');
+    const late = { ...berlin, dayStartsAt: '08:00' };
+    expect(due('2026-11-24T06:59:59Z', [late], '06:00').state).toBe('early');
+    expect(due('2026-11-24T07:00:00Z', [late], '06:00').state).toBe('due');
+  });
+
+  it('a day is the same days as on the overview', () => {
+    const now = new Date('2026-11-24T07:00:00Z');
+    expect(normalDayOf('2026-11-23', berlin)).toEqual(normalDay(now, berlin));
   });
 });

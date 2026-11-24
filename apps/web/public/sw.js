@@ -1,5 +1,5 @@
 // Push service worker (docs/platform/notifications.md, ADR 0047). Only shows push messages and opens their page; no
-// caching, no fetch handling. The message is { title, url } with url a path on this site.
+// caching, no fetch handling. The message is { title, body?, url } with url a path on this site.
 /* global self, URL */
 'use strict';
 
@@ -22,6 +22,7 @@ self.addEventListener('push', (event) => {
   if (!message.title) return;
   event.waitUntil(
     self.registration.showNotification(message.title, {
+      ...(typeof message.body === 'string' ? { body: message.body } : {}),
       data: { url: message.url },
       // One per page: a newer update about the same thing replaces the older one.
       tag: message.url,

@@ -40,6 +40,7 @@ export * from './events';
 export * from './features';
 export * from './granting';
 export * from './metrics';
+export * from './notification-text';
 export * from './numbering';
 export * from './realtime';
 export * from './permissions';

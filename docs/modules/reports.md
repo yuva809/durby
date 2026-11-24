@@ -1,7 +1,8 @@
 # Module: reports
 
 Feature `reports`; sales and tables also need `pos`, reservations need `reservations`. Decisions:
-[ADR 0081](../adr/0081-reports-read-model.md), [ADR 0082](../adr/0082-owner-overview.md). Read only: no route writes.
+[ADR 0081](../adr/0081-reports-read-model.md), [ADR 0082](../adr/0082-owner-overview.md),
+[ADR 0083](../adr/0083-daily-sales-report-push.md). Read only: no route writes.
 
 ## Metrics (`packages/shared/src/metrics.ts`)
 
@@ -53,6 +54,19 @@ listed with zeros.
   the report data is built.
 - Refreshed every 60 s while visible. When a refresh fails for a temporary reason, the last figures stay with their
   time and a notice.
+
+## Daily report
+
+Every morning the active owners of an organization with `reports` and `pos` get a `daily_sales` notification (bell, and push
+on devices turned on): yesterday's sales, orders, average order, the change against a normal day (as on the Overview,
+with how many locations are left out) and, with several locations, the best one. Tapping it opens the Overview.
+
+- Day: yesterday in the organization's zone; each location's business day of that date.
+- Due at `reports.dailyReportAt` (default 08:00) or when that day has ended at every active location, whichever is later;
+  for 12 hours, then skipped. No orders that day: nothing is sent.
+- `report_daily_messages`: one row per organization and day sent, written with the notifications.
+- The worker looks every 5 minutes. `node dist/cli/reports.js daily --org <id>` sends it now, if the day has ended and it
+  was not sent yet.
 
 ## Fact tables
 

@@ -15,6 +15,7 @@ import { errorLabel } from '../../lib/auth/errors';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { camel } from '../../lib/workspace/api';
+import { getsDailyReport } from '../reports/daily-report-offer';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
@@ -37,8 +38,12 @@ export function NotificationSettings() {
   const [notice, setNotice] = useState<{ text: string; tone: 'error' | 'info' } | null>(null);
   if (!session) return null;
 
+  // Only owners get the daily report, so nobody else chooses for it (ADR 0083).
+  const daily = getsDailyReport(session);
   const rows =
-    loaded.status === 'ready' ? loaded.data.map((p) => edits[p.kind] ?? p) : ([] as const);
+    loaded.status === 'ready'
+      ? loaded.data.filter((p) => daily || p.kind !== 'daily_sales').map((p) => edits[p.kind] ?? p)
+      : ([] as const);
   const changed = Object.keys(edits).length > 0;
 
   const toggle = (row: NotificationPreference, channel: Channel, value: boolean) =>
@@ -111,6 +116,11 @@ export function NotificationSettings() {
           </table>
         )}
       </Card>
+      {daily ? (
+        <p className="text-sm text-muted-foreground" data-testid="daily-report-note">
+          {t('platform.notifications.dailySales.lockScreen')}
+        </p>
+      ) : null}
       <Notice text={notice?.text ?? null} tone={notice?.tone ?? 'info'} />
       <div>
         <Button

@@ -35,7 +35,9 @@ await this.notifications.notify(tx, {
   its name `platform.notifications.kindNames.<camelKind>`, where it leads in `notificationPath`, and the trigger in the
   owning module. Default email is off unless it belongs in `NOTIFICATION_EMAIL_BY_DEFAULT`.
 
-The kinds and who hears them are listed in ADR 0047 §2.
+The kinds and who hears them are listed in ADR 0047 §2; `daily_sales` (the owners, every morning) in ADR 0083. Its push
+is on by default (`NOTIFICATION_PUSH_BY_DEFAULT`). `notificationText` in `packages/shared` words every kind for bell,
+email and push.
 
 ## Delivery
 
@@ -43,8 +45,9 @@ The kinds and who hears them are listed in ADR 0047 §2.
 email or push on for the kind. The worker's handler `platform.deliverNotifications`:
 
 1. reads the rows, the people's choices, emails and languages, and the organization's partner domains;
-2. pushes `{ title, url }` to each subscription of those with push on (`gone` → the subscription is deleted);
-3. emails those with email on: subject `"{organization}: {text}"`, body with the link on the partner domain (none for
+2. pushes `{ title, body?, url }` to each subscription of those with push on, all at once with a 3 s limit (`gone` → the
+   subscription is deleted);
+3. unless `NOTIFICATION_EMAILS=off`, emails those with email on: subject `"{organization}: {text}"`, body with the link on the partner domain (none for
    feedback) and the link to `/account/notifications`.
 
 Best effort per person and channel: failures are logged with the kind and the error only (never addresses,
