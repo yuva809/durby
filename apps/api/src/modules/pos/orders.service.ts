@@ -65,6 +65,7 @@ interface TicketLine {
   quantity: number;
   note: string | null;
   voidsLineId: string | null;
+  seat: number | null;
 }
 
 /** Prisma returns `numeric` columns as Decimal objects; only their exact text is used here. */
@@ -93,6 +94,7 @@ const LINE_SELECT = {
   quantity: true,
   note: true,
   voidsLineId: true,
+  seat: true,
   createdAt: true,
 } as const;
 
@@ -119,6 +121,7 @@ interface LineRow {
   quantity: number;
   note: string | null;
   voidsLineId: string | null;
+  seat: number | null;
   createdAt: Date;
 }
 
@@ -316,6 +319,7 @@ export class OrdersService {
                 quantity: line.quantity,
                 note: line.note || null,
                 voidsLineId: null,
+                seat: line.seat ?? null,
               },
             };
           }),
@@ -350,6 +354,7 @@ export class OrdersService {
             quantity: -quantity,
             note: null,
             voidsLineId: line.id,
+            seat: line.seat,
           },
         })),
       );
@@ -400,6 +405,7 @@ export class OrdersService {
             quantity: -quantity,
             note: null,
             voidsLineId: line.id,
+            seat: line.seat,
           },
         })),
       );
@@ -449,6 +455,7 @@ export class OrdersService {
             quantity,
             note: null,
             voidsLineId: null,
+            seat: line.seat,
           },
         })),
       );
@@ -1140,6 +1147,7 @@ function lineResponse(line: LineRow, remaining: number, billedQuantity: number):
     quantity: line.quantity,
     note: line.note,
     voidsLineId: line.voidsLineId,
+    seat: line.seat,
     remaining: line.quantity > 0 ? remaining : 0,
     billedQuantity: line.quantity > 0 ? billedQuantity : 0,
     total: lineTotal(unitPrice, line.quantity),

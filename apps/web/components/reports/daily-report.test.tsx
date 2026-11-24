@@ -207,6 +207,8 @@ describe('on the phone', () => {
       start_url: '/',
       background_color: DEFAULT_THEME.tokens.background,
     });
+    // One app for owners and waiters: the till is a shortcut (ADR 0072).
+    expect(result.shortcuts).toEqual([{ name: 'Service', url: '/service' }]);
     expect(result.icons?.map((i) => i.src)).toEqual(['/app-icon/192', '/app-icon/512']);
   });
 

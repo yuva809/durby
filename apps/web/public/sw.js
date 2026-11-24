@@ -1,7 +1,10 @@
-// Push service worker (docs/platform/notifications.md, ADR 0047). Only shows push messages and opens their page; no
-// caching, no fetch handling. The message is { title, body?, url } with url a path on this site.
-/* global self, URL */
+// Service worker: shows push messages and opens their page (docs/platform/notifications.md, ADR 0047, 0083), and keeps
+// the app's hashed static files on the device (ADR 0072). The message is { title, body?, url } with url a path on this site.
+/* global self, URL, caches, fetch */
 'use strict';
+
+// Static files only (ADR 0072): hashed Next.js assets. Pages, API answers and sign-in state are never stored.
+const STATIC_CACHE = 'durby-static-v1';
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -48,5 +51,40 @@ self.addEventListener('notificationclick', (event) => {
       }
       return self.clients.openWindow(target.href);
     }),
+  );
+});
+
+// Drops the static caches of older versions when this one activates (ADR 0072).
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => k.startsWith('durby-static-') && k !== STATIC_CACHE)
+            .map((k) => caches.delete(k)),
+        ),
+      ),
+  );
+});
+
+// Serves hashed build files from the cache, and stores them on first use. Nothing else is cached.
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (!url.pathname.startsWith('/_next/static/')) return;
+  event.respondWith(
+    caches.open(STATIC_CACHE).then((cache) =>
+      cache.match(req).then(
+        (hit) =>
+          hit ||
+          fetch(req).then((res) => {
+            if (res.ok) cache.put(req, res.clone());
+            return res;
+          }),
+      ),
+    ),
   );
 });

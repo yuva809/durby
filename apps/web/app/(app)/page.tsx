@@ -28,10 +28,20 @@ export default function HomePage() {
   const branch = operations && isBranchView(session);
   // A driver's menu has no Overview either (item 14): they start on their deliveries.
   const driver = operations && isDriverView(session);
+  // The waiter app (ADR 0072): opened from the home screen, people who take orders start at Service.
+  const till =
+    session !== null &&
+    settings.status !== 'loading' &&
+    !overviewVisible(session) &&
+    session.activeFeatures.includes('pos') &&
+    session.activePermissions.includes('pos.orders.read');
   useEffect(() => {
     if (driver) router.replace('/my-deliveries');
     else if (branch || inventoryStart) router.replace('/inventory');
-  }, [branch, driver, inventoryStart, router]);
+    else if (till && window.matchMedia?.('(display-mode: standalone)').matches) {
+      router.replace('/service');
+    }
+  }, [branch, driver, inventoryStart, router, till]);
   const organization = session?.organizations.find((o) => o.id === session.activeOrganizationId);
   if (branch || driver || inventoryStart) return null;
   if (session?.activeOrganizationId && overviewVisible(session)) {

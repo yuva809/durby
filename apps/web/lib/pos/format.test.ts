@@ -67,6 +67,7 @@ describe('billLines', () => {
   const line = (n: number, overrides: Partial<OrderLine>): OrderLine => ({
     id: `0190a000-0000-7000-8000-0000000004${String(n).padStart(2, '0')}`,
     ticketId: '0190a000-0000-7000-8000-000000000400',
+    seat: null,
     productId: '0190a000-0000-7000-8000-000000000499',
     productName: 'Soup',
     unitPrice: '6.90',

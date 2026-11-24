@@ -20,6 +20,9 @@ export type TicketStatus = (typeof TICKET_STATUSES)[number];
 const quantity = z.int().min(1).max(ORDER_LINE_MAX_QUANTITY);
 const covers = z.int().min(1).max(ORDER_MAX_COVERS);
 
+/** The highest seat number at a table (ADR 0070). */
+export const MAX_SEAT = 20;
+
 export const sendTicketRequestSchema = z.strictObject({
   lines: z
     .array(
@@ -28,6 +31,8 @@ export const sendTicketRequestSchema = z.strictObject({
         quantity,
         /** Empty means none. */
         note: z.string().trim().max(ORDER_NOTE_MAX_LENGTH).optional(),
+        /** The guest's seat at the table (ADR 0070); fixed once sent. */
+        seat: z.int().min(1).max(MAX_SEAT).optional(),
       }),
     )
     .min(1)
@@ -60,6 +65,8 @@ export const orderLineSchema = z.object({
   note: z.string().nullable(),
   /** Set on void lines: the line they cancel. */
   voidsLineId: z.uuid().nullable(),
+  /** The guest's seat (ADR 0070); null when none was given. */
+  seat: z.int().min(1).max(MAX_SEAT).nullable(),
   /** What is left of a sent line after voids; 0 on void lines. */
   remaining: z.int(),
   /** Portions of `remaining` on bills that are not cancelled (ADR 0036); 0 on void lines. */

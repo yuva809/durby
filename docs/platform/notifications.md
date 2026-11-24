@@ -74,7 +74,8 @@ All `@Authenticated()`, the caller's own rows in the active organization.
 - Keys once per environment: `npx web-push generate-vapid-keys`, then in the api's `.env`:
   `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, `WEB_PUSH_SUBJECT` (`mailto:…` or `https://…`). All three or none.
   The private key is a secret; changing the pair drops every device (they must turn push on again).
-- `/sw.js` only shows messages and opens their page (paths on this site only); it caches nothing.
+- `/sw.js` only shows messages and opens their page (paths on this site only); besides that it caches only the
+  app's hashed static files (ADR 0072).
 - Works in Chrome, Edge, Firefox and Safari on macOS; on iPhone and iPad only when the app is added to the home
   screen. The card says when the browser can't, or when notifications are blocked for the site.
 - A browser has one subscription; turning push on as another person or in another organization on the same browser

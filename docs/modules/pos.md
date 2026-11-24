@@ -462,6 +462,24 @@ items" dialog that opens the new table afterwards.
 Errors: `pos.table_occupied`, `pos.order_not_same_location` (existing), `pos.line_billed` (existing),
 `pos.transfer_exceeds` (quantity over what is left).
 
+## Step 6: seat numbers (ADR 0070)
+
+An item sent to the kitchen may name a seat (1–20). The seat is stored on the line, copied to the void of that line
+and to a transfer's sale line, and never changed (a correction is void and resend). Bills are unchanged: "bill seat
+N" is a bill of the unbilled lines whose seat is N. Lines without a seat are billed as before. The order response
+carries `seat` on each line.
+
+A merge keeps lines as they are; a transfer copies the seat to both of its lines. In the till: the cart's seat field and
+the split dialog's seat picker.
+
+## Step 7: handheld waiter app (ADR 0072)
+
+The app is installable on a phone: a web manifest (the partner's name and colors, standalone display; one for everyone,
+ADR 0083) and a service worker that caches only the app's static files. Opened from the home screen, people who take
+orders and have no Overview start at `/service`; a long press on the icon offers Service too. Pages, API responses and
+sign-in state are never cached. Online only: sending an order needs the connection. The push handler (ADR 0047) is
+unchanged.
+
 ## Step 8: floor plan designer and generator (ADR 0073)
 
 A plan per dining area, saved as append-only versions; publishing makes one live, and every screen reads the live one.

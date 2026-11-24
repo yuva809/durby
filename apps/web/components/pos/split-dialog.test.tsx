@@ -35,6 +35,7 @@ const line = (
   quantity: remaining,
   remaining,
   billedQuantity: billed,
+  seat: null,
 });
 
 const ORDER = {

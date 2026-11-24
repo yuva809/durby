@@ -72,6 +72,7 @@ const TICKET = {
       voidsLineId: null,
       remaining: 2,
       billedQuantity: 0,
+      seat: null,
       total: '13.80',
       createdAt: AT,
     },

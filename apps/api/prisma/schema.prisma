@@ -1130,6 +1130,8 @@ model PosOrderLine {
   taxRate         Decimal                @map("tax_rate") @db.Decimal(5, 2)
   quantity        Int
   note            String?
+  /// The guest's seat at the table, 1–20 (ADR 0070); null when not given. Fixed at send time.
+  seat            Int?                   @db.SmallInt
   voidsLineId     String?                @map("voids_line_id") @db.Uuid
   createdByUserId String                 @map("created_by_user_id") @db.Uuid
   createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)

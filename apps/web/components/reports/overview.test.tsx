@@ -274,6 +274,44 @@ describe('the home page otherwise', () => {
     expect(overviewCalls()).toBe(0);
   });
 
+  it('leads waiters on to Service in the installed app, and only there (ADR 0072)', async () => {
+    const standalone = (matches: boolean) =>
+      vi.stubGlobal('matchMedia', () => ({
+        matches,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }));
+    try {
+      standalone(true);
+      signedIn('waiter');
+      render(<HomePage />);
+      await waitFor(() => expect(mockState.router.replace).toHaveBeenCalledWith('/service'));
+      cleanup();
+      mockState.router.replace.mockReset();
+      // Owners keep the Overview, where push is turned on; staff don't take orders; a browser stays.
+      signedIn('owner');
+      render(<HomePage />);
+      await screen.findByTestId('overview-today');
+      cleanup();
+      signedIn('staff');
+      render(<HomePage />);
+      await screen.findByText(/^Welcome to/);
+      cleanup();
+      signedIn('waiter', []);
+      render(<HomePage />);
+      await screen.findByText(/^Welcome to/);
+      cleanup();
+      standalone(false);
+      signedIn('waiter');
+      render(<HomePage />);
+      await screen.findByText(/^Welcome to/);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(mockState.router.replace).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('still leads to the start page, without loading figures', async () => {
     signedIn();
     settings = [{ key: 'startPage', value: 'inventory' }];
