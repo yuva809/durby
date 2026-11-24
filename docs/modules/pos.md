@@ -473,7 +473,7 @@ ways, at most 1 : 5), up to 100 tables and 100 pieces (`wall`, `door`, `bar`, `d
 existing one (`tableId`) or a new one (`create`: name, seats, shape). Seats, shape and colour of an existing table are the
 table's own.
 
-**Generator** (`generateFloorPlan`): room in metres (2–60), tables in all, seats and shape of new tables. Rows with 1.2 m
+**Generator** (`generateFloorPlan`): room in metres (2–60), tables in all, seats and shape of new tables. Even rows with at least 1.2 m
 between tables and 0.6 m to the walls; existing tables first, in their order; new names go on with the area's numbering.
 When they don't fit it answers how many do. Pure; it saves nothing.
 

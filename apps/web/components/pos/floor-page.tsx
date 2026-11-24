@@ -360,8 +360,13 @@ function AreaPlan({
               className={order ? 'border-4 border-primary! bg-primary/15!' : undefined}
             >
               <span className="text-sm font-semibold">{table.name}</span>
-              <span className="text-xs">
-                {time ?? t('pos.floor.seats', { count: String(table.seats) })}
+              <span className="inline-flex items-center gap-0.5 text-xs">
+                {time ?? (
+                  <>
+                    <Users aria-hidden className="size-3" />
+                    {table.seats}
+                  </>
+                )}
               </span>
             </TableShapeBox>
             {ready > 0 && (

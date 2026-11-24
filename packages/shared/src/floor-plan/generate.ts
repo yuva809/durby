@@ -72,26 +72,68 @@ interface Placed extends Size {
   y: number;
 }
 
-/** Rows from the top left; null when not all fit. Everything in metres. */
-function rows(sizes: readonly Size[], room: Size): Placed[] | null {
-  const placed: Placed[] = [];
-  let x = EDGE;
-  let y = EDGE;
-  let rowHeight = 0;
+/** Rows in order, each as full as it gets or up to `most` tables; null when not all fit. Everything in metres. */
+function split(sizes: readonly Size[], room: Size, most: number): Size[][] | null {
+  const inner = { width: room.width - 2 * EDGE, height: room.height - 2 * EDGE };
+  const rows: Size[][] = [];
+  let width = 0;
   for (const size of sizes) {
-    if (x > EDGE && x + size.width > room.width - EDGE + 1e-9) {
-      x = EDGE;
-      y += rowHeight + GAP;
-      rowHeight = 0;
+    const row = rows.at(-1);
+    if (row && row.length < most && width + GAP + size.width <= inner.width + EPSILON) {
+      row.push(size);
+      width += GAP + size.width;
+    } else {
+      rows.push([size]);
+      width = size.width;
     }
-    if (x + size.width > room.width - EDGE + 1e-9 || y + size.height > room.height - EDGE + 1e-9) {
-      return null;
-    }
-    placed.push({ ...size, x, y });
-    x += size.width + GAP;
-    rowHeight = Math.max(rowHeight, size.height);
+    if (width > inner.width + EPSILON) return null;
   }
-  return placed;
+  const height =
+    rows.reduce((sum, row) => sum + highest(row), 0) + Math.max(0, rows.length - 1) * GAP;
+  return height <= inner.height + EPSILON ? rows : null;
+}
+
+const EPSILON = 1e-9;
+const highest = (row: readonly Size[]) => Math.max(...row.map((size) => size.height));
+
+/** Lengths in a line of `room`: the least gaps, and what is left over shared evenly, also with the ends. */
+function spread(lengths: readonly number[], room: number): number[] {
+  const used = lengths.reduce((sum, length) => sum + length, 0);
+  const least = 2 * EDGE + (lengths.length - 1) * GAP;
+  const extra = Math.max(0, room - used - least) / (lengths.length + 1);
+  let at = EDGE + extra;
+  return lengths.map((length) => {
+    const start = at;
+    at += length + GAP + extra;
+    return start;
+  });
+}
+
+/** As many tables in each row as in the others, spread over the room; null when not all fit. */
+function rows(sizes: readonly Size[], room: Size): Placed[] | null {
+  const full = split(sizes, room, Number.POSITIVE_INFINITY);
+  if (!full) return null;
+  let balanced = full;
+  for (let most = Math.ceil(sizes.length / full.length); most < sizes.length; most += 1) {
+    const even = split(sizes, room, most);
+    // Not more rows than needed: they would be crowded.
+    if (!even || even.length > full.length) continue;
+    balanced = even;
+    break;
+  }
+  const tops = spread(balanced.map(highest), room.height);
+  return balanced.flatMap((row, r) => {
+    const lefts = spread(
+      row.map((size) => size.width),
+      room.width,
+    );
+    return row.map((size, i) => ({
+      ...size,
+      x: lefts[i]!,
+      // In the middle of its row.
+      y: tops[r]! + (highest(row) - size.height) / 2,
+    }));
+  });
 }
 
 /** The prefix most of the names share before their number ("T" of T1, T2, Bar 1); null when none has one. */
@@ -180,7 +222,7 @@ export function generateFloorPlan(input: GeneratorInput): GeneratorResult {
   };
 }
 
-/** Metres to whole units, rounded so that neighbours can't grow into each other. */
+/** Metres to whole units, rounded down so that neighbours can't grow into each other. */
 function units(at: Placed, scale: number, room: FloorPlanRoom) {
   const width = Math.max(FLOOR_PLAN_MIN_TABLE, Math.floor(at.width * scale));
   const height = Math.max(FLOOR_PLAN_MIN_TABLE, Math.floor(at.height * scale));

@@ -219,8 +219,10 @@ describe('floor plan designer', () => {
     await open();
     expect(asButton(button('Save')).disabled).toBe(true);
     drag(item('t-1'), 50, 0);
+    await userEvent.click(button('Add Bar'));
     answers['POST /versions'] = () => {
-      const layout = writes.at(-1)!.body.layout as FloorPlanLayout;
+      // As the api answers: in the schema's field order, not the editor's.
+      const layout = floorPlanLayoutSchema.parse(writes.at(-1)!.body.layout);
       plan = { ...plan, latest: { version: 3, layout }, history: [info(3), ...plan.history] };
       return Response.json({ version: 3, layout }, { status: 201 });
     };
@@ -230,6 +232,7 @@ describe('floor plan designer', () => {
     expect(savedLayout().tables[0]!.x).toBe(200);
     expect(screen.getAllByTestId('plan-version')).toHaveLength(3);
     // What was done stays undoable.
+    await userEvent.click(button('Undo'));
     await userEvent.click(button('Undo'));
     expect(left('t-1')).toBe('10%');
   });

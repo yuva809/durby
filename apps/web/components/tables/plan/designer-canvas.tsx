@@ -140,6 +140,7 @@ export function DesignerCanvas({
       layout={layout}
       label={t('pos.plan.canvas')}
       canvasRef={canvas}
+      minWidth={560}
       onBackground={() => dispatch({ type: 'select', key: null })}
     >
       {layout.pieces.map((piece) => {

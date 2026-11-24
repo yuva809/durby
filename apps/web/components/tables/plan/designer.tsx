@@ -29,6 +29,7 @@ import {
   EMPTY_LAYOUT,
   initialEditor,
   sameLayout,
+  withExisting,
   withoutGone,
 } from '../../../lib/pos/plan-editor';
 import { useActionKey } from '../../../lib/use-action-key';
@@ -400,11 +401,11 @@ export function Designer({
 type T = ReturnType<typeof useT>;
 type EditorProps = Parameters<typeof DesignerCanvas>[0];
 
-/** What the editor starts with: the newest version without tables that are gone. */
+/** What the editor starts with: the newest version without tables that are gone; new ones that exist by now are those. */
 function startLayout(plan: AreaFloorPlanResponse, tables: readonly DiningTable[]): FloorPlanLayout {
   if (!plan.latest) return EMPTY_LAYOUT;
-  const ids = tables.filter((x) => x.areaId === plan.area.id).map((x) => x.id);
-  return withoutGone(plan.latest.layout, new Set(ids));
+  const here = tables.filter((x) => x.areaId === plan.area.id);
+  return withExisting(withoutGone(plan.latest.layout, new Set(here.map((x) => x.id))), here);
 }
 
 function selectedName(

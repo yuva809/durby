@@ -76,12 +76,12 @@ function freeKey(layout: FloorPlanLayout, prefix: string): string {
 }
 
 /** The first free place from the top left, else the corner. */
-function freePlace(layout: FloorPlanLayout, size: { width: number; height: number }) {
+function freePlace(layout: FloorPlanLayout, { width, height }: { width: number; height: number }) {
   const { room } = layout;
   const others: FloorPlanBox[] = [...layout.tables, ...layout.pieces];
-  for (let y = 30; y + size.height <= room.height; y += 30) {
-    for (let x = 30; x + size.width <= room.width; x += 30) {
-      if (!others.some((o) => overlap({ x, y, ...size }, o))) return { x, y };
+  for (let y = 30; y + height <= room.height; y += 30) {
+    for (let x = 30; x + width <= room.width; x += 30) {
+      if (!others.some((o) => overlap({ x, y, width, height }, o))) return { x, y };
     }
   }
   return { x: 0, y: 0 };
@@ -246,5 +246,37 @@ export function withoutGone(
   return tables.length === layout.tables.length ? layout : { ...layout, tables };
 }
 
-export const sameLayout = (a: FloorPlanLayout, b: FloorPlanLayout): boolean =>
-  a === b || JSON.stringify(a) === JSON.stringify(b);
+/**
+ * New tables that exist by now (an old draft, restored after it was published once) become those tables: same name, in
+ * this area, not on the plan already.
+ */
+export function withExisting(
+  layout: FloorPlanLayout,
+  areaTables: readonly { id: string; name: string }[],
+): FloorPlanLayout {
+  const placed = new Set(layout.tables.map((t) => t.tableId));
+  const free = new Map(
+    areaTables.filter((t) => !placed.has(t.id)).map((t) => [t.name, t.id] as const),
+  );
+  if (!layout.tables.some((t) => t.create && free.has(t.create.name))) return layout;
+  return {
+    ...layout,
+    tables: layout.tables.map((t) => {
+      const tableId = t.create ? free.get(t.create.name) : undefined;
+      return tableId === undefined ? t : { ...t, tableId, create: null };
+    }),
+  };
+}
+
+/** Equal content; the order of an object's fields doesn't count (the database doesn't keep it). */
+export function sameLayout(a: FloorPlanLayout, b: FloorPlanLayout): boolean {
+  return a === b || canonical(a) === canonical(b);
+}
+
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_, part: unknown) =>
+    part !== null && typeof part === 'object' && !Array.isArray(part)
+      ? Object.fromEntries(Object.entries(part).sort(([a], [b]) => (a < b ? -1 : 1)))
+      : part,
+  );
+}

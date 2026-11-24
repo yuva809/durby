@@ -72,7 +72,8 @@ export function TableShapeBox({
     <span
       data-shape={shape}
       className={cn(
-        'flex size-full flex-col items-center justify-center overflow-hidden border-2 text-center leading-tight text-foreground',
+        // Long text spills over a small table rather than being cut.
+        'flex size-full flex-col items-center justify-center border-2 text-center leading-tight whitespace-nowrap text-foreground',
         shape === 'round' ? 'rounded-[50%]' : 'rounded-lg',
         className,
       )}
@@ -92,6 +93,7 @@ export function PlanCanvas({
   label,
   canvasRef,
   onBackground,
+  minWidth = 720,
   children,
   testId = 'plan-canvas',
 }: {
@@ -99,6 +101,8 @@ export function PlanCanvas({
   label: string;
   canvasRef?: Ref<HTMLDivElement>;
   onBackground?: () => void;
+  /** Pixels for a room's longer side; a narrower screen scrolls sideways. */
+  minWidth?: number;
   children: ReactNode;
   testId?: string;
 }) {
@@ -113,7 +117,7 @@ export function PlanCanvas({
         className="relative mx-auto w-full touch-pan-x touch-pan-y"
         style={{
           aspectRatio: `${width} / ${height}`,
-          minWidth: 900 * (width / Math.max(width, height)),
+          minWidth: minWidth * (width / Math.max(width, height)),
           // A deep room would be higher than any screen at full width.
           maxWidth: width >= height ? undefined : 1100 * (width / height),
           backgroundImage: 'radial-gradient(var(--border) 1px, transparent 1px)',

@@ -181,10 +181,15 @@ describe('floor plan generator (ADR 0073)', () => {
     expect(layout.tables.map((t) => t.create?.name)).toEqual(
       Array.from({ length: 12 }, (_, i) => `T${i + 1}`),
     );
-    expect(new Set(layout.tables.map((t) => t.y)).size).toBe(3);
-    // 0.6 m to the walls, 1.2 m between the tables, 0.9 m per table, at 100 units a metre.
-    expect(layout.tables[0]).toMatchObject({ x: 60, y: 60, width: 90, height: 90 });
-    expect(layout.tables[1]).toMatchObject({ x: 270, y: 60 });
+    // As many in each row as in the others: 4 + 4 + 4, spread over the room.
+    const perRow = new Map<number, number>();
+    for (const t of layout.tables) perRow.set(t.y, (perRow.get(t.y) ?? 0) + 1);
+    expect([...perRow.values()]).toEqual([4, 4, 4]);
+    expect(layout.tables[0]).toMatchObject({ width: 90, height: 90 });
+    // 10 m - 4 x 0.9 m - 3 x 1.2 m - 2 x 0.6 m leaves 1.6 m for five gaps.
+    expect(layout.tables.slice(0, 4).map((t) => t.x)).toEqual([92, 334, 576, 818]);
+    const right = layout.tables[3]!;
+    expect(1000 - right.x - right.width).toBe(layout.tables[0]!.x);
   });
 
   it('places the existing tables first and creates only the rest', () => {

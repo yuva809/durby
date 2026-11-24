@@ -1,4 +1,9 @@
-import { type FloorPlanLayout, floorPlanLayoutSchema, overlappingTables } from '@durby/shared';
+import {
+  type FloorPlanLayout,
+  floorPlanLayoutSchema,
+  overlap,
+  overlappingTables,
+} from '@durby/shared';
 import { describe, expect, it } from 'vitest';
 import {
   type EditorAction,
@@ -6,6 +11,7 @@ import {
   type EditorState,
   initialEditor,
   sameLayout,
+  withExisting,
   withoutGone,
 } from './plan-editor';
 
@@ -108,6 +114,10 @@ describe('floor plan editor', () => {
     );
     expect(state.layout.tables.map((t) => t.key)).toEqual(['t-1', 't-2', 't-3']);
     expect([...overlappingTables(state.layout)]).toEqual([]);
+    const all = [...state.layout.pieces, ...state.layout.tables];
+    for (const [i, a] of all.entries()) {
+      for (const b of all.slice(i + 1)) expect(overlap(a, b), `${a.key} ${b.key}`).toBe(false);
+    }
     expect(run(start(), { type: 'addTable', tableId: id(1), seats: 4 }).layout).toBe(LAYOUT);
   });
 
@@ -165,5 +175,35 @@ describe('floor plan editor', () => {
     expect(withoutGone(LAYOUT, new Set()).tables.map((t) => t.key)).toEqual(['t-2']);
     expect(sameLayout(LAYOUT, structuredClone(LAYOUT))).toBe(true);
     expect(sameLayout(LAYOUT, withoutGone(LAYOUT, new Set()))).toBe(false);
+  });
+
+  it('compares content, not the order of fields', () => {
+    const reversed = (value: unknown): unknown =>
+      Array.isArray(value)
+        ? value.map(reversed)
+        : value !== null && typeof value === 'object'
+          ? Object.fromEntries(
+              Object.entries(value)
+                .reverse()
+                .map(([k, v]) => [k, reversed(v)]),
+            )
+          : value;
+    const stored = reversed(LAYOUT) as FloorPlanLayout;
+    expect(JSON.stringify(stored)).not.toBe(JSON.stringify(LAYOUT));
+    expect(sameLayout(LAYOUT, stored)).toBe(true);
+    const [first, second] = LAYOUT.tables;
+    expect(sameLayout(LAYOUT, { ...LAYOUT, tables: [second!, first!] })).toBe(false);
+    expect(sameLayout(LAYOUT, { ...LAYOUT, tables: [{ ...first!, x: 110 }, second!] })).toBe(false);
+  });
+
+  it('recognises new tables that exist by now', () => {
+    const t2 = { id: id(2), name: 'T2' };
+    expect(withExisting(LAYOUT, [{ id: id(1), name: 'T1' }])).toBe(LAYOUT);
+    const found = withExisting(LAYOUT, [{ id: id(1), name: 'T1' }, t2]);
+    expect(found.tables[1]).toMatchObject({ tableId: id(2), create: null, x: 300 });
+    expect(floorPlanLayoutSchema.safeParse(found).success).toBe(true);
+    // A table that is on the plan already isn't put there twice.
+    const renamed = [{ id: id(1), name: 'T2' }];
+    expect(withExisting(LAYOUT, renamed)).toBe(LAYOUT);
   });
 });

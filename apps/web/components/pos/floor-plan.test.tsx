@@ -137,7 +137,7 @@ describe('the floor plan on Service', () => {
         'T1: Open, €13.80, Seated 42 min, Ready to serve: 2',
       ),
     );
-    expect(t2!.textContent).toBe('T24 seats');
+    expect(t2!.textContent).toBe('T24');
     expect(names('floor-table')).toEqual(['T3', 'G1', 'G2']);
     expect(screen.getByText('Not on the plan')).toBeTruthy();
     expect(
