@@ -20,6 +20,7 @@ import {
   type UpdateOrderRequest,
   type VoidLinesRequest,
 } from '@durby/shared';
+import { v7 as uuidv7 } from 'uuid';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { Clock } from '../../platform/auth';
 import { SettingsService } from '../../platform/config/settings';
@@ -49,6 +50,12 @@ type Db = TenantDb;
 
 /** Tickets of one send or void go out kitchen first (ADR 0025). */
 const STATION_ORDER: readonly PrepStation[] = PREP_STATIONS;
+
+/** Where a ticket comes from (ADR 0081): the send that wrote it, or a transfer. Neither for a void. */
+interface TicketOrigin {
+  sendId?: string;
+  transferred?: boolean;
+}
 
 interface TicketLine {
   productId: string;
@@ -293,6 +300,8 @@ export class OrdersService {
           tx,
           orderId,
           'order',
+          // Its kitchen and bar tickets are one round (ADR 0081).
+          { sendId: uuidv7() },
           body.lines.map((line) => {
             const product = products.get(line.productId)!;
             return {
@@ -329,6 +338,7 @@ export class OrdersService {
         tx,
         orderId,
         'void',
+        {},
         portions.map(({ line, quantity, station, direct }) => ({
           station,
           direct,
@@ -378,6 +388,7 @@ export class OrdersService {
         tx,
         sourceId,
         'void',
+        { transferred: true },
         portions.map(({ line, quantity, station, direct }) => ({
           station,
           direct,
@@ -426,6 +437,7 @@ export class OrdersService {
         tx,
         created.id,
         'order',
+        { transferred: true },
         portions.map(({ line, quantity, station }) => ({
           station,
           direct: !processing[station],
@@ -551,6 +563,7 @@ export class OrdersService {
           before: orderSnapshot(before),
           after: orderSnapshot(after),
         });
+        await this.changed(tx, after);
         return this.load(tx, orderId);
       });
     } catch (error) {
@@ -617,6 +630,7 @@ export class OrdersService {
         type: 'pos.order.closed',
         payload: { orderId: sourceId, locationId: after.locationId, tableId: after.tableId },
       });
+      await this.changed(tx, { id: body.orderId, locationId: after.locationId });
       const response = await this.load(tx, body.orderId);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
@@ -752,6 +766,18 @@ export class OrdersService {
       before: orderSnapshot(before),
       after: orderSnapshot(after),
     });
+    await this.changed(tx, after);
+  }
+
+  /** Tells consumers (reports, ADR 0081) that the order changed in a way no other event tells. */
+  private async changed(
+    tx: TenantTransactionClient,
+    order: { id: string; locationId: string },
+  ): Promise<void> {
+    await this.outbox.add(tx, {
+      type: 'pos.order.updated',
+      payload: { orderId: order.id, locationId: order.locationId },
+    });
   }
 
   /** A send or void response: the order and its new tickets in sequence order (ADR 0025). */
@@ -784,6 +810,7 @@ export class OrdersService {
     tx: TenantTransactionClient,
     orderId: string,
     kind: 'order' | 'void',
+    origin: TicketOrigin,
     lines: { station: PrepStation; direct: boolean; line: TicketLine }[],
   ): Promise<string[]> {
     const ids: string[] = [];
@@ -793,7 +820,9 @@ export class OrdersService {
           .filter((l) => l.station === station && l.direct === direct)
           .map((l) => l.line);
         if (group.length > 0) {
-          ids.push(await this.writeTicket(tx, orderId, kind, { station, direct }, group));
+          ids.push(
+            await this.writeTicket(tx, orderId, kind, { station, direct, ...origin }, group),
+          );
         }
       }
     }
@@ -805,7 +834,7 @@ export class OrdersService {
     tx: TenantTransactionClient,
     orderId: string,
     kind: 'order' | 'void',
-    { station, direct }: { station: PrepStation; direct: boolean },
+    { station, direct, ...origin }: { station: PrepStation; direct: boolean } & TicketOrigin,
     lines: TicketLine[],
   ): Promise<string> {
     const { tenantId, userId } = this.tenantContext.require();
@@ -821,6 +850,7 @@ export class OrdersService {
         kind,
         station,
         direct,
+        ...origin,
         createdByUserId: userId,
       },
       select: { id: true, orderId: true, sequence: true, kind: true, station: true, direct: true },

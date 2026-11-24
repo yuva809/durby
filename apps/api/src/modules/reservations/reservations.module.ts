@@ -15,6 +15,7 @@ import { CombinationsService } from './setup/combinations.service';
 import { LocationSettingsController } from './setup/location-settings.controller';
 import { LocationSettingsService } from './setup/location-settings.service';
 import { SetupController } from './setup/setup.controller';
+import { ReservationsReader } from './reservations-reader';
 import { ReservationsStreamController } from './stream.controller';
 import { TableRulesService } from './setup/table-rules.service';
 
@@ -44,6 +45,8 @@ import { TableRulesService } from './setup/table-rules.service';
     GuestsService,
     PosEventsHandler,
     ReservationsRealtimeHandler,
+    ReservationsReader,
   ],
+  exports: [ReservationsReader],
 })
 export class ReservationsModule {}

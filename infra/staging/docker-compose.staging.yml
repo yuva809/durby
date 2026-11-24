@@ -40,6 +40,12 @@ x-api-env: &api-env
   # empty both mean Mailpit (":-"), so nothing changes until the .env line exists.
   SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
   MAIL_FROM: ${MAIL_FROM:-Durby Staging <no-reply@staging.invalid>}
+  # Browser push (ADR 0047, 0083): all three in /opt/durby/.env or none (push off). The private key is a secret.
+  WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-}
+  WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
+  WEB_PUSH_SUBJECT: ${WEB_PUSH_SUBJECT:-}
+  # Emails about updates (stock requests, invoices, …). Off unless .env says "on" (ADR 0083); account emails always go.
+  NOTIFICATION_EMAILS: ${NOTIFICATION_EMAILS:-off}
   # Durby staff and the admin portal (docs/platform/admin-portal.md, ADR 0017).
   STAFF_EMAIL_DOMAINS: ${STAFF_EMAIL_DOMAINS:-durby.tech}
 
@@ -189,8 +195,8 @@ services:
       timeout: 3s
       start_period: 20s
       retries: 3
-    # Postgres and Redis only: no edge, no mail.
-    networks: [db]
+    # Postgres and Redis, and a way out to the browsers' push services (ADR 0083). No edge, no mail, no ports.
+    networks: [db, egress]
 
   # Catches all staging mail (reset/verification links) until a real provider exists (ADR 0006).
   # SMTP only on the internal `mail` network; the UI is published on the server's loopback only:
@@ -271,6 +277,8 @@ networks:
   db:
     internal: true
   edge: {}
+  # Only the worker, outbound: push services (ADR 0083).
+  egress: {}
   # api → Mailpit SMTP. Internal: Mailpit never sends mail out.
   mail:
     internal: true

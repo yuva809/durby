@@ -55,7 +55,7 @@ const member = (over: Partial<TeamMember> = {}): TeamMember => ({
   ...over,
 });
 
-const ALL_FEATURES = ['catalog', 'inventory', 'pos', 'reservations', 'orders'];
+const ALL_FEATURES = ['catalog', 'inventory', 'pos', 'reservations', 'orders', 'reports'];
 
 describe('permissionMatrix (ADR 0050)', () => {
   it('shows platform keys always and a module only when its feature is on', () => {
@@ -66,6 +66,20 @@ describe('permissionMatrix (ADR 0050)', () => {
       'platform.features.pos.name',
       'platform.features.reservations.name',
       'platform.features.orders.name',
+      'platform.features.reports.name',
+    ]);
+  });
+
+  it('hides report keys whose module is off: a distributor with reports but no till sees none', () => {
+    const rows = (features: string[]) =>
+      permissionMatrix(features)
+        .sections.filter((s) => s.module === 'reports')
+        .flatMap((s) => s.rows.map((r) => r.row));
+    expect(rows(['reports', 'inventory', 'orders'])).toEqual([]);
+    expect(rows(['reports', 'pos'])).toEqual(['reports.sales']);
+    expect(rows(['reports', 'pos', 'reservations'])).toEqual([
+      'reports.sales',
+      'reports.reservations',
     ]);
   });
 
@@ -78,6 +92,7 @@ describe('permissionMatrix (ADR 0050)', () => {
       'pos',
       'reservations',
       'orders',
+      'reports',
     ]);
     const fromCells = sections.flatMap((s) =>
       s.rows.flatMap((r) => Object.values(r.cells).flatMap((c) => (c ? [c.key] : []))),

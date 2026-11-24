@@ -88,6 +88,30 @@ function isTimeZone(value: string): boolean {
 
 const define = <S extends z.ZodType>(def: SettingDefinition<S>): SettingDefinition<S> => def;
 
+/** When a business day may start (`reports.dayStartsAt`). */
+export const REPORT_DAY_STARTS = [
+  '00:00',
+  '01:00',
+  '02:00',
+  '03:00',
+  '04:00',
+  '05:00',
+  '06:00',
+  '07:00',
+  '08:00',
+] as const;
+
+/** When the daily report goes out (`reports.dailyReportAt`): the morning after, when the day has ended. */
+export const REPORT_SEND_TIMES = [
+  '06:00',
+  '07:00',
+  '08:00',
+  '09:00',
+  '10:00',
+  '11:00',
+  '12:00',
+] as const;
+
 export const SETTINGS = {
   locale: define({
     label: 'platform.settings.locale.name',
@@ -360,6 +384,24 @@ export const SETTINGS = {
     description: 'platform.settings.ordersShowSalesOrders.description',
     schema: z.boolean(),
     default: true,
+    scopes: ['partner', 'organization'],
+    dataBound: false,
+  }),
+  // When a business day starts: orders after midnight count to the evening before (ADR 0081).
+  'reports.dayStartsAt': define({
+    label: 'platform.settings.reportsDayStartsAt.name',
+    description: 'platform.settings.reportsDayStartsAt.description',
+    schema: z.enum(REPORT_DAY_STARTS),
+    default: '04:00',
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  // When the owners get yesterday's sales (ADR 0083).
+  'reports.dailyReportAt': define({
+    label: 'platform.settings.reportsDailyReportAt.name',
+    description: 'platform.settings.reportsDailyReportAt.description',
+    schema: z.enum(REPORT_SEND_TIMES),
+    default: '08:00',
     scopes: ['partner', 'organization'],
     dataBound: false,
   }),

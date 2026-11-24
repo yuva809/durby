@@ -171,6 +171,8 @@ describe('/api/v1/settings', () => {
         { key: 'orders.requestsNeedApproval', value: true, source: 'default', dataBound: false },
         { key: 'orders.branchStores', value: true, source: 'default', dataBound: false },
         { key: 'orders.showSalesOrders', value: true, source: 'default', dataBound: false },
+        { key: 'reports.dayStartsAt', value: '04:00', source: 'default', dataBound: false },
+        { key: 'reports.dailyReportAt', value: '08:00', source: 'default', dataBound: false },
         { key: 'startPage', value: 'overview', source: 'default', dataBound: false },
       ]);
     });

@@ -20,6 +20,7 @@ import {
   Wine,
 } from 'lucide-react';
 import { INVENTORY_PAGES } from './inventory-pages';
+import { REPORT_TABS } from './report-tabs';
 import { SETTINGS_TABS } from './settings-tabs';
 
 /** `operations`, `administration` and `tools`: the groups of the operations layout (ADR 0044). */
@@ -178,7 +179,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: ChartLine,
     group: 'modules',
     feature: 'reports',
-    planned: true,
+    // Shown while one of its tabs is: each needs its module and its key (docs/modules/reports.md).
+    children: REPORT_TABS,
   },
   {
     // Its own item, not a Settings tab (docs/platform/rbac.md → Manage Staff).

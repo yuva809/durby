@@ -8,6 +8,12 @@ import { KITCHEN_TICKET_KINDS } from '../api/pos-orders';
  */
 
 /**
+ * Something about an order changed that no other event tells: its covers, table (move), discounts, or tickets merged
+ * into it. Consumers read the order's current state (reports, ADR 0081).
+ */
+export const posOrderUpdatedV1 = z.strictObject({ orderId: z.uuid(), locationId: z.uuid() });
+
+/**
  * An open order was closed, so its table is free (`POST /pos/orders/:id/close`; closing a closed
  * order writes nothing). First consumer: reservations finishes the seated booking on that table
  * (docs/modules/reservations.md, ADR 0019).

@@ -74,7 +74,7 @@ describe('visibleNav', () => {
     ).toEqual(['open', 'both']);
   });
 
-  // Inventory, Billing, POS and Reports aren't built yet: hidden whatever the plan.
+  // Billing and POS aren't built yet: hidden whatever the plan.
   it('never shows planned modules', () => {
     const everything = {
       activeFeatures: Object.keys(FEATURES),
@@ -91,15 +91,25 @@ describe('visibleNav', () => {
       'host',
       'reservations',
       'tables',
+      'reports',
       'staff',
       'settings',
       'audit',
     ]);
-    expect(NAV_ITEMS.filter((i) => i.planned).map((i) => i.id)).toEqual([
-      'billing',
-      'pos',
-      'reports',
-    ]);
+    expect(NAV_ITEMS.filter((i) => i.planned).map((i) => i.id)).toEqual(['billing', 'pos']);
+  });
+
+  it('shows Reports only with the till or reservations, and the key for it', () => {
+    const shown = (activeFeatures: string[], activePermissions: string[]) =>
+      ids(visibleNav(NAV_ITEMS, { activeFeatures, activePermissions })).includes('reports');
+    const keys = ['reports.sales.read', 'reports.reservations.read'];
+    // A distributor: reports in the plan, no till.
+    expect(shown(['reports', 'inventory', 'orders'], keys)).toBe(false);
+    expect(shown(['reports', 'pos'], keys)).toBe(true);
+    expect(shown(['reports', 'pos'], [])).toBe(false);
+    expect(shown(['reports', 'pos'], ['reports.reservations.read'])).toBe(false);
+    expect(shown(['reports', 'reservations'], ['reports.reservations.read'])).toBe(true);
+    expect(shown(['pos'], keys)).toBe(false);
   });
 
   it('shows Settings while any of its tabs is visible', () => {

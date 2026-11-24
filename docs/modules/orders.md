@@ -160,6 +160,14 @@ its edit dialog by someone with `inventory.warehouses.edit` everywhere): request
 (`orders.request_main_only` otherwise). A request names the branch's warehouse or the branch (`toLocationId`); a branch
 without a warehouse gets its store, named like the branch, with its first request.
 
+**Branches without their own stock (ADR 0080).** With the setting `orders.branchStores` off (default on), a request
+names no destination (`to_warehouse_id` null, `keepsStock: false` on destinations) and no store is made. Packing moves
+the goods into In transit as always; on receipt they leave it as a stock document of kind `delivery` (transfer
+numbering), and what did not arrive is booked short. A request into a store archived since is delivered the same way.
+
+**More than is there (ADR 0065).** A branch may ask for more than the warehouse has. Approving does not check stock;
+packing does.
+
 **Warehouses supply branches (ADR 0067).** A warehouse may instead supply only the branches ticked on it
 (`warehouses.supplies_location_ids`; one supplier per branch, ticking moves a branch). A branch's requests come from
 the warehouse that has it ticked, else the main one; destinations carry `supplierWarehouseId`. A supplying warehouse is
@@ -169,7 +177,7 @@ never a branch's store.
 `cancelled` before approval only; receipt can be confirmed from `packed` on.
 
 **Stock:** packing moves the picked goods from the source into **In transit** (`warehouses.is_transit`, one per
-organization); receiving moves what arrived into the branch's warehouse and books the rest out of In transit as a
+organization); receiving moves what arrived into the branch's warehouse (or delivers it, above) and books the rest out of In transit as a
 shortage. Packing is refused below zero stock unless the location allows it. Packing may send more than approved and add
 products nobody asked for (lines marked `added_at_packing`, ADR 0066).
 

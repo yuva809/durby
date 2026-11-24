@@ -9,8 +9,9 @@
 -- (category, brand, pack size) are not reverted.
 --
 -- No backup is taken by this script: take one first. Run as the postgres superuser (it switches off the append-only
--- triggers and foreign-key checks for this one transaction, so it checks every reference itself and refuses when
--- something would break).
+-- triggers and foreign-key checks for this one transaction). It deletes only items nothing else uses, but it does not
+-- refuse anything else: it prints what it would do and warns about stock that would go below zero. Read the dry run
+-- before applying.
 --
 -- Dry run (default, rolls back, prints what WOULD happen):
 --   psql -v org_id='<organization id>' -v invoices='VIN-2026-000001,VIN-2026-000002' -v apply_yes=0 \

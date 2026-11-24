@@ -201,7 +201,7 @@ function Stepper({
 
 /**
  * What the warehouse has for a line: "120 Box available at the warehouse"; red when it has none or less than asked
- * (still sent: the rest follows once it is in).
+ * (still sent: approval and packing decide).
  */
 export function AvailableText({
   item,

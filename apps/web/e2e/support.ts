@@ -13,7 +13,8 @@ export async function signIn(page: Page, origin: string, email: string): Promise
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(DEV_PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('main')).toContainText('Back office');
+  // The home page: the owner overview (ADR 0082) or the greeting.
+  await expect(page.getByRole('main')).toContainText(/Overview|Back office/);
 }
 
 /** A theme token as the page computes it (the root layout's <style> on :root). */
@@ -87,7 +88,8 @@ export async function accept(browser: Browser, link: URL): Promise<Page> {
   await page.getByLabel(/^Password/).fill(NEW_PASSWORD);
   await page.getByLabel('Repeat password').fill(NEW_PASSWORD);
   await page.getByRole('button', { name: 'Create account and join' }).click();
-  await expect(page.getByRole('main')).toContainText('Back office');
+  // The home page: the owner overview (ADR 0082) or the greeting.
+  await expect(page.getByRole('main')).toContainText(/Overview|Back office/);
   return page;
 }
 

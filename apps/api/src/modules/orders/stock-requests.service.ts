@@ -443,19 +443,7 @@ export class StockRequestsService {
       const usable = new Set(items.filter((i) => i._count.variants === 0).map((i) => i.id));
       const missing = ids.filter((id) => !usable.has(id));
       if (missing.length > 0) throw ordersErrors.itemNotFound(missing);
-      // No more than the source has now: a branch can't ask for 4 when 2 are there (below zero counts as none).
-      const levels = await tx.stockLevel.findMany({
-        where: { warehouseId: from.id, itemId: { in: ids } },
-        select: { itemId: true, quantity: true },
-      });
-      const have = new Map(levels.map((l) => [l.itemId, new Decimal(l.quantity.toFixed(3))]));
-      const above = body.lines
-        .filter((l) => {
-          const there = have.get(l.itemId) ?? new Decimal(0);
-          return new Decimal(l.quantity).greaterThan(there.isNegative() ? new Decimal(0) : there);
-        })
-        .map((l) => l.itemId);
-      if (above.length > 0) throw ordersErrors.requestAboveStock(above);
+      // More than the source has is fine (ADR 0065): approval decides, and packing is limited to what is there.
       const { number } = await this.numbering.next('orders.stockRequest', tx);
       // Without approval (orders.requestsNeedApproval off, ADR 0056) a request is approved as it is sent: every line
       // as asked, with its transfer number now; the warehouse finds it on its Picking list.

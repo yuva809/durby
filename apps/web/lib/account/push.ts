@@ -83,6 +83,17 @@ function bodyOf(subscription: PushSubscription): PushSubscriptionBody {
   };
 }
 
+/** A browser that doesn't reach its push service may never answer. */
+export const SUBSCRIBE_TIMEOUT_MS = 20_000;
+
+function within<T>(ms: number, work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const limit = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('push subscription timed out')), ms);
+  });
+  return Promise.race([work, limit]).finally(() => clearTimeout(timer));
+}
+
 /** Asks the browser's permission (must follow a tap), subscribes and tells the api. */
 export async function turnPushOn(store: Api, publicKey: string): Promise<PushState> {
   const permission = await Notification.requestPermission();
@@ -91,10 +102,13 @@ export async function turnPushOn(store: Api, publicKey: string): Promise<PushSta
   await navigator.serviceWorker.ready;
   const subscription =
     (await reg.pushManager.getSubscription()) ??
-    (await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: keyBytes(publicKey),
-    }));
+    (await within(
+      SUBSCRIBE_TIMEOUT_MS,
+      reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: keyBytes(publicKey),
+      }),
+    ));
   const saved = await write(
     store,
     new ActionKey(),

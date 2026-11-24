@@ -87,7 +87,7 @@ Spec: [docs/platform/outbox.md](../platform/outbox.md).
 
 9. **Worker: same image, separate process.** `node dist/worker.js` starts an application context (no HTTP) that
    runs the dispatcher, the BullMQ worker, cleanup and the lag reporter. The api process only writes events. In
-   staging it is the `worker` service (`256m`), on the `db` network only; liveness is a heartbeat file in `/tmp`. The
+   staging it is the `worker` service (`256m`), on the `db` network only (amended by ADR 0083: also `egress`, outbound, for browser push); liveness is a heartbeat file in `/tmp`. The
    image carries a label `org.durby.worker`; `deploy.sh` starts the worker only for images that have it and removes
    it otherwise, so a rollback to a release before 1.9 works. Old and new workers running side by side during a
    rollout is safe (`SKIP LOCKED`, `jobId`, `processed_events`).

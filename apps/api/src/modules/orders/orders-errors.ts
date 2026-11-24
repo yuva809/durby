@@ -56,14 +56,6 @@ export const ordersErrors = {
       'orders.request_branch_only',
       'Requests come from the branches; approvers do not send them.',
     ),
-  /** More than the source warehouse has (a branch can't ask for 4 when 2 are there). */
-  requestAboveStock: (itemIds: string[]) =>
-    new ApiError(
-      HttpStatus.CONFLICT,
-      'orders.request_above_stock',
-      'More than the warehouse has for some items.',
-      { itemIds },
-    ),
   requestInvalid: () =>
     new ApiError(
       HttpStatus.BAD_REQUEST,

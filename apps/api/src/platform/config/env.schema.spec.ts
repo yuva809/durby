@@ -31,6 +31,19 @@ describe('appEnvSchema', () => {
 
     it('is off without keys and on with all three', () => {
       expect(appEnvSchema.parse(validEnv).WEB_PUSH_PUBLIC_KEY).toBeUndefined();
+      // Empty is unset: the server's compose file passes every name.
+      const empty = { WEB_PUSH_PUBLIC_KEY: '', WEB_PUSH_PRIVATE_KEY: '', WEB_PUSH_SUBJECT: '' };
+      expect(appEnvSchema.parse({ ...validEnv, ...empty }).WEB_PUSH_PUBLIC_KEY).toBeUndefined();
+      expect(appEnvSchema.safeParse({ ...validEnv, ...push, WEB_PUSH_SUBJECT: '' }).success).toBe(
+        false,
+      );
+      expect(appEnvSchema.parse(validEnv).NOTIFICATION_EMAILS).toBe('on');
+      expect(
+        appEnvSchema.parse({ ...validEnv, NOTIFICATION_EMAILS: 'off' }).NOTIFICATION_EMAILS,
+      ).toBe('off');
+      expect(appEnvSchema.safeParse({ ...validEnv, NOTIFICATION_EMAILS: 'no' }).success).toBe(
+        false,
+      );
       expect(appEnvSchema.parse({ ...validEnv, ...push }).WEB_PUSH_SUBJECT).toBe(
         'mailto:ops@durby.test',
       );
@@ -127,6 +140,7 @@ describe('appEnvSchema', () => {
       OUTBOX_LAG_WARN_SECONDS: 60,
       WORKER_CONCURRENCY: 5,
       REALTIME_HEARTBEAT_MS: 15_000,
+      NOTIFICATION_EMAILS: 'on',
       ...RATE_LIMIT_DEFAULTS,
     });
   });

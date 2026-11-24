@@ -168,12 +168,3 @@ export function categoryPath(categories: readonly ProductCategory[], id: string 
   const parent = category.parentId ? categories.find((c) => c.id === category.parentId) : null;
   return parent ? `${parent.name} › ${category.name}` : category.name;
 }
-
-const BOM = String.fromCharCode(0xfeff);
-
-/** RFC 4180 CSV with a UTF-8 byte order mark, so Excel opens umlauts and € correctly. */
-export function toCsv(header: readonly string[], rows: readonly (readonly string[])[]): string {
-  const cell = (value: string) =>
-    /[",\n\r;]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-  return `${BOM}${[header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')}\r\n`;
-}

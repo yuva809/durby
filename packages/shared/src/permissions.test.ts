@@ -137,6 +137,8 @@ describe('system roles', () => {
       'pos.tables.delete',
       'pos.tables.edit',
       'pos.tables.read',
+      'reports.reservations.read',
+      'reports.sales.read',
       'reservations.bookings.create',
       'reservations.bookings.delete',
       'reservations.bookings.edit',

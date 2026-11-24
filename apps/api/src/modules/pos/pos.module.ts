@@ -27,6 +27,7 @@ import { PrintersController } from './printers.controller';
 import { PrintersService } from './printers.service';
 import { PublicMenuController } from './public-menu.controller';
 import { PublicMenuService } from './public-menu.service';
+import { PosSalesReader } from './sales-reader';
 import { TablesController } from './tables.controller';
 import { TablesService } from './tables.service';
 
@@ -63,12 +64,13 @@ import { TablesService } from './tables.service';
     KitchenService,
     PublicMenuService,
     PosFloorReader,
+    PosSalesReader,
     PrinterCommandsService,
     PrintersService,
     PrintJobsService,
     PrintJobSweep,
     PosRealtimeHandler,
   ],
-  exports: [TablesService, AreasService, PosFloorReader],
+  exports: [TablesService, AreasService, PosFloorReader, PosSalesReader],
 })
 export class PosModule {}
