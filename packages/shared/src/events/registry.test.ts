@@ -27,6 +27,7 @@ describe('event registry', () => {
       'platform.notification.created',
       'pos.order.opened',
       'pos.order.closed',
+      'pos.order.updated',
       'pos.kitchen_ticket.created',
       'reservations.reservation.created',
       'reservations.reservation.updated',

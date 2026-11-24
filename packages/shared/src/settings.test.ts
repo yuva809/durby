@@ -60,6 +60,7 @@ describe('settings registry', () => {
       'orders.requestsNeedApproval',
       'orders.branchStores',
       'orders.showSalesOrders',
+      'reports.dayStartsAt',
       'startPage',
     ]);
   });

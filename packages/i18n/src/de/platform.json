@@ -1093,5 +1093,8 @@
   "platform.errors.warehouseInvalid": "Ein gewähltes Lager ist unbekannt, archiviert oder nicht in einer Filiale der Person.",
   "platform.audit.fields.warehouseIds": "Lager",
   "platform.settings.ordersBranchStores.name": "Filialen führen eigenen Bestand",
-  "platform.settings.ordersBranchStores.description": "An: angeforderte Ware wird beim Bestätigen des Empfangs in das Lager der Filiale gebucht; eine Filiale ohne Lager erhält eines mit ihrer ersten Anforderung. Aus: die Ware verlässt das Hauptlager beim Packen und wird geliefert; Filialen haben keinen eigenen Bestand."
+  "platform.settings.ordersBranchStores.description": "An: angeforderte Ware wird beim Bestätigen des Empfangs in das Lager der Filiale gebucht; eine Filiale ohne Lager erhält eines mit ihrer ersten Anforderung. Aus: die Ware verlässt das Hauptlager beim Packen und wird geliefert; Filialen haben keinen eigenen Bestand.",
+  "platform.settings.reportsDayStartsAt.name": "Geschäftstag beginnt um",
+  "platform.settings.reportsDayStartsAt.description": "Für Berichte: Bestellungen vor dieser Uhrzeit zählen zum Vortag.",
+  "platform.audit.actors.cliReports": "Berichte-Befehl"
 }

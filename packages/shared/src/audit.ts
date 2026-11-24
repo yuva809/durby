@@ -195,6 +195,11 @@ export const AUDIT_ACTIONS = {
     entityType: 'outbox_event',
     label: 'platform.audit.actions.outboxEventRetried',
   },
+  /** The reports read model recomputed from the till and the bookings (ADR 0081, actor `cli.reports`). */
+  'reports.facts.rebuilt': {
+    entityType: 'organization',
+    label: 'reports.audit.actions.factsRebuilt',
+  },
   'catalog.product_category.created': {
     entityType: 'product_category',
     label: 'catalog.audit.actions.productCategoryCreated',
@@ -476,6 +481,7 @@ export const AUDIT_SYSTEM_ACTORS = {
   'cli.create_admin': { label: 'platform.audit.actors.cliCreateAdmin' },
   'cli.seed_dev': { label: 'platform.audit.actors.cliSeedDev' },
   'cli.entitlements': { label: 'platform.audit.actors.cliEntitlements' },
+  'cli.reports': { label: 'platform.audit.actors.cliReports' },
   'cli.outbox': { label: 'platform.audit.actors.cliOutbox' },
   /** Durby staff in the admin portal (ADR 0017); the platform audit log names the person. */
   'staff.admin_portal': { label: 'platform.audit.actors.adminPortal' },

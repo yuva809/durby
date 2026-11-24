@@ -88,6 +88,19 @@ function isTimeZone(value: string): boolean {
 
 const define = <S extends z.ZodType>(def: SettingDefinition<S>): SettingDefinition<S> => def;
 
+/** When a business day may start (`reports.dayStartsAt`). */
+export const REPORT_DAY_STARTS = [
+  '00:00',
+  '01:00',
+  '02:00',
+  '03:00',
+  '04:00',
+  '05:00',
+  '06:00',
+  '07:00',
+  '08:00',
+] as const;
+
 export const SETTINGS = {
   locale: define({
     label: 'platform.settings.locale.name',
@@ -361,6 +374,15 @@ export const SETTINGS = {
     schema: z.boolean(),
     default: true,
     scopes: ['partner', 'organization'],
+    dataBound: false,
+  }),
+  // When a business day starts: orders after midnight count to the evening before (ADR 0081).
+  'reports.dayStartsAt': define({
+    label: 'platform.settings.reportsDayStartsAt.name',
+    description: 'platform.settings.reportsDayStartsAt.description',
+    schema: z.enum(REPORT_DAY_STARTS),
+    default: '04:00',
+    scopes: ALL_SCOPES,
     dataBound: false,
   }),
   // Where a person starts: the Overview page (no Overview menu item when Inventory is chosen).

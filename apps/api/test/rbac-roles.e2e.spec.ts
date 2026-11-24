@@ -129,6 +129,8 @@ describe('roles API', () => {
       'orders.requests.read',
       'orders.requests.create',
       'orders.requests.receive',
+      'reports.sales.read',
+      'reports.reservations.read',
     ]);
     expect(data[3]?.permissions).toEqual([
       'platform.org.read',
