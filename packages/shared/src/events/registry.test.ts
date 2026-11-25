@@ -29,6 +29,7 @@ describe('event registry', () => {
       'pos.order.closed',
       'pos.order.updated',
       'pos.kitchen_ticket.created',
+      'pos.kitchen_ticket.status_changed',
       'reservations.reservation.created',
       'reservations.reservation.updated',
       'reservations.reservation.status_changed',

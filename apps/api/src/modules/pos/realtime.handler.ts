@@ -5,7 +5,7 @@ import { RealtimePublisher } from '../../platform/realtime';
 
 /**
  * Tells open /service pages at the order's location to reload the floor (ADR 0044 §3): an order
- * opened or closed, a ticket sent or voided. Runs only for committed events.
+ * opened, closed, moved or changed, a ticket sent, voided, ready or served. Runs only for committed events.
  */
 @Injectable()
 export class PosRealtimeHandler {
@@ -26,6 +26,20 @@ export class PosRealtimeHandler {
   @OnEvent('pos.kitchen_ticket.created', { handler: 'pos.publishKitchenTicket' })
   kitchenTicket(event: OutboxEvent): Promise<void> {
     const payload = event.payload as EventPayload<'pos.kitchen_ticket.created'>;
+    return this.realtime.publish(payload.locationId, 'pos.floor', [payload.orderId]);
+  }
+
+  /** Its covers, table (move), discounts, or tickets merged into it. */
+  @OnEvent('pos.order.updated', { handler: 'pos.publishOrderUpdated' })
+  orderUpdated(event: OutboxEvent): Promise<void> {
+    const payload = event.payload as EventPayload<'pos.order.updated'>;
+    return this.realtime.publish(payload.locationId, 'pos.floor', [payload.orderId]);
+  }
+
+  /** What is ready shows on the floor. */
+  @OnEvent('pos.kitchen_ticket.status_changed', { handler: 'pos.publishTicketStatus' })
+  ticketStatus(event: OutboxEvent): Promise<void> {
+    const payload = event.payload as EventPayload<'pos.kitchen_ticket.status_changed'>;
     return this.realtime.publish(payload.locationId, 'pos.floor', [payload.orderId]);
   }
 }

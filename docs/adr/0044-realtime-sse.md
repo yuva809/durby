@@ -30,6 +30,10 @@ bearer header (ADR 0006), which the browser's `EventSource` cannot do. The outbo
    (`reservations.publish*`, `pos.publish*`) through `RealtimePublisher` (platform), to the Redis channel
    `rt:{tenantId}:{locationId}:{topic}`. Handlers run only for committed events, so a page that reloads on a hint
    always sees the change. The tenant comes from the handler's tenant context, never from a payload.
+   **Amended 2026-11-25:** while a page is live it reloads by itself only every 5 minutes, so every change it shows needs a
+   hint. `pos.floor` also follows `pos.order.updated` and the new `pos.kitchen_ticket.status_changed` (ready, served);
+   `reservations` also follows till orders opened, closed and changed, because they occupy tables on `/host` and the Host
+   role may not open the pos stream. Those hints carry no ids.
 4. **One Redis subscriber per api process** (`RealtimeHub`), subscribed to a channel while at least one open
    stream needs it. When its connection comes back after a drop, every open stream gets `resync`.
 5. **The worker wakes on commit.** `OutboxService.add` also runs `pg_notify('durby_outbox', '')` in the change's

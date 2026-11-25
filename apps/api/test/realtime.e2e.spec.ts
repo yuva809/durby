@@ -143,6 +143,22 @@ describe('realtime streams', () => {
       ).body,
     );
 
+  const sendOne = async (r: Awaited<ReturnType<typeof restaurant>>) =>
+    sendTicketResponseSchema.parse(
+      (
+        await post(r.owner, `/pos/tables/${r.tables[r.here]}/tickets`, {
+          lines: [{ productId: r.dish, quantity: 1 }],
+        }).expect(201)
+      ).body,
+    );
+  const setCovers = (token: string, orderId: string, covers: number) =>
+    request(server)
+      .patch(`/api/v1/pos/orders/${orderId}`)
+      .set('Idempotency-Key', uuidv7())
+      .auth(token, { type: 'bearer' })
+      .send({ covers })
+      .expect(200);
+
   /** Runs every outbox event of `type` of the org through `handler`, like the worker would. */
   async function deliver(orgId: string, type: EventType, handler: string) {
     const runner = app.get(OutboxEventRunner);
@@ -241,6 +257,74 @@ describe('realtime streams', () => {
       });
     }
     expect(there.events('changed')).toEqual([]);
+  });
+
+  it('delivers changed orders and tickets that are ready or served to the pos stream', async () => {
+    const r = await restaurant();
+    const here = await ready('pos', r.owner, r.here);
+    const there = await ready('pos', r.owner, r.there);
+    const { order, ticketIds } = await sendOne(r);
+    await setCovers(r.owner, order.id, 3);
+    expect(await deliver(r.org.id, 'pos.order.updated', 'pos.publishOrderUpdated')).toBe(1);
+    const move = (status: string) =>
+      post(r.owner, `/pos/stations/kitchen/tickets/${ticketIds[0]}/status`, { status }).expect(201);
+    await move('preparing');
+    await move('ready');
+    // The same status again changes nothing, so there is nothing to tell.
+    await move('ready');
+    await post(r.owner, `/pos/orders/${order.id}/tickets/${ticketIds[0]}/served`).expect(201);
+    expect(
+      await deliver(r.org.id, 'pos.kitchen_ticket.status_changed', 'pos.publishTicketStatus'),
+    ).toBe(3);
+
+    await here.next(() => here.events('changed').length >= 4);
+    for (const data of here.events('changed')) {
+      expect(realtimeChangedSchema.parse(data)).toEqual({ topic: 'pos.floor', ids: [order.id] });
+    }
+    expect(there.events('changed')).toEqual([]);
+    const statuses = await seed.as(r.org.id, (db) =>
+      db.outboxEvent.findMany({
+        where: { type: 'pos.kitchen_ticket.status_changed' },
+        orderBy: { id: 'asc' },
+      }),
+    );
+    expect(statuses.map((e) => (e.payload as { status: string }).status)).toEqual([
+      'preparing',
+      'ready',
+      'served',
+    ]);
+  });
+
+  it('tells the host about till orders, who may not open the till stream', async () => {
+    const r = await restaurant();
+    const other = await restaurant();
+    const { token: host } = await member(r.org, 'host');
+    expect((await stream('pos', host, r.here)).status).toBe(403);
+    const here = await ready('reservations', host, r.here);
+    const there = await ready('reservations', host, r.there);
+    const elsewhere = await ready('reservations', other.owner, other.here);
+    const sent = await sendOne(r);
+    await setCovers(r.owner, sent.order.id, 2);
+    await post(r.owner, `/pos/orders/${sent.order.id}/close`).expect(201);
+    await deliver(r.org.id, 'pos.order.opened', 'reservations.publishTillOpened');
+    await deliver(r.org.id, 'pos.order.updated', 'reservations.publishTillUpdated');
+    await deliver(r.org.id, 'pos.order.closed', 'reservations.publishTillClosed');
+    await here.next(() => here.events('changed').length >= 3);
+    for (const data of here.events('changed')) {
+      // A hint to reload, without pos's ids.
+      expect(realtimeChangedSchema.parse(data)).toEqual({ topic: 'reservations', ids: [] });
+    }
+    await new Promise((resolve) => setTimeout(resolve, HEARTBEAT_MS * 2));
+    expect(there.events('changed')).toEqual([]);
+    expect(elsewhere.events('changed')).toEqual([]);
+
+    // Without the feature there is nobody to tell.
+    await entitlements.setOverride(r.org.id, 'reservations', false, undefined, 'cli.entitlements');
+    await sendOne(r);
+    const before = here.events('changed').length;
+    await deliver(r.org.id, 'pos.order.opened', 'reservations.publishTillOpened');
+    await new Promise((resolve) => setTimeout(resolve, HEARTBEAT_MS * 2));
+    expect(here.events('changed')).toHaveLength(before);
   });
 
   it('checks the token, permission, feature and location on connect', async () => {

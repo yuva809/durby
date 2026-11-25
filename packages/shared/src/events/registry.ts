@@ -8,6 +8,7 @@ import {
 import { platformNotificationCreatedV1 } from './platform';
 import {
   posKitchenTicketCreatedV1,
+  posKitchenTicketStatusChangedV1,
   posOrderClosedV1,
   posOrderOpenedV1,
   posOrderUpdatedV1,
@@ -44,6 +45,10 @@ export const EVENTS = {
   'pos.order.closed': { current: 1, versions: { 1: posOrderClosedV1 } },
   'pos.order.updated': { current: 1, versions: { 1: posOrderUpdatedV1 } },
   'pos.kitchen_ticket.created': { current: 1, versions: { 1: posKitchenTicketCreatedV1 } },
+  'pos.kitchen_ticket.status_changed': {
+    current: 1,
+    versions: { 1: posKitchenTicketStatusChangedV1 },
+  },
   'reservations.reservation.created': {
     current: 1,
     versions: { 1: reservationsReservationCreatedV1 },

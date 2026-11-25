@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { PREP_STATIONS } from '../api/catalog';
-import { KITCHEN_TICKET_KINDS } from '../api/pos-orders';
+import { KITCHEN_TICKET_KINDS, TICKET_STATUSES } from '../api/pos-orders';
 
 /**
  * pos events (docs/modules/pos.md → Events). Written by pos in the change's transaction; pos never
@@ -54,4 +54,15 @@ export const posKitchenTicketCreatedV1 = z.strictObject({
   lines: z
     .array(z.strictObject({ lineId: z.uuid(), productId: z.uuid(), quantity: z.int() }))
     .min(1),
+});
+
+/**
+ * A kitchen or bar ticket moved on its station or was served from the till. `orderId`: the order it is on now (ADR
+ * 0069). First consumer: live updates of the floor, which shows what is ready (ADR 0044).
+ */
+export const posKitchenTicketStatusChangedV1 = z.strictObject({
+  ticketId: z.uuid(),
+  orderId: z.uuid(),
+  locationId: z.uuid(),
+  status: z.enum(TICKET_STATUSES),
 });

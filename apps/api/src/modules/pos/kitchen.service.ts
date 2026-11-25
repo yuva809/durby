@@ -9,6 +9,7 @@ import type {
 } from '@durby/shared';
 import { auditActor, AuditService, snapshot } from '../../platform/audit';
 import { IdempotencyService } from '../../platform/idempotency';
+import { OutboxService } from '../../platform/outbox';
 import { AccessService } from '../../platform/rbac';
 import {
   asTenantDb,
@@ -83,6 +84,7 @@ export class KitchenService {
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
     private readonly orders: OrdersService,
+    private readonly outbox: OutboxService,
   ) {}
 
   /** The station's tickets at the location: not served, or served in the last 15 minutes. */
@@ -135,7 +137,7 @@ export class KitchenService {
     // Straight to the bill: nothing to prepare (ADR 0031).
     if (ticket.direct) throw posErrors.ticketStatusInvalid(body.status);
     return this.db.$transaction(async (tx) => {
-      const row = await this.change(tx, ticketId, body.status);
+      const row = await this.change(tx, ticketId, body.status, ticket.order.locationId);
       const order = (await this.placedOrders(asTenantDb(tx), [ticketId])).get(ticketId);
       if (!order) throw posErrors.ticketNotFound();
       const response = ticketResponse(row, order);
@@ -158,7 +160,7 @@ export class KitchenService {
       const current = await this.lockedStatus(tx, ticket);
       if (current !== 'ready' && current !== 'served')
         throw posErrors.ticketStatusInvalid('served');
-      await this.change(tx, ticketId, 'served');
+      await this.change(tx, ticketId, 'served', ticket.order.locationId);
       const response = await this.orders.orderIn(tx, orderId);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
@@ -214,13 +216,14 @@ export class KitchenService {
   }
 
   /**
-   * Appends the change and its audit row; the current status again writes nothing, a move the
+   * Appends the change, its audit row and its event; the current status again writes nothing, a move the
    * rules don't allow is 409. Returns the ticket as it is now.
    */
   private async change(
     tx: TenantTransactionClient,
     ticketId: string,
     to: Exclude<TicketStatus, 'new'>,
+    locationId: string,
   ): Promise<TicketRow> {
     const { tenantId, userId } = this.tenantContext.require();
     const before: TicketRow = await tx.posKitchenTicket.findUniqueOrThrow({
@@ -239,6 +242,11 @@ export class KitchenService {
       entityId: ticketId,
       before: snapshot('kitchen_ticket', { id: ticketId, sequence: before.sequence, status: from }),
       after: snapshot('kitchen_ticket', { id: ticketId, sequence: before.sequence, status: to }),
+    });
+    const orderId = (await currentOrdersOf(asTenantDb(tx), [ticketId])).get(ticketId);
+    await this.outbox.add(tx, {
+      type: 'pos.kitchen_ticket.status_changed',
+      payload: { ticketId, orderId: orderId ?? before.orderId, locationId, status: to },
     });
     return tx.posKitchenTicket.findUniqueOrThrow({
       where: { id: ticketId },

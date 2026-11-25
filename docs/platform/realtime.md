@@ -17,10 +17,10 @@ browser lib/realtime/stream.ts ──event: changed──▶ useLiveRefresh ─�
 
 `packages/shared/src/realtime.ts`: `REALTIME_TOPICS`, the message schemas and the timings shared by api and web.
 
-| Topic          | Stream route               | Published by (handler)                                                    | Pages                                         |
-| -------------- | -------------------------- | ------------------------------------------------------------------------- | --------------------------------------------- |
-| `reservations` | `GET /reservations/stream` | `reservations.publishCreated`, `.publishUpdated`, `.publishStatusChanged` | `/host`, `/reservations`, `/service` (badges) |
-| `pos.floor`    | `GET /pos/stream`          | `pos.publishOrderOpened`, `.publishOrderClosed`, `.publishKitchenTicket`  | `/service`                                    |
+| Topic          | Stream route               | Published by (handler)                                                                                                                       | Pages                                         |
+| -------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `reservations` | `GET /reservations/stream` | `reservations.publishCreated`, `.publishUpdated`, `.publishStatusChanged`, `.publishTillOpened`, `.publishTillClosed`, `.publishTillUpdated` | `/host`, `/reservations`, `/service` (badges) |
+| `pos.floor`    | `GET /pos/stream`          | `pos.publishOrderOpened`, `.publishOrderClosed`, `.publishOrderUpdated`, `.publishKitchenTicket`, `.publishTicketStatus`                     | `/service`                                    |
 
 A topic belongs to one module and one stream route; a stream route serves its module's topics only. `ids` are the
 ids of the changed rows (reservation ids, order ids), at most 50; pages may ignore them and reload what they show.
