@@ -16,6 +16,8 @@ allowBuilds:
   msgpackr-extract: false
   # Its postinstall only prints a donation message (opencollective-postinstall); OCR needs no build.
   tesseract.js: false
+  # Pulled in by jspdf (inventory PDF export); its postinstall only prints a funding banner.
+  core-js: false
 minimumReleaseAgeExclude:
   - nodemailer@10.2.0
 # Security fixes for transitive dependencies (docs/reviews/phase-1.md → R4, R5). Remove an entry once
