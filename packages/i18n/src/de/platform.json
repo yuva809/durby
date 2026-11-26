@@ -152,6 +152,8 @@
   "platform.settings.reservationsOnlineInstantMaxParty.description": "Online-Gruppen bis zu dieser Größe werden sofort gebucht; größere werden eine Anfrage, die das Team annimmt oder ablehnt. Aus: jede Größe wird sofort gebucht.",
   "platform.settings.reservationsWaitlistHoldMinutes.name": "Warteliste: Minuten bis zum Erscheinen",
   "platform.settings.reservationsWaitlistHoldMinutes.description": "Wie lange ein Gast von der Warteliste Zeit hat, wenn sein Tisch bereit ist. Steht in der E-Mail und auf dem Empfangsbildschirm.",
+  "platform.audit.entities.reservationBookingPage": "Online-Buchungsseite",
+  "platform.audit.fields.slug": "Adresse",
   "platform.audit.entities.waitlistEntry": "Wartelisteneintrag",
   "platform.audit.fields.quotedMinutes": "Genannte Wartezeit (Min.)",
   "platform.audit.fields.noticeChannel": "Benachrichtigt per",

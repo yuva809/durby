@@ -118,6 +118,19 @@ export const reservationErrors = {
       'reservations.waitlist_return_expired',
       'Only a party that left today can return.',
     ),
+  /** Unknown, off, another partner's domain or without `reservations.online`: all alike (ADR 0085). */
+  bookingPageNotFound: () =>
+    new ApiError(
+      HttpStatus.NOT_FOUND,
+      'reservations.booking_page_not_found',
+      'Booking page not found.',
+    ),
+  bookingSlugTaken: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'reservations.booking_slug_taken',
+      'This address is already taken.',
+    ),
   partyRangeInvalid: (details: { minParty: number; maxParty: number }) =>
     new ApiError(
       HttpStatus.UNPROCESSABLE_ENTITY,

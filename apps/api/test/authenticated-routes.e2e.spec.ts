@@ -73,6 +73,9 @@ describe('route markers', () => {
       'GET /api/v1/health',
       'GET /api/v1/health/live',
       // ADR 0026: the table's menu, authenticated by nothing but its QR link; reads only.
+      // ADR 0085: a restaurant's online booking page by its slug, on its partner's domain; reads only (R2.1).
+      'GET /api/v1/public/booking/:slug',
+      'GET /api/v1/public/booking/:slug/availability',
       'GET /api/v1/public/menu/:token',
       // ADR 0015 §3: the partner theme for the request's host; no tenant data.
       'GET /api/v1/theme',
@@ -335,6 +338,7 @@ describe('route markers', () => {
       'PUT /api/v1/inventory/recipes/:productId',
       'PUT /api/v1/label-overrides/:locale/:key',
       'PUT /api/v1/number-series/:key/counter',
+      'PUT /api/v1/reservations/booking-page',
       'PUT /api/v1/reservations/settings/:key',
       'PUT /api/v1/reservations/tables/:tableId/rule',
       'PUT /api/v1/settings/:key',

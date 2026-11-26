@@ -1,5 +1,8 @@
 import {
+  bookingPageResponseSchema,
+  bookingPageSchema,
   type CreateCombinationRequest,
+  type PutBookingPageRequest,
   type PutTableRuleRequest,
   type ReservationCombination,
   reservationCombinationSchema,
@@ -124,3 +127,14 @@ export const deleteLocationSetting = (
     `/api/v1/reservations/settings/${key}?locationId=${encodeURIComponent(locationId)}`,
     'DELETE',
   );
+
+/** The location's online booking page (R2.1). */
+export const loadBookingPage = (store: Api, locationId: string) =>
+  read(
+    store,
+    `/api/v1/reservations/booking-page?${new URLSearchParams({ locationId })}`,
+    bookingPageResponseSchema,
+  );
+
+export const saveBookingPage = (store: Api, action: ActionKey, body: PutBookingPageRequest) =>
+  write(store, action, '/api/v1/reservations/booking-page', 'PUT', body, bookingPageSchema);

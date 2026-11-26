@@ -38,6 +38,7 @@ import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
 import { ArchiveToggle, Field, FormDialog } from '../form-dialog';
+import { BookingPageCard } from './booking-page-card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -224,6 +225,8 @@ function Setup({ locations }: { locations: LocationSummary[] }) {
                   }
                 </Loaded>
               </Card>
+
+              <BookingPageCard locationId={locationId} />
 
               <LocationSettings
                 locationId={locationId}

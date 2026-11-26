@@ -130,6 +130,8 @@ const answers = {
             ? [COMBO, OLD_COMBO]
             : [COMBO],
     }),
+  'GET /api/v1/reservations/booking-page': () =>
+    Response.json({ page: null, suggestedSlug: 'demo-bistro-main-street', online: true }),
 };
 
 const rows = () => screen.getAllByTestId('rule-row');
@@ -402,5 +404,85 @@ describe('ReservationsSetupPage: location settings', () => {
         body: null,
       },
     ]);
+  });
+});
+
+describe('ReservationsSetupPage: online booking page (R2.1)', () => {
+  const PAGE = {
+    locationId: MAIN.id,
+    slug: 'demo-bistro',
+    enabled: true,
+    path: '/b/demo-bistro',
+    online: true,
+  };
+
+  it('suggests an address, checks it, and saves it', async () => {
+    signedInAs('manager');
+    const { writes } = api({
+      ...answers,
+      'PUT /api/v1/reservations/booking-page': () => Response.json(PAGE),
+    });
+    render(<ReservationsSetupPage />);
+    const card = await screen.findByTestId('booking-page-card');
+    const slug = await within(card).findByTestId<HTMLInputElement>('booking-page-slug');
+    expect(slug.value).toBe('demo-bistro-main-street');
+    expect(within(card).queryByTestId('booking-page-link')).toBeNull();
+
+    await userEvent.clear(slug);
+    await userEvent.type(slug, 'no');
+    await userEvent.click(within(card).getByTestId('booking-page-save'));
+    expect(within(card).getByRole('alert').textContent).toContain('3 to 60');
+    expect(writes).toEqual([]);
+
+    await userEvent.clear(slug);
+    await userEvent.type(slug, 'Demo-Bistro');
+    expect(slug.value).toBe('demo-bistro');
+    await userEvent.click(within(card).getByTestId('booking-page-save'));
+    await waitFor(() =>
+      expect(writes).toEqual([
+        {
+          method: 'PUT',
+          path: '/api/v1/reservations/booking-page',
+          body: { locationId: MAIN.id, slug: 'demo-bistro', enabled: true },
+        },
+      ]),
+    );
+  });
+
+  it('shows the link on this domain, and a taken address', async () => {
+    signedInAs('manager');
+    api({
+      ...answers,
+      'GET /api/v1/reservations/booking-page': () =>
+        Response.json({ page: PAGE, suggestedSlug: 'x', online: true }),
+      'PUT /api/v1/reservations/booking-page': () =>
+        Response.json(
+          { code: 'reservations.booking_slug_taken', message: 'taken' },
+          { status: 409 },
+        ),
+    });
+    render(<ReservationsSetupPage />);
+    const card = await screen.findByTestId('booking-page-card');
+    expect((await within(card).findByTestId('booking-page-link')).textContent).toBe(
+      `${window.location.origin}/b/demo-bistro`,
+    );
+    const slug = within(card).getByTestId<HTMLInputElement>('booking-page-slug');
+    await userEvent.type(slug, '-two');
+    await userEvent.click(within(card).getByTestId('booking-page-save'));
+    expect(
+      await within(card).findByText('This address is already taken. Choose another one.'),
+    ).toBeTruthy();
+  });
+
+  it('says when the plan has no online booking', async () => {
+    signedInAs('manager');
+    api({
+      ...answers,
+      'GET /api/v1/reservations/booking-page': () =>
+        Response.json({ page: null, suggestedSlug: 'x', online: false }),
+    });
+    render(<ReservationsSetupPage />);
+    const card = await screen.findByTestId('booking-page-card');
+    expect(await within(card).findByText(/not in your plan/)).toBeTruthy();
   });
 });

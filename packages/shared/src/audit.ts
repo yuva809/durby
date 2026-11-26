@@ -29,6 +29,7 @@ export const AUDIT_ENTITY_TYPES = [
   'floor_plan',
   'location',
   'reservation_table_rule',
+  'reservation_booking_page',
   'reservation_combination',
   'reservation',
   'warehouse',
@@ -434,6 +435,10 @@ export const AUDIT_ACTIONS = {
     label: 'pos.audit.actions.printerCommandCompleted',
   },
   /** entityId: the table's id (a rule is keyed by its table). */
+  'reservations.booking_page.updated': {
+    entityType: 'reservation_booking_page',
+    label: 'reservations.audit.actions.bookingPageUpdated',
+  },
   'reservations.table_rule.updated': {
     entityType: 'reservation_table_rule',
     label: 'reservations.audit.actions.tableRuleUpdated',
@@ -759,6 +764,7 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   stock_document: ['id', 'number', 'kind', 'warehouseId', 'toWarehouseId', 'reason', 'lineCount'],
   location: ['id', 'brandId', 'name', 'address', 'archivedAt', 'isWarehouseSite'],
   reservation_table_rule: ['tableId', 'bookingMode', 'minParty', 'maxParty'],
+  reservation_booking_page: ['id', 'locationId', 'slug', 'enabled'],
   reservation_combination: [
     'id',
     'locationId',

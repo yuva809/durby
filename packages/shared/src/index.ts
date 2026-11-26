@@ -33,6 +33,7 @@ export * from './api/team';
 export * from './api/reports';
 export * from './api/reservations';
 export * from './api/waitlist';
+export * from './api/booking-pages';
 export * from './api/settings';
 export * from './api/staff';
 export * from './api/theme';

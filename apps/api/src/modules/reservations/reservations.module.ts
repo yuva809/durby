@@ -18,6 +18,10 @@ import { SetupController } from './setup/setup.controller';
 import { ReservationsReader } from './reservations-reader';
 import { ReservationsStreamController } from './stream.controller';
 import { TableRulesService } from './setup/table-rules.service';
+import { BookingPagesController } from './online/booking-pages.controller';
+import { BookingPagesService } from './online/booking-pages.service';
+import { PublicBookingController } from './online/public-booking.controller';
+import { PublicBookingService } from './online/public-booking.service';
 import { GuestNotifier } from './waitlist/guest-notifier';
 import { WaitlistController } from './waitlist/waitlist.controller';
 import { WaitlistRetention } from './waitlist/waitlist.retention';
@@ -37,6 +41,8 @@ import { WaitlistService } from './waitlist/waitlist.service';
     LocationSettingsController,
     GuestsController,
     WaitlistController,
+    BookingPagesController,
+    PublicBookingController,
     BookingsController,
   ],
   providers: [
@@ -54,6 +60,8 @@ import { WaitlistService } from './waitlist/waitlist.service';
     GuestNotifier,
     WaitlistService,
     WaitlistRetention,
+    BookingPagesService,
+    PublicBookingService,
   ],
   exports: [ReservationsReader],
 })

@@ -152,6 +152,8 @@
   "platform.settings.reservationsOnlineInstantMaxParty.description": "Online parties up to this size are booked at once; larger ones become a request the team accepts or declines. Off: every size is booked at once.",
   "platform.settings.reservationsWaitlistHoldMinutes.name": "Waitlist: minutes to come",
   "platform.settings.reservationsWaitlistHoldMinutes.description": "How long a guest from the waitlist has to come when their table is ready. Said in the email and shown on the host screen.",
+  "platform.audit.entities.reservationBookingPage": "Online booking page",
+  "platform.audit.fields.slug": "Address",
   "platform.audit.entities.waitlistEntry": "Waitlist entry",
   "platform.audit.fields.quotedMinutes": "Quoted wait (min)",
   "platform.audit.fields.noticeChannel": "Told by",

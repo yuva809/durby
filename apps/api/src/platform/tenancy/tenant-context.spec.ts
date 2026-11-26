@@ -134,6 +134,7 @@ describe('TENANT_MODELS', () => {
       'ReportOrderFact',
       'ReportReservationFact',
       'Reservation',
+      'ReservationBookingPage',
       'ReservationCombination',
       'ReservationCombinationTable',
       'ReservationGuest',
