@@ -120,7 +120,11 @@ and detail), **Items**, **Warehouses**.
   - "Find a category or product".
 
   A tile lists its items with quantity and value over the warehouses shown; chips narrow to a secondary category.
-  **Export** downloads what is listed as CSV (UTF-8 with a byte order mark, so Excel opens it). **More** holds the
+  **Export** downloads what is listed as **Excel** (one sheet, bold frozen header, quantity and value as numbers,
+  the value total), **CSV** (UTF-8 with a byte order mark, so Excel opens it) or **PDF** (A4 landscape: organization,
+  export time, the filters in use, the table, the value total, page numbers). Same columns in all three; without
+  prices (ADR 0060) no value column or total. Made in the browser (`lib/inventory/export.ts`; `write-excel-file`,
+  `jspdf` and `jspdf-autotable` load on first use). **More** holds the
   other tabs and the setup pages. **Add New Item** files the item under a category. The default menu keeps the tabs.
 
 - Code: `components/inventory/category-overview.tsx`, `lib/inventory/overview.ts`. Test page:

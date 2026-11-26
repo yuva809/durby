@@ -32,7 +32,7 @@
   <p class="lead">Stock items filed by category, categories with description, secondary categories and tile images, and an Inventory page that opens on category tiles. Operations menu only (app.asiamight.site); the default menu is unchanged. Decision: ADR 0048. Branch: <code>feature/asiamight-inventory</code>.</p>
 
   <h2 id="page">Inventory page (operations menu)</h2>
-<pre>Inventory                                   [Export] [⋯ More] [Add New Item]
+<pre>Inventory                                   [Export ▾] [⋯ More] [Add New Item]
 Live stock and value by category, warehouse and stock level.
 ┌──────────────────────────────────────────────────────────────────────┐
 │ [All categories ▾]     [All stock ▾]       [All warehouses ▾]        │
@@ -45,7 +45,7 @@ CATEGORIES                                  [🔍 Find a category or product]
 └──────────┘ └──────────┘ └──────────┘ └──────────┘</pre>
   <ul>
     <li>A top-level tile counts its secondary categories' items too; a tile opens its items (quantity, value, low badge), with chips for its secondary categories.</li>
-    <li><strong>Export</strong>: what is listed, as CSV that Excel opens (UTF-8 with a byte order mark).</li>
+    <li><strong>Export ▾</strong>: what is listed, as <strong>Excel (.xlsx)</strong> (numbers as numbers, value total), <strong>CSV (.csv)</strong> (UTF-8 with a byte order mark) or <strong>PDF (.pdf)</strong> (A4 landscape with organization, time, filters, total and page numbers). Same columns; no value without prices.</li>
     <li><strong>More</strong>: Receive, Adjust, Transfer, History, Items, Warehouses, then Variants, Attributes, Units, Adjustments, Bills of materials, Production (as permitted).</li>
     <li>Sidebar: Inventory is one item, no submenu; Product Category stays its own item.</li>
   </ul>
@@ -77,7 +77,7 @@ CATEGORIES                                  [🔍 Find a category or product]
     <tr><th>Layer</th><th>File</th><th>Covers</th><th>Run here</th></tr>
     <tr><td>API unit</td><td><code>category-image.spec.ts</code></td><td>image types by first bytes; raw upload fingerprint</td><td class="done">Pass</td></tr>
     <tr><td>Web unit</td><td><code>lib/inventory/overview.test.ts</code></td><td>exact sums, low/out, tiles and counts, selection with secondary categories, CSV</td><td class="done">Pass</td></tr>
-    <tr><td>Web</td><td><code>components/inventory/overview.test.tsx</code></td><td>tiles, open a tile and chips, filters and search, export, More and back, item filed under a category, default menu unchanged, category dialog with and without the till</td><td class="done">Pass</td></tr>
+    <tr><td>Web</td><td><code>components/inventory/overview.test.tsx</code></td><td>tiles, open a tile and chips, filters and search, export as CSV, Excel and PDF (real files read back), failure notice, More and back, item filed under a category, default menu unchanged, category dialog with and without the till</td><td class="done">Pass</td></tr>
     <tr><td>Web</td><td><code>components/catalog/categories-page.test.tsx</code></td><td>item counts and secondary categories without the till</td><td class="done">Pass</td></tr>
     <tr><td>API e2e</td><td><code>test/inventory-categories.e2e.spec.ts</code></td><td>parent rules, image upload / read / limits / remove, item category rules</td><td class="open">Needs Docker / CI</td></tr>
   </table></div>
@@ -86,7 +86,10 @@ CATEGORIES                                  [🔍 Find a category or product]
     <li>Product Category → Add Category: name, description, pick a parent, choose a photo → tile shows the photo on Inventory.</li>
     <li>Edit a top-level category that has secondary ones: the parent choice is locked.</li>
     <li>Inventory → Add New Item → pick "African Item › Rice" → the African Item tile count goes up; opening it, the Rice chip lists it.</li>
-    <li>Filter "Low stock" → counts drop to low items; Export → CSV opens in Excel with € and umlauts intact.</li>
+    <li>Filter "Low stock" → counts drop to low items; Export ▾ → CSV opens in Excel with € and umlauts intact.</li>
+    <li>Export ▾ → Excel: one sheet, header frozen, Quantity and Value are numbers (select them: Excel shows a sum), total row at the end.</li>
+    <li>Export ▾ → PDF: title, organization, time, the filters in use, the rows, the total, "Page 1 of n"; a long list runs over several pages with the header on each.</li>
+    <li>As a branch user (no prices): no Value column and no total in any of the three files.</li>
     <li>On a phone (375 px): tiles in two columns, filters stacked, More and Add New Item wrap under the title.</li>
   </ul>
 </main>

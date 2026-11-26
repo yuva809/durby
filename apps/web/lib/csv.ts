@@ -13,18 +13,21 @@ export function toCsv(header: readonly string[], rows: readonly (readonly string
   return `${BOM}${[header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')}\r\n`;
 }
 
+/** Hands the viewer a file (`fileName` with its extension). */
+export function saveBlob(fileName: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 /** Hands the viewer a CSV file. */
 export function downloadCsv(
   fileName: string,
   header: readonly string[],
   rows: readonly (readonly string[])[],
 ): void {
-  const url = URL.createObjectURL(
-    new Blob([toCsv(header, rows)], { type: 'text/csv;charset=utf-8' }),
-  );
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${fileName}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+  saveBlob(`${fileName}.csv`, new Blob([toCsv(header, rows)], { type: 'text/csv;charset=utf-8' }));
 }
