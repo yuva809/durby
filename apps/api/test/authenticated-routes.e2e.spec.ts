@@ -70,6 +70,8 @@ describe('route markers', () => {
 
   it('lists every @Public() route', () => {
     expect(withMarker(routes, 'public')).toEqual([
+      // R2.2: a guest frees their hold on a slot (Redis; twice is a no-op).
+      'DELETE /api/v1/public/booking/:slug/holds/:holdId',
       'GET /api/v1/health',
       'GET /api/v1/health/live',
       // ADR 0026: the table's menu, authenticated by nothing but its QR link; reads only.
@@ -94,6 +96,8 @@ describe('route markers', () => {
       'POST /api/v1/platform/auth/accept',
       'POST /api/v1/platform/auth/login',
       'POST /api/v1/platform/auth/logout',
+      // R2.2: a guest's hold on a slot while they fill in the form (Redis, expires by itself).
+      'POST /api/v1/public/booking/:slug/holds',
     ]);
   });
 
@@ -150,6 +154,8 @@ describe('route markers', () => {
   /** CLAUDE.md rule 8 / ADR 0014: a new exempt write route changes this list and needs review. */
   it('lists every @IdempotencyExempt() write route', () => {
     expect(idempotency.filter((r) => r.exempt !== undefined).map((r) => r.route)).toEqual([
+      // R2.2: a guest's hold expires by itself and is replaced by its id; deleting twice is a no-op.
+      'DELETE /api/v1/public/booking/:slug/holds/:holdId',
       // Sets one value on the caller's own users row (no tenant for the idempotency store).
       'PATCH /api/v1/auth/me',
       'PATCH /api/v1/platform/feedback/:id',
@@ -186,6 +192,7 @@ describe('route markers', () => {
       // ADR 0017 §8 (with PATCH /platform/staff/:id above): replay-safe set-state staff writes.
       'POST /api/v1/platform/staff/:id/deactivate',
       'POST /api/v1/platform/staff/invitations',
+      'POST /api/v1/public/booking/:slug/holds',
       // ADR 0052: the body is a password (never stored, not even hashed); a replay sets it again.
       'POST /api/v1/staff/:id/password',
       // ADR 0047: the caller's own choices, set-state.

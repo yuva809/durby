@@ -28,6 +28,10 @@ export interface EngineSettings {
   maxCoversPerSlot: 'off' | number;
   lastBookingOffsetMinutes: number;
   instantMaxParty: 'off' | number;
+  /** Online only (R2.2): slots start at least this long after now. */
+  minLeadMinutes: number;
+  /** Online only (R2.2): at most this many local days ahead. */
+  maxAdvanceDays: number;
 }
 
 export interface EngineTable {
@@ -60,6 +64,13 @@ export interface EngineBooking {
   tableIds: readonly string[];
 }
 
+/** A guest's hold on a table while they fill the booking form (R2.2, ADR 0019 §4); online only. */
+export interface EngineHold {
+  tableId: string;
+  start: Date;
+  end: Date;
+}
+
 /** An open pos order (PosFloorReader): a party sits at the table now. */
 export interface EngineOpenOrder {
   tableId: string;
@@ -78,6 +89,8 @@ export interface AvailabilityInput {
   combinations: readonly EngineCombination[];
   bookings: readonly EngineBooking[];
   openOrders: readonly EngineOpenOrder[];
+  /** Live holds of other guests (online channel; staff booking ignores holds). */
+  holds?: readonly EngineHold[];
 }
 
 export type Allocation =
@@ -107,7 +120,7 @@ export interface Interval {
 
 /** A table's busy time: a booking's own period, or occupancy (an open order, a party overrunning). */
 interface Busy extends Interval {
-  kind: 'booking' | 'occupied';
+  kind: 'booking' | 'occupied' | 'held';
 }
 
 const MINUTE = 60_000;
@@ -116,6 +129,7 @@ export function availability(input: AvailabilityInput): AvailabilityResult {
   const { date, settings, partySize } = input;
   const turnMinutes = turnTimeFor(partySize, settings.turnTimes);
   if (settings.closedDates.includes(date)) return { date, turnMinutes, closed: true, slots: [] };
+  if (beyondAdvance(input)) return { date, turnMinutes, closed: false, slots: [] };
 
   const starts = slotStarts(input);
   const turn = turnMinutes * MINUTE;
@@ -140,10 +154,20 @@ export function availability(input: AvailabilityInput): AvailabilityResult {
 
 // --- Slots ----------------------------------------------------------------------------------------
 
+/** Online, a day more than `maxAdvanceDays` local days after today has no slots (R2.2). */
+function beyondAdvance(input: AvailabilityInput): boolean {
+  if (input.channel !== 'online') return false;
+  const today = zonedParts(input.now, input.timeZone).date;
+  return input.date > addDays(today, input.settings.maxAdvanceDays);
+}
+
 /** Slot starts of the day: wall-clock grid per window, up to the last booking, not in the past. */
 function slotStarts(input: AvailabilityInput): number[] {
   const { timeZone, settings, now } = input;
   const interval = settings.slotIntervalMinutes;
+  // Online, the restaurant needs some notice (R2.2).
+  const earliest =
+    now.getTime() + (input.channel === 'online' ? settings.minLeadMinutes * MINUTE : 0);
   const starts = new Set<number>();
   for (const window of serviceWindows(input)) {
     const last = window.end - settings.lastBookingOffsetMinutes * MINUTE;
@@ -156,7 +180,7 @@ function slotStarts(input: AvailabilityInput): number[] {
       const t = zonedInstant(addDays(from.date, day), clock(minute % (24 * 60)), timeZone);
       if (t === null) continue;
       if (t.getTime() > last) break;
-      if (t.getTime() >= window.start && t.getTime() >= now.getTime()) starts.add(t.getTime());
+      if (t.getTime() >= window.start && t.getTime() >= earliest) starts.add(t.getTime());
     }
   }
   return [...starts].sort((a, b) => a - b);
@@ -231,6 +255,13 @@ function busyIntervals(input: AvailabilityInput): Map<string, Busy[]> {
         // Overrun: a seated party keeps its table until it is finished.
         if (end <= now.getTime()) add(id, { start: end, end: rolling, kind: 'occupied' });
       }
+    }
+  }
+
+  // Another guest is filling in the form for these tables (online only, ADR 0019 §5).
+  if (input.channel === 'online') {
+    for (const hold of input.holds ?? []) {
+      add(hold.tableId, { start: hold.start.getTime(), end: hold.end.getTime(), kind: 'held' });
     }
   }
 

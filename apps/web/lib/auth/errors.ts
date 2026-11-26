@@ -215,6 +215,8 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'reservations.waitlist_return_expired': 'reservations.errors.waitlistReturnExpired',
   'reservations.booking_page_not_found': 'reservations.errors.bookingPageNotFound',
   'reservations.booking_slug_taken': 'reservations.errors.bookingSlugTaken',
+  'reservations.hold_not_found': 'reservations.errors.holdNotFound',
+  'reservations.holds_unavailable': 'reservations.errors.holdsUnavailable',
   'reservations.location_not_found': 'reservations.errors.locationNotFound',
   'reservations.table_not_found': 'reservations.errors.tableNotFound',
   'reservations.combination_not_found': 'reservations.errors.combinationNotFound',

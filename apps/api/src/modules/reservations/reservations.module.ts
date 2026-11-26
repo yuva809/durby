@@ -20,6 +20,7 @@ import { ReservationsStreamController } from './stream.controller';
 import { TableRulesService } from './setup/table-rules.service';
 import { BookingPagesController } from './online/booking-pages.controller';
 import { BookingPagesService } from './online/booking-pages.service';
+import { HoldStore } from './online/hold-store';
 import { PublicBookingController } from './online/public-booking.controller';
 import { PublicBookingService } from './online/public-booking.service';
 import { GuestNotifier } from './waitlist/guest-notifier';
@@ -62,6 +63,7 @@ import { WaitlistService } from './waitlist/waitlist.service';
     WaitlistRetention,
     BookingPagesService,
     PublicBookingService,
+    HoldStore,
   ],
   exports: [ReservationsReader],
 })

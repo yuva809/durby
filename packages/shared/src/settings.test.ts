@@ -45,6 +45,8 @@ describe('settings registry', () => {
       'reservations.floorHorizonMinutes',
       'reservations.waitlistHoldMinutes',
       'reservations.autoConfirm',
+      'reservations.minLeadMinutes',
+      'reservations.maxAdvanceDays',
       'reservations.holdMinutes',
       'pos.billHeader',
       'pos.billFooter',

@@ -131,6 +131,18 @@ export const reservationErrors = {
       'reservations.booking_slug_taken',
       'This address is already taken.',
     ),
+  /** The hold expired, is unknown or belongs to another page (R2.2; used by booking in R2.3). */
+  holdNotFound: () =>
+    new ApiError(HttpStatus.CONFLICT, 'reservations.hold_not_found', 'The hold has expired.'),
+  /** Redis is down: online booking pauses, staff booking is unaffected (ADR 0019 §5). */
+  holdsUnavailable: () =>
+    new ApiError(
+      HttpStatus.SERVICE_UNAVAILABLE,
+      'reservations.holds_unavailable',
+      'Online booking is paused, please retry.',
+      undefined,
+      { 'Retry-After': '10' },
+    ),
   partyRangeInvalid: (details: { minParty: number; maxParty: number }) =>
     new ApiError(
       HttpStatus.UNPROCESSABLE_ENTITY,

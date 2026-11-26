@@ -64,6 +64,9 @@ status` trigger on `reservations` rewrites the reservation's `reservation_tables
    `pos.order.closed`; pos never imports reservations and emits nothing for it. Screens that need both (the
    `/host` floor, reservation badges on `/service`) are composed in the web app.
 
+**As built (R2.2, 2026-11-26):** one sorted set per location instead of per table (member `holdId|tableId|start|end`),
+so acquiring and reading holds each touch one key; otherwise as decided above.
+
 ## Consequences
 
 - One Postgres extension (`btree_gist`) and two hand-written trigger functions in the R1 migration; Prisma models

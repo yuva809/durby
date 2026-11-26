@@ -45,11 +45,10 @@ describe('reservations: online booking page', () => {
     platform = app.get(PLATFORM_PRISMA);
     // The default partner exists on every installation (created by provisioning); before any request reads it.
     durbyPartner = (
-      await platform.partner.upsert({
-        where: { slug: 'durby' },
-        create: { slug: 'durby', name: 'Durby' },
-        update: {},
-      })
+      await platform.partner
+        .create({ data: { slug: 'durby', name: 'Durby' } })
+        // Another test file may create it at the same moment.
+        .catch(() => platform.partner.findUniqueOrThrow({ where: { slug: 'durby' } }))
     ).id;
     demoPartner = (await platform.partner.findUniqueOrThrow({ where: { slug: 'demo' } })).id;
   });
@@ -237,6 +236,7 @@ describe('reservations: online booking page', () => {
         locale: 'en',
         currency: 'EUR',
         instantMaxParty: 10,
+        lastBookableDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) as unknown,
       });
       expect(JSON.stringify(res.body)).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);
     });
@@ -301,13 +301,18 @@ describe('reservations: online booking page', () => {
       const slug = slugOf();
       await setPage(r, slug).expect(200);
       const ip = `10.250.${rnd()}.${rnd()}`;
-      let limited = null;
-      for (let i = 0; i < 400 && !limited; i += 1) {
-        const res = await pub(`/${slug}`, DURBY_HOST, ip);
-        if (res.status === 429) limited = res;
+      // Malformed addresses count against the client too, without touching the database: a quick way to use up
+      // its allowance (several in flight at a time).
+      let used = 0;
+      while (used < 400) {
+        const batch = await Promise.all(
+          Array.from({ length: 20 }, () => pub('/Not A Slug!', DURBY_HOST, ip)),
+        );
+        used += batch.length;
+        if (batch.some((res) => res.status === 429)) break;
       }
-      expect(limited).not.toBeNull();
-      expect(Number(limited?.headers['retry-after'])).toBeGreaterThan(0);
+      const limited = await pub(`/${slug}`, DURBY_HOST, ip).expect(429);
+      expect(Number(limited.headers['retry-after'])).toBeGreaterThan(0);
       // Others are not affected.
       await pub(`/${slug}`).expect(200);
     });

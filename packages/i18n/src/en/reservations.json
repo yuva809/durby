@@ -88,6 +88,8 @@
   "reservations.bookingPage.saved": "Saved",
   "reservations.bookingPage.off": "Online booking is not in your plan. The page answers nobody until it is.",
   "reservations.bookingPage.comingSoon": "The page guests see comes with the next update; the address is kept.",
+  "reservations.errors.holdNotFound": "The time you picked was released. Please pick it again.",
+  "reservations.errors.holdsUnavailable": "Online booking is paused for a moment. Please try again shortly.",
   "reservations.errors.locationNotFound": "Location not found.",
   "reservations.errors.tableNotFound": "Table not found.",
   "reservations.errors.combinationNotFound": "Table combination not found.",

@@ -83,6 +83,8 @@ function input(over: Partial<AvailabilityInput> = {}): AvailabilityInput {
       maxCoversPerSlot: 'off',
       lastBookingOffsetMinutes: 60,
       instantMaxParty: 10,
+      minLeadMinutes: 0,
+      maxAdvanceDays: 365,
       ...settings,
     },
   };
@@ -603,5 +605,41 @@ describe('evaluateBooking: one booking at an exact time (R1.6 write-time checks)
       ok: true,
       breaches: [],
     });
+  });
+});
+
+describe('online booking window and holds (R2.2)', () => {
+  const starts = (i: AvailabilityInput) =>
+    availability(i)
+      .slots.filter((s) => s.status === 'available')
+      .map((s) => hhmm(s.start));
+
+  it('starts online slots no earlier than the minimum lead time; staff keep every slot', () => {
+    const now = at(SAT, '18:00');
+    const online = input({ now, channel: 'online', settings: { minLeadMinutes: 60 } as never });
+    expect(starts(online)[0]).toBe('19:00');
+    expect(starts({ ...online, channel: 'staff' })[0]).toBe('18:00');
+  });
+
+  it('offers nothing online beyond the maximum advance, counted in local days', () => {
+    const now = at('2026-11-04', '23:30');
+    const settings = { maxAdvanceDays: 10 } as never;
+    expect(starts(input({ now, channel: 'online', date: '2026-11-14', settings }))).not.toEqual([]);
+    expect(starts(input({ now, channel: 'online', date: '2026-11-15', settings }))).toEqual([]);
+    expect(starts(input({ now, channel: 'staff', date: '2026-11-15', settings }))).not.toEqual([]);
+  });
+
+  it('treats held tables as busy online only, overlapping periods only', () => {
+    const holds = [
+      { tableId: 'T2a', start: at(SAT, '19:00'), end: at(SAT, '20:30') },
+      { tableId: 'T2b', start: at(SAT, '19:00'), end: at(SAT, '20:30') },
+      { tableId: 'T4', start: at(SAT, '19:00'), end: at(SAT, '20:30') },
+      { tableId: 'T6', start: at(SAT, '19:00'), end: at(SAT, '20:30') },
+    ];
+    const online = input({ channel: 'online', holds });
+    expect(starts(online)).not.toContain('19:00');
+    // Back to back: free again when the held period ends.
+    expect(starts(online)).toContain('20:30');
+    expect(starts({ ...online, channel: 'staff' })).toContain('19:00');
   });
 });

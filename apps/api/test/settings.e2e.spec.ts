@@ -139,6 +139,8 @@ describe('/api/v1/settings', () => {
           ['reservations.floorHorizonMinutes', 60],
           ['reservations.waitlistHoldMinutes', 10],
           ['reservations.autoConfirm', true],
+          ['reservations.minLeadMinutes', 60],
+          ['reservations.maxAdvanceDays', 60],
           ['reservations.holdMinutes', 5],
           ['pos.billHeader', DEFAULT_BILL_HEADER],
           ['pos.billFooter', DEFAULT_BILL_FOOTER],
