@@ -293,7 +293,7 @@ export const MAX_BOOKING_MINUTES = 720;
 export const MAX_LIST_DAYS = 31;
 
 const optionalText = (max: number) => z.string().trim().min(1).max(max);
-const guestEmail = z.string().trim().toLowerCase().max(254).pipe(z.email());
+export const guestEmail = z.string().trim().toLowerCase().max(254).pipe(z.email());
 
 /** Guest details as staff type them; the api normalises the phone with the location's country. */
 export const reservationGuestInputSchema = z.strictObject({
@@ -303,7 +303,7 @@ export const reservationGuestInputSchema = z.strictObject({
   locale: z.enum(LOCALES).optional(),
 });
 
-const tableIdList = z
+export const tableIdList = z
   .array(z.uuid())
   .min(1)
   .max(COMBINATION_MAX_TABLES)
@@ -479,6 +479,12 @@ export const RESERVATION_ERROR_CODES = [
   'reservations.table_not_in_service',
   'reservations.busy',
   'reservations.guest_not_found',
+  'reservations.waitlist_entry_not_found',
+  'reservations.waitlist_closed',
+  'reservations.waitlist_no_email',
+  'reservations.waitlist_notice_limit',
+  'reservations.waitlist_notice_too_soon',
+  'reservations.waitlist_return_expired',
 ] as const;
 
 export type ReservationErrorCode = (typeof RESERVATION_ERROR_CODES)[number];

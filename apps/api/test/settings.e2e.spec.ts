@@ -137,6 +137,7 @@ describe('/api/v1/settings', () => {
           ['reservations.online.instantMaxParty', 10],
           ['reservations.orderMatchWindowMinutes', 30],
           ['reservations.floorHorizonMinutes', 60],
+          ['reservations.waitlistHoldMinutes', 10],
           ['reservations.autoConfirm', true],
           ['reservations.holdMinutes', 5],
           ['pos.billHeader', DEFAULT_BILL_HEADER],

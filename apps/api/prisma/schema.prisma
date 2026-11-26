@@ -138,6 +138,7 @@ model Organization {
   reservationCombinationTables ReservationCombinationTable[]
   reservationGuests            ReservationGuest[]
   reservations                 Reservation[]
+  waitlistEntries              WaitlistEntry[]
   reservationTables            ReservationTable[]
   reservationStatusChanges     ReservationStatusChange[]
   productCategoryImages        ProductCategoryImage[]
@@ -208,6 +209,7 @@ model Location {
   posFloorPlanVersions    PosFloorPlanVersion[]
   reservationCombinations ReservationCombination[]
   reservations            Reservation[]
+  waitlistEntries         WaitlistEntry[]
   warehouses              Warehouse[]
   priceRules              PriceRule[]
   posPrinterCommands      PosPrinterCommand[]
@@ -1671,6 +1673,7 @@ model Reservation {
   guest           ReservationGuest          @relation(fields: [tenantId, guestId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
   tables          ReservationTable[]
   changes         ReservationStatusChange[]
+  waitlistEntry   WaitlistEntry?
 
   @@unique([tenantId, id])
   @@unique([tenantId, number])
@@ -1678,6 +1681,68 @@ model Reservation {
   @@index([tenantId, status, endsAt])
   @@index([tenantId, guestId])
   @@map("reservations")
+}
+
+enum WaitlistStatus {
+  waiting
+  notified
+  seated
+  left
+  removed
+
+  @@map("waitlist_status")
+}
+
+enum WaitlistChannel {
+  email
+  in_person
+
+  @@map("waitlist_channel")
+}
+
+enum WaitlistNoticeResult {
+  pending
+  sent
+  failed
+
+  @@map("waitlist_notice_result")
+}
+
+/// A party waiting for a table (ADR 0084). Contact data stays until a day after the entry ended.
+model WaitlistEntry {
+  id              String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String                @map("tenant_id") @db.Uuid
+  locationId      String                @map("location_id") @db.Uuid
+  /// Personal data (with phone, email, note): null once erased; never in audit, events or logs.
+  name            String?
+  /// E.164.
+  phone           String?
+  email           String?
+  note            String?
+  locale          String
+  partySize       Int                   @map("party_size")
+  quotedMinutes   Int?                  @map("quoted_minutes")
+  status          WaitlistStatus        @default(waiting)
+  notifiedAt      DateTime?             @map("notified_at") @db.Timestamptz(6)
+  noticeChannel   WaitlistChannel?      @map("notice_channel")
+  noticeResult    WaitlistNoticeResult? @map("notice_result")
+  emailedAt       DateTime?             @map("emailed_at") @db.Timestamptz(6)
+  emailCount      Int                   @default(0) @map("email_count")
+  endedAt         DateTime?             @map("ended_at") @db.Timestamptz(6)
+  erasedAt        DateTime?             @map("erased_at") @db.Timestamptz(6)
+  reservationId   String?               @map("reservation_id") @db.Uuid
+  createdByUserId String                @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization          @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location        Location              @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  reservation     Reservation?          @relation(fields: [tenantId, reservationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, reservationId])
+  @@index([tenantId, locationId, status, createdAt])
+  @@index([tenantId, locationId, endedAt])
+  @@map("waitlist_entries")
 }
 
 /// The tables of a reservation with its period; the exclusion constraint (ADR 0019) works on these rows.

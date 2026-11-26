@@ -17,6 +17,7 @@ import {
   reservationsReservationCreatedV1,
   reservationsReservationStatusChangedV1,
   reservationsReservationUpdatedV1,
+  reservationsWaitlistChangedV1,
 } from './reservations';
 
 /**
@@ -60,6 +61,10 @@ export const EVENTS = {
   'reservations.reservation.status_changed': {
     current: 1,
     versions: { 1: reservationsReservationStatusChangedV1 },
+  },
+  'reservations.waitlist.changed': {
+    current: 1,
+    versions: { 1: reservationsWaitlistChangedV1 },
   },
 } as const satisfies Record<string, EventDefinition>;
 

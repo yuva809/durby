@@ -6,6 +6,7 @@ import type {
   Reservation,
   ReservationsFloorResponse,
   ReservationsFloorTable,
+  WaitlistEntry,
 } from '@durby/shared';
 import type { LabelKey } from '@durby/i18n';
 import { ChevronLeft, ChevronRight, Clock, TriangleAlert, Users } from 'lucide-react';
@@ -36,6 +37,7 @@ import {
   undoChange,
   undoMinutesLeft,
 } from '../../lib/reservations/host';
+import { loadWaitlist, suggestTable } from '../../lib/reservations/waitlist';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { loadLocations } from '../../lib/users/api';
@@ -55,6 +57,7 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { BookingDialog, TablesDialog, WalkInDialog } from './host-dialogs';
+import { WaitlistPanel, type WaitlistRights } from './waitlist-panel';
 
 /** How often the screen refreshes while visible (G6; SSE replaces it in RT.1). */
 export const HOST_REFRESH_MS = 30_000;
@@ -71,6 +74,12 @@ export function HostPage() {
     <HostLocations
       organizationId={session.activeOrganizationId}
       canManage={session.activePermissions.includes(MANAGE)}
+      waitlistRights={{
+        create: session.activePermissions.includes('reservations.waitlist.create'),
+        edit: session.activePermissions.includes('reservations.waitlist.edit'),
+        remove: session.activePermissions.includes('reservations.waitlist.delete'),
+        seat: session.activePermissions.includes('reservations.bookings.create'),
+      }}
     />
   );
 }
@@ -78,9 +87,11 @@ export function HostPage() {
 function HostLocations({
   organizationId,
   canManage,
+  waitlistRights,
 }: {
   organizationId: string | null;
   canManage: boolean;
+  waitlistRights: WaitlistRights;
 }) {
   const t = useT();
   const { store } = useAuth();
@@ -94,7 +105,7 @@ function HostLocations({
             <NoLocations message={t('reservations.host.noLocations')} />
           </div>
         ) : (
-          <HostScreen locations={list} canManage={canManage} />
+          <HostScreen locations={list} canManage={canManage} waitlistRights={waitlistRights} />
         )
       }
     </Loaded>
@@ -104,6 +115,7 @@ function HostLocations({
 type Dialog =
   | { kind: 'booking' }
   | { kind: 'walkIn'; tableIds: string[] }
+  | { kind: 'seatEntry'; entry: WaitlistEntry }
   | { kind: 'tables'; booking: Reservation; mode: 'move' | 'seat' }
   | null;
 
@@ -123,9 +135,11 @@ const STATUS_LABEL: Record<Reservation['status'], LabelKey> = {
 function HostScreen({
   locations,
   canManage,
+  waitlistRights,
 }: {
   locations: LocationSummary[];
   canManage: boolean;
+  waitlistRights: WaitlistRights;
 }) {
   const t = useT();
   const { store } = useAuth();
@@ -147,10 +161,15 @@ function HostScreen({
   const [bookings, reloadBookings] = useResource(date && `${locationId}|${date}`, () =>
     loadDay(store, locationId, date!),
   );
+  // People wait now: the list belongs to today only.
+  const [waitlist, reloadWaitlist] = useResource(day === null ? locationId : null, () =>
+    loadWaitlist(store, locationId),
+  );
   const reload = useCallback(() => {
     reloadFloor();
     reloadBookings();
-  }, [reloadFloor, reloadBookings]);
+    reloadWaitlist();
+  }, [reloadFloor, reloadBookings, reloadWaitlist]);
   // Other hosts and the till change bookings: reload on the reservations stream's hints, polling
   // while it isn't live (ADR 0044). The clock ticks on its own.
   useLiveRefresh({
@@ -302,7 +321,12 @@ function HostScreen({
 
       <Loaded resource={floor} reload={reloadFloor}>
         {(f) => (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+          <div
+            className={cn(
+              'grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]',
+              f.live && '2xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)_minmax(0,4fr)]',
+            )}
+          >
             <section className="flex flex-col gap-3" aria-labelledby={`${id}-timeline`}>
               <h2 id={`${id}-timeline`} className="text-lg font-semibold">
                 {t('reservations.host.timeline')}
@@ -335,6 +359,17 @@ function HostScreen({
                 onDone={done}
               />
             </section>
+            {f.live && (
+              <WaitlistPanel
+                locationId={locationId}
+                timeZone={f.timeZone}
+                resource={waitlist}
+                reload={reload}
+                now={now}
+                rights={waitlistRights}
+                onSeat={(entry) => setDialog({ kind: 'seatEntry', entry })}
+              />
+            )}
           </div>
         )}
       </Loaded>
@@ -363,6 +398,19 @@ function HostScreen({
           timeZone={ready.timeZone}
           tables={ready.data}
           initialTableIds={dialog.tableIds}
+          now={now}
+          onDone={done}
+        />
+      )}
+      {ready && dialog?.kind === 'seatEntry' && (
+        <WalkInDialog
+          open
+          onOpenChange={(open) => !open && setDialog(null)}
+          locationId={locationId}
+          timeZone={ready.timeZone}
+          tables={ready.data}
+          initialTableIds={suggestTable(ready.data, dialog.entry.partySize)}
+          entry={dialog.entry}
           now={now}
           onDone={done}
         />

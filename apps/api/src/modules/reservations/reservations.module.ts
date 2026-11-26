@@ -18,6 +18,10 @@ import { SetupController } from './setup/setup.controller';
 import { ReservationsReader } from './reservations-reader';
 import { ReservationsStreamController } from './stream.controller';
 import { TableRulesService } from './setup/table-rules.service';
+import { GuestNotifier } from './waitlist/guest-notifier';
+import { WaitlistController } from './waitlist/waitlist.controller';
+import { WaitlistRetention } from './waitlist/waitlist.retention';
+import { WaitlistService } from './waitlist/waitlist.service';
 
 /** Reservations and the host stand (docs/modules/reservations.md). Reads pos only through its index. */
 @Module({
@@ -32,6 +36,7 @@ import { TableRulesService } from './setup/table-rules.service';
     SetupController,
     LocationSettingsController,
     GuestsController,
+    WaitlistController,
     BookingsController,
   ],
   providers: [
@@ -46,6 +51,9 @@ import { TableRulesService } from './setup/table-rules.service';
     PosEventsHandler,
     ReservationsRealtimeHandler,
     ReservationsReader,
+    GuestNotifier,
+    WaitlistService,
+    WaitlistRetention,
   ],
   exports: [ReservationsReader],
 })

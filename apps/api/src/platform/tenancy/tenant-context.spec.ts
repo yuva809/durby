@@ -159,6 +159,7 @@ describe('TENANT_MODELS', () => {
       'VendorInvoice',
       'VendorInvoiceLine',
       'VendorInvoiceLineCorrection',
+      'WaitlistEntry',
       'Warehouse',
     ]);
   });

@@ -5,6 +5,7 @@ import type {
   LocalDate,
   Reservation,
   ReservationsFloorTable,
+  WaitlistEntry,
 } from '@durby/shared';
 import { type FormEvent, type ReactNode, useId, useState } from 'react';
 import { Notice } from '../../app/auth-layout';
@@ -27,6 +28,7 @@ import {
   seatUntil,
   updateBooking,
 } from '../../lib/reservations/host';
+import { seatEntry } from '../../lib/reservations/waitlist';
 import { useActionKey } from '../../lib/use-action-key';
 import { useResource } from '../../lib/use-resource';
 import { Field } from '../form-dialog';
@@ -40,7 +42,7 @@ import { ConfirmAction } from '../users/common';
 type Failure = ApiErrorCode | 'unknown';
 
 /** A controlled dialog with a form: `onSubmit` runs the write and returns its failure, if any. */
-function HostDialog({
+export function HostDialog({
   open,
   onOpenChange,
   title,
@@ -142,8 +144,8 @@ function TablePicker({
   );
 }
 
-const partyOk = (n: number) => Number.isInteger(n) && n >= 1 && n <= 100;
-const trimmed = (s: string) => (s.trim() === '' ? undefined : s.trim());
+export const partyOk = (n: number) => Number.isInteger(n) && n >= 1 && n <= 100;
+export const trimmed = (s: string) => (s.trim() === '' ? undefined : s.trim());
 
 /**
  * + Booking (a phone booking, R1.8b) or, with `booking`, its edit (R1.9): date, party, the day's
@@ -482,7 +484,7 @@ export function BookingDialog({
   );
 }
 
-/** + Walk-in, or "Seat walk-in" on a free table: seated now (R1.6c). */
+/** + Walk-in, "Seat walk-in" on a free table, or (`entry`) a party of the waitlist: seated now (R1.6c). */
 export function WalkInDialog({
   open,
   onOpenChange,
@@ -490,6 +492,7 @@ export function WalkInDialog({
   timeZone,
   tables,
   initialTableIds,
+  entry,
   now,
   onDone,
 }: {
@@ -499,6 +502,8 @@ export function WalkInDialog({
   timeZone: string;
   tables: readonly ReservationsFloorTable[];
   initialTableIds: readonly string[];
+  /** Its name and contacts go to the booking; only the party size can differ. */
+  entry?: WaitlistEntry;
   now: number;
   onDone: (booking: Reservation) => void;
 }) {
@@ -506,7 +511,7 @@ export function WalkInDialog({
   const { store } = useAuth();
   const action = useActionKey();
   const id = useId();
-  const [party, setParty] = useState('2');
+  const [party, setParty] = useState(String(entry?.partySize ?? 2));
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [tableIds, setTableIds] = useState<string[]>([...initialTableIds]);
@@ -528,14 +533,19 @@ export function WalkInDialog({
     if (!partyOk(size) || tableIds.length === 0) return;
     setBusy(true);
     setFailure(null);
-    const result = await createWalkIn(store, action, {
-      locationId,
-      partySize: size,
-      tableIds,
-      ...(trimmed(name) && { name: trimmed(name) }),
-      ...(trimmed(phone) && { phone: trimmed(phone) }),
-      ...(endsAt && { endsAt }),
-    });
+    const seating = { partySize: size, tableIds, ...(endsAt && { endsAt }) };
+    let result: Result<Reservation | null>;
+    if (entry) {
+      const seated = await seatEntry(store, action, entry.id, seating);
+      result = seated.ok ? { ok: true, data: seated.data?.reservation ?? null } : seated;
+    } else {
+      result = await createWalkIn(store, action, {
+        locationId,
+        ...seating,
+        ...(trimmed(name) && { name: trimmed(name) }),
+        ...(trimmed(phone) && { phone: trimmed(phone) }),
+      });
+    }
     setBusy(false);
     if (result.ok && result.data) {
       onOpenChange(false);
@@ -549,7 +559,13 @@ export function WalkInDialog({
     <HostDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={t('reservations.host.walkIn.title')}
+      title={
+        entry
+          ? t('reservations.waitlist.seatTitle', {
+              name: entry.name ?? t('reservations.host.noName'),
+            })
+          : t('reservations.host.walkIn.title')
+      }
       testId="walk-in-dialog"
       submitLabel={t('reservations.host.walkIn.submit')}
       busy={busy}
@@ -585,23 +601,27 @@ export function WalkInDialog({
             onChange={(e) => setParty(e.target.value)}
           />
         </Field>
-        <Field id={`${id}-name`} label={t('reservations.host.guestName')} problem={null}>
-          <Input
-            id={`${id}-name`}
-            autoComplete="off"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </Field>
-        <Field id={`${id}-phone`} label={t('reservations.host.phone')} problem={null}>
-          <Input
-            id={`${id}-phone`}
-            type="tel"
-            autoComplete="off"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-        </Field>
+        {!entry && (
+          <>
+            <Field id={`${id}-name`} label={t('reservations.host.guestName')} problem={null}>
+              <Input
+                id={`${id}-name`}
+                autoComplete="off"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </Field>
+            <Field id={`${id}-phone`} label={t('reservations.host.phone')} problem={null}>
+              <Input
+                id={`${id}-phone`}
+                type="tel"
+                autoComplete="off"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </Field>
+          </>
+        )}
       </div>
       <TablePicker
         tables={tables}

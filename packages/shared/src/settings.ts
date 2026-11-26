@@ -237,6 +237,15 @@ export const SETTINGS = {
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
+  // How long a guest from the waitlist has to come (ADR 0084): said in the notice, shown to the host.
+  'reservations.waitlistHoldMinutes': define({
+    label: 'platform.settings.reservationsWaitlistHoldMinutes.name',
+    description: 'platform.settings.reservationsWaitlistHoldMinutes.description',
+    schema: z.int().min(5).max(60),
+    default: 10,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
   'reservations.autoConfirm': define({
     label: 'platform.settings.reservationsAutoConfirm.name',
     description: 'platform.settings.reservationsAutoConfirm.description',

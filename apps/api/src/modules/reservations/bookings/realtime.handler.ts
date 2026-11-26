@@ -41,6 +41,12 @@ export class ReservationsRealtimeHandler {
     return this.publish(event);
   }
 
+  @OnEvent('reservations.waitlist.changed', { handler: 'reservations.publishWaitlist' })
+  waitlist(event: OutboxEvent): Promise<void> {
+    const payload = event.payload as EventPayload<'reservations.waitlist.changed'>;
+    return this.realtime.publish(payload.locationId, 'reservations', [payload.entryId]);
+  }
+
   @OnEvent('pos.order.opened', { handler: 'reservations.publishTillOpened' })
   tillOpened(event: OutboxEvent, tx: TenantTransactionClient): Promise<void> {
     return this.till(event, tx);

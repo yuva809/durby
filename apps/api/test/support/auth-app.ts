@@ -132,12 +132,15 @@ export class AuthTestKit {
   /** A membership with the organization's Staff role (created here if the org has none yet). */
   join(tenantId: string, userId: string) {
     return this.tenantContext.run({ tenantId, userId }, async () => {
-      // One statement (INSERT … ON CONFLICT): tests join users to the same org in parallel.
-      const staff = await this.tenantDb.role.upsert({
-        where: { tenantId_systemKey: { tenantId, systemKey: 'staff' } },
-        create: { tenantId, systemKey: 'staff' },
-        update: {},
-      });
+      // Tests join users to the same org in parallel. Prisma doesn't always send the upsert as one
+      // INSERT … ON CONFLICT, so the loser of the race reads the winner's role.
+      const where = { tenantId_systemKey: { tenantId, systemKey: 'staff' as const } };
+      const staff = await this.tenantDb.role
+        .upsert({ where, create: { tenantId, systemKey: 'staff' }, update: {} })
+        .catch(async (error: unknown) => {
+          if ((error as { code?: string }).code !== 'P2002') throw error;
+          return this.tenantDb.role.findUniqueOrThrow({ where });
+        });
       return this.tenantDb.membership.create({ data: { tenantId, userId, roleId: staff.id } });
     });
   }

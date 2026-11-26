@@ -53,6 +53,9 @@ export const STAMP: Partial<
   cancelled: 'cancelledAt',
 };
 
+/** A walk-in; the waitlist also knows the email and language. */
+export type WalkInParty = CreateWalkInRequest & { email?: string; locale?: string };
+
 const isBlocking = (status: ReservationStatus) =>
   (BLOCKING_STATUSES as readonly string[]).includes(status);
 
@@ -185,93 +188,104 @@ export class BookingStatusService {
   }
 
   async walkIn(body: CreateWalkInRequest): Promise<Reservation> {
-    const { tenantId, userId } = this.tenantContext.require();
-    const now = this.clock.now();
-
     return this.db.$transaction(async (tx) => {
       await shortLockWaits(tx);
       await readableLocation(tx, this.access, body.locationId);
       await this.access.assert('reservations.bookings.create', { locationId: body.locationId });
-      if (body.endsAt) {
-        const minutes = (Date.parse(body.endsAt) - now.getTime()) / 60_000;
-        if (minutes < MIN_WALK_IN_MINUTES || minutes > MAX_BOOKING_MINUTES) {
-          throw new ApiError(HttpStatus.BAD_REQUEST, 'validation.failed', 'Invalid walk-in end.', {
-            issues: [
-              {
-                path: ['endsAt'],
-                code: 'custom',
-                message: `endsAt must be ${MIN_WALK_IN_MINUTES} min to ${MAX_BOOKING_MINUTES} min from now`,
-              },
-            ],
-          });
-        }
-      }
-      const { input, settings } = await this.bookings.load(
-        tx,
-        body.locationId,
-        now,
-        body.partySize,
-        now,
-      );
-      const start = now;
-      const end = body.endsAt
-        ? new Date(body.endsAt)
-        : new Date(now.getTime() + turnTimeFor(body.partySize, input.settings.turnTimes) * 60_000);
-      // The party is here: tables must be free, the booking rules don't apply.
-      const verdict = evaluateBooking(input, { start, end, tableIds: body.tableIds, walkIn: true });
-      if (!verdict.ok) throw problemError(verdict.problem, verdict.nextStartsAt);
-
-      const guest = guestDetails(
-        { ...(body.name && { name: body.name }), ...(body.phone && { phone: body.phone }) },
-        settings,
-      );
-      const guestId = await resolveGuest(tx, tenantId, {
-        ...guest,
-        locale: settings.get('locale')?.value as string,
-      });
-      const { id } = await tx.reservation.create({
-        data: {
-          tenantId,
-          locationId: body.locationId,
-          number: temporaryNumber(),
-          guestId,
-          partySize: body.partySize,
-          startsAt: start,
-          endsAt: end,
-          status: 'seated',
-          source: 'walk_in',
-          seatedAt: now,
-          createdByUserId: userId,
-        },
-        select: { id: true },
-      });
-      await insertTables(tx, tenantId, id, body.locationId, verdict.tableIds, start, end);
-      await assignNumber(tx, this.numbering, id);
-      await tx.reservationStatusChange.create({
-        data: {
-          tenantId,
-          reservationId: id,
-          fromStatus: null,
-          toStatus: 'seated',
-          actorUserId: userId,
-          actorKind: 'user',
-        },
-      });
-      const row = await read(tx, id);
-      await this.audit.record(tx, {
-        action: 'reservations.reservation.created',
-        actor: auditActor.user(userId),
-        entityId: id,
-        after: reservationSnapshot(row),
-      });
-      await this.outbox.add(tx, {
-        type: 'reservations.reservation.created',
-        payload: payloadOf(row),
-      });
-      const response = await this.bookings.respondOne(tx, row);
+      const response = await this.seatWalkIn(tx, body);
       await this.idempotency.completeInTransaction(tx, response);
       return response;
     });
+  }
+
+  /**
+   * Seats a party now, in the caller's transaction: a walk-in and the waitlist (ADR 0084). The
+   * caller has checked `bookings.create` at the location and completes its own idempotency key.
+   */
+  async seatWalkIn(tx: TenantTransactionClient, body: WalkInParty): Promise<Reservation> {
+    const { tenantId, userId } = this.tenantContext.require();
+    const now = this.clock.now();
+    if (body.endsAt) {
+      const minutes = (Date.parse(body.endsAt) - now.getTime()) / 60_000;
+      if (minutes < MIN_WALK_IN_MINUTES || minutes > MAX_BOOKING_MINUTES) {
+        throw new ApiError(HttpStatus.BAD_REQUEST, 'validation.failed', 'Invalid walk-in end.', {
+          issues: [
+            {
+              path: ['endsAt'],
+              code: 'custom',
+              message: `endsAt must be ${MIN_WALK_IN_MINUTES} min to ${MAX_BOOKING_MINUTES} min from now`,
+            },
+          ],
+        });
+      }
+    }
+    const { input, settings } = await this.bookings.load(
+      tx,
+      body.locationId,
+      now,
+      body.partySize,
+      now,
+    );
+    const start = now;
+    const end = body.endsAt
+      ? new Date(body.endsAt)
+      : new Date(now.getTime() + turnTimeFor(body.partySize, input.settings.turnTimes) * 60_000);
+    // The party is here: tables must be free, the booking rules don't apply.
+    const verdict = evaluateBooking(input, { start, end, tableIds: body.tableIds, walkIn: true });
+    if (!verdict.ok) throw problemError(verdict.problem, verdict.nextStartsAt);
+
+    const guest = guestDetails(
+      {
+        ...(body.name && { name: body.name }),
+        ...(body.phone && { phone: body.phone }),
+        ...(body.email && { email: body.email }),
+      },
+      settings,
+    );
+    const guestId = await resolveGuest(tx, tenantId, {
+      ...guest,
+      locale: body.locale ?? (settings.get('locale')?.value as string),
+    });
+    const { id } = await tx.reservation.create({
+      data: {
+        tenantId,
+        locationId: body.locationId,
+        number: temporaryNumber(),
+        guestId,
+        partySize: body.partySize,
+        startsAt: start,
+        endsAt: end,
+        status: 'seated',
+        source: 'walk_in',
+        seatedAt: now,
+        createdByUserId: userId,
+      },
+      select: { id: true },
+    });
+    await insertTables(tx, tenantId, id, body.locationId, verdict.tableIds, start, end);
+    await assignNumber(tx, this.numbering, id);
+    await tx.reservationStatusChange.create({
+      data: {
+        tenantId,
+        reservationId: id,
+        fromStatus: null,
+        toStatus: 'seated',
+        actorUserId: userId,
+        actorKind: 'user',
+      },
+    });
+    const row = await read(tx, id);
+    await this.audit.record(tx, {
+      action: 'reservations.reservation.created',
+      actor: auditActor.user(userId),
+      entityId: id,
+      after: reservationSnapshot(row),
+    });
+    await this.outbox.add(tx, {
+      type: 'reservations.reservation.created',
+      payload: payloadOf(row),
+    });
+    return this.bookings.respondOne(tx, row);
   }
 
   /**

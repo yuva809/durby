@@ -53,7 +53,7 @@ Organization (tenant)
      │   ├─ ReservationStatusChange reservation_status_changes    append-only history (undo appends)
      │   └─ ReservationGuest       reservation_guests             guest of the organization; minimal, anonymisable
      ├─ GuestMarketingConsent      guest_marketing_consents       append-only grant / withdraw (R2)
-     └─ WaitlistEntry              waitlist_entries               (R3)
+     └─ WaitlistEntry              waitlist_entries               a waiting party (R3, ADR 0084)
 
 Platform (no RLS, R2.1): public_booking_pages   slug → organization, location (Q1; owned by platform, see R2.1)
 ```
@@ -767,6 +767,46 @@ Decisions (2026-11-01). Requested/pending flows (accept, confirm, decline) stay 
 - **Phone:** `normalisePhone(input, country)` in `packages/shared` (libphonenumber-js, `min` metadata) with the
   location's `country` setting; invalid → `422 reservations.phone_invalid` (`details.field`).
 
+### Waitlist (R3, as built; ADR 0084)
+
+A party waits on the list of one location: `waiting → notified → seated | left | removed`; `left` can return on the
+same local day. The order is the order of adding. No table is held. Other location or tenant: `404`.
+
+| Method + path                            | Permission                                                      | Body / query                                                                                    |
+| ---------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `GET /reservations/waitlist`             | `reservations.bookings.read`                                    | `?locationId=`: `open`, `ended` (today), `holdMinutes`, `readyText` per language                |
+| `POST /reservations/waitlist`            | `reservations.waitlist.create`                                  | `{ locationId, name, partySize, phone?, email?, locale?, quotedMinutes?, note? }`               |
+| `PATCH /reservations/waitlist/:id`       | `reservations.waitlist.edit`                                    | the same fields; `null` clears phone, email, minutes, note                                      |
+| `POST /reservations/waitlist/:id/notify` | `reservations.waitlist.edit`                                    | `{ channel: 'email' \| 'in_person' }`; answers `noticeResult: pending`, stored when known       |
+| `POST /reservations/waitlist/:id/seat`   | `reservations.waitlist.edit` and `reservations.bookings.create` | `{ tableIds, partySize?, endsAt? }`: a walk-in with the party's name, phone, email and language |
+| `POST …/:id/leave`, `POST …/:id/return`  | `reservations.waitlist.edit`                                    |                                                                                                 |
+| `DELETE /reservations/waitlist/:id`      | `reservations.waitlist.delete`                                  | `removed` (added by mistake)                                                                    |
+
+All writes use `completion: 'transaction'`, lock the entry, audit `reservations.waitlist_entry.*` (entity
+`waitlist_entry`: `id`, `locationId`, `partySize`, `quotedMinutes`, `status`, `noticeChannel`, `noticeCount`,
+`reservationId`; never names, contacts or notes) and write `reservations.waitlist.changed` `{ entryId, locationId }`,
+published to the `reservations` stream.
+
+Errors: `reservations.waitlist_entry_not_found` (404); `reservations.waitlist_closed` (409, `details.status`),
+`.waitlist_no_email`, `.waitlist_notice_limit` (3 emails per party), `.waitlist_notice_too_soon` (one minute per address;
+not after a failed email), `.waitlist_return_expired` (409).
+
+Setting `reservations.waitlistHoldMinutes` (int 5–60, default 10, all scopes): said in the notice; after it the host
+screen marks the party.
+
+Email: the guest's language, text only, no link: the organization's name, with the branch's when several are in service.
+`reservations.email.tableReady.*`.
+
+Privacy: contact data only on the entry. The worker's hourly pass closes entries open for 24 hours (`left`, audited as
+`job.waitlist`) and erases name, phone, email and note 24 hours after an entry ended. Erasing a guest erases the entry it
+was seated from.
+
+**Web** (`components/reservations/waitlist-panel.tsx`, `waitlist-dialog.tsx`, `lib/reservations/waitlist.ts`): on `/host`,
+today only; a third column on wide screens, below the lists otherwise. Waiting time against the quoted one, **Table
+ready** (email), **Call** and **Message** (`tel:`, `sms:` with the text ready, from the host's own phone), **Told the
+guest**, **Seat** (the walk-in dialog with the smallest free table that fits), **Left**, change and remove; today's ended
+parties folded with **Back on the list**.
+
 ### Under load (R1.6 follow-up)
 
 - A booking write claims its tables first and allocates its number only after the table rows are in (a temporary
@@ -997,7 +1037,7 @@ drawer come later):
 
 `GuestNotifier` (reservations-internal port) with channels: `email` (MVP, via platform/mail) and `in_person` (no
 send; the host screen shows "tell the guest" and records the notice). SMS or push become further channels later
-without touching callers. The waitlist "table ready" notice (R3) uses the guest's chosen channel.
+without touching callers. Built with the waitlist (ADR 0084): email, or told in person.
 
 ## Mail (R2)
 

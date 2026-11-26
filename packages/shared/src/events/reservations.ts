@@ -16,3 +16,9 @@ export const reservationsReservationCreatedV1 = reservationV1;
 export const reservationsReservationUpdatedV1 = reservationV1;
 /** A status action or an undo; `status` is the new one. */
 export const reservationsReservationStatusChangedV1 = reservationV1;
+
+/** A waitlist entry was added, changed, told, seated or ended (ADR 0084): live updates of the host screen. */
+export const reservationsWaitlistChangedV1 = z.strictObject({
+  entryId: z.uuid(),
+  locationId: z.uuid(),
+});

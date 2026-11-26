@@ -10,7 +10,7 @@ import { shortLockWaits } from './busy';
 
 /**
  * Erasure on request (docs/modules/reservations.md → GDPR, R1.9): the guest's name, email and phone
- * and their bookings' notes go; the bookings, statuses and counts stay. Irreversible.
+ * and their bookings' notes go, also on waitlist entries; the bookings, statuses and counts stay. Irreversible.
  */
 @Injectable()
 export class GuestsService {
@@ -60,6 +60,11 @@ export class GuestsService {
         await tx.reservation.updateMany({
           where: { guestId: id },
           data: { guestNote: null, staffNote: null, manageTokenHash: null },
+        });
+        // Waitlist entries seated as one of these bookings (ADR 0084).
+        await tx.waitlistEntry.updateMany({
+          where: { erasedAt: null, reservation: { guestId: id } },
+          data: { name: null, phone: null, email: null, note: null, erasedAt: anonymisedAt },
         });
         await this.audit.record(tx, {
           action: 'reservations.guest.anonymised',

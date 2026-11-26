@@ -85,6 +85,39 @@ export const reservationErrors = {
       'Not possible in the current status.',
       details,
     ),
+  waitlistEntryNotFound: () =>
+    new ApiError(
+      HttpStatus.NOT_FOUND,
+      'reservations.waitlist_entry_not_found',
+      'Waitlist entry not found.',
+    ),
+  waitlistClosed: (details: { status: string }) =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'reservations.waitlist_closed',
+      'The party is no longer on the waitlist.',
+      details,
+    ),
+  waitlistNoEmail: () =>
+    new ApiError(HttpStatus.CONFLICT, 'reservations.waitlist_no_email', 'No email address.'),
+  waitlistNoticeLimit: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'reservations.waitlist_notice_limit',
+      'No more emails to this party.',
+    ),
+  waitlistNoticeTooSoon: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'reservations.waitlist_notice_too_soon',
+      'The last email was sent less than a minute ago.',
+    ),
+  waitlistReturnExpired: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'reservations.waitlist_return_expired',
+      'Only a party that left today can return.',
+    ),
   partyRangeInvalid: (details: { minParty: number; maxParty: number }) =>
     new ApiError(
       HttpStatus.UNPROCESSABLE_ENTITY,

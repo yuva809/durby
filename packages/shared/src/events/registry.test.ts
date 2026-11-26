@@ -33,6 +33,7 @@ describe('event registry', () => {
       'reservations.reservation.created',
       'reservations.reservation.updated',
       'reservations.reservation.status_changed',
+      'reservations.waitlist.changed',
     ]);
   });
 

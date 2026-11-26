@@ -35,6 +35,11 @@ describe('setting controls from the registry', () => {
       min: 15,
       max: 240,
     });
+    expect(controlOf('reservations.waitlistHoldMinutes')).toEqual({
+      kind: 'number',
+      min: 5,
+      max: 60,
+    });
     expect(controlOf('reservations.lastBookingOffsetMinutes')).toEqual({
       kind: 'number',
       min: 1,

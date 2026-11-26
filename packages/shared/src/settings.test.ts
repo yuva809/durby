@@ -43,6 +43,7 @@ describe('settings registry', () => {
       'reservations.online.instantMaxParty',
       'reservations.orderMatchWindowMinutes',
       'reservations.floorHorizonMinutes',
+      'reservations.waitlistHoldMinutes',
       'reservations.autoConfirm',
       'reservations.holdMinutes',
       'pos.billHeader',

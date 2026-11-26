@@ -37,6 +37,7 @@ export const AUDIT_ENTITY_TYPES = [
   'recipe',
   'price_rule',
   'reservation_guest',
+  'waitlist_entry',
   'printer_command',
   'printer',
   'print_job',
@@ -471,6 +472,39 @@ export const AUDIT_ACTIONS = {
     entityType: 'reservation_guest',
     label: 'reservations.audit.actions.guestAnonymised',
   },
+  // Waitlist (ADR 0084).
+  'reservations.waitlist_entry.added': {
+    entityType: 'waitlist_entry',
+    label: 'reservations.audit.actions.waitlistAdded',
+  },
+  'reservations.waitlist_entry.updated': {
+    entityType: 'waitlist_entry',
+    label: 'reservations.audit.actions.waitlistUpdated',
+  },
+  'reservations.waitlist_entry.notified': {
+    entityType: 'waitlist_entry',
+    label: 'reservations.audit.actions.waitlistNotified',
+  },
+  'reservations.waitlist_entry.seated': {
+    entityType: 'waitlist_entry',
+    label: 'reservations.audit.actions.waitlistSeated',
+  },
+  'reservations.waitlist_entry.left': {
+    entityType: 'waitlist_entry',
+    label: 'reservations.audit.actions.waitlistLeft',
+  },
+  'reservations.waitlist_entry.returned': {
+    entityType: 'waitlist_entry',
+    label: 'reservations.audit.actions.waitlistReturned',
+  },
+  'reservations.waitlist_entry.removed': {
+    entityType: 'waitlist_entry',
+    label: 'reservations.audit.actions.waitlistRemoved',
+  },
+  'reservations.waitlist_entry.expired': {
+    entityType: 'waitlist_entry',
+    label: 'reservations.audit.actions.waitlistExpired',
+  },
 } as const satisfies Record<string, AuditActionDefinition>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -500,6 +534,8 @@ export const AUDIT_SYSTEM_ACTORS = {
   'job.outbox': { label: 'platform.audit.actors.jobOutbox' },
   /** The worker's hourly sweep of print jobs past their maximum age (ADR 0033 §12). */
   'job.print_jobs': { label: 'platform.audit.actors.jobPrintJobs' },
+  /** The worker's hourly pass over the waitlist (ADR 0084). */
+  'job.waitlist': { label: 'platform.audit.actors.jobWaitlist' },
   migration: { label: 'platform.audit.actors.migration' },
 } as const satisfies Record<string, { label: string }>;
 
@@ -749,6 +785,17 @@ export const AUDIT_SNAPSHOT_FIELDS = {
   ],
   /** Never the guest's name, email, phone or notes: only that and when they were erased. */
   reservation_guest: ['id', 'anonymisedAt'],
+  /** Never the name, phone, email or note. */
+  waitlist_entry: [
+    'id',
+    'locationId',
+    'partySize',
+    'quotedMinutes',
+    'status',
+    'noticeChannel',
+    'noticeCount',
+    'reservationId',
+  ],
   /** Never contact details, address or notes (personal data; audit rows can't be erased). */
   customer: ['id', 'code', 'archivedAt'],
   /** Never the customer's details, the delivery address or notes. `total`: decimal string. */

@@ -228,6 +228,8 @@ const BASE: Record<string, Answer> = {
   'GET /api/v1/locations': () => Response.json({ data: [MAIN] }),
   'GET /api/v1/reservations/floor': () => Response.json(FLOOR),
   'GET /api/v1/reservations': () => Response.json({ data: DAY }),
+  'GET /api/v1/reservations/waitlist': () =>
+    Response.json({ holdMinutes: 10, readyText: { en: 'x', de: 'x' }, open: [], ended: [] }),
 };
 const refused = (code: string, status = 409) => Response.json({ code, message: code }, { status });
 

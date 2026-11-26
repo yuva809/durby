@@ -12,6 +12,7 @@ import {
   reservationSchema,
   sendTicketResponseSchema,
   type SystemRole,
+  waitlistEntrySchema,
 } from '@durby/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types';
@@ -325,6 +326,31 @@ describe('realtime streams', () => {
     await deliver(r.org.id, 'pos.order.opened', 'reservations.publishTillOpened');
     await new Promise((resolve) => setTimeout(resolve, HEARTBEAT_MS * 2));
     expect(here.events('changed')).toHaveLength(before);
+  });
+
+  it('delivers waitlist changes to the reservations stream of the location', async () => {
+    const r = await restaurant();
+    const here = await ready('reservations', r.owner, r.here);
+    const there = await ready('reservations', r.owner, r.there);
+    const entry = waitlistEntrySchema.parse(
+      (
+        await post(r.owner, '/reservations/waitlist', {
+          locationId: r.here,
+          name: 'Ada',
+          partySize: 2,
+        }).expect(201)
+      ).body,
+    );
+    expect(
+      await deliver(r.org.id, 'reservations.waitlist.changed', 'reservations.publishWaitlist'),
+    ).toBe(1);
+    await here.next(() => here.events('changed').length >= 1);
+    expect(realtimeChangedSchema.parse(here.events('changed')[0])).toEqual({
+      topic: 'reservations',
+      ids: [entry.id],
+    });
+    await new Promise((resolve) => setTimeout(resolve, HEARTBEAT_MS * 2));
+    expect(there.events('changed')).toEqual([]);
   });
 
   it('checks the token, permission, feature and location on connect', async () => {
