@@ -221,6 +221,7 @@
   "orders.requestForm.none": "Enter a quantity for at least one item.",
   "orders.requestsPage.intro": "Requests from the branches, from approval to delivery.",
   "orders.requestsPage.newRequest": "Request stock",
+  "orders.requestsPage.tabs.all": "All",
   "orders.requestsPage.tabs.open": "Waiting for approval",
   "orders.requestsPage.tabs.progress": "In progress",
   "orders.requestsPage.tabs.done": "Done",

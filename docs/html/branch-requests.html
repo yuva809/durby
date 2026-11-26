@@ -90,6 +90,8 @@ POST /api/v1/stock-requests/:id/receive             { lines[{lineId, quantity}],
     <tr><td>Owner: Add staff ×3 with roles Branch (branch location), Warehouse (main location), Driver</td><td>Roles listed; restaurants on app.durby.tech don't list them</td></tr>
     <tr><td>Branch: Request Stock → Rice 6 → Send</td><td>"Request SRQ-… sent"; Stock Requests shows it waiting</td></tr>
     <tr><td>Owner: Stock Requests → open → Approve (Rice 5)</td><td>Status Approved, transfer number TRF-…</td></tr>
+    <tr><td>Tablet: Order History → tap a row's status (not the number)</td><td>The request opens with Approve</td></tr>
+    <tr><td>Order History tabs: All · Waiting for approval (count) · In progress · Done</td><td>Each shows its stage; the count drops after approving; the tab stays after Back</td></tr>
     <tr><td>Warehouse: Picking → To pick → Pick → 4, driver → Packed</td><td>Main stock −4; In transit +4; row under Packed</td></tr>
     <tr><td>Driver: My Deliveries → Picked up → Delivered</td><td>Status On the way, then Delivered</td></tr>
     <tr><td>Branch: open → Confirm receipt 3</td><td>Branch +3; In transit 0; timeline complete; one shortage document</td></tr>

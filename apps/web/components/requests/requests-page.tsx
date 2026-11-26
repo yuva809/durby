@@ -10,7 +10,7 @@ import {
 } from '@durby/shared';
 import { ClipboardList, FileText, Plus, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -32,8 +32,8 @@ import { useNavLayout } from '../theme-provider';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
-import { Select } from '../ui/select';
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet';
+import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import { Loaded, NoAccess } from '../users/common';
 import { hasDeliveryDocument } from './request-document';
 import {
@@ -52,6 +52,8 @@ const FILTERS = {
   done: STOCK_REQUEST_DONE,
 } as const satisfies Record<string, readonly StockRequestStatus[] | null>;
 type Filter = keyof typeof FILTERS;
+const isFilter = (value: string | null): value is Filter =>
+  value !== null && Object.hasOwn(FILTERS, value);
 
 /**
  * /requests, Stock Requests (docs/modules/orders.md → Branch requests, ADR 0045, 0059): a branch's own requests (its
@@ -79,11 +81,19 @@ function Requests({
   const { store, session } = useAuth();
   const operations = useNavLayout() === 'operations';
   const branch = operations && session !== null && isBranchView(session);
-  // Every request at every stage, from sent to received; the filter narrows it (ADR 0059, 0063).
-  const [filter, setFilter] = useState<Filter>('all');
+  const params = useSearchParams();
+  const router = useRouter();
+  // Every request at every stage, from sent to received; a tab narrows it (ADR 0059, 0063). The tab is kept in the
+  // address (?tab=), so Back and a shared link keep it.
+  const urlTab = params.get('tab');
+  const [filter, setFilterState] = useState<Filter>(isFilter(urlTab) ? urlTab : 'all');
+  const setFilter = (next: Filter) => {
+    setFilterState(next);
+    router.replace(next === 'all' ? '/requests' : `/requests?tab=${next}`, { scroll: false });
+  };
   const [search, setSearch] = useState('');
   // A search result or a link opens one in the side panel (?open=<id>, ADR 0046); a new link opens again.
-  const urlOpen = useSearchParams().get('open');
+  const urlOpen = params.get('open');
   const [openId, setOpenId] = useState<string | null>(urlOpen);
   const [seenUrl, setSeenUrl] = useState(urlOpen);
   if (urlOpen !== seenUrl) {
@@ -97,6 +107,15 @@ function Requests({
       return loadRequests(store, status ? { status } : {});
     },
   );
+  // What waits for approval, counted on its tab.
+  const [waiting, reloadWaiting] = useResource(
+    organizationId === null ? null : `${organizationId}:waiting`,
+    () => loadRequests(store, { status: FILTERS.open }),
+  );
+  const reloadAll = () => {
+    reload();
+    reloadWaiting();
+  };
   const time = useMemo(
     () => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }),
     [],
@@ -125,6 +144,27 @@ function Requests({
             </Button>
           )}
       </div>
+      <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
+        <div className="-mx-1 overflow-x-auto px-1">
+          <TabsList aria-label={t('orders.requestsPage.statusFilter')}>
+            {(Object.keys(FILTERS) as Filter[]).map((key) => (
+              <TabsTrigger
+                key={key}
+                value={key}
+                className="gap-2 whitespace-nowrap"
+                data-testid={`requests-tab-${key}`}
+              >
+                {t(`orders.requestsPage.tabs.${key}`)}
+                {key === 'open' && waiting.status === 'ready' && waiting.data.length > 0 && (
+                  <span className="rounded-full bg-primary px-2 text-xs font-semibold text-primary-foreground tabular-nums">
+                    {waiting.data.length}
+                  </span>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+      </Tabs>
       <Card className="flex flex-col gap-0 p-0">
         <div className="flex flex-col gap-3 border-b p-3 sm:flex-row">
           <div className="relative flex-1">
@@ -142,23 +182,6 @@ function Requests({
               data-testid="requests-search"
             />
           </div>
-          <Select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as Filter)}
-            aria-label={t('orders.requestsPage.statusFilter')}
-            className="sm:w-60"
-            data-testid="requests-status"
-          >
-            {(Object.keys(FILTERS) as Filter[]).map((key) => (
-              <option key={key} value={key}>
-                {t(
-                  key === 'all'
-                    ? 'orders.requestsPage.allStatuses'
-                    : `orders.requestsPage.tabs.${key}`,
-                )}
-              </option>
-            ))}
-          </Select>
         </div>
         <Loaded resource={requests} reload={reload}>
           {(list) => {
@@ -193,7 +216,7 @@ function Requests({
         id={openId}
         permissions={permissions}
         onClose={() => setOpenId(null)}
-        onChanged={reload}
+        onChanged={reloadAll}
         formatTime={formatTime}
       />
     </div>
@@ -243,13 +266,23 @@ function RequestTable({
         </thead>
         <tbody className="divide-y">
           {rows.map((r) => (
-            <tr key={r.id} className="hover:bg-muted/50" data-testid="request-table-row">
+            // The whole row opens the request: on a tablet the number may be scrolled out of view. The number stays
+            // the button for keyboards and screen readers.
+            <tr
+              key={r.id}
+              className="cursor-pointer hover:bg-muted/50"
+              onClick={() => onOpen(r.id)}
+              data-testid="request-table-row"
+            >
               <td className="px-4 py-2">
                 <button
                   type="button"
                   className="min-h-11 text-left font-semibold hover:underline"
                   aria-label={t('orders.requestsPage.open', { number: requestTitle(r) })}
-                  onClick={() => onOpen(r.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen(r.id);
+                  }}
                   data-testid="request-row"
                 >
                   {r.number}
@@ -288,7 +321,8 @@ function DocumentLinks({ request: r }: { request: StockRequestSummary }) {
   const t = useT();
   const link = 'text-primary hover:underline';
   return (
-    <span className="flex flex-col text-xs">
+    // A document opens in its own tab, not the request's panel too.
+    <span className="flex flex-col text-xs" onClick={(e) => e.stopPropagation()}>
       <Link
         href={`/requests/${r.id}/oc`}
         target="_blank"
