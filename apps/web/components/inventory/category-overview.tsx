@@ -2,7 +2,7 @@
 
 import type { ProductCategory } from '@durby/shared';
 import Link from 'next/link';
-import { ArrowLeft, Boxes, Download, LayoutGrid, Package, Search } from 'lucide-react';
+import { ArrowLeft, Boxes, ChevronDown, Download, LayoutGrid, Package, Search } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
 import { useT } from '../../app/labels-provider';
 import { useAuth } from '../../app/providers';
@@ -22,17 +22,25 @@ import {
   type StockState,
   sumDecimals,
 } from '../../lib/inventory/overview';
-import { downloadCsv } from '../../lib/csv';
+import { downloadCsv, saveBlob } from '../../lib/csv';
+import { csvRows, inventoryTable, pdfBlob, xlsxBlob } from '../../lib/inventory/export';
 import { useResource } from '../../lib/use-resource';
 import { cn } from '../../lib/utils';
 import { useMoney } from '../pos/money';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 import { Input } from '../ui/input';
 import { Select } from '../ui/select';
+import { Notice } from '../../app/auth-layout';
 import { Loaded } from '../users/common';
-import { type InventoryData } from './inventory-page';
+import { type InventoryData, warehouseLabel } from './inventory-page';
 import { ItemDialog } from './items-tab';
 import { useSeesPrices } from './use-sees-prices';
 import { LocationFilter, stockQueryOf } from './location-filter';
@@ -64,8 +72,10 @@ export function CategoryOverview({
   const prices = useSeesPrices();
   const id = useId();
   const money = useMoney();
-  const { store } = useAuth();
+  const { store, session } = useAuth();
   const categories = data.categories ?? [];
+  const [exporting, setExporting] = useState(false);
+  const [exportFailed, setExportFailed] = useState(false);
   const active = data.warehouses.filter((w) => w.archivedAt === null && !w.isTransit);
   const [filter, setFilter] = useState('');
   const [stockState, setStockState] = useState<StockState>('all');
@@ -97,28 +107,76 @@ export function CategoryOverview({
     ? rows.filter((r) => inSelection(r, open, categories) && matching(r))
     : rows.filter(matching);
 
-  function exportCsv() {
-    downloadCsv(
-      `${t('inventory.overview.exportFile')}-${new Date().toISOString().slice(0, 10)}`,
-      [
-        t('inventory.fields.item'),
-        t('inventory.fields.sku'),
-        t('inventory.fields.category'),
-        t('inventory.fields.unit'),
-        t('inventory.fields.quantity'),
-        ...(prices ? [t('inventory.fields.value')] : []),
-        t('inventory.overview.lowStock'),
-      ],
-      listed.map((r) => [
-        r.item.name,
-        r.item.sku ?? '',
-        categoryPath(categories, r.item.categoryId),
-        t(`inventory.units.${r.item.unit}`),
-        shortQuantity(r.quantity),
-        ...(prices ? [r.value ?? ''] : []),
-        r.low ? t('inventory.overview.yes') : '',
-      ]),
-    );
+  type Format = 'xlsx' | 'csv' | 'pdf';
+
+  /** The filters in use, for the PDF's heading. */
+  function filterLines(): string[] {
+    const line = (name: string, value: string) =>
+      t('inventory.overview.exportFilter', { name, value });
+    const warehouse = filter.startsWith('w:')
+      ? data.warehouses.find((w) => w.id === filter.slice(2))
+      : undefined;
+    const category =
+      open === null || open.kind === 'all'
+        ? t('inventory.overview.allCategories')
+        : open.kind === 'none'
+          ? t('inventory.page.uncategorized')
+          : categoryPath(categories, open.id);
+    const level = {
+      all: 'inventory.overview.allStock',
+      low: 'inventory.overview.lowStock',
+      out: 'inventory.overview.outOfStock',
+    } as const;
+    return [
+      line(
+        t('inventory.fields.warehouse'),
+        warehouse ? warehouseLabel(data, warehouse) : t('inventory.page.allWarehouses'),
+      ),
+      line(t('inventory.fields.category'), category),
+      line(t('inventory.overview.stockState'), t(level[stockState])),
+      ...(needle === '' ? [] : [line(t('inventory.overview.exportSearch'), query.trim())]),
+    ];
+  }
+
+  async function exportAs(format: Format) {
+    const table = inventoryTable(listed, { t, prices, categories });
+    const now = new Date();
+    const name = `${t('inventory.overview.exportFile')}-${now.toISOString().slice(0, 10)}`;
+    if (format === 'csv') {
+      downloadCsv(name, table.header, csvRows(table));
+      return;
+    }
+    setExporting(true);
+    setExportFailed(false);
+    try {
+      const totalLabel = t('inventory.overview.exportTotal');
+      const blob =
+        format === 'xlsx'
+          ? await xlsxBlob(table, { sheet: t('inventory.overview.exportSheet'), totalLabel })
+          : await pdfBlob(table, {
+              title: t('inventory.nav.title'),
+              lines: [
+                session?.organizations.find((o) => o.id === session.activeOrganizationId)?.name ??
+                  '',
+                t('inventory.overview.exportPrinted', {
+                  date: new Intl.DateTimeFormat(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  }).format(now),
+                }),
+                ...filterLines(),
+              ].filter((l) => l !== ''),
+              totalLabel,
+              page: (page, pages) =>
+                t('inventory.overview.exportPage', { page: String(page), pages: String(pages) }),
+              money,
+            });
+      saveBlob(`${name}.${format}`, blob);
+    } catch {
+      setExportFailed(true);
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -131,18 +189,41 @@ export function CategoryOverview({
           </p>
         </div>
         <div className="flex flex-wrap gap-2" data-testid="overview-actions">
-          <Button
-            variant="outline"
-            onClick={exportCsv}
-            disabled={stock.status !== 'ready' || listed.length === 0}
-            data-testid="overview-export"
-          >
-            <Download aria-hidden />
-            {t('inventory.overview.export')}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                disabled={stock.status !== 'ready' || listed.length === 0 || exporting}
+                data-testid="overview-export"
+              >
+                <Download aria-hidden />
+                {t('inventory.overview.export')}
+                <ChevronDown aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {(
+                [
+                  ['xlsx', 'inventory.overview.exportExcel'],
+                  ['csv', 'inventory.overview.exportCsv'],
+                  ['pdf', 'inventory.overview.exportPdf'],
+                ] as const
+              ).map(([format, label]) => (
+                <DropdownMenuItem
+                  key={format}
+                  className="min-h-11"
+                  data-testid={`overview-export-${format}`}
+                  onSelect={() => void exportAs(format)}
+                >
+                  {t(label)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {actions}
         </div>
       </div>
+      <Notice text={exportFailed ? t('inventory.overview.exportFailed') : null} tone="error" />
       {active.length === 0 ? (
         <p className="text-muted-foreground">{t('inventory.page.noWarehouses')}</p>
       ) : (

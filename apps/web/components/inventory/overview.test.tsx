@@ -169,24 +169,86 @@ describe('AsiaMight inventory overview (ADR 0048)', () => {
     expect(within(found).getAllByTestId('overview-row')).toHaveLength(1);
   });
 
-  it('exports what is listed as CSV', async () => {
-    signedIn();
-    api();
-    const blobs: Blob[] = [];
+  /** Captures downloads: the file name and its blob. */
+  function downloads() {
+    const files: { name: string; blob: Blob }[] = [];
+    let pending: Blob | null = null;
     URL.createObjectURL = vi.fn((blob: Blob) => {
-      blobs.push(blob);
+      pending = blob;
       return 'blob:x';
     });
     URL.revokeObjectURL = vi.fn();
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      files.push({ name: this.download, blob: pending! });
+    });
+    return { files, restore: () => click.mockRestore() };
+  }
+
+  async function exportAs(format: 'xlsx' | 'csv' | 'pdf') {
+    await userEvent.click(screen.getByTestId('overview-export'));
+    await userEvent.click(await screen.findByTestId(`overview-export-${format}`));
+  }
+
+  it('exports what is listed as CSV', async () => {
+    signedIn();
+    api();
+    const { files, restore } = downloads();
     render(<InventoryPage />, { wrapper: operations });
     await screen.findAllByTestId('category-tile');
-    await userEvent.click(screen.getByTestId('overview-export'));
-    expect(click).toHaveBeenCalled();
-    const text = await blobs[0]!.text();
+    await exportAs('csv');
+    expect(files).toHaveLength(1);
+    expect(files[0]!.name).toMatch(/^inventory-\d{4}-\d{2}-\d{2}\.csv$/);
+    const text = await files[0]!.blob.text();
     expect(text).toContain('Basmati rice,,African Item › Rice,');
     expect(text.split('\r\n')).toHaveLength(6);
-    click.mockRestore();
+    restore();
+  });
+
+  it('exports what is listed as Excel and as PDF', async () => {
+    signedIn();
+    api();
+    const { files, restore } = downloads();
+    render(<InventoryPage />, { wrapper: operations });
+    await screen.findAllByTestId('category-tile');
+    await exportAs('xlsx');
+    await waitFor(() => expect(files).toHaveLength(1));
+    expect(files[0]!.name).toMatch(/^inventory-\d{4}-\d{2}-\d{2}\.xlsx$/);
+    const { default: readXlsxFile } = await import('read-excel-file/universal');
+    const [sheet] = await readXlsxFile(await files[0]!.blob.arrayBuffer());
+    expect(sheet!.sheet).toBe('Inventory');
+    expect(sheet!.data[0]![0]).toBe('Item');
+    expect(sheet!.data.map((r) => r[0])).toContain('Basmati rice');
+
+    await exportAs('pdf');
+    await waitFor(() => expect(files).toHaveLength(2));
+    expect(files[1]!.name).toMatch(/\.pdf$/);
+    const pdf = new TextDecoder('latin1').decode(await files[1]!.blob.arrayBuffer());
+    expect(pdf.startsWith('%PDF')).toBe(true);
+    expect(pdf).toContain('Basmati rice');
+    expect(pdf).toContain('Demo Bistro');
+    expect(pdf).toContain('Stock level: All stock');
+    expect(pdf).toContain('Page 1 of 1');
+    restore();
+  });
+
+  it('says so when a file cannot be made', async () => {
+    signedIn();
+    api();
+    const { files, restore } = downloads();
+    // The browser refuses the file.
+    URL.createObjectURL = vi.fn(() => {
+      throw new Error('no file');
+    });
+    render(<InventoryPage />, { wrapper: operations });
+    await screen.findAllByTestId('category-tile');
+    await exportAs('xlsx');
+    expect(
+      await screen.findByText('The file could not be made. Check the connection and try again.'),
+    ).toBeTruthy();
+    expect(files).toEqual([]);
+    restore();
   });
 
   it('keeps the other pages in More, with a way back', async () => {
