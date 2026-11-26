@@ -364,8 +364,9 @@ describe('outbox and idempotency tables at the database', () => {
           END $$`);
         await tx.query(`SELECT set_config('app.tenant_id', $1, true)`, [dueOrg]);
         await tx.query(
-          `INSERT INTO outbox_events (tenant_id, type, version, payload, occurred_at)
-           VALUES ($1, 'config.settings.changed', 1, '{}', '2000-01-01T00:00:00Z')`,
+          // Due since 2000: order and lag go by when an event became due (R2.0).
+          `INSERT INTO outbox_events (tenant_id, type, version, payload, occurred_at, available_at)
+           VALUES ($1, 'config.settings.changed', 1, '{}', '2000-01-01T00:00:00Z', '2000-01-01T00:00:00Z')`,
           [dueOrg],
         );
         await tx.query(`SELECT set_config('app.tenant_id', '', true)`);
@@ -374,11 +375,11 @@ describe('outbox and idempotency tables at the database', () => {
         // The oldest due event leads; none of the backed-off tenants takes a slot.
         expect(rows[0]).toMatchObject({ tenant_id: dueOrg, due: '1', pending: '1' });
         expect(rows.every((r) => Number(r.due) > 0)).toBe(true);
-        // The lag still sees every pending event, the backed-off ones included.
+        // The backlog counts every pending event, the backed-off ones included; the lag only what is due (R2.0).
         const lag = await backlog(tx);
         expect(Number(lag?.pending)).toBeGreaterThanOrEqual(502);
         expect(Number(lag?.tenants)).toBeGreaterThanOrEqual(502);
-        expect(lag?.oldest_pending_at).toEqual(new Date('1999-01-01T00:00:01Z'));
+        expect(lag?.oldest_pending_at).toEqual(new Date('2000-01-01T00:00:00Z'));
       } finally {
         await tx.query('ROLLBACK');
         await tx.end();

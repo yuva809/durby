@@ -104,6 +104,12 @@ Spec: [docs/platform/outbox.md](../platform/outbox.md).
     `outbox_events`. `prisma migrate diff` is run after the migration to show the next generated migration keeps
     them, and a catalog test fails if any of them disappears or loses its predicate.
 
+13. **Delayed events (amendment 2026-11-26, R2.0 of docs/modules/reservations.md).** `OutboxService.add` takes an
+    optional `availableAt`; the insert writes `GREATEST(now(), availableAt)` (the database clock decides), at most 400
+    days ahead. `outbox_backlog` and `outbox_due_tenants` report the oldest **due** event by `available_at`, and claims
+    order by `available_at`, so a future event is neither lag nor ahead of events due earlier. Handlers of delayed
+    events re-check that they still apply. No new column: `available_at` already exists for the backoff.
+
 ## Consequences
 
 - Every cross-module side effect is at-least-once delivered and exactly-once applied per handler, while Redis keeps

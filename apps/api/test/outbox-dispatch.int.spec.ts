@@ -371,6 +371,72 @@ describe('outbox dispatch and handlers', () => {
     expect(lag.oldestPendingSeconds).toBeGreaterThanOrEqual(120);
   });
 
+  describe('delayed events (R2.0)', () => {
+    /** An event in `orgId` that becomes due `inMs` after the database's now. */
+    const emitAt = async (orgId: string, inMs: number) => {
+      const at = new Date((await dbNow(orgId)) + inMs);
+      return seed.as(orgId, (db) =>
+        db.$transaction((tx) =>
+          outbox.add(
+            tx,
+            {
+              type: 'config.settings.changed',
+              payload: { scope: 'organization', scopeId: orgId, key: 'timezone' },
+            },
+            { availableAt: at },
+          ),
+        ),
+      );
+    };
+    const published = async (orgId: string, id: string) =>
+      (await rows(orgId)).find((r) => r.id === id)?.publishedAt ?? null;
+
+    it('is not claimed before its time, and is claimed after it', async () => {
+      const { id: org } = await seed.org();
+      const later = await emitAt(org, 2_000);
+      const now = await emit(org);
+      await dispatcher.dispatchTenant(org);
+      expect(await published(org, now)).not.toBeNull();
+      expect(await published(org, later)).toBeNull();
+      // Due by the database's clock: wait until it has passed.
+      const due = (await rows(org)).find((r) => r.id === later)!.availableAt.getTime();
+      while ((await dbNow(org)) < due) await new Promise((r) => setTimeout(r, 100));
+      await dispatcher.dispatchTenant(org);
+      expect(await published(org, later)).not.toBeNull();
+    });
+
+    it('takes a time in the past as now', async () => {
+      const { id: org } = await seed.org();
+      const event = await emitAt(org, -3_600_000);
+      const row = (await rows(org)).find((r) => r.id === event)!;
+      expect(row.availableAt.getTime()).toBeGreaterThanOrEqual((await dbNow(org)) - 60_000);
+      await dispatcher.dispatchTenant(org);
+      expect(await published(org, event)).not.toBeNull();
+    });
+
+    it('counts a future event as pending, never as due or lag', async () => {
+      const { id: org } = await seed.org();
+      const at = new Date((await dbNow(org)) + 120_000);
+      const before = await app.get(OutboxLagReporter).measure(at);
+      await emitAt(org, 24 * 3_600_000);
+      const after = await app.get(OutboxLagReporter).measure(at);
+      expect(after.pending).toBe(before.pending + 1);
+      expect(after.due).toBe(before.due);
+      expect(after.oldestPendingSeconds).toBe(before.oldestPendingSeconds);
+      // A tenant with only future events is not offered for dispatch.
+      expect((await dispatcher.dueTenants()).map((t) => t.tenantId)).not.toContain(org);
+    });
+
+    it('measures lag from when an event became due', async () => {
+      const { id: org } = await seed.org();
+      const event = await emitAt(org, 1_000);
+      const due = (await rows(org)).find((r) => r.id === event)!.availableAt.getTime();
+      while ((await dbNow(org)) < due) await new Promise((r) => setTimeout(r, 100));
+      const [tenant] = (await dispatcher.dueTenants()).filter((t) => t.tenantId === org);
+      expect(tenant?.oldestPendingAt?.getTime()).toBe(due);
+    });
+  });
+
   it('cleans up published events and old processed rows, keeps pending and dead-lettered', async () => {
     const { id: org } = await seed.org();
     const published = await emit(org);

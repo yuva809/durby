@@ -73,6 +73,12 @@ await this.db.$transaction(async (tx) => {
 `add` takes the transaction client (no `tx`, no event), validates the payload against the current schema and takes
 the tenant from the tenant context. The insert is raw SQL, so the database clock sets `occurred_at`/`available_at`. RLS `WITH CHECK` rejects any other tenant.
 
+**Delayed events (R2.0).** `add(tx, event, { availableAt })` makes the event due later (a reminder, an expiry, a
+retention date): it is written as `GREATEST(now(), availableAt)`, so a past time means now, and at most 400 days ahead
+(`OUTBOX_MAX_DELAY_DAYS`; more is a programming error). The worker picks it up within about 5 s of its time (idle poll).
+Its handler must re-read the state and do nothing when the event no longer applies (the booking was moved or
+cancelled); a changed plan writes a new event rather than editing the old one.
+
 ## Dispatcher
 
 Runs in the worker every `OUTBOX_POLL_MS` (1000; up to 5 s while idle), and at once when an event commits (ADR 0044 §5: `OutboxService.add` notifies `durby_outbox` in the insert, the worker `LISTEN`s on its own connection):
@@ -127,7 +133,8 @@ No handlers are registered yet: the config caches are per request (ADR 0013 §7)
 | `WORKER_CONCURRENCY`      | 5       | Handler jobs run in parallel              |
 
 - **Lag:** every 30 s, `{ event: 'outbox.lag', due, pending, tenants, oldestPendingSeconds }` over **every** pending
-  event of every tenant, from `outbox_backlog(<known types>)`, a second definer function that returns totals only (no
+  event of every tenant (`pending`; `due` and `oldestPendingSeconds` only for events whose `available_at` has passed, measured
+  from it, so a delayed event is never lag), from `outbox_backlog(<known types>)`, a second definer function that returns totals only (no
   tenant ids). Not part of `/api/v1/health` (ADR 0013 §10).
 - **Cleanup (hourly, per organization):** published events after 7 days, `processed_events` after 30 days, expired
   idempotency keys. Pending and dead-lettered events stay.
