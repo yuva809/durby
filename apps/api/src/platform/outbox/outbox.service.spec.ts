@@ -21,17 +21,42 @@ describe('OutboxService.add', () => {
     );
     const [strings, ...values] = create.mock.calls[0] as [TemplateStringsArray, ...unknown[]];
     expect(strings.join('?')).toContain(
-      'INSERT INTO outbox_events (tenant_id, type, version, payload)',
+      'INSERT INTO outbox_events (tenant_id, type, version, payload, available_at)',
     );
     // ADR 0044 §5: the same statement wakes the worker, delivered only if the change commits.
     expect(strings.join('?')).toContain('pg_notify(?');
+    // No availableAt: due at once (the database's now()).
     expect(values).toEqual([
       tenantId,
       'config.settings.changed',
       1,
       JSON.stringify(payload),
+      null,
       'durby_outbox',
     ]);
+  });
+
+  it('writes a later due time, never earlier than the database clock (R2.0)', async () => {
+    const { create, tx, outbox } = setup();
+    const payload = { scope: 'organization', scopeId, key: 'platform.timezone' } as const;
+    const at = new Date(Date.now() + 24 * 3_600_000);
+    await outbox.add(tx, { type: 'config.settings.changed', payload }, { availableAt: at });
+    const [strings, ...values] = create.mock.calls[0] as [TemplateStringsArray, ...unknown[]];
+    expect(strings.join('?')).toContain('GREATEST(now(), COALESCE(?::timestamptz, now()))');
+    expect(values).toContain(at);
+  });
+
+  it('refuses a due time more than 400 days ahead, without writing', async () => {
+    const { create, tx, outbox } = setup();
+    const payload = { scope: 'organization', scopeId, key: 'platform.timezone' } as const;
+    const tooFar = new Date(Date.now() + 401 * 24 * 3_600_000);
+    await expect(
+      outbox.add(tx, { type: 'config.settings.changed', payload }, { availableAt: tooFar }),
+    ).rejects.toBeInstanceOf(OutboxPayloadInvalidError);
+    await expect(
+      outbox.add(tx, { type: 'config.settings.changed', payload }, { availableAt: new Date(NaN) }),
+    ).rejects.toBeInstanceOf(OutboxPayloadInvalidError);
+    expect(create).not.toHaveBeenCalled();
   });
 
   it('rejects a payload the schema rejects, without writing', async () => {

@@ -125,7 +125,7 @@ export class OutboxDispatcher {
             FROM outbox_events
             WHERE published_at IS NULL AND dead_lettered_at IS NULL AND available_at <= now()
               AND type = ANY (${EVENT_TYPES as string[]}::text[])
-            ORDER BY occurred_at, id
+            ORDER BY available_at, occurred_at, id
             LIMIT ${this.config.OUTBOX_BATCH_SIZE}
             FOR UPDATE SKIP LOCKED`;
           if (rows.length === 0) return EMPTY;
