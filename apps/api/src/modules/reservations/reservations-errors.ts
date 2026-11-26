@@ -143,6 +143,15 @@ export const reservationErrors = {
       undefined,
       { 'Retry-After': '10' },
     ),
+  /** Unknown, malformed or erased manage link, or another partner's domain (R2.3a). */
+  bookingNotFound: () =>
+    new ApiError(HttpStatus.NOT_FOUND, 'reservations.booking_not_found', 'Booking not found.'),
+  selfCancelClosed: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      'reservations.self_cancel_closed',
+      'Too late to cancel online.',
+    ),
   partyRangeInvalid: (details: { minParty: number; maxParty: number }) =>
     new ApiError(
       HttpStatus.UNPROCESSABLE_ENTITY,

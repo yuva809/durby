@@ -571,7 +571,14 @@ function TimelineRow({
           </span>
           <span className="text-sm text-muted-foreground">{tableNames.join(' + ')}</span>
         </span>
-        <Badge data-testid="row-status">{t(STATUS_LABEL[booking.status])}</Badge>
+        <span className="flex items-center gap-1.5">
+          {booking.source === 'online' && (
+            <Badge className="border-primary text-primary-text" data-testid="row-online">
+              {t('reservations.host.online')}
+            </Badge>
+          )}
+          <Badge data-testid="row-status">{t(STATUS_LABEL[booking.status])}</Badge>
+        </span>
       </div>
       {(badge || notInService || tableStillOccupied) && (
         <div className="flex flex-wrap items-center gap-2">

@@ -489,6 +489,8 @@ export const RESERVATION_ERROR_CODES = [
   'reservations.booking_slug_taken',
   'reservations.hold_not_found',
   'reservations.holds_unavailable',
+  'reservations.booking_not_found',
+  'reservations.self_cancel_closed',
 ] as const;
 
 export type ReservationErrorCode = (typeof RESERVATION_ERROR_CODES)[number];

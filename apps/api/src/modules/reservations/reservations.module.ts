@@ -21,6 +21,8 @@ import { TableRulesService } from './setup/table-rules.service';
 import { BookingPagesController } from './online/booking-pages.controller';
 import { BookingPagesService } from './online/booking-pages.service';
 import { HoldStore } from './online/hold-store';
+import { OnlineReservationsController } from './online/online-reservations.controller';
+import { OnlineReservationsService } from './online/online-reservations.service';
 import { PublicBookingController } from './online/public-booking.controller';
 import { PublicBookingService } from './online/public-booking.service';
 import { GuestNotifier } from './waitlist/guest-notifier';
@@ -43,6 +45,8 @@ import { WaitlistService } from './waitlist/waitlist.service';
     GuestsController,
     WaitlistController,
     BookingPagesController,
+    // Before PublicBookingController: its GET :slug would otherwise take /public/booking/manage.
+    OnlineReservationsController,
     PublicBookingController,
     BookingsController,
   ],
@@ -64,6 +68,7 @@ import { WaitlistService } from './waitlist/waitlist.service';
     BookingPagesService,
     PublicBookingService,
     HoldStore,
+    OnlineReservationsService,
   ],
   exports: [ReservationsReader],
 })

@@ -271,6 +271,15 @@ export const SETTINGS = {
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
+  // How long before the start a guest may still cancel online (R2.3a); later, they call the restaurant.
+  'reservations.selfCancelCutoffMinutes': define({
+    label: 'platform.settings.reservationsSelfCancelCutoffMinutes.name',
+    description: 'platform.settings.reservationsSelfCancelCutoffMinutes.description',
+    schema: z.int().min(0).max(10080),
+    default: 120,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
   'reservations.holdMinutes': define({
     label: 'platform.settings.reservationsHoldMinutes.name',
     description: 'platform.settings.reservationsHoldMinutes.description',

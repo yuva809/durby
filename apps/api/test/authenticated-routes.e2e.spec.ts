@@ -78,6 +78,8 @@ describe('route markers', () => {
       // ADR 0085: a restaurant's online booking page by its slug, on its partner's domain; reads only (R2.1).
       'GET /api/v1/public/booking/:slug',
       'GET /api/v1/public/booking/:slug/availability',
+      // R2.3a: the guest's booking by its manage link (token in the Authorization header).
+      'GET /api/v1/public/booking/manage',
       'GET /api/v1/public/menu/:token',
       // ADR 0015 §3: the partner theme for the request's host; no tenant data.
       'GET /api/v1/theme',
@@ -98,6 +100,9 @@ describe('route markers', () => {
       'POST /api/v1/platform/auth/logout',
       // R2.2: a guest's hold on a slot while they fill in the form (Redis, expires by itself).
       'POST /api/v1/public/booking/:slug/holds',
+      // R2.3a: a guest books with their hold, and cancels with their manage link.
+      'POST /api/v1/public/booking/:slug/reservations',
+      'POST /api/v1/public/booking/manage/cancel',
     ]);
   });
 
@@ -193,6 +198,9 @@ describe('route markers', () => {
       'POST /api/v1/platform/staff/:id/deactivate',
       'POST /api/v1/platform/staff/invitations',
       'POST /api/v1/public/booking/:slug/holds',
+      // R2.3a: the same hold books once (the answer is kept 15 minutes); cancelling twice answers the same.
+      'POST /api/v1/public/booking/:slug/reservations',
+      'POST /api/v1/public/booking/manage/cancel',
       // ADR 0052: the body is a password (never stored, not even hashed); a replay sets it again.
       'POST /api/v1/staff/:id/password',
       // ADR 0047: the caller's own choices, set-state.

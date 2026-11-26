@@ -294,7 +294,12 @@ describe('reservations schema', () => {
       const admin = new Client({ connectionString: inject('migrationDatabaseUrl') });
       await admin.connect();
       try {
-        expect(await findAppendOnlyGaps(admin, ['reservation_status_changes'])).toEqual([]);
+        expect(
+          await findAppendOnlyGaps(admin, [
+            'reservation_status_changes',
+            'guest_marketing_consents',
+          ]),
+        ).toEqual([]);
         const { rows } = await admin.query<{ table: string; del: boolean }>(
           `SELECT t AS table, has_table_privilege('durby_app', t, 'DELETE') AS del
            FROM unnest(ARRAY['reservations', 'reservation_guests']) AS t ORDER BY t`,
