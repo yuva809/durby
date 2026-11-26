@@ -416,10 +416,15 @@ export class OnlineReservationsService {
     return this.tenantContext.run(
       { tenantId: parsed.organizationId, userId: ANONYMOUS },
       async () => {
-        const found = await this.db.reservation.findUnique({
-          where: { manageTokenHash: parsed.hash },
-          select: { id: true },
-        });
+        // The link shown after booking (R2.3a) or one sent by email (R2.4).
+        const found =
+          (await this.db.reservation.findUnique({
+            where: { manageTokenHash: parsed.hash },
+            select: { id: true },
+          })) ??
+          (await this.db.reservationManageToken
+            .findUnique({ where: { tokenHash: parsed.hash }, select: { reservationId: true } })
+            .then((row) => (row ? { id: row.reservationId } : null)));
         if (!found) throw reservationErrors.bookingNotFound();
         return fn(found.id);
       },
