@@ -142,6 +142,7 @@ describe('/api/v1/settings', () => {
           ['reservations.minLeadMinutes', 60],
           ['reservations.maxAdvanceDays', 60],
           ['reservations.selfCancelCutoffMinutes', 120],
+          ['reservations.online.pendingExpiryMinutes', 120],
           ['reservations.holdMinutes', 5],
           ['pos.billHeader', DEFAULT_BILL_HEADER],
           ['pos.billFooter', DEFAULT_BILL_FOOTER],

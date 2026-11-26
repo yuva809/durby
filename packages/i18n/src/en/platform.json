@@ -169,6 +169,8 @@
   "platform.settings.reservationsMaxAdvanceDays.description": "Guests can book online at most this many days ahead. Staff bookings are not limited.",
   "platform.settings.reservationsSelfCancelCutoffMinutes.name": "Online: cancel until (minutes before)",
   "platform.settings.reservationsSelfCancelCutoffMinutes.description": "Guests can cancel with their link until this many minutes before the start. Later, they have to call.",
+  "platform.settings.reservationsOnlinePendingExpiryMinutes.name": "Online: confirm within (minutes)",
+  "platform.settings.reservationsOnlinePendingExpiryMinutes.description": "With auto-confirm off, an online booking nobody confirms within this time expires and its table is free again.",
   "platform.settings.reservationsHoldMinutes.name": "Hold time for online bookings",
   "platform.settings.reservationsHoldMinutes.description": "How long a chosen time is kept while the guest enters their details.",
   "platform.settings.posBillHeader.name": "Bill header",

@@ -28,6 +28,7 @@ import {
   loadFloor,
   localDate,
   nextQuarter,
+  openDecisions,
   runAction,
   shiftDate,
   stillOccupied,
@@ -57,6 +58,7 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { ConfirmAction, Loaded, NoAccess } from '../users/common';
 import { BookingDialog, TablesDialog, WalkInDialog } from './host-dialogs';
+import { RequestsPanel } from './requests-panel';
 import { WaitlistPanel, type WaitlistRights } from './waitlist-panel';
 
 /** How often the screen refreshes while visible (G6; SSE replaces it in RT.1). */
@@ -116,7 +118,7 @@ type Dialog =
   | { kind: 'booking' }
   | { kind: 'walkIn'; tableIds: string[] }
   | { kind: 'seatEntry'; entry: WaitlistEntry }
-  | { kind: 'tables'; booking: Reservation; mode: 'move' | 'seat' }
+  | { kind: 'tables'; booking: Reservation; mode: 'move' | 'seat' | 'accept' }
   | null;
 
 const STATUS_LABEL: Record<Reservation['status'], LabelKey> = {
@@ -201,11 +203,15 @@ function HostScreen({
             <p className="text-sm text-muted-foreground" data-testid="host-counts">
               {(() => {
                 const c = dayCounts(bookings.data);
-                return t('reservations.host.counts', {
+                const open = openDecisions(bookings.data).length;
+                const counts = t('reservations.host.counts', {
                   covers: String(c.covers),
                   booked: String(c.booked),
                   seated: String(c.seated),
                 });
+                return open > 0
+                  ? `${counts} · ${t('reservations.host.countsRequests', { count: String(open) })}`
+                  : counts;
               })()}
             </p>
           )}
@@ -333,14 +339,28 @@ function HostScreen({
               </h2>
               <Loaded resource={bookings} reload={reloadBookings}>
                 {(list) => (
-                  <Timeline
-                    bookings={list}
-                    floor={f}
-                    now={now}
-                    canManage={canManage}
-                    onDone={done}
-                    onChangeTables={(booking, mode) => setDialog({ kind: 'tables', booking, mode })}
-                  />
+                  <>
+                    <RequestsPanel
+                      bookings={list}
+                      timeZone={f.timeZone}
+                      now={now}
+                      canManage={canManage}
+                      onDone={done}
+                      onChooseTables={(booking) =>
+                        setDialog({ kind: 'tables', booking, mode: 'accept' })
+                      }
+                    />
+                    <Timeline
+                      bookings={list}
+                      floor={f}
+                      now={now}
+                      canManage={canManage}
+                      onDone={done}
+                      onChangeTables={(booking, mode) =>
+                        setDialog({ kind: 'tables', booking, mode })
+                      }
+                    />
+                  </>
                 )}
               </Loaded>
             </section>
@@ -569,7 +589,11 @@ function TimelineRow({
             <Users aria-hidden className="size-3.5" />
             {t('reservations.host.partyOf', { count: String(booking.partySize) })}
           </span>
-          <span className="text-sm text-muted-foreground">{tableNames.join(' + ')}</span>
+          <span className="text-sm text-muted-foreground">
+            {booking.status === 'requested'
+              ? t('reservations.host.requests.noTable')
+              : tableNames.join(' + ')}
+          </span>
         </span>
         <span className="flex items-center gap-1.5">
           {booking.source === 'online' && (

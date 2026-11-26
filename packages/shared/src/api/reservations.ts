@@ -440,6 +440,10 @@ export const createWalkInRequestSchema = z.strictObject({
   endsAt: z.iso.datetime({ offset: true }).optional(),
 });
 
+/** Accept a request (R2.3b): the tables, else the engine's best fit for the party. */
+export const acceptReservationRequestSchema = z.strictObject({ tableIds: tableIdList.optional() });
+export type AcceptReservationRequest = z.infer<typeof acceptReservationRequestSchema>;
+
 export type SeatReservationRequest = z.infer<typeof seatReservationRequestSchema>;
 export type UndoReservationRequest = z.infer<typeof undoReservationRequestSchema>;
 export type CreateWalkInRequest = z.infer<typeof createWalkInRequestSchema>;

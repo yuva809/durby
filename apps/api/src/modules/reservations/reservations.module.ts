@@ -8,6 +8,8 @@ import { GuestsController } from './bookings/guests.controller';
 import { GuestsService } from './bookings/guests.service';
 import { PosEventsHandler } from './bookings/pos-events.handler';
 import { ReservationsRealtimeHandler } from './bookings/realtime.handler';
+import { BookingDecisionsService } from './bookings/decisions.service';
+import { PendingExpiryHandler } from './bookings/pending-expiry.handler';
 import { BookingStatusService } from './bookings/status.service';
 import { FloorController } from './floor.controller';
 import { FloorService } from './floor.service';
@@ -58,6 +60,8 @@ import { WaitlistService } from './waitlist/waitlist.service';
     LocationSettingsService,
     BookingsService,
     BookingStatusService,
+    BookingDecisionsService,
+    PendingExpiryHandler,
     GuestsService,
     PosEventsHandler,
     ReservationsRealtimeHandler,

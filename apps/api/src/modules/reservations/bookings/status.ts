@@ -53,6 +53,9 @@ export function undoable(
     latest.id === changeId &&
     latest.undoesId === null &&
     latest.fromStatus !== null &&
+    // An answer to an online booking (accept, confirm, decline) is told to the guest: no undo (R2.3b).
+    latest.fromStatus !== 'requested' &&
+    latest.fromStatus !== 'pending' &&
     now.getTime() - latest.createdAt.getTime() <= UNDO_WINDOW_MS
   );
 }

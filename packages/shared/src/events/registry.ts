@@ -17,6 +17,7 @@ import {
   reservationsReservationCreatedV1,
   reservationsReservationStatusChangedV1,
   reservationsReservationUpdatedV1,
+  reservationsPendingExpiryDueV1,
   reservationsWaitlistChangedV1,
 } from './reservations';
 
@@ -61,6 +62,10 @@ export const EVENTS = {
   'reservations.reservation.status_changed': {
     current: 1,
     versions: { 1: reservationsReservationStatusChangedV1 },
+  },
+  'reservations.pending.expiry_due': {
+    current: 1,
+    versions: { 1: reservationsPendingExpiryDueV1 },
   },
   'reservations.waitlist.changed': {
     current: 1,

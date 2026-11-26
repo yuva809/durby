@@ -10,6 +10,8 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import {
+  type AcceptReservationRequest,
+  acceptReservationRequestSchema,
   type CreateReservationRequest,
   createReservationRequestSchema,
   type CreateWalkInRequest,
@@ -33,6 +35,7 @@ import { RequirePermission } from '../../../platform/rbac';
 import { reservationErrors } from '../reservations-errors';
 import { BookingsService } from './bookings.service';
 import { ReservationsBusyInterceptor } from './busy';
+import { BookingDecisionsService } from './decisions.service';
 import { BookingStatusService } from './status.service';
 
 const reservationId = () =>
@@ -49,6 +52,7 @@ export class BookingsController {
   constructor(
     private readonly bookings: BookingsService,
     private readonly status: BookingStatusService,
+    private readonly decisions: BookingDecisionsService,
   ) {}
 
   @RequirePermission('reservations.bookings.read')
@@ -135,6 +139,32 @@ export class BookingsController {
   @Post(':id/cancel')
   cancel(@Param('id', reservationId()) id: string): Promise<Reservation> {
     return this.status.act(id, 'cancel');
+  }
+
+  // Answers to online bookings (R2.3b).
+
+  @RequirePermission('reservations.bookings.edit')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/accept')
+  accept(
+    @Param('id', reservationId()) id: string,
+    @Body(new ZodBody(acceptReservationRequestSchema)) body: AcceptReservationRequest,
+  ): Promise<Reservation> {
+    return this.decisions.accept(id, body);
+  }
+
+  @RequirePermission('reservations.bookings.edit')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/confirm')
+  confirm(@Param('id', reservationId()) id: string): Promise<Reservation> {
+    return this.decisions.confirm(id);
+  }
+
+  @RequirePermission('reservations.bookings.edit')
+  @Idempotent({ completion: 'transaction' })
+  @Post(':id/decline')
+  decline(@Param('id', reservationId()) id: string): Promise<Reservation> {
+    return this.decisions.decline(id);
   }
 
   @RequirePermission('reservations.bookings.edit')

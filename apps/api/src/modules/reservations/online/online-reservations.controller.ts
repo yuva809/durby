@@ -4,6 +4,8 @@ import {
   type PublicBooking,
   type PublicBookingRequest,
   publicBookingRequestSchema,
+  type PublicRequestRequest,
+  publicRequestSchema,
 } from '@durby/shared';
 import type { Request } from 'express';
 import { Public } from '../../../platform/auth';
@@ -31,6 +33,18 @@ export class OnlineReservationsController {
     @Req() req: Request,
   ): Promise<PublicBooking> {
     return this.online.book(slug, body, req.hostname, clientIp(req));
+  }
+
+  @Public()
+  @IdempotencyExempt('the same request again returns the same answer for 15 minutes')
+  @Post(':slug/requests')
+  @Header('Cache-Control', 'no-store')
+  request(
+    @Param('slug') slug: string,
+    @Body(new ZodBody(publicRequestSchema)) body: PublicRequestRequest,
+    @Req() req: Request,
+  ): Promise<PublicBooking> {
+    return this.online.request(slug, body, req.hostname, clientIp(req));
   }
 
   @Public()

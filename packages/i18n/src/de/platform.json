@@ -169,6 +169,8 @@
   "platform.settings.reservationsMaxAdvanceDays.description": "Gäste können online höchstens so viele Tage im Voraus buchen. Buchungen durch das Personal sind nicht begrenzt.",
   "platform.settings.reservationsSelfCancelCutoffMinutes.name": "Online: Stornierung bis (Minuten vorher)",
   "platform.settings.reservationsSelfCancelCutoffMinutes.description": "Gäste können mit ihrem Link bis so viele Minuten vor Beginn stornieren. Danach müssen sie anrufen.",
+  "platform.settings.reservationsOnlinePendingExpiryMinutes.name": "Online: Bestätigen innerhalb (Minuten)",
+  "platform.settings.reservationsOnlinePendingExpiryMinutes.description": "Ist die automatische Bestätigung aus, verfällt eine Online-Buchung, die niemand in dieser Zeit bestätigt; der Tisch ist wieder frei.",
   "platform.settings.reservationsHoldMinutes.name": "Haltezeit für Online-Buchungen",
   "platform.settings.reservationsHoldMinutes.description": "Wie lange eine gewählte Zeit reserviert bleibt, während der Gast seine Daten eingibt.",
   "platform.settings.posBillHeader.name": "Rechnungskopf",
