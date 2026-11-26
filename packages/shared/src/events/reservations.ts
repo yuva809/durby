@@ -22,3 +22,12 @@ export const reservationsWaitlistChangedV1 = z.strictObject({
   entryId: z.uuid(),
   locationId: z.uuid(),
 });
+
+/**
+ * A pending online booking's confirmation time ran out (R2.3b), written delayed by
+ * `reservations.online.pendingExpiryMinutes` (R2.0). The handler expires it only if it is still pending.
+ */
+export const reservationsPendingExpiryDueV1 = z.strictObject({
+  reservationId: z.uuid(),
+  locationId: z.uuid(),
+});

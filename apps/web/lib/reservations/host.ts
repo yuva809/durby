@@ -180,6 +180,24 @@ export const runAction = (
   body: { tableIds?: string[] } = {},
 ) => write(store, action, `/api/v1/reservations/${id}/${what}`, 'POST', body, reservationSchema);
 
+/** The restaurant's answer to an online booking it hasn't taken yet (R2.3b). */
+export type Decision = 'accept' | 'confirm' | 'decline';
+
+export const decide = (
+  store: Api,
+  action: ActionKey,
+  id: string,
+  what: Decision,
+  body: { tableIds?: string[] } = {},
+) => write(store, action, `/api/v1/reservations/${id}/${what}`, 'POST', body, reservationSchema);
+
+/** Requests and bookings waiting for confirmation, oldest first. */
+export function openDecisions(bookings: readonly Reservation[]): Reservation[] {
+  return bookings
+    .filter((b) => b.status === 'requested' || b.status === 'pending')
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+}
+
 export const undoChange = (store: Api, action: ActionKey, id: string, changeId: string) =>
   write(store, action, `/api/v1/reservations/${id}/undo`, 'POST', { changeId }, reservationSchema);
 
@@ -221,6 +239,9 @@ export function undoable(booking: Reservation, now: number): boolean {
   const change = booking.lastChange;
   return (
     change.fromStatus !== null &&
+    // An answer to an online booking is told to the guest: no undo (R2.3b).
+    change.fromStatus !== 'requested' &&
+    change.fromStatus !== 'pending' &&
     change.undoesId === null &&
     now - Date.parse(change.createdAt) <= RESERVATION_UNDO_WINDOW_MS
   );

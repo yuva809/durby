@@ -280,6 +280,15 @@ export const SETTINGS = {
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
+  // How long a pending online booking waits for the restaurant before it expires (R2.3b).
+  'reservations.online.pendingExpiryMinutes': define({
+    label: 'platform.settings.reservationsOnlinePendingExpiryMinutes.name',
+    description: 'platform.settings.reservationsOnlinePendingExpiryMinutes.description',
+    schema: z.int().min(5).max(10080),
+    default: 120,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
   'reservations.holdMinutes': define({
     label: 'platform.settings.reservationsHoldMinutes.name',
     description: 'platform.settings.reservationsHoldMinutes.description',

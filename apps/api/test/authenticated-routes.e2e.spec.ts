@@ -101,6 +101,7 @@ describe('route markers', () => {
       // R2.2: a guest's hold on a slot while they fill in the form (Redis, expires by itself).
       'POST /api/v1/public/booking/:slug/holds',
       // R2.3a: a guest books with their hold, and cancels with their manage link.
+      'POST /api/v1/public/booking/:slug/requests',
       'POST /api/v1/public/booking/:slug/reservations',
       'POST /api/v1/public/booking/manage/cancel',
     ]);
@@ -198,6 +199,8 @@ describe('route markers', () => {
       'POST /api/v1/platform/staff/:id/deactivate',
       'POST /api/v1/platform/staff/invitations',
       'POST /api/v1/public/booking/:slug/holds',
+      // R2.3b: the same request again returns the same answer for 15 minutes.
+      'POST /api/v1/public/booking/:slug/requests',
       // R2.3a: the same hold books once (the answer is kept 15 minutes); cancelling twice answers the same.
       'POST /api/v1/public/booking/:slug/reservations',
       'POST /api/v1/public/booking/manage/cancel',
@@ -318,8 +321,11 @@ describe('route markers', () => {
       'POST /api/v1/pos/tables/:id/menu-token',
       'POST /api/v1/pos/tables/:tableId/tickets',
       'POST /api/v1/reservations',
+      'POST /api/v1/reservations/:id/accept',
       'POST /api/v1/reservations/:id/arrive',
       'POST /api/v1/reservations/:id/cancel',
+      'POST /api/v1/reservations/:id/confirm',
+      'POST /api/v1/reservations/:id/decline',
       'POST /api/v1/reservations/:id/finish',
       'POST /api/v1/reservations/:id/no-show',
       'POST /api/v1/reservations/:id/seat',

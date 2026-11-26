@@ -291,6 +291,56 @@ describe('today (live)', () => {
     expect(screen.queryByTestId('host-plan-note')).toBeNull();
   });
 
+  it('lists requests and bookings to confirm, accepts, and lets the host choose tables when needed', async () => {
+    const REQUEST = booking(7, 'Grosse', {
+      status: 'requested',
+      source: 'online',
+      partySize: 8,
+      tableIds: [],
+      createdAt: T('18:20'),
+    });
+    const PENDING = booking(8, 'Klar', {
+      status: 'pending',
+      source: 'online',
+      createdAt: T('18:50'),
+    });
+    let accepts = 0;
+    const { writes } = api({
+      ...BASE,
+      'GET /api/v1/reservations': () => Response.json({ data: [...DAY, REQUEST, PENDING] }),
+      [`POST /api/v1/reservations/${REQUEST.id}/accept`]: () =>
+        ++accepts === 1
+          ? refused('reservations.table_unavailable')
+          : Response.json({ ...REQUEST, status: 'booked', tableIds: [id(11)] }),
+      [`POST /api/v1/reservations/${PENDING.id}/confirm`]: () =>
+        Response.json({ ...PENDING, status: 'booked' }),
+    });
+    render(<HostPage />);
+    const panel = await screen.findByTestId('requests-panel');
+    const rows = within(panel).getAllByTestId('request-row');
+    // Oldest first, with its age.
+    expect(rows.map((r) => r.dataset.guest)).toEqual(['Grosse', 'Klar']);
+    expect(within(rows[0]!).getByTestId('request-age').textContent).toBe('40 min ago');
+    expect(screen.getByTestId('host-counts').textContent).toContain('Requests 2');
+    expect(within(await rowOf('Grosse')).getByText('No table yet')).toBeTruthy();
+
+    await userEvent.click(within(rows[1]!).getByTestId('request-answer'));
+    await waitFor(() =>
+      expect(writes.map((w) => w.path)).toContain(`/api/v1/reservations/${PENDING.id}/confirm`),
+    );
+    // The engine's tables are gone: choose others.
+    await userEvent.click(within(rows[0]!).getByTestId('request-answer'));
+    const dialog = await screen.findByTestId('tables-dialog');
+    await userEvent.click(within(dialog).getByLabelText('T1 (4 seats)'));
+    await userEvent.click(within(dialog).getByTestId('tables-dialog-submit'));
+    await waitFor(() =>
+      expect(writes.at(-1)).toMatchObject({
+        path: `/api/v1/reservations/${REQUEST.id}/accept`,
+        body: { tableIds: [id(11)] },
+      }),
+    );
+  });
+
   it('marks bookings made online', async () => {
     api({
       ...BASE,

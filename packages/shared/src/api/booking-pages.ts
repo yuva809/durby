@@ -161,10 +161,28 @@ export const publicBookingRequestSchema = z.strictObject({
   website: z.string().max(200).optional(),
 });
 
+/**
+ * A larger party asks for a time (R2.3b): no table is held; the restaurant accepts or declines. For a start the
+ * availability marks `request`, or any start of the day when the party is larger than every table online.
+ */
+export const publicRequestSchema = z.strictObject({
+  startsAt: z.iso.datetime({ offset: true }),
+  partySize: z.int().min(1).max(MAX_PARTY_SIZE),
+  guest: z.strictObject({
+    name: guestName,
+    email: guestEmail,
+    phone: z.string().trim().min(1).max(40).optional(),
+    locale: z.enum(LOCALES).optional(),
+  }),
+  guestNote: z.string().trim().min(1).max(500).optional(),
+  marketingOptIn: z.boolean(),
+  website: z.string().max(200).optional(),
+});
+
 export const publicBookingSchema = z.strictObject({
   number: z.string(),
-  /** `pending`: the restaurant confirms (auto-confirm off). */
-  status: z.enum(['booked', 'pending']),
+  /** `pending`: the restaurant confirms (auto-confirm off); `requested`: a larger party's request (R2.3b). */
+  status: z.enum(['booked', 'pending', 'requested']),
   restaurant: z.string(),
   location: z.string(),
   startsAt: z.iso.datetime(),
@@ -193,6 +211,7 @@ export const manageBookingSchema = z.strictObject({
   pageSlug: z.string().nullable(),
 });
 
+export type PublicRequestRequest = z.infer<typeof publicRequestSchema>;
 export type PublicBookingRequest = z.infer<typeof publicBookingRequestSchema>;
 export type PublicBooking = z.infer<typeof publicBookingSchema>;
 export type ManageBooking = z.infer<typeof manageBookingSchema>;

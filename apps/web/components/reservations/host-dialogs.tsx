@@ -20,6 +20,7 @@ import {
   clockTime,
   createBooking,
   createWalkIn,
+  decide,
   freeSlots,
   instantAt,
   loadAvailability,
@@ -654,7 +655,7 @@ export function TablesDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   booking: Reservation;
-  mode: 'move' | 'seat';
+  mode: 'move' | 'seat' | 'accept';
   tables: readonly ReservationsFloorTable[];
   onDone: (booking: Reservation) => void;
 }) {
@@ -676,9 +677,11 @@ export function TablesDialog({
     setBusy(true);
     setFailure(null);
     const result: Result<Reservation | null> =
-      mode === 'seat'
-        ? await runAction(store, action, booking.id, 'seat', { tableIds })
-        : await updateBooking(store, action, booking.id, { tableIds });
+      mode === 'accept'
+        ? await decide(store, action, booking.id, 'accept', { tableIds })
+        : mode === 'seat'
+          ? await runAction(store, action, booking.id, 'seat', { tableIds })
+          : await updateBooking(store, action, booking.id, { tableIds });
     setBusy(false);
     if (result.ok && result.data) {
       onOpenChange(false);
@@ -693,15 +696,23 @@ export function TablesDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={t(
-        mode === 'seat'
-          ? 'reservations.host.tables.seatTitle'
-          : 'reservations.host.tables.moveTitle',
+        mode === 'accept'
+          ? 'reservations.host.accept.title'
+          : mode === 'seat'
+            ? 'reservations.host.tables.seatTitle'
+            : 'reservations.host.tables.moveTitle',
         {
           guest: booking.guest.name ?? t('reservations.host.noName'),
         },
       )}
       testId="tables-dialog"
-      submitLabel={t(mode === 'seat' ? 'reservations.host.actions.seat' : 'platform.common.save')}
+      submitLabel={t(
+        mode === 'accept'
+          ? 'reservations.host.actions.accept'
+          : mode === 'seat'
+            ? 'reservations.host.actions.seat'
+            : 'platform.common.save',
+      )}
       busy={busy}
       error={failure ? t(errorLabel(failure)) : null}
       onSubmit={() => void submit()}
