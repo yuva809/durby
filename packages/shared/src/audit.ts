@@ -543,6 +543,8 @@ export const AUDIT_SYSTEM_ACTORS = {
   'job.waitlist': { label: 'platform.audit.actors.jobWaitlist' },
   /** A guest on the public booking page or with their manage link (R2.3a); no person is stored. */
   'guest.online': { label: 'platform.audit.actors.guestOnline' },
+  /** The worker's hourly erasure of guests past the retention period (Q8, R2.5). */
+  'job.guest_retention': { label: 'platform.audit.actors.jobGuestRetention' },
   migration: { label: 'platform.audit.actors.migration' },
 } as const satisfies Record<string, { label: string }>;
 

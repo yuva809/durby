@@ -101,7 +101,12 @@ describe('reservations settings', () => {
   it('can be set at every level, partner to location, and binds no recorded data', () => {
     for (const [key, def] of Object.entries(SETTINGS)) {
       if (!key.startsWith('reservations.')) continue;
-      expect(def.scopes, key).toEqual(['partner', 'organization', 'brand', 'location']);
+      // Guests are the organization's (one guest across its locations), so their retention is too (Q8).
+      const scopes =
+        key === 'reservations.guestRetentionMonths'
+          ? ['partner', 'organization']
+          : ['partner', 'organization', 'brand', 'location'];
+      expect(def.scopes, key).toEqual(scopes);
       expect(def.dataBound, key).toBe(false);
     }
   });

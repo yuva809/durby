@@ -14,10 +14,11 @@ import {
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { v7 as uuidv7 } from 'uuid';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { EntitlementsAdmin } from '../src/platform/config/entitlements';
+import { PrintJobSweep } from '../src/modules/pos/print-job-sweep';
 import { OutboxCleanup } from '../src/platform/outbox';
 import { withIdempotencyKey } from './support/idempotency';
 import { RbacSeed, type SeededOrg } from './support/rbac';
@@ -568,9 +569,17 @@ describe('pos print jobs', () => {
         },
       }),
     );
-    const cleanup = app.get(OutboxCleanup);
-    const first = await cleanup.runOnce();
-    expect(first.printJobsExpired).toBeGreaterThanOrEqual(2);
+    // This organization's sweep only, as the hourly pass runs it: the whole pass over every organization of the shared
+    // test database gets slower with every retention task and timed out under load.
+    const sweep = app.get(PrintJobSweep);
+    const runSweep = () =>
+      seed.as(r.org.id, (db) => db.$transaction((tx) => sweep.run(tx, new Date())));
+    expect(await runSweep()).toBe(2);
+    // It is part of the worker's hourly pass.
+    const register = vi.spyOn(app.get(OutboxCleanup), 'register').mockReturnValue();
+    sweep.onModuleInit();
+    expect(register).toHaveBeenCalledWith(expect.objectContaining({ name: 'printJobsExpired' }));
+    register.mockRestore();
     const rows = await seed.as(r.org.id, (db) =>
       db.posPrintJob.findMany({
         select: { id: true, status: true, lastCode: true, claimedAt: true, completedAt: true },
@@ -594,7 +603,7 @@ describe('pos print jobs', () => {
     ]);
 
     // Idempotent: nothing left to stamp here, no second audit row.
-    await cleanup.runOnce();
+    expect(await runSweep()).toBe(0);
     expect(
       await seed.as(r.org.id, (db) =>
         db.auditLog.count({ where: { action: 'pos.print_job.expired' } }),
