@@ -4,7 +4,12 @@ import { auditActor, AuditService, snapshot } from '../../../platform/audit';
 import { Clock } from '../../../platform/auth';
 import { IdempotencyService } from '../../../platform/idempotency';
 import { AccessService } from '../../../platform/rbac';
-import { TENANT_PRISMA, TenantContext, type TenantPrismaClient } from '../../../platform/tenancy';
+import {
+  TENANT_PRISMA,
+  TenantContext,
+  type TenantPrismaClient,
+  type TenantTransactionClient,
+} from '../../../platform/tenancy';
 import { reservationErrors } from '../reservations-errors';
 import { shortLockWaits } from './busy';
 
@@ -53,19 +58,7 @@ export class GuestsService {
       let anonymisedAt = guest.anonymised_at;
       if (anonymisedAt === null) {
         anonymisedAt = this.clock.now();
-        await tx.reservationGuest.update({
-          where: { id },
-          data: { name: null, email: null, phone: null, anonymisedAt },
-        });
-        await tx.reservation.updateMany({
-          where: { guestId: id },
-          data: { guestNote: null, staffNote: null, manageTokenHash: null },
-        });
-        // Waitlist entries seated as one of these bookings (ADR 0084).
-        await tx.waitlistEntry.updateMany({
-          where: { erasedAt: null, reservation: { guestId: id } },
-          data: { name: null, phone: null, email: null, note: null, erasedAt: anonymisedAt },
-        });
+        await eraseGuest(tx, id, anonymisedAt);
         await this.audit.record(tx, {
           action: 'reservations.guest.anonymised',
           actor: auditActor.user(userId),
@@ -79,4 +72,28 @@ export class GuestsService {
       return response;
     });
   }
+}
+
+/**
+ * Erases a guest (GDPR, R1.9; the retention pass, R2.5): name, email and phone, their bookings' notes and manage
+ * links, and waitlist entries seated as their bookings (ADR 0084). Bookings, statuses and counts stay. The caller
+ * holds the guest's row lock and records the audit row.
+ */
+export async function eraseGuest(
+  tx: TenantTransactionClient,
+  id: string,
+  anonymisedAt: Date,
+): Promise<void> {
+  await tx.reservationGuest.update({
+    where: { id },
+    data: { name: null, email: null, phone: null, anonymisedAt },
+  });
+  await tx.reservation.updateMany({
+    where: { guestId: id },
+    data: { guestNote: null, staffNote: null, manageTokenHash: null },
+  });
+  await tx.waitlistEntry.updateMany({
+    where: { erasedAt: null, reservation: { guestId: id } },
+    data: { name: null, phone: null, email: null, note: null, erasedAt: anonymisedAt },
+  });
 }

@@ -5,6 +5,7 @@ import { AvailabilityLoader } from './availability/loader';
 import { BookingsController } from './bookings/bookings.controller';
 import { BookingsService } from './bookings/bookings.service';
 import { GuestsController } from './bookings/guests.controller';
+import { GuestRetention } from './bookings/guest-retention';
 import { GuestsService } from './bookings/guests.service';
 import { PosEventsHandler } from './bookings/pos-events.handler';
 import { ReservationsRealtimeHandler } from './bookings/realtime.handler';
@@ -63,6 +64,7 @@ import { WaitlistService } from './waitlist/waitlist.service';
     BookingDecisionsService,
     PendingExpiryHandler,
     GuestsService,
+    GuestRetention,
     PosEventsHandler,
     ReservationsRealtimeHandler,
     ReservationsReader,
