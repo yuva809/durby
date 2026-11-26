@@ -958,11 +958,17 @@ Guest name, email, phone and notes never enter snapshots. Online and self-servic
   wins, `coalesce(last_visit_at, created_at)` newest first). A match only fills fields it doesn't have yet (name,
   email, phone), never overwrites. Neither matches → a new guest. `last_visit_at` is set when one of their
   reservations finishes.
-- **Retention (Q8):** `reservations.guest.retention_due` is scheduled at
-  `coalesce(last_visit_at, latest reservation end, created_at) + guestRetentionMonths` whenever that moves. The
-  handler recomputes the date (a later visit or a longer setting reschedules and stops), skips guests with a
-  booking still ahead, then nulls `name/email/phone`, clears their reservations' notes and `manage_token_hash`,
-  and sets `anonymised_at`. Reservations stay (counts, KPIs). Consents keep only the guest id.
+- **Retention (Q8, as built 2026-11-26):** the worker's hourly retention pass (`bookings/guest-retention.ts`,
+  `OutboxCleanup.register('guestRetention')`), per organization, up to 500 guests a pass: a guest is due when the
+  latest of `last_visit_at`, their latest booking's end and their own `created_at` lies
+  `reservations.guestRetentionMonths` (1–120, default 12; partner and organization only) back, and none of their
+  bookings is still to come or running (`requested`, `pending`, `booked`, `arrived`, `seated` ending after now). Then it
+  erases exactly what erasure on request erases (`eraseGuest`): name, email, phone, the bookings' notes and manage
+  links, waitlist entries seated as their bookings; `anonymised_at` set; audit `reservations.guest.anonymised` as
+  `job.guest_retention`. Bookings, statuses, `last_visit_at` and consents (guest id only) stay. **Deviation:** the spec
+  planned a per-guest delayed event (`reservations.guest.retention_due`) rescheduled on every visit or booking; the pass
+  computes the date when it runs, so there is nothing to reschedule or to forget, and the result is the same within an
+  hour.
 - **Erasure on request (R1.9, before the retention job of R2.5):** `POST /reservations/guests/:id/anonymise` under
   `reservations.setup.manage` (a manager or above, not the Host), from the booking edit dialog on `/reservations`
   after a confirm dialog. Irreversible. In one transaction, with the guest row locked: nulls `name`, `email` and

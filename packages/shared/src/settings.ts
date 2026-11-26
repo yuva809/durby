@@ -280,6 +280,15 @@ export const SETTINGS = {
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
+  // How long a guest's personal data is kept after their last visit or booking (Q8, R2.5); then it is erased.
+  'reservations.guestRetentionMonths': define({
+    label: 'platform.settings.reservationsGuestRetentionMonths.name',
+    description: 'platform.settings.reservationsGuestRetentionMonths.description',
+    schema: z.int().min(1).max(120),
+    default: 12,
+    scopes: ['partner', 'organization'],
+    dataBound: false,
+  }),
   'reservations.holdMinutes': define({
     label: 'platform.settings.reservationsHoldMinutes.name',
     description: 'platform.settings.reservationsHoldMinutes.description',
