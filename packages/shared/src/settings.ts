@@ -254,6 +254,23 @@ export const SETTINGS = {
     scopes: ALL_SCOPES,
     dataBound: false,
   }),
+  // The online booking window (R2.2): how much notice the restaurant needs, and how far ahead guests may book.
+  'reservations.minLeadMinutes': define({
+    label: 'platform.settings.reservationsMinLeadMinutes.name',
+    description: 'platform.settings.reservationsMinLeadMinutes.description',
+    schema: z.int().min(0).max(10080),
+    default: 60,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
+  'reservations.maxAdvanceDays': define({
+    label: 'platform.settings.reservationsMaxAdvanceDays.name',
+    description: 'platform.settings.reservationsMaxAdvanceDays.description',
+    schema: z.int().min(1).max(365),
+    default: 60,
+    scopes: ALL_SCOPES,
+    dataBound: false,
+  }),
   'reservations.holdMinutes': define({
     label: 'platform.settings.reservationsHoldMinutes.name',
     description: 'platform.settings.reservationsHoldMinutes.description',

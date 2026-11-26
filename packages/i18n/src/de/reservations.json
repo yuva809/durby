@@ -88,6 +88,8 @@
   "reservations.bookingPage.saved": "Gespeichert",
   "reservations.bookingPage.off": "Online-Buchung ist nicht in Ihrem Tarif. Bis dahin ist die Seite nicht erreichbar.",
   "reservations.bookingPage.comingSoon": "Die Seite für Gäste folgt mit dem nächsten Update; die Adresse bleibt.",
+  "reservations.errors.holdNotFound": "Die gewählte Zeit wurde freigegeben. Bitte wählen Sie sie erneut.",
+  "reservations.errors.holdsUnavailable": "Die Online-Buchung ist kurz pausiert. Bitte versuchen Sie es gleich noch einmal.",
   "reservations.errors.locationNotFound": "Standort nicht gefunden.",
   "reservations.errors.tableNotFound": "Tisch nicht gefunden.",
   "reservations.errors.combinationNotFound": "Tischkombination nicht gefunden.",

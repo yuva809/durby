@@ -20,6 +20,7 @@ import {
   type AvailabilityInput,
   type AvailabilityResult,
   type Channel,
+  type EngineHold,
   type EngineSettings,
 } from './engine';
 
@@ -33,6 +34,8 @@ export interface AvailabilityRequest {
   excludeReservationId?: string;
   /** Also load bookings up to here (a write's own end, when it runs past the day). */
   until?: Date;
+  /** Other guests' live holds (online channel, R2.2); read from Redis by the caller. */
+  holds?: readonly EngineHold[];
 }
 
 /** The engine's input and the location's settings (bookings read country, locale, turn times). */
@@ -93,6 +96,8 @@ export class AvailabilityLoader {
       maxCoversPerSlot: setting(resolved, 'reservations.maxCoversPerSlot'),
       lastBookingOffsetMinutes: setting(resolved, 'reservations.lastBookingOffsetMinutes'),
       instantMaxParty: setting(resolved, 'reservations.online.instantMaxParty'),
+      minLeadMinutes: setting(resolved, 'reservations.minLeadMinutes'),
+      maxAdvanceDays: setting(resolved, 'reservations.maxAdvanceDays'),
     };
 
     // Bookings that can overlap a slot: slots start within the local day (a window past midnight
@@ -140,6 +145,7 @@ export class AvailabilityLoader {
 
     const ruleOf = new Map(rules.map((r) => [r.tableId, r]));
     const input: AvailabilityInput = {
+      ...(request.holds && { holds: request.holds }),
       date,
       timeZone,
       now: request.now,

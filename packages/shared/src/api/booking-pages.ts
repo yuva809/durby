@@ -96,6 +96,8 @@ export const publicBookingPageSchema = z.object({
   currency: z.string(),
   /** Parties up to this size book at once; larger ones send a request (R2.3). Null: every size books at once. */
   instantMaxParty: z.int().nullable(),
+  /** The last day guests may book online (`reservations.maxAdvanceDays`, R2.2), YYYY-MM-DD at the location. */
+  lastBookableDate: z.string(),
 });
 
 export const publicAvailabilityQuerySchema = z.strictObject({
@@ -117,6 +119,25 @@ export const publicAvailabilitySchema = z.strictObject({
   slots: z.array(publicSlotSchema),
 });
 
+/**
+ * Holds a slot while the guest fills in the form (R2.2, ADR 0019 §4). `website` is a honeypot: people never see it,
+ * so a filled one is a bot (it gets a believable answer and nothing is held).
+ */
+export const createHoldRequestSchema = z.strictObject({
+  startsAt: z.iso.datetime({ offset: true }),
+  partySize: z.int().min(1).max(MAX_PARTY_SIZE),
+  /** The guest's previous hold on this page, freed in the same step. */
+  replaceHoldId: z.uuid().optional(),
+  website: z.string().max(200).optional(),
+});
+
+export const holdSchema = z.strictObject({
+  holdId: z.uuid(),
+  expiresAt: z.iso.datetime(),
+});
+
+export type CreateHoldRequest = z.infer<typeof createHoldRequestSchema>;
+export type Hold = z.infer<typeof holdSchema>;
 export type BookingPageQuery = z.infer<typeof bookingPageQuerySchema>;
 export type BookingPage = z.infer<typeof bookingPageSchema>;
 export type BookingPageResponse = z.infer<typeof bookingPageResponseSchema>;

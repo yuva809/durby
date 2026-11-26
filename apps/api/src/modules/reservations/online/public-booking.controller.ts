@@ -1,5 +1,20 @@
-import { Controller, Get, Header, Param, Query, Req } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Header,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  Req,
+} from '@nestjs/common';
+import {
+  type CreateHoldRequest,
+  createHoldRequestSchema,
+  type Hold,
   type PublicAvailability,
   type PublicAvailabilityQuery,
   publicAvailabilityQuerySchema,
@@ -7,7 +22,9 @@ import {
 } from '@durby/shared';
 import type { Request } from 'express';
 import { Public } from '../../../platform/auth';
-import { ZodQuery } from '../../../platform/http';
+import { ZodBody, ZodQuery } from '../../../platform/http';
+import { IdempotencyExempt } from '../../../platform/markers';
+import { reservationErrors } from '../reservations-errors';
 import { PublicBookingService } from './public-booking.service';
 
 /**
@@ -35,6 +52,31 @@ export class PublicBookingController {
     @Req() req: Request,
   ): Promise<PublicAvailability> {
     return this.booking.availability(slug, query, req.hostname, clientIp(req));
+  }
+
+  @Public()
+  @IdempotencyExempt('hold replaced by key, expires by TTL')
+  @Post(':slug/holds')
+  @Header('Cache-Control', 'no-store')
+  hold(
+    @Param('slug') slug: string,
+    @Body(new ZodBody(createHoldRequestSchema)) body: CreateHoldRequest,
+    @Req() req: Request,
+  ): Promise<Hold> {
+    return this.booking.hold(slug, body, req.hostname, clientIp(req));
+  }
+
+  @Public()
+  @IdempotencyExempt('deleting a hold twice is a no-op')
+  @Delete(':slug/holds/:holdId')
+  @HttpCode(204)
+  async release(
+    @Param('slug') slug: string,
+    @Param('holdId', new ParseUUIDPipe({ exceptionFactory: reservationErrors.holdNotFound }))
+    holdId: string,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.booking.release(slug, holdId, req.hostname, clientIp(req));
   }
 }
 
