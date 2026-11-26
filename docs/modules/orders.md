@@ -206,7 +206,9 @@ transfers section of Picking (To pick / Packed / Received, pick with a driver, a
 warehouse's stock when its dialog opens: an In stock column, a line short of stock starts at what is there and says
 how much is missing ("Short 2 pc"), and quantities beyond the stock are named before packing (packing below zero is
 refused unless the location allows negative stock). Stock Requests is a table (request,
-branch, items, requested by, date, status, transfer number) searched by number and filtered by stage.
+branch, items, requested by, date, status, transfer number) searched by number, with tabs for the stage (All,
+Waiting for approval with its count, In progress, Done; kept in the address as `?tab=`). Tapping anywhere on a row
+opens the request, so a tablet that scrolls the number out of view can still open and approve it.
 
 **Order History (ADR 0063).** In the operations menu Order History is the branch requests for everyone who reads
 them (Stock Requests merged into it; owners and admins approve there); customer orders are **Sales Orders**

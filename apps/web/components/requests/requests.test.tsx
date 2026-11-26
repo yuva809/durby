@@ -405,6 +405,64 @@ describe('Stock Requests', () => {
     );
   });
 
+  it('opens a request from anywhere on its row, so a tablet can tap the status', async () => {
+    signedInAs('owner');
+    api(request('submitted'));
+    render(<RequestsPage />, { wrapper: operations });
+    const row = await screen.findByTestId('request-table-row');
+    // The status badge, not the number: the number may be off-screen on a tablet.
+    await userEvent.click(within(row).getByText('Waiting for approval'));
+    const panel = await screen.findByTestId('request-panel');
+    expect(await within(panel).findByTestId('request-approve')).toBeTruthy();
+  });
+
+  it('keeps the document links to themselves', async () => {
+    signedInAs('owner');
+    api(request('submitted'));
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<RequestsPage />, { wrapper: operations });
+    const row = await screen.findByTestId('request-table-row');
+    within(row)
+      .getByTestId('request-oc-link')
+      .addEventListener('click', (e) => e.preventDefault());
+    await userEvent.click(within(row).getByTestId('request-oc-link'));
+    expect(screen.queryByTestId('request-panel')).toBeNull();
+    open.mockRestore();
+  });
+
+  it('has stage tabs, with what waits for approval counted', async () => {
+    signedInAs('owner');
+    const calls = api(request('submitted'));
+    mockState.search = '';
+    render(<RequestsPage />, { wrapper: operations });
+    await screen.findByTestId('request-table-row');
+    expect(
+      ['all', 'open', 'progress', 'done'].map(
+        (k) => screen.getByTestId(`requests-tab-${k}`).textContent,
+      ),
+    ).toEqual(['All', 'Waiting for approval1', 'In progress', 'Done']);
+    expect(calls.some((c) => c.path === '/api/v1/stock-requests?status=submitted')).toBe(true);
+    await userEvent.click(screen.getByTestId('requests-tab-progress'));
+    await waitFor(() =>
+      expect(calls.at(-1)?.path).toMatch(/^\/api\/v1\/stock-requests\?status=approved/),
+    );
+    expect(screen.getByTestId('requests-tab-progress').getAttribute('aria-selected')).toBe('true');
+    // Kept in the address, so Back and a shared link keep the tab.
+    expect(mockState.router.replace).toHaveBeenLastCalledWith('/requests?tab=progress', {
+      scroll: false,
+    });
+  });
+
+  it('opens on the tab in the address', async () => {
+    signedInAs('owner');
+    const calls = api(request('submitted'));
+    mockState.search = 'tab=open';
+    render(<RequestsPage />, { wrapper: operations });
+    await screen.findByTestId('request-table-row');
+    expect(screen.getByTestId('requests-tab-open').getAttribute('aria-selected')).toBe('true');
+    expect(calls.filter((c) => c.path === '/api/v1/stock-requests')).toEqual([]);
+  });
+
   it('lets a branch confirm what arrived, no more than was packed', async () => {
     signedInAs('branch');
     const calls = api(
@@ -453,8 +511,8 @@ describe('A branch’s Order History and Delivery Tracking (ADR 0059)', () => {
     );
     expect(within(row).getByTestId('request-oc-link').textContent).toBe('OC SRQ-2026-000047');
     expect(within(row).queryByTestId('request-dc-link')).toBeNull();
-    // A branch opens on all of its requests; an owner on what waits for approval.
-    expect(screen.getByTestId<HTMLSelectElement>('requests-status').value).toBe('all');
+    // A branch opens on all of its requests.
+    expect(screen.getByTestId('requests-tab-all').getAttribute('aria-selected')).toBe('true');
     expect(calls.some((c) => c.path === '/api/v1/stock-requests')).toBe(true);
 
     await userEvent.type(screen.getByTestId('requests-search'), 'TRF-2026-0000');
@@ -463,7 +521,7 @@ describe('A branch’s Order History and Delivery Tracking (ADR 0059)', () => {
     expect(screen.queryByTestId('request-table-row')).toBeNull();
     expect(screen.getByTestId('requests-empty').textContent).toContain('TRF-2026-000099');
 
-    await userEvent.selectOptions(screen.getByTestId('requests-status'), 'done');
+    await userEvent.click(screen.getByTestId('requests-tab-done'));
     await waitFor(() =>
       expect(calls.at(-1)?.path).toBe(
         '/api/v1/stock-requests?status=received%2Crejected%2Ccancelled',
@@ -477,7 +535,7 @@ describe('A branch’s Order History and Delivery Tracking (ADR 0059)', () => {
     render(<RequestsPage />, { wrapper: operations });
     expect(await screen.findByRole('heading', { name: 'Order History' })).toBeTruthy();
     // Every stage, from sent to received (item 11).
-    expect(screen.getByTestId<HTMLSelectElement>('requests-status').value).toBe('all');
+    expect(screen.getByTestId('requests-tab-all').getAttribute('aria-selected')).toBe('true');
     // Branches send requests; who approves them doesn't.
     expect(screen.queryByTestId('requests-new')).toBeNull();
     cleanup();

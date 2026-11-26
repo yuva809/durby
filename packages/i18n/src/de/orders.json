@@ -221,6 +221,7 @@
   "orders.requestForm.none": "Geben Sie für mindestens einen Artikel eine Menge ein.",
   "orders.requestsPage.intro": "Anforderungen der Filialen, von der Genehmigung bis zur Lieferung.",
   "orders.requestsPage.newRequest": "Ware anfordern",
+  "orders.requestsPage.tabs.all": "Alle",
   "orders.requestsPage.tabs.open": "Wartet auf Genehmigung",
   "orders.requestsPage.tabs.progress": "In Bearbeitung",
   "orders.requestsPage.tabs.done": "Erledigt",
