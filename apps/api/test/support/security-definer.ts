@@ -3,6 +3,8 @@ import type { ClientBase } from 'pg';
 /** The only SECURITY DEFINER functions allowed in `public` (ADR 0006). Adding one needs an ADR. */
 export const SECURITY_DEFINER_ALLOW_LIST: readonly string[] = [
   'auth_user_organization_ids',
+  // ADR 0085: a public booking page's slug to its organization and location, nothing else.
+  'booking_page_by_slug',
   'outbox_backlog',
   'outbox_due_tenants',
   // ADR 0079: deletes one stock item of the caller's organization with its history (owner-only route).
@@ -97,6 +99,11 @@ export const DEFINER_PRIVILEGES: readonly string[] = [
   'column outbox_events.type SELECT',
   'column recipe_lines.item_id SELECT',
   'column recipe_lines.tenant_id SELECT',
+  // ADR 0085: booking_page_by_slug reads a page's slug, organization, location and on/off.
+  'column reservation_booking_pages.enabled SELECT',
+  'column reservation_booking_pages.location_id SELECT',
+  'column reservation_booking_pages.slug SELECT',
+  'column reservation_booking_pages.tenant_id SELECT',
   'column sales_order_lines.item_id SELECT',
   'column sales_order_lines.tenant_id SELECT',
   'column stock_documents.id SELECT',

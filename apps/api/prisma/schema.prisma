@@ -139,6 +139,7 @@ model Organization {
   reservationGuests            ReservationGuest[]
   reservations                 Reservation[]
   waitlistEntries              WaitlistEntry[]
+  reservationBookingPages      ReservationBookingPage[]
   reservationTables            ReservationTable[]
   reservationStatusChanges     ReservationStatusChange[]
   productCategoryImages        ProductCategoryImage[]
@@ -210,6 +211,7 @@ model Location {
   reservationCombinations ReservationCombination[]
   reservations            Reservation[]
   waitlistEntries         WaitlistEntry[]
+  reservationBookingPages ReservationBookingPage[]
   warehouses              Warehouse[]
   priceRules              PriceRule[]
   posPrinterCommands      PosPrinterCommand[]
@@ -1578,6 +1580,24 @@ model ReservationTableRule {
 
   @@id([tenantId, tableId])
   @@map("reservation_table_rules")
+}
+
+/// A location's online booking page (R2.1, ADR 0085): `/b/{slug}` on its partner's domain. The slug is unique across
+/// every tenant; the public routes find it through `booking_page_by_slug()` only.
+model ReservationBookingPage {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  locationId   String       @map("location_id") @db.Uuid
+  slug         String       @unique
+  enabled      Boolean      @default(true)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location     Location     @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, locationId])
+  @@map("reservation_booking_pages")
 }
 
 /// Tables that can be pushed together for one party.

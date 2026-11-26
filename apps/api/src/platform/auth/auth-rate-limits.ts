@@ -31,6 +31,17 @@ export function authRateLimits(config: AppConfig) {
      * The public table menu (ADR 0026): guests of one restaurant often share its Wi-Fi address, so
      * five times the refresh count per minute.
      */
+    /** The public booking page's reads (ADR 0085): per client address, and per page across all clients. */
+    publicBookingIp: {
+      name: 'reservations.booking.ip',
+      limit: config.RATE_LIMIT_REFRESH_IP * 5,
+      windowMs: MIN,
+    },
+    publicBookingPage: {
+      name: 'reservations.booking.page',
+      limit: config.RATE_LIMIT_REFRESH_IP * 50,
+      windowMs: MIN,
+    },
     publicMenuIp: {
       name: 'pos.menu.ip',
       limit: config.RATE_LIMIT_REFRESH_IP * 5,

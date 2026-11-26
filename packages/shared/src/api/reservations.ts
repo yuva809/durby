@@ -485,6 +485,8 @@ export const RESERVATION_ERROR_CODES = [
   'reservations.waitlist_notice_limit',
   'reservations.waitlist_notice_too_soon',
   'reservations.waitlist_return_expired',
+  'reservations.booking_page_not_found',
+  'reservations.booking_slug_taken',
 ] as const;
 
 export type ReservationErrorCode = (typeof RESERVATION_ERROR_CODES)[number];
