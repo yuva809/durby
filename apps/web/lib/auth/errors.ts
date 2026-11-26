@@ -217,6 +217,8 @@ const LABELS: Record<ApiErrorCode, LabelKey> = {
   'reservations.booking_slug_taken': 'reservations.errors.bookingSlugTaken',
   'reservations.hold_not_found': 'reservations.errors.holdNotFound',
   'reservations.holds_unavailable': 'reservations.errors.holdsUnavailable',
+  'reservations.booking_not_found': 'reservations.errors.bookingNotFound',
+  'reservations.self_cancel_closed': 'reservations.errors.selfCancelClosed',
   'reservations.location_not_found': 'reservations.errors.locationNotFound',
   'reservations.table_not_found': 'reservations.errors.tableNotFound',
   'reservations.combination_not_found': 'reservations.errors.combinationNotFound',

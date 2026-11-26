@@ -139,6 +139,7 @@ model Organization {
   reservationGuests            ReservationGuest[]
   reservations                 Reservation[]
   waitlistEntries              WaitlistEntry[]
+  guestMarketingConsents       GuestMarketingConsent[]
   reservationBookingPages      ReservationBookingPage[]
   reservationTables            ReservationTable[]
   reservationStatusChanges     ReservationStatusChange[]
@@ -1600,6 +1601,24 @@ model ReservationBookingPage {
   @@map("reservation_booking_pages")
 }
 
+/// A guest's marketing consent (R2.3a): granted or withdrawn, appended, never changed. Kept apart from bookings; holds
+/// no personal data itself (the guest row does, and is erased on its own).
+model GuestMarketingConsent {
+  id            String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String           @map("tenant_id") @db.Uuid
+  guestId       String           @map("guest_id") @db.Uuid
+  reservationId String?          @map("reservation_id") @db.Uuid
+  granted       Boolean
+  source        String
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization  Organization     @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  guest         ReservationGuest @relation(fields: [tenantId, guestId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  reservation   Reservation?     @relation(fields: [tenantId, reservationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([tenantId, guestId, createdAt])
+  @@map("guest_marketing_consents")
+}
+
 /// Tables that can be pushed together for one party.
 model ReservationCombination {
   id             String                        @id @default(dbgenerated("uuidv7()")) @db.Uuid
@@ -1638,22 +1657,23 @@ model ReservationCombinationTable {
 
 /// A guest of the organization: minimal personal data, reused per email, anonymised by retention (Q8).
 model ReservationGuest {
-  id           String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String        @map("tenant_id") @db.Uuid
+  id                String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String                  @map("tenant_id") @db.Uuid
   /// null once anonymised.
-  name         String?
+  name              String?
   /// Lower-case; one live guest per email per organization (partial unique index, hand-written).
-  email        String?
+  email             String?
   /// E.164.
-  phone        String?
-  locale       String
+  phone             String?
+  locale            String
   /// Set when one of their reservations finishes (retention clock).
-  lastVisitAt  DateTime?     @map("last_visit_at") @db.Timestamptz(6)
-  anonymisedAt DateTime?     @map("anonymised_at") @db.Timestamptz(6)
-  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  reservations Reservation[]
+  lastVisitAt       DateTime?               @map("last_visit_at") @db.Timestamptz(6)
+  anonymisedAt      DateTime?               @map("anonymised_at") @db.Timestamptz(6)
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization      Organization            @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reservations      Reservation[]
+  marketingConsents GuestMarketingConsent[]
 
   @@unique([tenantId, id])
   @@map("reservation_guests")
@@ -1661,39 +1681,40 @@ model ReservationGuest {
 
 /// The current state of a booking; its history is reservation_status_changes plus the audit log.
 model Reservation {
-  id              String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId        String                    @map("tenant_id") @db.Uuid
-  locationId      String                    @map("location_id") @db.Uuid
+  id                String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String                    @map("tenant_id") @db.Uuid
+  locationId        String                    @map("location_id") @db.Uuid
   /// RES-{YYYY}-{seq:6}, series reservations.booking: the guest-facing reference.
-  number          String
-  guestId         String                    @map("guest_id") @db.Uuid
-  partySize       Int                       @map("party_size")
-  startsAt        DateTime                  @map("starts_at") @db.Timestamptz(6)
+  number            String
+  guestId           String                    @map("guest_id") @db.Uuid
+  partySize         Int                       @map("party_size")
+  startsAt          DateTime                  @map("starts_at") @db.Timestamptz(6)
   /// starts_at + turn time; > starts_at.
-  endsAt          DateTime                  @map("ends_at") @db.Timestamptz(6)
-  status          ReservationStatus
-  source          ReservationSource
+  endsAt            DateTime                  @map("ends_at") @db.Timestamptz(6)
+  status            ReservationStatus
+  source            ReservationSource
   /// Free text: never in audit snapshots, events or logs.
-  guestNote       String?                   @map("guest_note")
-  staffNote       String?                   @map("staff_note")
+  guestNote         String?                   @map("guest_note")
+  staffNote         String?                   @map("staff_note")
   /// Self-cancel link (R2); the token embeds the organization id.
-  manageTokenHash String?                   @unique @map("manage_token_hash")
+  manageTokenHash   String?                   @unique @map("manage_token_hash")
   /// null for online bookings; no FK (users are private to platform/auth, ADR 0016 §8).
-  createdByUserId String?                   @map("created_by_user_id") @db.Uuid
-  arrivedAt       DateTime?                 @map("arrived_at") @db.Timestamptz(6)
-  seatedAt        DateTime?                 @map("seated_at") @db.Timestamptz(6)
-  finishedAt      DateTime?                 @map("finished_at") @db.Timestamptz(6)
-  cancelledAt     DateTime?                 @map("cancelled_at") @db.Timestamptz(6)
-  noShowAt        DateTime?                 @map("no_show_at") @db.Timestamptz(6)
-  reminderSentAt  DateTime?                 @map("reminder_sent_at") @db.Timestamptz(6)
-  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization    Organization              @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  location        Location                  @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  guest           ReservationGuest          @relation(fields: [tenantId, guestId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
-  tables          ReservationTable[]
-  changes         ReservationStatusChange[]
-  waitlistEntry   WaitlistEntry?
+  createdByUserId   String?                   @map("created_by_user_id") @db.Uuid
+  arrivedAt         DateTime?                 @map("arrived_at") @db.Timestamptz(6)
+  seatedAt          DateTime?                 @map("seated_at") @db.Timestamptz(6)
+  finishedAt        DateTime?                 @map("finished_at") @db.Timestamptz(6)
+  cancelledAt       DateTime?                 @map("cancelled_at") @db.Timestamptz(6)
+  noShowAt          DateTime?                 @map("no_show_at") @db.Timestamptz(6)
+  reminderSentAt    DateTime?                 @map("reminder_sent_at") @db.Timestamptz(6)
+  createdAt         DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization      Organization              @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  location          Location                  @relation(fields: [tenantId, locationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  guest             ReservationGuest          @relation(fields: [tenantId, guestId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  tables            ReservationTable[]
+  changes           ReservationStatusChange[]
+  waitlistEntry     WaitlistEntry?
+  marketingConsents GuestMarketingConsent[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, number])

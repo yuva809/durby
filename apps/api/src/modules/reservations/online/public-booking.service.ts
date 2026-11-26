@@ -32,7 +32,7 @@ const HOLD_ATTEMPTS = 5;
 /** No user reads the public page; RLS and audit only need an id (as the QR menu, ADR 0026). */
 const ANONYMOUS = '00000000-0000-0000-0000-000000000000';
 
-interface Page {
+export interface Page {
   tenantId: string;
   locationId: string;
   slug: string;
@@ -170,7 +170,8 @@ export class PublicBookingService {
     );
   }
 
-  private async within<T>(
+  /** Runs `fn` for a page that answers on this host (slug, domain, location, feature, rate limit), in its tenant. */
+  async within<T>(
     slug: string,
     host: string | undefined,
     ip: string,

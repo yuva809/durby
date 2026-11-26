@@ -220,7 +220,10 @@ export type MergeOrderRequest = z.infer<typeof mergeOrderRequestSchema>;
  */
 export const transferOrderRequestSchema = z.strictObject({
   tableId: z.uuid(),
-  lines: z.array(z.strictObject({ lineId: z.uuid(), quantity })).min(1).max(TICKET_MAX_LINES),
+  lines: z
+    .array(z.strictObject({ lineId: z.uuid(), quantity }))
+    .min(1)
+    .max(TICKET_MAX_LINES),
 });
 
 /** The order the items left, and the new order they went to. */

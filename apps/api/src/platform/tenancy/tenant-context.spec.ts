@@ -87,6 +87,7 @@ describe('TENANT_MODELS', () => {
       'Brand',
       'DiningArea',
       'DiningTable',
+      'GuestMarketingConsent',
       'IdempotencyKey',
       'Invitation',
       'InvitationLocation',

@@ -291,6 +291,17 @@ describe('today (live)', () => {
     expect(screen.queryByTestId('host-plan-note')).toBeNull();
   });
 
+  it('marks bookings made online', async () => {
+    api({
+      ...BASE,
+      'GET /api/v1/reservations': () =>
+        Response.json({ data: [{ ...WEBER, source: 'online' }, SCHMIDT] }),
+    });
+    render(<HostPage />);
+    expect(within(await rowOf('Weber')).getByTestId('row-online').textContent).toBe('Online');
+    expect(within(await rowOf('Schmidt')).queryByTestId('row-online')).toBeNull();
+  });
+
   it('marks the auto-seated booking and undoes it while the window lasts', async () => {
     const { writes } = api({
       ...BASE,

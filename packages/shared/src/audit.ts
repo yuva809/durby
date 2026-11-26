@@ -541,6 +541,8 @@ export const AUDIT_SYSTEM_ACTORS = {
   'job.print_jobs': { label: 'platform.audit.actors.jobPrintJobs' },
   /** The worker's hourly pass over the waitlist (ADR 0084). */
   'job.waitlist': { label: 'platform.audit.actors.jobWaitlist' },
+  /** A guest on the public booking page or with their manage link (R2.3a); no person is stored. */
+  'guest.online': { label: 'platform.audit.actors.guestOnline' },
   migration: { label: 'platform.audit.actors.migration' },
 } as const satisfies Record<string, { label: string }>;
 

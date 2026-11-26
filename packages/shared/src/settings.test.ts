@@ -47,6 +47,7 @@ describe('settings registry', () => {
       'reservations.autoConfirm',
       'reservations.minLeadMinutes',
       'reservations.maxAdvanceDays',
+      'reservations.selfCancelCutoffMinutes',
       'reservations.holdMinutes',
       'pos.billHeader',
       'pos.billFooter',

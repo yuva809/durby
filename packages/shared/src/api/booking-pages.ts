@@ -1,6 +1,7 @@
 import { LOCALES } from '@durby/i18n';
 import { z } from 'zod';
 import { MAX_PARTY_SIZE } from '../reservation-settings';
+import { guestEmail, RESERVATION_STATUSES } from './reservations';
 import { isLocalDate } from '../time/zoned';
 
 /**
@@ -136,6 +137,65 @@ export const holdSchema = z.strictObject({
   expiresAt: z.iso.datetime(),
 });
 
+// --- Booking and the manage link (R2.3a) -----------------------------------------------------------
+
+/** One line, no control characters: the name goes into emails (R2.4). */
+const guestName = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .regex(/^[^\p{Cc}]*$/u);
+
+export const publicBookingRequestSchema = z.strictObject({
+  holdId: z.uuid(),
+  guest: z.strictObject({
+    name: guestName,
+    email: guestEmail,
+    phone: z.string().trim().min(1).max(40).optional(),
+    locale: z.enum(LOCALES).optional(),
+  }),
+  guestNote: z.string().trim().min(1).max(500).optional(),
+  /** Never pre-ticked on the page; stored apart from the booking. */
+  marketingOptIn: z.boolean(),
+  website: z.string().max(200).optional(),
+});
+
+export const publicBookingSchema = z.strictObject({
+  number: z.string(),
+  /** `pending`: the restaurant confirms (auto-confirm off). */
+  status: z.enum(['booked', 'pending']),
+  restaurant: z.string(),
+  location: z.string(),
+  startsAt: z.iso.datetime(),
+  endsAt: z.iso.datetime(),
+  partySize: z.int(),
+  guestName: z.string(),
+  /** `<organizationId>.<secret>`: goes into the manage link's fragment (`/b/manage#<token>`), shown once. */
+  manageToken: z.string(),
+});
+
+export const manageBookingSchema = z.strictObject({
+  number: z.string(),
+  status: z.enum(RESERVATION_STATUSES),
+  restaurant: z.string(),
+  location: z.string(),
+  timeZone: z.string(),
+  startsAt: z.iso.datetime(),
+  endsAt: z.iso.datetime(),
+  partySize: z.int(),
+  /** Null once the guest's data was erased. */
+  guestName: z.string().nullable(),
+  canCancel: z.boolean(),
+  /** The last moment the guest may cancel themselves (`reservations.selfCancelCutoffMinutes` before the start). */
+  cancelUntil: z.iso.datetime(),
+  /** The location's booking page, to book again ("change" = cancel and book again); null when it's off. */
+  pageSlug: z.string().nullable(),
+});
+
+export type PublicBookingRequest = z.infer<typeof publicBookingRequestSchema>;
+export type PublicBooking = z.infer<typeof publicBookingSchema>;
+export type ManageBooking = z.infer<typeof manageBookingSchema>;
 export type CreateHoldRequest = z.infer<typeof createHoldRequestSchema>;
 export type Hold = z.infer<typeof holdSchema>;
 export type BookingPageQuery = z.infer<typeof bookingPageQuerySchema>;
