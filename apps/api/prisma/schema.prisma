@@ -139,6 +139,7 @@ model Organization {
   reservationGuests            ReservationGuest[]
   reservations                 Reservation[]
   waitlistEntries              WaitlistEntry[]
+  reservationManageTokens      ReservationManageToken[]
   guestMarketingConsents       GuestMarketingConsent[]
   reservationBookingPages      ReservationBookingPage[]
   reservationTables            ReservationTable[]
@@ -1619,6 +1620,21 @@ model GuestMarketingConsent {
   @@map("guest_marketing_consents")
 }
 
+/// A manage link sent to the guest (R2.4): each email with a link carries a new token; only its hash is kept. Deleted
+/// when the guest's data is erased.
+model ReservationManageToken {
+  id            String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String       @map("tenant_id") @db.Uuid
+  reservationId String       @map("reservation_id") @db.Uuid
+  tokenHash     String       @unique @map("token_hash")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization  Organization @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reservation   Reservation  @relation(fields: [tenantId, reservationId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([tenantId, reservationId])
+  @@map("reservation_manage_tokens")
+}
+
 /// Tables that can be pushed together for one party.
 model ReservationCombination {
   id             String                        @id @default(dbgenerated("uuidv7()")) @db.Uuid
@@ -1714,6 +1730,7 @@ model Reservation {
   tables            ReservationTable[]
   changes           ReservationStatusChange[]
   waitlistEntry     WaitlistEntry?
+  manageTokens      ReservationManageToken[]
   marketingConsents GuestMarketingConsent[]
 
   @@unique([tenantId, id])

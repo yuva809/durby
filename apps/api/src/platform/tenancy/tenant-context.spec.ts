@@ -139,6 +139,7 @@ describe('TENANT_MODELS', () => {
       'ReservationCombination',
       'ReservationCombinationTable',
       'ReservationGuest',
+      'ReservationManageToken',
       'ReservationStatusChange',
       'ReservationTable',
       'ReservationTableRule',

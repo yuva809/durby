@@ -92,6 +92,8 @@ export async function eraseGuest(
     where: { guestId: id },
     data: { guestNote: null, staffNote: null, manageTokenHash: null },
   });
+  // The links sent by email (R2.4) stop working.
+  await tx.reservationManageToken.deleteMany({ where: { reservation: { guestId: id } } });
   await tx.waitlistEntry.updateMany({
     where: { erasedAt: null, reservation: { guestId: id } },
     data: { name: null, phone: null, email: null, note: null, erasedAt: anonymisedAt },
